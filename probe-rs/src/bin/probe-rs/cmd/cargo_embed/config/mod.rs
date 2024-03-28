@@ -3,12 +3,14 @@ use figment::{
     providers::{Format, Json, Toml, Yaml},
     Figment,
 };
+use probe_rs::probe::WireProtocol;
 use probe_rs::rtt::ChannelMode;
-use probe_rs::WireProtocol;
 use serde::{Deserialize, Serialize};
-use std::{path::PathBuf, time::Duration};
+use std::{net::SocketAddr, path::PathBuf, time::Duration};
 
-use super::rttui::channel::ChannelConfig;
+use crate::util::{logging::LevelFilter, rtt::DataFormat};
+
+use super::rttui::tab::TabConfig;
 
 /// A struct which holds all configs.
 #[derive(Debug, Clone)]
@@ -68,10 +70,37 @@ pub struct Reset {
 pub struct General {
     pub chip: Option<String>,
     pub chip_descriptions: Vec<String>,
-    pub log_level: log::LevelFilter,
+    pub log_level: Option<LevelFilter>,
     pub derives: Option<String>,
     /// Use this flag to assert the nreset & ntrst pins during attaching the probe to the chip.
     pub connect_under_reset: bool,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct UpChannelConfig {
+    pub channel: usize,
+    #[serde(default)]
+    pub mode: Option<ChannelMode>,
+    #[serde(default)]
+    pub format: DataFormat,
+    #[serde(default)]
+    pub show_location: Option<bool>,
+    #[serde(default)]
+    pub socket: Option<SocketAddr>,
+    // TODO: it should be possible to move these into DataFormat
+    #[serde(default)]
+    /// Control the inclusion of timestamps for DataFormat::String.
+    pub show_timestamps: Option<bool>,
+    #[serde(default)]
+    /// Control the output format for DataFormat::Defmt.
+    pub defmt_log_format: Option<String>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct DownChannelConfig {
+    pub channel: usize,
+    #[serde(default)]
+    pub mode: Option<ChannelMode>,
 }
 
 /// The rtt config struct holding all the possible rtt options.
@@ -82,16 +111,31 @@ pub struct Rtt {
     /// Up mode, when not specified per-channel.  Target picks if neither is set
     pub up_mode: Option<ChannelMode>,
     /// Channels to be displayed, and options for them
-    pub channels: Vec<ChannelConfig>,
+    pub up_channels: Vec<UpChannelConfig>,
+    /// Channels to be displayed, and options for them
+    pub down_channels: Vec<DownChannelConfig>,
+    /// UI tab configuration
+    pub tabs: Vec<TabConfig>,
     /// Connection timeout in ms.
     #[serde(with = "duration_ms")]
     pub timeout: Duration,
     /// Whether to show timestamps in RTTUI
     pub show_timestamps: bool,
+    /// Whether to show location info in RTTUI for defmt channels.
+    pub show_location: bool,
     /// Whether to save rtt history buffer on exit to file named history.txt
     pub log_enabled: bool,
     /// Where to save rtt history buffer relative to manifest path.
     pub log_path: PathBuf,
+}
+
+impl Rtt {
+    /// Returns the configuration for the specified up channel number, if it exists.
+    pub fn up_channel_config(&self, channel_number: usize) -> Option<&UpChannelConfig> {
+        self.up_channels
+            .iter()
+            .find(|ch| ch.channel == channel_number)
+    }
 }
 
 mod duration_ms {
@@ -170,9 +214,9 @@ impl Configs {
             .collect()
     }
 
-    /// Extract the requested config, but only if the profile has been explicity defined in the
+    /// Extract the requested config, but only if the profile has been explicitly defined in the
     /// configuration files etc. (selecting an arbitrary undefined profile with Figment will coerce
-    /// it into existance - inheriting from the default config).
+    /// it into existence - inheriting from the default config).
     pub fn select_defined(self: Configs, name: &str) -> anyhow::Result<Config> {
         let defined_profiles = self.prof_names();
         let requested_profile_defined: bool = defined_profiles

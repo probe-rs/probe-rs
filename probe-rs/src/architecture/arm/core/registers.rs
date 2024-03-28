@@ -1,3 +1,5 @@
+//! All the registers of all the ARM cores.
+
 pub(crate) mod aarch32;
 pub(crate) mod aarch64;
-pub(crate) mod cortex_m;
+pub mod cortex_m;

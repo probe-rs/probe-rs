@@ -1,97 +1,115 @@
 use anyhow::{anyhow, Context, Result};
 use crossterm::{
-    event::{self, KeyCode},
+    event::{self, KeyCode, KeyEventKind},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use probe_rs::rtt::RttChannel;
 use probe_rs::Core;
 use ratatui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
-    text::{Line, Span},
-    widgets::{Block, Borders, List, ListItem, Paragraph, Tabs},
+    widgets::{Block, Borders, List, Paragraph, Tabs},
     Terminal,
 };
-use std::{fmt::write, path::PathBuf, sync::mpsc::RecvTimeoutError};
-use std::{
-    io::{Read, Seek, Write},
-    time::Duration,
+use std::{collections::BTreeMap, io::Write};
+use std::{path::PathBuf, sync::mpsc::TryRecvError};
+
+use crate::{
+    cmd::cargo_embed::rttui::{channel::ChannelData, tab::TabConfig},
+    util::rtt::{DefmtState, RttActiveDownChannel, RttActiveTarget},
 };
 
-use super::super::{config, DefmtInformation};
-
-use super::{
-    channel::{ChannelState, DataFormat},
-    event::Events,
-};
+use super::super::config;
+use super::channel::UpChannel;
+use super::{event::Events, tab::Tab};
 
 use event::KeyModifiers;
 
 /// App holds the state of the application
 pub struct App {
-    tabs: Vec<ChannelState>,
+    tabs: Vec<Tab>,
     current_tab: usize,
 
     terminal: Terminal<CrosstermBackend<std::io::Stdout>>,
     events: Events,
     history_path: Option<PathBuf>,
     logname: String,
-}
 
-fn pull_channel<C: RttChannel>(channels: &mut Vec<C>, n: usize) -> Option<C> {
-    let c = channels
-        .iter()
-        .enumerate()
-        .find_map(|(i, c)| if c.number() == n { Some(i) } else { None });
+    defmt_state: Option<DefmtState>,
 
-    c.map(|c| channels.remove(c))
+    down_channels: BTreeMap<usize, RttActiveDownChannel>,
+    up_channels: BTreeMap<usize, UpChannel>,
 }
 
 impl App {
-    pub fn new(
-        mut rtt: probe_rs::rtt::Rtt,
-        config: &config::Config,
-        logname: String,
-    ) -> Result<Self> {
-        let mut tabs = Vec::new();
-        if !config.rtt.channels.is_empty() {
-            let mut up_channels = rtt.up_channels().drain().collect::<Vec<_>>();
-            let mut down_channels = rtt.down_channels().drain().collect::<Vec<_>>();
-            for channel in &config.rtt.channels {
-                tabs.push(ChannelState::new(
-                    channel.up.and_then(|up| pull_channel(&mut up_channels, up)),
-                    channel
-                        .down
-                        .and_then(|down| pull_channel(&mut down_channels, down)),
-                    channel.name.clone(),
-                    config.rtt.show_timestamps,
-                    channel.format,
-                ))
-            }
-        } else {
-            let up_channels = rtt.up_channels().drain();
-            let mut down_channels = rtt.down_channels().drain().collect::<Vec<_>>();
-            for channel in up_channels {
-                let number = channel.number();
-                tabs.push(ChannelState::new(
-                    Some(channel),
-                    pull_channel(&mut down_channels, number),
-                    None,
-                    config.rtt.show_timestamps,
-                    DataFormat::String,
-                ));
+    pub fn new(rtt: RttActiveTarget, config: config::Config, logname: String) -> Result<Self> {
+        let mut tab_config = config.rtt.tabs;
+
+        // Create channel states
+        let mut up_channels = BTreeMap::new();
+        let mut down_channels = BTreeMap::new();
+
+        // Create tab config based on detected channels
+        for up in rtt.active_up_channels.into_values() {
+            let number = up.number();
+            if !tab_config.iter().any(|tab| tab.up_channel == number) {
+                tab_config.push(TabConfig {
+                    up_channel: number,
+                    down_channel: None,
+                    name: Some(up.channel_name.clone()),
+                    hide: false,
+                });
             }
 
-            for channel in down_channels {
-                tabs.push(ChannelState::new(
-                    None,
-                    Some(channel),
-                    None,
-                    config.rtt.show_timestamps,
-                    DataFormat::String,
-                ));
+            if up_channels.insert(number, (up, None)).is_some() {
+                return Err(anyhow!("Duplicate up channel configuration: {number}"));
+            }
+        }
+        for down in rtt.active_down_channels.into_values() {
+            let number = down.number();
+            if !tab_config
+                .iter()
+                .any(|tab| tab.down_channel == Some(number))
+            {
+                tab_config.push(TabConfig {
+                    up_channel: if up_channels.contains_key(&number) {
+                        number
+                    } else {
+                        0
+                    },
+                    down_channel: Some(number),
+                    name: Some(down.channel_name.clone()),
+                    hide: false,
+                });
+            }
+
+            if down_channels.insert(number, down).is_some() {
+                return Err(anyhow!("Duplicate down channel configuration: {number}"));
+            }
+        }
+
+        // Collect TCP publish addresses
+        for up_config in config.rtt.up_channels.iter() {
+            if let Some((_, stream)) = up_channels.get_mut(&up_config.channel) {
+                *stream = up_config.socket;
+            }
+        }
+
+        // Create tabs
+        let mut tabs = Vec::new();
+        for tab in tab_config {
+            if tab.hide {
+                continue;
+            }
+            if let Some(up_channel) = up_channels.get(&tab.up_channel).map(|(up, _)| up) {
+                let down_channel = tab.down_channel.and_then(|down| down_channels.get(&down));
+                tabs.push(Tab::new(up_channel, down_channel, tab.name));
+            } else {
+                tracing::warn!(
+                    "Configured up channel {} does not exist, skipping tab",
+                    tab.up_channel
+                );
             }
         }
 
@@ -112,20 +130,18 @@ impl App {
         let mut terminal = Terminal::new(backend).unwrap();
         let _ = terminal.hide_cursor();
 
-        let history_path = {
-            if !config.rtt.log_enabled {
-                None
-            } else {
-                //when is the right time if ever to fail if the directory or file cant be created?
-                //should we create the path on startup or when we write
-                match std::fs::create_dir_all(&config.rtt.log_path) {
-                    Ok(_) => Some(config.rtt.log_path.clone()),
-                    Err(_) => {
-                        log::warn!("Could not create log directory");
-                        None
-                    }
+        let history_path = if config.rtt.log_enabled {
+            //when is the right time if ever to fail if the directory or file cant be created?
+            //should we create the path on startup or when we write
+            match std::fs::create_dir_all(&config.rtt.log_path) {
+                Ok(_) => Some(config.rtt.log_path),
+                Err(_) => {
+                    tracing::warn!("Could not create log directory");
+                    None
                 }
             }
+        } else {
+            None
         };
 
         Ok(Self {
@@ -135,366 +151,199 @@ impl App {
             events,
             history_path,
             logname,
+            defmt_state: rtt.defmt_state,
+
+            down_channels,
+            up_channels: up_channels
+                .into_iter()
+                .map(|(num, (channel, socket))| (num, UpChannel::new(channel, socket)))
+                .collect(),
         })
     }
 
-    pub fn get_rtt_symbol<T: Read + Seek>(file: &mut T) -> Option<u64> {
-        let mut buffer = Vec::new();
-        if file.read_to_end(&mut buffer).is_ok() {
-            if let Ok(binary) = goblin::elf::Elf::parse(buffer.as_slice()) {
-                for sym in &binary.syms {
-                    if let Some(name) = binary.strtab.get_at(sym.st_name) {
-                        if name == "_SEGGER_RTT" {
-                            return Some(sym.st_value);
-                        }
-                    }
+    pub fn render(&mut self) {
+        self.terminal
+            .draw(|f| {
+                let tab = &self.tabs[self.current_tab];
+
+                let chunks = layout_chunks(f, tab.input().is_some());
+                render_tabs(f, chunks[0], &self.tabs, self.current_tab);
+
+                let height = chunks[1].height as usize;
+                let width = chunks[1].width as usize;
+
+                let current_tab = &mut self.tabs[self.current_tab];
+                current_tab.update_messages(width, &self.up_channels);
+
+                let messages = List::new(current_tab.messages(height))
+                    .block(Block::default().borders(Borders::NONE));
+                f.render_widget(messages, chunks[1]);
+
+                if let Some(input) = current_tab.input() {
+                    let input = Paragraph::new(input)
+                        .style(Style::default().fg(Color::Yellow).bg(Color::Blue));
+                    f.render_widget(input, chunks[2]);
                 }
-            }
-        }
-
-        log::warn!("No RTT header info was present in the ELF file. Does your firmware run RTT?");
-        None
-    }
-
-    pub fn render(&mut self, defmt_state: Option<&DefmtInformation>) {
-        let input = self.current_tab().input().to_owned();
-        let has_down_channel = self.current_tab().has_down_channel();
-        let scroll_offset = self.current_tab().scroll_offset();
-        let messages = self.current_tab().messages().clone();
-        let data = self.current_tab().data().clone();
-
-        log::debug!("Data length: {}", data.len());
-
-        let tabs = &self.tabs;
-        let current_tab = self.current_tab;
-        let mut height = 0;
-        let mut messages_wrapped: Vec<String> = Vec::new();
-
-        match tabs[current_tab].format() {
-            DataFormat::String => {
-                self.terminal
-                    .draw(|f| {
-                        let constraints = if has_down_channel {
-                            &[
-                                Constraint::Length(1),
-                                Constraint::Min(1),
-                                Constraint::Length(1),
-                            ][..]
-                        } else {
-                            &[Constraint::Length(1), Constraint::Min(1)][..]
-                        };
-                        let chunks = Layout::default()
-                            .direction(Direction::Vertical)
-                            .margin(0)
-                            .constraints(constraints)
-                            .split(f.size());
-
-                        let tab_names = tabs
-                            .iter()
-                            .map(|t| Line::from(t.name()))
-                            .collect::<Vec<_>>();
-                        let tabs = Tabs::new(tab_names)
-                            .select(current_tab)
-                            .style(Style::default().fg(Color::Black).bg(Color::Yellow))
-                            .highlight_style(
-                                Style::default()
-                                    .fg(Color::Green)
-                                    .bg(Color::Yellow)
-                                    .add_modifier(Modifier::BOLD),
-                            );
-                        f.render_widget(tabs, chunks[0]);
-
-                        height = chunks[1].height as usize;
-
-                        // We need to collect to generate message_num :(
-                        messages_wrapped = messages
-                            .iter()
-                            .flat_map(|m| textwrap::wrap(m, chunks[1].width as usize))
-                            .map(|s| s.into_owned())
-                            .collect();
-
-                        let message_num = messages_wrapped.len();
-
-                        let messages: Vec<ListItem> = messages_wrapped
-                            .iter()
-                            .skip(message_num - (height + scroll_offset).min(message_num))
-                            .take(height)
-                            .map(|s| ListItem::new(vec![Line::from(Span::raw(s))]))
-                            .collect();
-
-                        let messages = List::new(messages.as_slice())
-                            .block(Block::default().borders(Borders::NONE));
-                        f.render_widget(messages, chunks[1]);
-
-                        if has_down_channel {
-                            let input = Paragraph::new(Line::from(vec![Span::raw(input.clone())]))
-                                .style(Style::default().fg(Color::Yellow).bg(Color::Blue));
-                            f.render_widget(input, chunks[2]);
-                        }
-                    })
-                    .unwrap();
-
-                let message_num = messages_wrapped.len();
-                let scroll_offset = self.tabs[self.current_tab].scroll_offset();
-                if message_num < height + scroll_offset {
-                    self.current_tab_mut()
-                        .set_scroll_offset(message_num - height.min(message_num));
-                }
-            }
-            binle_or_defmt => {
-                self.terminal
-                    .draw(|f| {
-                        let constraints = if has_down_channel {
-                            &[
-                                Constraint::Length(1),
-                                Constraint::Min(1),
-                                Constraint::Length(1),
-                            ][..]
-                        } else {
-                            &[Constraint::Length(1), Constraint::Min(1)][..]
-                        };
-                        let chunks = Layout::default()
-                            .direction(Direction::Vertical)
-                            .margin(0)
-                            .constraints(constraints)
-                            .split(f.size());
-
-                        let tab_names = tabs
-                            .iter()
-                            .map(|t| Line::from(t.name()))
-                            .collect::<Vec<_>>();
-                        let tabs = Tabs::new(tab_names)
-                            .select(current_tab)
-                            .style(Style::default().fg(Color::Black).bg(Color::Yellow))
-                            .highlight_style(
-                                Style::default()
-                                    .fg(Color::Green)
-                                    .bg(Color::Yellow)
-                                    .add_modifier(Modifier::BOLD),
-                            );
-                        f.render_widget(tabs, chunks[0]);
-
-                        height = chunks[1].height as usize;
-
-                        // probably pretty bad
-                        match binle_or_defmt {
-                            DataFormat::BinaryLE => {
-                                messages_wrapped.push(data.iter().fold(
-                                    String::new(),
-                                    |mut output, byte| {
-                                        let _ = write(&mut output, format_args!("{byte:#04x}, "));
-                                        output
-                                    },
-                                ));
-                            }
-                            DataFormat::Defmt => {
-                                let defmt_state = defmt_state.as_ref().expect(
-                                "Running rtt in defmt mode but table or locations could not be loaded.",
-                            );
-                                let mut stream_decoder = defmt_state.table.new_stream_decoder();
-                                stream_decoder.received(&data);
-                                while let Ok(frame) = stream_decoder.decode()
-                                {
-                                    // NOTE(`[]` indexing) all indices in `table` have already been
-                                    // verified to exist in the `locs` map.
-                                    let loc = defmt_state.location_information.as_ref().map(|locs| &locs[&frame.index()]);
-
-                                    messages_wrapped.push(format!("{}", frame.display(false)));
-                                    if let Some(loc) = loc {
-                                        let relpath = if let Ok(relpath) =
-                                            loc.file.strip_prefix(&std::env::current_dir().unwrap())
-                                        {
-                                            relpath
-                                        } else {
-                                            // not relative; use full path
-                                            &loc.file
-                                        };
-
-                                        messages_wrapped.push(format!(
-                                            "└─ {}:{}",
-                                            relpath.display(),
-                                            loc.line
-                                        ));
-                                    }
-                                }
-                            }
-                            DataFormat::String => unreachable!("You encountered a bug. Please open an issue on Github."),
-                        }
-
-                        let message_num = messages_wrapped.len();
-
-                        let messages: Vec<ListItem> = messages_wrapped
-                            .iter()
-                            .skip(message_num - (height + scroll_offset).min(message_num))
-                            .take(height)
-                            .map(|s| ListItem::new(vec![Line::from(Span::raw(s))]))
-                            .collect();
-
-                        let messages = List::new(messages.as_slice())
-                            .block(Block::default().borders(Borders::NONE));
-                        f.render_widget(messages, chunks[1]);
-
-                        if has_down_channel {
-                            let input = Paragraph::new(Line::from(vec![Span::raw(input.clone())]))
-                                .style(Style::default().fg(Color::Yellow).bg(Color::Blue));
-                            f.render_widget(input, chunks[2]);
-                        }
-                    })
-                    .unwrap();
-
-                let message_num = messages_wrapped.len();
-                let scroll_offset = self.tabs[self.current_tab].scroll_offset();
-                if message_num < height + scroll_offset {
-                    self.current_tab_mut()
-                        .set_scroll_offset(message_num - height.min(message_num));
-                }
-            }
-        }
+            })
+            .unwrap();
     }
 
     /// Returns true if the application should exit.
     pub fn handle_event(&mut self, core: &mut Core) -> bool {
-        match self.events.next(Duration::from_millis(10)) {
-            Ok(event) => match event.code {
-                KeyCode::Char('c') if event.modifiers.contains(KeyModifiers::CONTROL) => {
-                    clean_up_terminal();
-                    let _ = self.terminal.show_cursor();
+        let event = match self.events.next() {
+            Ok(event) => event,
+            Err(TryRecvError::Empty) => return false,
+            Err(TryRecvError::Disconnected) => {
+                tracing::warn!(
+                    "Unable to receive anymore input events from terminal, shutting down."
+                );
+                return true;
+            }
+        };
 
-                    if let Some(path) = &self.history_path {
-                        for (i, tab) in self.tabs.iter().enumerate() {
-                            if tab.format() == DataFormat::Defmt {
-                                eprintln!("Not saving tab {} as saving defmt logs is currently unsupported.", i + 1);
-                                continue;
-                            }
+        // Ignore key release events emitted by Crossterm on Windows
+        if event.kind != KeyEventKind::Press {
+            return false;
+        }
 
-                            let extension = match tab.format() {
-                                DataFormat::String => "txt",
-                                DataFormat::BinaryLE => "dat",
-                                DataFormat::Defmt => unreachable!(),
-                            };
+        match event.code {
+            KeyCode::Char('c') if event.modifiers.contains(KeyModifiers::CONTROL) => {
+                clean_up_terminal();
+                let _ = self.terminal.show_cursor();
 
-                            let name = format!("{}_channel{}.{}", self.logname, i, extension);
-                            let sanitize_options = sanitize_filename::Options {
-                                replacement: "_",
-                                ..Default::default()
-                            };
-                            let sanitized_name =
-                                sanitize_filename::sanitize_with_options(name, sanitize_options);
-                            let final_path = path.join(sanitized_name);
+                let Some(path) = &self.history_path else {
+                    return true;
+                };
 
-                            match std::fs::File::create(&final_path) {
-                                Ok(mut file) => {
-                                    match tab.format() {
-                                        DataFormat::String => {
-                                            for line in tab.messages() {
-                                                match writeln!(file, "{line}") {
-                                                    Ok(_) => {}
-                                                    Err(e) => {
-                                                        eprintln!(
-                                                            "\nError writing log channel {i}: {e}"
-                                                        );
-                                                        continue;
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        DataFormat::BinaryLE => match file.write(tab.data()) {
-                                            Ok(_) => {}
-                                            Err(e) => {
-                                                eprintln!("\nError writing log channel {i}: {e}");
-                                                continue;
-                                            }
-                                        },
-                                        DataFormat::Defmt => unreachable!(),
-                                    };
+                for (i, tab) in self.tabs.iter().enumerate() {
+                    let up_channel = self
+                        .up_channels
+                        .get(&tab.up_channel())
+                        .expect("up channel disappeared");
 
-                                    // Flush file
-                                    if let Err(e) = file.flush() {
-                                        eprintln!("Error writing log channel {i}: {e}")
-                                    }
-                                }
+                    let extension = match up_channel.data {
+                        ChannelData::Strings { .. } => "txt",
+                        ChannelData::Binary { .. } => "dat",
+                    };
+                    let name = format!("{}_channel{i}.{extension}", self.logname);
+                    let sanitize_options = sanitize_filename::Options {
+                        replacement: "_",
+                        ..Default::default()
+                    };
+                    let sanitized_name =
+                        sanitize_filename::sanitize_with_options(name, sanitize_options);
+                    let final_path = path.join(sanitized_name);
+
+                    match &up_channel.data {
+                        ChannelData::Strings { messages } => {
+                            let mut file = match std::fs::File::create(&final_path) {
+                                Ok(file) => file,
                                 Err(e) => {
                                     eprintln!(
                                         "\nCould not create log file {}: {}",
                                         final_path.display(),
                                         e
                                     );
+                                    continue;
                                 }
+                            };
+                            for line in messages {
+                                if let Err(e) = writeln!(file, "{line}") {
+                                    eprintln!("\nError writing log channel {i}: {e}");
+                                    break;
+                                }
+                            }
+                            // Flush file
+                            if let Err(e) = file.flush() {
+                                eprintln!("Error writing log channel {i}: {e}")
+                            }
+                        }
+
+                        ChannelData::Binary { data } => {
+                            if let Err(e) = std::fs::write(final_path, data) {
+                                eprintln!("Error writing log channel {i}: {e}")
                             }
                         }
                     }
-                    true
                 }
-                KeyCode::Char('l') if event.modifiers.contains(KeyModifiers::CONTROL) => {
-                    self.current_tab_mut().clear();
-                    false
-                }
-                KeyCode::F(n) => {
-                    let n = n as usize - 1;
-                    if n < self.tabs.len() {
-                        self.current_tab = n;
-                    }
-                    false
-                }
-                KeyCode::Enter => {
-                    self.push_rtt(core);
-                    false
-                }
-                KeyCode::Char(c) => {
-                    self.current_tab_mut().input_mut().push(c);
-                    false
-                }
-                KeyCode::Backspace => {
-                    self.current_tab_mut().input_mut().pop();
-                    false
-                }
-                KeyCode::PageUp => {
-                    self.current_tab_mut().scroll_up();
-                    false
-                }
-                KeyCode::PageDown => {
-                    self.current_tab_mut().scroll_down();
-                    false
-                }
-                _ => false,
-            },
-            Err(RecvTimeoutError::Disconnected) => {
-                log::warn!("Unable to receive anymore input events from terminal, shutting down.");
-                true
+
+                return true;
             }
-            // Timeout just means no input received.
-            Err(RecvTimeoutError::Timeout) => false,
+            KeyCode::Char('l') if event.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.current_tab_mut().clear();
+            }
+            KeyCode::F(n) => {
+                let n = n as usize - 1;
+                if n < self.tabs.len() {
+                    self.current_tab = n;
+                }
+            }
+            KeyCode::Enter => self.push_rtt(core),
+            KeyCode::Char(c) => self.current_tab_mut().push_input(c),
+            KeyCode::Backspace => self.current_tab_mut().pop_input(),
+            KeyCode::PageUp => self.current_tab_mut().scroll_up(),
+            KeyCode::PageDown => self.current_tab_mut().scroll_down(),
+            _ => {}
         }
+
+        false
     }
 
-    pub fn current_tab(&self) -> &ChannelState {
-        &self.tabs[self.current_tab]
-    }
-
-    pub fn current_tab_mut(&mut self) -> &mut ChannelState {
+    pub fn current_tab_mut(&mut self) -> &mut Tab {
         &mut self.tabs[self.current_tab]
     }
 
     /// Polls the RTT target for new data on all channels.
-    ///
-    /// # Errors
-    /// If formatting a timestamp fails,
-    /// this function will abort and return a [`time::Error`].
-    pub fn poll_rtt(
-        &mut self,
-        core: &mut Core,
-        offset: time::UtcOffset,
-    ) -> Result<(), time::Error> {
-        for channel in self.tabs.iter_mut() {
-            channel.poll_rtt(core, offset)?;
+    pub fn poll_rtt(&mut self, core: &mut Core) -> Result<()> {
+        for (_, channel) in self.up_channels.iter_mut() {
+            channel.poll_rtt(core, self.defmt_state.as_ref())?;
         }
 
         Ok(())
     }
 
     pub fn push_rtt(&mut self, core: &mut Core) {
-        self.tabs[self.current_tab].push_rtt(core);
+        _ = self.tabs[self.current_tab].send_input(core, &mut self.down_channels);
     }
+}
+
+fn layout_chunks(
+    f: &mut ratatui::Frame,
+    has_down_channel: bool,
+) -> std::rc::Rc<[ratatui::prelude::Rect]> {
+    let constraints = if has_down_channel {
+        &[
+            Constraint::Length(1),
+            Constraint::Min(1),
+            Constraint::Length(1),
+        ][..]
+    } else {
+        &[Constraint::Length(1), Constraint::Min(1)][..]
+    };
+    Layout::default()
+        .direction(Direction::Vertical)
+        .margin(0)
+        .constraints(constraints)
+        .split(f.size())
+}
+
+fn render_tabs(
+    f: &mut ratatui::Frame,
+    chunk: ratatui::prelude::Rect,
+    tabs: &[Tab],
+    current_tab: usize,
+) {
+    let tab_names = tabs.iter().map(|t| t.name());
+    let tabs = Tabs::new(tab_names)
+        .select(current_tab)
+        .style(Style::default().fg(Color::Black).bg(Color::Yellow))
+        .highlight_style(
+            Style::default()
+                .fg(Color::Green)
+                .bg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        );
+    f.render_widget(tabs, chunk);
 }
 
 pub fn clean_up_terminal() {

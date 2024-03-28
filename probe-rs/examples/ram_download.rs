@@ -1,4 +1,5 @@
-use probe_rs::{config::TargetSelector, MemoryInterface, Permissions, Probe, WireProtocol};
+use probe_rs::probe::{list::Lister, Probe};
+use probe_rs::{config::TargetSelector, probe::WireProtocol, MemoryInterface, Permissions};
 
 use clap::Parser;
 use std::num::ParseIntError;
@@ -147,7 +148,9 @@ fn main() -> Result<()> {
 }
 
 fn open_probe(index: Option<usize>) -> Result<Probe> {
-    let list = Probe::list_all();
+    let lister = Lister::new();
+
+    let list = lister.list_all();
 
     let device = match index {
         Some(index) => list

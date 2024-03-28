@@ -1,0 +1,5651 @@
+name: LM3S Series
+generated_from_pack: true
+pack_file_release: 1.1.0
+variants:
+- name: LM3S101
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20000800
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x2000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_8
+- name: LM3S102
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20000800
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x2000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_8
+- name: LM3S1110
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_64
+- name: LM3S1133
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_64
+- name: LM3S1138
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_64
+- name: LM3S1150
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_64
+- name: LM3S1162
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_64
+- name: LM3S1165
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_64
+- name: LM3S1332
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x18000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S1435
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005c00
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x18000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S1439
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x18000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S1512
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x18000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S1538
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x18000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S1601
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S1607
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S1608
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S1620
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S1621
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S1625
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S1626
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S1627
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S1635
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S1637
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S1651
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S1751
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S1776
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S1811
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S1816
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S1850
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S1911
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S1918
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S1937
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S1958
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S1960
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S1968
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S1B21
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S1C21
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_512
+- name: LM3S1C26
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_512
+- name: LM3S1D21
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_512
+- name: LM3S1D26
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_512
+- name: LM3S1F11
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x60000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_384
+- name: LM3S1F16
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x60000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_384
+- name: LM3S1G21
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x60000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_384
+- name: LM3S1H11
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_512
+- name: LM3S1H16
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_512
+- name: LM3S1J11
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S1J16
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S1N11
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_64
+- name: LM3S1N16
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_64
+- name: LM3S1P51
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_64
+- name: LM3S1R21
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S1R26
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S1W16
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x8000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_32
+- name: LM3S1Z16
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x4000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_16
+- name: LM3S2110
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_64
+- name: LM3S2139
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_64
+- name: LM3S2276
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_64
+- name: LM3S2410
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x18000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S2412
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x18000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S2432
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x18000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S2533
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x18000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S2601
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S2608
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S2616
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S2620
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S2637
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S2651
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S2671
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S2678
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S2730
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S2739
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S2776
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S2793
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S2911
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S2918
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S2939
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S2948
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S2950
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S2965
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S2B93
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S2D93
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_512
+- name: LM3S2U93
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x60000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_384
+- name: LM3S300
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x4000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_16
+- name: LM3S301
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20000800
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x4000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_16
+- name: LM3S308
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x4000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_16
+- name: LM3S310
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x4000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_16
+- name: LM3S315
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x4000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_16
+- name: LM3S316
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x4000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_16
+- name: LM3S317
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x4000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_16
+- name: LM3S328
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x4000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_16
+- name: LM3S3634
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S3651
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S3654
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S3739
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S3748
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S3749
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S3826
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S3J26
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S3N26
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_64
+- name: LM3S3W26
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x8000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_32
+- name: LM3S3Z26
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x4000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_16
+- name: LM3S5632
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S5651
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S5652
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S5656
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S5662
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S5732
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S5737
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S5739
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S5747
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S5749
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S5752
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S5762
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S5791
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S5951
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S5956
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S5B91
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S5C31
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_512
+- name: LM3S5C36
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_512
+- name: LM3S5C51
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_512
+- name: LM3S5C56
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_512
+- name: LM3S5D51
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_512
+- name: LM3S5D56
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_512
+- name: LM3S5D91
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_512
+- name: LM3S5G31
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x60000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_384
+- name: LM3S5G36
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x60000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_384
+- name: LM3S5G51
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x60000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_384
+- name: LM3S5G56
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x60000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_384
+- name: LM3S5K31
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S5K36
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S5P31
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_64
+- name: LM3S5P36
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_64
+- name: LM3S5P3B
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_64
+- name: LM3S5P51
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_64
+- name: LM3S5P56
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_64
+- name: LM3S5R31
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S5R36
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S5T36
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x8000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_32
+- name: LM3S5U91
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x60000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_384
+- name: LM3S5Y36
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x4000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_16
+- name: LM3S600
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x8000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_32
+- name: LM3S601
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x8000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_32
+- name: LM3S608
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x8000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_32
+- name: LM3S610
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x8000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_32
+- name: LM3S6100
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_64
+- name: LM3S611
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x8000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_32
+- name: LM3S6110
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_64
+- name: LM3S612
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x8000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_32
+- name: LM3S613
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x8000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_32
+- name: LM3S615
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x8000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_32
+- name: LM3S617
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x8000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_32
+- name: LM3S618
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x8000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_32
+- name: LM3S628
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x8000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_32
+- name: LM3S6420
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x18000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S6422
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x18000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S6432
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x18000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S6537
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x18000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S6610
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S6611
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S6618
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S6633
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S6637
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S6730
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S6753
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S6911
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S6918
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S6938
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S6950
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S6952
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S6965
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000b800
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S800
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_64
+- name: LM3S801
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_64
+- name: LM3S808
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_64
+- name: LM3S811
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_64
+- name: LM3S812
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_64
+- name: LM3S815
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_64
+- name: LM3S817
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_64
+- name: LM3S818
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_64
+- name: LM3S828
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_64
+- name: LM3S8530
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x18000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S8538
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x18000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S8630
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S8730
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S8733
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S8738
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S8930
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S8933
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S8938
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S8962
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S8970
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S8971
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S9781
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S9790
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S9792
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S9971
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S9997
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S9B81
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S9B90
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S9B92
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S9B95
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S9B96
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S9BN2
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S9BN5
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S9BN6
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_256
+- name: LM3S9C97
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_512
+- name: LM3S9D81
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_512
+- name: LM3S9D90
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_512
+- name: LM3S9D92
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_512
+- name: LM3S9D96
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_512
+- name: LM3S9DN5
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_512
+- name: LM3S9DN6
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_512
+- name: LM3S9G97
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x60000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_384
+- name: LM3S9GN5
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x60000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_384
+- name: LM3S9L71
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S9L97
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_128
+- name: LM3S9U81
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x60000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_384
+- name: LM3S9U90
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x60000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_384
+- name: LM3S9U92
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x60000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_384
+- name: LM3S9U96
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x60000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lm3s_384
+flash_algorithms:
+- name: lm3s_8
+  description: LM3Sxxx 8kB Flash
+  default: true
+  instructions: iApA8jJBSENP8P8xAesQUSlIAWUBIQFgACBwRwAgcEeBBQvRJUkBIkphCGAkSIhgiGiAB/zUyGjABwDQASBwR3C1gwc10ckcHEsBJCHwAwFcYRlMsDQkaOUHGkwX0SPgIPB/BR1gB+AA8HwGIMoeRMb4AFEAHQkfEPB8DwHRHWsNuQAp8NEcYh1q7Qf80QAp5tEL4BhgFWhdYJxgnWjtB/zRAB0SHQkfACnz0dhowAcA0AEgcL0AAPDgD0AA0A9AAgBCpAEAQqQAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x1d
+  pc_program_page: 0x41
+  pc_erase_sector: 0x21
+  data_section_offset: 0xc8
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x2000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 500
+    erase_sector_timeout: 500
+    sectors:
+    - size: 0x400
+      address: 0x0
+  transfer_encoding: raw
+- name: lm3s_64
+  description: LM3Sxxx 64kB Flash
+  default: true
+  instructions: iApA8jJBSENP8P8xAesQUSlIAWUBIQFgACBwRwAgcEeBBQvRJUkBIkphCGAkSIhgiGiAB/zUyGjABwDQASBwR3C1gwc10ckcHEsBJCHwAwFcYRlMsDQkaOUHGkwX0SPgIPB/BR1gB+AA8HwGIMoeRMb4AFEAHQkfEPB8DwHRHWsNuQAp8NEcYh1q7Qf80QAp5tEL4BhgFWhdYJxgnWjtB/zRAB0SHQkfACnz0dhowAcA0AEgcL0AAPDgD0AA0A9AAgBCpAEAQqQAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x1d
+  pc_program_page: 0x41
+  pc_erase_sector: 0x21
+  data_section_offset: 0xc8
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x10000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 500
+    erase_sector_timeout: 500
+    sectors:
+    - size: 0x400
+      address: 0x0
+  transfer_encoding: raw
+- name: lm3s_128
+  description: LM3Sxxx 128kB Flash
+  default: true
+  instructions: M0jCadIECdXQ+PAg0gcF0ND48CBC8AECwPjwIIkKQPIyQlFDT/D/MvAwAusRUQFlASEBYAAgcEcAIHBHgQUL0SRJASJKYQhgI0iIYIhogAf81MhowAcA0AEgcEdwtYMHNNHJHBtLASQh8AMBXGEbTCRo5QcaTBfRI+Ag8H8FHWAH4ADwfAYgyh5ExvgAUQAdCR8Q8HwPAdEdaw25ACnw0RxiHWrtB/zRACnm0QvgGGAVaF1gnGCdaO0H/NEAHRIdCR8AKfPR2GjABwDQASBwvQDgD0AA0A9AAgBCpKDhD0ABAEKkAAAAAA==
+  pc_init: 0x1
+  pc_uninit: 0x39
+  pc_program_page: 0x5d
+  pc_erase_sector: 0x3d
+  data_section_offset: 0xe4
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x20000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 500
+    erase_sector_timeout: 500
+    sectors:
+    - size: 0x400
+      address: 0x0
+  transfer_encoding: raw
+- name: lm3s_256
+  description: LM3Sxxx 256kB Flash
+  default: true
+  instructions: iApA8jJBSENP8P8xAesQUTRIAWUBIQFgACBwRwAgcEcxSAEhQWEAIQFgMEqCYIFoSQf81E/0ADEBYIJggWhJB/zUwGjABwDQASBwR4EFDNElSQEiSmEIYCRIgB6IYIhogAf81MhowAcA0AEgcEdwtYMHNdHJHBxLASQh8AMBXGEYTLA0JGjlBxlMF9Ej4CDwfwUdYAfgAPB8BiDKHkTG+ABRAB0JHxDwfA8B0R1rDbkAKfDRHGIdau0H/NEAKebRC+AYYBVoXWCcYJ1o7Qf80QAdEh0JHwAp89HYaMAHANABIHC98OAPQADQD0AEAEKkAQBCpAAAAAA=
+  pc_init: 0x1
+  pc_uninit: 0x1d
+  pc_program_page: 0x6f
+  pc_erase_sector: 0x4d
+  pc_erase_all: 0x21
+  data_section_offset: 0xf4
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x40000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 500
+    erase_sector_timeout: 500
+    sectors:
+    - size: 0x400
+      address: 0x0
+  transfer_encoding: raw
+- name: lm3s_512
+  description: LM3Sxxx 512kB Flash
+  default: true
+  instructions: iAo0SUhDAA0zSUAeCGAySQEggDkIYwAgcEcAIHBHL0gBIUFhLkmBYIFoSQf81MBowAcA0AEgcEeBBQzRJ0kBIkphCGAmSIAeiGCIaIAH/NTIaMAHANABIHBH8LWDBzfRyRyJCIkAHU0BI2thGktAMxtqHEzbBybQG058IwApJNDECeQBLGAG4AdGEMofQL8ZPGAAHQkfRAbkDgLRLGsALAHRACnw0Q9MLGIsauQH/NHk5yhgE2hrYKxgq2jbB/zRAB0SHQkfACnz0ehowAcA0AEg8L0yBAAAQOEPQADQD0AEAEKkAQBCpADRD0AAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x1b
+  pc_program_page: 0x5b
+  pc_erase_sector: 0x39
+  pc_erase_all: 0x1f
+  data_section_offset: 0xec
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x80000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 500
+    erase_sector_timeout: 500
+    sectors:
+    - size: 0x400
+      address: 0x0
+  transfer_encoding: raw
+- name: lm3s_384
+  description: LM3Sxxx 384kB Flash
+  default: true
+  instructions: iAo0SUhDAA0zSUAeCGAySQEggDkIYwAgcEcAIHBHL0gBIUFhLkmBYIFoSQf81MBowAcA0AEgcEeBBQzRJ0kBIkphCGAmSIAeiGCIaIAH/NTIaMAHANABIHBH8LWDBzfRyRyJCIkAHU0BI2thGktAMxtqHEzbBybQG058IwApJNDECeQBLGAG4AdGEMofQL8ZPGAAHQkfRAbkDgLRLGsALAHRACnw0Q9MLGIsauQH/NHk5yhgE2hrYKxgq2jbB/zRAB0SHQkfACnz0ehowAcA0AEg8L0yBAAAQOEPQADQD0AEAEKkAQBCpADRD0AAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x1b
+  pc_program_page: 0x5b
+  pc_erase_sector: 0x39
+  pc_erase_all: 0x1f
+  data_section_offset: 0xec
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x60000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 500
+    erase_sector_timeout: 500
+    sectors:
+    - size: 0x400
+      address: 0x0
+  transfer_encoding: raw
+- name: lm3s_32
+  description: LM3Sxxx 32kB Flash
+  default: true
+  instructions: iApA8jJBSENP8P8xAesQUSlIAWUBIQFgACBwRwAgcEeBBQvRJUkBIkphCGAkSIhgiGiAB/zUyGjABwDQASBwR3C1gwc10ckcHEsBJCHwAwFcYRlMsDQkaOUHGkwX0SPgIPB/BR1gB+AA8HwGIMoeRMb4AFEAHQkfEPB8DwHRHWsNuQAp8NEcYh1q7Qf80QAp5tEL4BhgFWhdYJxgnWjtB/zRAB0SHQkfACnz0dhowAcA0AEgcL0AAPDgD0AA0A9AAgBCpAEAQqQAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x1d
+  pc_program_page: 0x41
+  pc_erase_sector: 0x21
+  data_section_offset: 0xc8
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x8000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 500
+    erase_sector_timeout: 500
+    sectors:
+    - size: 0x400
+      address: 0x0
+  transfer_encoding: raw
+- name: lm3s_16
+  description: LM3Sxxx 16kB Flash
+  default: true
+  instructions: iApA8jJBSENP8P8xAesQUSlIAWUBIQFgACBwRwAgcEeBBQvRJUkBIkphCGAkSIhgiGiAB/zUyGjABwDQASBwR3C1gwc10ckcHEsBJCHwAwFcYRlMsDQkaOUHGkwX0SPgIPB/BR1gB+AA8HwGIMoeRMb4AFEAHQkfEPB8DwHRHWsNuQAp8NEcYh1q7Qf80QAp5tEL4BhgFWhdYJxgnWjtB/zRAB0SHQkfACnz0dhowAcA0AEgcL0AAPDgD0AA0A9AAgBCpAEAQqQAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x1d
+  pc_program_page: 0x41
+  pc_erase_sector: 0x21
+  data_section_offset: 0xc8
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x4000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 500
+    erase_sector_timeout: 500
+    sectors:
+    - size: 0x400
+      address: 0x0
+  transfer_encoding: raw

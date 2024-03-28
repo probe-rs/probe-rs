@@ -26,6 +26,7 @@ use crate::{
     InstructionSet, MemoryInterface,
 };
 use anyhow::Result;
+use num_traits::Zero;
 use std::{
     mem::size_of,
     sync::Arc,
@@ -61,8 +62,6 @@ pub struct Armv7a<'probe> {
     num_breakpoints: Option<u32>,
 
     itr_enabled: bool,
-
-    id: usize,
 }
 
 impl<'probe> Armv7a<'probe> {
@@ -71,7 +70,6 @@ impl<'probe> Armv7a<'probe> {
         state: &'probe mut CortexAState,
         base_address: u64,
         sequence: Arc<dyn ArmDebugSequence>,
-        id: usize,
     ) -> Result<Self, Error> {
         if !state.initialized() {
             // determine current state
@@ -100,7 +98,6 @@ impl<'probe> Armv7a<'probe> {
             sequence,
             num_breakpoints: None,
             itr_enabled: false,
-            id,
         };
 
         if !core.state.initialized() {
@@ -113,7 +110,7 @@ impl<'probe> Armv7a<'probe> {
     }
 
     fn read_fp_reg_count(&mut self) -> Result<(), Error> {
-        if self.state.fp_reg_count.is_none()
+        if self.state.fp_reg_count.is_zero()
             && matches!(self.state.current_state, CoreStatus::Halted(_))
         {
             self.prepare_r0_for_clobber()?;
@@ -126,11 +123,11 @@ impl<'probe> Armv7a<'probe> {
             let instruction = build_mcr(14, 0, 0, 0, 5, 0);
             let vmrs = self.execute_instruction_with_result(instruction)?;
 
-            self.state.fp_reg_count = Some(match vmrs & 0b111 {
+            self.state.fp_reg_count = match vmrs & 0b111 {
                 0b001 => 16,
                 0b010 => 32,
                 _ => 0,
-            });
+            };
         }
 
         Ok(())
@@ -730,8 +727,8 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
 
     fn registers(&self) -> &'static CoreRegisters {
         match self.state.fp_reg_count {
-            Some(16) => &AARCH32_WITH_FP_16_CORE_REGSISTERS,
-            Some(32) => &AARCH32_WITH_FP_32_CORE_REGSISTERS,
+            16 => &AARCH32_WITH_FP_16_CORE_REGSISTERS,
+            32 => &AARCH32_WITH_FP_32_CORE_REGSISTERS,
             _ => &AARCH32_CORE_REGSISTERS,
         }
     }
@@ -775,13 +772,11 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
     }
 
     fn fpu_support(&mut self) -> Result<bool, crate::error::Error> {
-        Err(crate::error::Error::Other(anyhow::anyhow!(
-            "Fpu detection not yet implemented"
-        )))
+        Ok(!self.state.fp_reg_count.is_zero())
     }
 
-    fn id(&self) -> usize {
-        self.id
+    fn floating_point_register_count(&mut self) -> Result<usize, crate::error::Error> {
+        Ok(self.state.fp_reg_count)
     }
 
     #[tracing::instrument(skip(self))]
@@ -850,6 +845,18 @@ impl<'probe> MemoryInterface for Armv7a<'probe> {
         self.execute_instruction_with_result(instr)
     }
 
+    fn read_word_16(&mut self, address: u64) -> Result<u16, Error> {
+        // Find the word this is in and its byte offset
+        let byte_offset = address % 4;
+        let word_start = address - byte_offset;
+
+        // Read the word
+        let data = self.read_word_32(word_start)?;
+
+        // Return the byte
+        Ok((data >> (byte_offset * 8)) as u16)
+    }
+
     fn read_word_8(&mut self, address: u64) -> Result<u8, Error> {
         // Find the word this is in and its byte offset
         let byte_offset = address % 4;
@@ -873,6 +880,14 @@ impl<'probe> MemoryInterface for Armv7a<'probe> {
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
         for (i, word) in data.iter_mut().enumerate() {
             *word = self.read_word_32(address + ((i as u64) * 4))?;
+        }
+
+        Ok(())
+    }
+
+    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), Error> {
+        for (i, word) in data.iter_mut().enumerate() {
+            *word = self.read_word_16(address + ((i as u64) * 2))?;
         }
 
         Ok(())
@@ -923,6 +938,21 @@ impl<'probe> MemoryInterface for Armv7a<'probe> {
         self.write_word_32(word_start, u32::from_le_bytes(word_bytes))
     }
 
+    fn write_word_16(&mut self, address: u64, data: u16) -> Result<(), Error> {
+        // Find the word this is in and its byte offset
+        let byte_offset = address % 4;
+        let word_start = address - byte_offset;
+
+        // Get the current word value
+        let mut word = self.read_word_32(word_start)?;
+
+        // patch the word into it
+        word &= !(0xFFFFu32 << (byte_offset * 8));
+        word |= (data as u32) << (byte_offset * 8);
+
+        self.write_word_32(word_start, word)
+    }
+
     fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), crate::error::Error> {
         for (i, word) in data.iter().enumerate() {
             self.write_word_64(address + ((i as u64) * 8), *word)?;
@@ -939,9 +969,17 @@ impl<'probe> MemoryInterface for Armv7a<'probe> {
         Ok(())
     }
 
+    fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), Error> {
+        for (i, word) in data.iter().enumerate() {
+            self.write_word_16(address + ((i as u64) * 2), *word)?;
+        }
+
+        Ok(())
+    }
+
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
         for (i, byte) in data.iter().enumerate() {
-            self.write_word_8(address + ((i as u64) * 4), *byte)?;
+            self.write_word_8(address + (i as u64), *byte)?;
         }
 
         Ok(())
@@ -961,10 +999,9 @@ impl<'probe> MemoryInterface for Armv7a<'probe> {
 mod test {
     use crate::{
         architecture::arm::{
-            ap::MemoryAp, communication_interface::SwdSequence,
-            memory::adi_v5_memory_interface::ArmProbe, sequences::DefaultArmSequence, ArmError,
+            ap::MemoryAp, communication_interface::SwdSequence, sequences::DefaultArmSequence,
         },
-        DebugProbeError,
+        probe::DebugProbeError,
     };
 
     use super::*;
@@ -1016,6 +1053,10 @@ mod test {
             todo!()
         }
 
+        fn read_16(&mut self, _address: u64, _data: &mut [u16]) -> Result<(), ArmError> {
+            todo!()
+        }
+
         fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError> {
             if self.expected_ops.is_empty() {
                 panic!(
@@ -1052,6 +1093,10 @@ mod test {
         }
 
         fn write_8(&mut self, _address: u64, _data: &[u8]) -> Result<(), ArmError> {
+            todo!()
+        }
+
+        fn write_16(&mut self, _address: u64, _data: &[u16]) -> Result<(), ArmError> {
             todo!()
         }
 
@@ -1109,9 +1154,9 @@ mod test {
             >,
             DebugProbeError,
         > {
-            Err(DebugProbeError::NotImplemented(
-                "get_arm_communication_interface",
-            ))
+            Err(DebugProbeError::NotImplemented {
+                function_name: "get_arm_communication_interface",
+            })
         }
 
         fn read_64(&mut self, _address: u64, _data: &mut [u64]) -> Result<(), ArmError> {
@@ -1309,7 +1354,6 @@ mod test {
             &mut CortexAState::new(),
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
     }
@@ -1345,7 +1389,6 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -1385,7 +1428,6 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -1420,7 +1462,6 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -1454,7 +1495,6 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -1488,7 +1528,6 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -1528,7 +1567,6 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -1568,7 +1606,6 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -1622,7 +1659,6 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -1668,7 +1704,6 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -1697,7 +1732,6 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -1765,7 +1799,6 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -1814,7 +1847,6 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -1849,7 +1881,6 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -1880,7 +1911,6 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -1912,7 +1942,6 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 

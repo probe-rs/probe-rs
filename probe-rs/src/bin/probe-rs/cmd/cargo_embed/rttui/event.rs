@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use crossterm::event::{self, Event as CEvent, KeyEvent};
 
-/// A small event handler that wrap termion input and tick events. Each event
+/// A small event handler that wrap `termion` input and tick events. Each event
 /// type is handled in its own thread and returned to a common `Receiver`
 pub struct Events {
     rx: mpsc::Receiver<KeyEvent>,
@@ -59,7 +59,7 @@ impl Events {
         }
     }
 
-    pub fn next(&self, timeout: Duration) -> Result<KeyEvent, mpsc::RecvTimeoutError> {
-        self.rx.recv_timeout(timeout)
+    pub fn next(&self) -> Result<KeyEvent, mpsc::TryRecvError> {
+        self.rx.try_recv()
     }
 }

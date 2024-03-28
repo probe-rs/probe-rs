@@ -5,9 +5,13 @@ mod debug_adapter;
 mod peripherals;
 mod server;
 
+#[cfg(test)]
+mod test;
+
 use anyhow::{Context, Result};
 use probe_rs::{
-    architecture::arm::ap::AccessPortError, flashing::FileDownloadError, DebugProbeError, Error,
+    architecture::arm::ap::AccessPortError, flashing::FileDownloadError, probe::list::Lister,
+    probe::DebugProbeError, CoreDumpError, Error,
 };
 use server::startup::debug;
 use std::{env::var, fs::File, io::stderr};
@@ -17,6 +21,8 @@ use tracing_subscriber::{
     fmt::format::FmtSpan, prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt,
     EnvFilter, Layer,
 };
+
+use crate::util::common_options::OperationError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum DebuggerError {
@@ -40,11 +46,16 @@ pub enum DebuggerError {
     Other(#[from] anyhow::Error),
     #[error(transparent)]
     ProbeRs(#[from] Error),
+    #[error(transparent)]
+    OperationError(#[from] OperationError),
+    /// Errors related to the handling of core dumps.
+    #[error("An error with a CoreDump occured")]
+    CoreDump(#[from] CoreDumpError),
     #[error("{0}")]
     /// A message that is intended to be displayed to the user, and does not unwind nested errors.
     /// It is intended to communicate helpful "correct and try again" information to users.
     UserMessage(String),
-    #[error("Serialiazation error")]
+    #[error("Serialization error")]
     SerdeError(#[from] serde_json::Error),
     #[error("IO error: '{original_error}'.")]
     NonBlockingReadError { original_error: std::io::Error },
@@ -57,22 +68,33 @@ pub enum DebuggerError {
 }
 
 /// Open target in debug mode and accept debug commands.
-/// This only works as a [debug_adapter::protocol::DapAdapter] and uses DAP Protocol debug commands (enables connections from clients such as Microsoft Visual Studio Code).
+/// This only works as a [debug_adapter::protocol::DapAdapter] and uses Debug Adapter Protocol (DAP) commands (enables connections from clients such as Microsoft Visual Studio Code).
 #[derive(clap::Parser)]
 pub struct Cmd {
     /// IP port number to listen for incoming DAP connections, e.g. "50000"
     #[clap(long)]
     port: u16,
 
-    /// The debug adapter processed was launched by VSCode, and should terminate itself at the end of every debug session (when receiving `Disconnect` or `Terminate` Request from VSCode). The "false"(default) state of this option implies that the process was launched (and will be managed) by the user.
-    #[clap(long, hide = true)]
-    vscode: bool,
+    /// Some editors and IDEs expect the debug adapter processes to exit at the end of every debug
+    /// session (on receiving a `Disconnect` or `Terminate` request).
+    ///
+    /// OTHERWISE probe-rs will persist and continue to listen for new DAP client connections
+    /// ("multi-session" mode), and it becomes the user's responsibility to terminate the debug
+    /// adapter process.
+    #[clap(long, alias("vscode"))]
+    single_session: bool,
 }
 
-pub fn run(cmd: Cmd, time_offset: UtcOffset) -> Result<()> {
+pub fn run(cmd: Cmd, lister: &Lister, time_offset: UtcOffset) -> Result<()> {
     let log_info_message = setup_logging(time_offset)?;
 
-    debug(cmd.port, cmd.vscode, &log_info_message, time_offset)
+    debug(
+        lister,
+        cmd.port,
+        cmd.single_session,
+        &log_info_message,
+        time_offset,
+    )
 }
 
 /// Setup logging, according to the following rules.

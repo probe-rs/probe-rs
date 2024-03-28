@@ -15,18 +15,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20008000
+            end: 0x2000A000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
           cores:
             - main
@@ -51,18 +59,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20008000
+            end: 0x2000A000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
           cores:
             - main
@@ -87,18 +103,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20008000
+            end: 0x2000A000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
           cores:
             - main
@@ -123,18 +147,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20008000
+            end: 0x2000A000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
           cores:
             - main
@@ -159,18 +191,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20008000
+            end: 0x2000A000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
           cores:
             - main
@@ -195,18 +235,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20008000
+            end: 0x2000A000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
           cores:
             - main
@@ -231,18 +279,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20008000
+            end: 0x2000A000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
           cores:
             - main
@@ -267,18 +323,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20008000
+            end: 0x2000A000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
           cores:
             - main
@@ -303,18 +367,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20008000
+            end: 0x2000A000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
           cores:
             - main
@@ -339,18 +411,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20008000
+            end: 0x2000A000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
           cores:
             - main
@@ -375,18 +455,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20008000
+            end: 0x2000A000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
           cores:
             - main
@@ -411,18 +499,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20008000
+            end: 0x2000A000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
           cores:
             - main
@@ -447,18 +543,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20008000
+            end: 0x2000A000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
           cores:
             - main
@@ -483,18 +587,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20008000
+            end: 0x2000A000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
           cores:
             - main
@@ -519,18 +631,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20008000
+            end: 0x2000A000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
           cores:
             - main
@@ -555,18 +675,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20008000
+            end: 0x2000A000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
           cores:
             - main
@@ -591,18 +719,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20008000
+            end: 0x2000A000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
           cores:
             - main
@@ -627,18 +763,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20008000
+            end: 0x2000A000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
           cores:
             - main
@@ -663,18 +807,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20008000
+            end: 0x2000A000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
           cores:
             - main
@@ -699,18 +851,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20008000
+            end: 0x2000A000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
           cores:
             - main
@@ -735,18 +895,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20008000
+            end: 0x2000A000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
           cores:
             - main
@@ -771,18 +939,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20008000
+            end: 0x2000A000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
           cores:
             - main
@@ -807,18 +983,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20008000
+            end: 0x2000A000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
           cores:
             - main
@@ -843,18 +1027,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20008000
+            end: 0x2000A000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
           cores:
             - main
@@ -879,18 +1071,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20008000
+            end: 0x2000A000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
           cores:
             - main
@@ -915,18 +1115,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20008000
+            end: 0x2000A000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
           cores:
             - main
@@ -951,18 +1159,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
           cores:
             - main
@@ -987,18 +1203,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
           cores:
             - main
@@ -1023,18 +1247,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
           cores:
             - main
@@ -1059,18 +1291,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -1095,18 +1335,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -1131,18 +1379,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -1167,18 +1423,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
           cores:
             - main
@@ -1203,18 +1467,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -1239,18 +1511,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
           cores:
             - main
@@ -1275,18 +1555,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
           cores:
             - main
@@ -1311,18 +1599,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
           cores:
             - main
@@ -1347,18 +1643,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -1383,18 +1687,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -1419,18 +1731,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -1455,18 +1775,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -1491,18 +1819,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -1527,18 +1863,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
           cores:
             - main
@@ -1563,18 +1907,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -1599,18 +1951,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
           cores:
             - main
@@ -1635,18 +1995,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
           cores:
             - main
@@ -1671,18 +2039,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
           cores:
             - main
@@ -1707,18 +2083,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -1743,18 +2127,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -1779,18 +2171,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -1815,18 +2215,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
           cores:
             - main
@@ -1851,18 +2259,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
           cores:
             - main
@@ -1887,18 +2303,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
           cores:
             - main
@@ -1923,18 +2347,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -1959,18 +2391,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -1995,18 +2435,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -2031,18 +2479,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -2067,18 +2523,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -2103,18 +2567,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -2139,18 +2611,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -2175,18 +2655,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -2211,18 +2699,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -2247,18 +2743,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -2283,18 +2787,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -2319,18 +2831,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -2355,18 +2875,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -2391,18 +2919,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -2427,18 +2963,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536920064
+            start: 0x20000000
+            end: 0x2000C000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x2000C000
+            end: 0x20010000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -2463,18 +3007,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20028000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -2499,18 +3051,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20028000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -2535,18 +3095,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20028000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -2571,18 +3139,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20028000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -2607,18 +3183,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20028000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -2643,18 +3227,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20028000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -2679,18 +3271,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20028000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -2715,18 +3315,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20028000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -2751,18 +3359,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20028000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -2787,18 +3403,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20028000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -2823,18 +3447,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20028000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -2859,18 +3491,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20028000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -2895,18 +3535,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20028000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -2931,18 +3579,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20028000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -2967,18 +3623,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20028000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -3003,18 +3667,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20028000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -3039,18 +3711,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20028000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -3075,18 +3755,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20028000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -3111,18 +3799,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20028000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -3147,18 +3843,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20028000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -3183,18 +3887,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20028000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -3219,18 +3931,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20028000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -3255,18 +3975,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20028000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -3291,18 +4019,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20028000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -3327,18 +4063,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20028000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -3363,18 +4107,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20028000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -3399,18 +4151,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20028000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -3435,18 +4195,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20028000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -3471,18 +4239,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20028000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -3507,18 +4283,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20028000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -3543,18 +4327,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20028000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -3579,18 +4371,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x10000000
+            end: 0x10008000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -3615,18 +4415,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x10000000
+            end: 0x10008000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -3651,18 +4459,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x10000000
+            end: 0x10008000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -3687,18 +4503,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x10000000
+            end: 0x10008000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -3723,18 +4547,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x10000000
+            end: 0x10008000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -3759,18 +4591,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x10000000
+            end: 0x10008000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -3795,18 +4635,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x10000000
+            end: 0x10008000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -3831,18 +4679,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x10000000
+            end: 0x10008000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -3867,18 +4723,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x10000000
+            end: 0x10008000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -3903,18 +4767,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x10000000
+            end: 0x10008000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -3939,18 +4811,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x10000000
+            end: 0x10008000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -3975,18 +4855,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x10000000
+            end: 0x10008000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -4011,18 +4899,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x10000000
+            end: 0x10008000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -4047,18 +4943,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x10000000
+            end: 0x10008000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -4083,18 +4987,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x10000000
+            end: 0x10008000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -4119,18 +5031,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x10000000
+            end: 0x10008000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -4155,18 +5075,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x10000000
+            end: 0x10008000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -4191,18 +5119,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x10000000
+            end: 0x10008000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -4227,18 +5163,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x10000000
+            end: 0x10008000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -4263,18 +5207,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x10000000
+            end: 0x10008000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -4299,18 +5251,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x10000000
+            end: 0x10008000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -4335,18 +5295,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x10000000
+            end: 0x10008000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -4371,18 +5339,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x10000000
+            end: 0x10008000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -4407,18 +5383,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x10000000
+            end: 0x10008000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -4443,18 +5427,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x10000000
+            end: 0x10008000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -4479,18 +5471,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x10000000
+            end: 0x10008000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -4515,18 +5515,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x10000000
+            end: 0x10008000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -4551,18 +5559,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x10000000
+            end: 0x10008000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -4587,18 +5603,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x10000000
+            end: 0x10008000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -4623,18 +5647,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x10000000
+            end: 0x10008000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -4659,18 +5691,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x10000000
+            end: 0x10008000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -4695,18 +5735,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x10000000
+            end: 0x10008000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -4731,18 +5779,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x10000000
+            end: 0x10008000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -4767,18 +5823,18 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
           cores:
             - main
@@ -4803,18 +5859,18 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -4839,18 +5895,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x10000000
+            end: 0x10008000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -4875,18 +5939,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x10000000
+            end: 0x10008000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -4911,18 +5983,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x10000000
+            end: 0x10008000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -4947,18 +6027,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x10000000
+            end: 0x10008000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -4983,18 +6071,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x10000000
+            end: 0x10008000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -5019,18 +6115,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20040000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -5055,18 +6159,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20040000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -5091,18 +6203,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20040000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -5127,18 +6247,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20040000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -5163,18 +6291,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20040000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -5199,18 +6335,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20040000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -5235,18 +6379,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20040000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -5271,18 +6423,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20040000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -5307,18 +6467,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20040000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -5343,18 +6511,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20040000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -5379,18 +6555,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20040000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -5415,18 +6599,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20040000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -5451,18 +6643,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20040000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -5487,18 +6687,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20040000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -5523,18 +6731,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20040000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -5559,18 +6775,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20040000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -5595,18 +6819,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20040000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -5631,18 +6863,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20040000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -5667,18 +6907,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20040000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -5703,18 +6951,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20040000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -5739,18 +6995,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20040000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -5775,18 +7039,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20040000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -5811,18 +7083,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20040000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -5847,18 +7127,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20040000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -5883,18 +7171,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20040000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -5919,18 +7215,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20040000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -5955,18 +7259,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20040000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -5991,18 +7303,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20040000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -6027,18 +7347,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20040000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -6063,18 +7391,26 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20040000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -6099,18 +7435,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20030000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -6134,18 +7486,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20030000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -6169,18 +7537,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20030000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -6204,18 +7588,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20030000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -6239,18 +7639,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20030000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -6274,18 +7690,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20030000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -6309,18 +7741,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20030000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -6344,18 +7792,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20030000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -6379,18 +7843,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20030000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -6414,18 +7894,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20030000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -6449,18 +7945,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20030000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -6484,18 +7996,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20030000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -6519,18 +8047,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20030000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -6554,18 +8098,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20030000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -6589,18 +8149,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20030000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -6624,18 +8200,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20030000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -6659,18 +8251,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20030000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -6694,18 +8302,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20030000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -6729,18 +8353,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20030000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -6764,18 +8404,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20030000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -6799,18 +8455,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20030000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -6834,18 +8506,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20030000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
           cores:
             - main
@@ -6869,18 +8557,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20030000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -6904,18 +8608,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20030000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -6939,18 +8659,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20030000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -6974,18 +8710,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20030000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -7009,18 +8761,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20030000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -7044,18 +8812,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20030000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -7079,18 +8863,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20030000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -7114,18 +8914,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20030000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -7149,18 +8965,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20030000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -7184,18 +9016,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20020000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20030000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -7219,18 +9067,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537526272
+            start: 0x20000000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20030000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20040000
+            end: 0x200A0000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -7256,18 +9120,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537526272
+            start: 0x20000000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20030000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20040000
+            end: 0x200A0000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
           cores:
             - main
@@ -7293,18 +9173,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537526272
+            start: 0x20000000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20030000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20040000
+            end: 0x200A0000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -7330,18 +9226,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537526272
+            start: 0x20000000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20030000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20040000
+            end: 0x200A0000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
           cores:
             - main
@@ -7367,18 +9279,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537526272
+            start: 0x20000000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20030000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20040000
+            end: 0x200A0000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -7404,18 +9332,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537526272
+            start: 0x20000000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20030000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20040000
+            end: 0x200A0000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
           cores:
             - main
@@ -7441,18 +9385,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537526272
+            start: 0x20000000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20030000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20040000
+            end: 0x200A0000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -7478,18 +9438,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537526272
+            start: 0x20000000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20030000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20040000
+            end: 0x200A0000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -7515,18 +9491,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537526272
+            start: 0x20000000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20030000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20040000
+            end: 0x200A0000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
           cores:
             - main
@@ -7552,18 +9544,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537526272
+            start: 0x20000000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20030000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20040000
+            end: 0x200A0000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
           cores:
             - main
@@ -7589,18 +9597,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537526272
+            start: 0x20000000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20030000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20040000
+            end: 0x200A0000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
           cores:
             - main
@@ -7626,18 +9650,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537526272
+            start: 0x20000000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20030000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20040000
+            end: 0x200A0000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
           cores:
             - main
@@ -7663,18 +9703,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537526272
+            start: 0x20000000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20030000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20040000
+            end: 0x200A0000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
           cores:
             - main
@@ -7700,18 +9756,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537526272
+            start: 0x20000000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20030000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20040000
+            end: 0x200A0000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
           cores:
             - main
@@ -7737,18 +9809,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537526272
+            start: 0x20000000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20030000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20040000
+            end: 0x200A0000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -7774,18 +9862,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537526272
+            start: 0x20000000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20030000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20040000
+            end: 0x200A0000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
           cores:
             - main
@@ -7811,18 +9915,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537526272
+            start: 0x20000000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20030000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20040000
+            end: 0x200A0000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -7848,18 +9968,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537526272
+            start: 0x20000000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20030000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20040000
+            end: 0x200A0000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
           cores:
             - main
@@ -7885,18 +10021,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537526272
+            start: 0x20000000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20030000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20040000
+            end: 0x200A0000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -7922,18 +10074,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537526272
+            start: 0x20000000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20030000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20040000
+            end: 0x200A0000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -7959,18 +10127,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537526272
+            start: 0x20000000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20030000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20040000
+            end: 0x200A0000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
           cores:
             - main
@@ -7996,18 +10180,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537526272
+            start: 0x20000000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20030000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20040000
+            end: 0x200A0000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
           cores:
             - main
@@ -8033,18 +10233,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537526272
+            start: 0x20000000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20030000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20040000
+            end: 0x200A0000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
           cores:
             - main
@@ -8070,18 +10286,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537526272
+            start: 0x20000000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20030000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20040000
+            end: 0x200A0000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
           cores:
             - main
@@ -8107,18 +10339,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537526272
+            start: 0x20000000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20030000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20040000
+            end: 0x200A0000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
           cores:
             - main
@@ -8144,18 +10392,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537526272
+            start: 0x20000000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20030000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20040000
+            end: 0x200A0000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
           cores:
             - main
@@ -8181,18 +10445,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537526272
+            start: 0x20000000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20030000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20040000
+            end: 0x200A0000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
           cores:
             - main
@@ -8218,18 +10498,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537526272
+            start: 0x20000000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20030000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20040000
+            end: 0x200A0000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
           cores:
             - main
@@ -8255,18 +10551,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537526272
+            start: 0x20000000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20030000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20040000
+            end: 0x200A0000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
           cores:
             - main
@@ -8292,18 +10604,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537526272
+            start: 0x20000000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20030000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20040000
+            end: 0x200A0000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
           cores:
             - main
@@ -8329,18 +10657,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537526272
+            start: 0x20000000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20030000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20040000
+            end: 0x200A0000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
           cores:
             - main
@@ -8367,18 +10711,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537526272
+            start: 0x20000000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20030000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20040000
+            end: 0x200A0000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
           cores:
             - main
@@ -8405,18 +10765,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537526272
+            start: 0x20000000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20030000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20040000
+            end: 0x200A0000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
           cores:
             - main
@@ -8443,18 +10819,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537526272
+            start: 0x20000000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20030000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20040000
+            end: 0x200A0000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
           cores:
             - main
@@ -8481,18 +10873,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537526272
+            start: 0x20000000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20030000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20040000
+            end: 0x200A0000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
           cores:
             - main
@@ -8519,18 +10927,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537526272
+            start: 0x20000000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20030000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20040000
+            end: 0x200A0000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
           cores:
             - main
@@ -8557,18 +10981,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537526272
+            start: 0x20000000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20030000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20040000
+            end: 0x200A0000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
           cores:
             - main
@@ -8595,18 +11035,34 @@ variants:
             psel: 0
     memory_map:
       - !Ram
-          name: ~
+          name: SRAM1
           range:
-            start: 536870912
-            end: 537526272
+            start: 0x20000000
+            end: 0x20030000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM2
+          range:
+            start: 0x20030000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          name: SRAM3
+          range:
+            start: 0x20040000
+            end: 0x200A0000
           is_boot_memory: false
           cores:
             - main
       - !Nvm
           name: ~
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
           cores:
             - main
@@ -8636,8 +11092,8 @@ flash_algorithms:
     data_section_offset: 412
     flash_properties:
       address_range:
-        start: 134217728
-        end: 134283264
+        start: 0x8000000
+        end: 0x8010000
       page_size: 1024
       erased_byte_value: 255
       program_page_timeout: 400
@@ -8659,8 +11115,8 @@ flash_algorithms:
     data_section_offset: 392
     flash_properties:
       address_range:
-        start: 536836096
-        end: 536836116
+        start: 0x1FFF7800
+        end: 0x1FFF7814
       page_size: 20
       erased_byte_value: 255
       program_page_timeout: 3000
@@ -8682,8 +11138,8 @@ flash_algorithms:
     data_section_offset: 28976
     flash_properties:
       address_range:
-        start: 2415919104
-        end: 2483027968
+        start: 0x90000000
+        end: 0x94000000
       page_size: 4096
       erased_byte_value: 255
       program_page_timeout: 10000
@@ -8705,8 +11161,8 @@ flash_algorithms:
     data_section_offset: 28924
     flash_properties:
       address_range:
-        start: 2415919104
-        end: 2483027968
+        start: 0x90000000
+        end: 0x94000000
       page_size: 4096
       erased_byte_value: 255
       program_page_timeout: 10000
@@ -8728,8 +11184,8 @@ flash_algorithms:
     data_section_offset: 21704
     flash_properties:
       address_range:
-        start: 1879048192
-        end: 1946157056
+        start: 0x70000000
+        end: 0x74000000
       page_size: 256
       erased_byte_value: 255
       program_page_timeout: 3000
@@ -8751,8 +11207,8 @@ flash_algorithms:
     data_section_offset: 23024
     flash_properties:
       address_range:
-        start: 1610612736
-        end: 1614807040
+        start: 0x60000000
+        end: 0x60400000
       page_size: 4096
       erased_byte_value: 255
       program_page_timeout: 10000
@@ -8774,8 +11230,8 @@ flash_algorithms:
     data_section_offset: 29824
     flash_properties:
       address_range:
-        start: 1879048192
-        end: 1946157056
+        start: 0x70000000
+        end: 0x74000000
       page_size: 4096
       erased_byte_value: 255
       program_page_timeout: 10000
@@ -8797,8 +11253,8 @@ flash_algorithms:
     data_section_offset: 30844
     flash_properties:
       address_range:
-        start: 2415919104
-        end: 2424307712
+        start: 0x90000000
+        end: 0x90800000
       page_size: 4096
       erased_byte_value: 255
       program_page_timeout: 10000
@@ -8820,8 +11276,8 @@ flash_algorithms:
     data_section_offset: 23792
     flash_properties:
       address_range:
-        start: 2415919104
-        end: 2432696320
+        start: 0x90000000
+        end: 0x91000000
       page_size: 4096
       erased_byte_value: 255
       program_page_timeout: 10000
@@ -8843,8 +11299,8 @@ flash_algorithms:
     data_section_offset: 420
     flash_properties:
       address_range:
-        start: 134217728
-        end: 134348800
+        start: 0x8000000
+        end: 0x8020000
       page_size: 1024
       erased_byte_value: 255
       program_page_timeout: 400
@@ -8866,8 +11322,8 @@ flash_algorithms:
     data_section_offset: 408
     flash_properties:
       address_range:
-        start: 134217728
-        end: 134479872
+        start: 0x8000000
+        end: 0x8040000
       page_size: 1024
       erased_byte_value: 255
       program_page_timeout: 400
@@ -8889,8 +11345,8 @@ flash_algorithms:
     data_section_offset: 420
     flash_properties:
       address_range:
-        start: 134217728
-        end: 134742016
+        start: 0x8000000
+        end: 0x8080000
       page_size: 1024
       erased_byte_value: 255
       program_page_timeout: 400
@@ -8912,8 +11368,8 @@ flash_algorithms:
     data_section_offset: 536
     flash_properties:
       address_range:
-        start: 536836096
-        end: 536836132
+        start: 0x1FFF7800
+        end: 0x1FFF7824
       page_size: 36
       erased_byte_value: 255
       program_page_timeout: 3000
@@ -8935,8 +11391,8 @@ flash_algorithms:
     data_section_offset: 408
     flash_properties:
       address_range:
-        start: 134217728
-        end: 135266304
+        start: 0x8000000
+        end: 0x8100000
       page_size: 1024
       erased_byte_value: 255
       program_page_timeout: 400
@@ -8958,8 +11414,8 @@ flash_algorithms:
     data_section_offset: 416
     flash_properties:
       address_range:
-        start: 134217728
-        end: 134742016
+        start: 0x8000000
+        end: 0x8080000
       page_size: 1024
       erased_byte_value: 255
       program_page_timeout: 400
@@ -8981,8 +11437,8 @@ flash_algorithms:
     data_section_offset: 416
     flash_properties:
       address_range:
-        start: 134217728
-        end: 135266304
+        start: 0x8000000
+        end: 0x8100000
       page_size: 1024
       erased_byte_value: 255
       program_page_timeout: 400
@@ -9004,8 +11460,8 @@ flash_algorithms:
     data_section_offset: 432
     flash_properties:
       address_range:
-        start: 134217728
-        end: 136314880
+        start: 0x8000000
+        end: 0x8200000
       page_size: 1024
       erased_byte_value: 255
       program_page_timeout: 400
@@ -9027,8 +11483,8 @@ flash_algorithms:
     data_section_offset: 396
     flash_properties:
       address_range:
-        start: 535822336
-        end: 535822356
+        start: 0x1FF00000
+        end: 0x1FF00014
       page_size: 20
       erased_byte_value: 255
       program_page_timeout: 3000
@@ -9050,8 +11506,8 @@ flash_algorithms:
     data_section_offset: 552
     flash_properties:
       address_range:
-        start: 535822336
-        end: 535822372
+        start: 0x1FF00000
+        end: 0x1FF00024
       page_size: 36
       erased_byte_value: 255
       program_page_timeout: 3000
@@ -9073,8 +11529,8 @@ flash_algorithms:
     data_section_offset: 420
     flash_properties:
       address_range:
-        start: 134217728
-        end: 136314880
+        start: 0x8000000
+        end: 0x8200000
       page_size: 1024
       erased_byte_value: 255
       program_page_timeout: 400

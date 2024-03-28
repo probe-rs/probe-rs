@@ -19,7 +19,7 @@ use self::{
     sequences::ArmDebugSequenceError,
     {armv7a::Armv7aError, armv8a::Armv8aError},
 };
-use crate::DebugProbeError;
+use crate::probe::DebugProbeError;
 pub use communication_interface::{
     ApInformation, ArmChipInfo, ArmCommunicationInterface, ArmProbeInterface, DapError,
     MemoryApInformation, Register,
@@ -85,7 +85,7 @@ pub enum ArmError {
         /// The required alignment in bytes (address increments).
         alignment: usize,
     },
-    /// A region ouside of the AP address space was accessed.
+    /// A region outside of the AP address space was accessed.
     #[error("Out of bounds access")]
     OutOfBounds,
     /// The requested memory transfer width is not supported on the current core.
@@ -103,10 +103,10 @@ pub enum ArmError {
     #[error("Unable to create a breakpoint at address {0:#010X}. Hardware breakpoints are only supported at addresses < 0x2000'0000.")]
     UnsupportedBreakpointAddress(u32),
 
-    /// ARMv8a specifc erorr occurred.
+    /// ARMv8a specific error occurred.
     Armv8a(#[from] Armv8aError),
 
-    /// ARMv7a specifc erorr occurred.
+    /// ARMv7a specific error occurred.
     Armv7a(#[from] Armv7aError),
 
     /// Error occurred in a debug sequence.

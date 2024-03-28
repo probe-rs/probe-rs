@@ -1,31 +1,38 @@
 use super::{
-    Core, MemoryRegion, RawFlashAlgorithm, RegistryError, ScanChainElement, TargetDescriptionSource,
-};
-use crate::architecture::arm::{
-    ap::MemoryAp,
     sequences::{
-        atsame5x::AtSAME5x,
+        atsam::AtSAM,
         efm32xg2::EFM32xG2,
+        esp32::ESP32,
+        esp32c2::ESP32C2,
+        esp32c3::ESP32C3,
+        esp32c6::ESP32C6,
+        esp32h2::ESP32H2,
+        esp32s2::ESP32S2,
+        esp32s3::ESP32S3,
         infineon::XMC4000,
         nrf52::Nrf52,
         nrf53::Nrf5340,
         nrf91::Nrf9160,
-        nxp_armv7m::{LPC55Sxx, MIMXRT10xx, MIMXRT11xx},
-        nxp_armv8m::MIMXRT5xxS,
+        nxp_armv7m::{MIMXRT10xx, MIMXRT11xx},
+        nxp_armv8m::{LPC55Sxx, MIMXRT5xxS},
         stm32_armv6::{Stm32Armv6, Stm32Armv6Family},
         stm32_armv7::Stm32Armv7,
         stm32h7::Stm32h7,
-        ArmDebugSequence,
     },
-    ApAddress, DpAddress,
+    Core, MemoryRegion, RawFlashAlgorithm, RegistryError, TargetDescriptionSource,
 };
-use crate::architecture::riscv::sequences::{esp32c3::ESP32C3, esp32c6::ESP32C6};
-use crate::architecture::riscv::sequences::{DefaultRiscvSequence, RiscvDebugSequence};
+use crate::architecture::{
+    arm::{
+        ap::MemoryAp,
+        sequences::{ArmDebugSequence, DefaultArmSequence},
+        ApAddress, DpAddress,
+    },
+    riscv::sequences::{DefaultRiscvSequence, RiscvDebugSequence},
+    xtensa::sequences::{DefaultXtensaSequence, XtensaDebugSequence},
+};
 use crate::flashing::FlashLoader;
-use probe_rs_target::{Architecture, ChipFamily, MemoryRange};
+use probe_rs_target::{Architecture, BinaryFormat, ChipFamily, Jtag, MemoryRange};
 use std::sync::Arc;
-
-use crate::architecture::arm::sequences::DefaultArmSequence;
 
 /// This describes a complete target with a fixed chip model and variant.
 #[derive(Clone)]
@@ -52,7 +59,9 @@ pub struct Target {
     /// The scan chain can be parsed from the CMSIS-SDF file, or specified
     /// manually in the target.yaml file. It is used by some probes to determine
     /// the number devices in the scan chain and their ir lengths.
-    pub scan_chain: Option<Vec<ScanChainElement>>,
+    pub jtag: Option<Jtag>,
+    /// The default executable format for the target.
+    pub default_format: BinaryFormat,
 }
 
 impl std::fmt::Debug for Target {
@@ -108,61 +117,52 @@ impl Target {
             flash_algorithms.push(algo.clone());
         }
 
-        // We always just take the architecture of the first core which is okay if there is no mixed architectures.
-        let mut debug_sequence = match chip.cores[0].core_type.architecture() {
-            Architecture::Arm => DebugSequence::Arm(DefaultArmSequence::create()),
-            Architecture::Riscv => DebugSequence::Riscv(DefaultRiscvSequence::create()),
-        };
-
-        if chip.name.starts_with("MIMXRT10") {
-            tracing::warn!("Using custom sequence for MIMXRT10xx");
-            debug_sequence = DebugSequence::Arm(MIMXRT10xx::create());
+        let debug_sequence = if chip.name.starts_with("MIMXRT10") {
+            DebugSequence::Arm(MIMXRT10xx::create())
         } else if chip.name.starts_with("MIMXRT11") {
-            tracing::warn!("Using custom sequence for MIMXRT11xx");
-            debug_sequence = DebugSequence::Arm(MIMXRT11xx::create());
+            DebugSequence::Arm(MIMXRT11xx::create())
         } else if chip.name.starts_with("MIMXRT5") {
-            tracing::warn!("Using custom sequence for MIMXRT5xxS");
-            debug_sequence = DebugSequence::Arm(MIMXRT5xxS::create());
+            DebugSequence::Arm(MIMXRT5xxS::create())
         } else if chip.name.starts_with("LPC55S16")
             || chip.name.starts_with("LPC55S26")
             || chip.name.starts_with("LPC55S28")
             || chip.name.starts_with("LPC55S66")
             || chip.name.starts_with("LPC55S69")
         {
-            tracing::warn!("Using custom sequence for LPC55S16/26/28/66/69");
-            debug_sequence = DebugSequence::Arm(LPC55Sxx::create());
+            DebugSequence::Arm(LPC55Sxx::create())
         } else if chip.name.starts_with("EFM32PG2")
             || chip.name.starts_with("EFR32BG2")
             || chip.name.starts_with("EFR32FG2")
             || chip.name.starts_with("EFR32MG2")
             || chip.name.starts_with("EFR32ZG2")
         {
-            tracing::warn!("Using custom sequence for EFM32 Series 2");
-            debug_sequence = DebugSequence::Arm(EFM32xG2::create());
-        } else if chip.name.starts_with("esp32c3") {
-            tracing::warn!("Using custom sequence for ESP32C3");
-            debug_sequence = DebugSequence::Riscv(ESP32C3::create());
-        } else if chip.name.starts_with("esp32c6") {
-            tracing::warn!("Using custom sequence for ESP32C6");
-            debug_sequence = DebugSequence::Riscv(ESP32C6::create());
+            DebugSequence::Arm(EFM32xG2::create())
+        } else if chip.name.starts_with("esp32-") {
+            DebugSequence::Xtensa(ESP32::create(chip))
+        } else if chip.name.eq_ignore_ascii_case("esp32s2") {
+            DebugSequence::Xtensa(ESP32S2::create(chip))
+        } else if chip.name.eq_ignore_ascii_case("esp32s3") {
+            DebugSequence::Xtensa(ESP32S3::create(chip))
+        } else if chip.name.eq_ignore_ascii_case("esp32c2") {
+            DebugSequence::Riscv(ESP32C2::create(chip))
+        } else if chip.name.eq_ignore_ascii_case("esp32c3") {
+            DebugSequence::Riscv(ESP32C3::create(chip))
+        } else if chip.name.eq_ignore_ascii_case("esp32c6") {
+            DebugSequence::Riscv(ESP32C6::create(chip))
+        } else if chip.name.eq_ignore_ascii_case("esp32h2") {
+            DebugSequence::Riscv(ESP32H2::create(chip))
         } else if chip.name.starts_with("nRF5340") {
-            tracing::warn!("Using custom sequence for nRF5340");
-            debug_sequence = DebugSequence::Arm(Nrf5340::create());
+            DebugSequence::Arm(Nrf5340::create())
         } else if chip.name.starts_with("nRF52") {
-            tracing::warn!("Using custom sequence for nRF52");
-            debug_sequence = DebugSequence::Arm(Nrf52::create());
+            DebugSequence::Arm(Nrf52::create())
         } else if chip.name.starts_with("nRF9160") {
-            tracing::warn!("Using custom sequence for nRF9160");
-            debug_sequence = DebugSequence::Arm(Nrf9160::create());
+            DebugSequence::Arm(Nrf9160::create())
         } else if chip.name.starts_with("STM32F0") {
-            tracing::warn!("Using custom sequence for ARMv6 {}", chip.name);
-            debug_sequence = DebugSequence::Arm(Stm32Armv6::create(Stm32Armv6Family::F0));
+            DebugSequence::Arm(Stm32Armv6::create(Stm32Armv6Family::F0))
         } else if chip.name.starts_with("STM32L0") {
-            tracing::warn!("Using custom sequence for ARMv6 {}", chip.name);
-            debug_sequence = DebugSequence::Arm(Stm32Armv6::create(Stm32Armv6Family::L0));
+            DebugSequence::Arm(Stm32Armv6::create(Stm32Armv6Family::L0))
         } else if chip.name.starts_with("STM32G0") {
-            tracing::warn!("Using custom sequence for ARMv6 {}", chip.name);
-            debug_sequence = DebugSequence::Arm(Stm32Armv6::create(Stm32Armv6Family::G0));
+            DebugSequence::Arm(Stm32Armv6::create(Stm32Armv6Family::G0))
         } else if chip.name.starts_with("STM32F1")
             || chip.name.starts_with("STM32F2")
             || chip.name.starts_with("STM32F3")
@@ -174,47 +174,51 @@ impl Target {
             || chip.name.starts_with("STM32WB")
             || chip.name.starts_with("STM32WL")
         {
-            tracing::warn!("Using custom sequence for ARMv7 {}", chip.name);
-            debug_sequence = DebugSequence::Arm(Stm32Armv7::create());
+            DebugSequence::Arm(Stm32Armv7::create())
         } else if chip.name.starts_with("STM32H7") {
-            tracing::warn!("Using custom sequence for STM32H7");
-            debug_sequence = DebugSequence::Arm(Stm32h7::create());
-        } else if chip.name.starts_with("ATSAMD5") || chip.name.starts_with("ATSAME5") {
-            tracing::warn!("Using custom sequence for {}", chip.name);
-            debug_sequence = DebugSequence::Arm(AtSAME5x::create());
+            DebugSequence::Arm(Stm32h7::create())
+        } else if chip.name.starts_with("ATSAMD1")
+            || chip.name.starts_with("ATSAMD2")
+            || chip.name.starts_with("ATSAMDA")
+            || chip.name.starts_with("ATSAMD5")
+            || chip.name.starts_with("ATSAME5")
+        {
+            DebugSequence::Arm(AtSAM::create())
         } else if chip.name.starts_with("XMC4") {
-            tracing::warn!("Using custom sequence for XMC4000");
-            debug_sequence = DebugSequence::Arm(XMC4000::create());
-        }
+            DebugSequence::Arm(XMC4000::create())
+        } else {
+            // Default to the architecture of the first core, which is okay if
+            // there is no mixed architectures.
+            match chip.cores[0].core_type.architecture() {
+                Architecture::Arm => DebugSequence::Arm(DefaultArmSequence::create()),
+                Architecture::Riscv => DebugSequence::Riscv(DefaultRiscvSequence::create()),
+                Architecture::Xtensa => DebugSequence::Xtensa(DefaultXtensaSequence::create()),
+            }
+        };
 
+        tracing::info!("Using sequence {:?}", debug_sequence);
+
+        let ram_regions = chip
+            .memory_map
+            .iter()
+            .filter_map(MemoryRegion::as_ram_region);
         let rtt_scan_regions = match &chip.rtt_scan_ranges {
             Some(ranges) => {
                 // The custom ranges must all be enclosed by exactly one of
                 // the defined RAM regions.
                 for rng in ranges {
-                    let region = chip.memory_map.iter().find(|region| {
-                        if let MemoryRegion::Ram(region) = region {
-                            region.range.contains_range(rng)
-                        } else {
-                            false
-                        }
-                    });
-                    if region.is_none() {
+                    if !ram_regions
+                        .clone()
+                        .any(|region| region.range.contains_range(rng))
+                    {
                         return Err(RegistryError::InvalidRttScanRange(rng.clone()));
                     }
                 }
                 ranges.clone()
             }
             None => {
-                // By default we use all of the RAM ranges from the
-                // memory map.
-                chip.memory_map
-                    .iter()
-                    .filter_map(|region| match region {
-                        MemoryRegion::Ram(region) => Some(region.range.clone()),
-                        _ => None,
-                    })
-                    .collect()
+                // By default we use all of the RAM ranges from the memory map.
+                ram_regions.map(|region| region.range.clone()).collect()
             }
         };
 
@@ -226,7 +230,8 @@ impl Target {
             memory_map: chip.memory_map.clone(),
             debug_sequence,
             rtt_scan_regions,
-            scan_chain: chip.scan_chain.clone(),
+            jtag: chip.jtag.clone(),
+            default_format: chip.default_binary_format.clone().unwrap_or_default(),
         })
     }
 
@@ -266,7 +271,7 @@ impl Target {
         FlashLoader::new(self.memory_map.clone(), self.source.clone())
     }
 
-    /// Gets a [RawFlashAlgorithm] by name.
+    /// Returns a [RawFlashAlgorithm] by name.
     pub(crate) fn flash_algorithm_by_name(&self, name: &str) -> Option<&RawFlashAlgorithm> {
         self.flash_algorithms.iter().find(|a| a.name == name)
     }
@@ -278,12 +283,9 @@ impl Target {
 
     /// Gets the first found [MemoryRegion] that contains the given address
     pub(crate) fn get_memory_region_by_address(&self, address: u64) -> Option<&MemoryRegion> {
-        self.memory_map.iter().find(|region| match region {
-            MemoryRegion::Ram(rr) if rr.range.contains(&address) => true,
-            MemoryRegion::Generic(gr) if gr.range.contains(&address) => true,
-            MemoryRegion::Nvm(nr) if nr.range.contains(&address) => true,
-            _ => false,
-        })
+        self.memory_map
+            .iter()
+            .find(|region| region.contains(address))
     }
 }
 
@@ -320,6 +322,15 @@ impl From<String> for TargetSelector {
     }
 }
 
+impl From<Option<&str>> for TargetSelector {
+    fn from(value: Option<&str>) -> Self {
+        match value {
+            Some(identifier) => identifier.into(),
+            None => TargetSelector::Auto,
+        }
+    }
+}
+
 impl From<()> for TargetSelector {
     fn from(_value: ()) -> Self {
         TargetSelector::Auto
@@ -334,14 +345,14 @@ impl From<Target> for TargetSelector {
 
 /// This is the type to denote a general debug sequence.
 /// It can differentiate between ARM and RISC-V for now.
-/// Currently, only the ARM variant does something sensible;
-/// RISC-V will be ignored when encountered.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum DebugSequence {
     /// An ARM debug sequence.
     Arm(Arc<dyn ArmDebugSequence>),
     /// A RISC-V debug sequence.
     Riscv(Arc<dyn RiscvDebugSequence>),
+    /// An Xtensa debug sequence.
+    Xtensa(Arc<dyn XtensaDebugSequence>),
 }
 
 pub(crate) trait CoreExt {
@@ -361,6 +372,7 @@ impl CoreExt for Core {
                 ap: options.ap,
             })),
             probe_rs_target::CoreAccessOptions::Riscv(_) => None,
+            probe_rs_target::CoreAccessOptions::Xtensa(_) => None,
         }
     }
 }

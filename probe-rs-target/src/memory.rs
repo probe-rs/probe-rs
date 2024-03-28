@@ -15,6 +15,9 @@ pub struct NvmRegion {
     pub is_boot_memory: bool,
     /// List of cores that can access this region
     pub cores: Vec<String>,
+    /// True if the memory region is an alias of a different memory region.
+    #[serde(default)]
+    pub is_alias: bool,
 }
 
 impl NvmRegion {
@@ -106,6 +109,10 @@ pub trait MemoryRange {
 
     /// Returns true if `self` intersects `range` partially.
     fn intersects_range(&self, range: &Range<u64>) -> bool;
+
+    /// Ensure memory reads using this memory range, will be aligned to 32 bits.
+    /// This may result in slightly more memory being read than requested.
+    fn align_to_32_bits(&mut self);
 }
 
 impl MemoryRange for Range<u64> {
@@ -127,6 +134,18 @@ impl MemoryRange for Range<u64> {
                 || range.contains_range(self)
         }
     }
+
+    fn align_to_32_bits(&mut self) {
+        if self.start % 4 != 0 {
+            self.start -= self.start % 4;
+        }
+        if self.end % 4 != 0 {
+            // Try to align the end to 32 bits, but don't overflow.
+            if let Some(new_end) = self.end.checked_add(4 - self.end % 4) {
+                self.end = new_end;
+            }
+        }
+    }
 }
 
 /// Declares the type of a memory region.
@@ -140,6 +159,47 @@ pub enum MemoryRegion {
     /// Memory region describing flash, EEPROM or other non-volatile memory.
     #[serde(alias = "Flash")] // Keeping the "Flash" name this for backwards compatibility
     Nvm(NvmRegion),
+}
+
+impl MemoryRegion {
+    /// Returns the RAM region if this is a RAM region, otherwise None.
+    pub fn as_ram_region(&self) -> Option<&RamRegion> {
+        match self {
+            MemoryRegion::Ram(region) => Some(region),
+            _ => None,
+        }
+    }
+
+    /// Returns the NVM region if this is a NVM region, otherwise None.
+    pub fn as_nvm_region(&self) -> Option<&NvmRegion> {
+        match self {
+            MemoryRegion::Nvm(region) => Some(region),
+            _ => None,
+        }
+    }
+
+    /// Returns the address range of the memory region.
+    pub fn address_range(&self) -> Range<u64> {
+        match self {
+            MemoryRegion::Ram(rr) => rr.range.clone(),
+            MemoryRegion::Generic(gr) => gr.range.clone(),
+            MemoryRegion::Nvm(nr) => nr.range.clone(),
+        }
+    }
+
+    /// Returns whether the memory region contains the given address.
+    pub fn contains(&self, address: u64) -> bool {
+        self.address_range().contains(&address)
+    }
+
+    /// Get the cores to which this memory region belongs.
+    pub fn cores(&self) -> &[String] {
+        match self {
+            MemoryRegion::Ram(region) => &region.cores,
+            MemoryRegion::Generic(region) => &region.cores,
+            MemoryRegion::Nvm(region) => &region.cores,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -249,5 +309,41 @@ mod test {
         let range1 = 2..4;
         let range2 = 6..8;
         assert!(!range1.intersects_range(&range2));
+    }
+
+    #[test]
+    fn test_align_to_32_bits_case1() {
+        // Test case 1: start and end are already aligned
+        let mut range = Range { start: 0, end: 8 };
+        range.align_to_32_bits();
+        assert_eq!(range.start, 0);
+        assert_eq!(range.end, 8);
+    }
+
+    #[test]
+    fn test_align_to_32_bits_case2() {
+        // Test case 2: start is not aligned, end is aligned
+        let mut range = Range { start: 3, end: 12 };
+        range.align_to_32_bits();
+        assert_eq!(range.start, 0);
+        assert_eq!(range.end, 12);
+    }
+
+    #[test]
+    fn test_align_to_32_bits_case3() {
+        // Test case 3: start is aligned, end is not aligned
+        let mut range = Range { start: 16, end: 23 };
+        range.align_to_32_bits();
+        assert_eq!(range.start, 16);
+        assert_eq!(range.end, 24);
+    }
+
+    #[test]
+    fn test_align_to_32_bits_case4() {
+        // Test case 4: start and end are not aligned
+        let mut range = Range { start: 5, end: 13 };
+        range.align_to_32_bits();
+        assert_eq!(range.start, 4);
+        assert_eq!(range.end, 16);
     }
 }

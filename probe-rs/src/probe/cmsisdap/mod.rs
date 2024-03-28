@@ -1,23 +1,24 @@
-pub mod commands;
-pub mod tools;
+//! CMSIS-DAP probe implementation.
+mod commands;
+mod tools;
 
 use crate::{
     architecture::arm::{
-        communication_interface::DapProbe,
-        communication_interface::UninitializedArmProbe,
+        communication_interface::{DapProbe, UninitializedArmProbe},
         dp::{Abort, Ctrl},
         swo::poll_interval_from_buf_size,
-        ArmCommunicationInterface, ArmError, DapError, DpAddress, Pins, PortType, RawDapAccess,
-        Register, SwoAccess, SwoConfig, SwoMode,
+        ArmCommunicationInterface, ArmError, DapError, Pins, PortType, RawDapAccess, Register,
+        SwoAccess, SwoConfig, SwoMode,
     },
     probe::{
         cmsisdap::commands::{
             general::info::{CapabilitiesCommand, PacketCountCommand, SWOTraceBufferSizeCommand},
             CmsisDapError,
         },
-        BatchCommand,
+        BatchCommand, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
+        JtagChainItem, ProbeFactory, WireProtocol,
     },
-    CoreStatus, DebugProbe, DebugProbeError, DebugProbeSelector, WireProtocol,
+    CoreStatus,
 };
 
 use commands::{
@@ -51,14 +52,39 @@ use commands::{
     },
     CmsisDapDevice, Status,
 };
-use probe_rs_target::{get_ir_lengths, ScanChainElement};
+use probe_rs_target::ScanChainElement;
 
-use std::{result::Result, time::Duration};
+use std::{fmt::Write, time::Duration};
 
 use bitvec::prelude::*;
 
+use super::common::{extract_idcodes, extract_ir_lengths, ScanChainError};
+
+/// A factory for creating [`CmsisDap`] probes.
+#[derive(Debug)]
+pub struct CmsisDapFactory;
+
+impl std::fmt::Display for CmsisDapFactory {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("CMSIS-DAP")
+    }
+}
+
+impl ProbeFactory for CmsisDapFactory {
+    fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
+        Ok(Box::new(CmsisDap::new_from_device(
+            tools::open_device_from_selector(selector)?,
+        )?))
+    }
+
+    fn list_probes(&self) -> Vec<DebugProbeInfo> {
+        tools::list_cmsisdap_devices()
+    }
+}
+
+/// A CMSIS-DAP probe.
 pub struct CmsisDap {
-    pub device: CmsisDapDevice,
+    device: CmsisDapDevice,
     _hw_version: u8,
     _jtag_version: u8,
     protocol: Option<WireProtocol>,
@@ -78,12 +104,6 @@ pub struct CmsisDap {
     batch: Vec<BatchCommand>,
 }
 
-/// Stores information about a JTAG scan chain,
-/// including IR lengths.
-struct JtagChain {
-    pub irlens: Vec<usize>,
-}
-
 impl std::fmt::Debug for CmsisDap {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         fmt.debug_struct("CmsisDap")
@@ -100,7 +120,7 @@ impl std::fmt::Debug for CmsisDap {
 }
 
 impl CmsisDap {
-    pub fn new_from_device(mut device: CmsisDapDevice) -> Result<Self, DebugProbeError> {
+    fn new_from_device(mut device: CmsisDapDevice) -> Result<Self, DebugProbeError> {
         // Discard anything left in buffer, as otherwise
         // we'll get out of sync between requests and responses.
         device.drain();
@@ -202,15 +222,20 @@ impl CmsisDap {
     ///
     /// If IR lengths for each TAP are known, provide them in `ir_lengths`.
     ///
-    /// Returns a new JTAGChain.
-    fn jtag_scan(&mut self, ir_lengths: Option<&[usize]>) -> Result<JtagChain, CmsisDapError> {
+    /// Returns a new JTAG chain.
+    fn jtag_scan(
+        &mut self,
+        ir_lengths: Option<&[usize]>,
+    ) -> Result<Vec<JtagChainItem>, CmsisDapError> {
         let (ir, dr) = self.jtag_reset_scan()?;
-        let idcodes = jtag_util::extract_idcodes(&dr)?;
-        let irlens = jtag_util::extract_ir_lengths(&ir, idcodes.len(), ir_lengths)?;
+        let idcodes = extract_idcodes(&dr)?;
+        let ir_lens = extract_ir_lengths(&ir, idcodes.len(), ir_lengths)?;
 
-        let chain = JtagChain { irlens };
-
-        Ok(chain)
+        Ok(idcodes
+            .into_iter()
+            .zip(ir_lens)
+            .map(|(idcode, irlen)| JtagChainItem { irlen, idcode })
+            .collect())
     }
 
     /// Capture the power-up scan chain values, including all IDCODEs.
@@ -371,6 +396,9 @@ impl CmsisDap {
     }
 
     fn send_swj_sequences(&mut self, request: SequenceRequest) -> Result<(), CmsisDapError> {
+        // Ensure all pending commands are processed.
+        //self.process_batch()?;
+
         commands::send_command::<SequenceRequest>(&mut self.device, request)
             .map_err(CmsisDapError::from)
             .and_then(|v| match v {
@@ -384,7 +412,7 @@ impl CmsisDap {
     /// According to the ARM specification, this *should* never fail.
     /// In practice, it can unfortunately happen.
     ///
-    /// To avoid an endeless recursion in this cases, this function is provided
+    /// To avoid an endless recursion in this cases, this function is provided
     /// as an alternative to [`Self::process_batch()`]. This function will return any errors,
     /// and not retry any transfers.
     fn read_ctrl_register(&mut self) -> Result<Ctrl, ArmError> {
@@ -472,59 +500,73 @@ impl CmsisDap {
             tracing::debug!("{:?} of batch of {} items executed", count, batch.len());
 
             if response.last_transfer_response.protocol_error {
+                if count > 0 {
+                    tracing::debug!("Protocol error in response to command {}", batch[count - 1]);
+                }
+
                 return Err(DapError::SwdProtocol.into());
-            } else {
-                match response.last_transfer_response.ack {
-                    Ack::Ok => {
-                        tracing::trace!("Transfer status: ACK");
-                        return Ok(response.transfers[response.transfers.len() - 1].data);
+            }
+
+            match response.last_transfer_response.ack {
+                Ack::Ok => {
+                    tracing::trace!("Transfer status: ACK");
+                    return Ok(response.transfers[response.transfers.len() - 1].data);
+                }
+                Ack::NoAck => {
+                    tracing::trace!(
+                        "Transfer status for batch item {}/{}: NACK",
+                        count,
+                        batch.len()
+                    );
+                    // TODO: Try a reset?
+                    return Err(DapError::NoAcknowledge.into());
+                }
+                Ack::Fault => {
+                    tracing::trace!(
+                        "Transfer status for batch item {}/{}: FAULT",
+                        count,
+                        batch.len()
+                    );
+
+                    // To avoid a potential endless recursion,
+                    // call a separate function to read the ctrl register,
+                    // which doesn't use the batch API.
+                    let ctrl = self.read_ctrl_register()?;
+
+                    tracing::trace!("Ctrl/Stat register value is: {:?}", ctrl);
+
+                    if ctrl.sticky_err() {
+                        let mut abort = Abort(0);
+
+                        // Clear sticky error flags.
+                        abort.set_stkerrclr(ctrl.sticky_err());
+
+                        RawDapAccess::raw_write_register(
+                            self,
+                            PortType::DebugPort,
+                            Abort::ADDRESS,
+                            abort.into(),
+                        )?;
                     }
-                    Ack::NoAck => {
-                        tracing::trace!(
-                            "Transfer status for batch item {}/{}: NACK",
-                            count,
-                            batch.len()
-                        );
-                        // TODO: Try a reset?
-                        return Err(DapError::NoAcknowledge.into());
-                    }
-                    Ack::Fault => {
-                        tracing::trace!(
-                            "Transfer status for batch item {}/{}: FAULT",
-                            count,
-                            batch.len()
-                        );
 
-                        // To avoid a potential endless recursion,
-                        // call a separate function to read the ctrl register,
-                        // which doesn't use the batch API.
-                        let ctrl = self.read_ctrl_register()?;
+                    tracing::trace!("draining {:?} and retries left {:?}", count, retry);
+                    batch.drain(0..count);
+                    continue;
+                }
+                Ack::Wait => {
+                    tracing::trace!("wait",);
 
-                        tracing::trace!("Ctrl/Stat register value is: {:?}", ctrl);
+                    let mut abort = Abort(0);
+                    abort.set_dapabort(true);
 
-                        if ctrl.sticky_err() {
-                            let mut abort = Abort(0);
+                    RawDapAccess::raw_write_register(
+                        self,
+                        PortType::DebugPort,
+                        Abort::ADDRESS,
+                        abort.into(),
+                    )?;
 
-                            // Clear sticky error flags.
-                            abort.set_stkerrclr(ctrl.sticky_err());
-
-                            RawDapAccess::raw_write_register(
-                                self,
-                                PortType::DebugPort,
-                                Abort::ADDRESS,
-                                abort.into(),
-                            )?;
-                        }
-
-                        tracing::trace!("draining {:?} and retries left {:?}", count, retry);
-                        batch.drain(0..count);
-                        continue;
-                    }
-                    Ack::Wait => {
-                        tracing::trace!("wait",);
-
-                        return Err(DapError::WaitResponse.into());
-                    }
+                    return Err(DapError::WaitResponse.into());
                 }
             }
         }
@@ -688,17 +730,6 @@ impl CmsisDap {
 }
 
 impl DebugProbe for CmsisDap {
-    fn new_from_selector(
-        selector: impl Into<DebugProbeSelector>,
-    ) -> Result<Box<Self>, DebugProbeError>
-    where
-        Self: Sized,
-    {
-        Ok(Box::new(Self::new_from_device(
-            tools::open_device_from_selector(selector)?,
-        )?))
-    }
-
     fn get_name(&self) -> &str {
         "CMSIS-DAP"
     }
@@ -721,12 +752,6 @@ impl DebugProbe for CmsisDap {
     }
 
     fn set_scan_chain(&mut self, scan_chain: Vec<ScanChainElement>) -> Result<(), DebugProbeError> {
-        // A scan chain only makes sense in JTAG mode. Quit early if a different protocol is used.
-        if self.active_protocol() != Some(WireProtocol::Jtag) {
-            return Err(DebugProbeError::CommandNotSupportedByProbe(
-                "Setting Scan Chain is only supported in JTAG mode",
-            ));
-        }
         tracing::info!("Setting scan chain to {:?}", scan_chain);
         self.scan_chain = Some(scan_chain);
         Ok(())
@@ -793,14 +818,15 @@ impl DebugProbe for CmsisDap {
 
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
         match protocol {
-            WireProtocol::Jtag => {
+            WireProtocol::Jtag if self.capabilities._jtag_implemented => {
                 self.protocol = Some(WireProtocol::Jtag);
                 Ok(())
             }
-            WireProtocol::Swd => {
+            WireProtocol::Swd if self.capabilities._swd_implemented => {
                 self.protocol = Some(WireProtocol::Swd);
                 Ok(())
             }
+            _ => Err(DebugProbeError::UnsupportedProtocol(protocol)),
         }
     }
 
@@ -867,59 +893,6 @@ impl RawDapAccess for CmsisDap {
         let running = status.is_running();
         commands::send_command(&mut self.device, HostStatusRequest::running(running))?;
         Ok(())
-    }
-
-    fn select_dp(&mut self, dp: DpAddress) -> Result<(), ArmError> {
-        match dp {
-            DpAddress::Default => Ok(()), // nop
-            DpAddress::Multidrop(targetsel) => {
-                for _i in 0..5 {
-                    // Flush just in case there were writes queued from before.
-                    self.process_batch()?;
-
-                    let request = SequenceRequest::new(
-                        &[
-                            0xff, 0x92, 0xf3, 0x09, 0x62, 0x95, 0x2d, 0x85, 0x86, 0xe9, 0xaf, 0xdd,
-                            0xe3, 0xa2, 0x0e, 0xbc, 0x19, 0xa0, 0xf1, 0xff, 0xff, 0xff, 0xff, 0xff,
-                            0xff, 0xff, 0xff, 0x00,
-                        ],
-                        28 * 8,
-                    )
-                    .map_err(DebugProbeError::from)?;
-
-                    // dormant-to-swd + line reset
-                    self.send_swj_sequences(request)
-                        .map_err(DebugProbeError::from)?;
-
-                    // TARGETSEL write.
-                    // The TARGETSEL write is not ACKed by design. We can't use a normal register write
-                    // because many probes don't even send the data phase when NAK.
-                    let parity = targetsel.count_ones() % 2;
-                    let data = &((parity as u64) << 45 | (targetsel as u64) << 13 | 0x1f99)
-                        .to_le_bytes()[..6];
-
-                    let request =
-                        SequenceRequest::new(data, 6 * 8).map_err(DebugProbeError::from)?;
-
-                    self.send_swj_sequences(request)
-                        .map_err(DebugProbeError::from)?;
-
-                    // "A write to the TARGETSEL register must always be followed by a read of the DPIDR register or a line reset. If the
-                    // response to the DPIDR read is incorrect, or there is no response, the host must start the sequence again."
-                    match self.raw_read_register(PortType::DebugPort, 0) {
-                        Ok(res) => {
-                            tracing::debug!("DPIDR read {:08x}", res);
-                            return Ok(());
-                        }
-                        Err(e) => {
-                            tracing::debug!("DPIDR read failed, retrying. Error: {:?}", e);
-                        }
-                    }
-                }
-                tracing::warn!("Giving up on TARGETSEL, too many retries.");
-                Err(DapError::NoAcknowledge.into())
-            }
-        }
     }
 
     /// Reads the DAP register on the specified port and address.
@@ -1027,17 +1000,20 @@ impl RawDapAccess for CmsisDap {
     }
 
     fn configure_jtag(&mut self) -> Result<(), DebugProbeError> {
-        // If the scan chain is populated, use that and skip runtime detection.
-        // We trust the user here and assume the scan chain is right. If its not,
-        // the use of the probe will fail later.
-        // If the scan chain is not populated, we need to do runtime detection.
-        let ir_lengths = if self.scan_chain.is_some() {
-            get_ir_lengths(self.scan_chain.as_ref().unwrap())
-        } else {
-            tracing::info!("No scan chain provided, doing runtime detection");
-            let chain = self.jtag_scan(None)?;
-            chain.irlens.iter().map(|len| *len as u8).collect()
-        };
+        let chain = self.jtag_scan(
+            self.scan_chain
+                .as_ref()
+                .map(|chain| {
+                    chain
+                        .iter()
+                        .filter_map(|s| s.ir_len)
+                        .map(|s| s as usize)
+                        .collect::<Vec<usize>>()
+                })
+                .as_deref(),
+        )?;
+        let ir_lengths = chain.iter().map(|item| item.irlen as u8).collect();
+
         tracing::info!("Configuring JTAG with ir lengths: {:?}", ir_lengths);
         self.send_jtag_configure(JtagConfigureRequest::new(ir_lengths)?)?;
 
@@ -1060,6 +1036,23 @@ impl RawDapAccess for CmsisDap {
         self.connect_if_needed()?;
 
         let data = bits.to_le_bytes();
+
+        if tracing::enabled!(tracing::Level::TRACE) {
+            let mut seq = String::new();
+
+            let _ = write!(&mut seq, "swj sequence:");
+
+            for i in 0..bit_len {
+                let bit = (bits >> i) & 1;
+
+                if bit == 1 {
+                    let _ = write!(&mut seq, "1");
+                } else {
+                    let _ = write!(&mut seq, "0");
+                }
+            }
+            tracing::trace!("{}", seq);
+        }
 
         self.send_swj_sequences(SequenceRequest::new(&data, bit_len)?)?;
 
@@ -1206,304 +1199,11 @@ impl Drop for CmsisDap {
     }
 }
 
-mod jtag_util {
-    use crate::probe::cmsisdap::commands::CmsisDapError;
-
-    use bitfield::bitfield;
-    use bitvec::prelude::*;
-
-    bitfield! {
-        /// A JTAG IDCODE.
-        /// Identifies a particular Test Access Port (TAP) on the JTAG scan chain.
-        #[derive(Copy, Clone, Eq, PartialEq)]
-        pub struct IdCode(u32);
-        impl Debug;
-
-        u8;
-        /// The IDCODE version.
-        pub version, set_version: 31, 28;
-
-        u16;
-        /// The part number.
-        pub part_number, set_part_number: 27, 12;
-
-        /// The JEDEC JEP-106 Manufacturer ID.
-        pub manufacturer, set_manufacturer: 11, 1;
-
-        u8;
-        /// The continuation code of the JEDEC JEP-106 Manufacturer ID.
-        pub manufacturer_continuation, set_manufacturer_continuation: 11, 8;
-
-        /// The identity code of the JEDEC JEP-106 Manufacturer ID.
-        pub manufacturer_identity, set_manufacturer_identity: 7, 1;
-
-        bool;
-        /// The least-significant bit.
-        /// Always set.
-        pub lsbit, set_lsbit: 0;
-    }
-
-    impl std::fmt::Display for IdCode {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            if let Some(mfn) = self.manufacturer_name() {
-                write!(f, "0x{:08X} ({})", self.0, mfn)
-            } else {
-                write!(f, "0x{:08X}", self.0)
-            }
+impl From<ScanChainError> for CmsisDapError {
+    fn from(error: ScanChainError) -> Self {
+        match error {
+            ScanChainError::InvalidIdCode => CmsisDapError::InvalidIdCode,
+            ScanChainError::InvalidIR => CmsisDapError::InvalidIR,
         }
-    }
-
-    impl IdCode {
-        /// Returns `true` iff the IDCODE's least significant bit is `1`
-        /// and the 7-bit `manufacturer_identity` is set to one of the non-reserved values in the range `[1,126]`.
-        pub fn valid(&self) -> bool {
-            self.lsbit() && (self.manufacturer() != 0) && (self.manufacturer() != 127)
-        }
-
-        /// Return the manufacturer name, if available.
-        pub fn manufacturer_name(&self) -> Option<&'static str> {
-            let cc = self.manufacturer_continuation();
-            let id = self.manufacturer_identity();
-            jep106::JEP106Code::new(cc, id).get()
-        }
-    }
-
-    #[derive(Debug, thiserror::Error)]
-    pub enum ScanChainError {
-        #[error("Invalid IDCODE")]
-        InvalidIdCode,
-        #[error("Invalid IR scan chain")]
-        InvalidIR,
-    }
-
-    impl From<ScanChainError> for CmsisDapError {
-        fn from(error: ScanChainError) -> Self {
-            match error {
-                ScanChainError::InvalidIdCode => CmsisDapError::InvalidIdCode,
-                ScanChainError::InvalidIR => CmsisDapError::InvalidIR,
-            }
-        }
-    }
-
-    /// Convert a list of start positions to a list of lengths.
-    fn starts_to_lens(starts: &[usize], total: usize) -> Vec<usize> {
-        let mut lens: Vec<usize> = starts.windows(2).map(|w| w[1] - w[0]).collect();
-        lens.push(total - lens.iter().sum::<usize>());
-        lens
-    }
-
-    /// Extract all IDCODEs from a test-logic-reset DR chain `dr`.
-    ///
-    /// Valid IDCODEs have a '1' in the least significant (first) bit,
-    /// and are 32 bits long. DRs in BYPASS always have a single 0 bit.
-    ///
-    /// We can therefore unambiguously scan through the DR capture to find
-    /// all IDCODEs and TAPs in BYPASS.
-    ///
-    /// Returns Vec<Option<IdCode>>, with None for TAPs in BYPASS.
-    pub(crate) fn extract_idcodes(
-        mut dr: &BitSlice<u8>,
-    ) -> Result<Vec<Option<IdCode>>, ScanChainError> {
-        let mut idcodes = Vec::new();
-
-        while !dr.is_empty() {
-            if dr[0] {
-                if dr.len() < 32 {
-                    tracing::error!("Truncated IDCODE: {dr:02X?}");
-                    return Err(ScanChainError::InvalidIdCode);
-                }
-
-                let idcode = dr[0..32].load_le::<u32>();
-                let idcode = IdCode(idcode);
-
-                if !idcode.valid() {
-                    tracing::error!("Invalid IDCODE: {:08X}", idcode.0);
-                    return Err(ScanChainError::InvalidIdCode);
-                }
-                tracing::info!("Found IDCODE: {idcode}");
-                idcodes.push(Some(idcode));
-                dr = &dr[32..];
-            } else {
-                idcodes.push(None);
-                tracing::info!("Found bypass TAP");
-                dr = &dr[1..];
-            }
-        }
-        Ok(idcodes)
-    }
-
-    /// Best-effort extraction of IR lengths from a test-logic-reset IR chain `ir`,
-    /// which is known to contain `n_taps` TAPs (as discovered by scanning DR for IDCODEs).
-    ///
-    /// If expected IR lengths are provided, specify them in `expected`, and they are
-    /// verified against the IR scan and then returned.
-    ///
-    /// Valid IRs in the capture must start with `10` (a 1 in the least-significant,
-    /// and therefore first, bit). However, IRs may contain `10` in other positions, so we
-    /// can only find a superset of all possible start positions. If this happens to match
-    /// the number of taps, or there is only one tap, we can find all IR lengths. Otherwise,
-    /// they must be provided, and are then checked.
-    ///
-    /// This implementation is a port of the algorithm from:
-    /// https://github.com/GlasgowEmbedded/glasgow/blob/30dc11b2/software/glasgow/applet/interface/jtag_probe/__init__.py#L712
-    ///
-    /// Returns Vec<usize>, with an entry for each TAP.
-    pub(crate) fn extract_ir_lengths(
-        ir: &BitSlice<u8>,
-        n_taps: usize,
-        expected: Option<&[usize]>,
-    ) -> Result<Vec<usize>, ScanChainError> {
-        // Find all `10` patterns which indicate potential IR start positions.
-        let starts = ir
-            .windows(2)
-            .enumerate()
-            .filter(|(_, w)| w[0] && !w[1])
-            .map(|(i, _)| i)
-            .collect::<Vec<usize>>();
-        tracing::trace!("Possible IR start positions: {starts:?}");
-
-        if n_taps == 0 {
-            tracing::error!("Cannot scan IR without at least one TAP");
-            Err(ScanChainError::InvalidIR)
-        } else if n_taps > starts.len() {
-            // We must have at least as many `10` patterns as TAPs.
-            tracing::error!("Fewer IRs detected than TAPs");
-            Err(ScanChainError::InvalidIR)
-        } else if starts[0] != 0 {
-            // The chain must begin with a possible start location.
-            tracing::error!("IR chain does not begin with a valid start pattern");
-            Err(ScanChainError::InvalidIR)
-        } else if let Some(expected) = expected {
-            // If expected lengths are available, verify and return them.
-            if expected.len() != n_taps {
-                tracing::error!(
-                    "Number of provided IR lengths ({}) does not match \
-                         number of detected TAPs ({n_taps})",
-                    expected.len()
-                );
-
-                Err(ScanChainError::InvalidIR)
-            } else if expected.iter().sum::<usize>() != ir.len() {
-                tracing::error!(
-                    "Sum of provided IR lengths ({}) does not match \
-                         length of IR scan ({} bits)",
-                    expected.iter().sum::<usize>(),
-                    ir.len()
-                );
-                Err(ScanChainError::InvalidIR)
-            } else {
-                let exp_starts = expected
-                    .iter()
-                    .scan(0, |a, &x| {
-                        let b = *a;
-                        *a += x;
-                        Some(b)
-                    })
-                    .collect::<Vec<usize>>();
-                tracing::trace!("Provided IR start positions: {exp_starts:?}");
-                let unsupported = exp_starts.iter().filter(|s| !starts.contains(s)).count();
-                if unsupported > 0 {
-                    tracing::error!(
-                        "Provided IR lengths imply an IR start position \
-                             which is not supported by the IR scan"
-                    );
-                    Err(ScanChainError::InvalidIR)
-                } else {
-                    tracing::debug!("Verified provided IR lengths against IR scan");
-                    Ok(starts_to_lens(&exp_starts, ir.len()))
-                }
-            }
-        } else if n_taps == 1 {
-            // If there's only one TAP, this is easy.
-            tracing::info!("Only one TAP detected, IR length {}", ir.len());
-            Ok(vec![ir.len()])
-        } else if n_taps == starts.len() {
-            // If the number of possible starts matches the number of TAPs,
-            // we can unambiguously find all lengths.
-            let irlens = starts_to_lens(&starts, ir.len());
-            tracing::info!("IR lengths are unambiguous: {irlens:?}");
-            Ok(irlens)
-        } else {
-            tracing::error!("IR lengths are ambiguous and must be explicitly configured.");
-            Err(ScanChainError::InvalidIR)
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use bitvec::prelude::*;
-
-    use super::jtag_util;
-    use jtag_util::IdCode;
-
-    const ARM_TAP: IdCode = IdCode(0x4BA00477);
-    const STM_BS_TAP: IdCode = IdCode(0x06433041);
-
-    #[test]
-    fn id_code_display() {
-        let debug_fmt = format!("{idcode}", idcode = ARM_TAP);
-        assert_eq!(debug_fmt, "0x4BA00477 (ARM Ltd)");
-
-        let debug_fmt = format!("{idcode}", idcode = STM_BS_TAP);
-        assert_eq!(debug_fmt, "0x06433041 (STMicroelectronics)");
-    }
-
-    #[test]
-    fn extract_ir_lengths_with_one_tap() {
-        let ir = &bitvec![u8, Lsb0; 1,0,0,0];
-        let n_taps = 1;
-        let expected = None;
-
-        let ir_lengths = jtag_util::extract_ir_lengths(ir, n_taps, expected).unwrap();
-
-        assert_eq!(ir_lengths, vec![4]);
-    }
-
-    #[test]
-    fn extract_ir_lengths_with_two_taps() {
-        // The STM32F1xx and STM32F4xx are examples of MCUs that two serially connected JTAG TAPs,
-        // the boundary scan TAP (IR is 5-bit wide) and the Cortex® -M4 with FPU TAP (IR is 4-bit wide).
-        // This test ensures our scan chain interrogation handles this scenario.
-        let ir = &bitvec![u8, Lsb0; 1,0,0,0,1,0,0,0,0];
-        let n_taps = 2;
-        let expected = None;
-
-        let ir_lengths = jtag_util::extract_ir_lengths(ir, n_taps, expected).unwrap();
-
-        assert_eq!(ir_lengths, vec![4, 5]);
-    }
-
-    #[test]
-    fn extract_id_codes_one_tap() {
-        let mut dr = bitvec![u8, Lsb0; 0; 32];
-        dr[0..32].store_le(ARM_TAP.0);
-
-        let idcodes = jtag_util::extract_idcodes(&dr).unwrap();
-
-        assert_eq!(idcodes, vec![Some(ARM_TAP)]);
-    }
-
-    #[test]
-    fn extract_id_codes_two_taps() {
-        let mut dr = bitvec![u8, Lsb0; 0; 64];
-        dr[0..32].store_le(ARM_TAP.0);
-        dr[32..64].store_le(STM_BS_TAP.0);
-
-        let idcodes = jtag_util::extract_idcodes(&dr).unwrap();
-
-        assert_eq!(idcodes, vec![Some(ARM_TAP), Some(STM_BS_TAP)]);
-    }
-
-    #[test]
-    fn extract_id_codes_tap_bypass_tap() {
-        let mut dr = bitvec![u8, Lsb0; 0; 65];
-        dr[0..32].store_le(ARM_TAP.0);
-        dr.set(32, false);
-        dr[33..65].store_le(STM_BS_TAP.0);
-
-        let idcodes = jtag_util::extract_idcodes(&dr).unwrap();
-
-        assert_eq!(idcodes, vec![Some(ARM_TAP), None, Some(STM_BS_TAP)]);
     }
 }

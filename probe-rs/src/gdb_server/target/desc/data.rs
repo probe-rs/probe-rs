@@ -69,6 +69,7 @@ impl TargetDescription {
             },
             CoreType::Armv8m => "armv8-m.main",
             CoreType::Riscv => "riscv:rv32",
+            CoreType::Xtensa => "xtensa",
         };
 
         Self {
@@ -242,6 +243,7 @@ pub fn build_target_description(
             _ => panic!("Inconsistent ISA for Armv8-a: {isa:#?}"),
         },
         CoreType::Riscv => build_riscv_registers(&mut desc, regs),
+        CoreType::Xtensa => build_xtensa_registers(&mut desc, regs),
     };
 
     desc
@@ -267,7 +269,7 @@ fn build_aarch64_registers(desc: &mut TargetDescription, regs: &CoreRegisters) {
     // AArch64 always has FP support
     desc.add_gdb_feature("org.gnu.gdb.aarch64.fpu");
     desc.add_registers(regs.fpu_registers().unwrap());
-    desc.add_register(regs.other_by_name("FPCR").unwrap());
+    desc.add_register(regs.other_by_name("Floating Point Control").unwrap());
     desc.add_register(regs.fpsr().unwrap());
 
     // GDB expects PSTATE to be called CPSR, even though that's the old v7 name
@@ -338,4 +340,8 @@ fn build_cortex_m_registers(desc: &mut TargetDescription, regs: &CoreRegisters) 
 
     desc.update_register_type("SP", "data_ptr");
     desc.update_register_type("PC", "code_ptr");
+}
+
+fn build_xtensa_registers(_desc: &mut TargetDescription, _regs: &CoreRegisters) {
+    todo!()
 }

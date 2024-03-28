@@ -14,15 +14,17 @@ jobs:
   changelog:
     name: Changelog
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
 
-      - name: Check that changelog updated
-        uses: dangoslen/changelog-enforcer@v3
+      - uses: swatinem/rust-cache@v2
         with:
-          changeLogPath: CHANGELOG.md
-          skipLabels: 'needs-changelog, skip-changelog'
-          missingUpdateErrorMessage: 'Please add a changelog entry in the CHANGELOG.md file.'
+          cache-on-failure: "true"
+
+      - name: Check that fragments are valid
+        run:  cargo xtask check-changelog
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.number }}

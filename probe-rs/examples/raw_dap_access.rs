@@ -1,14 +1,16 @@
 use anyhow::Result;
 use probe_rs::{
     architecture::arm::{sequences::DefaultArmSequence, ApAddress, DpAddress},
-    Probe,
+    probe::list::Lister,
 };
 
 fn main() -> Result<()> {
     pretty_env_logger::init();
 
+    let lister = Lister::new();
+
     // Get a list of all available debug probes.
-    let probes = Probe::list_all();
+    let probes = lister.list_all();
 
     // Use the first probe found.
     let mut probe = probes[0].open()?;
@@ -17,7 +19,7 @@ fn main() -> Result<()> {
     let iface = probe.try_into_arm_interface().unwrap();
 
     let mut iface = iface
-        .initialize(DefaultArmSequence::create())
+        .initialize(DefaultArmSequence::create(), DpAddress::Default)
         .map_err(|(_interface, e)| e)?;
 
     // This is an example on how to do a "recover" operation (erase+unlock a locked chip)

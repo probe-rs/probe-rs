@@ -1,48 +1,55 @@
 use std::time::Duration;
 
 use anyhow::Result;
+use linkme::distributed_slice;
 use probe_rs::{
-    config::MemoryRegion, Architecture, BreakpointCause, Core, CoreStatus, DebugProbeError, Error,
-    HaltReason, MemoryInterface,
+    config::MemoryRegion, probe::DebugProbeError, Architecture, BreakpointCause, Core, CoreStatus,
+    Error, HaltReason, MemoryInterface,
 };
+
+use crate::{TestTracker, CORE_TESTS};
 
 const TEST_CODE: &[u8] = include_bytes!("test_arm.bin");
 
-pub fn test_stepping(core: &mut Core, memory_regions: &[MemoryRegion]) -> Result<()> {
+#[distributed_slice(CORE_TESTS)]
+fn test_stepping(_tracker: &TestTracker, core: &mut Core) -> Result<(), probe_rs::Error> {
     println!("Testing stepping...");
 
     if core.architecture() == Architecture::Riscv {
-        // Not implemented for RISCV yet
+        // Not implemented for RISC-V yet
         return Ok(());
     }
 
-    let ram_region = memory_regions.iter().find_map(|region| match region {
-        MemoryRegion::Ram(ram) => Some(ram),
-        _ => None,
-    });
+    let ram_region = core.memory_regions().find_map(MemoryRegion::as_ram_region);
 
     let ram_region = if let Some(ram_region) = ram_region {
         ram_region.clone()
     } else {
-        anyhow::bail!("No RAM configured for core!");
+        return Err(probe_rs::Error::Other(anyhow::anyhow!(
+            "No RAM configured for core!"
+        )));
     };
 
-    core.halt(Duration::from_millis(100))?;
+    core.reset_and_halt(Duration::from_millis(100))?;
 
     let code_load_address = ram_region.range.start;
 
     core.write_8(code_load_address, TEST_CODE)?;
 
     let registers = core.registers();
-
-    core.write_core_reg(core.program_counter(), code_load_address)?;
+    core.write_core_reg(registers.pc().unwrap(), code_load_address)?;
 
     let core_information = core.step()?;
 
-    assert_eq!(core_information.pc, code_load_address + 2);
+    let expected_pc = code_load_address + 2;
 
     let core_status = core.status()?;
 
+    assert_eq!(
+        core_information.pc, expected_pc,
+        "After stepping, PC should be at 0x{:08x}, but is at 0x{:08x}. Core state: {:?}",
+        expected_pc, core_information.pc, core_status
+    );
     if core_status != CoreStatus::Halted(HaltReason::Step) {
         log::warn!("Unexpected core status: {:?}!", core_status);
     }
@@ -76,7 +83,7 @@ pub fn test_stepping(core: &mut Core, memory_regions: &[MemoryRegion]) -> Result
 
             println!("$r2 = {r2_val:#08x}");
         }
-        Err(other) => anyhow::bail!(other),
+        Err(other) => return Err(other),
     }
 
     println!("Core halted again!");
@@ -121,7 +128,7 @@ pub fn test_stepping(core: &mut Core, memory_regions: &[MemoryRegion]) -> Result
 
             println!("$r2 = {r2_val:#08x}");
         }
-        Err(other) => anyhow::bail!(other),
+        Err(other) => return Err(other),
     }
 
     let core_status = core.status()?;

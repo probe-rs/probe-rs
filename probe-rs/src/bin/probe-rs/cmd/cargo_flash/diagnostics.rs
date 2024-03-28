@@ -148,7 +148,7 @@ pub(crate) fn render_diagnostics(error: OperationError) {
                 vec![
                     "Did you spell the name of your chip correctly? Capitalization does not matter."
                         .into(),
-                    "Maybe your chip is not supported yet. You could add it yourself with our tool here: https://github.com/probe-rs/target-gen.".into(),
+                    "Maybe your chip is not supported yet. You could add it yourself with our tool here: https://github.com/probe-rs/probe-rs/tree/master/target-gen.".into(),
                     "You can list all the available chips by running `probe-rs chip list`.".into(),
                 ],
             ),
@@ -289,7 +289,7 @@ fn generate_flash_error_hints(
                     // Check if the chip specification was unique
                     let matching_chips = probe_rs::config::search_chips(target_spec).unwrap();
 
-                    log::info!(
+                    tracing::info!(
                         "Searching for all chips for spec '{}', found {}",
                         target_spec,
                         matching_chips.len()

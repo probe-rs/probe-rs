@@ -36,7 +36,7 @@ pub trait MemoryMappedRegister<T>: Clone + From<T> + Into<T> + Sized + std::fmt:
 /// use probe_rs::memory_mapped_bitfield_register;
 /// memory_mapped_bitfield_register! {
 ///    /// Abstract Control and Status (see section xyz of some reference manual)
-///    pub struct Abstractcs(u32);
+///    pub struct AbstractCS(u32);
 ///    0x16,"abstractcs",
 ///    impl From;
 ///    progbufsize, _: 28, 24;
@@ -45,7 +45,7 @@ pub trait MemoryMappedRegister<T>: Clone + From<T> + Into<T> + Sized + std::fmt:
 ///    datacount, _: 3, 0;
 /// }
 /// ```
-/// This will generate a struct with the name `Abstractcs`, which has:
+/// This will generate a struct with the name `AbstractCS`, which has:
 /// - A `pub` visibility.
 /// - A `u32` register type.
 /// - A `Debug` implementation.
@@ -54,7 +54,7 @@ pub trait MemoryMappedRegister<T>: Clone + From<T> + Into<T> + Sized + std::fmt:
 /// - Default `From<u32>` and `From<MemoryMappedRegister>` impls for [`MemoryMappedRegister`] are generated.
 /// - A `bitfield!` mapping for the fields `progbufsize`, `busy`, `cmderr`, `datacount`.
 /// - `bitfield!` getters and setters for the fields as defined - See [`bitfield::bitfield!`] for more information.
-/// - A `const ADDRESS: u64 = 0x16;`.
+/// - A `const ADDRESS_OFFSET: u64 = 0x16;`.
 /// - A `const NAME: &'static str = "abstractcs";`.
 macro_rules! memory_mapped_bitfield_register {
     ($(#[$outer:meta])* $visibility:vis struct $struct_name:ident($reg_type:ty); $addr:expr, $reg_name:expr, impl From; $($rest:tt)*) => {
@@ -77,15 +77,15 @@ macro_rules! memory_mapped_bitfield_register {
     ($(#[$outer:meta])* $vis_modifier:vis struct $struct_name:ident($reg_type:ty); $addr:expr, $reg_name:expr, $($rest:tt)*) => {
         // Using paste here, because as of bitfield = "0.14.0" they do not use the 'vis' specifier, and balks at being passed a visibility token.
         paste::paste!{
-        bitfield::bitfield!{
-            $(#[$outer])*
-            #[doc= concat!("A [`bitfield::bitfield!`] register mapping for the register `",  $reg_name, "` located at address `", stringify!($addr), "`.")]
-            #[derive(Copy, Clone)]
-            $vis_modifier struct $struct_name($reg_type);
-            impl Debug;
-            $($rest)*
+            bitfield::bitfield!{
+                $(#[$outer])*
+                #[doc= concat!("A [`bitfield::bitfield!`] register mapping for the register `",  $reg_name, "` located at address `", stringify!($addr), "`.")]
+                #[derive(Copy, Clone)]
+                $vis_modifier struct $struct_name($reg_type);
+                impl Debug;
+                $($rest)*
+            }
         }
-    }
 
         impl $crate::MemoryMappedRegister<$reg_type> for $struct_name {
             const ADDRESS_OFFSET: u64 = $addr;

@@ -20,7 +20,8 @@ pub fn cmd_elf(
     update: bool,
     name: Option<String>,
 ) -> Result<()> {
-    let elf_file = File::open(file)?;
+    let elf_file =
+        File::open(file).with_context(|| format!("Failed to open ELF file {}", file.display()))?;
 
     let mut algorithm = extract_flash_algo(elf_file, file, true, fixed_load_address)?;
 
@@ -87,6 +88,7 @@ pub fn cmd_elf(
                     }),
                 }],
                 part: None,
+                svd: None,
                 name: "<chip name>".to_owned(),
                 memory_map: vec![
                     MemoryRegion::Nvm(NvmRegion {
@@ -94,6 +96,7 @@ pub fn cmd_elf(
                         range: 0..0x2000,
                         cores: vec!["main".to_owned()],
                         name: None,
+                        is_alias: false,
                     }),
                     MemoryRegion::Ram(RamRegion {
                         is_boot_memory: true,
@@ -104,7 +107,8 @@ pub fn cmd_elf(
                 ],
                 flash_algorithms: vec![algorithm_name],
                 rtt_scan_ranges: None,
-                scan_chain: None,
+                jtag: None,
+                default_binary_format: None,
             }],
             flash_algorithms: vec![algorithm],
             source: BuiltIn,

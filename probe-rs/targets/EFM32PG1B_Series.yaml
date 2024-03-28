@@ -1,0 +1,302 @@
+name: EFM32PG1B Series
+generated_from_pack: true
+pack_file_release: 4.3.0
+variants:
+- name: EFM32PG1B100F128GM32
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - geckop2
+- name: EFM32PG1B100F128IM32
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - geckop2
+- name: EFM32PG1B100F256GM32
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - geckop2
+- name: EFM32PG1B100F256IM32
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - geckop2
+- name: EFM32PG1B200F128GM32
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - geckop2
+- name: EFM32PG1B200F128GM48
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - geckop2
+- name: EFM32PG1B200F128IM32
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - geckop2
+- name: EFM32PG1B200F256GM32
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - geckop2
+- name: EFM32PG1B200F256GM48
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - geckop2
+- name: EFM32PG1B200F256IM32
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - geckop2
+- name: EFM32PG1B200F256IM48
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - geckop2
+flash_algorithms:
+- name: geckop2
+  description: EFM32/EFR32 Gecko P2
+  default: true
+  instructions: QLpwR8C6cEdP6jAAcEcAAHC1WUtZTG/wAgXiaRLwFg8N0KBoIPABAKBgkAcC1W/wAQBwvVAHCdVP8P8wcL0CQIpCAdEAIHC9Wx7m0ShGcL1KSUH2cTAIZAAgcEdHSIFoIfABAYFgACBwRxC1Q0ygaEDwAQCgYEbyGjBgZaAVAPB1+AAhYWWhaCHwAQGhYAAoANABIBC9cLUERgAjT/QAYQTICR8C8QECAtAAKvjQAOBqsTJNqGhA8AEAqGAsYQMgAPBU+ANGqGgg8AEAqGALsQEgcL0AIHC9LenwTYBGJ0jJHCHwAwaBaJJGQfABAYFgg0Yx4Aj1AGDBCskCoesIB0BGt0IA2TdGAUZYRsv4EBDa+AAQy/gYEBEhCvEEBcv4DBA8HwngCCEIRv/3cf9guQLNWEbL+BgQJB8ALPPRBCHBYAAhASD/92P/ELEBIL3o8I26RLhE9hsALsvR2/gIECHwAQHL+AgQACDw5wNJyGAAIQEgTOcAAICWmAAAAA5AAAAAAA==
+  load_address: 0x20000020
+  pc_init: 0x51
+  pc_uninit: 0x5d
+  pc_program_page: 0xd9
+  pc_erase_sector: 0x97
+  pc_erase_all: 0x6b
+  data_section_offset: 0x180
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x40000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 260
+    erase_sector_timeout: 200
+    sectors:
+    - size: 0x800
+      address: 0x0

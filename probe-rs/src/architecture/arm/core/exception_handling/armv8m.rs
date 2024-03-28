@@ -2,7 +2,7 @@ use crate::{
     core::{ExceptionInfo, ExceptionInterface},
     debug::DebugRegisters,
     memory::MemoryInterface,
-    memory_mapped_bitfield_register, CoreInterface, Error, MemoryMappedRegister, RegisterValue,
+    memory_mapped_bitfield_register, Error, MemoryMappedRegister, RegisterValue,
 };
 use bitfield::bitfield;
 
@@ -16,9 +16,9 @@ bitfield! {
     is_exception_flag, _: 31, 24;
     /// Indicates whether to restore registers from the secure stack or the unsecure stack
     use_secure_stack, _:6;
-    /// Indicates wheteher the default stacking rules apply or the callee registers are already on the stack
+    /// Indicates whether the default stacking rules apply or the callee registers are already on the stack
     use_default_register_stacking, _:5;
-    /// Defines whether the stack frame for this exception has space allocated for FPU state information. Bit [4] is 0 if stack space is the exended frame that includes FPU registes.
+    /// Defines whether the stack frame for this exception has space allocated for FPU state information. Bit [4] is 0 if stack space is the extended frame that includes FPU registers.
     use_standard_stackframe, _: 4;
     /// Indicates whether the return mode is Handler (0) or Thread (1)
     mode, _: 3;
@@ -85,10 +85,7 @@ memory_mapped_bitfield_register! {
 
 impl Cfsr {
     /// Additional information about a Usage Fault, or Ok(None) if the fault was not a Usage Fault.
-    fn usage_fault_description<T: CoreInterface>(
-        &self,
-        _core: &mut T,
-    ) -> Result<Option<String>, Error> {
+    fn usage_fault_description(&self) -> Result<Option<String>, Error> {
         let source = if self.uf_coprocessor() {
             "Coprocessor access error"
         } else if self.uf_div_by_zero() {
@@ -109,9 +106,9 @@ impl Cfsr {
     }
 
     /// Additional information about a Bus Fault, or Ok(None) if the fault was not a Bus Fault.
-    fn bus_fault_description<T: CoreInterface>(
+    fn bus_fault_description(
         &self,
-        core: &mut T,
+        memory: &mut dyn MemoryInterface,
     ) -> Result<Option<String>, Error> {
         let source = if self.bf_exception_entry() {
             "Derived fault on exception entry"
@@ -133,7 +130,7 @@ impl Cfsr {
         Ok(Some(if self.bf_address_register_valid() {
             format!(
                 "BusFault ({source}) at location: {:#010x}",
-                core.read_word_32(Bfar::get_mmio_address())?
+                memory.read_word_32(Bfar::get_mmio_address())?
             )
         } else {
             format!("BusFault ({source})")
@@ -141,9 +138,9 @@ impl Cfsr {
     }
 
     /// Additional information about a MemManage Fault, or Ok(None) if the fault was not a MemManage Fault.
-    fn memory_management_fault_description<T: CoreInterface>(
+    fn memory_management_fault_description(
         &self,
-        core: &mut T,
+        memory: &mut dyn MemoryInterface,
     ) -> Result<Option<String>, Error> {
         let source = if self.mm_data_access_violation() {
             "Data access violation"
@@ -163,7 +160,7 @@ impl Cfsr {
         Ok(Some(if self.mm_address_register_valid() {
             format!(
                 "MemManage Fault({source}) at location: {:#010x}",
-                core.read_word_32(Mmfar::get_mmio_address())?
+                memory.read_word_32(Mmfar::get_mmio_address())?
             )
         } else {
             format!("MemManage Fault({source})")
@@ -196,9 +193,9 @@ memory_mapped_bitfield_register! {
 
 impl Sfsr {
     /// Additional information about a Secure Fault, or Ok(None) if the fault was not a Secure Fault.
-    fn secure_fault_description<T: CoreInterface>(
+    fn secure_fault_description(
         &self,
-        core: &mut T,
+        memory: &mut dyn MemoryInterface,
     ) -> Result<Option<String>, Error> {
         let source = if self.lazy_state_error() {
             "Fault occurred during lazy state activation or deactivation"
@@ -222,7 +219,7 @@ impl Sfsr {
         Ok(Some(if self.secure_fault_address_valid() {
             format!(
                 "SecureFault ({source}) at location: {:#010x}",
-                core.read_word_32(Sfar::get_mmio_address())?
+                memory.read_word_32(Sfar::get_mmio_address())?
             )
         } else {
             format!("SecureFault ({source})")
@@ -308,23 +305,23 @@ impl From<u32> for ExceptionReason {
 impl ExceptionReason {
     /// Expands the exception reason, by providing additional information about the exception from the
     /// HFSR, CFSR, and SFSR registers.
-    fn expanded_description<T: CoreInterface>(&self, core: &mut T) -> Result<String, Error> {
+    fn expanded_description(&self, memory: &mut dyn MemoryInterface) -> Result<String, Error> {
         match self {
             ExceptionReason::ThreadMode => Ok("No active exception.".to_string()),
             ExceptionReason::Reset => Ok("Reset handler.".to_string()),
             ExceptionReason::NonMaskableInterrupt => Ok("Non maskable interrupt.".to_string()),
             ExceptionReason::HardFault => {
-                let hfsr = Hfsr(core.read_word_32(Hfsr::get_mmio_address())?);
+                let hfsr = Hfsr(memory.read_word_32(Hfsr::get_mmio_address())?);
                 let description = if hfsr.debug_event() {
                     "Synchronous debug fault.".to_string()
                 } else if hfsr.escalation_forced() {
                     let description = "Escalated ";
-                    let cfsr = Cfsr(core.read_word_32(Cfsr::get_mmio_address())?);
-                    if let Some(source) = cfsr.usage_fault_description(core)? {
+                    let cfsr = Cfsr(memory.read_word_32(Cfsr::get_mmio_address())?);
+                    if let Some(source) = cfsr.usage_fault_description()? {
                         format!("{description}{source}")
-                    } else if let Some(source) = cfsr.bus_fault_description(core)? {
+                    } else if let Some(source) = cfsr.bus_fault_description(memory)? {
                         format!("{description}{source}")
-                    } else if let Some(source) = cfsr.memory_management_fault_description(core)? {
+                    } else if let Some(source) = cfsr.memory_management_fault_description(memory)? {
                         format!("{description}{source}")
                     } else {
                         format!("{description}from an unknown source")
@@ -337,8 +334,8 @@ impl ExceptionReason {
                 Ok(format!("HardFault handler. Cause: {description}."))
             }
             ExceptionReason::MemoryManagementFault => {
-                if let Some(source) = Cfsr(core.read_word_32(Cfsr::get_mmio_address())?)
-                    .usage_fault_description(core)?
+                if let Some(source) = Cfsr(memory.read_word_32(Cfsr::get_mmio_address())?)
+                    .usage_fault_description()?
                 {
                     Ok(source)
                 } else {
@@ -346,8 +343,8 @@ impl ExceptionReason {
                 }
             }
             ExceptionReason::BusFault => {
-                if let Some(source) = Cfsr(core.read_word_32(Cfsr::get_mmio_address())?)
-                    .bus_fault_description(core)?
+                if let Some(source) = Cfsr(memory.read_word_32(Cfsr::get_mmio_address())?)
+                    .bus_fault_description(memory)?
                 {
                     Ok(source)
                 } else {
@@ -355,8 +352,8 @@ impl ExceptionReason {
                 }
             }
             ExceptionReason::UsageFault => {
-                if let Some(source) = Cfsr(core.read_word_32(Cfsr::get_mmio_address())?)
-                    .usage_fault_description(core)?
+                if let Some(source) = Cfsr(memory.read_word_32(Cfsr::get_mmio_address())?)
+                    .usage_fault_description()?
                 {
                     Ok(source)
                 } else {
@@ -364,8 +361,8 @@ impl ExceptionReason {
                 }
             }
             ExceptionReason::SecureFault => {
-                if let Some(source) = Sfsr(core.read_word_32(Sfsr::get_mmio_address())?)
-                    .secure_fault_description(core)?
+                if let Some(source) = Sfsr(memory.read_word_32(Sfsr::get_mmio_address())?)
+                    .secure_fault_description(memory)?
                 {
                     Ok(source)
                 } else {
@@ -383,15 +380,18 @@ impl ExceptionReason {
         }
     }
 }
+pub struct ArmV8MExceptionHandler;
 
-impl<'probe> ExceptionInterface for crate::architecture::arm::core::armv8m::Armv8m<'probe> {
+impl ExceptionInterface for ArmV8MExceptionHandler {
     fn calling_frame_registers(
-        &mut self,
+        &self,
+        memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &crate::debug::DebugRegisters,
     ) -> Result<crate::debug::DebugRegisters, crate::Error> {
         let mut calling_stack_registers = vec![0u32; EXCEPTION_STACK_REGISTERS.len()];
         let stack_frame_return_address: u32 = get_stack_frame_return_address(stackframe_registers)?;
         let exc_return = ExcReturn(stack_frame_return_address);
+
         let sp_value = if exc_return.is_exception_flag() == 0xFF {
             let stack_info = (
                 exc_return.use_secure_stack(),
@@ -404,13 +404,27 @@ impl<'probe> ExceptionInterface for crate::architecture::arm::core::armv8m::Armv
                 (true, false) => 0b00011010,  // secure, main stack pointer
                 (true, true) => 0b00011011,   // secure, process stack pointer
             };
-            self.read_core_reg(sp_reg_id.into())?.try_into()?
+            stackframe_registers
+                .get_register(sp_reg_id.into())
+                .ok_or_else(|| {
+                    Error::Register(
+                        "No Stack Pointer register. Please report this as a bug.".to_string(),
+                    )
+                })?
+                .value
+                .ok_or_else(|| {
+                    Error::Register(
+                        "No value for Stack Pointer register. Please report this as a bug."
+                            .to_string(),
+                    )
+                })?
+                .try_into()?
         } else {
             stackframe_registers
                 .get_register_value_by_role(&crate::core::RegisterRole::StackPointer)?
         };
 
-        self.read_32(sp_value, &mut calling_stack_registers)?;
+        memory_interface.read_32(sp_value, &mut calling_stack_registers)?;
         let mut calling_frame_registers = stackframe_registers.clone();
         for (i, register_role) in EXCEPTION_STACK_REGISTERS.iter().enumerate() {
             calling_frame_registers
@@ -421,7 +435,8 @@ impl<'probe> ExceptionInterface for crate::architecture::arm::core::armv8m::Armv
     }
 
     fn exception_description(
-        &mut self,
+        &self,
+        memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &crate::debug::DebugRegisters,
     ) -> Result<String, crate::Error> {
         // Load the provided xPSR register as a bitfield.
@@ -434,12 +449,13 @@ impl<'probe> ExceptionInterface for crate::architecture::arm::core::armv8m::Armv
 
         Ok(format!(
             "{:?}",
-            ExceptionReason::from(exception_number).expanded_description(self)?
+            ExceptionReason::from(exception_number).expanded_description(memory_interface)?
         ))
     }
 
     fn exception_details(
-        &mut self,
+        &self,
+        memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &DebugRegisters,
     ) -> Result<Option<ExceptionInfo>, Error> {
         let stack_frame_return_address: u32 = get_stack_frame_return_address(stackframe_registers)?;
@@ -447,8 +463,9 @@ impl<'probe> ExceptionInterface for crate::architecture::arm::core::armv8m::Armv
             // This is an exception frame.
 
             Ok(Some(ExceptionInfo {
-                description: self.exception_description(stackframe_registers)?,
-                calling_frame_registers: self.calling_frame_registers(stackframe_registers)?,
+                description: self.exception_description(memory_interface, stackframe_registers)?,
+                calling_frame_registers: self
+                    .calling_frame_registers(memory_interface, stackframe_registers)?,
             }))
         } else {
             // This is a normal function return.

@@ -3,30 +3,33 @@ use super::{
     session_data::SessionData,
     startup::{get_file_timestamp, TargetSessionType},
 };
-use crate::cmd::dap_server::{
-    debug_adapter::{
-        dap::{
-            adapter::{get_arguments, DebugAdapter},
-            dap_types::{
-                Capabilities, Event, ExitedEventBody, InitializeRequestArguments, MessageSeverity,
-                Request, RttWindowOpenedArguments, TerminatedEventBody,
+use crate::{
+    cmd::dap_server::{
+        debug_adapter::{
+            dap::{
+                adapter::{get_arguments, DebugAdapter},
+                dap_types::{
+                    Capabilities, Event, ExitedEventBody, InitializeRequestArguments,
+                    MessageSeverity, Request, RttWindowOpenedArguments, TerminatedEventBody,
+                },
+                request_helpers::halt_core,
             },
-            request_helpers::halt_core,
+            protocol::ProtocolAdapter,
         },
-        protocol::ProtocolAdapter,
+        peripherals::svd_variables::SvdCache,
+        DebuggerError,
     },
-    peripherals::svd_variables::SvdCache,
-    DebuggerError,
+    util::flash::build_loader,
 };
 use anyhow::{anyhow, Context};
 use probe_rs::{
-    flashing::{download_file_with_options, DownloadOptions, FlashProgress},
+    flashing::{DownloadOptions, FileDownloadError, FlashProgress, ProgressEvent},
+    probe::list::Lister,
     Architecture, CoreStatus,
 };
 use std::{
     cell::RefCell,
     fs,
-    ops::Mul,
     path::Path,
     rc::Rc,
     thread,
@@ -35,7 +38,9 @@ use std::{
 use time::UtcOffset;
 
 #[derive(Clone, Debug, PartialEq)]
-/// The `DebuggerStatus` is used to control how the Debugger::debug_session() decides if it should respond to DAP Client requests such as `Terminate`, `Disconnect`, and `Reset`, as well as how to repond to unrecoverable errors during a debug session interacting with a target session.
+/// The `DebuggerStatus` is used to control how the Debugger::debug_session() decides if it should respond to
+/// DAP Client requests such as `Terminate`, `Disconnect`, and `Reset`, as well as how to respond to unrecoverable errors
+/// during a debug session interacting with a target session.
 pub(crate) enum DebugSessionStatus {
     Continue,
     Terminate,
@@ -43,8 +48,10 @@ pub(crate) enum DebugSessionStatus {
 }
 
 /// #Debugger Overview
-/// The DAP Server will usually be managed automatically by the VSCode client.
-/// The DAP Server can optionally be run from the command line as a "server" process.
+/// The DAP Server may either be managed automatically by the development tool (typically an IDE or
+/// editor the "DAP client") e.g. VSCode, or...
+/// The DAP Server can optionally be run from the command line as a "server" process, and the
+/// development tool can be configured to connect to it via a TCP connection.
 /// - In this case, the management (start and stop) of the server process is the responsibility of the user. e.g.
 ///   - `probe-rs dap-server --port <IP port number> <other options>` : Uses TCP Sockets to the defined IP port number to service DAP requests.
 pub struct Debugger {
@@ -73,7 +80,7 @@ impl Debugger {
 
     /// The logic of this function is as follows:
     /// - While we are waiting for DAP-Client, we have to continuously check in on the status of the probe.
-    /// - Initally, while [`DebugAdapter::configuration_done`] = `false`, we do nothing.
+    /// - Initially, while [`DebugAdapter::configuration_done`] = `false`, we do nothing.
     /// - Once [`DebugAdapter::configuration_done`] = `true`, we can start polling the probe for status, as follows:
     ///   - If the [`super::core_data::CoreData::last_known_status`] is `Halted(_)`, then we stop polling the Probe until the next DAP-Client request attempts an action
     ///   - If the `new_status` is an Err, then the probe is no longer available, and we  end the debugging session
@@ -169,11 +176,9 @@ impl Debugger {
                                     unhalt_me = true;
                                 }
                                 Err(error) => {
-                                    debug_adapter.send_response::<()>(
-                                        &request,
-                                        Err(DebuggerError::Other(anyhow!("{}", error))),
-                                    )?;
-                                    return Err(error.into());
+                                    let err = DebuggerError::from(error);
+                                    debug_adapter.send_response::<()>(&request, Err(&err))?;
+                                    return Err(err);
                                 }
                             }
                         }
@@ -191,16 +196,17 @@ impl Debugger {
                         {
                             let arguments: RttWindowOpenedArguments =
                                 get_arguments(debug_adapter, &request)?;
-                            debugger_rtt_target
+
+                            if let Some(rtt_channel) = debugger_rtt_target
                                 .debugger_rtt_channels
                                 .iter_mut()
                                 .find(|debugger_rtt_channel| {
                                     debugger_rtt_channel.channel_number == arguments.channel_number
                                 })
-                                .map_or(false, |rtt_channel| {
-                                    rtt_channel.has_client_window = arguments.window_is_open;
-                                    arguments.window_is_open
-                                });
+                            {
+                                rtt_channel.has_client_window = arguments.window_is_open;
+                            }
+
                             debug_adapter
                                 .send_response::<()>(&request, Ok(None))
                                 .map_err(|error| {
@@ -265,7 +271,7 @@ impl Debugger {
                         // Unimplemented command.
                         debug_adapter.send_response::<()>(
                             &request,
-                            Err(DebuggerError::Other(anyhow!("Received request '{}', which is not supported or not implemented yet", other_command))),)
+                            Err(&DebuggerError::Other(anyhow!("Received request '{}', which is not supported or not implemented yet", other_command))),)
                             .and(Ok(()))
                     }
                 };
@@ -297,6 +303,7 @@ impl Debugger {
         &mut self,
         mut debug_adapter: DebugAdapter<P>,
         log_info_message: &str,
+        lister: &Lister,
     ) -> Result<DebugSessionStatus, DebuggerError> {
         debug_adapter.log_to_console("Starting debug session...");
         debug_adapter.log_to_console(log_info_message);
@@ -312,14 +319,21 @@ impl Debugger {
             return Ok(DebugSessionStatus::Terminate);
         }
 
-        // Process either the Launch or Attach request.
-        let (mut debug_adapter, mut session_data) = match self.handle_launch_attach(debug_adapter) {
-            Ok((debug_adapter, session_data)) => (debug_adapter, session_data),
-            Err(_) => {
-                // The request handler has already reported this error to the user.
-                return Ok(DebugSessionStatus::Terminate);
+        let launch_attach_request = loop {
+            if let Some(request) = debug_adapter.listen_for_request()? {
+                break request;
             }
         };
+
+        // Process either the Launch or Attach request.
+        let (mut debug_adapter, mut session_data) =
+            match self.handle_launch_attach(&launch_attach_request, debug_adapter, lister) {
+                Ok((debug_adapter, session_data)) => (debug_adapter, session_data),
+                Err(_) => {
+                    // The request handler has already reported this error to the user.
+                    return Ok(DebugSessionStatus::Terminate);
+                }
+            };
 
         if debug_adapter
             .send_event::<Event>("initialized", None)
@@ -369,14 +383,10 @@ impl Debugger {
     /// Process launch or attach request
     fn handle_launch_attach<P: ProtocolAdapter + 'static>(
         &mut self,
+        launch_attach_request: &Request,
         mut debug_adapter: DebugAdapter<P>,
+        lister: &Lister,
     ) -> Result<(DebugAdapter<P>, SessionData), DebuggerError> {
-        let launch_attach_request = loop {
-            if let Some(request) = debug_adapter.listen_for_request()? {
-                break request;
-            }
-        };
-
         let requested_target_session_type = match launch_attach_request.command.as_str() {
             "attach" => TargetSessionType::AttachRequest,
             "launch" => TargetSessionType::LaunchRequest,
@@ -385,16 +395,14 @@ impl Debugger {
                     format!("Expected request 'launch' or 'attach', but received '{other}'");
 
                 debug_adapter.send_response::<()>(
-                    &launch_attach_request,
-                    Err(DebuggerError::Other(anyhow!(error_msg.clone()))),
+                    launch_attach_request,
+                    Err(&DebuggerError::Other(anyhow!(error_msg.clone()))),
                 )?;
                 return Err(DebuggerError::Other(anyhow!(error_msg)));
             }
         };
 
-        let arguments = get_arguments(&mut debug_adapter, &launch_attach_request)?;
-
-        self.config = configuration::SessionConfig { ..arguments };
+        self.config = get_arguments(&mut debug_adapter, launch_attach_request)?;
 
         if requested_target_session_type == TargetSessionType::AttachRequest {
             // Since VSCode doesn't do field validation checks for relationships in launch.json request types, check it here.
@@ -403,14 +411,12 @@ impl Debugger {
                 || self.config.flashing_config.full_chip_erase
                 || self.config.flashing_config.restore_unwritten_bytes
             {
-                debug_adapter.send_response::<()>(
-                                        &launch_attach_request,
-                                        Err(DebuggerError::Other(anyhow!(
-                                            "Please do not use any of the `flashing_enabled`, `reset_after_flashing`, halt_after_reset`, `full_chip_erase`, or `restore_unwritten_bytes` options when using `attach` request type."))),
-                                    )?;
+                let error = DebuggerError::Other(anyhow!(
+                                            "Please do not use any of the `flashing_enabled`, `reset_after_flashing`, halt_after_reset`, `full_chip_erase`, or `restore_unwritten_bytes` options when using `attach` request type."));
 
-                return Err(DebuggerError::Other(anyhow!(
-                                            "Please do not use any of the `flashing_enabled`, `reset_after_flashing`, halt_after_reset`, `full_chip_erase`, or `restore_unwritten_bytes` options when using `attach` request type.")));
+                debug_adapter.send_response::<()>(launch_attach_request, Err(&error))?;
+
+                return Err(error);
             }
         }
 
@@ -418,17 +424,20 @@ impl Debugger {
             .set_console_log_level(self.config.console_log_level.unwrap_or(ConsoleLog::Console));
 
         if let Err(e) = self.config.validate_config_files() {
-            let err = anyhow!("{e:?}");
+            debug_adapter.send_response::<()>(launch_attach_request, Err(&e))?;
 
-            debug_adapter.send_response::<()>(&launch_attach_request, Err(e))?;
-            return Err(err.into());
+            return Err(e);
         }
 
         let mut session_data =
-            SessionData::new(&mut self.config, self.timestamp_offset).or_else(|error| {
-                debug_adapter.show_error_message(&error)?;
-                Err(error)
-            })?;
+            match SessionData::new(lister, &mut self.config, self.timestamp_offset) {
+                Ok(session_data) => session_data,
+                Err(error) => {
+                    debug_adapter.send_response::<()>(launch_attach_request, Err(&error))?;
+
+                    return Err(error);
+                }
+            };
 
         debug_adapter.halt_after_reset = self.config.flashing_config.halt_after_reset;
 
@@ -438,10 +447,10 @@ impl Debugger {
                     "Cannot continue unless one target core configuration is defined."
                 ))
             })?;
+
             let Some(path_to_elf) = target_core_config.program_binary.clone() else {
                 let err =  DebuggerError::Other(anyhow!("Please specify use the `program-binary` option in `launch.json` to specify an executable"));
-
-                debug_adapter.show_error_message(&err)?;
+                debug_adapter.send_response::<()>(launch_attach_request, Err(&err))?;
                 return Err(err);
             };
 
@@ -480,18 +489,14 @@ impl Debugger {
         // Before we complete, load the (optional) CMSIS-SVD file and its variable cache.
         // Configure the [CorePeripherals].
         if let Some(svd_file) = &target_core_config.svd_file {
-            target_core.core_data.core_peripherals = match SvdCache::new(
-                svd_file,
-                &mut target_core.core,
-                &mut debug_adapter,
-                launch_attach_request.seq,
-            ) {
-                Ok(core_peripherals) => Some(core_peripherals),
-                Err(error) => {
-                    tracing::error!("{:?}", error);
-                    None
-                }
-            };
+            target_core.core_data.core_peripherals =
+                match SvdCache::new(svd_file, &mut debug_adapter, launch_attach_request.seq) {
+                    Ok(core_peripherals) => Some(core_peripherals),
+                    Err(error) => {
+                        tracing::error!("{:?}", error);
+                        None
+                    }
+                };
         }
 
         if requested_target_session_type == TargetSessionType::LaunchRequest {
@@ -507,7 +512,7 @@ impl Debugger {
 
         drop(target_core);
 
-        debug_adapter.send_response::<()>(&launch_attach_request, Ok(None))?;
+        debug_adapter.send_response::<()>(launch_attach_request, Ok(None))?;
 
         Ok((debug_adapter, session_data))
     }
@@ -621,7 +626,7 @@ impl Debugger {
                 let mut flash_progress = progress_state.borrow_mut();
                 let mut debug_adapter = rc_debug_adapter_clone.borrow_mut();
                 match event {
-                    probe_rs::flashing::ProgressEvent::Initialized { flash_layout } => {
+                    ProgressEvent::Initialized { flash_layout } => {
                         flash_progress.total_page_size =
                             flash_layout.pages().iter().map(|s| s.size() as usize).sum();
 
@@ -634,108 +639,93 @@ impl Debugger {
                         flash_progress.total_fill_size =
                             flash_layout.fills().iter().map(|s| s.size() as usize).sum();
                     }
-                    probe_rs::flashing::ProgressEvent::StartedFilling => {
+                    ProgressEvent::StartedFilling => {
                         debug_adapter
-                            .update_progress(Some(0.0), Some("Reading Old Pages ..."), id)
+                            .update_progress(None, Some("Reading Old Pages"), id)
                             .ok();
                     }
-                    probe_rs::flashing::ProgressEvent::PageFilled { size, .. } => {
+                    ProgressEvent::PageFilled { size, .. } => {
                         flash_progress.fill_size_done += size as usize;
                         let progress = flash_progress.fill_size_done as f64
                             / flash_progress.total_fill_size as f64;
 
                         debug_adapter
-                            .update_progress(
-                                Some(progress),
-                                Some(format!("Reading Old Pages ({progress})")),
-                                id,
-                            )
+                            .update_progress(Some(progress), Some("Reading Old Pages"), id)
                             .ok();
                     }
-                    probe_rs::flashing::ProgressEvent::FailedFilling => {
+                    ProgressEvent::FailedFilling => {
                         debug_adapter
                             .update_progress(Some(1.0), Some("Reading Old Pages Failed!"), id)
                             .ok();
                     }
-                    probe_rs::flashing::ProgressEvent::FinishedFilling => {
+                    ProgressEvent::FinishedFilling => {
                         debug_adapter
                             .update_progress(Some(1.0), Some("Reading Old Pages Complete!"), id)
                             .ok();
                     }
-                    probe_rs::flashing::ProgressEvent::StartedErasing => {
+                    ProgressEvent::StartedErasing => {
                         debug_adapter
-                            .update_progress(Some(0.0), Some("Erasing Sectors ..."), id)
+                            .update_progress(None, Some("Erasing Sectors"), id)
                             .ok();
                     }
-                    probe_rs::flashing::ProgressEvent::SectorErased { size, .. } => {
+                    ProgressEvent::SectorErased { size, .. } => {
                         flash_progress.sector_size_done += size as usize;
                         let progress = flash_progress.sector_size_done as f64
                             / flash_progress.total_sector_size as f64;
                         debug_adapter
-                            .update_progress(
-                                Some(progress),
-                                Some(format!("Erasing Sectors ({progress})")),
-                                id,
-                            )
+                            .update_progress(Some(progress), Some("Erasing Sectors"), id)
                             .ok();
                     }
-                    probe_rs::flashing::ProgressEvent::FailedErasing => {
+                    ProgressEvent::FailedErasing => {
                         debug_adapter
                             .update_progress(Some(1.0), Some("Erasing Sectors Failed!"), id)
                             .ok();
                     }
-                    probe_rs::flashing::ProgressEvent::FinishedErasing => {
+                    ProgressEvent::FinishedErasing => {
                         debug_adapter
                             .update_progress(Some(1.0), Some("Erasing Sectors Complete!"), id)
                             .ok();
                     }
-                    probe_rs::flashing::ProgressEvent::StartedProgramming => {
+                    ProgressEvent::StartedProgramming { length } => {
+                        flash_progress.total_page_size = length as usize;
                         debug_adapter
-                            .update_progress(Some(0.0), Some("Programming Pages ..."), id)
+                            .update_progress(None, Some("Programming Pages"), id)
                             .ok();
                     }
-                    probe_rs::flashing::ProgressEvent::PageProgrammed { size, .. } => {
+                    ProgressEvent::PageProgrammed { size, .. } => {
                         flash_progress.page_size_done += size as usize;
                         let progress = flash_progress.page_size_done as f64
                             / flash_progress.total_page_size as f64;
                         debug_adapter
-                            .update_progress(
-                                Some(progress),
-                                Some(format!(
-                                    "Programming Pages ({:02.0}%)",
-                                    progress.mul(100_f64)
-                                )),
-                                id,
-                            )
+                            .update_progress(Some(progress), Some("Programming Pages"), id)
                             .ok();
                     }
-                    probe_rs::flashing::ProgressEvent::FailedProgramming => {
+                    ProgressEvent::FailedProgramming => {
                         debug_adapter
                             .update_progress(Some(1.0), Some("Flashing Pages Failed!"), id)
                             .ok();
                     }
-                    probe_rs::flashing::ProgressEvent::FinishedProgramming => {
+                    ProgressEvent::FinishedProgramming => {
                         debug_adapter
                             .update_progress(Some(1.0), Some("Flashing Pages Complete!"), id)
                             .ok();
                     }
-                    probe_rs::flashing::ProgressEvent::DiagnosticMessage { .. } => (),
+                    ProgressEvent::DiagnosticMessage { .. } => (),
                 }
             })
         });
 
         download_options.progress = flash_progress;
 
-        let flash_result = download_file_with_options(
+        let loader = build_loader(
             &mut session_data.session,
             path_to_elf,
-            self.config
-                .flashing_config
-                .format_options
-                .clone()
-                .into_format()?,
-            download_options,
-        );
+            self.config.flashing_config.format_options.clone(),
+        )?;
+
+        let flash_result = loader
+            .commit(&mut session_data.session, download_options)
+            .map_err(FileDownloadError::Flash);
 
         debug_adapter = match Rc::try_unwrap(rc_debug_adapter) {
             Ok(debug_adapter) => debug_adapter.into_inner(),
@@ -774,12 +764,22 @@ impl Debugger {
         let initialize_arguments =
             get_arguments::<InitializeRequestArguments, _>(debug_adapter, &initialize_request)?;
 
+        // Enable quirks specific to particular DAP clients...
+        if let Some(client_id) = initialize_arguments.client_id {
+            if client_id == "vscode" {
+                tracing::info!(
+                    "DAP client reports its 'ClientID' is 'vscode', enabling vscode_quirks."
+                );
+                debug_adapter.vscode_quirks = true;
+            }
+        }
+
         if !(initialize_arguments.columns_start_at_1.unwrap_or(true)
             && initialize_arguments.lines_start_at_1.unwrap_or(true))
         {
             debug_adapter.send_response::<()>(
                 &initialize_request,
-                Err(DebuggerError::Other(anyhow!(
+                Err(&DebuggerError::Other(anyhow!(
                     "Unsupported Capability: Client requested column and row numbers start at 0."
                 ))),
             )?;
@@ -804,7 +804,6 @@ impl Debugger {
         let capabilities = Capabilities {
             supports_configuration_done_request: Some(true),
             supports_restart_request: Some(true),
-            support_terminate_debuggee: Some(true),
             support_suspend_debuggee: Some(true),
             supports_delayed_stack_trace_loading: Some(true),
             supports_read_memory_request: Some(true),
@@ -815,6 +814,7 @@ impl Debugger {
             supports_instruction_breakpoints: Some(true),
             supports_stepping_granularity: Some(true),
             supports_completions_request: Some(true),
+            support_terminate_debuggee: Some(true),
             // supports_value_formatting_options: Some(true),
             // supports_function_breakpoints: Some(true),
             // TODO: Use DEMCR register to implement exception breakpoints
@@ -830,7 +830,7 @@ impl Debugger {
 
 /// Wait for the next request with the given command.
 ///
-/// If the next request doesn *not* have the given command,
+/// If the next request does *not* have the given command,
 /// the function returns an error.
 fn expect_request<P: ProtocolAdapter>(
     debug_adapter: &mut DebugAdapter<P>,
@@ -847,12 +847,11 @@ fn expect_request<P: ProtocolAdapter>(
     } else {
         debug_adapter.send_response::<()>(
             &next_request,
-            Err(anyhow!(
+            Err(&DebuggerError::Other(anyhow!(
                 "Initial command was '{}', expected '{}'",
                 next_request.command,
                 expected_command
-            )
-            .into()),
+            ))),
         )?;
 
         Err(DebuggerError::Other(anyhow!(
@@ -890,5 +889,868 @@ pub(crate) fn is_file_newer(
             .ok()
             .flatten();
         true
+    }
+}
+
+#[cfg(test)]
+mod test {
+    #![allow(clippy::unwrap_used, clippy::panic)]
+
+    use core::panic;
+    use std::collections::{BTreeMap, HashMap, VecDeque};
+    use std::fmt::Display;
+    use std::path::PathBuf;
+
+    use probe_rs::architecture::arm::ApAddress;
+    use probe_rs::probe::{
+        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeFactory,
+    };
+    use probe_rs::{
+        integration::{FakeProbe, Operation},
+        probe::list::Lister,
+    };
+    use serde_json::json;
+    use time::UtcOffset;
+
+    use crate::cmd::dap_server::{
+        debug_adapter::{
+            dap::{
+                adapter::DebugAdapter,
+                dap_types::{
+                    Capabilities, DisconnectArguments, ErrorResponseBody,
+                    InitializeRequestArguments, Message, Request, Response, Thread,
+                    ThreadsResponseBody,
+                },
+            },
+            protocol::ProtocolAdapter,
+        },
+        server::{
+            configuration::{ConsoleLog, CoreConfig, FlashingConfig, SessionConfig},
+            debugger::DebugSessionStatus,
+        },
+        test::TestLister,
+    };
+
+    #[derive(Debug)]
+    struct MockProbeFactory;
+
+    impl Display for MockProbeFactory {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.write_str("Mocked Probe")
+        }
+    }
+
+    impl ProbeFactory for MockProbeFactory {
+        fn open(
+            &self,
+            _selector: &DebugProbeSelector,
+        ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
+            todo!()
+        }
+
+        fn list_probes(&self) -> Vec<DebugProbeInfo> {
+            todo!()
+        }
+    }
+
+    /// Helper function to get the expected capabilities for the debugger
+    ///
+    /// `Capabilities::default()` is not const, so this can't just be a constant.
+    fn expected_capabilites() -> Capabilities {
+        Capabilities {
+            support_suspend_debuggee: Some(true),
+            supports_clipboard_context: Some(true),
+            supports_completions_request: Some(true),
+            supports_configuration_done_request: Some(true),
+            supports_delayed_stack_trace_loading: Some(true),
+            supports_disassemble_request: Some(true),
+            supports_instruction_breakpoints: Some(true),
+            supports_read_memory_request: Some(true),
+            supports_write_memory_request: Some(true),
+            supports_restart_request: Some(true),
+            supports_set_variable: Some(true),
+            supports_stepping_granularity: Some(true),
+            support_terminate_debuggee: Some(true),
+
+            ..Default::default()
+        }
+    }
+
+    fn default_initialize_args() -> InitializeRequestArguments {
+        InitializeRequestArguments {
+            client_id: Some("mock_client".to_owned()),
+            client_name: Some("Mock client for testing".to_owned()),
+            adapter_id: "mock_adapter".to_owned(),
+            columns_start_at_1: None,
+            lines_start_at_1: None,
+            locale: None,
+            path_format: None,
+            supports_args_can_be_interpreted_by_shell: None,
+            supports_invalidated_event: None,
+            supports_memory_event: None,
+            supports_memory_references: None,
+            supports_progress_reporting: None,
+            supports_run_in_terminal_request: None,
+            supports_start_debugging_request: None,
+            supports_variable_paging: None,
+            supports_variable_type: None,
+        }
+    }
+
+    fn error_message(msg: &str) -> Message {
+        Message {
+            format: "{response_message}".to_string(),
+            id: 0,
+            send_telemetry: Some(false),
+            show_user: Some(true),
+            url: Some("https://probe.rs/docs/tools/debugger/".to_string()),
+            url_label: Some("Documentation".to_string()),
+            variables: Some(BTreeMap::from([(
+                "response_message".to_string(),
+                msg.to_string(),
+            )])),
+        }
+    }
+
+    struct RequestBuilder<'r> {
+        adapter: &'r mut MockProtocolAdapter,
+    }
+
+    impl<'r> RequestBuilder<'r> {
+        fn with_arguments(self, arguments: impl serde::Serialize) -> Self {
+            self.adapter.requests.back_mut().unwrap().arguments =
+                Some(serde_json::to_value(arguments).unwrap());
+            self
+        }
+
+        fn and_succesful_response(self) -> ResponseBuilder<'r> {
+            let req = self.adapter.requests.back_mut().unwrap();
+
+            let response = Response {
+                command: req.command.clone(),
+                request_seq: req.seq,
+                seq: 0, // response sequence number is not checked
+                success: true,
+                message: None,
+                body: None,
+                type_: "response".to_string(),
+            };
+
+            self.adapter.expect_response(response)
+        }
+
+        fn and_error_response(self) -> ResponseBuilder<'r> {
+            let req = self.adapter.requests.back_mut().unwrap();
+
+            let response = Response {
+                command: req.command.clone(),
+                request_seq: req.seq,
+                seq: 0, // response sequence number is not checked
+                success: false,
+                message: Some("cancelled".to_string()), // Currently always 'cancelled'
+                body: None,
+                type_: "response".to_string(),
+            };
+
+            self.adapter.expect_error_response(response)
+        }
+    }
+
+    struct ResponseBuilder<'r> {
+        adapter: &'r mut MockProtocolAdapter,
+    }
+    impl ResponseBuilder<'_> {
+        fn with_body(self, body: impl serde::Serialize) {
+            let resp = self.adapter.expected_responses.last_mut().unwrap();
+            resp.body = Some(serde_json::to_value(body).unwrap());
+        }
+    }
+
+    use super::Debugger;
+
+    struct MockProtocolAdapter {
+        requests: VecDeque<Request>,
+
+        pending_requests: HashMap<i64, String>,
+
+        sequence_number: i64,
+
+        console_log_level: ConsoleLog,
+
+        response_index: usize,
+        expected_responses: Vec<Response>,
+
+        event_index: usize,
+        expected_events: Vec<(String, Option<serde_json::Value>)>,
+    }
+
+    impl MockProtocolAdapter {
+        fn new() -> Self {
+            Self {
+                requests: VecDeque::new(),
+                sequence_number: 0,
+                pending_requests: HashMap::new(),
+                console_log_level: ConsoleLog::Console,
+                response_index: 0,
+                expected_responses: Vec::new(),
+                expected_events: Vec::new(),
+                event_index: 0,
+            }
+        }
+
+        fn add_request<'m>(&'m mut self, command: &str) -> RequestBuilder<'m> {
+            let request = Request {
+                arguments: None,
+                command: command.to_string(),
+                seq: self.sequence_number,
+                type_: "request".to_string(),
+            };
+
+            self.pending_requests
+                .insert(self.sequence_number, command.to_string());
+
+            self.sequence_number += 1;
+
+            self.requests.push_back(request);
+
+            RequestBuilder { adapter: self }
+        }
+
+        fn expect_response(&mut self, response: Response) -> ResponseBuilder {
+            assert!(
+                response.success,
+                "success field must be true for succesful response"
+            );
+            self.expected_responses.push(response);
+            ResponseBuilder { adapter: self }
+        }
+
+        fn expect_error_response(&mut self, response: Response) -> ResponseBuilder {
+            assert!(
+                !response.success,
+                "success field must be false for error response"
+            );
+            self.expected_responses.push(response);
+            ResponseBuilder { adapter: self }
+        }
+
+        fn expect_event(&mut self, event_type: &str, event_body: Option<impl serde::Serialize>) {
+            let event_body = event_body.map(|s| serde_json::to_value(s).unwrap());
+
+            self.expected_events
+                .push((event_type.to_owned(), event_body));
+        }
+
+        fn expect_output_event(&mut self, msg: &str) {
+            self.expect_event(
+                "output",
+                Some(json!({
+                    "category": "console",
+                    "group": "probe-rs-debug",
+                    "output":  msg
+                })),
+            );
+        }
+    }
+
+    impl ProtocolAdapter for MockProtocolAdapter {
+        fn listen_for_request(&mut self) -> anyhow::Result<Option<Request>> {
+            let next_request = self
+                .requests
+                .pop_front()
+                .ok_or_else(|| anyhow::anyhow!("No more responses to listen for."))?;
+
+            Ok(Some(next_request))
+        }
+
+        fn send_event<S: serde::Serialize>(
+            &mut self,
+            event_type: &str,
+            event_body: Option<S>,
+        ) -> anyhow::Result<()> {
+            let event_body = event_body.map(|s| serde_json::to_value(s).unwrap());
+
+            if self.event_index >= self.expected_events.len() {
+                panic!(
+                    "No more events expected, but got event_type={:?}, event_body={:?}",
+                    event_type, event_body
+                );
+            }
+
+            let (expected_event_type, expected_event_body) =
+                &self.expected_events[self.event_index];
+
+            pretty_assertions::assert_eq!(
+                (event_type, &event_body),
+                (expected_event_type.as_str(), expected_event_body)
+            );
+
+            self.event_index += 1;
+
+            Ok(())
+        }
+
+        fn set_console_log_level(
+            &mut self,
+            _log_level: crate::cmd::dap_server::server::configuration::ConsoleLog,
+        ) {
+        }
+
+        fn console_log_level(&self) -> crate::cmd::dap_server::server::configuration::ConsoleLog {
+            self.console_log_level
+        }
+
+        fn send_raw_response(&mut self, response: &Response) -> anyhow::Result<()> {
+            if self.response_index >= self.expected_responses.len() {
+                panic!("No more responses expected, but got {response:?}");
+            }
+
+            let expected_response = &self.expected_responses[self.response_index];
+
+            // We don't check the sequence number of the response
+
+            let response = Response {
+                seq: expected_response.seq,
+                ..response.clone()
+            };
+
+            pretty_assertions::assert_eq!(&response, expected_response);
+
+            self.response_index += 1;
+
+            Ok(())
+        }
+
+        fn remove_pending_request(&mut self, request_seq: i64) -> Option<String> {
+            self.pending_requests.remove(&request_seq)
+        }
+    }
+
+    #[test]
+    fn test_initalize_request() {
+        let mut protocol_adapter = MockProtocolAdapter::new();
+
+        protocol_adapter
+            .add_request("initialize")
+            .with_arguments(default_initialize_args())
+            .and_succesful_response()
+            .with_body(expected_capabilites());
+
+        protocol_adapter.expect_output_event("Starting debug session...\n");
+        protocol_adapter.expect_output_event("Some message?\n");
+
+        let debug_adapter = DebugAdapter::new(protocol_adapter);
+
+        let mut debugger = Debugger::new(UtcOffset::UTC);
+
+        let lister = Lister::with_lister(Box::new(TestLister::new()));
+
+        // TODO: Check proper return value
+        debugger
+            .debug_session(debug_adapter, "Some message?", &lister)
+            .unwrap_err();
+    }
+
+    #[test]
+    fn test_launch_no_probes() {
+        let mut protocol_adapter = MockProtocolAdapter::new();
+
+        protocol_adapter
+            .add_request("initialize")
+            .with_arguments(default_initialize_args())
+            .and_succesful_response()
+            .with_body(expected_capabilites());
+
+        protocol_adapter.expect_output_event("Starting debug session...\n");
+        protocol_adapter.expect_output_event("initial info message\n");
+
+        let launch_args = SessionConfig::default();
+
+        let args = serde_json::to_value(launch_args).unwrap();
+
+        protocol_adapter
+            .add_request("launch")
+            .with_arguments(args)
+            .and_error_response()
+            .with_body(ErrorResponseBody {
+                error: Some(Message {
+                    format: "{response_message}".to_string(),
+                    id: 0,
+                    send_telemetry: Some(false),
+                    show_user: Some(true),
+                    url: Some("https://probe.rs/docs/tools/debugger/".to_string()),
+                    url_label: Some("Documentation".to_string()),
+                    variables: Some(BTreeMap::from([(
+                        "response_message".to_string(),
+                        "No connected probes were found.".to_string(),
+                    )])),
+                }),
+            });
+
+        protocol_adapter.expect_output_event("No connected probes were found.\n");
+
+        let debug_adapter = DebugAdapter::new(protocol_adapter);
+
+        let mut debugger = Debugger::new(UtcOffset::UTC);
+
+        let lister = Lister::with_lister(Box::new(TestLister::new()));
+
+        let status = debugger
+            .debug_session(debug_adapter, "initial info message", &lister)
+            .unwrap();
+
+        assert_eq!(status, DebugSessionStatus::Terminate);
+    }
+
+    #[test]
+    fn test_launch_and_terminate() {
+        let manifest_dir = PathBuf::from(std::env!("CARGO_MANIFEST_DIR"));
+
+        let debug_info = manifest_dir.join("tests/debug-unwind-tests/nRF52833_xxAA.elf");
+
+        let mut protocol_adapter = MockProtocolAdapter::new();
+
+        protocol_adapter
+            .add_request("initialize")
+            .with_arguments(default_initialize_args())
+            .and_succesful_response()
+            .with_body(expected_capabilites());
+
+        protocol_adapter.expect_output_event("Starting debug session...\n");
+        protocol_adapter.expect_output_event("initial info message\n");
+
+        let launch_args = SessionConfig {
+            chip: Some("nrf52833_xxaa".to_owned()),
+            core_configs: vec![CoreConfig {
+                core_index: 0,
+                program_binary: Some(debug_info),
+                ..CoreConfig::default()
+            }],
+            ..SessionConfig::default()
+        };
+
+        protocol_adapter
+            .add_request("launch")
+            .with_arguments(launch_args)
+            .and_succesful_response();
+
+        protocol_adapter.expect_event("initialized", None::<u32>);
+
+        protocol_adapter
+            .add_request("disconnect")
+            .with_arguments(DisconnectArguments {
+                restart: Some(false),
+                suspend_debuggee: Some(false),
+                terminate_debuggee: Some(false),
+            })
+            .and_succesful_response();
+
+        let debug_adapter = DebugAdapter::new(protocol_adapter);
+
+        let mut debugger = Debugger::new(UtcOffset::UTC);
+
+        let lister = TestLister::new();
+
+        let probe_info = DebugProbeInfo::new(
+            "Mock probe",
+            0x12,
+            0x23,
+            Some("mock_serial".to_owned()),
+            &MockProbeFactory,
+            None,
+        );
+
+        let fake_probe = FakeProbe::with_mocked_core();
+
+        // Indicate that the core is unlocked
+        fake_probe.expect_operation(Operation::ReadRawApRegister {
+            ap: ApAddress::with_default_dp(1),
+            address: 0xC,
+            result: 1,
+        });
+
+        lister.probes.borrow_mut().push((probe_info, fake_probe));
+
+        let lister = Lister::with_lister(Box::new(lister));
+
+        let status = debugger
+            .debug_session(debug_adapter, "initial info message", &lister)
+            .unwrap();
+
+        assert_eq!(status, DebugSessionStatus::Terminate);
+    }
+
+    #[test]
+    fn launch_with_config_error() {
+        let mut protocol_adapter = MockProtocolAdapter::new();
+
+        protocol_adapter
+            .add_request("initialize")
+            .with_arguments(default_initialize_args())
+            .and_succesful_response()
+            .with_body(expected_capabilites());
+
+        protocol_adapter.expect_output_event("Starting debug session...\n");
+        protocol_adapter.expect_output_event("initial info message\n");
+
+        let launch_args = SessionConfig {
+            chip: Some("nrf52833_xxaa".to_owned()),
+            core_configs: vec![CoreConfig {
+                core_index: 0,
+                ..CoreConfig::default()
+            }],
+            ..SessionConfig::default()
+        };
+
+        //protocol_adapter.expect_output_event("Please use the `program-binary` option to specify an executable for this target core. Other(Missing value for file.)\n");
+        protocol_adapter
+            .add_request("launch")
+            .with_arguments(launch_args)
+            .and_error_response().with_body(ErrorResponseBody {
+                error: Some(Message {
+                    format: "{response_message}".to_string(),
+                    id: 0,
+                    send_telemetry: Some(false),
+                    show_user: Some(true),
+                    url: Some("https://probe.rs/docs/tools/debugger/".to_string()),
+                    url_label: Some("Documentation".to_string()),
+                    variables: Some(BTreeMap::from([(
+                        "response_message".to_string(),
+                        "Please use the `program-binary` option to specify an executable for this target core. Other(Missing value for file.)".to_string(),
+                    )])),
+                }),
+            });
+
+        protocol_adapter.expect_output_event("Please use the `program-binary` option to specify an executable for this target core. Other(Missing value for file.)\n");
+
+        let debug_adapter = DebugAdapter::new(protocol_adapter);
+
+        let mut debugger = Debugger::new(UtcOffset::UTC);
+
+        let lister = TestLister::new();
+
+        let probe_info = DebugProbeInfo::new(
+            "Mock probe",
+            0x12,
+            0x23,
+            Some("mock_serial".to_owned()),
+            &MockProbeFactory,
+            None,
+        );
+
+        let fake_probe = FakeProbe::with_mocked_core();
+
+        // Indicate that the core is unlocked
+        fake_probe.expect_operation(Operation::ReadRawApRegister {
+            ap: ApAddress::with_default_dp(1),
+            address: 0xC,
+            result: 1,
+        });
+
+        lister.probes.borrow_mut().push((probe_info, fake_probe));
+
+        let lister = Lister::with_lister(Box::new(lister));
+
+        let status = debugger
+            .debug_session(debug_adapter, "initial info message", &lister)
+            .unwrap();
+
+        assert_eq!(status, DebugSessionStatus::Terminate);
+    }
+
+    #[test]
+    fn wrong_request_after_init() {
+        let mut protocol_adapter = MockProtocolAdapter::new();
+
+        protocol_adapter
+            .add_request("initialize")
+            .with_arguments(default_initialize_args())
+            .and_succesful_response()
+            .with_body(expected_capabilites());
+
+        protocol_adapter.expect_output_event("Starting debug session...\n");
+        protocol_adapter.expect_output_event("initial info message\n");
+
+        protocol_adapter
+            .add_request("threads")
+            .and_error_response()
+            .with_body(ErrorResponseBody {
+                error: Some(error_message(
+                    "Expected request 'launch' or 'attach', but received 'threads'",
+                )),
+            });
+        protocol_adapter
+            .expect_output_event("Expected request 'launch' or 'attach', but received 'threads'\n");
+
+        let debug_adapter = DebugAdapter::new(protocol_adapter);
+        let mut debugger = Debugger::new(UtcOffset::UTC);
+        let lister = TestLister::new();
+        let probe_info = DebugProbeInfo::new(
+            "Mock probe",
+            0x12,
+            0x23,
+            Some("mock_serial".to_owned()),
+            &MockProbeFactory,
+            None,
+        );
+
+        let fake_probe = FakeProbe::with_mocked_core();
+
+        // Indicate that the core is unlocked
+        fake_probe.expect_operation(Operation::ReadRawApRegister {
+            ap: ApAddress::with_default_dp(1),
+            address: 0xC,
+            result: 1,
+        });
+
+        lister.probes.borrow_mut().push((probe_info, fake_probe));
+
+        let lister = Lister::with_lister(Box::new(lister));
+
+        let status = debugger
+            .debug_session(debug_adapter, "initial info message", &lister)
+            .unwrap();
+
+        assert_eq!(status, DebugSessionStatus::Terminate);
+    }
+
+    #[test]
+    fn attach_request() {
+        let mut protocol_adapter = MockProtocolAdapter::new();
+
+        protocol_adapter
+            .add_request("initialize")
+            .with_arguments(default_initialize_args())
+            .and_succesful_response()
+            .with_body(expected_capabilites());
+
+        protocol_adapter.expect_output_event("Starting debug session...\n");
+        protocol_adapter.expect_output_event("initial info message\n");
+
+        let manifest_dir = PathBuf::from(std::env!("CARGO_MANIFEST_DIR"));
+        let debug_info = manifest_dir.join("tests/debug-unwind-tests/nRF52833_xxAA.elf");
+
+        let attach_args = SessionConfig {
+            chip: Some("nrf52833_xxaa".to_owned()),
+            core_configs: vec![CoreConfig {
+                core_index: 0,
+                program_binary: Some(debug_info),
+                ..CoreConfig::default()
+            }],
+            ..SessionConfig::default()
+        };
+
+        protocol_adapter
+            .add_request("attach")
+            .with_arguments(attach_args)
+            .and_succesful_response();
+
+        protocol_adapter.expect_event("initialized", None::<u32>);
+
+        protocol_adapter
+            .add_request("disconnect")
+            .with_arguments(DisconnectArguments {
+                restart: Some(false),
+                suspend_debuggee: Some(false),
+                terminate_debuggee: Some(false),
+            })
+            .and_succesful_response();
+
+        let debug_adapter = DebugAdapter::new(protocol_adapter);
+        let mut debugger = Debugger::new(UtcOffset::UTC);
+        let lister = TestLister::new();
+        let probe_info = DebugProbeInfo::new(
+            "Mock probe",
+            0x12,
+            0x23,
+            Some("mock_serial".to_owned()),
+            &MockProbeFactory,
+            None,
+        );
+
+        let fake_probe = FakeProbe::with_mocked_core();
+
+        // Indicate that the core is unlocked
+        fake_probe.expect_operation(Operation::ReadRawApRegister {
+            ap: ApAddress::with_default_dp(1),
+            address: 0xC,
+            result: 1,
+        });
+
+        lister.probes.borrow_mut().push((probe_info, fake_probe));
+
+        let lister = Lister::with_lister(Box::new(lister));
+
+        let status = debugger
+            .debug_session(debug_adapter, "initial info message", &lister)
+            .unwrap();
+
+        assert_eq!(status, DebugSessionStatus::Terminate);
+    }
+
+    #[test]
+    fn attach_with_flashing() {
+        let mut protocol_adapter = MockProtocolAdapter::new();
+
+        protocol_adapter
+            .add_request("initialize")
+            .with_arguments(default_initialize_args())
+            .and_succesful_response()
+            .with_body(expected_capabilites());
+
+        protocol_adapter.expect_output_event("Starting debug session...\n");
+        protocol_adapter.expect_output_event("initial info message\n");
+
+        let manifest_dir = PathBuf::from(std::env!("CARGO_MANIFEST_DIR"));
+        let debug_info = manifest_dir.join("tests/debug-unwind-tests/nRF52833_xxAA.elf");
+
+        let attach_args = SessionConfig {
+            chip: Some("nrf52833_xxaa".to_owned()),
+            core_configs: vec![CoreConfig {
+                core_index: 0,
+                program_binary: Some(debug_info),
+                ..CoreConfig::default()
+            }],
+            flashing_config: FlashingConfig {
+                flashing_enabled: true,
+                halt_after_reset: true,
+                ..Default::default()
+            },
+            ..SessionConfig::default()
+        };
+
+        protocol_adapter
+            .add_request("attach")
+            .with_arguments(attach_args)
+            .and_error_response().with_body(ErrorResponseBody {
+                error: Some(error_message(
+                    "Please do not use any of the `flashing_enabled`, `reset_after_flashing`, halt_after_reset`, `full_chip_erase`, or `restore_unwritten_bytes` options when using `attach` request type.",
+                )),
+            });
+
+        protocol_adapter.expect_output_event("Please do not use any of the `flashing_enabled`, `reset_after_flashing`, halt_after_reset`, `full_chip_erase`, or `restore_unwritten_bytes` options when using `attach` request type.\n");
+
+        let debug_adapter = DebugAdapter::new(protocol_adapter);
+        let mut debugger = Debugger::new(UtcOffset::UTC);
+        let lister = TestLister::new();
+        let probe_info = DebugProbeInfo::new(
+            "Mock probe",
+            0x12,
+            0x23,
+            Some("mock_serial".to_owned()),
+            &MockProbeFactory,
+            None,
+        );
+
+        let fake_probe = FakeProbe::with_mocked_core();
+
+        // Indicate that the core is unlocked
+        fake_probe.expect_operation(Operation::ReadRawApRegister {
+            ap: ApAddress::with_default_dp(1),
+            address: 0xC,
+            result: 1,
+        });
+
+        lister.probes.borrow_mut().push((probe_info, fake_probe));
+
+        let lister = Lister::with_lister(Box::new(lister));
+
+        let status = debugger
+            .debug_session(debug_adapter, "initial info message", &lister)
+            .unwrap();
+
+        assert_eq!(status, DebugSessionStatus::Terminate);
+    }
+
+    #[test]
+    fn launch_and_threads() {
+        let manifest_dir = PathBuf::from(std::env!("CARGO_MANIFEST_DIR"));
+        let debug_info = manifest_dir.join("tests/debug-unwind-tests/nRF52833_xxAA.elf");
+        let chip_name = "nRF52833_xxAA";
+
+        let mut protocol_adapter = MockProtocolAdapter::new();
+
+        protocol_adapter
+            .add_request("initialize")
+            .with_arguments(default_initialize_args())
+            .and_succesful_response()
+            .with_body(expected_capabilites());
+
+        protocol_adapter.expect_output_event("Starting debug session...\n");
+        protocol_adapter.expect_output_event("initial info message\n");
+
+        let launch_args = SessionConfig {
+            chip: Some(chip_name.to_owned()),
+            core_configs: vec![CoreConfig {
+                core_index: 0,
+                program_binary: Some(debug_info),
+                ..CoreConfig::default()
+            }],
+            ..SessionConfig::default()
+        };
+
+        protocol_adapter
+            .add_request("launch")
+            .with_arguments(launch_args)
+            .and_succesful_response();
+
+        protocol_adapter.expect_event("initialized", None::<u32>);
+
+        protocol_adapter
+            .add_request("configurationDone")
+            .and_succesful_response();
+
+        protocol_adapter
+            .add_request("threads")
+            .and_succesful_response()
+            .with_body(ThreadsResponseBody {
+                threads: vec![Thread {
+                    id: 0,
+                    name: format!("0-{chip_name}"),
+                }],
+            });
+
+        protocol_adapter
+            .add_request("disconnect")
+            .with_arguments(DisconnectArguments {
+                restart: Some(false),
+                suspend_debuggee: Some(false),
+                terminate_debuggee: Some(false),
+            })
+            .and_succesful_response();
+
+        let debug_adapter = DebugAdapter::new(protocol_adapter);
+
+        let mut debugger = Debugger::new(UtcOffset::UTC);
+
+        let lister = TestLister::new();
+
+        let probe_info = DebugProbeInfo::new(
+            "Mock probe",
+            0x12,
+            0x23,
+            Some("mock_serial".to_owned()),
+            &MockProbeFactory,
+            None,
+        );
+
+        let fake_probe = FakeProbe::with_mocked_core();
+
+        // Indicate that the core is unlocked
+        fake_probe.expect_operation(Operation::ReadRawApRegister {
+            ap: ApAddress::with_default_dp(1),
+            address: 0xC,
+            result: 1,
+        });
+
+        lister.probes.borrow_mut().push((probe_info, fake_probe));
+
+        let lister = Lister::with_lister(Box::new(lister));
+
+        let status = debugger
+            .debug_session(debug_adapter, "initial info message", &lister)
+            .unwrap();
+
+        assert_eq!(status, DebugSessionStatus::Terminate);
     }
 }

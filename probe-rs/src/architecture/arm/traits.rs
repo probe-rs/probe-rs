@@ -1,4 +1,7 @@
-use crate::{CoreStatus, DebugProbe, DebugProbeError};
+use crate::{
+    probe::{DebugProbe, DebugProbeError},
+    CoreStatus,
+};
 
 use super::ArmError;
 
@@ -31,10 +34,11 @@ bitfield::bitfield! {
 }
 
 /// Debug port address.
-#[derive(Debug, Eq, PartialEq, Clone, Copy, Hash)]
+#[derive(Debug, Eq, PartialEq, Clone, Copy, Hash, Default)]
 pub enum DpAddress {
     /// Access the single DP on the bus, assuming there is only one.
     /// Will cause corruption if multiple are present.
+    #[default]
     Default,
     /// Select a particular DP on a SWDv2 multidrop bus. The contained `u32` is
     /// the `TARGETSEL` value to select it.
@@ -50,6 +54,16 @@ pub struct ApAddress {
     pub ap: u8,
 }
 
+impl ApAddress {
+    /// Create a new `ApAddress` belonging to the default debug port.
+    pub fn with_default_dp(ap: u8) -> Self {
+        Self {
+            dp: DpAddress::Default,
+            ap,
+        }
+    }
+}
+
 /// Low-level DAP register access.
 ///
 /// Operations on this trait closely match the transactions on the wire. Implementors
@@ -58,15 +72,6 @@ pub struct ApAddress {
 /// Almost everything is the responsibility of the caller. For example, the caller must
 /// handle bank switching and AP selection.
 pub trait RawDapAccess {
-    /// Select the debug port to operate on.
-    ///
-    /// If the probe is connected to a system with multiple debug ports,
-    /// this will process all queued commands which haven't been executed yet.
-    ///
-    /// This means that returned errors can also come from these commands,
-    /// not only from changing debug port.
-    fn select_dp(&mut self, dp: DpAddress) -> Result<(), ArmError>;
-
     /// Read a DAP register.
     ///
     /// Only the lowest 4 bits of `addr` are used. Bank switching is the caller's responsibility.

@@ -1,9 +1,9 @@
-use probe_rs::{flashing::DownloadOptions, FakeProbe, Permissions, Probe};
+use probe_rs::{flashing::DownloadOptions, integration::FakeProbe, probe::Probe, Permissions};
 
 /// A chip where the flash algorithm's range is greater than the NVM range.
 #[test]
 fn flash_dry_run_stm32wb55ccux() {
-    let probe = Probe::from_specific_probe(Box::new(FakeProbe::new()));
+    let probe = Probe::from_specific_probe(Box::new(FakeProbe::with_mocked_core()));
 
     let mut session = probe
         .attach("stm32wb55ccux", Permissions::default())
@@ -27,7 +27,7 @@ fn flash_dry_run_stm32wb55ccux() {
 /// A chip where the flash algorithm's range could be less than the NVM range.
 #[test]
 fn flash_dry_run_mimxrt1010() {
-    let probe = Probe::from_specific_probe(Box::new(FakeProbe::new()));
+    let probe = Probe::from_specific_probe(Box::new(FakeProbe::with_mocked_core()));
 
     let mut session = probe
         .attach("mimxrt1010", Permissions::default())

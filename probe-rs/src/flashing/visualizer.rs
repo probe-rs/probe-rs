@@ -1,6 +1,5 @@
 use svg::{
     node::element::{Group, Rectangle, Text},
-    node::Text as Content,
     Document, Node,
 };
 
@@ -43,23 +42,21 @@ impl<'layout> FlashVisualizer<'layout> {
         );
 
         group.append(
-            Text::new()
+            Text::new(format!("{address:#08X?}"))
                 .set("x", dimensions.0 + 1)
                 .set("y", start + height - 2.0)
                 .set("font-size", 5)
                 .set("font-family", "Arial")
-                .set("fill", "Black")
-                .add(Content::new(format!("{address:#08X?}"))),
+                .set("fill", "Black"),
         );
 
         group.append(
-            Text::new()
+            Text::new(format!("{:#08X?}", address + size))
                 .set("x", dimensions.0 + 1)
                 .set("y", start + 5.0)
                 .set("font-size", 5)
                 .set("font-family", "Arial")
-                .set("fill", "Black")
-                .add(Content::new(format!("{:#08X?}", address + size))),
+                .set("fill", "Black"),
         );
 
         group
@@ -115,7 +112,7 @@ impl<'layout> FlashVisualizer<'layout> {
     /// Generates an SVG which visualizes the given flash contents
     /// and writes the SVG into the file at the given `path`.
     ///
-    /// This is aequivalent to [FlashVisualizer::generate_svg] with the difference of operating on a file instead of a string.
+    /// This is equivalent to [FlashVisualizer::generate_svg] with the difference of operating on a file instead of a string.
     pub fn write_svg(&self, path: impl AsRef<std::path::Path>) -> std::io::Result<()> {
         use std::fs::OpenOptions;
         use std::io::Write;

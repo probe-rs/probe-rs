@@ -1,22 +1,24 @@
-use std::{fs::File, path::PathBuf};
-use std::{io::prelude::*, time::Duration};
+use std::path::Path;
+use std::path::PathBuf;
+use std::time::Duration;
 
 use anyhow::anyhow;
 use capstone::{
     arch::arm::ArchMode as armArchMode, arch::arm64::ArchMode as aarch64ArchMode,
-    arch::riscv::ArchMode as riscvArchMode, prelude::*, Capstone, Endian,
+    arch::riscv::ArchMode as riscvArchMode, prelude::*, Endian,
 };
 use num_traits::Num;
 use parse_int::parse;
 use probe_rs::architecture::arm::ap::AccessPortError;
+use probe_rs::debug::stack_frame::StackFrameInfo;
+use probe_rs::exception_handler_for_core;
 use probe_rs::flashing::FileDownloadError;
-use probe_rs::DebugProbeError;
+use probe_rs::probe::list::Lister;
+use probe_rs::probe::DebugProbeError;
+use probe_rs::CoreDumpError;
 use probe_rs::{
-    architecture::arm::Dump,
-    debug::{
-        debug_info::DebugInfo, registers::DebugRegisters, stack_frame::StackFrame, VariableName,
-    },
-    Core, CoreRegister, CoreType, InstructionSet, MemoryInterface, RegisterId, RegisterValue,
+    debug::{debug_info::DebugInfo, registers::DebugRegisters, stack_frame::StackFrame},
+    Core, CoreType, InstructionSet, MemoryInterface, RegisterValue,
 };
 use rustyline::DefaultEditor;
 
@@ -36,8 +38,8 @@ pub struct Cmd {
 }
 
 impl Cmd {
-    pub fn run(self) -> anyhow::Result<()> {
-        let (mut session, _probe_options) = self.common.simple_attach()?;
+    pub fn run(self, lister: &Lister) -> anyhow::Result<()> {
+        let (mut session, _probe_options) = self.common.simple_attach(lister)?;
 
         let di = self
             .exe
@@ -107,6 +109,9 @@ enum CliError {
     },
     #[error(transparent)]
     ProbeRs(#[from] probe_rs::Error),
+    /// Errors related to the handling of core dumps.
+    #[error("An error with a CoreDump occured")]
+    CoreDump(#[from] CoreDumpError),
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
@@ -194,6 +199,7 @@ impl DebugCli {
                             capstone::arch::riscv::ArchExtraMode::RiscVC,
                         ))
                         .build(),
+                    InstructionSet::Xtensa => Err(capstone::Error::UnsupportedArch),
                 }
                 .map_err(|err| anyhow!("Error creating capstone: {:?}", err))?;
 
@@ -338,36 +344,7 @@ impl DebugCli {
         });
 
         cli.add_command(Command {
-            name: "read",
-            help_text: "Read 32bit value from memory",
-
-            function: |cli_data, args| {
-                let address = get_int_argument(args, 0)?;
-
-                let num_words = if args.len() > 1 {
-                    get_int_argument(args, 1)?
-                } else {
-                    1
-                };
-
-                let mut buff = vec![0u32; num_words];
-
-                if num_words > 1 {
-                    cli_data.core.read_32(address, &mut buff)?;
-                } else {
-                    buff[0] = cli_data.core.read_word_32(address)?;
-                }
-
-                for (offset, word) in buff.iter().enumerate() {
-                    println!("0x{:08x} = 0x{:08x}", address + (offset * 4) as u64, word);
-                }
-
-                Ok(CliState::Continue)
-            },
-        });
-
-        cli.add_command(Command {
-            name: "read_byte",
+            name: "read8",
             help_text: "Read 8bit value from memory",
 
             function: |cli_data, args| {
@@ -396,7 +373,65 @@ impl DebugCli {
         });
 
         cli.add_command(Command {
-            name: "read_64",
+            name: "read16",
+            help_text: "Read 16bit value from memory",
+
+            function: |cli_data, args| {
+                let address = get_int_argument(args, 0)?;
+
+                let num_words = if args.len() > 1 {
+                    get_int_argument(args, 1)?
+                } else {
+                    1
+                };
+
+                let mut buff = vec![0u16; num_words];
+
+                if num_words > 1 {
+                    cli_data.core.read_16(address, &mut buff)?;
+                } else {
+                    buff[0] = cli_data.core.read_word_16(address)?;
+                }
+
+                for (offset, word) in buff.iter().enumerate() {
+                    println!("0x{:08x} = 0x{:04x}", address + (offset * 2) as u64, word);
+                }
+
+                Ok(CliState::Continue)
+            },
+        });
+
+        cli.add_command(Command {
+            name: "read32",
+            help_text: "Read 32bit value from memory",
+
+            function: |cli_data, args| {
+                let address = get_int_argument(args, 0)?;
+
+                let num_words = if args.len() > 1 {
+                    get_int_argument(args, 1)?
+                } else {
+                    1
+                };
+
+                let mut buff = vec![0u32; num_words];
+
+                if num_words > 1 {
+                    cli_data.core.read_32(address, &mut buff)?;
+                } else {
+                    buff[0] = cli_data.core.read_word_32(address)?;
+                }
+
+                for (offset, word) in buff.iter().enumerate() {
+                    println!("0x{:08x} = 0x{:08x}", address + (offset * 4) as u64, word);
+                }
+
+                Ok(CliState::Continue)
+            },
+        });
+
+        cli.add_command(Command {
+            name: "read64",
             help_text: "Read 64bit value from memory",
 
             function: |cli_data, args| {
@@ -425,21 +460,7 @@ impl DebugCli {
         });
 
         cli.add_command(Command {
-            name: "write",
-            help_text: "Write a 32bit value to memory",
-
-            function: |cli_data, args| {
-                let address = get_int_argument(args, 0)?;
-                let data = get_int_argument(args, 1)?;
-
-                cli_data.core.write_word_32(address, data)?;
-
-                Ok(CliState::Continue)
-            },
-        });
-
-        cli.add_command(Command {
-            name: "write_byte",
+            name: "write8",
             help_text: "Write a 8bit value to memory",
 
             function: |cli_data, args| {
@@ -453,7 +474,35 @@ impl DebugCli {
         });
 
         cli.add_command(Command {
-            name: "write_64",
+            name: "write16",
+            help_text: "Write a 16bit value to memory",
+
+            function: |cli_data, args| {
+                let address = get_int_argument(args, 0)?;
+                let data = get_int_argument(args, 1)?;
+
+                cli_data.core.write_word_16(address, data)?;
+
+                Ok(CliState::Continue)
+            },
+        });
+
+        cli.add_command(Command {
+            name: "write32",
+            help_text: "Write a 32bit value to memory",
+
+            function: |cli_data, args| {
+                let address = get_int_argument(args, 0)?;
+                let data = get_int_argument(args, 1)?;
+
+                cli_data.core.write_word_32(address, data)?;
+
+                Ok(CliState::Continue)
+            },
+        });
+
+        cli.add_command(Command {
+            name: "write64",
             help_text: "Write a 64bit value to memory",
 
             function: |cli_data, args| {
@@ -501,16 +550,25 @@ impl DebugCli {
             function: |cli_data, _args| {
                 match cli_data.state {
                     DebugState::Halted(ref mut halted_state) => {
-                        let program_counter: u64 = cli_data
-                            .core
-                            .read_core_reg(cli_data.core.program_counter())?;
-
                         if let Some(di) = &mut cli_data.debug_info {
-                            halted_state.stack_frames =
-                                di.unwind(&mut cli_data.core, program_counter).unwrap();
+                            let initial_registers = DebugRegisters::from_core(&mut cli_data.core);
+                            let exception_interface =
+                                exception_handler_for_core(cli_data.core.core_type());
+                            let instruction_set = cli_data.core.instruction_set().ok();
+                            halted_state.stack_frames = di
+                                .unwind(
+                                    &mut cli_data.core,
+                                    initial_registers,
+                                    exception_interface.as_ref(),
+                                    instruction_set,
+                                )
+                                .unwrap();
 
-                            halted_state.frame_indices =
-                                halted_state.stack_frames.iter().map(|sf| sf.id).collect();
+                            halted_state.frame_indices = halted_state
+                                .stack_frames
+                                .iter()
+                                .map(|sf| sf.id.into())
+                                .collect();
 
                             for (i, frame) in halted_state.stack_frames.iter().enumerate() {
                                 print!("Frame {}: {} @ {}", i, frame.function_name, frame.pc);
@@ -525,7 +583,7 @@ impl DebugCli {
                                         print!("       ");
 
                                         if let Some(dir) = &location.directory {
-                                            print!("{}", dir.display());
+                                            print!("{}", dir.to_path().display());
                                         }
 
                                         if let Some(file) = &location.file {
@@ -551,6 +609,8 @@ impl DebugCli {
                                     }
                                 }
                             }
+
+                            println!();
                         } else {
                             println!("No debug information present!");
                         }
@@ -568,19 +628,36 @@ impl DebugCli {
             help_text: "Show CPU register values",
 
             function: |cli_data, _args| {
-                let register_file = cli_data.core.registers();
+                match &cli_data.state {
+                    DebugState::Running => println!("Core must be halted for this command."),
+                    DebugState::Halted(state) => {
+                        if let Some(current_frame) = state.get_current_frame() {
+                            let registers = &current_frame.registers;
 
-                let psr_iter: Box<dyn Iterator<Item = &CoreRegister>> = match register_file.psr() {
-                    Some(psr) => Box::new(std::iter::once(psr)),
-                    None => Box::new(std::iter::empty::<&CoreRegister>()),
-                };
+                            for register in &registers.0 {
+                                print!("{:10}: ", register.core_register.name());
 
-                let iter = register_file.core_registers().chain(psr_iter);
+                                if let Some(value) = &register.value {
+                                    println!("{:#}", value);
+                                } else {
+                                    println!("{}", "X".repeat(10));
+                                }
+                            }
+                        } else {
+                            let register_file = cli_data.core.registers();
 
-                for register in iter {
-                    let value: RegisterValue = cli_data.core.read_core_reg(register)?;
+                            for register in register_file.core_registers() {
+                                let value: RegisterValue = cli_data.core.read_core_reg(register)?;
 
-                    println!("{:10}: {:#}", register.name(), value);
+                                println!("{:10}: {:#}", register.name(), value);
+                            }
+
+                            if let Some(psr) = register_file.psr() {
+                                let value: RegisterValue = cli_data.core.read_core_reg(psr)?;
+                                println!("{:10}: {:#}", psr.name(), value);
+                            }
+                        }
+                    }
                 }
 
                 Ok(CliState::Continue)
@@ -665,42 +742,40 @@ impl DebugCli {
                             return Ok(CliState::Continue);
                         };
 
-                        if let Some(mut locals) = local_variable_cache
-                            .get_variable_by_name_and_parent(&VariableName::LocalScopeRoot, None)
+                        let mut locals = local_variable_cache.root_variable().clone();
+                        // By default, the first level children are always are lazy loaded, so we will force a load here.
+                        if locals.variable_node_type.is_deferred()
+                            && !local_variable_cache.has_children(&locals)
                         {
-                            // By default, the first level children are always are lazy loaded, so we will force a load here.
-                            if locals.variable_node_type.is_deferred()
-                                && !local_variable_cache.has_children(&locals)?
+                            if let Err(error) = cli_data
+                                .debug_info
+                                .as_ref()
+                                .unwrap()
+                                .cache_deferred_variables(
+                                    local_variable_cache,
+                                    &mut cli_data.core,
+                                    &mut locals,
+                                    StackFrameInfo {
+                                        registers: &current_frame.registers,
+                                        frame_base: current_frame.frame_base,
+                                        canonical_frame_address: current_frame
+                                            .canonical_frame_address,
+                                    },
+                                )
                             {
-                                if let Err(error) = cli_data
-                                    .debug_info
-                                    .as_ref()
-                                    .unwrap()
-                                    .cache_deferred_variables(
-                                        local_variable_cache,
-                                        &mut cli_data.core,
-                                        &mut locals,
-                                        &current_frame.registers,
-                                        current_frame.frame_base,
-                                    )
-                                {
-                                    println!("Failed to cache local variables: {error}");
-                                    return Ok(CliState::Continue);
-                                }
+                                println!("Failed to cache local variables: {error}");
+                                return Ok(CliState::Continue);
                             }
-                            let children =
-                                local_variable_cache.get_children(Some(locals.variable_key))?;
+                        }
+                        let children = local_variable_cache.get_children(locals.variable_key());
 
-                            for child in children {
-                                println!(
-                                    "{}: {} = {}",
-                                    child.name,
-                                    child.type_name,
-                                    child.get_value(local_variable_cache)
-                                );
-                            }
-                        } else {
-                            println!("Local variable cache was not initialized.")
+                        for child in children {
+                            println!(
+                                "{}: {} = {}",
+                                child.name,
+                                child.type_name(),
+                                child.get_value(local_variable_cache)
+                            );
                         }
                     }
                     DebugState::Running => println!("Core must be halted for this command."),
@@ -721,7 +796,10 @@ impl DebugCli {
                         if halted_state.current_frame < halted_state.frame_indices.len() - 1 {
                             halted_state.current_frame += 1;
                         } else {
-                            println!("Already at top-most frame.");
+                            println!(
+                                "Already at top-most frame. current frame: {}, indices: {:?}",
+                                halted_state.current_frame, halted_state.frame_indices
+                            );
                         }
                     }
                 }
@@ -751,51 +829,6 @@ impl DebugCli {
         });
 
         cli.add_command(Command {
-            name: "dump",
-            help_text: "Store a dump of the current CPU state",
-
-            function: |cli_data, _args| {
-                // dump all relevant data, stack and regs for now..
-                //
-                // stack beginning -> assume beginning to be hardcoded
-
-                let stack_top: u32 = 0x2000_0000 + 0x4000;
-
-                let stack_bot: u32 = cli_data.core.read_core_reg(cli_data.core.stack_pointer())?;
-                let pc: u32 = cli_data
-                    .core
-                    .read_core_reg(cli_data.core.program_counter())?;
-
-                let mut stack = vec![0u8; (stack_top - stack_bot) as usize];
-
-                cli_data.core.read(stack_bot.into(), &mut stack[..])?;
-
-                let mut dump = Dump::new(stack_bot, stack);
-
-                for i in 0..12 {
-                    dump.regs[i as usize] =
-                        cli_data.core.read_core_reg(Into::<RegisterId>::into(i))?;
-                }
-
-                dump.regs[13] = stack_bot;
-                dump.regs[14] = cli_data
-                    .core
-                    .read_core_reg(cli_data.core.return_address())?;
-                dump.regs[15] = pc;
-
-                let serialized = ron::ser::to_string(&dump).expect("Failed to serialize dump");
-
-                let mut dump_file = File::create("dump.txt").expect("Failed to create file");
-
-                dump_file
-                    .write_all(serialized.as_bytes())
-                    .expect("Failed to write dump file");
-
-                Ok(CliState::Continue)
-            },
-        });
-
-        cli.add_command(Command {
             name: "reset",
 
             help_text: "Reset the CPU",
@@ -803,6 +836,66 @@ impl DebugCli {
             function: |cli_data, _args| {
                 cli_data.core.halt(Duration::from_millis(100))?;
                 cli_data.core.reset_and_halt(Duration::from_millis(100))?;
+
+                Ok(CliState::Continue)
+            },
+        });
+
+        cli.add_command(Command {
+            name: "dump",
+            help_text: "Dump the core memory & registers",
+
+            function: |cli_data, args| {
+                let mut args = args.to_vec();
+
+                // If we get an odd number of arguments, treat all n * 2 args at the start as memory blocks
+                // and the last argument as the path tho store the coredump at.
+                let location = Path::new(
+                    if args.len() % 2 != 0 {
+                        args.pop()
+                    } else {
+                        None
+                    }
+                    .unwrap_or("./coredump"),
+                );
+
+                let ranges = args
+                    .chunks(2)
+                    .enumerate()
+                    .map(|(i, c)| {
+                        let start = if let Some(start) = c.first() {
+                            parse_int::parse::<u64>(start).map_err(|e| {
+                                CliError::ArgumentParseError {
+                                    argument_index: i,
+                                    argument: start.to_string(),
+                                    source: e.into(),
+                                }
+                            })?
+                        } else {
+                            unreachable!("This should never be reached as there cannot be an odd number of arguments. Please report this as a bug.")
+                        };
+
+                        let size = if let Some(size) = c.get(1) {
+                            parse_int::parse::<u64>(size).map_err(|e| {
+                                CliError::ArgumentParseError {
+                                    argument_index: i,
+                                    argument: size.to_string(),
+                                    source: e.into(),
+                                }
+                            })?
+                        } else {
+                            unreachable!("This should never be reached as there cannot be an odd number of arguments. Please report this as a bug.")
+                        };
+
+                        Ok::<_, CliError>(start..start + size)
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+
+                println!("Dumping core");
+
+                cli_data.core.dump(ranges)?.store(location)?;
+
+                println!("Done.");
 
                 Ok(CliState::Continue)
             },
@@ -819,7 +912,7 @@ impl DebugCli {
         let mut command_parts = line.split_whitespace();
 
         match command_parts.next() {
-            Some(command) if command == "help" => {
+            Some("help") => {
                 println!("The following commands are available:");
 
                 for cmd in &self.commands {
@@ -898,25 +991,35 @@ impl<'p> CliData<'p> {
 
     /// Fill out DebugStatus for a given core
     fn update_debug_status_from_core(&mut self) -> Result<(), CliError> {
-        // TODO: In halted state we should get the backtrace here.
         let status = self.core.status()?;
 
-        self.state = match status {
+        match status {
             probe_rs::CoreStatus::Halted(_) => {
                 let registers = DebugRegisters::from_core(&mut self.core);
-                DebugState::Halted(HaltedState {
-                    program_counter: registers
-                        .get_program_counter()
-                        .and_then(|reg| reg.value)
-                        .unwrap_or_default()
-                        .try_into()?,
-                    current_frame: 0,
-                    frame_indices: vec![1],
-                    stack_frames: vec![],
-                })
+                let pc: u64 = registers
+                    .get_program_counter()
+                    .and_then(|reg| reg.value)
+                    .unwrap_or_default()
+                    .try_into()?;
+
+                // If the core was running before, or the PC changed, we need to update the state
+                let core_state_changed = matches!(self.state, DebugState::Running)
+                    || matches!(self.state, DebugState::Halted(HaltedState { program_counter, .. }) if program_counter != pc);
+
+                // TODO: We should resolve the stack frames here
+                if core_state_changed {
+                    self.state = DebugState::Halted(HaltedState {
+                        program_counter: pc,
+                        current_frame: 0,
+                        frame_indices: vec![1],
+                        stack_frames: vec![],
+                    });
+                }
             }
-            _other => DebugState::Running,
-        };
+            _other => {
+                self.state = DebugState::Running;
+            }
+        }
 
         Ok(())
     }
@@ -925,10 +1028,11 @@ impl<'p> CliData<'p> {
         match self.state {
             DebugState::Running => println!("Core is running."),
             DebugState::Halted(ref mut halted_state) => {
-                let pc = halted_state.program_counter;
                 if let Some(current_stack_frame) = halted_state.get_current_frame() {
+                    let pc = current_stack_frame.pc;
+
                     println!(
-                        "Frame {}: {} () @ {:#010x}",
+                        "Frame {}: {} () @ {:#}",
                         halted_state.current_frame, current_stack_frame.function_name, pc,
                     );
                 }

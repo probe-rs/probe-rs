@@ -10,13 +10,14 @@ use probe_rs::{
     flashing::FlashAlgorithm,
     Architecture, CoreType,
 };
-use probe_rs_target::{ArmCoreAccessOptions, CoreAccessOptions, RiscvCoreAccessOptions};
+use probe_rs_target::{
+    ArmCoreAccessOptions, CoreAccessOptions, RiscvCoreAccessOptions, XtensaCoreAccessOptions,
+};
 use std::{
     fs::{self},
     io::Read,
     path::Path,
 };
-use tokio::runtime::Builder;
 
 pub(crate) enum Kind<'a, T>
 where
@@ -102,12 +103,9 @@ where
 
                 // If the algo specifies `RAMstart` and/or `RAMsize` fields, then use them.
                 // - See https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/pdsc_family_pg.html#element_algorithm for more information.
-                algo.load_address = flash_algorithm.ram_start.map(|ram_start| ram_start + FlashAlgorithm::get_max_algorithm_header_size());
-                if let Some(stack_size) = flash_algorithm.ram_size {
-                     algo.stack_size = Some(stack_size.try_into().map_err(|data_conversion_error|
-                        anyhow!("Algorithm requires a stack size of  '{:?}' : {data_conversion_error:?}", flash_algorithm.ram_size)
-                    )?);
-                }
+                algo.load_address = flash_algorithm
+                    .ram_start
+                    .map(|ram_start| ram_start + FlashAlgorithm::get_max_algorithm_header_size());
 
                 // We add this algo directly to the algos of the family if it's not already added.
                 // Make sure we never add an algo twice to save file size.
@@ -152,14 +150,18 @@ where
             .map(create_core)
             .collect::<Result<Vec<_>>>()?;
 
+        let memory_map = get_mem_map(&device, &cores);
+
         family.variants.push(Chip {
             name: device_name,
             part: None,
+            svd: None,
             cores,
-            memory_map: get_mem_map(&device),
+            memory_map,
             flash_algorithms: flash_algorithm_names,
             rtt_scan_ranges: None,
-            scan_chain: None, // TODO, parse from sdf
+            jtag: None, // TODO, parse scan chain from sdf
+            default_binary_format: None,
         });
     }
 
@@ -182,7 +184,10 @@ fn create_core(processor: &Processor) -> Result<ProbeCore> {
                 debug_base: None,
                 cti_base: None,
             }),
-            Architecture::Riscv => CoreAccessOptions::Riscv(RiscvCoreAccessOptions {}),
+            Architecture::Riscv => {
+                CoreAccessOptions::Riscv(RiscvCoreAccessOptions { hart_id: None })
+            }
+            Architecture::Xtensa => CoreAccessOptions::Xtensa(XtensaCoreAccessOptions {}),
         },
     })
 }
@@ -195,6 +200,8 @@ fn core_to_probe_core(value: &Core) -> Result<CoreType, Error> {
         Core::CortexM3 => CoreType::Armv7m,
         Core::CortexM23 => CoreType::Armv8m,
         Core::CortexM33 => CoreType::Armv8m,
+        Core::CortexM55 => CoreType::Armv8m,
+        Core::CortexM85 => CoreType::Armv8m,
         Core::CortexM7 => CoreType::Armv7em,
         Core::StarMC1 => CoreType::Armv8m,
         c => {
@@ -259,50 +266,43 @@ pub(crate) fn visit_file(path: &Path, families: &mut Vec<ChipFamily>) -> Result<
     handle_package(package, Kind::Archive(&mut archive), families, false)
 }
 
-pub(crate) fn visit_arm_files(
+pub(crate) async fn visit_arm_files(
     families: &mut Vec<ChipFamily>,
     filter: Option<String>,
 ) -> Result<()> {
-    let packs = crate::fetch::get_vidx()?;
-
     //TODO: The multi-threaded logging makes it very difficult to track which errors/warnings belong where - needs some rework.
-    Builder::new_multi_thread()
-        .enable_all()
-        .build()
-        .unwrap()
-        .block_on(async move {
-            let mut stream = futures::stream::iter(packs.pdsc_index.iter().enumerate().filter_map(
-                |(i, pack)| {
-                    let only_supported_familes = if let Some(ref filter) = filter {
-                        // If we are filtering for specific filter patterns, then skip all the ones we don't want.
-                        if !pack.name.contains(filter) {
-                            return None;
-                        } else {
-                            log::info!("Found matching chip family: {}", pack.name);
-                        }
-                        // If we are filtering for specific filter patterns, then do not restrict these to the list of supported families.
-                        false
-                    } else {
-                        // If we are not filtering for specific filter patterns, then only include the supported families.
-                        true
-                    };
-                    if pack.deprecated.is_none() {
-                        // We only want to download the pack if it is not deprecated.
-                        log::info!("Working PACK {}/{} ...", i, packs.pdsc_index.len());
-                        Some(visit_arm_file(pack, only_supported_familes))
-                    } else {
-                        log::warn!("Pack {} is deprecated. Skipping ...", pack.name);
-                        None
-                    }
-                },
-            ))
-            .buffer_unordered(32);
-            while let Some(result) = stream.next().await {
-                families.extend(result);
-            }
+    let packs = crate::fetch::get_vidx().await?;
 
-            Ok(())
-        })
+    let mut stream =
+        futures::stream::iter(packs.pdsc_index.iter().enumerate().filter_map(|(i, pack)| {
+            let only_supported_familes = if let Some(ref filter) = filter {
+                // If we are filtering for specific filter patterns, then skip all the ones we don't want.
+                if !pack.name.contains(filter) {
+                    return None;
+                } else {
+                    log::info!("Found matching chip family: {}", pack.name);
+                }
+                // If we are filtering for specific filter patterns, then do not restrict these to the list of supported families.
+                false
+            } else {
+                // If we are not filtering for specific filter patterns, then only include the supported families.
+                true
+            };
+            if pack.deprecated.is_none() {
+                // We only want to download the pack if it is not deprecated.
+                log::info!("Working PACK {}/{} ...", i, packs.pdsc_index.len());
+                Some(visit_arm_file(pack, only_supported_familes))
+            } else {
+                log::warn!("Pack {} is deprecated. Skipping ...", pack.name);
+                None
+            }
+        }))
+        .buffer_unordered(32);
+    while let Some(result) = stream.next().await {
+        families.extend(result);
+    }
+
+    Ok(())
 }
 
 pub(crate) async fn visit_arm_file(
@@ -311,7 +311,7 @@ pub(crate) async fn visit_arm_file(
 ) -> Vec<ChipFamily> {
     let url = format!(
         "{url}/{vendor}.{name}.{version}.pack",
-        url = pack.url,
+        url = pack.url.trim_end_matches('/'),
         vendor = pack.vendor,
         name = pack.name,
         version = pack.version
@@ -464,7 +464,7 @@ struct DeviceMemory {
 /// Extracts the memory regions in the package.
 /// The new memory regions are sorted by memory type, then by boot memory, then by start address,
 /// with correctly assigned cores/processor names.
-pub(crate) fn get_mem_map(device: &Device) -> Vec<MemoryRegion> {
+pub(crate) fn get_mem_map(device: &Device, cores: &[probe_rs_target::Core]) -> Vec<MemoryRegion> {
     let mut device_memories: Vec<DeviceMemory> = device
         .memories
         .0
@@ -492,50 +492,69 @@ pub(crate) fn get_mem_map(device: &Device) -> Vec<MemoryRegion> {
     // Sort by memory type, then by processor name, then by boot memory, then by start address.
     device_memories.sort();
 
+    let all_cores: Vec<_> = cores.iter().map(|core| core.name.clone()).collect();
+
+    let is_multi_core = cores.len() > 1;
+
     // Convert DeviceMemory's to MemoryRegion's, and assign cores to shared reqions.
     let mut mem_map = vec![];
     for region in &device_memories {
-        let current_core = region
+        if is_multi_core && region.p_name.is_none() {
+            log::warn!("Device {}, memory region {} has no processor name, but this is required for a multicore device. Assigning memory to all cores!", device.name, region.name);
+        }
+
+        let cores = region
             .p_name
             .as_ref()
-            .map(|s| s.to_ascii_lowercase())
-            .unwrap_or_else(|| "main".to_string());
+            .map(|s| vec![s.to_ascii_lowercase()])
+            .unwrap_or_else(|| all_cores.clone());
+
         match region.memory_type {
-            MemoryType::Ram => if let Some(MemoryRegion::Ram(existing_region)) = mem_map.iter_mut().find(|existing_region|{
-                matches!(existing_region, MemoryRegion::Ram(ram_region) if ram_region.name == Some(region.name.clone()))})
+            MemoryType::Ram => {
+                if let Some(MemoryRegion::Ram(existing_region)) = mem_map.iter_mut().find(|existing_region| {
+                        matches!(existing_region, MemoryRegion::Ram(ram_region) if ram_region.name == Some(region.name.clone()))
+                    })
                 {
-                    existing_region.cores.push(current_core);
+                    existing_region.cores.extend_from_slice(&cores);
                 } else {
                     mem_map.push(MemoryRegion::Ram(RamRegion {
-                    name: Some(region.name.clone()),
-                    range: region.memory_start..region.memory_end,
-                    is_boot_memory: region.is_boot_memory,
-                    cores: vec![current_core],
+                        name: Some(region.name.clone()),
+                        range: region.memory_start..region.memory_end,
+                        is_boot_memory: region.is_boot_memory,
+                        cores,
                     }));
-                },
-            MemoryType::Nvm => if let Some(MemoryRegion::Nvm(existing_region)) = mem_map.iter_mut().find(|existing_region|{
-                matches!(existing_region, MemoryRegion::Nvm(nvm_region) if nvm_region.name == Some(region.name.clone()))})
+                }
+            },
+            MemoryType::Nvm => {
+                if let Some(MemoryRegion::Nvm(existing_region)) = mem_map.iter_mut().find(|existing_region| {
+                        matches!(existing_region, MemoryRegion::Nvm(nvm_region) if nvm_region.name == Some(region.name.clone()))
+                    })
                 {
-                    existing_region.cores.push(current_core);
+                    existing_region.cores.extend_from_slice(&cores);
                 } else {
                     mem_map.push(MemoryRegion::Nvm(NvmRegion {
-                    name: Some(region.name.clone()),
-                    range: region.memory_start..region.memory_end,
-                    is_boot_memory: region.is_boot_memory,
-                    cores: vec![current_core],
+                        name: Some(region.name.clone()),
+                        range: region.memory_start..region.memory_end,
+                        is_boot_memory: region.is_boot_memory,
+                        cores,
+                        is_alias: false,
                     }));
-                },
-            MemoryType::Generic => if let Some(MemoryRegion::Generic(existing_region)) = mem_map.iter_mut().find(|existing_region|{
-                matches!(existing_region, MemoryRegion::Generic(generic_region) if generic_region.name == Some(region.name.clone()))})
+                }
+            },
+            MemoryType::Generic => {
+                if let Some(MemoryRegion::Generic(existing_region)) = mem_map.iter_mut().find(|existing_region| {
+                        matches!(existing_region, MemoryRegion::Generic(generic_region) if generic_region.name == Some(region.name.clone()))
+                    })
                 {
-                    existing_region.cores.push(current_core);
+                    existing_region.cores.extend_from_slice(&cores);
                 } else {
                     mem_map.push(MemoryRegion::Generic(GenericRegion {
-                    name: Some(region.name.clone()),
-                    range: region.memory_start..region.memory_end,
-                    cores: vec![current_core],
+                        name: Some(region.name.clone()),
+                        range: region.memory_start..region.memory_end,
+                        cores,
                     }));
-                },
+                }
+            },
         };
     }
     mem_map

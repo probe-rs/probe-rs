@@ -3,24 +3,28 @@ mod util;
 
 include!(concat!(env!("OUT_DIR"), "/meta.rs"));
 
+use std::cmp::Reverse;
+use std::ffi::OsStr;
+use std::fs;
 use std::path::Path;
 use std::str::FromStr;
-use std::{ffi::OsString, fs::File, path::PathBuf};
+use std::{ffi::OsString, path::PathBuf};
 
 use anyhow::{Context, Result};
 use clap::Parser;
+use itertools::Itertools;
 use probe_rs::flashing::{BinOptions, Format, IdfOptions};
+use probe_rs::{probe::list::Lister, Target};
+use serde::Serialize;
 use serde::{de::Error, Deserialize, Deserializer};
 use serde_json::Value;
 use time::{OffsetDateTime, UtcOffset};
-use tracing::metadata::LevelFilter;
-use tracing_subscriber::{
-    fmt::format::FmtSpan, prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt,
-    EnvFilter, Layer,
-};
 
+use crate::util::logging::setup_logging;
 use crate::util::parse_u32;
 use crate::util::parse_u64;
+
+const MAX_LOG_FILES: usize = 20;
 
 #[derive(clap::Parser)]
 #[clap(
@@ -32,16 +36,19 @@ use crate::util::parse_u64;
 struct Cli {
     /// Location for log file
     ///
-    /// If no location is specified, the log file will be stored in a default directory.
-    #[clap(long, global = true)]
+    /// If no location is specified, the behaviour depends on `--log-to-folder`.
+    #[clap(long, global = true, help_heading = "LOG CONFIGURATION")]
     log_file: Option<PathBuf>,
+    /// Enable logging to the default folder. This option is ignored if `--log-file` is specified.
+    #[clap(long, global = true, help_heading = "LOG CONFIGURATION")]
+    log_to_folder: bool,
     #[clap(subcommand)]
     subcommand: Subcommand,
 }
 
 #[derive(clap::Subcommand)]
 enum Subcommand {
-    /// Debug Adapter Protocol (DAP) server. See https://probe.rs/docs/tools/vscode/
+    /// Debug Adapter Protocol (DAP) server. See https://probe.rs/docs/tools/debugger/
     DapServer(cmd::dap_server::Cmd),
     /// List all connected debug probes
     List(cmd::list::Cmd),
@@ -70,8 +77,10 @@ enum Subcommand {
     #[clap(name = "itm")]
     Itm(cmd::itm::Cmd),
     Chip(cmd::chip::Cmd),
+    /// Measure the throughput of the selected debug probe
     Benchmark(cmd::benchmark::Cmd),
-    Profile(cmd::profile::Cmd),
+    /// Profile on-target runtime performance of target ELF program
+    Profile(cmd::profile::ProfileCmd),
     Read(cmd::read::Cmd),
     Write(cmd::write::Cmd),
 }
@@ -84,65 +93,67 @@ pub(crate) struct CoreOptions {
 }
 
 /// A helper function to deserialize a default [`Format`] from a string.
-fn format_from_str<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Format, D::Error> {
+fn format_from_str<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Option<Format>, D::Error> {
     match Value::deserialize(deserializer)? {
         Value::String(s) => match Format::from_str(s.as_str()) {
-            Ok(format) => Ok(format),
+            Ok(format) => Ok(Some(format)),
             Err(e) => Err(D::Error::custom(e)),
         },
-        _ => Err(D::Error::custom("invalid format")),
+        _ => Ok(None),
     }
 }
 
-#[derive(clap::Parser, Clone, Deserialize, Debug, Default)]
+#[derive(clap::Parser, Clone, Serialize, Deserialize, Debug, Default)]
 #[serde(default)]
 pub struct FormatOptions {
-    #[clap(value_enum, ignore_case = true, default_value = "elf", long)]
-    #[serde(deserialize_with = "format_from_str")]
-    format: Format,
+    /// If a format is provided, use it.
+    /// If a target has a preferred format, we use that.
+    /// Finally, if neither of the above cases are true, we default to ELF.
+    #[clap(
+        value_enum,
+        ignore_case = true,
+        long,
+        help_heading = "DOWNLOAD CONFIGURATION"
+    )]
+    // TODO: remove this alias in the next release after 0.24 and release of https://github.com/probe-rs/vscode/pull/86
+    #[serde(deserialize_with = "format_from_str", alias = "format")]
+    binary_format: Option<Format>,
     /// The address in memory where the binary will be put at. This is only considered when `bin` is selected as the format.
-    #[clap(long, value_parser = parse_u64)]
+    #[clap(long, value_parser = parse_u64, help_heading = "DOWNLOAD CONFIGURATION")]
     pub base_address: Option<u64>,
     /// The number of bytes to skip at the start of the binary file. This is only considered when `bin` is selected as the format.
-    #[clap(long, value_parser = parse_u32, default_value = "0")]
+    #[clap(long, value_parser = parse_u32, default_value = "0", help_heading = "DOWNLOAD CONFIGURATION")]
     pub skip: u32,
     /// The idf bootloader path
-    #[clap(long)]
+    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION")]
     pub idf_bootloader: Option<PathBuf>,
     /// The idf partition table path
-    #[clap(long)]
+    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION")]
     pub idf_partition_table: Option<PathBuf>,
 }
 
 impl FormatOptions {
-    pub fn into_format(self) -> anyhow::Result<Format> {
-        Ok(match self.format {
+    /// If a format is provided, use it.
+    /// If a target has a preferred format, we use that.
+    /// Finally, if neither of the above cases are true, we default to [`Format::default()`].
+    pub fn into_format(self, target: &Target) -> anyhow::Result<Format> {
+        let format = self
+            .binary_format
+            .unwrap_or_else(|| match target.default_format {
+                probe_rs_target::BinaryFormat::Idf => Format::Idf(Default::default()),
+                probe_rs_target::BinaryFormat::Raw => Default::default(),
+            });
+        Ok(match format {
             Format::Bin(_) => Format::Bin(BinOptions {
                 base_address: self.base_address,
                 skip: self.skip,
             }),
             Format::Hex => Format::Hex,
             Format::Elf => Format::Elf,
-            Format::Idf(_) => {
-                let bootloader = if let Some(path) = self.idf_bootloader {
-                    Some(std::fs::read(path)?)
-                } else {
-                    None
-                };
-
-                let partition_table = if let Some(path) = self.idf_partition_table {
-                    Some(esp_idf_part::PartitionTable::try_from(std::fs::read(
-                        path,
-                    )?)?)
-                } else {
-                    None
-                };
-
-                Format::Idf(IdfOptions {
-                    bootloader,
-                    partition_table,
-                })
-            }
+            Format::Idf(_) => Format::Idf(IdfOptions {
+                bootloader: self.idf_bootloader,
+                partition_table: self.idf_partition_table,
+            }),
             Format::Uf2 => Format::Uf2,
         })
     }
@@ -173,6 +184,37 @@ fn default_logfile_location() -> Result<PathBuf> {
     Ok(log_path)
 }
 
+/// Prune all old log files in the `directory`.
+fn prune_logs(directory: &Path) -> Result<(), anyhow::Error> {
+    // Get the path and elapsed creation time of all files in the log directory that have the '.log'
+    // suffix.
+    let mut log_files = fs::read_dir(directory)?
+        .filter_map(|entry| {
+            if let Ok(entry) = entry {
+                let path = entry.path();
+                if path.extension() == Some(OsStr::new("log")) {
+                    let metadata = fs::metadata(&path).ok()?;
+                    let last_modified = metadata.created().ok()?;
+                    Some((path, last_modified))
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
+        .collect_vec();
+
+    // Order all files by the elapsed creation time with smallest first.
+    log_files.sort_unstable_by_key(|(_, b)| Reverse(*b));
+
+    // Iterate all files except for the first `MAX_LOG_FILES` and delete them.
+    for (path, _) in log_files.iter().skip(MAX_LOG_FILES) {
+        fs::remove_file(path)?;
+    }
+    Ok(())
+}
+
 /// Returns the cleaned arguments for the handler of the respective end binary (cli, cargo-flash, cargo-embed, etc.).
 fn multicall_check(args: &[OsString], want: &str) -> Option<Vec<OsString>> {
     let argv0 = Path::new(&args[0]);
@@ -192,80 +234,78 @@ fn multicall_check(args: &[OsString], want: &str) -> Option<Vec<OsString>> {
 }
 
 fn main() -> Result<()> {
+    // Determine the local offset as early as possible to avoid potential
+    // issues with multiple threads and getting the offset.
+    // FIXME: we should probably let the user know if we can't determine the offset. However,
+    //        at this point we don't have a logger yet.
+    let utc_offset = UtcOffset::current_local_offset().unwrap_or(UtcOffset::UTC);
+
     let args: Vec<_> = std::env::args_os().collect();
     if let Some(args) = multicall_check(&args, "cargo-flash") {
         cmd::cargo_flash::main(args);
         return Ok(());
     }
     if let Some(args) = multicall_check(&args, "cargo-embed") {
-        cmd::cargo_embed::main(args);
+        cmd::cargo_embed::main(args, utc_offset);
         return Ok(());
     }
 
-    let utc_offset = UtcOffset::current_local_offset()
-        .context("Failed to determine local time for timestamps")?;
+    if let Some(format_arg_pos) = args.iter().position(|arg| arg == "--format") {
+        if let Some(format_arg) = args.get(format_arg_pos + 1) {
+            if let Some(format_arg) = format_arg.to_str() {
+                if Format::from_str(format_arg).is_ok() {
+                    anyhow::bail!("--format has been renamed to --binary-format. Please use --binary-format {0} instead of --format {0}", format_arg);
+                }
+            }
+        }
+    }
 
     // Parse the commandline options.
     let matches = Cli::parse_from(args);
 
+    // Setup the probe lister, list all probes normally
+    let lister = Lister::new();
+
     // the DAP server has special logging requirements. Run it before initializing logging,
     // so it can do its own special init.
     if let Subcommand::DapServer(cmd) = matches.subcommand {
-        return cmd::dap_server::run(cmd, utc_offset);
+        return cmd::dap_server::run(cmd, &lister, utc_offset);
     }
 
     let log_path = if let Some(location) = matches.log_file {
-        location
+        Some(location)
+    } else if matches.log_to_folder {
+        let location =
+            default_logfile_location().context("Unable to determine default log file location.")?;
+        prune_logs(
+            location
+                .parent()
+                .expect("A file parent directory. Please report this as a bug."),
+        )?;
+        Some(location)
     } else {
-        default_logfile_location().context("Unable to determine default log file location.")?
+        None
     };
 
-    let log_file = File::create(&log_path)?;
+    let _logger_guard = setup_logging(log_path.as_deref(), None);
 
-    let file_subscriber = tracing_subscriber::fmt::layer()
-        .json()
-        .with_file(true)
-        .with_line_number(true)
-        .with_span_events(FmtSpan::FULL)
-        .with_writer(log_file);
-
-    let stdout_subscriber = tracing_subscriber::fmt::layer()
-        .compact()
-        .without_time()
-        .with_filter(
-            EnvFilter::builder()
-                .with_default_directive(LevelFilter::ERROR.into())
-                .from_env_lossy(),
-        );
-
-    tracing_subscriber::registry()
-        .with(stdout_subscriber)
-        .with(file_subscriber)
-        .init();
-
-    tracing::info!("Writing log to {:?}", log_path);
-
-    let result = match matches.subcommand {
+    match matches.subcommand {
         Subcommand::DapServer { .. } => unreachable!(), // handled above.
-        Subcommand::List(cmd) => cmd.run(),
-        Subcommand::Info(cmd) => cmd.run(),
-        Subcommand::Gdb(cmd) => cmd.run(),
-        Subcommand::Reset(cmd) => cmd.run(),
-        Subcommand::Debug(cmd) => cmd.run(),
-        Subcommand::Download(cmd) => cmd.run(),
-        Subcommand::Run(cmd) => cmd.run(true, utc_offset),
-        Subcommand::Attach(cmd) => cmd.run(utc_offset),
-        Subcommand::Erase(cmd) => cmd.run(),
-        Subcommand::Trace(cmd) => cmd.run(),
-        Subcommand::Itm(cmd) => cmd.run(),
+        Subcommand::List(cmd) => cmd.run(&lister),
+        Subcommand::Info(cmd) => cmd.run(&lister),
+        Subcommand::Gdb(cmd) => cmd.run(&lister),
+        Subcommand::Reset(cmd) => cmd.run(&lister),
+        Subcommand::Debug(cmd) => cmd.run(&lister),
+        Subcommand::Download(cmd) => cmd.run(&lister),
+        Subcommand::Run(cmd) => cmd.run(&lister, true, utc_offset),
+        Subcommand::Attach(cmd) => cmd.run(&lister, utc_offset),
+        Subcommand::Erase(cmd) => cmd.run(&lister),
+        Subcommand::Trace(cmd) => cmd.run(&lister),
+        Subcommand::Itm(cmd) => cmd.run(&lister),
         Subcommand::Chip(cmd) => cmd.run(),
-        Subcommand::Benchmark(cmd) => cmd.run(),
-        Subcommand::Profile(cmd) => cmd.run(),
-        Subcommand::Read(cmd) => cmd.run(),
-        Subcommand::Write(cmd) => cmd.run(),
-    };
-
-    tracing::info!("Wrote log to {:?}", log_path);
-
-    result
+        Subcommand::Benchmark(cmd) => cmd.run(&lister),
+        Subcommand::Profile(cmd) => cmd.run(&lister),
+        Subcommand::Read(cmd) => cmd.run(&lister),
+        Subcommand::Write(cmd) => cmd.run(&lister),
+    }
 }

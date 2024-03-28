@@ -1,16 +1,13 @@
+use nusb::DeviceInfo;
 use once_cell::sync::Lazy;
-use rusb::{Context, DeviceHandle, Error, UsbContext};
 use std::time::Duration;
 
-use crate::probe::stlink::StlinkError;
+use crate::probe::{stlink::StlinkError, usb_util::InterfaceExt};
 
 use std::collections::HashMap;
 
 use super::tools::{is_stlink_device, read_serial_number};
-use crate::{
-    probe::{DebugProbeError, ProbeCreationError},
-    DebugProbeSelector,
-};
+use crate::probe::{DebugProbeError, DebugProbeSelector, ProbeCreationError};
 
 /// The USB Command packet size.
 const CMD_LEN: usize = 16;
@@ -35,7 +32,7 @@ pub static USB_PID_EP_MAP: Lazy<HashMap<u16, StLinkInfo>> = Lazy::new(|| {
     m
 });
 
-/// A helper struct to match STLink deviceinfo.
+/// A helper struct to match STLink device info.
 #[derive(Clone, Debug, Default)]
 pub struct StLinkInfo {
     pub version_name: &'static str,
@@ -64,7 +61,8 @@ impl StLinkInfo {
 }
 
 pub(crate) struct StLinkUsbDevice {
-    device_handle: DeviceHandle<rusb::Context>,
+    device_handle: nusb::Device,
+    interface: nusb::Interface,
     pub(crate) info: StLinkInfo,
 }
 
@@ -77,7 +75,8 @@ impl std::fmt::Debug for StLinkUsbDevice {
     }
 }
 
-pub(crate) trait StLinkUsb: std::fmt::Debug {
+pub trait StLinkUsb: std::fmt::Debug {
+    /// Writes to the probe and reads back data if needed.
     fn write(
         &mut self,
         cmd: &[u8],
@@ -90,6 +89,7 @@ pub(crate) trait StLinkUsb: std::fmt::Debug {
     /// STLink does not respond to USB requests.
     fn reset(&mut self) -> Result<(), DebugProbeError>;
 
+    /// Reads SWO data from the probe.
     fn read_swo(
         &mut self,
         read_data: &mut [u8],
@@ -97,70 +97,42 @@ pub(crate) trait StLinkUsb: std::fmt::Debug {
     ) -> Result<usize, DebugProbeError>;
 }
 
+// Copy of `Selector::matches` except it uses the stlink-specific read_serial_number
+// to handle the broken stlink-v2 serial numbers that need hex-encoding.
+fn selector_matches(selector: &DebugProbeSelector, info: &DeviceInfo) -> bool {
+    let res = info.vendor_id() == selector.vendor_id
+        && info.product_id() == selector.product_id
+        && selector
+            .serial_number
+            .as_ref()
+            .map(|s| read_serial_number(info).as_ref() == Some(s))
+            .unwrap_or(true);
+
+    res
+}
+
 impl StLinkUsbDevice {
     /// Creates and initializes a new USB device.
-    pub fn new_from_selector(
-        selector: impl Into<DebugProbeSelector>,
-    ) -> Result<Self, ProbeCreationError> {
-        let selector = selector.into();
-
-        let context = Context::new()?;
-
-        tracing::debug!("Acquired libusb context.");
-
-        let device = context
-            .devices()?
-            .iter()
+    pub fn new_from_selector(selector: &DebugProbeSelector) -> Result<Self, ProbeCreationError> {
+        let device = nusb::list_devices()
+            .map_err(ProbeCreationError::Usb)?
             .filter(is_stlink_device)
-            .find_map(|device| {
-                let descriptor = device.device_descriptor().ok()?;
-                // First match the VID & PID.
-                if selector.vendor_id == descriptor.vendor_id()
-                    && selector.product_id == descriptor.product_id()
-                {
-                    // If the VID & PID match, match the serial if one was given.
-                    if let Some(serial) = &selector.serial_number {
-                        let sn_str = read_serial_number(&device, &descriptor).ok();
-                        if sn_str.as_ref() == Some(serial) {
-                            Some(device)
-                        } else {
-                            None
-                        }
-                    } else {
-                        // If no serial was given, the VID & PID match is enough; return the device.
-                        Some(device)
-                    }
-                } else {
-                    None
-                }
-            })
-            .map_or(Err(ProbeCreationError::NotFound), Ok)?;
+            .find(|device| selector_matches(selector, device))
+            .ok_or(ProbeCreationError::NotFound)?;
 
-        let mut device_handle = device.open()?;
+        let info = USB_PID_EP_MAP[&device.product_id()].clone();
 
+        let device_handle = device.open().map_err(ProbeCreationError::Usb)?;
         tracing::debug!("Aquired handle for probe");
-
-        let config = device.active_config_descriptor()?;
-
-        tracing::debug!("Active config descriptor: {:?}", &config);
-
-        let descriptor = device.device_descriptor()?;
-
-        tracing::debug!("Device descriptor: {:?}", &descriptor);
-
-        let info = USB_PID_EP_MAP[&descriptor.product_id()].clone();
-
-        device_handle.claim_interface(0)?;
-
-        tracing::debug!("Claimed interface 0 of USB device.");
 
         let mut endpoint_out = false;
         let mut endpoint_in = false;
         let mut endpoint_swo = false;
 
+        let config = device_handle.configurations().next().unwrap();
         if let Some(interface) = config.interfaces().next() {
-            if let Some(descriptor) = interface.descriptors().next() {
-                for endpoint in descriptor.endpoint_descriptors() {
+            if let Some(descriptor) = interface.alt_settings().next() {
+                for endpoint in descriptor.endpoints() {
                     if endpoint.address() == info.ep_out {
                         endpoint_out = true;
                     } else if endpoint.address() == info.ep_in {
@@ -175,29 +147,28 @@ impl StLinkUsbDevice {
         if !endpoint_out {
             return Err(StlinkError::EndpointNotFound.into());
         }
-
         if !endpoint_in {
             return Err(StlinkError::EndpointNotFound.into());
         }
-
         if !endpoint_swo {
             return Err(StlinkError::EndpointNotFound.into());
         }
 
+        let interface = device_handle
+            .claim_interface(0)
+            .map_err(ProbeCreationError::Usb)?;
+
+        tracing::debug!("Claimed interface 0 of USB device.");
+
         let usb_stlink = Self {
             device_handle,
+            interface,
             info,
         };
 
         tracing::debug!("Succesfully attached to STLink.");
 
         Ok(usb_stlink)
-    }
-
-    /// Closes the USB interface gracefully.
-    /// Internal helper.
-    fn close(&mut self) -> Result<(), Error> {
-        self.device_handle.release_interface(0)
     }
 }
 
@@ -227,9 +198,7 @@ impl StLinkUsb for StLinkUsbDevice {
         let ep_out = self.info.ep_out;
         let ep_in = self.info.ep_in;
 
-        let written_bytes = self
-            .device_handle
-            .write_bulk(ep_out, &padded_cmd, timeout)?;
+        let written_bytes = self.interface.write_bulk(ep_out, &padded_cmd, timeout)?;
 
         if written_bytes != CMD_LEN {
             return Err(StlinkError::NotEnoughBytesWritten {
@@ -246,7 +215,7 @@ impl StLinkUsb for StLinkUsbDevice {
 
             while remaining_bytes > 0 {
                 let written_bytes =
-                    self.device_handle
+                    self.interface
                         .write_bulk(ep_out, &write_data[write_index..], timeout)?;
 
                 remaining_bytes -= written_bytes;
@@ -269,7 +238,7 @@ impl StLinkUsb for StLinkUsbDevice {
 
             while remaining_bytes > 0 {
                 let read_bytes =
-                    self.device_handle
+                    self.interface
                         .read_bulk(ep_in, &mut read_data[read_index..], timeout)?;
 
                 read_index += read_bytes;
@@ -301,9 +270,9 @@ impl StLinkUsb for StLinkUsbDevice {
         if read_data.is_empty() {
             Ok(0)
         } else {
-            self.device_handle
+            self.interface
                 .read_bulk(ep_swo, read_data, timeout)
-                .map_err(|e| DebugProbeError::Usb(Some(Box::new(e))))
+                .map_err(DebugProbeError::Usb)
         }
     }
 
@@ -311,15 +280,6 @@ impl StLinkUsb for StLinkUsbDevice {
     /// STLink does not respond to USB requests.
     fn reset(&mut self) -> Result<(), DebugProbeError> {
         tracing::debug!("Resetting USB device of STLink");
-        self.device_handle
-            .reset()
-            .map_err(|e| DebugProbeError::Usb(Some(Box::new(e))))
-    }
-}
-
-impl Drop for StLinkUsbDevice {
-    fn drop(&mut self) {
-        // We ignore the error case as we can't do much about it anyways.
-        let _ = self.close();
+        self.device_handle.reset().map_err(DebugProbeError::Usb)
     }
 }

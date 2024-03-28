@@ -1,6 +1,7 @@
 use super::debugger::{DebugSessionStatus, Debugger};
 use crate::cmd::dap_server::debug_adapter::{dap::adapter::*, protocol::DapAdapter};
 use anyhow::{Context, Result};
+use probe_rs::probe::list::Lister;
 use serde::Deserialize;
 use std::{
     fs,
@@ -31,8 +32,9 @@ impl std::str::FromStr for TargetSessionType {
 }
 
 pub fn debug(
+    lister: &Lister,
     port: u16,
-    vscode: bool,
+    single_session: bool,
     log_info_message: &str,
     timestamp_offset: UtcOffset,
 ) -> Result<()> {
@@ -69,7 +71,7 @@ pub fn debug(
 
                 let debug_adapter = DebugAdapter::new(dap_adapter);
 
-                match debugger.debug_session(debug_adapter, log_info_message) {
+                match debugger.debug_session(debug_adapter, log_info_message, lister) {
                     Err(error) => {
                         tracing::error!("probe-rs-debugger session ended: {}", error);
                     }
@@ -80,8 +82,9 @@ pub fn debug(
                         tracing::error!("probe-rs-debugger enountered unexpected `DebuggerStatus` in debug() execution. Please report this as a bug.");
                     }
                 }
-                // Terminate this process if it was started by VSCode
-                if vscode {
+                // Terminate after a single debug session. This is the behavour expected by VSCode
+                // if it started probe-rs as a child process.
+                if single_session {
                     break;
                 }
             }
@@ -98,7 +101,9 @@ pub fn debug(
     Ok(())
 }
 
-/// All eprintln! messages are picked up by the VSCode extension and displayed in the debug console. We send these to stderr, in addition to logging them, so that they will show up, irrespective of the RUST_LOG level filters.
+/// All eprintln! messages are picked up by the VSCode extension and displayed in the debug console.
+/// We send these to stderr, in addition to logging them, so that they will show up, irrespective of
+/// the RUST_LOG level filters.
 fn log_to_console_and_tracing(message: &str) {
     eprintln!("probe-rs-debug: {}", &message);
     tracing::info!("{}", &message);

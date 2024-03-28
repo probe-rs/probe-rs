@@ -1,5 +1,5 @@
 use probe_rs::architecture::arm::{component::TraceSink, swo::SwoConfig};
-use probe_rs::{Error, Permissions};
+use probe_rs::{probe::list::Lister, Error, Permissions};
 
 use itm::{Decoder, DecoderOptions, TracePacket};
 
@@ -12,10 +12,10 @@ use std::{any::Any, io::prelude::*};
 fn main() -> Result<(), Error> {
     pretty_env_logger::init();
 
-    use probe_rs::Probe;
+    let lister = Lister::new();
 
     // Get a list of all available debug probes.
-    let probes = Probe::list_all();
+    let probes = lister.list_all();
 
     // Use the first probe found.
     let probe = probes[0].open()?;
@@ -115,14 +115,10 @@ impl TcpPublisher {
     fn write_to_all_sockets(sockets: &mut Vec<(TcpStream, SocketAddr)>, message: impl AsRef<str>) {
         let mut to_remove = vec![];
         for (i, (socket, _addr)) in sockets.iter_mut().enumerate() {
-            match socket.write(message.as_ref().as_bytes()) {
-                Ok(_) => (),
-                Err(err) => {
-                    if err.kind() == std::io::ErrorKind::WouldBlock {
-                    } else {
-                        to_remove.push(i);
-                        tracing::error!("Writing to a tcp socket experienced an error: {:?}", err)
-                    }
+            if let Err(err) = socket.write_all(message.as_ref().as_bytes()) {
+                if err.kind() != std::io::ErrorKind::WouldBlock {
+                    to_remove.push(i);
+                    tracing::error!("Writing to a tcp socket experienced an error: {:?}", err)
                 }
             }
         }
@@ -253,20 +249,18 @@ impl SwoPublisher<Box<dyn Any + Send>> for TcpPublisher {
     }
 
     fn stop(&mut self) -> Result<(), Box<dyn Any + Send>> {
-        let thread_handle = self.thread_handle.take();
-        match thread_handle.map(|h| {
+        if let Some((thread_handle, sender)) = self.thread_handle.take() {
             // If we have a running thread, send the request to stop it and then wait for a join.
             // If this unwrap fails the thread has already been destroyed.
             // This cannot be assumed under normal operation conditions. Even with normal fault handling this should never happen.
             // So this unwarp is fine.
-            h.1.send(()).unwrap();
-            h.0.join()
-        }) {
-            Some(Err(err)) => {
+            sender.send(()).unwrap();
+
+            if let Err(err) = thread_handle.join() {
                 tracing::error!("An error occurred during thread execution: {:?}", err);
-                Err(err)
+                return Err(err);
             }
-            _ => Ok(()),
         }
+        Ok(())
     }
 }

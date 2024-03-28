@@ -1,5 +1,6 @@
 use probe_rs::debug::{debug_info::DebugInfo, ColumnType, SourceLocation};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
+use typed_path::UnixPathBuf;
 
 const TEST_DATA: [(u64, u64, ColumnType); 8] = [
     // Target address, line, column
@@ -19,7 +20,8 @@ fn breakpoint_location_absolute() {
 
     // Here we test with an absolute path, i.e. the combination of compilation directory
     // and relative path to the actual source file.
-    let path = Path::new("/Users/jacknoppe/dev/probe-rs-debugger-test/src/main.rs");
+    let path = UnixPathBuf::from("/Users/jacknoppe/dev/probe-rs-debugger-test/src/main.rs")
+        .to_typed_path_buf();
 
     for (addr, line, col) in TEST_DATA.iter() {
         let col = if let ColumnType::Column(c) = col {
@@ -30,7 +32,7 @@ fn breakpoint_location_absolute() {
 
         assert_eq!(
             *addr,
-            di.get_breakpoint_location(path, *line, col)
+            di.get_breakpoint_location(&path, *line, col)
                 .expect("Failed to find breakpoint location.")
                 .address,
             "Addresses do not match for data path={:?}, line={:?}, col={:?}",
@@ -47,9 +49,14 @@ fn breakpoint_location_inexact() {
     // i.e. no exact entry exists for line 277 and column 1, but we find one for column 10.
     let test_data = [(0x80009AC, 277, ColumnType::LeftEdge)];
 
-    let di = DebugInfo::from_file("tests/probe-rs-debugger-test").unwrap();
+    let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    path.push("tests");
+    path.push("probe-rs-debugger-test");
 
-    let path = Path::new("/Users/jacknoppe/dev/probe-rs-debugger-test/src/main.rs");
+    let di = DebugInfo::from_file(&path).unwrap();
+
+    let path = UnixPathBuf::from("/Users/jacknoppe/dev/probe-rs-debugger-test/src/main.rs")
+        .to_typed_path_buf();
 
     for (addr, line, col) in test_data.iter() {
         let col = if let ColumnType::Column(c) = col {
@@ -60,7 +67,7 @@ fn breakpoint_location_inexact() {
 
         assert_eq!(
             *addr,
-            di.get_breakpoint_location(path, *line, col)
+            di.get_breakpoint_location(&path, *line, col)
                 .expect("Failed to find valid breakpoint locations.")
                 .address,
             "Addresses do not match for data path={:?}, line={:?}, col={:?}",
@@ -77,17 +84,16 @@ fn source_location() {
 
     let file = "main.rs";
 
+    let dir =
+        UnixPathBuf::from("/Users/jacknoppe/dev/probe-rs-debugger-test/src").to_typed_path_buf();
+
     for (addr, line, col) in TEST_DATA.iter() {
         assert_eq!(
             Some(SourceLocation {
                 line: Some(*line),
                 column: Some(*col),
-                directory: Some(PathBuf::from(
-                    "/Users/jacknoppe/dev/probe-rs-debugger-test/src"
-                )),
+                directory: Some(dir.clone()),
                 file: Some(file.to_owned()),
-                low_pc: Some(0x80006DE),
-                high_pc: Some(0x8000E0C),
             }),
             di.get_source_location(*addr)
         );
@@ -97,11 +103,12 @@ fn source_location() {
 #[test]
 fn find_non_existing_unit_by_path() {
     let unit_path =
-        Path::new("/Users/jacknoppe/dev/probe-rs-debugger-test/src/non-existent-path.rs");
+        UnixPathBuf::from("/Users/jacknoppe/dev/probe-rs-debugger-test/src/non-existent-path.rs")
+            .to_typed_path_buf();
 
     let debug_info = DebugInfo::from_file("tests/probe-rs-debugger-test").unwrap();
 
     assert!(debug_info
-        .get_breakpoint_location(unit_path, 14, None)
+        .get_breakpoint_location(&unit_path, 14, None)
         .is_err());
 }

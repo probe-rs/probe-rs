@@ -1,0 +1,45 @@
+name: esp32c6_lp
+manufacturer:
+  cc: 0x0C
+  id: 0x12
+variants:
+  - name: esp32c6_lp
+    part: null
+    scan_chain:
+      - name: main
+        ir_len: 5
+    cores:
+      - name: lp
+        type: riscv
+        core_access_options:
+          !Riscv
+            hart_id: 1
+    memory_map:
+      - !Nvm
+        range: #16 Mb Max addressable Flash size
+          start: 0x0
+          end: 0x01000000
+        is_boot_memory: true
+        cores:
+          - lp
+      - !Nvm
+        range: # External Flash on Instruction/Data Bus
+          start: 0x42000000
+          end: 0x42FFFFFF
+        is_alias: true
+        cores:
+          - lp
+      - !Ram
+        range:
+          start: 0x40800000
+          end: 0x4087FFFF
+        cores:
+          - lp
+      - !Ram
+        range:
+          start: 0x50000000
+          end: 0x50003FFF
+        cores:
+          - lp
+    flash_algorithms: []
+flash_algorithms: []

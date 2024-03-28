@@ -1,11 +1,12 @@
-use crate::{
-    core::{Core, RegisterDataType, RegisterId, RegisterRole, RegisterValue},
-    CoreRegister, Error,
-};
+use std::ops::Range;
 
+use crate::{
+    core::{RegisterDataType, RegisterId, RegisterRole, RegisterValue},
+    CoreInterface, CoreRegister, Error,
+};
 /// Stores the relevant information from [`crate::core::CoreRegister`] for use in debug operations,
 /// as well as additional information required during debug.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct DebugRegister {
     /// To lookup platform specific details of core register definitions.
     pub core_register: &'static CoreRegister,
@@ -16,6 +17,40 @@ pub struct DebugRegister {
 }
 
 impl DebugRegister {
+    /// Test if this register role suggests that the value is a reference to an address in memory.
+    pub(crate) fn is_pointer(&self) -> bool {
+        for role in self.core_register.roles.iter() {
+            if matches!(
+                role,
+                RegisterRole::ProgramCounter
+                    | RegisterRole::FramePointer
+                    | RegisterRole::StackPointer
+                    | RegisterRole::ReturnAddress
+                    | RegisterRole::MainStackPointer
+                    | RegisterRole::ProcessStackPointer
+            ) {
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Return the memory range required to read the register value.
+    pub fn memory_range(&self) -> Result<Option<Range<u64>>, Error> {
+        if self.is_pointer() {
+            if let Some(mut register_value) = self.value {
+                let start_address: u64 = register_value.try_into()?;
+                register_value.increment_address(self.core_register.size_in_bytes())?;
+                let end_address: u64 = register_value.try_into()?;
+                return Ok(Some(Range {
+                    start: start_address,
+                    end: end_address,
+                }));
+            }
+        }
+        Ok(None)
+    }
+
     /// Test if this is a 32-bit unsigned integer register
     pub(crate) fn is_u32(&self) -> bool {
         self.core_register.data_type == RegisterDataType::UnsignedInteger(32)
@@ -46,15 +81,15 @@ impl DebugRegister {
 }
 
 /// All the registers required for debug related operations.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize)]
 pub struct DebugRegisters(pub Vec<DebugRegister>);
 
 impl DebugRegisters {
     /// Read all registers defined in [`crate::core::CoreRegisters`] from the given core.
-    pub fn from_core(core: &mut Core) -> Self {
+    pub fn from_core(core: &mut impl CoreInterface) -> Self {
         let mut debug_registers = Vec::<DebugRegister>::new();
 
-        for (dwarf_id, core_register) in core.registers().all_registers().enumerate() {
+        for (dwarf_id, core_register) in core.registers().core_registers().enumerate() {
             // Check to ensure the register type is compatible with u64.
             if matches!(core_register.data_type(), RegisterDataType::UnsignedInteger(size_in_bits) if size_in_bits <= 64)
             {
@@ -66,8 +101,8 @@ impl DebugRegisters {
                     } else {
                         None
                     },
-                    value: match core.read_core_reg(core_register.id) {
-                        Ok::<RegisterValue, Error>(register_value) => Some(register_value),
+                    value: match core.read_core_reg(core_register.id()) {
+                        Ok::<RegisterValue, _>(register_value) => Some(register_value),
                         Err(e) => {
                             tracing::warn!(
                                 "Failed to read value for register {:?}: {}",
@@ -108,7 +143,7 @@ impl DebugRegisters {
     }
 
     /// Get the program counter.
-    pub fn get_program_counter(&self) -> Option<&DebugRegister> {
+    pub fn get_program_counter<'b, 'c: 'b>(&'c self) -> Option<&'b DebugRegister> {
         self.0.iter().find(|debug_register| {
             debug_register
                 .core_register
@@ -117,7 +152,7 @@ impl DebugRegisters {
     }
 
     /// Get a mutable reference to the program counter.
-    pub fn get_program_counter_mut(&mut self) -> Option<&mut DebugRegister> {
+    pub fn get_program_counter_mut<'b, 'c: 'b>(&'c mut self) -> Option<&'b mut DebugRegister> {
         self.0.iter_mut().find(|debug_register| {
             debug_register
                 .core_register
@@ -174,7 +209,7 @@ impl DebugRegisters {
             .unwrap_or_else(|| "unknown register".to_string())
     }
 
-    /// Retrieve a refererence to a register by searching against an exact match of the [`RegisterRole`].
+    /// Retrieve a reference to a register by searching against an exact match of the [`RegisterRole`].
     pub fn get_register_by_role(
         &self,
         register_role: &RegisterRole,
@@ -219,7 +254,7 @@ impl DebugRegisters {
             .try_into()
     }
 
-    /// Retrieve a mutable refererence to a register by searching against an exact match of the [`RegisterRole`].
+    /// Retrieve a mutable reference to a register by searching against an exact match of the [`RegisterRole`].
     pub fn get_register_mut_by_role(
         &mut self,
         register_role: &RegisterRole,

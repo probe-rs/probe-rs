@@ -11,10 +11,12 @@ pub mod debug_info;
 pub mod debug_step;
 /// References to the DIE (debug information entry) of functions.
 pub mod function_die;
+/// Programming languages
+pub(crate) mod language;
 /// Target Register definitions, expanded from [`crate::core::registers::CoreRegister`] to include unwind specific information.
 pub mod registers;
 /// The source statement information used while identifying haltpoints for debug stepping and breakpoints.
-pub(crate) mod source_statement;
+pub(crate) mod source_instructions;
 /// The stack frame information used while unwinding the stack from a specific program counter.
 pub mod stack_frame;
 /// Information about a Unit in the debug information.
@@ -25,18 +27,25 @@ pub mod variable;
 pub mod variable_cache;
 
 pub use self::{
-    debug_info::*, debug_step::SteppingMode, registers::*, stack_frame::StackFrame, variable::*,
+    debug_info::*, debug_step::SteppingMode, registers::*, source_instructions::SourceLocation,
+    source_instructions::VerifiedBreakpoint, stack_frame::StackFrame, variable::*,
     variable_cache::VariableCache,
 };
 use crate::{core::Core, MemoryInterface};
+
 use gimli::DebuggingInformationEntry;
+use typed_path::TypedPathBuf;
+
 use std::{
     io,
-    path::PathBuf,
+    num::NonZeroU32,
     str::Utf8Error,
-    sync::atomic::{AtomicI64, Ordering},
+    sync::atomic::{AtomicU32, Ordering},
     vec,
 };
+
+/// A simplified type alias of the [`gimli::EndianReader`] type.
+pub type EndianReader = gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>;
 
 /// An error occurred while debugging the target.
 #[derive(Debug, thiserror::Error)]
@@ -62,20 +71,11 @@ pub enum DebugError {
     /// An int could not be created from the given string.
     #[error(transparent)]
     IntConversion(#[from] std::num::TryFromIntError),
-    /// Errors encountered while determining valid halt locations for breakpoints and stepping.
-    /// These are distinct from other errors because they terminate the current step, and result in a user message, but they do not interrupt the rest of the debug session.
-    #[error("{message}  @program_counter={:#010X}.", pc_at_error)]
-    NoValidHaltLocation {
-        /// A message that can be displayed to the user to help them make an informed recovery choice.
-        message: String,
-        /// The value of the program counter for which a halt was requested.
-        pc_at_error: u64,
-    },
     /// Non-terminal Errors encountered while unwinding the stack, e.g. Could not resolve the value of a variable in the stack.
     /// These are distinct from other errors because they do not interrupt processing.
     /// Instead, the cause of incomplete results are reported back/explained to the user, and the stack continues to unwind.
     #[error("{message}")]
-    UnwindIncompleteResults {
+    WarnAndContinue {
         /// A message that can be displayed to the user to help them understand the reason for the incomplete results.
         message: String,
     },
@@ -85,7 +85,7 @@ pub enum DebugError {
 }
 
 /// A copy of [`gimli::ColumnType`] which uses [`u64`] instead of [`NonZeroU64`](std::num::NonZeroU64).
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize)]
 pub enum ColumnType {
     /// The `LeftEdge` means that the statement begins at the start of the new line.
     LeftEdge,
@@ -102,48 +102,73 @@ impl From<gimli::ColumnType> for ColumnType {
     }
 }
 
-static CACHE_KEY: AtomicI64 = AtomicI64::new(1);
-/// Generate a unique key that can be used to assign id's to StackFrame and Variable structs.
-pub fn get_sequential_key() -> i64 {
-    CACHE_KEY.fetch_add(1, Ordering::SeqCst)
-}
-
-/// A specific location in source code.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct SourceLocation {
-    /// The line number in the source file with zero based indexing.
-    pub line: Option<u64>,
-    /// The column number in the source file with zero based indexing.
-    pub column: Option<ColumnType>,
-    /// The file name of the source file.
-    pub file: Option<String>,
-    /// The directory of the source file.
-    pub directory: Option<PathBuf>,
-    /// The address of the first instruction associated with the source code
-    pub low_pc: Option<u32>,
-    /// The address of the first location past the last instruction associated with the source code
-    pub high_pc: Option<u32>,
-}
-
-impl SourceLocation {
-    /// The full path of the source file, combining the `directory` and `file` fields.
-    /// If the path does not resolve to an existing file, and error is returned.
-    pub fn combined_path(&self) -> Result<PathBuf, DebugError> {
-        if let Some(valid_path) = self.directory.as_ref().and_then(|dir| {
-            self.file
-                .as_ref()
-                .map(|file| dir.join(file))
-                .filter(|path| path.exists())
-        }) {
-            Ok(valid_path)
-        } else {
-            Err(DebugError::Other(anyhow::anyhow!(
-                "Unable to find source file for directory {:?} and file {:?}",
-                self.directory,
-                self.file
-            )))
+impl From<u64> for ColumnType {
+    fn from(column: u64) -> Self {
+        match column {
+            0 => ColumnType::LeftEdge,
+            _ => ColumnType::Column(column),
         }
     }
+}
+
+/// Object reference as defined in the DAP standard.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ObjectRef {
+    /// Valid object reference (> 0)
+    Valid(NonZeroU32),
+    /// Invalid object reference (<= 0)
+    #[default]
+    Invalid,
+}
+
+impl PartialOrd for ObjectRef {
+    fn partial_cmp(&self, other: &ObjectRef) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for ObjectRef {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        i64::from(*self).cmp(&i64::from(*other))
+    }
+}
+
+impl From<ObjectRef> for i64 {
+    fn from(value: ObjectRef) -> Self {
+        match value {
+            ObjectRef::Valid(v) => v.get() as i64,
+            ObjectRef::Invalid => 0,
+        }
+    }
+}
+
+impl From<i64> for ObjectRef {
+    fn from(value: i64) -> Self {
+        if value < 0 {
+            ObjectRef::Invalid
+        } else {
+            match NonZeroU32::try_from(value as u32) {
+                Ok(v) => ObjectRef::Valid(v),
+                Err(_) => ObjectRef::Invalid,
+            }
+        }
+    }
+}
+
+impl std::str::FromStr for ObjectRef {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let value = s.parse::<i64>()?;
+        Ok(ObjectRef::from(value))
+    }
+}
+
+static CACHE_KEY: AtomicU32 = AtomicU32::new(1);
+/// Generate a unique key that can be used to assign id's to StackFrame and Variable structs.
+pub fn get_object_reference() -> ObjectRef {
+    let key = CACHE_KEY.fetch_add(1, Ordering::SeqCst);
+    ObjectRef::Valid(NonZeroU32::new(key).unwrap())
 }
 
 /// If file information is available, it returns `Some(directory:PathBuf, file_name:String)`, otherwise `None`.
@@ -151,26 +176,19 @@ fn extract_file(
     debug_info: &DebugInfo,
     unit: &gimli::Unit<GimliReader>,
     attribute_value: gimli::AttributeValue<GimliReader>,
-) -> Option<(PathBuf, String)> {
+) -> Option<(TypedPathBuf, String)> {
     match attribute_value {
-        gimli::AttributeValue::FileIndex(index) => unit.line_program.as_ref().and_then(|ilnp| {
-            let header = ilnp.header();
-
-            if let Some(file_entry) = header.file(index) {
-                if let Some((Some(path), Some(file))) = debug_info
-                    .find_file_and_directory(unit, header, file_entry)
-                    .map(|(file, path)| (path, file))
-                {
-                    Some((path, file))
-                } else {
-                    tracing::warn!("Unable to extract file or path from {:?}.", attribute_value);
-                    None
-                }
+        gimli::AttributeValue::FileIndex(index) => {
+            if let Some((Some(path), Some(file))) = debug_info
+                .find_file_and_directory(unit, index)
+                .map(|(file, path)| (path, file))
+            {
+                Some((path, file))
             } else {
-                tracing::warn!("Unable to extract file entry for {:?}.", attribute_value);
+                tracing::warn!("Unable to extract file or path from {:?}.", attribute_value);
                 None
             }
-        }),
+        }
         other => {
             tracing::warn!(
                 "Unable to extract file information from attribute value {:?}: Not implemented.",
@@ -187,6 +205,10 @@ fn extract_byte_size(node_die: &DebuggingInformationEntry<GimliReader>) -> Optio
         Ok(optional_byte_size_attr) => match optional_byte_size_attr {
             Some(byte_size_attr) => match byte_size_attr.value() {
                 gimli::AttributeValue::Udata(byte_size) => Some(byte_size),
+                gimli::AttributeValue::Data1(byte_size) => Some(byte_size as u64),
+                gimli::AttributeValue::Data2(byte_size) => Some(byte_size as u64),
+                gimli::AttributeValue::Data4(byte_size) => Some(byte_size as u64),
+                gimli::AttributeValue::Data8(byte_size) => Some(byte_size),
                 other => {
                     tracing::warn!("Unimplemented: DW_AT_byte_size value: {:?} ", other);
                     None
@@ -209,23 +231,6 @@ fn extract_line(attribute_value: gimli::AttributeValue<GimliReader>) -> Option<u
     match attribute_value {
         gimli::AttributeValue::Udata(line) => Some(line),
         _ => None,
-    }
-}
-
-fn extract_name(
-    debug_info: &DebugInfo,
-    attribute_value: gimli::AttributeValue<GimliReader>,
-) -> String {
-    match attribute_value {
-        gimli::AttributeValue::DebugStrRef(name_ref) => {
-            if let Ok(name_raw) = debug_info.dwarf.string(name_ref) {
-                String::from_utf8_lossy(&name_raw).to_string()
-            } else {
-                "Invalid DW_AT_name value".to_string()
-            }
-        }
-        gimli::AttributeValue::String(name) => String::from_utf8_lossy(&name).to_string(),
-        other => format!("Unimplemented: Evaluate name from {other:?}"),
     }
 }
 

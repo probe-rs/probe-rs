@@ -1,10 +1,14 @@
 use object::{
-    elf::FileHeader32, elf::PT_LOAD, read::elf::FileHeader, read::elf::ProgramHeader, Endianness,
-    Object, ObjectSection,
+    elf::FileHeader32, elf::FileHeader64, elf::PT_LOAD, read::elf::ElfFile, read::elf::FileHeader,
+    read::elf::ProgramHeader, Endianness, Object, ObjectSection,
 };
 use probe_rs_target::MemoryRange;
 
-use std::{fs::File, path::Path, str::FromStr};
+use std::{
+    fs::File,
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 
 use super::*;
 use crate::session::Session;
@@ -22,9 +26,9 @@ pub struct BinOptions {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Default)]
 pub struct IdfOptions {
     /// The bootloader
-    pub bootloader: Option<Vec<u8>>,
+    pub bootloader: Option<PathBuf>,
     /// The partition table
-    pub partition_table: Option<esp_idf_part::PartitionTable>,
+    pub partition_table: Option<PathBuf>,
 }
 
 /// A finite list of all the available binary formats probe-rs understands.
@@ -98,10 +102,12 @@ pub enum FileDownloadError {
     /// This is most likely because of a bad linker script.
     #[error("No loadable ELF sections were found.")]
     NoLoadableSegments,
+    /// Some error returned by the flash size detection.
+    #[error("Could not determine flash size.")]
+    FlashSizeDetection(#[from] crate::Error),
 }
 
 /// Options for downloading a file onto a target chip.
-///
 ///
 /// This struct should be created using the [`DownloadOptions::default()`] function, and can be configured by setting
 /// the fields directly:
@@ -149,7 +155,7 @@ impl DownloadOptions {
 
 /// Downloads a file of given `format` at `path` to the flash of the target given in `session`.
 ///
-/// This will ensure that memory bounderies are honored and does unlocking, erasing and programming of the flash for you.
+/// This will ensure that memory boundaries are honored and does unlocking, erasing and programming of the flash for you.
 ///
 /// If you are looking for more options, have a look at [download_file_with_options].
 pub fn download_file<P: AsRef<Path>>(
@@ -162,7 +168,7 @@ pub fn download_file<P: AsRef<Path>>(
 
 /// Downloads a file of given `format` at `path` to the flash of the target given in `session`.
 ///
-/// This will ensure that memory bounderies are honored and does unlocking, erasing and programming of the flash for you.
+/// This will ensure that memory boundaries are honored and does unlocking, erasing and programming of the flash for you.
 ///
 /// If you are looking for a simple version without many options, have a look at [download_file].
 pub fn download_file_with_options<P: AsRef<Path>>(
@@ -171,10 +177,7 @@ pub fn download_file_with_options<P: AsRef<Path>>(
     format: Format,
     options: DownloadOptions,
 ) -> Result<(), FileDownloadError> {
-    let mut file = match File::open(path.as_ref()) {
-        Ok(file) => file,
-        Err(e) => return Err(FileDownloadError::IO(e)),
-    };
+    let mut file = File::open(path.as_ref()).map_err(FileDownloadError::IO)?;
 
     let mut loader = session.target().flash_loader();
 
@@ -191,7 +194,7 @@ pub fn download_file_with_options<P: AsRef<Path>>(
         .map_err(FileDownloadError::Flash)
 }
 
-/// Flash data which was extraced from an ELF file.
+/// Flash data which was extracted from an ELF file.
 pub(super) struct ExtractedFlashData<'data> {
     pub(super) section_names: Vec<String>,
     pub(super) address: u32,
@@ -216,25 +219,14 @@ impl std::fmt::Debug for ExtractedFlashData<'_> {
     }
 }
 
-pub(super) fn extract_from_elf<'data>(
-    extracted_data: &mut Vec<ExtractedFlashData<'data>>,
+fn extract_from_elf_inner<'data, T: FileHeader>(
+    elf_header: &T,
+    binary: ElfFile<'_, T>,
     elf_data: &'data [u8],
-) -> Result<usize, FileDownloadError> {
-    let file_kind = object::FileKind::parse(elf_data)?;
-
-    match file_kind {
-        object::FileKind::Elf32 => (),
-        _ => return Err(FileDownloadError::Object("Unsupported file type")),
-    }
-
-    let elf_header = FileHeader32::<Endianness>::parse(elf_data)?;
-
-    let binary = object::read::elf::ElfFile::<FileHeader32<Endianness>>::parse(elf_data)?;
-
+) -> Result<Vec<ExtractedFlashData<'data>>, FileDownloadError> {
     let endian = elf_header.endian()?;
 
-    let mut extracted_sections = 0;
-
+    let mut extracted_data = Vec::new();
     for segment in elf_header.program_headers(elf_header.endian()?, elf_data)? {
         // Get the physical address of the segment. The data will be programmed to that location.
         let p_paddr: u64 = segment.p_paddr(endian).into();
@@ -259,7 +251,7 @@ pub(super) fn extract_from_elf<'data>(
 
             let (segment_offset, segment_filesize) = segment.file_range(endian);
 
-            let sector: core::ops::Range<u64> = segment_offset..segment_offset + segment_filesize;
+            let sector = segment_offset..segment_offset + segment_filesize;
 
             for section in binary.sections() {
                 let (section_offset, section_filesize) = match section.file_range() {
@@ -298,13 +290,31 @@ pub(super) fn extract_from_elf<'data>(
                     address: p_paddr as u32,
                     data: section_data,
                 });
-
-                extracted_sections += 1;
             }
         }
     }
 
-    Ok(extracted_sections)
+    Ok(extracted_data)
+}
+
+pub(super) fn extract_from_elf(
+    elf_data: &[u8],
+) -> Result<Vec<ExtractedFlashData<'_>>, FileDownloadError> {
+    let file_kind = object::FileKind::parse(elf_data)?;
+
+    match file_kind {
+        object::FileKind::Elf32 => {
+            let elf_header = FileHeader32::<Endianness>::parse(elf_data)?;
+            let binary = object::read::elf::ElfFile::<FileHeader32<Endianness>>::parse(elf_data)?;
+            extract_from_elf_inner(elf_header, binary, elf_data)
+        }
+        object::FileKind::Elf64 => {
+            let elf_header = FileHeader64::<Endianness>::parse(elf_data)?;
+            let binary = object::read::elf::ElfFile::<FileHeader64<Endianness>>::parse(elf_data)?;
+            extract_from_elf_inner(elf_header, binary, elf_data)
+        }
+        _ => Err(FileDownloadError::Object("Unsupported file type")),
+    }
 }
 
 #[cfg(test)]

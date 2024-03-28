@@ -18,10 +18,8 @@ impl<T> ProbeRsErrorExt<T> for Result<T, GdbStubError<Error, std::io::Error>> {
     fn into_error(self) -> Result<T, Error> {
         match self {
             Ok(v) => Ok(v),
-            Err(e) => match e {
-                GdbStubError::TargetError(te) => Err(te),
-                other => Err(anyhow::Error::new(other).into()),
-            },
+            Err(e) if e.is_target_error() => Err(e.into_target_error().unwrap()),
+            Err(other) => Err(anyhow::Error::new(other).into()),
         }
     }
 }

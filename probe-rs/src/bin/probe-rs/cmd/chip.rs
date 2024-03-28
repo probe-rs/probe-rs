@@ -22,22 +22,24 @@ enum Subcommand {
 
 impl Cmd {
     pub fn run(self) -> anyhow::Result<()> {
+        let output = std::io::stdout().lock();
+
         match self.subcommand {
-            Subcommand::List => print_families().map_err(Into::into),
-            Subcommand::Info { name } => print_chip_info(name),
+            Subcommand::List => print_families(output),
+            Subcommand::Info { name } => print_chip_info(output, &name),
         }
     }
 }
 
 /// Print all the available families and their contained chips to the
 /// commandline.
-pub fn print_families() -> anyhow::Result<()> {
-    println!("Available chips:");
+pub fn print_families(mut output: impl std::io::Write) -> anyhow::Result<()> {
+    writeln!(output, "Available chips:")?;
     for family in probe_rs::config::families()? {
-        println!("{}", &family.name);
-        println!("    Variants:");
+        writeln!(output, "{}", &family.name)?;
+        writeln!(output, "    Variants:")?;
         for variant in family.variants() {
-            println!("        {}", variant.name);
+            writeln!(output, "        {}", variant.name)?;
         }
     }
     Ok(())
@@ -45,16 +47,17 @@ pub fn print_families() -> anyhow::Result<()> {
 
 /// Print all the available families and their contained chips to the
 /// commandline.
-pub fn print_chip_info(name: impl AsRef<str>) -> anyhow::Result<()> {
-    println!("{}", name.as_ref());
+pub fn print_chip_info(mut output: impl std::io::Write, name: &str) -> anyhow::Result<()> {
+    writeln!(output, "{}", name)?;
     let target = probe_rs::config::get_target_by_name(name)?;
-    println!("Cores ({}):", target.cores.len());
+    writeln!(output, "Cores ({}):", target.cores.len())?;
     for core in target.cores {
-        println!(
+        writeln!(
+            output,
             "    - {} ({:?})",
             core.name.to_ascii_lowercase(),
             core.core_type
-        );
+        )?;
     }
 
     fn get_range_len(range: &std::ops::Range<u64>) -> u64 {
@@ -63,22 +66,47 @@ pub fn print_chip_info(name: impl AsRef<str>) -> anyhow::Result<()> {
 
     for memory in target.memory_map {
         match memory {
-            probe_rs::config::MemoryRegion::Ram(region) => println!(
-                "RAM: {:#010x?} ({})",
+            probe_rs::config::MemoryRegion::Ram(region) => writeln!(
+                output,
+                "RAM: {:#010x?} ({:.2})",
                 &region.range,
-                Byte::from_bytes(get_range_len(&region.range) as u128).get_appropriate_unit(true)
-            ),
-            probe_rs::config::MemoryRegion::Generic(region) => println!(
-                "Generic: {:#010x?} ({})",
+                Byte::from_u64(get_range_len(&region.range))
+                    .get_appropriate_unit(byte_unit::UnitType::Binary)
+            )?,
+            probe_rs::config::MemoryRegion::Generic(region) => writeln!(
+                output,
+                "Generic: {:#010x?} ({:.2})",
                 &region.range,
-                Byte::from_bytes(get_range_len(&region.range) as u128).get_appropriate_unit(true)
-            ),
-            probe_rs::config::MemoryRegion::Nvm(region) => println!(
-                "NVM: {:#010x?} ({})",
+                Byte::from_u64(get_range_len(&region.range))
+                    .get_appropriate_unit(byte_unit::UnitType::Binary)
+            )?,
+            probe_rs::config::MemoryRegion::Nvm(region) => writeln!(
+                output,
+                "NVM: {:#010x?} ({:.2})",
                 &region.range,
-                Byte::from_bytes(get_range_len(&region.range) as u128).get_appropriate_unit(true)
-            ),
+                Byte::from_u64(get_range_len(&region.range))
+                    .get_appropriate_unit(byte_unit::UnitType::Binary)
+            )?,
         };
     }
     Ok(())
+}
+
+#[test]
+fn single_chip_output() {
+    let mut buff = Vec::new();
+    print_chip_info(&mut buff, "nrf52840_xxaa").unwrap();
+
+    // output should be valid utf8
+    let output = String::from_utf8(buff).unwrap();
+
+    insta::assert_snapshot!(output);
+}
+
+#[test]
+fn multiple_chip_output() {
+    let mut buff = Vec::new();
+    let error = print_chip_info(&mut buff, "nrf52").unwrap_err();
+
+    insta::assert_snapshot!(error.to_string());
 }

@@ -257,7 +257,7 @@ impl ComponentId {
     }
 }
 
-/// A reader to extract infromation from a CoreSight component table.
+/// A reader to extract information from a CoreSight component table.
 ///
 /// This reader is meant for internal use only.
 pub struct ComponentInformationReader<'probe: 'memory, 'memory> {
@@ -669,7 +669,7 @@ impl PeripheralID {
         self.dev_type
     }
 
-    /// Uses the available data to match it againts a table of known components.
+    /// Uses the available data to match it against a table of known components.
     /// If the component is known, some info about it is returned.
     /// If it is not known, None is returned.
     #[rustfmt::skip]

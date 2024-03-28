@@ -39,13 +39,43 @@ In addition to being a library, probe-rs also includes a suite of tools which ca
 
 ### Installation
 
-After installing the necessary [prerequisites](#building), the tools can be installed using `cargo install`:
 
-```bash
-cargo install probe-rs --features cli
+The recommended way to install the tools is to download a precompiled version, using one of the methods below.
+See <https://probe.rs/docs/getting-started/installation/> for a more detailed guide.
+
+
+#### Using a shell script
+
+```sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/probe-rs/probe-rs/releases/latest/download/probe-rs-installer.sh | sh
 ```
 
-See the [website](https://probe.rs/docs/getting-started/installation/) for a more detailed guide.
+#### Using a powershell script
+
+
+```sh
+irm https://github.com/probe-rs/probe-rs/releases/latest/download/probe-rs-installer.ps1 | iex
+```
+
+#### Using cargo-binstall
+
+
+```bash
+cargo binstall probe-rs
+```
+
+See <https://github.com/cargo-bins/cargo-binstall> for more information.
+
+#### From source
+
+The tools can also be installed from source. After installing the necessary [prerequisites](#building), the latest released version can be installed using `cargo install`:
+
+```bash
+cargo install probe-rs --locked --features cli
+```
+
+This will compile the tools and place them into the cargo `bin` directory. See the [Cargo book](https://doc.rust-lang.org/cargo/commands/cargo-install.html) for details.
+
 
 ### cargo-flash
 
@@ -55,9 +85,13 @@ The `cargo-flash` utility can be used as a cargo subcommand to download a compil
 
 If you are looking for a more extended debugging experience, please have a look at [cargo-embed](https://probe.rs/docs/tools/cargo-embed/) which provides support for GDB, RTT, and config files.
 
-### VSCode
+### Editors and IDEs
 
-We have implemented the [Microsoft DAP protocol](https://microsoft.github.io/debug-adapter-protocol/). This makes embedded debugging via probe-rs available in modern code editors implementing the standard, such as VSCode. Please see the [website](https://probe.rs/docs/tools/vscode/) for more information.
+We have implemented the [Microsoft Debug Adapter Protocol (DAP)](https://microsoft.github.io/debug-adapter-protocol/). This makes embedded debugging via probe-rs available in modern code editors implementing the standard, such as VSCode. The DAP website includes [a list of editors and IDEs which support DAP](https://microsoft.github.io/debug-adapter-protocol/implementors/tools/).
+
+#### VSCode
+
+The probe-rs website includes [VSCode configuration instructions](https://probe.rs/docs/tools/debugger/).
 
 ## Usage Examples
 
@@ -139,28 +173,15 @@ Please reach out to [@Yatekii](https://github.com/Yatekii)
 
 ### Building
 
-Building requires Rust and Cargo which can be installed [using rustup](https://rustup.rs/). probe-rs also depends on libusb and libftdi. On linux these can be installed with your package manager:
+Building requires Rust and Cargo which can be installed [using rustup](https://rustup.rs/). On Linux these can be installed with your package manager:
 
 ```console
 # Ubuntu
-> sudo apt install -y libusb-1.0-0-dev libftdi1-dev libudev-dev libssl-dev
+> sudo apt install -y libudev-dev
 
 # Fedora
-> sudo dnf install -y libusbx-devel libftdi-devel libudev-devel openssl-devel
+> sudo dnf install -y libudev-devel
 ```
-
-On Windows you can use [vcpkg](https://github.com/microsoft/vcpkg#quick-start-windows):
-
-```console
-# dynamic linking 64-bit
-> vcpkg install libftdi1:x64-windows libusb:x64-windows
-> set VCPKGRS_DYNAMIC=1
-
-# static linking 64-bit
-> vcpkg install libftdi1:x64-windows-static-md libusb:x64-windows-static-md
-```
-
-See [the vcpkg crate documentation](https://docs.rs/vcpkg/) for more information about configuring vcpkg with rust.
 
 ### Adding Targets
 

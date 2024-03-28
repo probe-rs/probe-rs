@@ -3,8 +3,9 @@
 use crate::{
     architecture::arm::{memory::adi_v5_memory_interface::ArmProbe, ArmError},
     core::RegisterId,
-    memory_mapped_bitfield_register, BreakpointCause, CoreInterface, Error, HaltReason,
-    MemoryMappedRegister, SemihostingCommand,
+    memory_mapped_bitfield_register,
+    semihosting::decode_semihosting_syscall,
+    CoreInterface, Error, MemoryMappedRegister, SemihostingCommand,
 };
 use std::time::{Duration, Instant};
 
@@ -180,43 +181,45 @@ pub(crate) fn write_core_reg(
 ///
 /// Call this if you get some kind of breakpoint. Works on ARMv6-M, ARMv7-M and ARMv8-M.
 pub(crate) fn check_for_semihosting(
-    old_reason: HaltReason,
+    cached_command: Option<SemihostingCommand>,
     core: &mut dyn CoreInterface,
-) -> Result<HaltReason, Error> {
-    let mut reason = old_reason;
-    // Check for semihosting instruction
+) -> Result<Option<SemihostingCommand>, Error> {
     let pc: u32 = core.read_core_reg(core.program_counter().id)?.try_into()?;
-    let instruction2 = core.read_word_8(pc as u64)?;
-    let instruction1 = core.read_word_8((pc + 1) as u64)?;
+
+    // The Arm Semihosting Specification, specificies that the instruction
+    // "BKPT 0xAB" (encoded as 0xBEAB) triggers a semihosting call.
+    // <https://github.com/ARM-software/abi-aa/blob/main/semihosting/semihosting.rst#the-semihosting-interface>
+    const TRAP_INSTRUCTION: [u8; 2] = [
+        // instruction encoded as little endian
+        0xAB, 0xBE,
+    ];
+
+    let mut actual_instruction = [0u8; 2];
+    core.read_8(pc as u64, &mut actual_instruction)?;
+    let actual_instruction = actual_instruction.as_slice();
+
     tracing::debug!(
-        "Semihosting check pc={pc:#x} instruction={instruction1:#02x}{instruction2:02x}"
+        "Semihosting check pc={pc:#x} instruction={0:#02x}{1:#02x}",
+        actual_instruction[1],
+        actual_instruction[0]
     );
-    if instruction1 == 0xBE && instruction2 == 0xAB {
+
+    if TRAP_INSTRUCTION == actual_instruction {
         // BKPT 0xAB -> we are semihosting
-        let r0: u32 = core.read_core_reg(RegisterId(0))?.try_into()?;
-        let r1: u32 = core.read_core_reg(RegisterId(1))?.try_into()?;
-        tracing::info!("Semihosting found pc={pc:#x} r0={r0:#x} r1={r1:#x}");
-        // This is defined by the ARM Semihosting Specification:
-        // <https://github.com/ARM-software/abi-aa/blob/main/semihosting/semihosting.rst#the-semihosting-interface>
-        const SYS_EXIT: u32 = 0x18;
-        const SYS_EXIT_ADP_STOPPED_APPLICATIONEXIT: u32 = 0x20026;
-        match (r0, r1) {
-            (SYS_EXIT, SYS_EXIT_ADP_STOPPED_APPLICATIONEXIT) => {
-                reason = HaltReason::Breakpoint(BreakpointCause::Semihosting(
-                    SemihostingCommand::ExitSuccess,
-                ));
+
+        Ok(Some(match cached_command {
+            None => {
+                // We only want to decode the semihosting command once, since answering it might change some of the registers
+                let r0: u32 = core.read_core_reg(RegisterId(0))?.try_into()?;
+                let r1: u32 = core.read_core_reg(RegisterId(1))?.try_into()?;
+                tracing::info!("Semihosting found pc={pc:#x} r0={r0:#x} r1={r1:#x}");
+                decode_semihosting_syscall(core, r0, r1)?
             }
-            (SYS_EXIT, code) => {
-                reason = HaltReason::Breakpoint(BreakpointCause::Semihosting(
-                    SemihostingCommand::ExitError { code: code as u64 },
-                ));
-            }
-            _ => {
-                tracing::warn!("Unknown semihosting operation r0={r0:08x} r1={r1:08x}");
-            }
-        }
+            Some(cached_command) => cached_command,
+        }))
+    } else {
+        Ok(None)
     }
-    Ok(reason)
 }
 
 fn wait_for_core_register_transfer(

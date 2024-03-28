@@ -14,15 +14,21 @@ pub trait MemoryInterface {
 
     /// Read a 64bit word of at `address`.
     ///
-    /// The address where the read should be performed at has to be word aligned.
+    /// The address where the read should be performed at has to be a multiple of 8.
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
     fn read_word_64(&mut self, address: u64) -> Result<u64, Error>;
 
     /// Read a 32bit word of at `address`.
     ///
-    /// The address where the read should be performed at has to be word aligned.
+    /// The address where the read should be performed at has to be a multiple of 4.
     /// Returns [`Error::MemoryNotAligned`] if this does not hold true.
     fn read_word_32(&mut self, address: u64) -> Result<u32, Error>;
+
+    /// Read a 16bit word of at `address`.
+    ///
+    /// The address where the read should be performed at has to be a multiple of 2.
+    /// Returns [`Error::MemoryNotAligned`] if this does not hold true.
+    fn read_word_16(&mut self, address: u64) -> Result<u16, Error>;
 
     /// Read an 8bit word of at `address`.
     fn read_word_8(&mut self, address: u64) -> Result<u8, Error>;
@@ -30,22 +36,31 @@ pub trait MemoryInterface {
     /// Read a block of 64bit words at `address`.
     ///
     /// The number of words read is `data.len()`.
-    /// The address where the read should be performed at has to be word aligned.
+    /// The address where the read should be performed at has to be a multiple of 8.
     /// Returns [`Error::MemoryNotAligned`] if this does not hold true.
     fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), Error>;
 
     /// Read a block of 32bit words at `address`.
     ///
     /// The number of words read is `data.len()`.
-    /// The address where the read should be performed at has to be word aligned.
+    /// The address where the read should be performed at has to be a multiple of 4.
     /// Returns [`Error::MemoryNotAligned`] if this does not hold true.
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error>;
+
+    /// Read a block of 16bit words at `address`.
+    ///
+    /// The number of words read is `data.len()`.
+    /// The address where the read should be performed at has to be a multiple of 2.
+    /// Returns [`Error::MemoryNotAligned`] if this does not hold true.
+    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), Error>;
 
     /// Read a block of 8bit words at `address`.
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error>;
 
-    /// Reads bytes using 64 bit memory access. Address must be 64 bit aligned
-    /// and data must be an exact multiple of 8.
+    /// Reads bytes using 64 bit memory access.
+    ///
+    /// The address where the read should be performed at has to be a multiple of 8.
+    /// Returns [`Error::MemoryNotAligned`] if this does not hold true.
     fn read_mem_64bit(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
         // Default implementation uses `read_64`, then converts u64 values back
         // to bytes. Assumes target is little endian. May be overridden to
@@ -64,8 +79,10 @@ pub trait MemoryInterface {
         Ok(())
     }
 
-    /// Reads bytes using 32 bit memory access. Address must be 32 bit aligned
-    /// and data must be an exact multiple of 4.
+    /// Reads bytes using 32 bit memory access.
+    ///
+    /// The address where the read should be performed at has to be a multiple of 4.
+    /// Returns [`Error::MemoryNotAligned`] if this does not hold true.
     fn read_mem_32bit(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
         // Default implementation uses `read_32`, then converts u32 values back
         // to bytes. Assumes target is little endian. May be overridden to
@@ -90,7 +107,7 @@ pub trait MemoryInterface {
     /// guarantee which kind of memory access is used. The function might also read more
     /// data than requested, e.g. when the start address is not aligned to a 32-bit boundary.
     ///
-    /// For more control, the `read_x` functiongs, e.g. [`MemoryInterface::read_32()`], can be
+    /// For more control, the `read_x` functions, e.g. [`MemoryInterface::read_32()`], can be
     /// used.
     ///
     ///  Generally faster than `read_8`.
@@ -112,15 +129,21 @@ pub trait MemoryInterface {
 
     /// Write a 64bit word at `address`.
     ///
-    /// The address where the write should be performed at has to be word aligned.
+    /// The address where the write should be performed at has to be a multiple of 8.
     /// Returns [`Error::MemoryNotAligned`] if this does not hold true.
     fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), Error>;
 
     /// Write a 32bit word at `address`.
     ///
-    /// The address where the write should be performed at has to be word aligned.
+    /// The address where the write should be performed at has to be a multiple of 4.
     /// Returns [`Error::MemoryNotAligned`] if this does not hold true.
     fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), Error>;
+
+    /// Write a 16bit word at `address`.
+    ///
+    /// The address where the write should be performed at has to be a multiple of 2.
+    /// Returns [`Error::MemoryNotAligned`] if this does not hold true.
+    fn write_word_16(&mut self, address: u64, data: u16) -> Result<(), Error>;
 
     /// Write an 8bit word at `address`.
     fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error>;
@@ -128,16 +151,23 @@ pub trait MemoryInterface {
     /// Write a block of 64bit words at `address`.
     ///
     /// The number of words written is `data.len()`.
-    /// The address where the write should be performed at has to be word aligned.
+    /// The address where the write should be performed at has to be a multiple of 8.
     /// Returns [`Error::MemoryNotAligned`] if this does not hold true.
     fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), Error>;
 
     /// Write a block of 32bit words at `address`.
     ///
     /// The number of words written is `data.len()`.
-    /// The address where the write should be performed at has to be word aligned.
+    /// The address where the write should be performed at has to be a multiple of 4.
     /// Returns [`Error::MemoryNotAligned`] if this does not hold true.
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error>;
+
+    /// Write a block of 16bit words at `address`.
+    ///
+    /// The number of words written is `data.len()`.
+    /// The address where the write should be performed at has to be a multiple of 2.
+    /// Returns [`Error::MemoryNotAligned`] if this does not hold true.
+    fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), Error>;
 
     /// Write a block of 8bit words at `address`.
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error>;
@@ -261,6 +291,10 @@ where
         (*self).read_word_32(address)
     }
 
+    fn read_word_16(&mut self, address: u64) -> Result<u16, Error> {
+        (*self).read_word_16(address)
+    }
+
     fn read_word_8(&mut self, address: u64) -> Result<u8, Error> {
         (*self).read_word_8(address)
     }
@@ -271,6 +305,10 @@ where
 
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
         (*self).read_32(address, data)
+    }
+
+    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), Error> {
+        (*self).read_16(address, data)
     }
 
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
@@ -289,6 +327,10 @@ where
         (*self).write_word_32(address, data)
     }
 
+    fn write_word_16(&mut self, address: u64, data: u16) -> Result<(), Error> {
+        (*self).write_word_16(address, data)
+    }
+
     fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
         (*self).write_word_8(address, data)
     }
@@ -299,6 +341,10 @@ where
 
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
         (*self).write_32(address, data)
+    }
+
+    fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), Error> {
+        (*self).write_16(address, data)
     }
 
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {

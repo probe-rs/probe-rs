@@ -3,7 +3,7 @@
 use super::{Chip, ChipFamily, ChipInfo, Core, Target, TargetDescriptionSource};
 use crate::config::CoreType;
 use once_cell::sync::Lazy;
-use probe_rs_target::{CoreAccessOptions, RiscvCoreAccessOptions};
+use probe_rs_target::{BinaryFormat, CoreAccessOptions, RiscvCoreAccessOptions};
 use std::io::Read;
 use std::sync::{Arc, Mutex};
 
@@ -101,15 +101,19 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
             variants: vec![Chip {
                 name: "riscv".to_owned(),
                 part: None,
+                svd: None,
                 cores: vec![Core {
                     name: "core".to_owned(),
                     core_type: CoreType::Riscv,
-                    core_access_options: CoreAccessOptions::Riscv(RiscvCoreAccessOptions {}),
+                    core_access_options: CoreAccessOptions::Riscv(RiscvCoreAccessOptions {
+                        hart_id: None,
+                    }),
                 }],
                 memory_map: vec![],
                 flash_algorithms: vec![],
                 rtt_scan_ranges: None,
-                scan_chain: Some(vec![]),
+                jtag: None,
+                default_binary_format: Some(BinaryFormat::Raw),
             }],
             flash_algorithms: vec![],
             source: TargetDescriptionSource::Generic,
@@ -193,7 +197,7 @@ impl Registry {
                     }
                 }
             }
-            if partial_matches.len() > 1 {
+            if exact_matches == 0 && partial_matches.len() > 1 {
                 tracing::warn!(
                     "Ignoring ambiguous matches for specified chip name {}",
                     name,
@@ -288,42 +292,40 @@ impl Registry {
     }
 
     fn get_target_by_chip_info(&self, chip_info: ChipInfo) -> Result<Target, RegistryError> {
-        let (family, chip) = {
-            match chip_info {
-                ChipInfo::Arm(chip_info) => {
-                    // Try get the corresponding chip.
+        let (family, chip) = match chip_info {
+            ChipInfo::Arm(chip_info) => {
+                // Try get the corresponding chip.
 
-                    let families = self.families.iter().filter(|f| {
-                        f.manufacturer
-                            .map(|m| m == chip_info.manufacturer)
-                            .unwrap_or(false)
-                    });
+                let families = self.families.iter().filter(|f| {
+                    f.manufacturer
+                        .map(|m| m == chip_info.manufacturer)
+                        .unwrap_or(false)
+                });
 
-                    let mut identified_chips = Vec::new();
+                let mut identified_chips = Vec::new();
 
-                    for family in families {
-                        tracing::debug!("Checking family {}", family.name);
+                for family in families {
+                    tracing::debug!("Checking family {}", family.name);
 
-                        let chips = family
-                            .variants()
-                            .iter()
-                            .filter(|v| v.part.map(|p| p == chip_info.part).unwrap_or(false))
-                            .map(|c| (family, c));
+                    let chips = family
+                        .variants()
+                        .iter()
+                        .filter(|v| v.part.map(|p| p == chip_info.part).unwrap_or(false))
+                        .map(|c| (family, c));
 
-                        identified_chips.extend(chips)
-                    }
+                    identified_chips.extend(chips)
+                }
 
-                    if identified_chips.len() == 1 {
-                        identified_chips.pop().unwrap()
-                    } else {
-                        tracing::debug!(
+                if identified_chips.len() != 1 {
+                    tracing::debug!(
                         "Found {} matching chips for information {:?}, unable to determine chip",
                         identified_chips.len(),
                         chip_info
                     );
-                        return Err(RegistryError::ChipAutodetectFailed);
-                    }
+                    return Err(RegistryError::ChipAutodetectFailed);
                 }
+
+                identified_chips[0]
             }
         };
         self.get_target(family, chip)
@@ -443,7 +445,6 @@ fn match_name_prefix(pattern: &str, name: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use probe_rs_target::get_ir_lengths;
     use std::fs::File;
     type TestResult = Result<(), RegistryError>;
 
@@ -521,7 +522,7 @@ mod tests {
 
         // Check that the scan chain can read from a target correctly
         let mut target = get_target_by_name("FULL_SCAN_CHAIN").unwrap();
-        let scan_chain = target.scan_chain.unwrap();
+        let scan_chain = target.jtag.unwrap().scan_chain.unwrap();
         for device in scan_chain {
             if device.name == Some("core0".to_string()) {
                 assert_eq!(device.ir_len, Some(FIRST_IR_LENGTH));
@@ -531,28 +532,18 @@ mod tests {
         }
 
         // Now check that a device without a scan chain is read correctly
+        target = get_target_by_name("NO_JTAG_INFO").unwrap();
+        assert_eq!(target.jtag, None);
+
+        // Now check that a device without a scan chain is read correctly
         target = get_target_by_name("NO_SCAN_CHAIN").unwrap();
-        assert_eq!(target.scan_chain, None);
+        assert_eq!(target.jtag.unwrap().scan_chain, None);
 
         // Check a device with a minimal scan chain
         target = get_target_by_name("PARTIAL_SCAN_CHAIN").unwrap();
-        let scan_chain = target.scan_chain.unwrap();
+        let scan_chain = target.jtag.unwrap().scan_chain.unwrap();
         assert_eq!(scan_chain[0].ir_len, Some(FIRST_IR_LENGTH));
         assert_eq!(scan_chain[1].ir_len, Some(SECOND_IR_LENGTH));
-
-        Ok(())
-    }
-
-    #[test]
-    fn check_get_ir_lengths_helper() -> TestResult {
-        let file = File::open("tests/scan_chain_test.yaml")?;
-        add_target_from_yaml(file)?;
-
-        // Check that the scan chain can read from a target correctly
-        let target = get_target_by_name("FULL_SCAN_CHAIN").unwrap();
-        let scan_chain = target.scan_chain.unwrap();
-        let ir_lengths = get_ir_lengths(&scan_chain);
-        assert_eq!(ir_lengths, vec![FIRST_IR_LENGTH, SECOND_IR_LENGTH]);
 
         Ok(())
     }

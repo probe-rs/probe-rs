@@ -3,6 +3,22 @@ use crate::serialize::{hex_option, hex_u_int};
 use base64::{engine::general_purpose as base64_engine, Engine as _};
 use serde::{Deserialize, Serialize};
 
+/// Data encoding used by the flash algorithm.
+#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[serde(rename_all = "snake_case")]
+pub enum TransferEncoding {
+    /// Raw binary encoding. Probe-rs will not apply any transformation to the flash data.
+    #[default]
+    Raw,
+
+    /// Flash data is compressed using the `miniz_oxide` crate.
+    ///
+    /// Compressed images are written in page sized chunks, each chunk written to the image's start
+    /// address. The length of the compressed image is stored in the first 4 bytes of the first
+    /// chunk of the image.
+    Miniz,
+}
+
 /// The raw flash algorithm is the description of a flash algorithm,
 /// and is usually read from a target description file.
 ///
@@ -18,13 +34,16 @@ pub struct RawFlashAlgorithm {
     /// Whether this flash algorithm is the default one or not.
     #[serde(default)]
     pub default: bool,
-    /// List of 32-bit words containing the code for the algo. If `load_address` is not specified, the code must be position indepent (PIC).
+    /// List of 32-bit words containing the code for the algo. If `load_address` is not specified, the code must be position independent (PIC).
     #[serde(deserialize_with = "deserialize")]
     #[serde(serialize_with = "serialize")]
     pub instructions: Vec<u8>,
     /// Address to load algo into RAM. Optional.
     #[serde(serialize_with = "hex_option")]
     pub load_address: Option<u64>,
+    /// Address to load data into RAM. Optional.
+    #[serde(serialize_with = "hex_option")]
+    pub data_load_address: Option<u64>,
     /// Address of the `Init()` entry point. Optional.
     #[serde(serialize_with = "hex_option")]
     pub pc_init: Option<u64>,
@@ -60,6 +79,10 @@ pub struct RawFlashAlgorithm {
     /// Increase this value if you're concerned about stack
     /// overruns during flashing.
     pub stack_size: Option<u32>,
+
+    /// The encoding format accepted by the flash algorithm.
+    #[serde(default)]
+    pub transfer_encoding: Option<TransferEncoding>,
 }
 
 pub fn serialize<S>(bytes: &[u8], serializer: S) -> Result<S::Ok, S::Error>
