@@ -70,6 +70,7 @@ cli = [
     "dep:addr2line",
     "dep:signal-hook",
     "dep:libtest-mimic",
+    "dep:ansi-parser",
 ]
 
 # Enable all built in targets.
