@@ -70,6 +70,7 @@ cli = [
     "dep:addr2line",
     "dep:signal-hook",
     "dep:libtest-mimic",
+    "dep:ansi-parser",
 ]
 
 # Enable all built in targets.
@@ -163,7 +164,7 @@ rand = { version = "0.8", optional = true }
 rustyline = { version = "14", optional = true }
 sanitize-filename = { version = "0.5", optional = true }
 schemafy = { version = "0.6", optional = true }
-serde_json = { version = "1.0.114", optional = true }
+serde_json = { version = "1.0.115", optional = true }
 signal-hook = { version = "0.3", optional = true }
 svd-parser = { version = "0.14", features = ["expand"], optional = true }
 termtree = { version = "0.4", optional = true }
@@ -183,7 +184,7 @@ tracing-appender = { version = "0.2", optional = true }
 ratatui = { version = "0.26.1", default-features = false, features = [
     "crossterm",
 ], optional = true }
-ansi-parser = "0.8.0"
+ansi-parser = { version = "0.8.0", optional = true }
 
 [build-dependencies]
 bincode = "1"
