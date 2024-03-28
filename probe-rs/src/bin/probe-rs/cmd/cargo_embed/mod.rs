@@ -8,6 +8,7 @@ use colored::*;
 use probe_rs::gdb_server::GdbInstanceConfiguration;
 use probe_rs::probe::list::Lister;
 use probe_rs::rtt::ScanRegion;
+use probe_rs::Core;
 use probe_rs::{probe::DebugProbeSelector, Session};
 use std::ffi::OsString;
 use std::{
@@ -26,7 +27,7 @@ use crate::util::common_options::{
 };
 use crate::util::flash::{build_loader, run_flash_download};
 use crate::util::logging::setup_logging;
-use crate::util::rtt::{DefmtState, RttActiveTarget, RttChannelConfig, RttConfig};
+use crate::util::rtt::{self, RttActiveTarget, RttChannelConfig, RttConfig};
 use crate::util::{build_artifact, common_options::CargoOptions, logging, rtt::DataFormat};
 use crate::FormatOptions;
 
@@ -235,8 +236,9 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
         )?;
     }
 
+    let core_id = rtt::get_target_core_id(&mut session, path);
     if config.reset.enabled {
-        let mut core = session.core(0)?;
+        let mut core = session.core(core_id)?;
         let halt_timeout = Duration::from_millis(500);
         #[allow(deprecated)] // Remove in 0.10
         if config.flashing.halt_afterwards {
@@ -284,7 +286,7 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
 
     if config.rtt.enabled {
         // GDB is also using the session, so we do not lock on the outside.
-        run_rttui_app(name, &session, config, path, offset)?;
+        run_rttui_app(name, &session, core_id, config, path, offset)?;
     }
 
     if let Some(gdb_thread_handle) = gdb_thread_handle {
@@ -303,6 +305,7 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
 fn run_rttui_app(
     name: &str,
     session: &Mutex<Session>,
+    core_id: usize,
     config: config::Config,
     elf_path: &Path,
     timezone_offset: UtcOffset,
@@ -314,7 +317,7 @@ fn run_rttui_app(
         channels: vec![],
     };
 
-    let mut defmt_enable = false;
+    let mut require_defmt = false;
     for channel_config in config.rtt.up_channels.iter() {
         rtt_config.channels.push(RttChannelConfig {
             channel_number: Some(channel_config.channel),
@@ -329,7 +332,7 @@ fn run_rttui_app(
             defmt_log_format: channel_config.defmt_log_format.clone(),
         });
         if channel_config.format == DataFormat::Defmt {
-            defmt_enable = true;
+            require_defmt = true;
         }
     }
     // In case we have down channels without up channels, add them separately.
@@ -353,6 +356,7 @@ fn run_rttui_app(
 
     let Some(mut rtt) = rtt_attach(
         session,
+        core_id,
         config.rtt.timeout,
         &ScanRegion::Ram,
         elf_path,
@@ -368,17 +372,18 @@ fn run_rttui_app(
         return Ok(());
     };
 
-    let defmt_state = if defmt_enable {
-        tracing::debug!(
-            "Found RTT channels with format = defmt, trying to intialize defmt parsing."
+    if require_defmt && rtt.defmt_state.is_none() {
+        tracing::warn!(
+            "RTT channels with format = defmt found, but no defmt metadata found in the ELF file."
         );
-        DefmtState::try_from_elf(elf_path)?
-    } else {
-        None
-    };
+    }
 
     // Configure rtt channels according to configuration
-    configure_rtt_modes(session, &config, &mut rtt)?;
+    {
+        let mut session_handle = session.lock().unwrap();
+        let mut core = session_handle.core(core_id)?;
+        configure_rtt_modes(&mut core, &config, &mut rtt)?;
+    }
 
     tracing::info!("RTT initialized.");
 
@@ -408,13 +413,13 @@ fn run_rttui_app(
         / 1_000_000;
 
     let logname = format!("{name}_{chip_name}_{timestamp_millis}");
-    let mut app = rttui::app::App::new(rtt, config, logname, defmt_state.as_ref())?;
+    let mut app = rttui::app::App::new(rtt, config, logname)?;
     loop {
         app.render();
 
         {
             let mut session_handle = session.lock().unwrap();
-            let mut core = session_handle.core(0)?;
+            let mut core = session_handle.core(core_id)?;
 
             if app.handle_event(&mut core) {
                 logging::println("Shutting down.");
@@ -429,12 +434,10 @@ fn run_rttui_app(
 }
 
 fn configure_rtt_modes(
-    session: &Mutex<Session>,
+    core: &mut Core,
     config: &config::Config,
     rtt: &mut RttActiveTarget,
 ) -> Result<(), anyhow::Error> {
-    let mut session_handle = session.lock().unwrap();
-    let mut core = session_handle.core(0)?;
     let default_up_mode = config.rtt.up_mode;
 
     // TODO: also configure down channels
@@ -447,7 +450,7 @@ fn configure_rtt_modes(
             // Only set the mode when the config file says to,
             // when not set explicitly, the firmware picks.
             tracing::debug!("Setting RTT channel {} to {:?}", up_channel.number(), &mode);
-            up_channel.set_mode(&mut core, mode)?;
+            up_channel.set_mode(core, mode)?;
         }
     }
     Ok(())
@@ -456,6 +459,7 @@ fn configure_rtt_modes(
 /// Try to attach to RTT, with the given timeout
 fn rtt_attach(
     session: &Mutex<Session>,
+    core_id: usize,
     timeout: Duration,
     rtt_region: &ScanRegion,
     elf_file: &Path,
@@ -478,9 +482,9 @@ fn rtt_attach(
         {
             let mut session_handle = session.lock().unwrap();
             let memory_map = session_handle.target().memory_map.clone();
-            let mut core = session_handle.core(0)?;
+            let mut core = session_handle.core(core_id)?;
 
-            match crate::util::rtt::attach_to_rtt(&mut core, &memory_map, rtt_region, elf_file) {
+            match rtt::attach_to_rtt(&mut core, &memory_map, rtt_region, elf_file) {
                 Ok(Some(rtt)) => {
                     let app = RttActiveTarget::new(rtt, elf_file, rtt_config, timestamp_offset);
 

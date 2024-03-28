@@ -29,7 +29,7 @@ fn init_progress_bar(bar: &ProgressBar) {
 /// This function also manages the update and display of progress bars.
 pub fn run_flash_download(
     session: &mut Session,
-    path: &Path,
+    path: impl AsRef<Path>,
     download_options: &BinaryDownloadOptions,
     probe_options: &LoadedProbeOptions,
     loader: FlashLoader,
@@ -150,7 +150,7 @@ pub fn run_flash_download(
             source: error,
             target: Box::new(session.target().clone()),
             target_spec: probe_options.chip(),
-            path: path.to_path_buf(),
+            path: path.as_ref().to_path_buf(),
         })?;
 
     // If we don't do this, the progress bars disappear.
