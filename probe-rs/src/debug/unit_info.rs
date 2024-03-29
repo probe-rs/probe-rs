@@ -1344,8 +1344,7 @@ impl UnitInfo {
         // We need to process at least one element to get the array's type right.
         let explode_range = if item_count == 0 { 0..1 } else { subrange };
 
-        let mut first = true;
-        for member_index in explode_range {
+        for member_index in explode_range.clone() {
             let mut array_member_variable =
                 cache.create_variable(array_variable.variable_key, Some(self))?;
             array_member_variable.member_index = Some(member_index as i64);
@@ -1384,8 +1383,7 @@ impl UnitInfo {
                 )?;
             }
 
-            if first {
-                first = false;
+            if member_index == explode_range.start {
                 array_variable.type_name = VariableType::Array {
                     count: item_count,
                     item_type_name: Box::new(array_member_variable.type_name.clone()),
@@ -1801,7 +1799,7 @@ impl UnitInfo {
         parent_variable: &Variable,
         child_member_index: i64,
     ) {
-        // If this variable is a member of an array type, and needs special handling to calculate the `memory_location`.
+        // Push the array member to the proper location according to its index.
         child_variable.memory_location =
             if let VariableLocation::Address(address) = parent_variable.memory_location {
                 if let Some(byte_size) = child_variable.byte_size {
