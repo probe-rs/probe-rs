@@ -451,7 +451,7 @@ fn try_attach_rtt(
         .map_err(|error| anyhow!("Error attempting to attach to RTT: {}", error))?;
 
     tracing::info!("RTT initialized.");
-    let target = RttActiveTarget::new(rtt, elf_file, rtt_config, timestamp_offset)?;
+    let target = RttActiveTarget::new(core, rtt, elf_file, rtt_config, timestamp_offset)?;
 
     Ok(target)
 }
