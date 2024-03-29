@@ -1352,14 +1352,24 @@ impl UnitInfo {
             array_member_variable.name = VariableName::Named(format!("__{member_index}"));
             array_member_variable.source_location = array_variable.source_location.clone();
 
-            self.adjust_array_member_location(
-                &mut array_member_variable,
+            // Set the byte size and push the element to its correct location.
+            // This call only sets size if:
+            //  - The parent array's size is known (after processing its first index)
+            //  - Or the member is a leaf member (i.e. not an array)
+            // The first index of the parent array will receive its binary size after processing
+            // its children.
+            self.process_memory_location(
+                debug_info,
+                &array_member_type_node,
                 array_variable,
-                member_index as i64,
-            );
+                &mut array_member_variable,
+                memory,
+                frame_info,
+            )?;
 
             if level < subranges.len() - 1 {
-                // Recurse
+                // Recursively process the nested array and place
+                // its items under the current variable.
                 self.expand_array_members(
                     debug_info,
                     array_member_type_node,
@@ -1371,7 +1381,6 @@ impl UnitInfo {
                     frame_info,
                 )?;
             } else {
-                // We need to process every array member to resolve enums in them, for example.
                 self.extract_type(
                     debug_info,
                     array_member_type_node,
@@ -1793,14 +1802,18 @@ impl UnitInfo {
         }
     }
 
-    fn adjust_array_member_location(
+    /// A helper function, to handle memory_location for special cases, such as array members, pointers, and intermediate nodes.
+    /// Normally, the memory_location is calculated before the type is calculated,
+    ///     but special cases require the type related info of the variable to correctly compute the memory_location.
+    fn handle_memory_location_special_cases(
         &self,
+        unit_ref: UnitOffset,
         child_variable: &mut Variable,
         parent_variable: &Variable,
-        child_member_index: i64,
+        memory: &mut dyn MemoryInterface,
     ) {
-        // Push the array member to the proper location according to its index.
-        child_variable.memory_location =
+        let location = if let Some(child_member_index) = child_variable.member_index {
+            // Push the array member to the proper location according to its index.
             if let VariableLocation::Address(address) = parent_variable.memory_location {
                 if let Some(byte_size) = child_variable.byte_size {
                     let Some(location) = address.checked_add(child_member_index as u64 * byte_size)
@@ -1820,31 +1833,10 @@ impl UnitInfo {
                 }
             } else {
                 VariableLocation::Unavailable
-            };
-    }
-
-    /// A helper function, to handle memory_location for special cases, such as array members, pointers, and intermediate nodes.
-    /// Normally, the memory_location is calculated before the type is calculated,
-    ///     but special cases require the type related info of the variable to correctly compute the memory_location.
-    fn handle_memory_location_special_cases(
-        &self,
-        unit_ref: UnitOffset,
-        child_variable: &mut Variable,
-        parent_variable: &Variable,
-        memory: &mut dyn MemoryInterface,
-    ) {
-        if let Some(child_member_index) = child_variable.member_index {
-            self.adjust_array_member_location(child_variable, parent_variable, child_member_index);
-            return;
-        }
-
-        if child_variable.memory_location == VariableLocation::Unknown {
+            }
+        } else if child_variable.memory_location == VariableLocation::Unknown {
             // Non-array members can inherit their memory location from their parent, but only if the parent has a valid memory location.
-            child_variable.memory_location = if self.is_pointer(
-                child_variable,
-                parent_variable,
-                unit_ref,
-            ) {
+            if self.is_pointer(child_variable, parent_variable, unit_ref) {
                 match &parent_variable.memory_location {
                     VariableLocation::Address(address) => {
                         // Now, retrieve the location by reading the adddress pointed to by the parent variable.
@@ -1866,8 +1858,12 @@ impl UnitInfo {
                 // If the parent variable is not a pointer, or it is a pointer to the actual data location
                 // (not the address of the data location) then it can inherit it's memory location from it's parent.
                 parent_variable.memory_location.clone()
-            };
-        }
+            }
+        } else {
+            return;
+        };
+
+        child_variable.memory_location = location;
     }
 
     /// Returns `true` if the variable is a pointer, `false` otherwise.
