@@ -1360,7 +1360,7 @@ impl UnitInfo {
             // its children.
             self.process_memory_location(
                 debug_info,
-                &array_member_type_node,
+                array_member_type_node,
                 array_variable,
                 &mut array_member_variable,
                 memory,
