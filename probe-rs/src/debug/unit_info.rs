@@ -1143,51 +1143,22 @@ impl UnitInfo {
                                     memory,
                                     frame_info,
                                 )?;
+
                                 // Now we can explode the array members.
-
-                                // TODO: while we now get all the subranges (dimensions) of a multi-dimensional array, we do not yet process them.
-                                let subrange = subranges.first().unwrap().clone();
-
                                 if let Ok(array_member_type_node) = self.unit.entry(unit_ref) {
-                                    // First, try to determine the item type
-                                    let prototype = self.extract_array_member_prototype(
+                                    // - Next, process this DW_TAG_array_type's DW_AT_type full tree.
+                                    // - We have to do this repeatedly, for every array member in the range.
+                                    // - We have to do this recursively because some compilers encode nested arrays as multiple subranges on the same node.
+                                    self.expand_array_members(
                                         debug_info,
                                         &array_member_type_node,
                                         cache,
                                         child_variable,
                                         memory,
+                                        &subranges,
+                                        0,
                                         frame_info,
                                     )?;
-
-                                    let item_count = subrange.clone().count();
-
-                                    // Once we know the type of the first member, we can set the array type.
-                                    child_variable.type_name = VariableType::Array {
-                                        count: item_count,
-                                        item_type_name: Box::new(prototype.type_name),
-                                    };
-                                    // Once we know the byte_size of the first member, we can set the array byte_size.
-                                    if let Some(item_byte_size) = prototype.byte_size {
-                                        child_variable.byte_size =
-                                            Some(item_byte_size * item_count as u64);
-                                    }
-
-                                    if item_count > 0 {
-                                        // - Next, process this DW_TAG_array_type's DW_AT_type full tree.
-                                        // - We have to do this repeatedly, for every array member in the range.
-                                        // TODO: avoid re-processing the 0th element
-                                        for array_member_index in subrange {
-                                            self.expand_array_member(
-                                                debug_info,
-                                                &array_member_type_node,
-                                                cache,
-                                                child_variable,
-                                                memory,
-                                                array_member_index,
-                                                frame_info,
-                                            )?;
-                                        }
-                                    }
                                 };
                             }
                             Ok(Some(other_attribute_value)) => {
@@ -1354,81 +1325,85 @@ impl UnitInfo {
         Ok(())
     }
 
-    /// Create a prototype that can be instantiated to create an array
-    #[allow(clippy::too_many_arguments)]
-    fn extract_array_member_prototype(
-        &self,
-        debug_info: &DebugInfo,
-        array_member_type_node: &DebuggingInformationEntry<GimliReader>,
-        cache: &mut VariableCache,
-        array_variable: &Variable,
-        memory: &mut dyn MemoryInterface,
-        frame_info: StackFrameInfo<'_>,
-    ) -> Result<Variable, DebugError> {
-        let mut array_member_variable =
-            cache.create_variable(array_variable.variable_key, Some(self))?;
-        array_member_variable.member_index = Some(0);
-        array_member_variable.source_location = array_variable.source_location.clone();
-        self.process_memory_location(
-            debug_info,
-            array_member_type_node,
-            array_variable,
-            &mut array_member_variable,
-            memory,
-            frame_info,
-        )?;
-        self.extract_type(
-            debug_info,
-            array_member_type_node,
-            array_variable,
-            &mut array_member_variable,
-            memory,
-            cache,
-            frame_info,
-        )?;
-
-        cache.remove_cache_entry(array_member_variable.variable_key)?;
-
-        Ok(array_member_variable)
-    }
-
     /// Create child variable entries to represent array members and their values.
     #[allow(clippy::too_many_arguments)]
-    fn expand_array_member(
+    fn expand_array_members(
         &self,
         debug_info: &DebugInfo,
         array_member_type_node: &DebuggingInformationEntry<GimliReader>,
         cache: &mut VariableCache,
         array_variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
-        member_index: u64,
+        subranges: &[Range<u64>],
+        level: usize,
         frame_info: StackFrameInfo<'_>,
     ) -> Result<(), DebugError> {
-        let mut array_member_variable =
-            cache.create_variable(array_variable.variable_key, Some(self))?;
-        array_member_variable.member_index = Some(member_index as i64);
-        // Override the calculated member name with a more 'array-like' name.
-        array_member_variable.name = VariableName::Named(format!("__{member_index}"));
-        array_member_variable.source_location = array_variable.source_location.clone();
+        let subrange = subranges[level].clone();
+        let item_count = subrange.clone().count();
 
-        self.adjust_array_member_location(
-            &mut array_member_variable,
-            array_variable,
-            member_index as i64,
-        );
-        // We need to process every array member to resolve enums in them, for example.
-        self.extract_type(
-            debug_info,
-            array_member_type_node,
-            array_variable,
-            &mut array_member_variable,
-            memory,
-            cache,
-            frame_info,
-        )?;
+        // We need to process at least one element to get the array's type right.
+        let explode_range = if item_count == 0 { 0..1 } else { subrange };
 
-        array_member_variable.extract_value(memory, cache);
-        cache.update_variable(&array_member_variable)?;
+        let mut first = true;
+        for member_index in explode_range {
+            let mut array_member_variable =
+                cache.create_variable(array_variable.variable_key, Some(self))?;
+            array_member_variable.member_index = Some(member_index as i64);
+            // Override the calculated member name with a more 'array-like' name.
+            array_member_variable.name = VariableName::Named(format!("__{member_index}"));
+            array_member_variable.source_location = array_variable.source_location.clone();
+
+            self.adjust_array_member_location(
+                &mut array_member_variable,
+                array_variable,
+                member_index as i64,
+            );
+
+            if level < subranges.len() - 1 {
+                // Recurse
+                self.expand_array_members(
+                    debug_info,
+                    array_member_type_node,
+                    cache,
+                    &mut array_member_variable,
+                    memory,
+                    subranges,
+                    level + 1,
+                    frame_info,
+                )?;
+            } else {
+                // We need to process every array member to resolve enums in them, for example.
+                self.extract_type(
+                    debug_info,
+                    array_member_type_node,
+                    array_variable,
+                    &mut array_member_variable,
+                    memory,
+                    cache,
+                    frame_info,
+                )?;
+            }
+
+            if first {
+                first = false;
+                array_variable.type_name = VariableType::Array {
+                    count: item_count,
+                    item_type_name: Box::new(array_member_variable.type_name.clone()),
+                };
+                if let Some(item_byte_size) = array_member_variable.byte_size {
+                    array_variable.byte_size = Some(item_byte_size * item_count as u64);
+                }
+            }
+
+            array_member_variable.extract_value(memory, cache);
+            cache.update_variable(&array_member_variable)?;
+        }
+
+        // We want to remove the child entry if the array is empty. It was needed to process the
+        // array type, but it doesn't actually exist.
+        if item_count == 0 {
+            cache.remove_cache_entry_children(array_variable.variable_key)?;
+        }
 
         Ok(())
     }
