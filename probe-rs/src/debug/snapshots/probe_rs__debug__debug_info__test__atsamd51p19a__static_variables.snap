@@ -5,7 +5,7 @@ expression: static_variables
 Child Variables:
   name: StaticScopeRoot
   type_name: Unknown
-  value: "<unknown> {\n\texception_table: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t_aTerminalId: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,<unknown>,\n\tchar[1024] = [\n\t\tH,\n\t\te,\n\t\tl,\n\t\tl,\n\t\to,\n\t\t ,\n\t\tH,\n\t\te,\n\t\tl,\n\t\tl,\n\n\t\t... and 1014 more\n\t],\n\tchar[16] = [\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\n\t\t... and 6 more\n\t],\n\t_ActiveTerminal: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\tfoo: Foo_t = Foo_t @ 0x20000000,\n\tconst Foo_t[2] = [\n\t\tFoo_t @ 0x00001670,\n\t\tFoo_t @ 0x00001678\n\t],\n\tuint8_t[11][6] = [\n\t\tuint8_t[11] = [\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0\n\t\t],\n\t\tuint8_t[11] = [\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0\n\t\t],\n\t\tuint8_t[11] = [\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0\n\t\t],\n\t\tuint8_t[11] = [\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0\n\t\t],\n\t\tuint8_t[11] = [\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0\n\t\t],\n\t\tuint8_t[11] = [\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0,\n\t\t\t0\n\t\t]\n\t]}"
+  value: "<unknown> {\n\texception_table: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t_aTerminalId: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,<unknown>,\n\tchar[1024] = [\n\t\tH,\n\t\te,\n\t\tl,\n\t\tl,\n\t\to,\n\t\t ,\n\t\tH,\n\t\te,\n\t\tl,\n\t\tl,\n\n\t\t... and 1014 more\n\t],\n\tchar[16] = [\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\n\t\t... and 6 more\n\t],\n\t_ActiveTerminal: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\tfoo: Foo_t = Foo_t @ 0x20000000,\n\tconst Foo_t[2] = [\n\t\tFoo_t @ 0x00001684,\n\t\tFoo_t @ 0x0000168C\n\t],\n\tuint8_t[9][6] = [\n\t\tuint8_t[9] = [\n\t\t\t0,\n\t\t\t1,\n\t\t\t2,\n\t\t\t3,\n\t\t\t4,\n\t\t\t5,\n\t\t\t6,\n\t\t\t7,\n\t\t\t8\n\t\t],\n\t\tuint8_t[9] = [\n\t\t\t0,\n\t\t\t1,\n\t\t\t2,\n\t\t\t3,\n\t\t\t4,\n\t\t\t5,\n\t\t\t6,\n\t\t\t7,\n\t\t\t8\n\t\t],\n\t\tuint8_t[9] = [\n\t\t\t0,\n\t\t\t1,\n\t\t\t2,\n\t\t\t3,\n\t\t\t4,\n\t\t\t5,\n\t\t\t6,\n\t\t\t7,\n\t\t\t8\n\t\t],\n\t\tuint8_t[9] = [\n\t\t\t0,\n\t\t\t1,\n\t\t\t2,\n\t\t\t3,\n\t\t\t4,\n\t\t\t5,\n\t\t\t6,\n\t\t\t7,\n\t\t\t8\n\t\t],\n\t\tuint8_t[9] = [\n\t\t\t0,\n\t\t\t1,\n\t\t\t2,\n\t\t\t3,\n\t\t\t4,\n\t\t\t5,\n\t\t\t6,\n\t\t\t7,\n\t\t\t8\n\t\t],\n\t\tuint8_t[9] = [\n\t\t\t0,\n\t\t\t1,\n\t\t\t2,\n\t\t\t3,\n\t\t\t4,\n\t\t\t5,\n\t\t\t6,\n\t\t\t7,\n\t\t\t8\n\t\t]\n\t],\n\tuint16_t[3][2] = [\n\t\tuint16_t[3] = [\n\t\t\t0,\n\t\t\t1,\n\t\t\t2\n\t\t],\n\t\tuint16_t[3] = [\n\t\t\t0,\n\t\t\t1,\n\t\t\t2\n\t\t]\n\t]}"
   children:
     - name:
         Named: exception_table
@@ -513,7 +513,7 @@ Child Variables:
                       - Typedef: Foo_t
                       - Struct: "<unnamed struct>"
               count: 2
-      value: "const Foo_t[2] = [\n\tFoo_t @ 0x00001670,\n\tFoo_t @ 0x00001678]"
+      value: "const Foo_t[2] = [\n\tFoo_t @ 0x00001684,\n\tFoo_t @ 0x0000168C]"
       children:
         - name:
             Named: __0
@@ -523,17 +523,17 @@ Child Variables:
               - Modified:
                   - Typedef: Foo_t
                   - Struct: "<unnamed struct>"
-          value: Foo_t @ 0x00001670
+          value: Foo_t @ 0x00001684
           children:
             - name: Unknown
               type_name:
                 Base: "<unnamed union>"
-              value: "<unnamed union> {\n\t<unknown>: <unnamed struct> = <unnamed struct> @ 0x00001670,\n\tx: uint32_t = 0}"
+              value: "<unnamed union> {\n\t<unknown>: <unnamed struct> = <unnamed struct> @ 0x00001684,\n\tx: uint32_t = 0}"
               children:
                 - name: Unknown
                   type_name:
                     Struct: "<unnamed struct>"
-                  value: "<unnamed struct> @ 0x00001670"
+                  value: "<unnamed struct> @ 0x00001684"
                   children:
                     - name:
                         Named: a
@@ -584,7 +584,7 @@ Child Variables:
                 Named: unsigned_bitfields
               type_name:
                 Struct: "<unnamed struct>"
-              value: "<unnamed struct> @ 0x00001674"
+              value: "<unnamed struct> @ 0x00001688"
               children:
                 - name:
                     Named: f
@@ -616,7 +616,7 @@ Child Variables:
                 Named: signed_bitfields
               type_name:
                 Struct: "<unnamed struct>"
-              value: "<unnamed struct> @ 0x00001675"
+              value: "<unnamed struct> @ 0x00001689"
               children:
                 - name:
                     Named: f
@@ -652,17 +652,17 @@ Child Variables:
               - Modified:
                   - Typedef: Foo_t
                   - Struct: "<unnamed struct>"
-          value: Foo_t @ 0x00001678
+          value: Foo_t @ 0x0000168C
           children:
             - name: Unknown
               type_name:
                 Base: "<unnamed union>"
-              value: "<unnamed union> {\n\t<unknown>: <unnamed struct> = <unnamed struct> @ 0x00001678,\n\tx: uint32_t = 0}"
+              value: "<unnamed union> {\n\t<unknown>: <unnamed struct> = <unnamed struct> @ 0x0000168C,\n\tx: uint32_t = 0}"
               children:
                 - name: Unknown
                   type_name:
                     Struct: "<unnamed struct>"
-                  value: "<unnamed struct> @ 0x00001678"
+                  value: "<unnamed struct> @ 0x0000168C"
                   children:
                     - name:
                         Named: a
@@ -713,7 +713,7 @@ Child Variables:
                 Named: unsigned_bitfields
               type_name:
                 Struct: "<unnamed struct>"
-              value: "<unnamed struct> @ 0x0000167C"
+              value: "<unnamed struct> @ 0x00001690"
               children:
                 - name:
                     Named: f
@@ -745,7 +745,7 @@ Child Variables:
                 Named: signed_bitfields
               type_name:
                 Struct: "<unnamed struct>"
-              value: "<unnamed struct> @ 0x0000167D"
+              value: "<unnamed struct> @ 0x00001691"
               children:
                 - name:
                     Named: f
@@ -785,9 +785,9 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              count: 11
+              count: 9
           count: 6
-      value: "uint8_t[11][6] = [\n\tuint8_t[11] = [\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0\n\t],\n\tuint8_t[11] = [\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0\n\t],\n\tuint8_t[11] = [\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0\n\t],\n\tuint8_t[11] = [\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0\n\t],\n\tuint8_t[11] = [\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0\n\t],\n\tuint8_t[11] = [\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0\n\t]]"
+      value: "uint8_t[9][6] = [\n\tuint8_t[9] = [\n\t\t0,\n\t\t1,\n\t\t2,\n\t\t3,\n\t\t4,\n\t\t5,\n\t\t6,\n\t\t7,\n\t\t8\n\t],\n\tuint8_t[9] = [\n\t\t0,\n\t\t1,\n\t\t2,\n\t\t3,\n\t\t4,\n\t\t5,\n\t\t6,\n\t\t7,\n\t\t8\n\t],\n\tuint8_t[9] = [\n\t\t0,\n\t\t1,\n\t\t2,\n\t\t3,\n\t\t4,\n\t\t5,\n\t\t6,\n\t\t7,\n\t\t8\n\t],\n\tuint8_t[9] = [\n\t\t0,\n\t\t1,\n\t\t2,\n\t\t3,\n\t\t4,\n\t\t5,\n\t\t6,\n\t\t7,\n\t\t8\n\t],\n\tuint8_t[9] = [\n\t\t0,\n\t\t1,\n\t\t2,\n\t\t3,\n\t\t4,\n\t\t5,\n\t\t6,\n\t\t7,\n\t\t8\n\t],\n\tuint8_t[9] = [\n\t\t0,\n\t\t1,\n\t\t2,\n\t\t3,\n\t\t4,\n\t\t5,\n\t\t6,\n\t\t7,\n\t\t8\n\t]]"
       children:
         - name:
             Named: __0
@@ -799,8 +799,8 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              count: 11
-          value: "uint8_t[11] = [\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0]"
+              count: 9
+          value: "uint8_t[9] = [\n\t0,\n\t1,\n\t2,\n\t3,\n\t4,\n\t5,\n\t6,\n\t7,\n\t8]"
           children:
             - name:
                 Named: __0
@@ -819,7 +819,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "1"
             - name:
                 Named: __2
               type_name:
@@ -828,7 +828,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "2"
             - name:
                 Named: __3
               type_name:
@@ -837,7 +837,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "3"
             - name:
                 Named: __4
               type_name:
@@ -846,7 +846,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "4"
             - name:
                 Named: __5
               type_name:
@@ -855,7 +855,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "5"
             - name:
                 Named: __6
               type_name:
@@ -864,7 +864,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "6"
             - name:
                 Named: __7
               type_name:
@@ -873,7 +873,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "7"
             - name:
                 Named: __8
               type_name:
@@ -882,25 +882,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
-            - name:
-                Named: __9
-              type_name:
-                Modified:
-                  - Typedef: uint8_t
-                  - Modified:
-                      - Typedef: __uint8_t
-                      - Base: unsigned char
-              value: "0"
-            - name:
-                Named: __10
-              type_name:
-                Modified:
-                  - Typedef: uint8_t
-                  - Modified:
-                      - Typedef: __uint8_t
-                      - Base: unsigned char
-              value: "0"
+              value: "8"
         - name:
             Named: __1
           type_name:
@@ -911,8 +893,8 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              count: 11
-          value: "uint8_t[11] = [\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0]"
+              count: 9
+          value: "uint8_t[9] = [\n\t0,\n\t1,\n\t2,\n\t3,\n\t4,\n\t5,\n\t6,\n\t7,\n\t8]"
           children:
             - name:
                 Named: __0
@@ -931,7 +913,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "1"
             - name:
                 Named: __2
               type_name:
@@ -940,7 +922,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "2"
             - name:
                 Named: __3
               type_name:
@@ -949,7 +931,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "3"
             - name:
                 Named: __4
               type_name:
@@ -958,7 +940,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "4"
             - name:
                 Named: __5
               type_name:
@@ -967,7 +949,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "5"
             - name:
                 Named: __6
               type_name:
@@ -976,7 +958,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "6"
             - name:
                 Named: __7
               type_name:
@@ -985,7 +967,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "7"
             - name:
                 Named: __8
               type_name:
@@ -994,25 +976,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
-            - name:
-                Named: __9
-              type_name:
-                Modified:
-                  - Typedef: uint8_t
-                  - Modified:
-                      - Typedef: __uint8_t
-                      - Base: unsigned char
-              value: "0"
-            - name:
-                Named: __10
-              type_name:
-                Modified:
-                  - Typedef: uint8_t
-                  - Modified:
-                      - Typedef: __uint8_t
-                      - Base: unsigned char
-              value: "0"
+              value: "8"
         - name:
             Named: __2
           type_name:
@@ -1023,8 +987,8 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              count: 11
-          value: "uint8_t[11] = [\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0]"
+              count: 9
+          value: "uint8_t[9] = [\n\t0,\n\t1,\n\t2,\n\t3,\n\t4,\n\t5,\n\t6,\n\t7,\n\t8]"
           children:
             - name:
                 Named: __0
@@ -1043,7 +1007,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "1"
             - name:
                 Named: __2
               type_name:
@@ -1052,7 +1016,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "2"
             - name:
                 Named: __3
               type_name:
@@ -1061,7 +1025,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "3"
             - name:
                 Named: __4
               type_name:
@@ -1070,7 +1034,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "4"
             - name:
                 Named: __5
               type_name:
@@ -1079,7 +1043,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "5"
             - name:
                 Named: __6
               type_name:
@@ -1088,7 +1052,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "6"
             - name:
                 Named: __7
               type_name:
@@ -1097,7 +1061,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "7"
             - name:
                 Named: __8
               type_name:
@@ -1106,25 +1070,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
-            - name:
-                Named: __9
-              type_name:
-                Modified:
-                  - Typedef: uint8_t
-                  - Modified:
-                      - Typedef: __uint8_t
-                      - Base: unsigned char
-              value: "0"
-            - name:
-                Named: __10
-              type_name:
-                Modified:
-                  - Typedef: uint8_t
-                  - Modified:
-                      - Typedef: __uint8_t
-                      - Base: unsigned char
-              value: "0"
+              value: "8"
         - name:
             Named: __3
           type_name:
@@ -1135,8 +1081,8 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              count: 11
-          value: "uint8_t[11] = [\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0]"
+              count: 9
+          value: "uint8_t[9] = [\n\t0,\n\t1,\n\t2,\n\t3,\n\t4,\n\t5,\n\t6,\n\t7,\n\t8]"
           children:
             - name:
                 Named: __0
@@ -1155,7 +1101,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "1"
             - name:
                 Named: __2
               type_name:
@@ -1164,7 +1110,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "2"
             - name:
                 Named: __3
               type_name:
@@ -1173,7 +1119,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "3"
             - name:
                 Named: __4
               type_name:
@@ -1182,7 +1128,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "4"
             - name:
                 Named: __5
               type_name:
@@ -1191,7 +1137,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "5"
             - name:
                 Named: __6
               type_name:
@@ -1200,7 +1146,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "6"
             - name:
                 Named: __7
               type_name:
@@ -1209,7 +1155,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "7"
             - name:
                 Named: __8
               type_name:
@@ -1218,25 +1164,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
-            - name:
-                Named: __9
-              type_name:
-                Modified:
-                  - Typedef: uint8_t
-                  - Modified:
-                      - Typedef: __uint8_t
-                      - Base: unsigned char
-              value: "0"
-            - name:
-                Named: __10
-              type_name:
-                Modified:
-                  - Typedef: uint8_t
-                  - Modified:
-                      - Typedef: __uint8_t
-                      - Base: unsigned char
-              value: "0"
+              value: "8"
         - name:
             Named: __4
           type_name:
@@ -1247,8 +1175,8 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              count: 11
-          value: "uint8_t[11] = [\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0]"
+              count: 9
+          value: "uint8_t[9] = [\n\t0,\n\t1,\n\t2,\n\t3,\n\t4,\n\t5,\n\t6,\n\t7,\n\t8]"
           children:
             - name:
                 Named: __0
@@ -1267,7 +1195,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "1"
             - name:
                 Named: __2
               type_name:
@@ -1276,7 +1204,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "2"
             - name:
                 Named: __3
               type_name:
@@ -1285,7 +1213,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "3"
             - name:
                 Named: __4
               type_name:
@@ -1294,7 +1222,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "4"
             - name:
                 Named: __5
               type_name:
@@ -1303,7 +1231,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "5"
             - name:
                 Named: __6
               type_name:
@@ -1312,7 +1240,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "6"
             - name:
                 Named: __7
               type_name:
@@ -1321,7 +1249,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "7"
             - name:
                 Named: __8
               type_name:
@@ -1330,25 +1258,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
-            - name:
-                Named: __9
-              type_name:
-                Modified:
-                  - Typedef: uint8_t
-                  - Modified:
-                      - Typedef: __uint8_t
-                      - Base: unsigned char
-              value: "0"
-            - name:
-                Named: __10
-              type_name:
-                Modified:
-                  - Typedef: uint8_t
-                  - Modified:
-                      - Typedef: __uint8_t
-                      - Base: unsigned char
-              value: "0"
+              value: "8"
         - name:
             Named: __5
           type_name:
@@ -1359,8 +1269,8 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              count: 11
-          value: "uint8_t[11] = [\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0]"
+              count: 9
+          value: "uint8_t[9] = [\n\t0,\n\t1,\n\t2,\n\t3,\n\t4,\n\t5,\n\t6,\n\t7,\n\t8]"
           children:
             - name:
                 Named: __0
@@ -1379,7 +1289,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "1"
             - name:
                 Named: __2
               type_name:
@@ -1388,7 +1298,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "2"
             - name:
                 Named: __3
               type_name:
@@ -1397,7 +1307,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "3"
             - name:
                 Named: __4
               type_name:
@@ -1406,7 +1316,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "4"
             - name:
                 Named: __5
               type_name:
@@ -1415,7 +1325,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "5"
             - name:
                 Named: __6
               type_name:
@@ -1424,7 +1334,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "6"
             - name:
                 Named: __7
               type_name:
@@ -1433,7 +1343,7 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "7"
             - name:
                 Named: __8
               type_name:
@@ -1442,22 +1352,100 @@ Child Variables:
                   - Modified:
                       - Typedef: __uint8_t
                       - Base: unsigned char
-              value: "0"
+              value: "8"
+    - name:
+        Named: nested_array2
+      type_name:
+        Array:
+          item_type_name:
+            Array:
+              item_type_name:
+                Modified:
+                  - Typedef: uint16_t
+                  - Modified:
+                      - Typedef: __uint16_t
+                      - Base: short unsigned int
+              count: 3
+          count: 2
+      value: "uint16_t[3][2] = [\n\tuint16_t[3] = [\n\t\t0,\n\t\t1,\n\t\t2\n\t],\n\tuint16_t[3] = [\n\t\t0,\n\t\t1,\n\t\t2\n\t]]"
+      children:
+        - name:
+            Named: __0
+          type_name:
+            Array:
+              item_type_name:
+                Modified:
+                  - Typedef: uint16_t
+                  - Modified:
+                      - Typedef: __uint16_t
+                      - Base: short unsigned int
+              count: 3
+          value: "uint16_t[3] = [\n\t0,\n\t1,\n\t2]"
+          children:
             - name:
-                Named: __9
+                Named: __0
               type_name:
                 Modified:
-                  - Typedef: uint8_t
+                  - Typedef: uint16_t
                   - Modified:
-                      - Typedef: __uint8_t
-                      - Base: unsigned char
+                      - Typedef: __uint16_t
+                      - Base: short unsigned int
               value: "0"
             - name:
-                Named: __10
+                Named: __1
               type_name:
                 Modified:
-                  - Typedef: uint8_t
+                  - Typedef: uint16_t
                   - Modified:
-                      - Typedef: __uint8_t
-                      - Base: unsigned char
+                      - Typedef: __uint16_t
+                      - Base: short unsigned int
+              value: "1"
+            - name:
+                Named: __2
+              type_name:
+                Modified:
+                  - Typedef: uint16_t
+                  - Modified:
+                      - Typedef: __uint16_t
+                      - Base: short unsigned int
+              value: "2"
+        - name:
+            Named: __1
+          type_name:
+            Array:
+              item_type_name:
+                Modified:
+                  - Typedef: uint16_t
+                  - Modified:
+                      - Typedef: __uint16_t
+                      - Base: short unsigned int
+              count: 3
+          value: "uint16_t[3] = [\n\t0,\n\t1,\n\t2]"
+          children:
+            - name:
+                Named: __0
+              type_name:
+                Modified:
+                  - Typedef: uint16_t
+                  - Modified:
+                      - Typedef: __uint16_t
+                      - Base: short unsigned int
               value: "0"
+            - name:
+                Named: __1
+              type_name:
+                Modified:
+                  - Typedef: uint16_t
+                  - Modified:
+                      - Typedef: __uint16_t
+                      - Base: short unsigned int
+              value: "1"
+            - name:
+                Named: __2
+              type_name:
+                Modified:
+                  - Typedef: uint16_t
+                  - Modified:
+                      - Typedef: __uint16_t
+                      - Base: short unsigned int
+              value: "2"

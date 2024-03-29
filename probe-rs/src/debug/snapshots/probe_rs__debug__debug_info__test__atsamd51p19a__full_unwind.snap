@@ -4,7 +4,7 @@ expression: stack_frames
 ---
 - function_name: print_const_pointers
   source_location:
-    line: 66
+    line: 80
     column:
       Column: 5
     file: main.c
@@ -60,7 +60,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 4
       value:
-        U32: 283177
+        U32: 2779096485
     - core_register:
         id: 5
         roles:
@@ -183,7 +183,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 17
       value:
-        U32: 536885000
+        U32: 536885816
     - core_register:
         id: 16
         roles:
@@ -212,13 +212,13 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tconst_void_pointer: void* = void* @ 0x20000008,\n\tconst_void_const_pointer: const void* = void* @ 0x00001738}"
+      value: "<unknown> {\n\tconst_void_pointer: void* = void* @ 0x2000004C,\n\tconst_void_const_pointer: const void* = void* @ 0x00001760}"
       children:
         - name:
             Named: const_void_pointer
           type_name:
             Pointer: ~
-          value: void* @ 0x20000008
+          value: void* @ 0x2000004C
           children:
             - name:
                 Named: "*const_void_pointer"
@@ -230,7 +230,7 @@ expression: stack_frames
             Modified:
               - Const
               - Pointer: ~
-          value: void* @ 0x00001738
+          value: void* @ 0x00001760
           children:
             - name:
                 Named: "*const_void_const_pointer"
@@ -239,7 +239,7 @@ expression: stack_frames
   canonical_frame_address: 536875096
 - function_name: print_pointers
   source_location:
-    line: 80
+    line: 94
     column:
       Column: 1
     file: main.c
@@ -291,7 +291,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 4
       value:
-        U32: 283177
+        U32: 2779096485
     - core_register:
         id: 5
         roles:
@@ -439,24 +439,24 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tvoid_pointer: void* = void* @ 2000000C,\n\tvoid_const_pointer: const void* = void* @ 173C}"
+      value: "<unknown> {\n\tvoid_pointer: void* = void* @ 20000050,\n\tvoid_const_pointer: const void* = void* @ 1764}"
       children:
         - name:
             Named: void_pointer
           type_name:
             Pointer: ~
-          value: void* @ 2000000C
+          value: void* @ 20000050
         - name:
             Named: void_const_pointer
           type_name:
             Modified:
               - Const
               - Pointer: ~
-          value: void* @ 173C
+          value: void* @ 1764
   canonical_frame_address: 536875104
 - function_name: main
   source_location:
-    line: 97
+    line: 111
     column:
       Column: 9
     file: main.c
@@ -508,7 +508,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 4
       value:
-        U32: 283177
+        U32: 2779096485
     - core_register:
         id: 5
         roles:
@@ -656,13 +656,13 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tstring: int* = int* @ 0x20000010}"
+      value: "<unknown> {\n\tstring: int* = int* @ 0x20000054}"
       children:
         - name:
             Named: string
           type_name:
             Pointer: int
-          value: int* @ 0x20000010
+          value: int* @ 0x20000054
           children:
             - name:
                 Named: "*string"
@@ -726,7 +726,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 4
       value:
-        U32: 283177
+        U32: 2779096485
     - core_register:
         id: 5
         roles:
@@ -907,4 +907,3 @@ expression: stack_frames
                       - Base: long unsigned int
               value: "484133903"
   canonical_frame_address: 536875128
-
