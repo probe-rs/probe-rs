@@ -251,6 +251,13 @@ impl Target {
         target_arch
     }
 
+    /// Set DebugSequence on Target. Change sequence external, on runtime etc.
+    pub fn set_debug_sequense(&mut self,  sequence : DebugSequence)  {
+
+        self.debug_sequence = sequence;
+        
+    }
+
     /// Return the default core of the target, usually the first core.
     ///
     /// This core should be used for operations such as debug_unlock,
