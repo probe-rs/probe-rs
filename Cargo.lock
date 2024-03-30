@@ -2805,6 +2805,7 @@ dependencies = [
  "nusb",
  "object 0.34.0",
  "once_cell",
+ "parking_lot",
  "parse_int",
  "paste",
  "pretty_assertions",

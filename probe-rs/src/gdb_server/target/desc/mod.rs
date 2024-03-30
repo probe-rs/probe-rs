@@ -40,7 +40,7 @@ impl TargetDescriptionXmlOverride for RuntimeTarget<'_> {
 
 impl RuntimeTarget<'_> {
     pub(crate) fn load_target_desc(&mut self) -> Result<(), crate::Error> {
-        let mut session = self.session.lock().unwrap();
+        let mut session = self.session.lock();
         let mut core = session.core(self.cores[0])?;
 
         self.target_desc =
@@ -57,7 +57,7 @@ impl MemoryMap for RuntimeTarget<'_> {
         length: usize,
         buf: &mut [u8],
     ) -> gdbstub::target::TargetResult<usize, Self> {
-        let mut session = self.session.lock().unwrap();
+        let mut session = self.session.lock();
         let xml = gdb_memory_map(&mut session, self.cores[0]).into_target_result()?;
         let xml_data = xml.as_bytes();
 
