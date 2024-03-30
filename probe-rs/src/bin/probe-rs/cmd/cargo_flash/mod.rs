@@ -3,16 +3,16 @@ mod diagnostics;
 use colored::*;
 use diagnostics::render_diagnostics;
 use probe_rs::probe::list::Lister;
-use probe_rs::InstructionSet;
 use std::ffi::OsString;
 use std::{path::PathBuf, process};
 
+use crate::util::cargo::target_instruction_set;
 use crate::util::common_options::{CargoOptions, FlashOptions, OperationError};
 use crate::util::flash;
 use crate::util::logging::setup_logging;
 use clap::{CommandFactory, FromArgMatches};
 
-use crate::util::{build_artifact, logging};
+use crate::util::{cargo::build_artifact, logging};
 
 pub fn main(args: Vec<OsString>) {
     let lister = Lister::new();
@@ -75,20 +75,7 @@ fn main_try(mut args: Vec<OsString>, lister: &Lister) -> Result<(), OperationErr
         path_buf.clone()
     } else {
         let cargo_options = opt.cargo_options.to_cargo_options();
-        image_instr_set = opt
-            .cargo_options
-            .target
-            .or_else(|| {
-                let cargo_config = cargo_config2::Config::load().ok()?;
-                cargo_config
-                    .build
-                    .target
-                    .as_ref()
-                    .and_then(|ts| Some(ts.first()?.triple()))
-                    .map(|triple| triple.to_string())
-            })
-            .as_deref()
-            .and_then(InstructionSet::from_target_triple);
+        image_instr_set = target_instruction_set(opt.cargo_options.target.clone());
 
         // Build the project, and extract the path of the built artifact.
         build_artifact(&work_dir, &cargo_options)

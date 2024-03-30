@@ -31,10 +31,10 @@
 //!     // ...
 //! }
 //! ```
-use super::ArtifactError;
 
 use std::{fs::File, path::Path, path::PathBuf};
 
+use super::cargo::ArtifactError;
 use crate::util::{logging::LevelFilter, parse_u64};
 use probe_rs::{
     config::{RegistryError, TargetSelector},

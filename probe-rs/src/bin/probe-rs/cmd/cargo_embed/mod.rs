@@ -9,7 +9,6 @@ use parking_lot::FairMutex;
 use probe_rs::gdb_server::GdbInstanceConfiguration;
 use probe_rs::probe::list::Lister;
 use probe_rs::rtt::ScanRegion;
-use probe_rs::InstructionSet;
 use probe_rs::{probe::DebugProbeSelector, Session};
 use std::ffi::OsString;
 use std::{
@@ -23,11 +22,12 @@ use std::{
 };
 use time::{OffsetDateTime, UtcOffset};
 
+use crate::util::cargo::target_instruction_set;
 use crate::util::common_options::{BinaryDownloadOptions, OperationError, ProbeOptions};
 use crate::util::flash::{build_loader, run_flash_download};
 use crate::util::logging::setup_logging;
 use crate::util::rtt::{self, RttActiveTarget, RttChannelConfig, RttConfig};
-use crate::util::{build_artifact, common_options::CargoOptions, logging, rtt::DataFormat};
+use crate::util::{cargo::build_artifact, common_options::CargoOptions, logging, rtt::DataFormat};
 use crate::FormatOptions;
 
 #[derive(Debug, clap::Parser)]
@@ -228,20 +228,7 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
     if config.flashing.enabled {
         // As opposed to cargo-flash, we do not have the option of suppliying an external image.
         // This means we can just take the cargo target, if it's set.
-        let image_instr_set = opt
-            .cargo_options
-            .target
-            .or_else(|| {
-                let cargo_config = cargo_config2::Config::load().ok()?;
-                cargo_config
-                    .build
-                    .target
-                    .as_ref()
-                    .and_then(|ts| Some(ts.first()?.triple()))
-                    .map(|triple| triple.to_string())
-            })
-            .as_deref()
-            .and_then(InstructionSet::from_target_triple);
+        let image_instr_set = target_instruction_set(opt.cargo_options.target.clone());
 
         let download_options = BinaryDownloadOptions {
             disable_progressbars: opt.disable_progressbars,
