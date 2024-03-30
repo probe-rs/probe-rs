@@ -24,7 +24,7 @@ impl HwBreakpoint for RuntimeTarget<'_> {
         addr: u64,
         _kind: <Self::Arch as gdbstub::arch::Arch>::BreakpointKind,
     ) -> gdbstub::target::TargetResult<bool, Self> {
-        let mut session = self.session.lock().unwrap();
+        let mut session = self.session.lock();
 
         for core_id in &self.cores {
             let mut core = session.core(*core_id).into_target_result()?;
@@ -40,7 +40,7 @@ impl HwBreakpoint for RuntimeTarget<'_> {
         addr: u64,
         _kind: <Self::Arch as gdbstub::arch::Arch>::BreakpointKind,
     ) -> gdbstub::target::TargetResult<bool, Self> {
-        let mut session = self.session.lock().unwrap();
+        let mut session = self.session.lock();
 
         for core_id in &self.cores {
             let mut core = session.core(*core_id).into_target_result()?;

@@ -5,6 +5,7 @@ mod rttui;
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
 use colored::*;
+use parking_lot::FairMutex;
 use probe_rs::gdb_server::GdbInstanceConfiguration;
 use probe_rs::probe::list::Lister;
 use probe_rs::rtt::ScanRegion;
@@ -17,7 +18,7 @@ use std::{
     panic,
     path::{Path, PathBuf},
     process,
-    sync::{Arc, Mutex},
+    sync::Arc,
     time::Duration,
 };
 use time::{OffsetDateTime, UtcOffset};
@@ -254,7 +255,7 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
         }
     }
 
-    let session = Arc::new(Mutex::new(session));
+    let session = Arc::new(FairMutex::new(session));
 
     let mut gdb_thread_handle = None;
 
@@ -273,7 +274,7 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
             ));
 
             let instances = {
-                let session = session.lock().unwrap();
+                let session = session.lock();
                 GdbInstanceConfiguration::from_session(&session, Some(gdb_connection_string))
             };
 
@@ -304,7 +305,7 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
 
 fn run_rttui_app(
     name: &str,
-    session: &Mutex<Session>,
+    session: &FairMutex<Session>,
     core_id: usize,
     config: config::Config,
     elf_path: &Path,
@@ -380,7 +381,7 @@ fn run_rttui_app(
 
     // Configure rtt channels according to configuration
     {
-        let mut session_handle = session.lock().unwrap();
+        let mut session_handle = session.lock();
         let mut core = session_handle.core(core_id)?;
         configure_rtt_modes(&mut core, &config, &mut rtt)?;
     }
@@ -418,7 +419,7 @@ fn run_rttui_app(
         app.render();
 
         {
-            let mut session_handle = session.lock().unwrap();
+            let mut session_handle = session.lock();
             let mut core = session_handle.core(core_id)?;
 
             if app.handle_event(&mut core) {
@@ -458,7 +459,7 @@ fn configure_rtt_modes(
 
 /// Try to attach to RTT, with the given timeout
 fn rtt_attach(
-    session: &Mutex<Session>,
+    session: &FairMutex<Session>,
     core_id: usize,
     timeout: Duration,
     rtt_region: &ScanRegion,
@@ -480,7 +481,7 @@ fn rtt_attach(
         //
         // GDB is also using the session
         {
-            let mut session_handle = session.lock().unwrap();
+            let mut session_handle = session.lock();
             let memory_map = session_handle.target().memory_map.clone();
             let mut core = session_handle.core(core_id)?;
 

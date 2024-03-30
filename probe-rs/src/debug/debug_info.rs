@@ -989,11 +989,7 @@ impl DebugInfo {
     }
 }
 
-/// Uses the [std::fs::canonicalize] function to canonicalize both paths before applying the [std::path::PathBuf::eq]
-/// to test if the secondary path is equal or a suffix of the primary path.
-/// If for some reason (e.g., the paths don't exist) the canonicalization fails, the original equality check is used.
-/// We do this to maximize the chances of finding a match where the secondary path can be given as
-/// an absolute, relative, or partial path.
+/// Uses the [`TypedPathBuf::normalize`] function to normalize both paths before comparing them
 pub(crate) fn canonical_path_eq(
     primary_path: &TypedPathBuf,
     secondary_path: &TypedPathBuf,
