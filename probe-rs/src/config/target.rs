@@ -252,7 +252,7 @@ impl Target {
     }
 
     /// Set DebugSequence on Target. Change sequence external, on runtime etc.
-    pub fn set_debug_sequense(&mut self,  sequence : DebugSequence) {
+    pub fn set_debug_sequense(&mut self, sequence: DebugSequence) {
         self.debug_sequence = sequence;
     }
 
