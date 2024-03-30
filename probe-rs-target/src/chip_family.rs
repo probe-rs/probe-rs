@@ -115,6 +115,15 @@ impl InstructionSet {
         // TODO: Xtensa may have wide instructions
         4
     }
+
+    /// Returns whether a CPU with the `self` instruction set is compatible with a program compiled for `instr_set`.
+    pub fn is_compatible(&self, instr_set: InstructionSet) -> bool {
+        if *self == instr_set {
+            return true;
+        }
+
+        false
+    }
 }
 
 /// This describes a chip family with all its variants.

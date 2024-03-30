@@ -503,7 +503,8 @@ fn flash(
         verify: false,
     };
     let format_options = FormatOptions::default();
-    let loader = build_loader(session, path, format_options)?;
+    let image_instr_set = None; // TODO
+    let loader = build_loader(session, path, format_options, image_instr_set)?;
     run_flash_download(
         session,
         path,

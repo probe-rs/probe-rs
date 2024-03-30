@@ -2,7 +2,8 @@ use espflash::flasher::{FlashData, FlashSettings};
 use espflash::targets::XtalFrequency;
 use ihex::Record;
 use probe_rs_target::{
-    MemoryRange, MemoryRegion, NvmRegion, RawFlashAlgorithm, TargetDescriptionSource,
+    InstructionSet, MemoryRange, MemoryRegion, NvmRegion, RawFlashAlgorithm,
+    TargetDescriptionSource,
 };
 use std::collections::HashMap;
 use std::io::{Read, Seek, SeekFrom};
@@ -92,7 +93,18 @@ impl FlashLoader {
         session: &mut Session,
         file: &mut T,
         format: Format,
+        image_instruction_set: Option<InstructionSet>,
     ) -> Result<(), FileDownloadError> {
+        if let Some(instr_set) = image_instruction_set {
+            let target_arch = session.core(0).unwrap().instruction_set()?;
+            if !target_arch.is_compatible(instr_set) {
+                tracing::warn!(
+                    "The image ({:?}) is not compatible with the target instruction set ({:?}).",
+                    target_arch,
+                    instr_set
+                );
+            }
+        }
         match format {
             Format::Bin(options) => self.load_bin_data(file, options),
             Format::Elf => self.load_elf_data(file),

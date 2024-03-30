@@ -181,7 +181,7 @@ pub fn download_file_with_options<P: AsRef<Path>>(
 
     let mut loader = session.target().flash_loader();
 
-    loader.load_image(session, &mut file, format)?;
+    loader.load_image(session, &mut file, format, None)?;
 
     loader
         .commit(session, options)

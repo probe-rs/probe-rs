@@ -9,6 +9,7 @@ use std::{path::Path, time::Instant};
 
 use colored::Colorize;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
+use probe_rs::InstructionSet;
 use probe_rs::{
     flashing::{DownloadOptions, FileDownloadError, FlashLoader, FlashProgress, ProgressEvent},
     Session,
@@ -172,6 +173,7 @@ pub fn build_loader(
     session: &mut Session,
     path: impl AsRef<Path>,
     format_options: FormatOptions,
+    image_instruction_set: Option<InstructionSet>,
 ) -> anyhow::Result<FlashLoader> {
     // Create the flash loader
     let mut loader = session.target().flash_loader();
@@ -183,7 +185,7 @@ pub fn build_loader(
     };
 
     let format = format_options.into_format(session.target())?;
-    loader.load_image(session, &mut file, format)?;
+    loader.load_image(session, &mut file, format, image_instruction_set)?;
 
     Ok(loader)
 }

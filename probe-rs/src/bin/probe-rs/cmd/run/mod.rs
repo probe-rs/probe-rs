@@ -104,6 +104,7 @@ impl Cmd {
                 &mut session,
                 &self.shared_options.path,
                 self.shared_options.format_options,
+                None,
             )?;
             run_flash_download(
                 &mut session,
