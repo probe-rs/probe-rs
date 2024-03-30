@@ -32,7 +32,6 @@ Released 2024-02-24
  - Add support for the esp32s2 target (#2002) by @bugadani
  - probe-rs now supports flashing CH32V307 MCUs (#2136) by @Marcuss2
 
-
 ### Changed
 
  - Ensure then when executing setup commands and sequences that the core is halted. (#2151) by @MabezDev
