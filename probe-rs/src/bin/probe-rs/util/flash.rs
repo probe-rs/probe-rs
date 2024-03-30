@@ -10,9 +10,7 @@ use std::{path::Path, time::Instant};
 use colored::Colorize;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use probe_rs::{
-    flashing::{
-        DownloadOptions, FileDownloadError, FlashLoader, FlashProgress, Format, ProgressEvent,
-    },
+    flashing::{DownloadOptions, FileDownloadError, FlashLoader, FlashProgress, ProgressEvent},
     Session,
 };
 
@@ -185,13 +183,7 @@ pub fn build_loader(
     };
 
     let format = format_options.into_format(session.target())?;
-    match format {
-        Format::Bin(options) => loader.load_bin_data(&mut file, options),
-        Format::Elf => loader.load_elf_data(&mut file),
-        Format::Hex => loader.load_hex_data(&mut file),
-        Format::Idf(options) => loader.load_idf_data(session, &mut file, options),
-        Format::Uf2 => loader.load_uf2_data(&mut file),
-    }?;
+    loader.load_image(session, &mut file, format)?;
 
     Ok(loader)
 }

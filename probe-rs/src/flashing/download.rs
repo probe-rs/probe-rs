@@ -181,13 +181,7 @@ pub fn download_file_with_options<P: AsRef<Path>>(
 
     let mut loader = session.target().flash_loader();
 
-    match format {
-        Format::Bin(options) => loader.load_bin_data(&mut file, options),
-        Format::Elf => loader.load_elf_data(&mut file),
-        Format::Hex => loader.load_hex_data(&mut file),
-        Format::Idf(options) => loader.load_idf_data(session, &mut file, options),
-        Format::Uf2 => loader.load_uf2_data(&mut file),
-    }?;
+    loader.load_image(session, &mut file, format)?;
 
     loader
         .commit(session, options)

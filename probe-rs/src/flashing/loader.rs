@@ -15,6 +15,7 @@ use super::{
     IdfOptions,
 };
 use crate::config::DebugSequence;
+use crate::flashing::Format;
 use crate::memory::MemoryInterface;
 use crate::session::Session;
 use crate::Target;
@@ -83,6 +84,22 @@ impl FlashLoader {
         address: u64,
     ) -> Option<&MemoryRegion> {
         memory_map.iter().find(|region| region.contains(address))
+    }
+
+    /// Reads the image according to the file format and adds it to the loader.
+    pub fn load_image<T: Read + Seek>(
+        &mut self,
+        session: &mut Session,
+        file: &mut T,
+        format: Format,
+    ) -> Result<(), FileDownloadError> {
+        match format {
+            Format::Bin(options) => self.load_bin_data(file, options),
+            Format::Elf => self.load_elf_data(file),
+            Format::Hex => self.load_hex_data(file),
+            Format::Idf(options) => self.load_idf_data(session, file, options),
+            Format::Uf2 => self.load_uf2_data(file),
+        }
     }
 
     /// Reads the data from the binary file and adds it to the loader without splitting it into flash instructions yet.
