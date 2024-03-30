@@ -74,13 +74,22 @@ fn main_try(mut args: Vec<OsString>, lister: &Lister) -> Result<(), OperationErr
         image_instr_set = None;
         path_buf.clone()
     } else {
+        let cargo_options = opt.cargo_options.to_cargo_options();
         image_instr_set = opt
             .cargo_options
             .target
+            .or_else(|| {
+                let cargo_config = cargo_config2::Config::load().ok()?;
+                cargo_config
+                    .build
+                    .target
+                    .as_ref()
+                    .and_then(|ts| Some(ts.get(0)?.triple()))
+                    .map(|triple| triple.to_string())
+            })
             .as_deref()
             .and_then(InstructionSet::from_target_triple);
 
-        let cargo_options = opt.cargo_options.to_cargo_options();
         // Build the project, and extract the path of the built artifact.
         build_artifact(&work_dir, &cargo_options)
             .map_err(|error| {

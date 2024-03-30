@@ -231,6 +231,15 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
         let image_instr_set = opt
             .cargo_options
             .target
+            .or_else(|| {
+                let cargo_config = cargo_config2::Config::load().ok()?;
+                cargo_config
+                    .build
+                    .target
+                    .as_ref()
+                    .and_then(|ts| Some(ts.get(0)?.triple()))
+                    .map(|triple| triple.to_string())
+            })
             .as_deref()
             .and_then(InstructionSet::from_target_triple);
 
