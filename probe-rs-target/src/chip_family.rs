@@ -143,10 +143,10 @@ impl InstructionSet {
             return true;
         }
 
-        match (self, instr_set) {
-            (InstructionSet::RV32C, InstructionSet::RV32) => true,
-            _ => false,
-        }
+        matches!(
+            (self, instr_set),
+            (InstructionSet::RV32C, InstructionSet::RV32)
+        )
     }
 }
 

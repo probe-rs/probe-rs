@@ -9,8 +9,8 @@ use parking_lot::FairMutex;
 use probe_rs::gdb_server::GdbInstanceConfiguration;
 use probe_rs::probe::list::Lister;
 use probe_rs::rtt::ScanRegion;
+use probe_rs::InstructionSet;
 use probe_rs::{probe::DebugProbeSelector, Session};
-use probe_rs::{Core, InstructionSet};
 use std::ffi::OsString;
 use std::{
     fs::File,
@@ -237,7 +237,7 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
                     .build
                     .target
                     .as_ref()
-                    .and_then(|ts| Some(ts.get(0)?.triple()))
+                    .and_then(|ts| Some(ts.first()?.triple()))
                     .map(|triple| triple.to_string())
             })
             .as_deref()

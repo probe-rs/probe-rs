@@ -84,7 +84,7 @@ fn main_try(mut args: Vec<OsString>, lister: &Lister) -> Result<(), OperationErr
                     .build
                     .target
                     .as_ref()
-                    .and_then(|ts| Some(ts.get(0)?.triple()))
+                    .and_then(|ts| Some(ts.first()?.triple()))
                     .map(|triple| triple.to_string())
             })
             .as_deref()
