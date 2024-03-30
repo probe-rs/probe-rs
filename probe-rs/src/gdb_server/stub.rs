@@ -93,9 +93,14 @@ pub fn run<'a>(
         })
         .collect::<Result<Vec<target::RuntimeTarget>, Error>>()?;
 
+    // Avoid getting stuck in an infinite loop if we have no targets
+    if targets.is_empty() {
+        return Ok(());
+    }
+
     // Process every target in a loop
     loop {
-        let mut wait_time = Duration::ZERO;
+        let mut wait_time = Duration::MAX;
 
         for target in targets.iter_mut() {
             wait_time = wait_time.min(target.process()?);
