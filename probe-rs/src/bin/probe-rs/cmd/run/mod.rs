@@ -482,7 +482,8 @@ fn attach_to_rtt(
     for _ in 0..RTT_RETRIES {
         match rtt::attach_to_rtt(core, memory_map, &scan_regions, path) {
             Ok(Some(target_rtt)) => {
-                let app = RttActiveTarget::new(target_rtt, path, rtt_config, timestamp_offset);
+                let app =
+                    RttActiveTarget::new(core, target_rtt, path, rtt_config, timestamp_offset);
 
                 match app {
                     Ok(app) => return Some(app),

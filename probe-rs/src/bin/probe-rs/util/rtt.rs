@@ -139,6 +139,10 @@ pub struct RttChannelConfig {
     #[serde(default)]
     pub data_format: DataFormat,
 
+    /// RTT channel operating mode. Defaults to the target's configuration.
+    #[serde(default)]
+    pub mode: Option<ChannelMode>,
+
     #[serde(default)]
     /// Control the inclusion of timestamps for DataFormat::String.
     pub show_timestamps: bool,
@@ -228,12 +232,13 @@ pub struct RttActiveUpChannel {
 
 impl RttActiveUpChannel {
     pub fn new(
+        core: &mut Core,
         up_channel: UpChannel,
         rtt_config: &RttConfig,
         channel_config: &RttChannelConfig,
         timestamp_offset: UtcOffset,
         defmt_state: Option<&DefmtState>,
-    ) -> Self {
+    ) -> Result<Self> {
         let is_defmt_channel = up_channel.name() == Some("defmt");
 
         let data_format = match channel_config.data_format {
@@ -290,12 +295,23 @@ impl RttActiveUpChannel {
                 )
             });
 
-        Self {
+        if let Some(mode) = channel_config.mode.or(
+            // Try not to corrupt the byte stream if using defmt
+            if matches!(data_format, ChannelDataConfig::Defmt { .. }) {
+                Some(ChannelMode::BlockIfFull)
+            } else {
+                None
+            },
+        ) {
+            up_channel.set_mode(core, mode)?;
+        }
+
+        Ok(Self {
             rtt_buffer: RttBuffer::new(up_channel.buffer_size()),
             up_channel,
             channel_name,
             data_format,
-        }
+        })
     }
 
     pub fn number(&self) -> usize {
@@ -533,6 +549,7 @@ impl fmt::Debug for DefmtState {
 impl RttActiveTarget {
     /// RttActiveTarget collects references to all the `RttActiveChannel`s, for latter polling/pushing of data.
     pub fn new(
+        core: &mut Core,
         rtt: probe_rs::rtt::Rtt,
         elf_file: &Path,
         rtt_config: &RttConfig,
@@ -552,12 +569,13 @@ impl RttActiveTarget {
             active_up_channels.insert(
                 channel.number(),
                 RttActiveUpChannel::new(
+                    core,
                     channel,
                     rtt_config,
                     &channel_config,
                     timestamp_offset,
                     defmt_state.as_ref(),
-                ),
+                )?,
             );
         }
 
