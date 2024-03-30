@@ -3,6 +3,7 @@ mod diagnostics;
 use colored::*;
 use diagnostics::render_diagnostics;
 use probe_rs::probe::list::Lister;
+use probe_rs::InstructionSet;
 use std::ffi::OsString;
 use std::{path::PathBuf, process};
 
@@ -68,11 +69,20 @@ fn main_try(mut args: Vec<OsString>, lister: &Lister) -> Result<(), OperationErr
 
     // Get the path to the binary we want to flash.
     // This can either be give from the arguments or can be a cargo build artifact.
-    let path: PathBuf = if let Some(path) = &opt.path {
-        path.into()
+    let image_instr_set;
+    let path = if let Some(path_buf) = &opt.path {
+        image_instr_set = None;
+        path_buf.clone()
     } else {
+        image_instr_set = opt
+            .cargo_options
+            .target
+            .as_deref()
+            .and_then(InstructionSet::from_target_triple);
+
+        let cargo_options = opt.cargo_options.to_cargo_options();
         // Build the project, and extract the path of the built artifact.
-        build_artifact(&work_dir, &opt.cargo_options.to_cargo_options())
+        build_artifact(&work_dir, &cargo_options)
             .map_err(|error| {
                 if let Some(ref work_dir) = opt.work_dir {
                     OperationError::FailedToBuildExternalCargoProject {
@@ -99,7 +109,6 @@ fn main_try(mut args: Vec<OsString>, lister: &Lister) -> Result<(), OperationErr
     let (mut session, probe_options) = opt.probe_options.simple_attach(lister)?;
 
     // Flash the binary
-    let image_instr_set = None; // TODO
     let loader =
         flash::build_loader(&mut session, &path, opt.format_options, image_instr_set).unwrap();
     flash::run_flash_download(

@@ -98,11 +98,10 @@ impl FlashLoader {
         if let Some(instr_set) = image_instruction_set {
             let target_arch = session.core(0).unwrap().instruction_set()?;
             if !target_arch.is_compatible(instr_set) {
-                tracing::warn!(
-                    "The image ({:?}) is not compatible with the target instruction set ({:?}).",
-                    target_arch,
-                    instr_set
-                );
+                return Err(FileDownloadError::IncompatibleImage {
+                    target: target_arch,
+                    image: instr_set,
+                });
             }
         }
         match format {

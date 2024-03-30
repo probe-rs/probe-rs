@@ -96,6 +96,27 @@ pub enum InstructionSet {
 }
 
 impl InstructionSet {
+    /// Get the instruction set from a rustc target triple.
+    pub fn from_target_triple(triple: &str) -> Option<Self> {
+        match triple.split('-').next()? {
+            "thumbv6m" | "thumbv7em" | "thumbv7m" | "thumbv8m" => Some(InstructionSet::Thumb2),
+            "arm" => Some(InstructionSet::A32),
+            "aarch64" => Some(InstructionSet::A64),
+            "xtensa" => Some(InstructionSet::Xtensa),
+            other => {
+                if let Some(features) = other.strip_prefix("riscv32") {
+                    if features.contains('c') {
+                        Some(InstructionSet::RV32C)
+                    } else {
+                        Some(InstructionSet::RV32)
+                    }
+                } else {
+                    None
+                }
+            }
+        }
+    }
+
     /// Get the minimum instruction size in bytes.
     pub fn get_minimum_instruction_size(&self) -> u8 {
         match self {
@@ -122,7 +143,10 @@ impl InstructionSet {
             return true;
         }
 
-        false
+        match (self, instr_set) {
+            (InstructionSet::RV32C, InstructionSet::RV32) => true,
+            _ => false,
+        }
     }
 }
 
