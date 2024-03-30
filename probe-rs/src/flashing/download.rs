@@ -107,13 +107,21 @@ pub enum FileDownloadError {
     /// Could not determine flash size.
     FlashSizeDetection(#[from] crate::Error),
 
-    /// The image ({target:?}) is not compatible with the target instruction set ({image:?}).
+    /// The image ({image:?}) is not compatible with the target ({print_instr_sets(target)}).
     IncompatibleImage {
         /// The target's instruction set.
-        target: InstructionSet,
+        target: Vec<InstructionSet>,
         /// The image's instruction set.
         image: InstructionSet,
     },
+}
+
+fn print_instr_sets(instr_sets: &[InstructionSet]) -> String {
+    instr_sets
+        .iter()
+        .map(|instr_set| format!("{instr_set:?}"))
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 /// Options for downloading a file onto a target chip.

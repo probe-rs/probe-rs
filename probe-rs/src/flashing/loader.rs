@@ -96,10 +96,24 @@ impl FlashLoader {
         image_instruction_set: Option<InstructionSet>,
     ) -> Result<(), FileDownloadError> {
         if let Some(instr_set) = image_instruction_set {
-            let target_arch = session.core(0).unwrap().instruction_set()?;
-            if !target_arch.is_compatible(instr_set) {
+            let mut target_archs = Vec::with_capacity(session.list_cores().len());
+
+            // Get a unique list of core architectures
+            for (core, _) in session.list_cores() {
+                if let Ok(set) = session.core(core).unwrap().instruction_set() {
+                    if !target_archs.contains(&set) {
+                        target_archs.push(set);
+                    }
+                }
+            }
+
+            // Is the image compatible with any of the cores?
+            if !target_archs
+                .iter()
+                .any(|target| target.is_compatible(instr_set))
+            {
                 return Err(FileDownloadError::IncompatibleImage {
-                    target: target_arch,
+                    target: target_archs,
                     image: instr_set,
                 });
             }
