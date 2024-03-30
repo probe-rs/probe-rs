@@ -31,6 +31,7 @@ Released 2024-02-24
  - probe-rs now supports flashing STM32WLE5CCUx MCUs (#2036) by @elpiel
  - Add support for the esp32s2 target (#2002) by @bugadani
  - probe-rs now supports flashing CH32V307 MCUs (#2136) by @Marcuss2
+ - Added setter to set target debug sequense externally (#2328) by @Kuraga13
 
 ### Changed
 
