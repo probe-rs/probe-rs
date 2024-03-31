@@ -1,7 +1,7 @@
 use crate::rtt::Error;
 use crate::{config::MemoryRegion, Core, MemoryInterface};
-use scroll::{Pread, LE};
 use std::cmp::min;
+use zerocopy_derive::{FromBytes, FromZeroes};
 
 /// Trait for channel information shared between up and down channels.
 pub trait RttChannel {
@@ -16,6 +16,163 @@ pub trait RttChannel {
     fn buffer_size(&self) -> usize;
 }
 
+#[repr(C)]
+#[derive(Debug, FromZeroes, FromBytes, Copy, Clone)]
+pub(crate) struct RttChannelBufferInner<T> {
+    header: RttChannelBufferInnerHeader<T>,
+    buffer_offset: RttChannelBufferInnerBufferOffset<T>,
+    flags: T,
+}
+
+impl<T> RttChannelBufferInner<T> {
+    pub fn write_buffer_ptr_offset(&self) -> usize {
+        std::mem::size_of::<RttChannelBufferInnerHeader<T>>()
+    }
+
+    pub fn read_buffer_ptr_offset(&self) -> usize {
+        std::mem::size_of::<RttChannelBufferInnerHeader<T>>() + std::mem::size_of::<T>()
+    }
+
+    pub fn flags_offset(&self) -> usize {
+        std::mem::size_of::<Self>() - std::mem::size_of::<T>()
+    }
+}
+
+#[repr(C)]
+#[derive(Debug, FromZeroes, FromBytes, Copy, Clone)]
+pub(crate) struct RttChannelBufferInnerHeader<T> {
+    standard_name_pointer: T,
+    buffer_start_pointer: T,
+    size_of_buffer: T,
+}
+
+#[repr(C)]
+#[derive(Debug, FromZeroes, FromBytes, Copy, Clone)]
+pub(crate) struct RttChannelBufferInnerBufferOffset<T> {
+    write_offset: T,
+    read_offset: T,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub(crate) enum RttChannelBuffer {
+    Buffer32(RttChannelBufferInner<u32>),
+    Buffer64(RttChannelBufferInner<u64>),
+}
+
+impl From<RttChannelBufferInner<u32>> for RttChannelBuffer {
+    fn from(value: RttChannelBufferInner<u32>) -> Self {
+        RttChannelBuffer::Buffer32(value)
+    }
+}
+
+impl From<RttChannelBufferInner<u64>> for RttChannelBuffer {
+    fn from(value: RttChannelBufferInner<u64>) -> Self {
+        RttChannelBuffer::Buffer64(value)
+    }
+}
+
+impl RttChannelBuffer {
+    pub fn buffer_start_pointer(&self) -> u64 {
+        match self {
+            RttChannelBuffer::Buffer32(x) => u64::from(x.header.buffer_start_pointer),
+            RttChannelBuffer::Buffer64(x) => x.header.buffer_start_pointer,
+        }
+    }
+
+    pub fn standard_name_pointer(&self) -> u64 {
+        match self {
+            RttChannelBuffer::Buffer32(x) => u64::from(x.header.standard_name_pointer),
+            RttChannelBuffer::Buffer64(x) => x.header.standard_name_pointer,
+        }
+    }
+
+    pub fn size_of_buffer(&self) -> u64 {
+        match self {
+            RttChannelBuffer::Buffer32(x) => u64::from(x.header.size_of_buffer),
+            RttChannelBuffer::Buffer64(x) => x.header.size_of_buffer,
+        }
+    }
+
+    /// return (write_buffer_ptr, read_buffer_ptr)
+    pub fn read_buffer_offsets(&self, core: &mut Core, ptr: u64) -> Result<(u64, u64), Error> {
+        Ok(match self {
+            RttChannelBuffer::Buffer32(h32) => {
+                let mut block = [0u32; 2];
+                core.read_32(ptr + h32.write_buffer_ptr_offset() as u64, block.as_mut())?;
+                (u64::from(block[0]), u64::from(block[1]))
+            }
+            RttChannelBuffer::Buffer64(h64) => {
+                let mut block = [0u64; 2];
+                core.read_64(ptr + h64.write_buffer_ptr_offset() as u64, block.as_mut())?;
+                (block[0], block[1])
+            }
+        })
+    }
+
+    pub fn write_write_buffer_ptr(
+        &self,
+        core: &mut Core,
+        ptr: u64,
+        buffer_ptr: u64,
+    ) -> Result<(), Error> {
+        match self {
+            RttChannelBuffer::Buffer32(h32) => {
+                core.write_word_32(
+                    ptr + h32.write_buffer_ptr_offset() as u64,
+                    buffer_ptr.try_into().unwrap(),
+                )?;
+            }
+            RttChannelBuffer::Buffer64(h64) => {
+                core.write_word_64(ptr + h64.write_buffer_ptr_offset() as u64, buffer_ptr)?;
+            }
+        };
+        Ok(())
+    }
+
+    pub fn write_read_buffer_ptr(
+        &self,
+        core: &mut Core,
+        ptr: u64,
+        buffer_ptr: u64,
+    ) -> Result<(), Error> {
+        match self {
+            RttChannelBuffer::Buffer32(h32) => {
+                core.write_word_32(
+                    ptr + h32.read_buffer_ptr_offset() as u64,
+                    buffer_ptr.try_into().unwrap(),
+                )?;
+            }
+            RttChannelBuffer::Buffer64(h64) => {
+                core.write_word_64(ptr + h64.read_buffer_ptr_offset() as u64, buffer_ptr)?;
+            }
+        };
+        Ok(())
+    }
+
+    pub fn read_flags(&self, core: &mut Core, ptr: u64) -> Result<u64, Error> {
+        Ok(match self {
+            RttChannelBuffer::Buffer32(h32) => {
+                u64::from(core.read_word_32(ptr + h32.flags_offset() as u64)?)
+            }
+            RttChannelBuffer::Buffer64(h64) => {
+                core.read_word_64(ptr + h64.flags_offset() as u64)?
+            }
+        })
+    }
+
+    pub fn write_flags(&self, core: &mut Core, ptr: u64, flags: u64) -> Result<(), Error> {
+        match self {
+            RttChannelBuffer::Buffer32(h32) => {
+                core.write_word_32(ptr + h32.flags_offset() as u64, flags.try_into().unwrap())?;
+            }
+            RttChannelBuffer::Buffer64(h64) => {
+                core.write_word_64(ptr + h64.flags_offset() as u64, flags)?;
+            }
+        };
+        Ok(())
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct Channel {
     number: usize,
@@ -24,7 +181,7 @@ pub(crate) struct Channel {
     name: Option<String>,
     buffer_ptr: u64,
     size: u64,
-    is_64bit: bool,
+    info: RttChannelBuffer,
 }
 
 // Chanels must follow this data layout when reading/writing memory in order to be compatible with
@@ -41,71 +198,26 @@ pub(crate) struct Channel {
 // }
 
 impl Channel {
-    // Size of the Channel struct in target memory in bytes
-    pub(crate) const SIZE: usize = 24;
-    pub(crate) const SIZE_64: usize = 48;
-
-    // Offsets of fields in target memory in bytes
-    const O_NAME: usize = 0;
-    const O_BUFFER_PTR: usize = 4;
-    const O_SIZE: usize = 8;
-    const O_WRITE: usize = 12;
-    const O_READ: usize = 16;
-    const O_FLAGS: usize = 20;
-    const O_BUFFER_PTR_64: usize = 8;
-    const O_SIZE_64: usize = 16;
-    const O_WRITE_64: usize = 24;
-    const O_READ_64: usize = 32;
-    const O_FLAGS_64: usize = 40;
-
     pub(crate) fn from(
         core: &mut Core,
         number: usize,
         memory_map: &[MemoryRegion],
         ptr: u64,
-        mem: &[u8],
-        is_64bit: bool,
+        info: RttChannelBuffer,
     ) -> Result<Option<Channel>, Error> {
-        let buffer_ptr: u64 = match if is_64bit {
-            let p: Result<u64, scroll::Error> = mem.pread_with(Self::O_BUFFER_PTR_64, LE);
-            p
-        } else {
-            let p: Result<u32, scroll::Error> = mem.pread_with(Self::O_BUFFER_PTR, LE);
-            p.map(u64::from)
-        } {
-            Ok(p) => p,
-            Err(_e) => return Err(super::Error::MemoryRead("RTT channel address".to_string())),
-        };
-
+        let buffer_ptr = info.buffer_start_pointer();
         if buffer_ptr == 0 {
             // This buffer isn't in use
             return Ok(None);
-        }
-
-        // TODO ここの仕組みを直したい
-        let name_ptr: u64 = match if is_64bit {
-            let p: Result<u64, scroll::Error> = mem.pread_with(Self::O_NAME, LE);
-            p
-        } else {
-            let p: Result<u32, scroll::Error> = mem.pread_with(Self::O_NAME, LE);
-            p.map(u64::from)
-        } {
-            Ok(p) => p,
-            Err(_e) => return Err(super::Error::MemoryRead("RTT channel name".to_string())),
         };
 
-        let name = if name_ptr == 0 {
+        let name = if info.standard_name_pointer() == 0 {
             None
         } else {
-            read_c_string(core, memory_map, name_ptr)?
+            read_c_string(core, memory_map, info.standard_name_pointer())?
         };
 
-        let size: u64 = if is_64bit {
-            mem.pread_with(Self::O_SIZE_64, LE).unwrap()
-        } else {
-            let s: u32 = mem.pread_with(Self::O_SIZE, LE).unwrap();
-            s.into()
-        };
+        let size = info.size_of_buffer();
 
         Ok(Some(Channel {
             number,
@@ -114,7 +226,7 @@ impl Channel {
             name,
             buffer_ptr,
             size,
-            is_64bit,
+            info,
         }))
     }
 
@@ -138,15 +250,7 @@ impl Channel {
     fn read_pointers(&self, core: &mut Core, dir: &'static str) -> Result<(u64, u64), Error> {
         self.validate_core_id(core)?;
 
-        let (write, read): (u64, u64) = if self.is_64bit {
-            let mut block = [0u64; 2];
-            core.read_64(self.ptr + Self::O_WRITE_64 as u64, block.as_mut())?;
-            (block[0], block[1])
-        } else {
-            let mut block = [0u32; 2];
-            core.read_32(self.ptr + Self::O_WRITE as u64, block.as_mut())?;
-            (u64::from(block[0]), u64::from(block[1]))
-        };
+        let (write, read): (u64, u64) = self.info.read_buffer_offsets(core, self.ptr)?;
 
         let validate = |which, value| {
             if value >= self.size {
@@ -198,11 +302,7 @@ impl UpChannel {
     pub fn mode(&self, core: &mut Core) -> Result<ChannelMode, Error> {
         self.0.validate_core_id(core)?;
 
-        let flags = if self.0.is_64bit {
-            core.read_word_64(self.0.ptr + Channel::O_FLAGS_64 as u64)?
-        } else {
-            u64::from(core.read_word_32(self.0.ptr + Channel::O_FLAGS as u64)?)
-        };
+        let flags = self.0.info.read_flags(core, self.0.ptr)?;
 
         match flags & 0x3 {
             0 => Ok(ChannelMode::NoBlockSkip),
@@ -219,18 +319,10 @@ impl UpChannel {
     /// See [`ChannelMode`] for more information on what the modes mean.
     pub fn set_mode(&self, core: &mut Core, mode: ChannelMode) -> Result<(), Error> {
         self.0.validate_core_id(core)?;
-        let flags = if self.0.is_64bit {
-            core.read_word_64(self.0.ptr + Channel::O_FLAGS_64 as u64)?
-        } else {
-            u64::from(core.read_word_32(self.0.ptr + Channel::O_FLAGS as u64)?)
-        };
+        let flags = self.0.info.read_flags(core, self.0.ptr)?;
 
         let new_flags = (flags & !3) | (mode as u64);
-        if self.0.is_64bit {
-            core.write_word_64(self.0.ptr + Channel::O_FLAGS_64 as u64, new_flags)?
-        } else {
-            core.write_word_32(self.0.ptr + Channel::O_FLAGS as u64, new_flags as u32)?
-        };
+        self.0.info.write_flags(core, self.0.ptr, new_flags)?;
 
         Ok(())
     }
@@ -275,11 +367,7 @@ impl UpChannel {
 
         if total > 0 {
             // Write read pointer back to target if something was read
-            if self.0.is_64bit {
-                core.write_word_64(self.0.ptr + Channel::O_READ_64 as u64, read)?;
-            } else {
-                core.write_word_32(self.0.ptr + Channel::O_READ as u64, read as u32)?;
-            }
+            self.0.info.write_read_buffer_ptr(core, self.0.ptr, read)?;
         }
 
         Ok(total)
@@ -376,11 +464,9 @@ impl DownChannel {
         }
 
         // Write write pointer back to target
-        if self.0.is_64bit {
-            core.write_word_64(self.0.ptr + Channel::O_WRITE_64 as u64, write)?;
-        } else {
-            core.write_word_32(self.0.ptr + Channel::O_WRITE as u64, write as u32)?;
-        }
+        self.0
+            .info
+            .write_write_buffer_ptr(core, self.0.ptr, write)?;
 
         Ok(total)
     }
