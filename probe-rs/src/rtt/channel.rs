@@ -82,7 +82,6 @@ impl Channel {
             return Ok(None);
         }
 
-        // TODO ここの仕組みを直したい
         let name_ptr: u64 = match if is_64bit {
             let p: Result<u64, scroll::Error> = mem.pread_with(Self::O_NAME, LE);
             p
