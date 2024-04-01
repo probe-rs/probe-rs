@@ -37,7 +37,7 @@ use std::{
 };
 use time::UtcOffset;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug)]
 /// The `DebuggerStatus` is used to control how the Debugger::debug_session() decides if it should respond to
 /// DAP Client requests such as `Terminate`, `Disconnect`, and `Reset`, as well as how to respond to unrecoverable errors
 /// during a debug session interacting with a target session.
@@ -92,6 +92,7 @@ impl Debugger {
     ) -> Result<DebugSessionStatus, DebuggerError> {
         match debug_adapter.listen_for_request()? {
             None => {
+                let _poll_span = tracing::debug_span!("Polling for core status").entered();
                 if debug_adapter.all_cores_halted {
                     // Once all cores are halted, then we can skip polling the core for status, and just wait for the next DAP Client request.
                     tracing::trace!(
@@ -116,6 +117,9 @@ impl Debugger {
                 Ok(DebugSessionStatus::Continue)
             }
             Some(request) => {
+                let _req_span =
+                    tracing::info_span!("Handling request", request = ?request).entered();
+
                 // Poll ALL target cores for status, which includes synching status with the DAP client, and handling RTT data.
                 let (core_statuses, _) = session_data.poll_cores(&self.config, debug_adapter)?;
 
@@ -304,7 +308,7 @@ impl Debugger {
         mut debug_adapter: DebugAdapter<P>,
         log_info_message: &str,
         lister: &Lister,
-    ) -> Result<DebugSessionStatus, DebuggerError> {
+    ) -> Result<(), DebuggerError> {
         debug_adapter.log_to_console("Starting debug session...");
         debug_adapter.log_to_console(log_info_message);
 
@@ -316,7 +320,7 @@ impl Debugger {
         // Initialize request
         if self.handle_initialize(&mut debug_adapter).is_err() {
             // The request handler has already reported this error to the user.
-            return Ok(DebugSessionStatus::Terminate);
+            return Ok(());
         }
 
         let launch_attach_request = loop {
@@ -331,7 +335,7 @@ impl Debugger {
                 Ok((debug_adapter, session_data)) => (debug_adapter, session_data),
                 Err(_) => {
                     // The request handler has already reported this error to the user.
-                    return Ok(DebugSessionStatus::Terminate);
+                    return Ok(());
                 }
             };
 
@@ -374,13 +378,14 @@ impl Debugger {
                     debug_adapter = self.restart(debug_adapter, &mut session_data, &request)?;
                 }
                 DebugSessionStatus::Terminate => {
-                    return Ok(DebugSessionStatus::Terminate);
+                    return Ok(());
                 }
             };
         }
     }
 
     /// Process launch or attach request
+    #[tracing::instrument(skip_all, name = "Handle Launch/Attach Request")]
     fn handle_launch_attach<P: ProtocolAdapter + 'static>(
         &mut self,
         launch_attach_request: &Request,
@@ -517,6 +522,7 @@ impl Debugger {
         Ok((debug_adapter, session_data))
     }
 
+    #[tracing::instrument(skip_all)]
     fn restart<P: ProtocolAdapter + 'static>(
         &mut self,
         mut debug_adapter: DebugAdapter<P>,
@@ -755,6 +761,7 @@ impl Debugger {
         }
     }
 
+    #[tracing::instrument(skip_all, name = "Handling initialize request")]
     fn handle_initialize<P: ProtocolAdapter>(
         &mut self,
         debug_adapter: &mut DebugAdapter<P>,
@@ -924,10 +931,7 @@ mod test {
             },
             protocol::ProtocolAdapter,
         },
-        server::{
-            configuration::{ConsoleLog, CoreConfig, FlashingConfig, SessionConfig},
-            debugger::DebugSessionStatus,
-        },
+        server::configuration::{ConsoleLog, CoreConfig, FlashingConfig, SessionConfig},
         test::TestLister,
     };
 
@@ -1295,11 +1299,9 @@ mod test {
 
         let lister = Lister::with_lister(Box::new(TestLister::new()));
 
-        let status = debugger
+        debugger
             .debug_session(debug_adapter, "initial info message", &lister)
             .unwrap();
-
-        assert_eq!(status, DebugSessionStatus::Terminate);
     }
 
     #[test]
@@ -1373,11 +1375,9 @@ mod test {
 
         let lister = Lister::with_lister(Box::new(lister));
 
-        let status = debugger
+        debugger
             .debug_session(debug_adapter, "initial info message", &lister)
             .unwrap();
-
-        assert_eq!(status, DebugSessionStatus::Terminate);
     }
 
     #[test]
@@ -1451,11 +1451,9 @@ mod test {
 
         let lister = Lister::with_lister(Box::new(lister));
 
-        let status = debugger
+        debugger
             .debug_session(debug_adapter, "initial info message", &lister)
             .unwrap();
-
-        assert_eq!(status, DebugSessionStatus::Terminate);
     }
 
     #[test]
@@ -1507,11 +1505,9 @@ mod test {
 
         let lister = Lister::with_lister(Box::new(lister));
 
-        let status = debugger
+        debugger
             .debug_session(debug_adapter, "initial info message", &lister)
             .unwrap();
-
-        assert_eq!(status, DebugSessionStatus::Terminate);
     }
 
     #[test]
@@ -1581,11 +1577,9 @@ mod test {
 
         let lister = Lister::with_lister(Box::new(lister));
 
-        let status = debugger
+        debugger
             .debug_session(debug_adapter, "initial info message", &lister)
             .unwrap();
-
-        assert_eq!(status, DebugSessionStatus::Terminate);
     }
 
     #[test]
@@ -1655,11 +1649,9 @@ mod test {
 
         let lister = Lister::with_lister(Box::new(lister));
 
-        let status = debugger
+        debugger
             .debug_session(debug_adapter, "initial info message", &lister)
             .unwrap();
-
-        assert_eq!(status, DebugSessionStatus::Terminate);
     }
 
     #[test]
@@ -1747,10 +1739,8 @@ mod test {
 
         let lister = Lister::with_lister(Box::new(lister));
 
-        let status = debugger
+        debugger
             .debug_session(debug_adapter, "initial info message", &lister)
             .unwrap();
-
-        assert_eq!(status, DebugSessionStatus::Terminate);
     }
 }
