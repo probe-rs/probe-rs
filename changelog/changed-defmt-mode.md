@@ -1,0 +1,1 @@
+By default, `defmt` RTT channels are configured to `BlockIfFull`.

@@ -36,7 +36,7 @@ colored = "2"
 anyhow = "1.0.81"
 reqwest = { version = "0.12.2", features = ["json", "rustls-tls"], default-features = false }
 futures = "0.3.30"
-tokio = { version = "1.36.0", features = ["macros", "rt", "rt-multi-thread"] }
+tokio = { version = "1.37.0", features = ["macros", "rt", "rt-multi-thread"] }
 tracing-subscriber = { version = "0.3.18", features = [
     "env-filter",
     "tracing-log",

@@ -5,10 +5,10 @@ mod rttui;
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
 use colored::*;
+use parking_lot::FairMutex;
 use probe_rs::gdb_server::GdbInstanceConfiguration;
 use probe_rs::probe::list::Lister;
 use probe_rs::rtt::ScanRegion;
-use probe_rs::Core;
 use probe_rs::{probe::DebugProbeSelector, Session};
 use std::ffi::OsString;
 use std::{
@@ -17,7 +17,7 @@ use std::{
     panic,
     path::{Path, PathBuf},
     process,
-    sync::{Arc, Mutex},
+    sync::Arc,
     time::Duration,
 };
 use time::{OffsetDateTime, UtcOffset};
@@ -254,7 +254,7 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
         }
     }
 
-    let session = Arc::new(Mutex::new(session));
+    let session = Arc::new(FairMutex::new(session));
 
     let mut gdb_thread_handle = None;
 
@@ -273,7 +273,7 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
             ));
 
             let instances = {
-                let session = session.lock().unwrap();
+                let session = session.lock();
                 GdbInstanceConfiguration::from_session(&session, Some(gdb_connection_string))
             };
 
@@ -304,7 +304,7 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
 
 fn run_rttui_app(
     name: &str,
-    session: &Mutex<Session>,
+    session: &FairMutex<Session>,
     core_id: usize,
     config: config::Config,
     elf_path: &Path,
@@ -330,6 +330,7 @@ fn run_rttui_app(
                 .show_location
                 .unwrap_or(config.rtt.show_location),
             defmt_log_format: channel_config.defmt_log_format.clone(),
+            mode: channel_config.mode,
         });
         if channel_config.format == DataFormat::Defmt {
             require_defmt = true;
@@ -350,11 +351,12 @@ fn run_rttui_app(
                 show_timestamps: false,
                 show_location: false,
                 defmt_log_format: None,
+                mode: None,
             });
         }
     }
 
-    let Some(mut rtt) = rtt_attach(
+    let Some(rtt) = rtt_attach(
         session,
         core_id,
         config.rtt.timeout,
@@ -376,13 +378,6 @@ fn run_rttui_app(
         tracing::warn!(
             "RTT channels with format = defmt found, but no defmt metadata found in the ELF file."
         );
-    }
-
-    // Configure rtt channels according to configuration
-    {
-        let mut session_handle = session.lock().unwrap();
-        let mut core = session_handle.core(core_id)?;
-        configure_rtt_modes(&mut core, &config, &mut rtt)?;
     }
 
     tracing::info!("RTT initialized.");
@@ -418,7 +413,7 @@ fn run_rttui_app(
         app.render();
 
         {
-            let mut session_handle = session.lock().unwrap();
+            let mut session_handle = session.lock();
             let mut core = session_handle.core(core_id)?;
 
             if app.handle_event(&mut core) {
@@ -433,32 +428,9 @@ fn run_rttui_app(
     }
 }
 
-fn configure_rtt_modes(
-    core: &mut Core,
-    config: &config::Config,
-    rtt: &mut RttActiveTarget,
-) -> Result<(), anyhow::Error> {
-    let default_up_mode = config.rtt.up_mode;
-
-    // TODO: also configure down channels
-    for up_channel in rtt.active_up_channels.values() {
-        if let Some(mode) = config
-            .rtt
-            .up_channel_config(up_channel.number())
-            .and_then(|ch| ch.mode.or(default_up_mode))
-        {
-            // Only set the mode when the config file says to,
-            // when not set explicitly, the firmware picks.
-            tracing::debug!("Setting RTT channel {} to {:?}", up_channel.number(), &mode);
-            up_channel.set_mode(core, mode)?;
-        }
-    }
-    Ok(())
-}
-
 /// Try to attach to RTT, with the given timeout
 fn rtt_attach(
-    session: &Mutex<Session>,
+    session: &FairMutex<Session>,
     core_id: usize,
     timeout: Duration,
     rtt_region: &ScanRegion,
@@ -480,13 +452,19 @@ fn rtt_attach(
         //
         // GDB is also using the session
         {
-            let mut session_handle = session.lock().unwrap();
+            let mut session_handle = session.lock();
             let memory_map = session_handle.target().memory_map.clone();
             let mut core = session_handle.core(core_id)?;
 
             match rtt::attach_to_rtt(&mut core, &memory_map, rtt_region, elf_file) {
                 Ok(Some(rtt)) => {
-                    let app = RttActiveTarget::new(rtt, elf_file, rtt_config, timestamp_offset);
+                    let app = RttActiveTarget::new(
+                        &mut core,
+                        rtt,
+                        elf_file,
+                        rtt_config,
+                        timestamp_offset,
+                    );
 
                     match app {
                         Ok(app) => return Ok(Some(app)),
