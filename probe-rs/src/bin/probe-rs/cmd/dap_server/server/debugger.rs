@@ -727,6 +727,7 @@ impl Debugger {
             &mut session_data.session,
             path_to_elf,
             self.config.flashing_config.format_options.clone(),
+            None,
         )?;
 
         let flash_result = loader

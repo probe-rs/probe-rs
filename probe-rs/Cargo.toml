@@ -71,6 +71,7 @@ cli = [
     "dep:signal-hook",
     "dep:libtest-mimic",
     "dep:ansi-parser",
+    "dep:cargo-config2"
 ]
 
 # Enable all built in targets.
@@ -186,6 +187,7 @@ ratatui = { version = "0.26.1", default-features = false, features = [
 ], optional = true }
 ansi-parser = { version = "0.8.0", optional = true }
 parking_lot = "0.12.1"
+cargo-config2 = { version = "0.1.23", optional = true }
 
 [build-dependencies]
 bincode = "1"

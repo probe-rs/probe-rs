@@ -528,6 +528,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "cargo-config2"
+version = "0.1.23"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "42c11223b5229031d9b4ad2125ac8794386a2891a5c02acc4240bc46dd3af4f9"
+dependencies = [
+ "home",
+ "serde",
+ "serde_derive",
+ "toml_edit 0.22.9",
+]
+
+[[package]]
 name = "cargo-platform"
 version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2774,6 +2786,7 @@ dependencies = [
  "byteorder",
  "bytesize",
  "capstone",
+ "cargo-config2",
  "cargo_metadata",
  "clap",
  "colored",

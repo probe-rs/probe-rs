@@ -22,13 +22,12 @@ use std::{
 };
 use time::{OffsetDateTime, UtcOffset};
 
-use crate::util::common_options::{
-    BinaryDownloadOptions, LoadedProbeOptions, OperationError, ProbeOptions,
-};
+use crate::util::cargo::target_instruction_set;
+use crate::util::common_options::{BinaryDownloadOptions, OperationError, ProbeOptions};
 use crate::util::flash::{build_loader, run_flash_download};
 use crate::util::logging::setup_logging;
 use crate::util::rtt::{self, RttActiveTarget, RttChannelConfig, RttConfig};
-use crate::util::{build_artifact, common_options::CargoOptions, logging, rtt::DataFormat};
+use crate::util::{cargo::build_artifact, common_options::CargoOptions, logging, rtt::DataFormat};
 use crate::FormatOptions;
 
 #[derive(Debug, clap::Parser)]
@@ -227,12 +226,26 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
     };
 
     if config.flashing.enabled {
-        flash(
-            &config,
+        // As opposed to cargo-flash, we do not have the option of suppliying an external image.
+        // This means we can just take the cargo target, if it's set.
+        let image_instr_set = target_instruction_set(opt.cargo_options.target.clone());
+
+        let download_options = BinaryDownloadOptions {
+            disable_progressbars: opt.disable_progressbars,
+            disable_double_buffering: false,
+            restore_unwritten: config.flashing.restore_unwritten_bytes,
+            flash_layout_output_path: None,
+            verify: false,
+        };
+        let format_options = FormatOptions::default();
+        let loader = build_loader(&mut session, path, format_options, image_instr_set)?;
+        run_flash_download(
             &mut session,
-            &probe_options,
             path,
-            opt.disable_progressbars,
+            &download_options,
+            &probe_options,
+            loader,
+            config.flashing.do_chip_erase,
         )?;
     }
 
@@ -486,32 +499,4 @@ fn rtt_attach(
     } else {
         Err(anyhow!("Error setting up RTT"))
     }
-}
-
-fn flash(
-    config: &config::Config,
-    session: &mut probe_rs::Session,
-    probe_options: &LoadedProbeOptions,
-    path: &Path,
-    disable_progressbars: bool,
-) -> Result<(), anyhow::Error> {
-    let download_options = BinaryDownloadOptions {
-        disable_progressbars,
-        disable_double_buffering: false,
-        restore_unwritten: config.flashing.restore_unwritten_bytes,
-        flash_layout_output_path: None,
-        verify: false,
-    };
-    let format_options = FormatOptions::default();
-    let loader = build_loader(session, path, format_options)?;
-    run_flash_download(
-        session,
-        path,
-        &download_options,
-        probe_options,
-        loader,
-        config.flashing.do_chip_erase,
-    )?;
-
-    Ok(())
 }
