@@ -479,10 +479,19 @@ fn attach_to_rtt(
     rtt_config: &RttConfig,
     timestamp_offset: UtcOffset,
 ) -> Option<rtt::RttActiveTarget> {
-    let scan_regions = ScanRegion::Ranges(scan_regions.to_vec());
+    // Try to find the RTT control block symbol in the ELF file.
+    // If we find it, we can use the exact address to attach to the RTT control block. Otherwise, we
+    // fall back to the caller-provided scan regions.
+    let mut file = File::open(path).ok()?;
+    let scan_region = if let Some(address) = RttActiveTarget::get_rtt_symbol(&mut file) {
+        ScanRegion::Exact(address as u32)
+    } else {
+        ScanRegion::Ranges(scan_regions.to_vec())
+    };
+
     let mut last_error = None;
     for _ in 0..RTT_RETRIES {
-        match rtt::attach_to_rtt(core, memory_map, &scan_regions, path) {
+        match rtt::attach_to_rtt(core, memory_map, &scan_region) {
             Ok(Some(target_rtt)) => {
                 let app =
                     RttActiveTarget::new(core, target_rtt, path, rtt_config, timestamp_offset);

@@ -451,12 +451,19 @@ fn rtt_attach(
     rtt_config: &RttConfig,
     timestamp_offset: UtcOffset,
 ) -> Result<Option<RttActiveTarget>> {
+    // Try to find the RTT control block symbol in the ELF file.
+    // If we find it, we can use the exact address to attach to the RTT control block. Otherwise, we
+    // fall back to the caller-provided scan regions.
+    let mut file = File::open(elf_file)?;
+    let scan_region = if let Some(address) = RttActiveTarget::get_rtt_symbol(&mut file) {
+        ScanRegion::Exact(address as u32)
+    } else {
+        rtt_region.clone()
+    };
+
     let t = std::time::Instant::now();
-
     let mut rtt_init_attempt = 1;
-
     let mut last_error = None;
-
     while t.elapsed() < timeout {
         tracing::info!("Initializing RTT (attempt {})...", rtt_init_attempt);
         rtt_init_attempt += 1;
@@ -469,7 +476,7 @@ fn rtt_attach(
             let memory_map = session_handle.target().memory_map.clone();
             let mut core = session_handle.core(core_id)?;
 
-            match rtt::attach_to_rtt(&mut core, &memory_map, rtt_region, elf_file) {
+            match rtt::attach_to_rtt(&mut core, &memory_map, &scan_region) {
                 Ok(Some(rtt)) => {
                     let app = RttActiveTarget::new(
                         &mut core,
