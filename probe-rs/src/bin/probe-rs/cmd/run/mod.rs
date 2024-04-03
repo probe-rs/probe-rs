@@ -28,8 +28,6 @@ use crate::util::flash::{build_loader, run_flash_download};
 use crate::util::rtt::{self, ChannelDataCallbacks, RttActiveTarget, RttConfig};
 use crate::FormatOptions;
 
-const RTT_RETRIES: usize = 10;
-
 #[derive(clap::Parser)]
 pub struct Cmd {
     /// Options only used when in normal run mode
@@ -272,12 +270,14 @@ impl RunLoop {
 
         let mut rtta = attach_to_rtt(
             core,
+            Duration::from_secs(1),
             self.memory_map.as_slice(),
             self.rtt_scan_regions.as_slice(),
             Path::new(&self.path),
             &rtt_config,
             self.timestamp_offset,
-        );
+        )
+        .context("Failed to attach to RTT")?;
 
         let exit = Arc::new(AtomicBool::new(false));
         let sig_id = signal_hook::flag::register(signal::SIGINT, exit.clone())?;
@@ -473,42 +473,52 @@ fn poll_rtt<S: Write + ?Sized>(
 /// Attach to the RTT buffers.
 fn attach_to_rtt(
     core: &mut Core<'_>,
+    timeout: Duration,
     memory_map: &[MemoryRegion],
     scan_regions: &[Range<u64>],
     path: &Path,
     rtt_config: &RttConfig,
     timestamp_offset: UtcOffset,
-) -> Option<rtt::RttActiveTarget> {
+) -> Result<Option<rtt::RttActiveTarget>> {
     // Try to find the RTT control block symbol in the ELF file.
     // If we find it, we can use the exact address to attach to the RTT control block. Otherwise, we
     // fall back to the caller-provided scan regions.
-    let mut file = File::open(path).ok()?;
+    let mut file = File::open(path)?;
     let scan_region = if let Some(address) = RttActiveTarget::get_rtt_symbol(&mut file) {
         ScanRegion::Exact(address as u32)
     } else {
         ScanRegion::Ranges(scan_regions.to_vec())
     };
 
+    let t = std::time::Instant::now();
+    let mut rtt_init_attempt = 1;
     let mut last_error = None;
-    for _ in 0..RTT_RETRIES {
+    while t.elapsed() < timeout {
+        tracing::debug!("Initializing RTT (attempt {})...", rtt_init_attempt);
+        rtt_init_attempt += 1;
+
         match rtt::attach_to_rtt(core, memory_map, &scan_region) {
             Ok(Some(target_rtt)) => {
                 let app =
                     RttActiveTarget::new(core, target_rtt, path, rtt_config, timestamp_offset);
 
                 match app {
-                    Ok(app) => return Some(app),
+                    Ok(app) => return Ok(Some(app)),
                     Err(error) => last_error = Some(error),
                 }
             }
-            Ok(None) => return None,
-            Err(error) => last_error = Some(error),
+            Ok(None) => return Ok(None),
+            Err(e) => last_error = Some(e),
         }
-        std::thread::sleep(std::time::Duration::from_millis(100));
+
+        tracing::debug!("Failed to initialize RTT. Retrying until timeout.");
+        std::thread::sleep(std::time::Duration::from_millis(10));
     }
-    if let Some(error) = last_error {
-        tracing::error!("RTT could not be initialized: {error}");
+
+    // Timeout
+    if let Some(err) = last_error {
+        Err(err)
+    } else {
+        Err(anyhow!("Error setting up RTT"))
     }
-    tracing::error!("Failed to attach to RTT, continuing...");
-    None
 }
