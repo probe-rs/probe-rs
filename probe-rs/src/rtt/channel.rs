@@ -58,9 +58,8 @@ impl Channel {
         ptr: u32,
         mem: &[u8],
     ) -> Result<Option<Channel>, Error> {
-        let buffer_ptr: u32 = match mem.pread_with(Self::O_BUFFER_PTR, LE) {
-            Ok(buffer_ptr) => buffer_ptr,
-            Err(_error) => return Err(Error::MemoryRead("RTT channel address".to_string())),
+        let Ok(buffer_ptr) = mem.pread_with(Self::O_BUFFER_PTR, LE) else {
+            return Err(Error::MemoryRead("RTT channel address".to_string()));
         };
 
         if buffer_ptr == 0 {
@@ -68,9 +67,8 @@ impl Channel {
             return Ok(None);
         }
 
-        let name_ptr: u32 = match mem.pread_with(Self::O_NAME, LE) {
-            Ok(name_ptr) => name_ptr,
-            Err(_error) => return Err(Error::MemoryRead("RTT channel name".to_string())),
+        let Ok(name_ptr) = mem.pread_with(Self::O_NAME, LE) else {
+            return Err(Error::MemoryRead("RTT channel name".to_string()));
         };
 
         let name = if name_ptr == 0 {
@@ -88,11 +86,10 @@ impl Channel {
             size: mem.pread_with(Self::O_SIZE, LE).unwrap(),
         };
 
-        // TODO remove hard code
-        // We call read_pointers to validate that the channel is valid
-        // it's possible that the channel is not fully initialized
-        chan.read_pointers(core, "up")?;
-        chan.read_pointers(core, "down")?;
+        // It's possible that the channel is not initialized with the magic string written last.
+        // We call read_pointers to validate that the channel pointers are in an expected range.
+        // This should at least catch most cases where the control block is partially initialized.
+        chan.read_pointers(core, "channel")?;
 
         Ok(Some(chan))
     }
@@ -114,13 +111,18 @@ impl Channel {
         self.size as usize
     }
 
+    /// Read the channel's `read` and `write` pointers from the control block.
+    ///
+    /// The `dir` parameter is used for error messages to indicate which
+    /// channel the pointers belong to.
     fn read_pointers(&self, core: &mut Core, dir: &'static str) -> Result<(u32, u32), Error> {
         self.validate_core_id(core)?;
-        let mut block = [0u32; 2];
-        core.read_32((self.ptr + Self::O_WRITE as u32).into(), block.as_mut())?;
 
-        let write: u32 = block[0];
-        let read: u32 = block[1];
+        let mut block = [0; 2];
+        core.read_32((self.ptr + Self::O_WRITE as u32).into(), &mut block)?;
+
+        let write = block[0];
+        let read = block[1];
 
         let validate = |which, value| {
             if value >= self.size {
