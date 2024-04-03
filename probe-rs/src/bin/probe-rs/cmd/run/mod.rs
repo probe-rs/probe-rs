@@ -480,6 +480,7 @@ fn attach_to_rtt(
     timestamp_offset: UtcOffset,
 ) -> Option<rtt::RttActiveTarget> {
     let scan_regions = ScanRegion::Ranges(scan_regions.to_vec());
+    let mut last_error = None;
     for _ in 0..RTT_RETRIES {
         match rtt::attach_to_rtt(core, memory_map, &scan_regions, path) {
             Ok(Some(target_rtt)) => {
@@ -488,13 +489,16 @@ fn attach_to_rtt(
 
                 match app {
                     Ok(app) => return Some(app),
-                    Err(error) => tracing::debug!("{:?} RTT attach error", error),
+                    Err(error) => last_error = Some(error),
                 }
             }
             Ok(None) => return None,
-            Err(error) => tracing::debug!("{:?} RTT attach error", error),
+            Err(error) => last_error = Some(error),
         }
         std::thread::sleep(std::time::Duration::from_millis(100));
+    }
+    if let Some(error) = last_error {
+        tracing::error!("RTT could not be initialized: {error}");
     }
     tracing::error!("Failed to attach to RTT, continuing...");
     None
