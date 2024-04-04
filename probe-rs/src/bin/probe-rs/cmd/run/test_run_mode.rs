@@ -40,6 +40,16 @@ pub struct TestOptions {
     #[clap(long = "exact", help_heading = "TEST OPTIONS")]
     pub exact: bool,
 
+    /// A list of filters. Tests whose names contain parts of any of these
+    /// filters are skipped.
+    #[clap(
+        long = "skip-test",
+        value_name = "FILTER",
+        help_heading = "TEST OPTIONS",
+        help = "Skip tests whose names contain FILTER (this flag can be used multiple times)"
+    )]
+    pub skip_test: Vec<String>,
+
     /// Options which are ignored, but exist for compatibility with libtest.
     /// E.g. so that vscode and intellij can invoke the test runner with the args they are used to
     #[clap(flatten)]
@@ -75,6 +85,7 @@ impl TestRunMode {
                 list: test_options.list,
                 exact: test_options.exact,
                 format: test_options.format,
+                skip: test_options.skip_test.clone(),
                 filter: if test_options.filter.is_empty() {
                     None
                 } else {
