@@ -118,27 +118,21 @@ struct Registry {
 }
 
 impl Registry {
-    #[cfg(feature = "builtin-targets")]
     fn from_builtin_families() -> Self {
-        const BUILTIN_TARGETS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/targets.bincode"));
+        #[cfg(feature = "builtin-targets")]
+        let mut families = {
+            const BUILTIN_TARGETS: &[u8] =
+                include_bytes!(concat!(env!("OUT_DIR"), "/targets.bincode"));
 
-        let mut families: Vec<ChipFamily> = match bincode::deserialize(BUILTIN_TARGETS) {
-            Ok(families) => families,
-            Err(err) => panic!("Failed to deserialize builtin targets. This is a bug: {err:?}"),
+            match bincode::deserialize(BUILTIN_TARGETS) {
+                Ok(families) => families,
+                Err(err) => panic!("Failed to deserialize builtin targets. This is a bug: {err:?}"),
+            }
         };
 
-        add_generic_targets(&mut families);
-
-        // We skip validating the targets here as this is done at a later stage in `get_target`.
-        // Additionally, validation for existing targets is done in the tests `validate_generic_targets` and
-        // `validate_builtin` as well, to ensure we do not ship broken target definitions.
-
-        Self { families }
-    }
-
-    #[cfg(not(feature = "builtin-targets"))]
-    fn from_builtin_families() -> Self {
+        #[cfg(not(feature = "builtin-targets"))]
         let mut families = vec![];
+
         add_generic_targets(&mut families);
 
         // We skip validating the targets here as this is done at a later stage in `get_target`.
