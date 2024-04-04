@@ -74,7 +74,7 @@ pub struct General {
     pub derives: Option<String>,
     /// Use this flag to assert the nreset & ntrst pins during attaching the probe to the chip.
     pub connect_under_reset: bool,
-    pub default_bin: Option<String>
+    pub default_bin: Option<String>,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
