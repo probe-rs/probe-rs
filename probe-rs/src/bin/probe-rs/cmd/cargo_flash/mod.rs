@@ -7,12 +7,49 @@ use std::ffi::OsString;
 use std::{path::PathBuf, process};
 
 use crate::util::cargo::target_instruction_set;
-use crate::util::common_options::{CargoOptions, FlashOptions, OperationError};
+use crate::util::common_options::{
+    BinaryDownloadOptions, CargoOptions, OperationError, ProbeOptions,
+};
 use crate::util::flash;
-use crate::util::logging::setup_logging;
+use crate::util::logging::{setup_logging, LevelFilter};
 use clap::{CommandFactory, FromArgMatches};
 
 use crate::util::{cargo::build_artifact, logging};
+
+/// Common options when flashing a target device.
+#[derive(Debug, clap::Parser)]
+#[command(after_long_help = CargoOptions::help_message("cargo flash"))]
+#[command(bin_name = "cargo flash", display_name = "cargo-flash")]
+struct CliOptions {
+    /// Use this flag to reset and halt (instead of just a reset) the attached core after flashing the target.
+    #[arg(long)]
+    pub reset_halt: bool,
+    /// Use this flag to set the log level.
+    ///
+    /// Configurable via the `RUST_LOG` environment variable.
+    /// Default is `warn`. Possible choices are [error, warn, info, debug, trace].
+    #[arg(value_name = "level", long)]
+    pub log: Option<LevelFilter>,
+    /// The path to the file to be flashed.
+    #[arg(value_name = "path", long)]
+    pub path: Option<PathBuf>,
+    /// The work directory from which cargo-flash should operate from.
+    #[arg(value_name = "directory", long)]
+    pub work_dir: Option<PathBuf>,
+
+    #[command(flatten)]
+    /// Arguments which are forwarded to 'cargo build'.
+    pub cargo_options: CargoOptions,
+    #[command(flatten)]
+    /// Argument relating to probe/chip selection/configuration.
+    pub probe_options: ProbeOptions,
+    #[command(flatten)]
+    /// Argument relating to probe/chip selection/configuration.
+    pub download_options: BinaryDownloadOptions,
+
+    #[command(flatten)]
+    pub format_options: crate::FormatOptions,
+}
 
 pub fn main(args: Vec<OsString>) {
     let lister = Lister::new();
@@ -39,33 +76,29 @@ fn main_try(mut args: Vec<OsString>, lister: &Lister) -> Result<(), OperationErr
         args.remove(1);
     }
 
-    // Parse the commandline options with structopt.
+    // Parse the commandline options.
     let opt = {
-        let matches = FlashOptions::command()
-            .bin_name("cargo flash")
-            .display_name("cargo-flash")
-            .after_help(CargoOptions::help_message("cargo flash"))
+        let matches = CliOptions::command()
             .version(crate::meta::CARGO_VERSION)
             .long_version(crate::meta::LONG_VERSION)
             .get_matches_from(&args);
 
-        FlashOptions::from_arg_matches(&matches)?
+        CliOptions::from_arg_matches(&matches)?
     };
 
     // Initialize the logger with the loglevel given on the commandline.
     let _log_guard = setup_logging(None, opt.log);
 
-    // Get the current working dir. Make sure we have a proper default if it cannot be determined.
-    let work_dir = opt.work_dir.clone().unwrap_or_else(|| PathBuf::from("."));
-
     // Change the work dir if the user asked to do so.
-    std::env::set_current_dir(&work_dir).map_err(|error| {
-        OperationError::FailedToChangeWorkingDirectory {
-            source: error,
-            path: work_dir.clone(),
-        }
-    })?;
-    tracing::debug!("Changed working directory to {}", work_dir.display());
+    if let Some(ref work_dir) = opt.work_dir {
+        std::env::set_current_dir(work_dir).map_err(|error| {
+            OperationError::FailedToChangeWorkingDirectory {
+                source: error,
+                path: work_dir.clone(),
+            }
+        })?;
+    }
+    let work_dir = std::env::current_dir()?;
 
     // Get the path to the binary we want to flash.
     // This can either be give from the arguments or can be a cargo build artifact.

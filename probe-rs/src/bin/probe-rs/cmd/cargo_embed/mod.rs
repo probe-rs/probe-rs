@@ -3,7 +3,7 @@ mod error;
 mod rttui;
 
 use anyhow::{anyhow, Context, Result};
-use clap::Parser;
+use clap::{CommandFactory, FromArgMatches};
 use colored::*;
 use parking_lot::FairMutex;
 use probe_rs::gdb_server::GdbInstanceConfiguration;
@@ -31,8 +31,9 @@ use crate::util::{cargo::build_artifact, common_options::CargoOptions, logging, 
 use crate::FormatOptions;
 
 #[derive(Debug, clap::Parser)]
-#[command(after_long_help = CargoOptions::help_message("cargo-embed"))]
-struct Opt {
+#[command(after_long_help = CargoOptions::help_message("cargo embed"))]
+#[command(bin_name = "cargo embed", display_name = "cargo-embed")]
+struct CliOptions {
     /// Name of the configuration profile to use.
     #[arg()]
     config: Option<String>,
@@ -89,24 +90,31 @@ pub fn main(args: Vec<OsString>, offset: UtcOffset) {
 }
 
 fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
-    // When called by Cargo, the first argument after the binary name will be `flash`.
+    // When called by Cargo, the first argument after the binary name will be `embed`.
     // If that's the case, remove it.
     if args.get(1).and_then(|t| t.to_str()) == Some("embed") {
         args.remove(1);
     }
 
-    // Get commandline options.
-    let opt = Opt::parse_from(&args);
+    // Parse the commandline options.
+    let opt = {
+        let matches = CliOptions::command()
+            .version(crate::meta::CARGO_VERSION)
+            .long_version(crate::meta::LONG_VERSION)
+            .get_matches_from(&args);
 
-    if let Some(work_dir) = opt.work_dir {
-        std::env::set_current_dir(&work_dir).with_context(|| {
+        CliOptions::from_arg_matches(&matches)?
+    };
+
+    // Change the work dir if the user asked to do so.
+    if let Some(ref work_dir) = opt.work_dir {
+        std::env::set_current_dir(work_dir).with_context(|| {
             format!(
                 "Unable to change working directory to {}",
                 work_dir.display()
             )
         })?;
     }
-
     let work_dir = std::env::current_dir()?;
 
     // Get the config.
