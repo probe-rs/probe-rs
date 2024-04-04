@@ -1,0 +1,1 @@
+Added a configuration option in cargo-embed config files to enable pointing to a default binary.
