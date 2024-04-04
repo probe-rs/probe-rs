@@ -26,7 +26,7 @@ pub enum TestFailure {
     #[error("Test returned an error")]
     Error(#[from] Box<dyn std::error::Error + Send + Sync + 'static>),
     #[error("Test is not implemented for target {0:?}: {1}")]
-    UnimplementedForTarget(probe_rs::Target, String),
+    UnimplementedForTarget(Box<probe_rs::Target>, String),
     #[error("A resource necessary to execute the test is not available: {0}")]
     MissingResource(String),
 
@@ -89,7 +89,7 @@ fn main() -> Result<ExitCode> {
         }
     };
 
-    let mut test_tracker = TestTracker::new(definitions, &CORE_TESTS);
+    let mut test_tracker = TestTracker::new(definitions);
 
     let result = test_tracker.run(|tracker, definition| {
         let probe = definition.open_probe()?;
@@ -268,19 +268,15 @@ pub struct TestTracker {
     current_dut: usize,
     num_tests: usize,
     current_test: usize,
-
-    tests: &'static [TestFn],
 }
 
 impl TestTracker {
-    fn new(dut_definitions: Vec<DutDefinition>, tests: &'static [TestFn]) -> Self {
-        let num_tests = tests.len();
+    fn new(dut_definitions: Vec<DutDefinition>) -> Self {
         Self {
             dut_definitions,
             current_dut: 0,
-            num_tests,
+            num_tests: 0,
             current_test: 0,
-            tests,
         }
     }
 
