@@ -28,7 +28,7 @@ pub enum RegistryError {
     Yaml(#[from] serde_yaml::Error),
     /// Invalid chip family definition ({0.name}): {1}
     InvalidChipFamilyDefinition(Box<ChipFamily>, String),
-    /// Chip's RTT scan region {0.start:#010x}..{0.end:#010x} is not enclosed by any single RAM region.
+    /// Chip's RTT scan region {0:#010X?} is not enclosed by any single RAM region.
     InvalidRttScanRange(std::ops::Range<u64>),
 }
 
