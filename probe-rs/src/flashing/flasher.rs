@@ -717,6 +717,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
         #[cfg(feature = "rtt")]
         if let Some(rtt_address) = self.flash_algorithm.rtt_control_block {
             let now = Instant::now();
+            let mut last_error = None;
             while self.rtt.is_none() {
                 std::thread::sleep(Duration::from_millis(1));
                 let rtt = match crate::rtt::Rtt::attach_region(
@@ -726,7 +727,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
                 ) {
                     Ok(rtt) => Some(rtt),
                     Err(error) => {
-                        tracing::error!("RTT could not be initialized: {error}");
+                        last_error = Some(error);
                         None
                     }
                 };
@@ -735,6 +736,9 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
                 if now.elapsed() > Duration::from_secs(1) {
                     break;
                 }
+            }
+            if let Some(error) = last_error {
+                tracing::error!("RTT could not be initialized: {error}");
             }
         }
 
