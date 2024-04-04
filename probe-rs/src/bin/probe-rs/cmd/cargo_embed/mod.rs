@@ -140,7 +140,7 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
     }
 
     if let Some(ref default_bin) = config.general.default_bin {
-        opt.cargo_options.bin = Some(std::mem::take(&mut opt.cargo_options.bin).unwrap());
+        opt.cargo_options.bin = Some(default_bin.clone());
     }
 
     let cargo_options = opt.cargo_options.to_cargo_options();
