@@ -124,10 +124,8 @@ impl Registry {
             const BUILTIN_TARGETS: &[u8] =
                 include_bytes!(concat!(env!("OUT_DIR"), "/targets.bincode"));
 
-            match bincode::deserialize(BUILTIN_TARGETS) {
-                Ok(families) => families,
-                Err(err) => panic!("Failed to deserialize builtin targets. This is a bug: {err:?}"),
-            }
+            bincode::deserialize(BUILTIN_TARGETS)
+                .expect("Failed to deserialize builtin targets. This is a bug")
         };
 
         #[cfg(not(feature = "builtin-targets"))]
