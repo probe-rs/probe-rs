@@ -34,7 +34,7 @@ required-features = ["cli"]
 [features]
 default = ["builtin-targets", "rtt"]
 gdb-server = ["dep:gdbstub", "dep:itertools"]
-rtt = ["dep:kmp"]
+rtt = []
 
 cli = [
     "gdb-server",
@@ -129,9 +129,6 @@ parse_int = "0.6"
 hexdump = { version = "0.1", optional = true }
 # path
 probe-rs-target = { workspace = true }
-
-# RTT
-kmp = { version = "0.1", optional = true }
 
 # gdb server
 gdbstub = { version = "0.7", optional = true }
