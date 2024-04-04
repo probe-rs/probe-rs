@@ -41,6 +41,8 @@ chip_descriptions = []
 log_level = "WARN"
 # Use this flag to assert the nreset & ntrst pins during attaching the probe to the chip.
 connect_under_reset = false
+# Set a default binary like you would with --bin
+# default_bin = "foo"
 
 [default.rtt]
 # Whether or not an RTTUI should be opened after flashing.
