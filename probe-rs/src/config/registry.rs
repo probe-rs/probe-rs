@@ -12,33 +12,23 @@ static REGISTRY: Lazy<Arc<Mutex<Registry>>> =
 
 /// Error type for all errors which occur when working
 /// with the internal registry of targets.
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, thiserror::Error, docsplay::Display)]
 pub enum RegistryError {
-    /// The requested chip was not found in the registry.
-    #[error("The requested chip '{0}' was not found in the list of known targets.")]
+    /// The requested chip '{0}' was not found in the list of known targets.
     ChipNotFound(String),
-    /// Multiple chips found which match the given string, unable to return a single chip.
-    #[error("Found multiple chips matching '{0}', unable to select a single chip. ({1})")]
+    /// Found multiple chips matching '{0}', unable to select a single chip. ({1})
     ChipNotUnique(String, String),
-    /// When searching for a chip based on information read from the target,
-    /// no matching chip was found in the registry.
-    #[error("The connected chip could not automatically be determined.")]
+    /// The connected chip could not automatically be determined.
     ChipAutodetectFailed,
-    /// A core type contained in a target description is not supported
-    /// in probe-rs.
-    #[error("The core type '{0}' is not supported in probe-rs.")]
+    /// The core type '{0}' is not supported in probe-rs.
     UnknownCoreType(String),
-    /// An IO error which occurred when trying to read a target description file.
-    #[error("An IO error was encountered")]
+    /// An IO error occurred when trying to read a target description file.
     Io(#[from] std::io::Error),
     /// An error occurred while deserializing a YAML target description file.
-    #[error("Deserializing the yaml encountered an error")]
     Yaml(#[from] serde_yaml::Error),
-    /// An invalid [`ChipFamily`] was encountered.
-    #[error("Invalid chip family definition ({})", .0.name)]
+    /// Invalid chip family definition ({0.name}): {1}
     InvalidChipFamilyDefinition(Box<ChipFamily>, String),
-    /// One of the RTT scan ranges is not enclosed in exactly one RAM region.
-    #[error("Chip's RTT scan region {:#010x}..{:#010x} is not enclosed by any single RAM region.", .0.start, .0.end)]
+    /// Chip's RTT scan region {0.start:#010x}..{0.end:#010x} is not enclosed by any single RAM region.
     InvalidRttScanRange(std::ops::Range<u64>),
 }
 
@@ -134,7 +124,7 @@ impl Registry {
 
         let mut families: Vec<ChipFamily> = match bincode::deserialize(BUILTIN_TARGETS) {
             Ok(families) => families,
-            Err(err) => panic!("Failed to deserialize builtin targets. This is a bug : {err:?}"),
+            Err(err) => panic!("Failed to deserialize builtin targets. This is a bug: {err:?}"),
         };
 
         add_generic_targets(&mut families);

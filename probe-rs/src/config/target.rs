@@ -85,7 +85,7 @@ impl Target {
     /// Create a new target for the given details.
     ///
     /// We suggest never using this function directly.
-    /// Use (crate::registry::Registry::get_target)[`Registry::get_target`] instead.
+    /// Use [`crate::config::registry::get_target_by_name`] instead.
     /// This will ensure that the used target is valid.
     ///
     /// The user has to make sure that all the cores have the same [`Architecture`].
