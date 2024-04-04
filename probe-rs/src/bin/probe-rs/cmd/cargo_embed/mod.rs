@@ -380,9 +380,6 @@ fn run_rttui_app(
     )
     .context("Failed to attach to RTT")?
     else {
-        // Because we pass `ScanRegion::Ram` to `rtt_attach`, this branch should never be
-        // reached. However, we might change how we attach to RTT in the future, so let's try
-        // and stay friendly and not panic.
         tracing::info!("RTT not found, skipping RTT initialization.");
         return Ok(());
     };
@@ -442,6 +439,8 @@ fn run_rttui_app(
 }
 
 /// Try to attach to RTT, with the given timeout
+// TODO: this is largely the same as `cmd::run::attach_to_rtt`. If we can figure out how to get
+// around the mutex issue required here, we should try to merge them.
 fn rtt_attach(
     session: &FairMutex<Session>,
     core_id: usize,
@@ -451,14 +450,21 @@ fn rtt_attach(
     rtt_config: &RttConfig,
     timestamp_offset: UtcOffset,
 ) -> Result<Option<RttActiveTarget>> {
+    // Try to find the RTT control block symbol in the ELF file.
+    // If we find it, we can use the exact address to attach to the RTT control block. Otherwise, we
+    // fall back to the caller-provided scan regions.
+    let mut file = File::open(elf_file)?;
+    let scan_region = if let Some(address) = RttActiveTarget::get_rtt_symbol(&mut file) {
+        ScanRegion::Exact(address as u32)
+    } else {
+        rtt_region.clone()
+    };
+
     let t = std::time::Instant::now();
-
     let mut rtt_init_attempt = 1;
-
     let mut last_error = None;
-
     while t.elapsed() < timeout {
-        tracing::info!("Initializing RTT (attempt {})...", rtt_init_attempt);
+        tracing::debug!("Initializing RTT (attempt {})...", rtt_init_attempt);
         rtt_init_attempt += 1;
 
         // Lock the session mutex in a block, so it gets dropped as soon as possible.
@@ -469,7 +475,7 @@ fn rtt_attach(
             let memory_map = session_handle.target().memory_map.clone();
             let mut core = session_handle.core(core_id)?;
 
-            match rtt::attach_to_rtt(&mut core, &memory_map, rtt_region, elf_file) {
+            match rtt::attach_to_rtt(&mut core, &memory_map, &scan_region) {
                 Ok(Some(rtt)) => {
                     let app = RttActiveTarget::new(
                         &mut core,

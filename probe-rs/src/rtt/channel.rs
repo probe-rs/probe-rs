@@ -58,9 +58,8 @@ impl Channel {
         ptr: u32,
         mem: &[u8],
     ) -> Result<Option<Channel>, Error> {
-        let buffer_ptr: u32 = match mem.pread_with(Self::O_BUFFER_PTR, LE) {
-            Ok(buffer_ptr) => buffer_ptr,
-            Err(_error) => return Err(Error::MemoryRead("RTT channel address".to_string())),
+        let Ok(buffer_ptr) = mem.pread_with(Self::O_BUFFER_PTR, LE) else {
+            return Err(Error::MemoryRead("RTT channel address".to_string()));
         };
 
         if buffer_ptr == 0 {
@@ -68,9 +67,8 @@ impl Channel {
             return Ok(None);
         }
 
-        let name_ptr: u32 = match mem.pread_with(Self::O_NAME, LE) {
-            Ok(name_ptr) => name_ptr,
-            Err(_error) => return Err(Error::MemoryRead("RTT channel name".to_string())),
+        let Ok(name_ptr) = mem.pread_with(Self::O_NAME, LE) else {
+            return Err(Error::MemoryRead("RTT channel name".to_string()));
         };
 
         let name = if name_ptr == 0 {
@@ -79,14 +77,21 @@ impl Channel {
             read_c_string(core, memory_map, name_ptr)?
         };
 
-        Ok(Some(Channel {
+        let chan = Channel {
             number,
             core_id: core.id(),
             ptr,
             name,
             buffer_ptr,
             size: mem.pread_with(Self::O_SIZE, LE).unwrap(),
-        }))
+        };
+
+        // It's possible that the channel is not initialized with the magic string written last.
+        // We call read_pointers to validate that the channel pointers are in an expected range.
+        // This should at least catch most cases where the control block is partially initialized.
+        chan.read_pointers(core, "")?;
+
+        Ok(Some(chan))
     }
 
     /// Validate that the Core id of a request is the same as the Core id against which the Channel was created.
@@ -106,22 +111,21 @@ impl Channel {
         self.size as usize
     }
 
-    fn read_pointers(&self, core: &mut Core, dir: &'static str) -> Result<(u32, u32), Error> {
+    /// Read the channel's `read` and `write` pointers from the control block.
+    fn read_pointers(&self, core: &mut Core, channel_kind: &str) -> Result<(u32, u32), Error> {
         self.validate_core_id(core)?;
-        let mut block = [0u32; 2];
-        core.read_32((self.ptr + Self::O_WRITE as u32).into(), block.as_mut())?;
 
-        let write: u32 = block[0];
-        let read: u32 = block[1];
+        let mut block = [0; 2];
+        core.read_32((self.ptr + Self::O_WRITE as u32).into(), &mut block)?;
+
+        let write = block[0];
+        let read = block[1];
 
         let validate = |which, value| {
             if value >= self.size {
                 Err(Error::ControlBlockCorrupted(format!(
-                    "{} pointer is {} while buffer size is {} for {:?} channel {} ({})",
-                    which,
-                    value,
+                    "{which} pointer is {value} while buffer size is {} for {channel_kind}channel {} ({})",
                     self.size,
-                    dir,
                     self.number,
                     self.name().unwrap_or("no name"),
                 )))
@@ -191,7 +195,7 @@ impl UpChannel {
 
     fn read_core(&self, core: &mut Core, mut buf: &mut [u8]) -> Result<(u32, usize), Error> {
         self.0.validate_core_id(core)?;
-        let (write, mut read) = self.0.read_pointers(core, "up")?;
+        let (write, mut read) = self.0.read_pointers(core, "up ")?;
 
         let mut total = 0;
 
@@ -296,7 +300,7 @@ impl DownChannel {
     /// may not write all of `buf`.
     pub fn write(&self, core: &mut Core, mut buf: &[u8]) -> Result<usize, Error> {
         self.0.validate_core_id(core)?;
-        let (mut write, read) = self.0.read_pointers(core, "down")?;
+        let (mut write, read) = self.0.read_pointers(core, "down ")?;
 
         if self.writable_contiguous(write, read) == 0 {
             // Buffer is full - do nothing.
