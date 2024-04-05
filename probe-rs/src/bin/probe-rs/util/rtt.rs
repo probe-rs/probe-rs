@@ -3,7 +3,7 @@ use defmt_decoder::log::format::{Formatter, FormatterConfig, FormatterFormat};
 use defmt_decoder::DecodeError;
 pub use probe_rs::rtt::ChannelMode;
 use probe_rs::rtt::{DownChannel, Error, Rtt, ScanRegion, UpChannel};
-use probe_rs::Core;
+use probe_rs::{Core, Session};
 use probe_rs_target::MemoryRegion;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -17,6 +17,37 @@ use std::{
 };
 use time::{macros::format_description, OffsetDateTime, UtcOffset};
 
+/// Infer the target core from the RTT symbol. Useful for multi-core targets.
+pub fn get_target_core_id(session: &mut Session, elf_file: impl AsRef<Path>) -> usize {
+    let maybe_core_id = || {
+        let mut file = File::open(elf_file).ok()?;
+        let address = RttActiveTarget::get_rtt_symbol(&mut file)?;
+
+        tracing::debug!("RTT symbol found at 0x{:08x}", address);
+
+        let target_memory = session
+            .target()
+            .memory_map
+            .iter()
+            .filter_map(MemoryRegion::as_ram_region)
+            .find(|region| region.range.contains(&address))?;
+
+        tracing::debug!("RTT symbol is in RAM region {:?}", target_memory.name);
+
+        let core_name = target_memory.cores.first()?;
+        let core_id = session
+            .target()
+            .cores
+            .iter()
+            .position(|core| core.name == *core_name)?;
+
+        tracing::debug!("RTT symbol is in core {}", core_id);
+
+        Some(core_id)
+    };
+    maybe_core_id().unwrap_or(0)
+}
+
 /// Try to find the RTT control block in the ELF file and attach to it.
 ///
 /// This function can return `Ok(None)` to indicate that RTT is not available on the target.
@@ -24,22 +55,8 @@ pub fn attach_to_rtt(
     core: &mut Core,
     memory_map: &[MemoryRegion],
     rtt_region: &ScanRegion,
-    elf_file: &Path,
 ) -> Result<Option<Rtt>> {
-    // Try to find the RTT control block symbol in the ELF file.
-
-    // If we find it, we can use the exact address to attach to the RTT control block. Otherwise, we
-    // fall back to the caller-provided scan regions.
-    let exact_rtt_region;
-    let mut rtt_region = rtt_region;
-
-    let mut file = File::open(elf_file)?;
-    if let Some(address) = RttActiveTarget::get_rtt_symbol(&mut file) {
-        exact_rtt_region = ScanRegion::Exact(address as u32);
-        rtt_region = &exact_rtt_region;
-    }
-
-    tracing::info!("Initializing RTT");
+    tracing::debug!("Initializing RTT");
 
     if let ScanRegion::Ranges(rngs) = &rtt_region {
         if rngs.is_empty() {
@@ -107,6 +124,10 @@ pub struct RttChannelConfig {
     pub channel_name: Option<String>,
     #[serde(default)]
     pub data_format: DataFormat,
+
+    /// RTT channel operating mode. Defaults to the target's configuration.
+    #[serde(default)]
+    pub mode: Option<ChannelMode>,
 
     #[serde(default)]
     /// Control the inclusion of timestamps for DataFormat::String.
@@ -197,12 +218,13 @@ pub struct RttActiveUpChannel {
 
 impl RttActiveUpChannel {
     pub fn new(
+        core: &mut Core,
         up_channel: UpChannel,
         rtt_config: &RttConfig,
         channel_config: &RttChannelConfig,
         timestamp_offset: UtcOffset,
         defmt_state: Option<&DefmtState>,
-    ) -> Self {
+    ) -> Result<Self> {
         let is_defmt_channel = up_channel.name() == Some("defmt");
 
         let data_format = match channel_config.data_format {
@@ -259,12 +281,23 @@ impl RttActiveUpChannel {
                 )
             });
 
-        Self {
+        if let Some(mode) = channel_config.mode.or(
+            // Try not to corrupt the byte stream if using defmt
+            if matches!(data_format, ChannelDataConfig::Defmt { .. }) {
+                Some(ChannelMode::BlockIfFull)
+            } else {
+                None
+            },
+        ) {
+            up_channel.set_mode(core, mode)?;
+        }
+
+        Ok(Self {
             rtt_buffer: RttBuffer::new(up_channel.buffer_size()),
             up_channel,
             channel_name,
             data_format,
-        }
+        })
     }
 
     pub fn number(&self) -> usize {
@@ -502,6 +535,7 @@ impl fmt::Debug for DefmtState {
 impl RttActiveTarget {
     /// RttActiveTarget collects references to all the `RttActiveChannel`s, for latter polling/pushing of data.
     pub fn new(
+        core: &mut Core,
         rtt: probe_rs::rtt::Rtt,
         elf_file: &Path,
         rtt_config: &RttConfig,
@@ -521,12 +555,13 @@ impl RttActiveTarget {
             active_up_channels.insert(
                 channel.number(),
                 RttActiveUpChannel::new(
+                    core,
                     channel,
                     rtt_config,
                     &channel_config,
                     timestamp_offset,
                     defmt_state.as_ref(),
-                ),
+                )?,
             );
         }
 

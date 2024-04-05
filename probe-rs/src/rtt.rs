@@ -11,8 +11,7 @@
 //! ## Example
 //!
 //! ```no_run
-//! use std::sync::{Arc, Mutex};
-//! use probe_rs::probe::{list::Lister, Probe};
+//! use probe_rs::probe::list::Lister;
 //! use probe_rs::Permissions;
 //! use probe_rs::rtt::Rtt;
 //!
@@ -283,7 +282,7 @@ impl Rtt {
                     core.read(range.start, mem.as_mut()).ok()?;
                 }
 
-                let offset = kmp::kmp_find(&Self::RTT_ID, mem.as_slice())?;
+                let offset = mem.windows(Self::RTT_ID.len()).position(|w| w == Self::RTT_ID)?;
 
                 let target_ptr = range.start + (offset as u64);
                 let Ok(target_ptr) = target_ptr.try_into() else {

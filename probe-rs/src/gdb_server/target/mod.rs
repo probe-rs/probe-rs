@@ -10,10 +10,10 @@ mod utils;
 use super::arch::RuntimeArch;
 use crate::{BreakpointCause, CoreStatus, Error, HaltReason, Session};
 use gdbstub::stub::state_machine::GdbStubStateMachine;
+use parking_lot::FairMutex;
 
 use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::num::NonZeroUsize;
-use std::sync::Mutex;
 use std::time::Duration;
 
 use gdbstub::common::Signal;
@@ -44,7 +44,7 @@ pub(crate) enum ResumeAction {
 /// The top level gdbstub target for a probe-rs debug session
 pub(crate) struct RuntimeTarget<'a> {
     /// The probe-rs session object
-    session: &'a Mutex<Session>,
+    session: &'a FairMutex<Session>,
     /// A list of core IDs for this stub
     cores: Vec<usize>,
 
@@ -62,7 +62,7 @@ pub(crate) struct RuntimeTarget<'a> {
 impl<'a> RuntimeTarget<'a> {
     /// Create a new RuntimeTarget and get ready to start processing GDB input
     pub fn new(
-        session: &'a Mutex<Session>,
+        session: &'a FairMutex<Session>,
         cores: Vec<usize>,
         addrs: &[SocketAddr],
     ) -> Result<Self, Error> {
@@ -96,7 +96,6 @@ impl<'a> RuntimeTarget<'a> {
                         // If the core is already halted, nothing happens if we issue a halt command again, so we always do this no matter of core state.
                         self.session
                             .lock()
-                            .unwrap()
                             .core(core_id)?
                             .halt(Duration::from_millis(100))?;
 
@@ -161,7 +160,7 @@ impl<'a> RuntimeTarget<'a> {
                         // Check for break
                         let mut stop_reason: Option<MultiThreadStopReason<u64>> = None;
                         {
-                            let mut session = self.session.lock().unwrap();
+                            let mut session = self.session.lock();
 
                             for i in &self.cores {
                                 let mut core = session.core(*i)?;
@@ -208,7 +207,7 @@ impl<'a> RuntimeTarget<'a> {
                 GdbStubStateMachine::CtrlCInterrupt(state) => {
                     // Break core, handle interrupt
                     {
-                        let mut session = self.session.lock().unwrap();
+                        let mut session = self.session.lock();
                         for i in &self.cores {
                             let mut core = session.core(*i)?;
 
