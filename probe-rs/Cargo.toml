@@ -32,13 +32,11 @@ name = "cargo-embed"
 required-features = ["cli"]
 
 [features]
-default = ["builtin-targets", "rtt"]
+default = ["builtin-targets"]
 gdb-server = ["dep:gdbstub", "dep:itertools"]
-rtt = []
 
 cli = [
     "gdb-server",
-    "rtt",
 
     "dep:byte-unit",
     "dep:capstone",
