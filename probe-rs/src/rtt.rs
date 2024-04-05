@@ -371,7 +371,7 @@ pub enum Error {
 
 fn display_list(list: &[Rtt]) -> String {
     list.iter()
-        .map(|rtt| format!("{:#10X}", rtt.ptr))
+        .map(|rtt| format!("{:#010X}", rtt.ptr))
         .collect::<Vec<_>>()
         .join(", ")
 }
