@@ -55,10 +55,14 @@ struct CliOptions {
     pub format_options: crate::FormatOptions,
 }
 
-pub fn main(args: Vec<OsString>) {
-    let lister = Lister::new();
+pub fn main(mut args: &[OsString]) {
+    // When called by Cargo, the first argument after the binary name will be `flash`. If that's the
+    // case, remove one argument (`Opt::from_iter` will remove the binary name by itself).
+    if args.get(0).map(|t| t.as_ref()) == Some(std::ffi::OsStr::new("flash")) {
+        args = &args[1..];
+    }
 
-    match main_try(args, &lister) {
+    match main_try(args) {
         Ok(_) => (),
         Err(e) => {
             // Ensure stderr is flushed before calling process::exit,
@@ -73,13 +77,7 @@ pub fn main(args: Vec<OsString>) {
     }
 }
 
-fn main_try(mut args: Vec<OsString>, lister: &Lister) -> Result<(), OperationError> {
-    // When called by Cargo, the first argument after the binary name will be `flash`. If that's the
-    // case, remove one argument (`Opt::from_iter` will remove the binary name by itself).
-    if args.get(1).and_then(|t| t.to_str()) == Some("flash") {
-        args.remove(1);
-    }
-
+fn main_try(args: &[OsString]) -> Result<(), OperationError> {
     // Parse the commandline options.
     let opt = CliOptions::parse_from(&args);
 
@@ -131,8 +129,10 @@ fn main_try(mut args: Vec<OsString>, lister: &Lister) -> Result<(), OperationErr
         path.display()
     ));
 
+    let lister = Lister::new();
+
     // Attach to specified probe
-    let (mut session, probe_options) = opt.probe_options.simple_attach(lister)?;
+    let (mut session, probe_options) = opt.probe_options.simple_attach(&lister)?;
 
     // Flash the binary
     let loader =
