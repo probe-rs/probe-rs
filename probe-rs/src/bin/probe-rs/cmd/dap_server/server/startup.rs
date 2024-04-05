@@ -1,4 +1,4 @@
-use super::debugger::{DebugSessionStatus, Debugger};
+use super::debugger::Debugger;
 use crate::cmd::dap_server::debug_adapter::{dap::adapter::*, protocol::DapAdapter};
 use anyhow::{Context, Result};
 use probe_rs::probe::list::Lister;
@@ -75,11 +75,8 @@ pub fn debug(
                     Err(error) => {
                         tracing::error!("probe-rs-debugger session ended: {}", error);
                     }
-                    Ok(DebugSessionStatus::Terminate) => {
+                    Ok(()) => {
                         log_to_console_and_tracing(&format!("....Closing session from  :{addr}"));
-                    }
-                    Ok(DebugSessionStatus::Continue) | Ok(DebugSessionStatus::Restart(_)) => {
-                        tracing::error!("probe-rs-debugger enountered unexpected `DebuggerStatus` in debug() execution. Please report this as a bug.");
                     }
                 }
                 // Terminate after a single debug session. This is the behavour expected by VSCode

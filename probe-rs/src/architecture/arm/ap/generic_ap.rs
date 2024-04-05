@@ -61,7 +61,7 @@ define_ap_register!(
         /// The revision of this access point.
         REVISION: u8,
         /// The JEP106 code of the designer of this access point.
-        DESIGNER: u16,
+        DESIGNER: jep106::JEP106Code,
         /// The class of this access point.
         CLASS: ApClass,
         #[doc(hidden)]
@@ -73,14 +73,20 @@ define_ap_register!(
     ],
     from: value => Ok(IDR {
         REVISION: ((value >> 28) & 0x0F) as u8,
-        DESIGNER: ((value >> 17) & 0x7FF) as u16,
+        DESIGNER: {
+            let designer = ((value >> 17) & 0x7FF) as u16;
+            let cc = (designer >> 7) as u8;
+            let id = (designer & 0x7f) as u8;
+
+            jep106::JEP106Code::new(cc, id)
+        },
         CLASS: ApClass::from_u8(((value >> 13) & 0x0F) as u8).ok_or_else(|| RegisterParseError::new("IDR", value))?,
         _RES0: 0,
         VARIANT: ((value >> 4) & 0x0F) as u8,
         TYPE: ApType::from_u8((value & 0x0F) as u8).ok_or_else(|| RegisterParseError::new("IDR", value))?
     }),
     to: value => (u32::from(value.REVISION) << 28)
-        | (u32::from(value.DESIGNER) << 17)
+        | (((u32::from(value.DESIGNER.cc) << 7) | u32::from(value.DESIGNER.id)) << 17)
         | (value.CLASS.to_u32().unwrap() << 13)
         | (u32::from(value.VARIANT) << 4)
         | (value.TYPE.to_u32().unwrap())

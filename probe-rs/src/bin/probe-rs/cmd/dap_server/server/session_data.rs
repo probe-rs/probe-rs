@@ -206,6 +206,7 @@ impl SessionData {
     ///   - The first time we have entered halted status, to ensure the buffers are drained. After that, for as long as we remain in halted state, we don't need to check RTT again.
     ///
     /// Return a Vec of [`CoreStatus`] (one entry per core) after this process has completed, as well as a boolean indicating whether we should consider a short delay before the next poll.
+    #[tracing::instrument(skip_all)]
     pub(crate) fn poll_cores<P: ProtocolAdapter>(
         &mut self,
         session_config: &SessionConfig,
@@ -275,6 +276,7 @@ impl SessionData {
             // If currently halted, and was previously running
             // update the stack frames
             } else if !cores_halted_previously {
+                let _stackframe_span = tracing::debug_span!("Update Stack Frames").entered();
                 tracing::debug!(
                     "Updating the stack frame data for core #{}",
                     target_core.core.id()

@@ -83,7 +83,6 @@ pub mod gdb_server;
 pub mod integration;
 mod memory;
 pub mod probe;
-#[cfg(feature = "rtt")]
 pub mod rtt;
 mod semihosting;
 mod session;

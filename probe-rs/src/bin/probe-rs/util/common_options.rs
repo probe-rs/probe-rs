@@ -1,41 +1,7 @@
-#![allow(clippy::needless_doctest_main)]
-//! Collection of `#[derive(StructOpt)] struct`s common to programs that
-//! extend then functionality of cargo-flash.
-//!
-//! Example usage:
-//! ```no_run
-//! use clap::Parser;
-//! use crate::util::common_options::FlashOptions;
-//!
-//! #[derive(clap::Parser)]
-//! struct Opts {
-//!     #[arg(long = "some-opt")]
-//!     opt: String,
-//!
-//!     #[arg(flatten)]
-//!     flash_options: FlashOptions,
-//! }
-//!
-//! fn main() {
-//!     let opts = Opts::parse();
-//!
-//!     opts.flash_options.probe_options.maybe_load_chip_desc().unwrap();
-//!
-//!     // handle --list-{chips,probes}
-//!     if opts.flash_options.early_exit(std::io::stdout()).unwrap() {
-//!         return;
-//!     }
-//!
-//!     let target_session = opts.flash_options.probe_options.simple_attach().unwrap();
-//!
-//!     // ...
-//! }
-//! ```
-use super::ArtifactError;
-
 use std::{fs::File, path::Path, path::PathBuf};
 
-use crate::util::{logging::LevelFilter, parse_u64};
+use super::cargo::ArtifactError;
+use crate::util::parse_u64;
 use probe_rs::{
     config::{RegistryError, TargetSelector},
     flashing::{FileDownloadError, FlashError},
@@ -46,39 +12,6 @@ use probe_rs::{
     Permissions, Session, Target,
 };
 use serde::{Deserialize, Serialize};
-
-/// Common options when flashing a target device.
-#[derive(Debug, clap::Parser)]
-pub struct FlashOptions {
-    /// Use this flag to reset and halt (instead of just a reset) the attached core after flashing the target.
-    #[arg(long)]
-    pub reset_halt: bool,
-    /// Use this flag to set the log level.
-    ///
-    /// Configurable via the `RUST_LOG` environment variable.
-    /// Default is `warn`. Possible choices are [error, warn, info, debug, trace].
-    #[arg(value_name = "level", long)]
-    pub log: Option<LevelFilter>,
-    /// The path to the file to be flashed.
-    #[arg(value_name = "path", long)]
-    pub path: Option<PathBuf>,
-    /// The work directory from which cargo-flash should operate from.
-    #[arg(value_name = "directory", long)]
-    pub work_dir: Option<PathBuf>,
-
-    #[command(flatten)]
-    /// Arguments which are forwarded to 'cargo build'.
-    pub cargo_options: CargoOptions,
-    #[command(flatten)]
-    /// Argument relating to probe/chip selection/configuration.
-    pub probe_options: ProbeOptions,
-    #[command(flatten)]
-    /// Argument relating to probe/chip selection/configuration.
-    pub download_options: BinaryDownloadOptions,
-
-    #[command(flatten)]
-    pub format_options: crate::FormatOptions,
-}
 
 /// Common options when flashing a target device.
 #[derive(Debug, clap::Parser)]

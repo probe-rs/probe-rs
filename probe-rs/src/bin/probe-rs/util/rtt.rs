@@ -55,21 +55,7 @@ pub fn attach_to_rtt(
     core: &mut Core,
     memory_map: &[MemoryRegion],
     rtt_region: &ScanRegion,
-    elf_file: &Path,
 ) -> Result<Option<Rtt>> {
-    // Try to find the RTT control block symbol in the ELF file.
-
-    // If we find it, we can use the exact address to attach to the RTT control block. Otherwise, we
-    // fall back to the caller-provided scan regions.
-    let exact_rtt_region;
-    let mut rtt_region = rtt_region;
-
-    let mut file = File::open(elf_file)?;
-    if let Some(address) = RttActiveTarget::get_rtt_symbol(&mut file) {
-        exact_rtt_region = ScanRegion::Exact(address as u32);
-        rtt_region = &exact_rtt_region;
-    }
-
     tracing::debug!("Initializing RTT");
 
     if let ScanRegion::Ranges(rngs) = &rtt_region {

@@ -8,14 +8,14 @@ mod server;
 #[cfg(test)]
 mod test;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use probe_rs::{
     architecture::arm::ap::AccessPortError, flashing::FileDownloadError, probe::list::Lister,
     probe::DebugProbeError, CoreDumpError, Error,
 };
 use server::startup::debug;
-use std::{env::var, fs::File, io::stderr};
-use time::{OffsetDateTime, UtcOffset};
+use std::{fs::File, io::stderr, path::Path};
+use time::UtcOffset;
 use tracing::metadata::LevelFilter;
 use tracing_subscriber::{
     fmt::format::FmtSpan, prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt,
@@ -85,8 +85,13 @@ pub struct Cmd {
     single_session: bool,
 }
 
-pub fn run(cmd: Cmd, lister: &Lister, time_offset: UtcOffset) -> Result<()> {
-    let log_info_message = setup_logging(time_offset)?;
+pub fn run(
+    cmd: Cmd,
+    lister: &Lister,
+    time_offset: UtcOffset,
+    log_file: Option<&Path>,
+) -> Result<()> {
+    let log_info_message = setup_logging(log_file)?;
 
     debug(
         lister,
@@ -102,7 +107,7 @@ pub fn run(cmd: Cmd, lister: &Lister, time_offset: UtcOffset) -> Result<()> {
 /// 2. Irrespective of the RUST_LOG environment variable, configure a subscribe that will write with `LevelFilter::ERROR` to stderr, because these errors are picked up and reported to the user by the VSCode extension.
 ///
 /// Determining the local time for logging purposes can fail, so it needs to be given as a parameter here.
-fn setup_logging(time_offset: UtcOffset) -> Result<String, anyhow::Error> {
+fn setup_logging(log_file: Option<&Path>) -> Result<String, anyhow::Error> {
     // We want to always log errors to stderr, but not to the log file.
     let stderr_subscriber = tracing_subscriber::fmt::layer()
         .compact()
@@ -111,28 +116,10 @@ fn setup_logging(time_offset: UtcOffset) -> Result<String, anyhow::Error> {
         .with_writer(stderr)
         .with_filter(LevelFilter::ERROR);
 
-    match var("RUST_LOG") {
-        Ok(rust_log) => {
-            let project_dirs = directories::ProjectDirs::from("rs", "probe-rs", "probe-rs")
-                .context("Could not determine the application storage directory required for the log output files.")?;
-            let directory = project_dirs.data_dir();
-            let logname = sanitize_filename::sanitize_with_options(
-                format!(
-                    "{}.log",
-                    OffsetDateTime::now_utc()
-                        .to_offset(time_offset)
-                        .unix_timestamp_nanos()
-                        / 1_000_000
-                ),
-                sanitize_filename::Options {
-                    replacement: "_",
-                    ..Default::default()
-                },
-            );
-            std::fs::create_dir_all(directory)
-                .context(format!("{directory:?} could not be created"))?;
-            let log_path = directory.join(logname);
-            let log_file = File::create(&log_path)?;
+    match log_file {
+        Some(log_path) => {
+            let log_file = File::create(log_path)?;
+
             // The log file will respect the RUST_LOG environment variable as a filter.
             let file_subscriber = tracing_subscriber::fmt::layer()
                 .json()
@@ -141,17 +128,18 @@ fn setup_logging(time_offset: UtcOffset) -> Result<String, anyhow::Error> {
                 .with_span_events(FmtSpan::FULL)
                 .with_writer(log_file)
                 .with_filter(EnvFilter::from_default_env());
+
             tracing_subscriber::registry()
                 .with(stderr_subscriber)
                 .with(file_subscriber)
                 .init();
+
             Ok(format!(
-                "\"RUST_LOG={}\" output will be written to: {:?}",
-                rust_log,
-                log_path.to_string_lossy()
+                "Log output will be written to: {:?}",
+                log_path.display()
             ))
         }
-        Err(_) => {
+        None => {
             tracing_subscriber::registry()
                 .with(stderr_subscriber)
                 .init();

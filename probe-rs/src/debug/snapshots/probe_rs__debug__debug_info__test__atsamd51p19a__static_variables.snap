@@ -5,7 +5,7 @@ expression: static_variables
 Child Variables:
   name: StaticScopeRoot
   type_name: Unknown
-  value: "<unknown> {\n\texception_table: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t_aTerminalId: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,<unknown>,\n\tchar[1024] = [\n\t\tH,\n\t\te,\n\t\tl,\n\t\tl,\n\t\to,\n\t\t ,\n\t\tH,\n\t\te,\n\t\tl,\n\t\tl,\n\n\t\t... and 1014 more\n\t],\n\tchar[16] = [\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\n\t\t... and 6 more\n\t],\n\t_ActiveTerminal: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\tfoo: Foo_t = Foo_t @ 0x20000000,\n\tconst Foo_t[2] = [\n\t\tFoo_t @ 0x0000165C,\n\t\tFoo_t @ 0x00001664\n\t]}"
+  value: "<unknown> {\n\texception_table: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t_aTerminalId: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,<unknown>,\n\tchar[1024] = [\n\t\tH,\n\t\te,\n\t\tl,\n\t\tl,\n\t\to,\n\t\t ,\n\t\tH,\n\t\te,\n\t\tl,\n\t\tl,\n\n\t\t... and 1014 more\n\t],\n\tchar[16] = [\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\n\t\t... and 6 more\n\t],\n\t_ActiveTerminal: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\tfoo: Foo_t = Foo_t @ 0x20000000,\n\tconst Foo_t[2] = [\n\t\tFoo_t @ 0x00001684,\n\t\tFoo_t @ 0x0000168C\n\t],\n\tuint8_t[9][6] = [\n\t\tuint8_t[9] = [\n\t\t\t0,\n\t\t\t1,\n\t\t\t2,\n\t\t\t3,\n\t\t\t4,\n\t\t\t5,\n\t\t\t6,\n\t\t\t7,\n\t\t\t8\n\t\t],\n\t\tuint8_t[9] = [\n\t\t\t10,\n\t\t\t11,\n\t\t\t12,\n\t\t\t13,\n\t\t\t14,\n\t\t\t15,\n\t\t\t16,\n\t\t\t17,\n\t\t\t18\n\t\t],\n\t\tuint8_t[9] = [\n\t\t\t20,\n\t\t\t21,\n\t\t\t22,\n\t\t\t23,\n\t\t\t24,\n\t\t\t25,\n\t\t\t26,\n\t\t\t27,\n\t\t\t28\n\t\t],\n\t\tuint8_t[9] = [\n\t\t\t30,\n\t\t\t31,\n\t\t\t32,\n\t\t\t33,\n\t\t\t34,\n\t\t\t35,\n\t\t\t36,\n\t\t\t37,\n\t\t\t38\n\t\t],\n\t\tuint8_t[9] = [\n\t\t\t40,\n\t\t\t41,\n\t\t\t42,\n\t\t\t43,\n\t\t\t44,\n\t\t\t45,\n\t\t\t46,\n\t\t\t47,\n\t\t\t48\n\t\t],\n\t\tuint8_t[9] = [\n\t\t\t50,\n\t\t\t51,\n\t\t\t52,\n\t\t\t53,\n\t\t\t54,\n\t\t\t55,\n\t\t\t56,\n\t\t\t57,\n\t\t\t58\n\t\t]\n\t],\n\tuint16_t[3][2] = [\n\t\tuint16_t[3] = [\n\t\t\t0,\n\t\t\t1,\n\t\t\t2\n\t\t],\n\t\tuint16_t[3] = [\n\t\t\t3,\n\t\t\t4,\n\t\t\t5\n\t\t]\n\t]}"
   children:
     - name:
         Named: exception_table
@@ -513,7 +513,7 @@ Child Variables:
                       - Typedef: Foo_t
                       - Struct: "<unnamed struct>"
               count: 2
-      value: "const Foo_t[2] = [\n\tFoo_t @ 0x0000165C,\n\tFoo_t @ 0x00001664]"
+      value: "const Foo_t[2] = [\n\tFoo_t @ 0x00001684,\n\tFoo_t @ 0x0000168C]"
       children:
         - name:
             Named: __0
@@ -523,17 +523,17 @@ Child Variables:
               - Modified:
                   - Typedef: Foo_t
                   - Struct: "<unnamed struct>"
-          value: Foo_t @ 0x0000165C
+          value: Foo_t @ 0x00001684
           children:
             - name: Unknown
               type_name:
                 Base: "<unnamed union>"
-              value: "<unnamed union> {\n\t<unknown>: <unnamed struct> = <unnamed struct> @ 0x0000165C,\n\tx: uint32_t = 0}"
+              value: "<unnamed union> {\n\t<unknown>: <unnamed struct> = <unnamed struct> @ 0x00001684,\n\tx: uint32_t = 0}"
               children:
                 - name: Unknown
                   type_name:
                     Struct: "<unnamed struct>"
-                  value: "<unnamed struct> @ 0x0000165C"
+                  value: "<unnamed struct> @ 0x00001684"
                   children:
                     - name:
                         Named: a
@@ -584,7 +584,7 @@ Child Variables:
                 Named: unsigned_bitfields
               type_name:
                 Struct: "<unnamed struct>"
-              value: "<unnamed struct> @ 0x00001660"
+              value: "<unnamed struct> @ 0x00001688"
               children:
                 - name:
                     Named: f
@@ -616,7 +616,7 @@ Child Variables:
                 Named: signed_bitfields
               type_name:
                 Struct: "<unnamed struct>"
-              value: "<unnamed struct> @ 0x00001661"
+              value: "<unnamed struct> @ 0x00001689"
               children:
                 - name:
                     Named: f
@@ -652,17 +652,17 @@ Child Variables:
               - Modified:
                   - Typedef: Foo_t
                   - Struct: "<unnamed struct>"
-          value: Foo_t @ 0x00001664
+          value: Foo_t @ 0x0000168C
           children:
             - name: Unknown
               type_name:
                 Base: "<unnamed union>"
-              value: "<unnamed union> {\n\t<unknown>: <unnamed struct> = <unnamed struct> @ 0x00001664,\n\tx: uint32_t = 0}"
+              value: "<unnamed union> {\n\t<unknown>: <unnamed struct> = <unnamed struct> @ 0x0000168C,\n\tx: uint32_t = 0}"
               children:
                 - name: Unknown
                   type_name:
                     Struct: "<unnamed struct>"
-                  value: "<unnamed struct> @ 0x00001664"
+                  value: "<unnamed struct> @ 0x0000168C"
                   children:
                     - name:
                         Named: a
@@ -713,7 +713,7 @@ Child Variables:
                 Named: unsigned_bitfields
               type_name:
                 Struct: "<unnamed struct>"
-              value: "<unnamed struct> @ 0x00001668"
+              value: "<unnamed struct> @ 0x00001690"
               children:
                 - name:
                     Named: f
@@ -745,7 +745,7 @@ Child Variables:
                 Named: signed_bitfields
               type_name:
                 Struct: "<unnamed struct>"
-              value: "<unnamed struct> @ 0x00001669"
+              value: "<unnamed struct> @ 0x00001691"
               children:
                 - name:
                     Named: f
@@ -773,4 +773,679 @@ Child Variables:
                               - Typedef: __int8_t
                               - Base: signed char
                   value: "0"
-
+    - name:
+        Named: nested_array
+      type_name:
+        Array:
+          item_type_name:
+            Array:
+              item_type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              count: 9
+          count: 6
+      value: "uint8_t[9][6] = [\n\tuint8_t[9] = [\n\t\t0,\n\t\t1,\n\t\t2,\n\t\t3,\n\t\t4,\n\t\t5,\n\t\t6,\n\t\t7,\n\t\t8\n\t],\n\tuint8_t[9] = [\n\t\t10,\n\t\t11,\n\t\t12,\n\t\t13,\n\t\t14,\n\t\t15,\n\t\t16,\n\t\t17,\n\t\t18\n\t],\n\tuint8_t[9] = [\n\t\t20,\n\t\t21,\n\t\t22,\n\t\t23,\n\t\t24,\n\t\t25,\n\t\t26,\n\t\t27,\n\t\t28\n\t],\n\tuint8_t[9] = [\n\t\t30,\n\t\t31,\n\t\t32,\n\t\t33,\n\t\t34,\n\t\t35,\n\t\t36,\n\t\t37,\n\t\t38\n\t],\n\tuint8_t[9] = [\n\t\t40,\n\t\t41,\n\t\t42,\n\t\t43,\n\t\t44,\n\t\t45,\n\t\t46,\n\t\t47,\n\t\t48\n\t],\n\tuint8_t[9] = [\n\t\t50,\n\t\t51,\n\t\t52,\n\t\t53,\n\t\t54,\n\t\t55,\n\t\t56,\n\t\t57,\n\t\t58\n\t]]"
+      children:
+        - name:
+            Named: __0
+          type_name:
+            Array:
+              item_type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              count: 9
+          value: "uint8_t[9] = [\n\t0,\n\t1,\n\t2,\n\t3,\n\t4,\n\t5,\n\t6,\n\t7,\n\t8]"
+          children:
+            - name:
+                Named: __0
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "0"
+            - name:
+                Named: __1
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "1"
+            - name:
+                Named: __2
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "2"
+            - name:
+                Named: __3
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "3"
+            - name:
+                Named: __4
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "4"
+            - name:
+                Named: __5
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "5"
+            - name:
+                Named: __6
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "6"
+            - name:
+                Named: __7
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "7"
+            - name:
+                Named: __8
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "8"
+        - name:
+            Named: __1
+          type_name:
+            Array:
+              item_type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              count: 9
+          value: "uint8_t[9] = [\n\t10,\n\t11,\n\t12,\n\t13,\n\t14,\n\t15,\n\t16,\n\t17,\n\t18]"
+          children:
+            - name:
+                Named: __0
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "10"
+            - name:
+                Named: __1
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "11"
+            - name:
+                Named: __2
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "12"
+            - name:
+                Named: __3
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "13"
+            - name:
+                Named: __4
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "14"
+            - name:
+                Named: __5
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "15"
+            - name:
+                Named: __6
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "16"
+            - name:
+                Named: __7
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "17"
+            - name:
+                Named: __8
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "18"
+        - name:
+            Named: __2
+          type_name:
+            Array:
+              item_type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              count: 9
+          value: "uint8_t[9] = [\n\t20,\n\t21,\n\t22,\n\t23,\n\t24,\n\t25,\n\t26,\n\t27,\n\t28]"
+          children:
+            - name:
+                Named: __0
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "20"
+            - name:
+                Named: __1
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "21"
+            - name:
+                Named: __2
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "22"
+            - name:
+                Named: __3
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "23"
+            - name:
+                Named: __4
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "24"
+            - name:
+                Named: __5
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "25"
+            - name:
+                Named: __6
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "26"
+            - name:
+                Named: __7
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "27"
+            - name:
+                Named: __8
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "28"
+        - name:
+            Named: __3
+          type_name:
+            Array:
+              item_type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              count: 9
+          value: "uint8_t[9] = [\n\t30,\n\t31,\n\t32,\n\t33,\n\t34,\n\t35,\n\t36,\n\t37,\n\t38]"
+          children:
+            - name:
+                Named: __0
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "30"
+            - name:
+                Named: __1
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "31"
+            - name:
+                Named: __2
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "32"
+            - name:
+                Named: __3
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "33"
+            - name:
+                Named: __4
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "34"
+            - name:
+                Named: __5
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "35"
+            - name:
+                Named: __6
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "36"
+            - name:
+                Named: __7
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "37"
+            - name:
+                Named: __8
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "38"
+        - name:
+            Named: __4
+          type_name:
+            Array:
+              item_type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              count: 9
+          value: "uint8_t[9] = [\n\t40,\n\t41,\n\t42,\n\t43,\n\t44,\n\t45,\n\t46,\n\t47,\n\t48]"
+          children:
+            - name:
+                Named: __0
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "40"
+            - name:
+                Named: __1
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "41"
+            - name:
+                Named: __2
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "42"
+            - name:
+                Named: __3
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "43"
+            - name:
+                Named: __4
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "44"
+            - name:
+                Named: __5
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "45"
+            - name:
+                Named: __6
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "46"
+            - name:
+                Named: __7
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "47"
+            - name:
+                Named: __8
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "48"
+        - name:
+            Named: __5
+          type_name:
+            Array:
+              item_type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              count: 9
+          value: "uint8_t[9] = [\n\t50,\n\t51,\n\t52,\n\t53,\n\t54,\n\t55,\n\t56,\n\t57,\n\t58]"
+          children:
+            - name:
+                Named: __0
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "50"
+            - name:
+                Named: __1
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "51"
+            - name:
+                Named: __2
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "52"
+            - name:
+                Named: __3
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "53"
+            - name:
+                Named: __4
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "54"
+            - name:
+                Named: __5
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "55"
+            - name:
+                Named: __6
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "56"
+            - name:
+                Named: __7
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "57"
+            - name:
+                Named: __8
+              type_name:
+                Modified:
+                  - Typedef: uint8_t
+                  - Modified:
+                      - Typedef: __uint8_t
+                      - Base: unsigned char
+              value: "58"
+    - name:
+        Named: nested_array2
+      type_name:
+        Array:
+          item_type_name:
+            Array:
+              item_type_name:
+                Modified:
+                  - Typedef: uint16_t
+                  - Modified:
+                      - Typedef: __uint16_t
+                      - Base: short unsigned int
+              count: 3
+          count: 2
+      value: "uint16_t[3][2] = [\n\tuint16_t[3] = [\n\t\t0,\n\t\t1,\n\t\t2\n\t],\n\tuint16_t[3] = [\n\t\t3,\n\t\t4,\n\t\t5\n\t]]"
+      children:
+        - name:
+            Named: __0
+          type_name:
+            Array:
+              item_type_name:
+                Modified:
+                  - Typedef: uint16_t
+                  - Modified:
+                      - Typedef: __uint16_t
+                      - Base: short unsigned int
+              count: 3
+          value: "uint16_t[3] = [\n\t0,\n\t1,\n\t2]"
+          children:
+            - name:
+                Named: __0
+              type_name:
+                Modified:
+                  - Typedef: uint16_t
+                  - Modified:
+                      - Typedef: __uint16_t
+                      - Base: short unsigned int
+              value: "0"
+            - name:
+                Named: __1
+              type_name:
+                Modified:
+                  - Typedef: uint16_t
+                  - Modified:
+                      - Typedef: __uint16_t
+                      - Base: short unsigned int
+              value: "1"
+            - name:
+                Named: __2
+              type_name:
+                Modified:
+                  - Typedef: uint16_t
+                  - Modified:
+                      - Typedef: __uint16_t
+                      - Base: short unsigned int
+              value: "2"
+        - name:
+            Named: __1
+          type_name:
+            Array:
+              item_type_name:
+                Modified:
+                  - Typedef: uint16_t
+                  - Modified:
+                      - Typedef: __uint16_t
+                      - Base: short unsigned int
+              count: 3
+          value: "uint16_t[3] = [\n\t3,\n\t4,\n\t5]"
+          children:
+            - name:
+                Named: __0
+              type_name:
+                Modified:
+                  - Typedef: uint16_t
+                  - Modified:
+                      - Typedef: __uint16_t
+                      - Base: short unsigned int
+              value: "3"
+            - name:
+                Named: __1
+              type_name:
+                Modified:
+                  - Typedef: uint16_t
+                  - Modified:
+                      - Typedef: __uint16_t
+                      - Base: short unsigned int
+              value: "4"
+            - name:
+                Named: __2
+              type_name:
+                Modified:
+                  - Typedef: uint16_t
+                  - Modified:
+                      - Typedef: __uint16_t
+                      - Base: short unsigned int
+              value: "5"

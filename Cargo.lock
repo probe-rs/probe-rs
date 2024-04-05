@@ -528,6 +528,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "cargo-config2"
+version = "0.1.23"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "42c11223b5229031d9b4ad2125ac8794386a2891a5c02acc4240bc46dd3af4f9"
+dependencies = [
+ "home",
+ "serde",
+ "serde_derive",
+ "toml_edit 0.22.9",
+]
+
+[[package]]
 name = "cargo-platform"
 version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1524,9 +1536,9 @@ dependencies = [
 
 [[package]]
 name = "h2"
-version = "0.3.25"
+version = "0.3.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4fbd2820c5e49886948654ab546d0688ff24530286bdcf8fca3cefb16d4618eb"
+checksum = "81fe527a889e1532da5c525686d96d4c2e74cdd345badf8dfef9f6b39dd5f5e8"
 dependencies = [
  "bytes",
  "fnv",
@@ -1980,9 +1992,9 @@ dependencies = [
 
 [[package]]
 name = "insta"
-version = "1.36.1"
+version = "1.38.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0a7c22c4d34ef4788c351e971c52bfdfe7ea2766f8c5466bc175dd46e52ac22e"
+checksum = "3eab73f58e59ca6526037208f0e98851159ec1633cf17b6cd2e1f2c3fd5d53cc"
 dependencies = [
  "console",
  "lazy_static",
@@ -1990,7 +2002,6 @@ dependencies = [
  "regex",
  "serde",
  "similar",
- "yaml-rust",
 ]
 
 [[package]]
@@ -2119,12 +2130,6 @@ checksum = "29c15563dc2726973df627357ce0c9ddddbea194836909d655df6a75d2cf296d"
 dependencies = [
  "wasm-bindgen",
 ]
-
-[[package]]
-name = "kmp"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "131bddab59a64213cc1e9f0c5be010d7eb485951358ab7e52017888dec482028"
 
 [[package]]
 name = "lazy_static"
@@ -2774,6 +2779,7 @@ dependencies = [
  "byteorder",
  "bytesize",
  "capstone",
+ "cargo-config2",
  "cargo_metadata",
  "clap",
  "colored",
@@ -2798,7 +2804,6 @@ dependencies = [
  "itertools 0.12.1",
  "itm",
  "jep106",
- "kmp",
  "libtest-mimic",
  "miniz_oxide",
  "num-traits",
@@ -4123,9 +4128,9 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 
 [[package]]
 name = "tokio"
-version = "1.36.0"
+version = "1.37.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "61285f6515fa018fb2d1e46eb21223fff441ee8db5d0f1435e8ab4f5cdb80931"
+checksum = "1adbebffeca75fcfd058afa480fb6c0b81e165a0323f9c9d39c9697e37c46787"
 dependencies = [
  "backtrace",
  "bytes",
@@ -4891,15 +4896,6 @@ dependencies = [
  "serde",
  "serde_json",
  "xshell",
-]
-
-[[package]]
-name = "yaml-rust"
-version = "0.4.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "56c1936c4cc7a1c9ab21a1ebb602eb942ba868cbd44a99cb7cdc5892335e1c85"
-dependencies = [
- "linked-hash-map",
 ]
 
 [[package]]
