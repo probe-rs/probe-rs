@@ -13,7 +13,7 @@ use colored::Colorize;
 use miette::Result;
 use miette::{Context, IntoDiagnostic};
 
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use linkme::distributed_slice;
 use probe_rs::Permissions;
 
@@ -49,46 +49,60 @@ impl From<probe_rs::Error> for TestFailure {
 
 pub type TestResult = Result<(), TestFailure>;
 
+#[derive(Debug, Subcommand)]
+enum Command {
+    Test {
+        #[arg(long, value_name = "FILE")]
+        markdown_summary: Option<PathBuf>,
+    },
+}
+
 #[derive(Debug, Parser)]
 struct Opt {
-    #[arg(long, required = true, value_name = "DIRECTORY", conflicts_with_all = ["chip", "probe", "single_dut"])]
+    #[command(subcommand)]
+    command: Command,
+
+    #[arg(long, global = true, value_name = "DIRECTORY", conflicts_with_all = ["chip", "probe", "single_dut"])]
     dut_definitions: Option<PathBuf>,
 
-    #[arg(long, required = true, value_name = "CHIP", conflicts_with_all = ["dut_definitions", "single_dut"])]
+    #[arg(long, global = true, value_name = "CHIP", conflicts_with_all = ["dut_definitions", "single_dut"])]
     chip: Option<String>,
 
-    #[arg(long, value_name = "PROBE")]
+    #[arg(long, global = true, value_name = "PROBE")]
     probe: Option<String>,
 
-    #[arg(long, required = true, value_name = "FILE", conflicts_with_all = ["chip", "dut_definitions"])]
+    #[arg(long, global = true, value_name = "FILE", conflicts_with_all = ["chip", "dut_definitions"])]
     single_dut: Option<PathBuf>,
-
-    #[arg(long, value_name = "FILE")]
-    markdown_summary: Option<PathBuf>,
 }
 
 fn main() -> Result<ExitCode> {
     pretty_env_logger::init();
 
-    let matches = Opt::parse();
+    let opt = Opt::parse();
 
-    let definitions = if let Some(dut_definitions) = matches.dut_definitions.as_deref() {
+    let definitions = if let Some(dut_definitions) = opt.dut_definitions.as_deref() {
         let definitions = DutDefinition::collect(dut_definitions)?;
         println!("Found {} target definitions.", definitions.len());
         definitions
-    } else if let Some(single_dut) = matches.single_dut.as_deref() {
+    } else if let Some(single_dut) = opt.single_dut.as_deref() {
         vec![DutDefinition::from_file(Path::new(single_dut))?]
     } else {
         // Chip needs to be specified
-        let chip = matches.chip.as_deref().unwrap(); // If dut-definitions is not present, chip must be present
+        let chip = opt.chip.as_deref().unwrap(); // If dut-definitions is not present, chip must be present
 
-        if let Some(probe) = &matches.probe {
+        if let Some(probe) = &opt.probe {
             vec![DutDefinition::new(chip, probe)?]
         } else {
             vec![DutDefinition::autodetect_probe(chip)?]
         }
     };
 
+    match opt.command {
+        Command::Test { markdown_summary } => run_test(&definitions, markdown_summary),
+    }
+}
+
+fn run_test(definitions: &[DutDefinition], markdown_summary: Option<PathBuf>) -> Result<ExitCode> {
     let mut test_tracker = TestTracker::new(definitions);
 
     let result = test_tracker.run(|tracker, definition| {
@@ -160,7 +174,7 @@ fn main() -> Result<ExitCode> {
         .print(&result, std::io::stdout())
         .into_diagnostic()?;
 
-    if let Some(summary_file) = &matches.markdown_summary {
+    if let Some(summary_file) = &markdown_summary {
         let mut file = std::fs::File::create(summary_file)
             .into_diagnostic()
             .wrap_err_with(|| {
@@ -263,15 +277,15 @@ impl ConsoleReportPrinter {
 }
 
 #[derive(Debug)]
-pub struct TestTracker {
-    dut_definitions: Vec<DutDefinition>,
+pub struct TestTracker<'dut> {
+    dut_definitions: &'dut [DutDefinition],
     current_dut: usize,
     num_tests: usize,
     current_test: usize,
 }
 
-impl TestTracker {
-    fn new(dut_definitions: Vec<DutDefinition>) -> Self {
+impl<'dut> TestTracker<'dut> {
+    fn new(dut_definitions: &'dut [DutDefinition]) -> Self {
         Self {
             dut_definitions,
             current_dut: 0,
@@ -318,7 +332,7 @@ impl TestTracker {
 
         let mut tests_ok = true;
 
-        for definition in &self.dut_definitions.clone() {
+        for definition in self.dut_definitions {
             print_dut_status!(self, blue, "Starting Test",);
 
             if let DefinitionSource::File(path) = &definition.source {
