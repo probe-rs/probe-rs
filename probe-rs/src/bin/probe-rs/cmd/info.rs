@@ -85,8 +85,7 @@ impl Cmd {
     }
 }
 
-const DEFAULT_DP_ADRESSES: &[DpAddress] = &[
-    DpAddress::Default,
+const ALTERNATE_DP_ADRESSES: [DpAddress; 2] = [
     DpAddress::Multidrop(0x01002927),
     DpAddress::Multidrop(0x11002927),
 ];
@@ -111,30 +110,46 @@ fn try_show_info(
         return (probe, Err(e.into()));
     }
 
-    let mut probe = probe;
-
     if probe.has_arm_interface() {
-        let provided_target_sel;
-
-        let dp_addresses = if let Some(target_sel) = target_sel {
-            provided_target_sel = DpAddress::Multidrop(target_sel);
-            std::slice::from_ref(&provided_target_sel)
+        let dp_addr = if let Some(target_sel) = target_sel {
+            DpAddress::Multidrop(target_sel)
         } else {
-            DEFAULT_DP_ADRESSES
+            DpAddress::Default
         };
 
-        let mut dp_version = None;
+        let print_err = |dp_addr, e| {
+            println!(
+                "Error showing ARM chip information for Debug Port {:?}: {:?}",
+                dp_addr, e
+            );
+            println!();
+        };
+        match try_show_arm_dp_info(probe, dp_addr) {
+            (probe_moved, Ok(_)) => probe = probe_moved,
+            (probe_moved, Err(e)) => {
+                probe = probe_moved;
+                print_err(dp_addr, e);
 
-        for address in dp_addresses {
-            if let Some(dp_version) = dp_version {
-                if dp_version < DebugPortVersion::DPv2 && matches!(address, DpAddress::Multidrop(_))
-                {
-                    println!("Debug port version 1 does not support SWD multidrop. Skipping address {:?}.", address);
-                    continue;
+                if dp_addr == DpAddress::Default {
+                    println!("Trying alternate multi-drop debug ports");
+
+                    for address in ALTERNATE_DP_ADRESSES {
+                        match try_show_arm_dp_info(probe, address) {
+                            (probe_moved, Ok(dp_version)) => {
+                                probe = probe_moved;
+                                if dp_version < DebugPortVersion::DPv2 {
+                                    println!("Debug port version {} does not support SWD multidrop. Stopping here.", dp_version);
+                                    break;
+                                }
+                            }
+                            (probe_moved, Err(e)) => {
+                                probe = probe_moved;
+                                print_err(address, e);
+                            }
+                        }
+                    }
                 }
             }
-
-            (probe, dp_version) = show_arm_dp_info(probe, *address);
         }
     } else {
         println!("No DAP interface was found on the connected probe. ARM-specific information cannot be printed.");
@@ -197,39 +212,21 @@ fn try_show_info(
     (probe, Ok(()))
 }
 
-fn show_arm_dp_info(probe: Probe, dp_address: DpAddress) -> (Probe, Option<DebugPortVersion>) {
+fn try_show_arm_dp_info(probe: Probe, dp_address: DpAddress) -> (Probe, Result<DebugPortVersion>) {
     tracing::debug!("Trying to show ARM chip information");
-    match probe.try_into_arm_interface() {
-        Ok(interface) => match interface.initialize(DefaultArmSequence::create(), dp_address) {
-            Ok(mut interface) => {
-                let dp_version = show_arm_info(&mut *interface, dp_address)
-                    .inspect_err(|e| {
-                        println!("Error showing ARM chip information: {e:?}");
-                        println!();
-                    })
-                    .ok();
-                (interface.close(), dp_version)
-            }
-            Err((interface, e)) => {
-                println!(
-                    "Error showing ARM chip information for Debug Port {:?}: {:?}",
-                    dp_address,
-                    anyhow!(e)
-                );
-                println!();
-
-                (interface.close(), None)
-            }
-        },
-        Err((interface_probe, e)) => {
-            println!(
-                "Error showing ARM chip information for Debug Port {:?}: {:?}",
-                dp_address,
-                anyhow!(e)
-            );
-            println!();
-            (interface_probe, None)
+    match probe
+        .try_into_arm_interface()
+        .map_err(|(iface, e)| (iface, anyhow!(e)))
+        .and_then(|interface| {
+            interface
+                .initialize(DefaultArmSequence::create(), dp_address)
+                .map_err(|(interface, e)| (interface.close(), anyhow!(e)))
+        }) {
+        Ok(mut interface) => {
+            let res = show_arm_info(&mut *interface, dp_address);
+            (interface.close(), res)
         }
+        Err((probe, e)) => (probe, Err(e)),
     }
 }
 
