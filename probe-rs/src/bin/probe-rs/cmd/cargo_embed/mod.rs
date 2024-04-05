@@ -456,6 +456,7 @@ fn run_rttui_app(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn attach_to_rtt_shared(
     session: &FairMutex<Session>,
     core_id: usize,
@@ -476,7 +477,7 @@ fn attach_to_rtt_shared(
         rtt_region.clone()
     };
 
-    let rtt = try_attach_to_rtt_shared(session, core_id, &memory_map, timeout, &scan_region)?;
+    let rtt = try_attach_to_rtt_shared(session, core_id, memory_map, timeout, &scan_region)?;
 
     let Some(rtt) = rtt else {
         return Ok(None);
