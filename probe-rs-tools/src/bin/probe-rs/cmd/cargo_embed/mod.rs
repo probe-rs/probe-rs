@@ -65,7 +65,7 @@ struct CliOptions {
 pub fn main(mut args: &[OsString], offset: UtcOffset) {
     // When called by Cargo, the first argument after the binary name will be `embed`. If that's the
     // case, remove one argument (`Opt::from_iter` will remove the binary name by itself).
-    if args.get(0).map(|t| t.as_ref()) == Some(std::ffi::OsStr::new("embed")) {
+    if args.first().map(|t| t.as_ref()) == Some(std::ffi::OsStr::new("embed")) {
         args = &args[1..];
     }
 

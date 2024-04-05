@@ -58,7 +58,7 @@ struct CliOptions {
 pub fn main(mut args: &[OsString]) {
     // When called by Cargo, the first argument after the binary name will be `flash`. If that's the
     // case, remove one argument (`Opt::from_iter` will remove the binary name by itself).
-    if args.get(0).map(|t| t.as_ref()) == Some(std::ffi::OsStr::new("flash")) {
+    if args.first().map(|t| t.as_ref()) == Some(std::ffi::OsStr::new("flash")) {
         args = &args[1..];
     }
 
