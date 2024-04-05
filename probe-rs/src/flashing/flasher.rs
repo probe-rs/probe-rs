@@ -710,6 +710,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
         self.core.run()?;
 
         if let Some(rtt_address) = self.flash_algorithm.rtt_control_block {
+            // FIXME: replace this with try_attach_to_rtt once it's been moved to the library
             let now = Instant::now();
             let mut last_error = None;
             while self.rtt.is_none() {
