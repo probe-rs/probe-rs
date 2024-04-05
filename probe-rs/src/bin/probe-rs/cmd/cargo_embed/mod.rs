@@ -140,7 +140,9 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
     }
 
     if let Some(ref default_bin) = config.general.default_bin {
-        opt.cargo_options.bin = Some(default_bin.clone());
+        // if the default bin is set in the config *and* no bin argument is given
+        //, we set it as the bin in the cargo options.
+        let _ = opt.cargo_options.bin.get_or_insert(default_bin.clone());
     }
 
     let cargo_options = opt.cargo_options.to_cargo_options();
