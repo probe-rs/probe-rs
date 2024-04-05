@@ -1,5 +1,6 @@
 mod diagnostics;
 
+use clap::Parser;
 use colored::*;
 use diagnostics::render_diagnostics;
 use probe_rs::probe::list::Lister;
@@ -12,14 +13,17 @@ use crate::util::common_options::{
 };
 use crate::util::flash;
 use crate::util::logging::{setup_logging, LevelFilter};
-use clap::{CommandFactory, FromArgMatches};
-
 use crate::util::{cargo::build_artifact, logging};
 
 /// Common options when flashing a target device.
 #[derive(Debug, clap::Parser)]
-#[command(after_long_help = CargoOptions::help_message("cargo flash"))]
-#[command(bin_name = "cargo flash", display_name = "cargo-flash")]
+#[clap(
+    name = "cargo flash",
+    bin_name = "cargo flash",
+    version = env!("PROBE_RS_VERSION"),
+    long_version = env!("PROBE_RS_LONG_VERSION"),
+    after_long_help = CargoOptions::help_message("cargo flash")
+)]
 struct CliOptions {
     /// Use this flag to reset and halt (instead of just a reset) the attached core after flashing the target.
     #[arg(long)]
@@ -77,14 +81,7 @@ fn main_try(mut args: Vec<OsString>, lister: &Lister) -> Result<(), OperationErr
     }
 
     // Parse the commandline options.
-    let opt = {
-        let matches = CliOptions::command()
-            .version(crate::meta::CARGO_VERSION)
-            .long_version(crate::meta::LONG_VERSION)
-            .get_matches_from(&args);
-
-        CliOptions::from_arg_matches(&matches)?
-    };
+    let opt = CliOptions::parse_from(&args);
 
     // Initialize the logger with the loglevel given on the commandline.
     let _log_guard = setup_logging(None, opt.log);

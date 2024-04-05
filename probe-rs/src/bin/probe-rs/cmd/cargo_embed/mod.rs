@@ -3,7 +3,7 @@ mod error;
 mod rttui;
 
 use anyhow::{anyhow, Context, Result};
-use clap::{CommandFactory, FromArgMatches};
+use clap::Parser;
 use colored::*;
 use parking_lot::FairMutex;
 use probe_rs::gdb_server::GdbInstanceConfiguration;
@@ -35,8 +35,13 @@ use crate::util::{cargo::build_artifact, common_options::CargoOptions, logging, 
 use crate::FormatOptions;
 
 #[derive(Debug, clap::Parser)]
-#[command(after_long_help = CargoOptions::help_message("cargo embed"))]
-#[command(bin_name = "cargo embed", display_name = "cargo-embed")]
+#[clap(
+    name = "cargo embed",
+    bin_name = "cargo embed",
+    version = env!("PROBE_RS_VERSION"),
+    long_version = env!("PROBE_RS_LONG_VERSION"),
+    after_long_help = CargoOptions::help_message("cargo embed")
+)]
 struct CliOptions {
     /// Name of the configuration profile to use.
     #[arg()]
@@ -101,14 +106,7 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
     }
 
     // Parse the commandline options.
-    let opt = {
-        let matches = CliOptions::command()
-            .version(crate::meta::CARGO_VERSION)
-            .long_version(crate::meta::LONG_VERSION)
-            .get_matches_from(&args);
-
-        CliOptions::from_arg_matches(&matches)?
-    };
+    let opt = CliOptions::parse_from(&args);
 
     // Change the work dir if the user asked to do so.
     if let Some(ref work_dir) = opt.work_dir {
