@@ -247,7 +247,7 @@ impl Channel {
         self.size as usize
     }
 
-    fn read_pointers(&self, core: &mut Core, dir: &'static str) -> Result<(u64, u64), Error> {
+    fn read_pointers(&self, core: &mut Core, channel_kind: &str) -> Result<(u64, u64), Error> {
         self.validate_core_id(core)?;
 
         let (write, read): (u64, u64) = self.info.read_buffer_offsets(core, self.ptr)?;

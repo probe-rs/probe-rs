@@ -486,7 +486,7 @@ fn attach_to_rtt(
     // fall back to the caller-provided scan regions.
     let elf = fs::read(elf_file)?;
     let scan_region = if let Some(address) = RttActiveTarget::get_rtt_symbol_from_bytes(&elf) {
-        ScanRegion::Exact(address as u32)
+        ScanRegion::Exact(address)
     } else {
         rtt_region.clone()
     };
