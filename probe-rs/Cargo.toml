@@ -184,6 +184,8 @@ ratatui = { version = "0.26.1", default-features = false, features = [
     "crossterm",
 ], optional = true }
 ansi-parser = "0.8.0"
+zerocopy = "0.7.32"
+zerocopy-derive = "0.7.32"
 
 [build-dependencies]
 bincode = "1"
