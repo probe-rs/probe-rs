@@ -528,7 +528,7 @@ mod test {
     fn test_how_control_block_list_looks() {
         fn rtt(ptr: u32) -> Rtt {
             Rtt {
-                ptr,
+                ptr: ptr.into(),
                 up_channels: Channels(std::collections::BTreeMap::new()),
                 down_channels: Channels(std::collections::BTreeMap::new()),
             }
