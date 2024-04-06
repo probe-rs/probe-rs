@@ -266,12 +266,6 @@ fn main() -> Result<()> {
     // Setup the probe lister, list all probes normally
     let lister = Lister::new();
 
-    // the DAP server has special logging requirements. Run it before initializing logging,
-    // so it can do its own special init.
-    if let Subcommand::DapServer(cmd) = matches.subcommand {
-        return cmd::dap_server::run(cmd, &lister, utc_offset);
-    }
-
     let log_path = if let Some(location) = matches.log_file {
         Some(location)
     } else if matches.log_to_folder {
@@ -286,6 +280,12 @@ fn main() -> Result<()> {
     } else {
         None
     };
+
+    // the DAP server has special logging requirements. Run it before initializing logging,
+    // so it can do its own special init.
+    if let Subcommand::DapServer(cmd) = matches.subcommand {
+        return cmd::dap_server::run(cmd, &lister, utc_offset, log_path.as_deref());
+    }
 
     let _logger_guard = setup_logging(log_path.as_deref(), None);
 

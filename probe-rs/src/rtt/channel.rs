@@ -255,11 +255,8 @@ impl Channel {
         let validate = |which, value| {
             if value >= self.size {
                 Err(Error::ControlBlockCorrupted(format!(
-                    "{} pointer is {} while buffer size is {} for {:?} channel {} ({})",
-                    which,
-                    value,
+                    "{which} pointer is {value} while buffer size is {} for {channel_kind}channel {} ({})",
                     self.size,
-                    dir,
                     self.number,
                     self.name().unwrap_or("no name"),
                 )))
@@ -329,7 +326,7 @@ impl UpChannel {
 
     fn read_core(&self, core: &mut Core, mut buf: &mut [u8]) -> Result<(u64, usize), Error> {
         self.0.validate_core_id(core)?;
-        let (write, mut read) = self.0.read_pointers(core, "up")?;
+        let (write, mut read) = self.0.read_pointers(core, "up ")?;
 
         let mut total = 0;
 
@@ -434,7 +431,7 @@ impl DownChannel {
     /// may not write all of `buf`.
     pub fn write(&self, core: &mut Core, mut buf: &[u8]) -> Result<usize, Error> {
         self.0.validate_core_id(core)?;
-        let (mut write, read) = self.0.read_pointers(core, "down")?;
+        let (mut write, read) = self.0.read_pointers(core, "down ")?;
 
         if self.writable_contiguous(write, read) == 0 {
             // Buffer is full - do nothing.

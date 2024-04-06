@@ -8,12 +8,13 @@ use probe_rs_target::MemoryRegion;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::File;
+use std::time::{Duration, Instant};
 use std::{
     fmt,
     fmt::Write,
-    fs,
     io::{Read, Seek},
     path::Path,
+    thread,
 };
 use time::{macros::format_description, OffsetDateTime, UtcOffset};
 
@@ -51,25 +52,11 @@ pub fn get_target_core_id(session: &mut Session, elf_file: impl AsRef<Path>) -> 
 /// Try to find the RTT control block in the ELF file and attach to it.
 ///
 /// This function can return `Ok(None)` to indicate that RTT is not available on the target.
-pub fn attach_to_rtt(
+fn attach_to_rtt(
     core: &mut Core,
     memory_map: &[MemoryRegion],
     rtt_region: &ScanRegion,
-    elf_file: &Path,
 ) -> Result<Option<Rtt>> {
-    // Try to find the RTT control block symbol in the ELF file.
-
-    // If we find it, we can use the exact address to attach to the RTT control block. Otherwise, we
-    // fall back to the caller-provided scan regions.
-    let exact_rtt_region;
-    let mut rtt_region = rtt_region;
-
-    let mut file = File::open(elf_file)?;
-    if let Some(address) = RttActiveTarget::get_rtt_symbol(&mut file) {
-        exact_rtt_region = ScanRegion::Exact(address);
-        rtt_region = &exact_rtt_region;
-    }
-
     tracing::debug!("Initializing RTT");
 
     if let ScanRegion::Ranges(rngs) = &rtt_region {
@@ -138,6 +125,10 @@ pub struct RttChannelConfig {
     pub channel_name: Option<String>,
     #[serde(default)]
     pub data_format: DataFormat,
+
+    /// RTT channel operating mode. Defaults to the target's configuration.
+    #[serde(default)]
+    pub mode: Option<ChannelMode>,
 
     #[serde(default)]
     /// Control the inclusion of timestamps for DataFormat::String.
@@ -228,12 +219,13 @@ pub struct RttActiveUpChannel {
 
 impl RttActiveUpChannel {
     pub fn new(
+        core: &mut Core,
         up_channel: UpChannel,
         rtt_config: &RttConfig,
         channel_config: &RttChannelConfig,
         timestamp_offset: UtcOffset,
         defmt_state: Option<&DefmtState>,
-    ) -> Self {
+    ) -> Result<Self> {
         let is_defmt_channel = up_channel.name() == Some("defmt");
 
         let data_format = match channel_config.data_format {
@@ -290,12 +282,23 @@ impl RttActiveUpChannel {
                 )
             });
 
-        Self {
+        if let Some(mode) = channel_config.mode.or(
+            // Try not to corrupt the byte stream if using defmt
+            if matches!(data_format, ChannelDataConfig::Defmt { .. }) {
+                Some(ChannelMode::BlockIfFull)
+            } else {
+                None
+            },
+        ) {
+            up_channel.set_mode(core, mode)?;
+        }
+
+        Ok(Self {
             rtt_buffer: RttBuffer::new(up_channel.buffer_size()),
             up_channel,
             channel_name,
             data_format,
-        }
+        })
     }
 
     pub fn number(&self) -> usize {
@@ -493,17 +496,10 @@ pub struct DefmtState {
     pub locs: Option<defmt_decoder::Locations>,
 }
 impl DefmtState {
-    pub fn try_from_elf(elf: &Path) -> Result<Option<Self>> {
-        let elf = fs::read(elf).map_err(|err| {
-            anyhow!(
-                "Error reading program binary while initalizing RTT: {}",
-                err
-            )
-        })?;
-
-        if let Some(table) = defmt_decoder::Table::parse(&elf)? {
+    pub fn try_from_bytes(buffer: &[u8]) -> Result<Option<Self>> {
+        if let Some(table) = defmt_decoder::Table::parse(buffer)? {
             let locs = {
-                let locs = table.get_locations(&elf)?;
+                let locs = table.get_locations(buffer)?;
 
                 if !table.is_empty() && locs.is_empty() {
                     tracing::warn!("Insufficient DWARF info; compile your program with `debug = 2` to enable location info.");
@@ -533,13 +529,12 @@ impl fmt::Debug for DefmtState {
 impl RttActiveTarget {
     /// RttActiveTarget collects references to all the `RttActiveChannel`s, for latter polling/pushing of data.
     pub fn new(
+        core: &mut Core,
         rtt: probe_rs::rtt::Rtt,
-        elf_file: &Path,
+        defmt_state: Option<DefmtState>,
         rtt_config: &RttConfig,
         timestamp_offset: UtcOffset,
     ) -> Result<Self> {
-        let defmt_state = DefmtState::try_from_elf(elf_file)?;
-
         let mut active_up_channels = HashMap::new();
         let mut active_down_channels = HashMap::new();
 
@@ -552,12 +547,13 @@ impl RttActiveTarget {
             active_up_channels.insert(
                 channel.number(),
                 RttActiveUpChannel::new(
+                    core,
                     channel,
                     rtt_config,
                     &channel_config,
                     timestamp_offset,
                     defmt_state.as_ref(),
-                ),
+                )?,
             );
         }
 
@@ -589,18 +585,26 @@ impl RttActiveTarget {
     pub fn get_rtt_symbol<T: Read + Seek>(file: &mut T) -> Option<u64> {
         let mut buffer = Vec::new();
         if file.read_to_end(&mut buffer).is_ok() {
-            if let Ok(binary) = goblin::elf::Elf::parse(buffer.as_slice()) {
-                for sym in &binary.syms {
-                    if binary.strtab.get_at(sym.st_name) == Some("_SEGGER_RTT") {
-                        return Some(sym.st_value);
-                    }
-                }
+            if let Some(rtt) = Self::get_rtt_symbol_from_bytes(buffer.as_slice()) {
+                return Some(rtt);
             }
         }
 
         tracing::warn!(
             "No RTT header info was present in the ELF file. Does your firmware run RTT?"
         );
+        None
+    }
+
+    pub fn get_rtt_symbol_from_bytes(buffer: &[u8]) -> Option<u64> {
+        if let Ok(binary) = goblin::elf::Elf::parse(buffer) {
+            for sym in &binary.syms {
+                if binary.strtab.get_at(sym.st_name) == Some("_SEGGER_RTT") {
+                    return Some(sym.st_value);
+                }
+            }
+        }
+
         None
     }
 
@@ -632,4 +636,73 @@ impl fmt::Debug for RttBuffer {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.0.fmt(f)
     }
+}
+
+fn try_attach_to_rtt_inner(
+    mut attach: impl FnMut(&[MemoryRegion], &ScanRegion) -> Result<Option<Rtt>>,
+    timeout: Duration,
+    memory_map: &[MemoryRegion],
+    rtt_region: &ScanRegion,
+) -> Result<Option<Rtt>> {
+    let t = Instant::now();
+    let mut rtt_init_attempt = 1;
+    let mut last_error = None;
+    while t.elapsed() < timeout {
+        tracing::debug!("Initializing RTT (attempt {})...", rtt_init_attempt);
+        rtt_init_attempt += 1;
+
+        match attach(memory_map, rtt_region) {
+            Ok(rtt) => return Ok(rtt),
+            Err(e) => last_error = Some(e),
+        }
+
+        tracing::debug!("Failed to initialize RTT. Retrying until timeout.");
+        thread::sleep(Duration::from_millis(10));
+    }
+
+    // Timeout
+    if let Some(err) = last_error {
+        Err(err)
+    } else {
+        Err(anyhow!("Error setting up RTT"))
+    }
+}
+
+// TODO: these should be part of the library, but that requires refactoring the errors to not use
+// anyhow. Also, we probably should only have one variant of this function and pass the closure
+// in as an argument.
+
+/// Try to attach to RTT, with the given timeout.
+pub fn try_attach_to_rtt(
+    core: &mut Core<'_>,
+    timeout: Duration,
+    memory_map: &[MemoryRegion],
+    rtt_region: &ScanRegion,
+) -> Result<Option<Rtt>> {
+    try_attach_to_rtt_inner(
+        |memory_map, rtt_region| attach_to_rtt(core, memory_map, rtt_region),
+        timeout,
+        memory_map,
+        rtt_region,
+    )
+}
+
+/// Try to attach to RTT, with the given timeout.
+pub fn try_attach_to_rtt_shared(
+    session: &parking_lot::FairMutex<Session>,
+    core_id: usize,
+    memory_map: &[MemoryRegion],
+    timeout: Duration,
+    rtt_region: &ScanRegion,
+) -> Result<Option<Rtt>> {
+    try_attach_to_rtt_inner(
+        |memory_map, rtt_region| {
+            let mut session_handle = session.lock();
+            let mut core = session_handle.core(core_id)?;
+            attach_to_rtt(&mut core, memory_map, rtt_region)
+        },
+        timeout,
+        memory_map,
+        rtt_region,
+    )
 }
