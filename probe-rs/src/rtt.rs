@@ -204,21 +204,14 @@ impl Rtt {
         // Memory contents read in advance, starting from ptr
         mem_in: Option<&[u8]>,
     ) -> Result<Option<Rtt>, Error> {
-        let is_64bit = match core.instruction_set()? {
-            probe_rs_target::InstructionSet::Thumb2
-            | probe_rs_target::InstructionSet::A32
-            | probe_rs_target::InstructionSet::RV32
-            | probe_rs_target::InstructionSet::RV32C
-            | probe_rs_target::InstructionSet::Xtensa => false,
-            probe_rs_target::InstructionSet::A64 => true,
-        };
+        let is_64_bit = core.is_64_bit();
 
         let mut mem = match mem_in {
             Some(mem) => Cow::Borrowed(mem),
             None => {
                 // If memory wasn't passed in, read the minimum header size
                 let mut mem: Vec<u8> = Vec::new();
-                let new_length = if is_64bit {
+                let new_length = if is_64_bit {
                     std::mem::size_of::<RttControlBlockHeaderInner<u64>>()
                 } else {
                     std::mem::size_of::<RttControlBlockHeaderInner<u32>>()
@@ -229,7 +222,7 @@ impl Rtt {
             }
         };
 
-        let rtt_header = if is_64bit {
+        let rtt_header = if is_64_bit {
             RttControlBlockHeader::try_from_header64(mem.as_bytes())?
         } else {
             RttControlBlockHeader::try_from_header32(mem.as_bytes())?
@@ -387,14 +380,7 @@ impl Rtt {
         memory_map: &[MemoryRegion],
         region: &ScanRegion,
     ) -> Result<Rtt, Error> {
-        let is_64bit = match core.instruction_set()? {
-            probe_rs_target::InstructionSet::Thumb2
-            | probe_rs_target::InstructionSet::A32
-            | probe_rs_target::InstructionSet::RV32
-            | probe_rs_target::InstructionSet::RV32C
-            | probe_rs_target::InstructionSet::Xtensa => false,
-            probe_rs_target::InstructionSet::A64 => true,
-        };
+        let is_64_bit = core.is_64_bit();
         let ranges: Vec<Range<u64>> = match region {
             ScanRegion::Exact(addr) => {
                 tracing::debug!("Scanning at exact address: 0x{:X}", addr);
@@ -426,7 +412,7 @@ impl Rtt {
             .into_iter()
             .filter_map(|range| {
                 let range_len = match range.end.checked_sub(range.start) {
-                    Some(v) if v < (if is_64bit {std::mem::size_of::<RttControlBlockHeaderInner<u64>>()} else {std::mem::size_of::<RttControlBlockHeaderInner<u32>>()} as u64) => return None,
+                    Some(v) if v < (if is_64_bit {std::mem::size_of::<RttControlBlockHeaderInner<u64>>()} else {std::mem::size_of::<RttControlBlockHeaderInner<u32>>()} as u64) => return None,
                     Some(v) => v,
                     None => return None,
                 };
