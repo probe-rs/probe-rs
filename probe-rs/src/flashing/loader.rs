@@ -56,8 +56,7 @@ impl FlashLoader {
                 Some(MemoryRegion::Ram(region)) => address = region.range.end,
                 _ => {
                     return Err(FlashError::NoSuitableNvm {
-                        start: range.start,
-                        end: range.end,
+                        range,
                         description_source: self.source.clone(),
                     })
                 }
@@ -386,17 +385,12 @@ impl FlashLoader {
             .filter_map(MemoryRegion::as_nvm_region)
         {
             if region.is_alias {
-                tracing::debug!(
-                    "Skipping alias memory region {:#010X}..{:#010X}",
-                    region.range.start,
-                    region.range.end
-                );
+                tracing::debug!("Skipping alias memory region {:#010X?}", region.range);
                 continue;
             }
             tracing::debug!(
-                "    region: {:#010X}..{:#010X} ({} bytes)",
-                region.range.start,
-                region.range.end,
+                "    region: {:#010X?} ({} bytes)",
+                region.range,
                 region.range.end - region.range.start
             );
 
@@ -474,9 +468,8 @@ impl FlashLoader {
 
             for region in regions {
                 tracing::debug!(
-                    "    programming region: {:#010X}..{:#010X} ({} bytes)",
-                    region.range.start,
-                    region.range.end,
+                    "    programming region: {:#010X?} ({} bytes)",
+                    region.range,
                     region.range.end - region.range.start
                 );
 
@@ -500,9 +493,8 @@ impl FlashLoader {
             .filter_map(MemoryRegion::as_ram_region)
         {
             tracing::debug!(
-                "    region: {:#010X}..{:#010X} ({} bytes)",
-                region.range.start,
-                region.range.end,
+                "    region: {:#010X?} ({} bytes)",
+                region.range,
                 region.range.end - region.range.start
             );
 
