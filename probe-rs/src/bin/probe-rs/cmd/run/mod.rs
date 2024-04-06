@@ -3,7 +3,7 @@ use normal_run_mode::*;
 mod test_run_mode;
 use test_run_mode::*;
 
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::ops::Range;
 use std::path::Path;
@@ -25,10 +25,10 @@ use time::UtcOffset;
 
 use crate::util::common_options::{BinaryDownloadOptions, ProbeOptions};
 use crate::util::flash::{build_loader, run_flash_download};
-use crate::util::rtt::{self, ChannelDataCallbacks, RttActiveTarget, RttConfig};
+use crate::util::rtt::{
+    self, try_attach_to_rtt, ChannelDataCallbacks, DefmtState, RttActiveTarget, RttConfig,
+};
 use crate::FormatOptions;
-
-const RTT_RETRIES: usize = 10;
 
 #[derive(clap::Parser)]
 pub struct Cmd {
@@ -104,6 +104,7 @@ impl Cmd {
                 &mut session,
                 &self.shared_options.path,
                 self.shared_options.format_options,
+                None,
             )?;
             run_flash_download(
                 &mut session,
@@ -271,12 +272,14 @@ impl RunLoop {
 
         let mut rtta = attach_to_rtt(
             core,
+            Duration::from_secs(1),
             self.memory_map.as_slice(),
-            self.rtt_scan_regions.as_slice(),
+            &ScanRegion::Ranges(self.rtt_scan_regions.clone()),
             Path::new(&self.path),
             &rtt_config,
             self.timestamp_offset,
-        );
+        )
+        .context("Failed to attach to RTT")?;
 
         let exit = Arc::new(AtomicBool::new(false));
         let sig_id = signal_hook::flag::register(signal::SIGINT, exit.clone())?;
@@ -469,31 +472,31 @@ fn poll_rtt<S: Write + ?Sized>(
     Ok(had_data)
 }
 
-/// Attach to the RTT buffers.
 fn attach_to_rtt(
     core: &mut Core<'_>,
+    timeout: Duration,
     memory_map: &[MemoryRegion],
-    scan_regions: &[Range<u64>],
-    path: &Path,
+    rtt_region: &ScanRegion,
+    elf_file: &Path,
     rtt_config: &RttConfig,
     timestamp_offset: UtcOffset,
-) -> Option<rtt::RttActiveTarget> {
-    let scan_regions = ScanRegion::Ranges(scan_regions.to_vec());
-    for _ in 0..RTT_RETRIES {
-        match rtt::attach_to_rtt(core, memory_map, &scan_regions, path) {
-            Ok(Some(target_rtt)) => {
-                let app = RttActiveTarget::new(target_rtt, path, rtt_config, timestamp_offset);
+) -> Result<Option<RttActiveTarget>> {
+    // Try to find the RTT control block symbol in the ELF file.
+    // If we find it, we can use the exact address to attach to the RTT control block. Otherwise, we
+    // fall back to the caller-provided scan regions.
+    let elf = fs::read(elf_file)?;
+    let scan_region = if let Some(address) = RttActiveTarget::get_rtt_symbol_from_bytes(&elf) {
+        ScanRegion::Exact(address)
+    } else {
+        rtt_region.clone()
+    };
 
-                match app {
-                    Ok(app) => return Some(app),
-                    Err(error) => tracing::debug!("{:?} RTT attach error", error),
-                }
-            }
-            Ok(None) => return None,
-            Err(error) => tracing::debug!("{:?} RTT attach error", error),
-        }
-        std::thread::sleep(std::time::Duration::from_millis(100));
-    }
-    tracing::error!("Failed to attach to RTT, continuing...");
-    None
+    let rtt = try_attach_to_rtt(core, timeout, memory_map, &scan_region)?;
+
+    let Some(rtt) = rtt else {
+        return Ok(None);
+    };
+
+    let defmt_state = DefmtState::try_from_bytes(&elf)?;
+    RttActiveTarget::new(core, rtt, defmt_state, rtt_config, timestamp_offset).map(Some)
 }

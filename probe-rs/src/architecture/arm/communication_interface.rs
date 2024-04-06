@@ -4,8 +4,8 @@ use super::{
         BASE, BASE2, CFG, CSW, IDR,
     },
     dp::{
-        Abort, Ctrl, DebugPortError, DebugPortVersion, DpAccess, Select, BASEPTR0, BASEPTR1, DPIDR,
-        DPIDR1,
+        Abort, Ctrl, DebugPortError, DebugPortId, DebugPortVersion, DpAccess, Select, BASEPTR0,
+        BASEPTR1, DPIDR, DPIDR1,
     },
     memory::{
         adi_v5_memory_interface::{ADIMemoryInterface, ArmProbe},
@@ -548,8 +548,8 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
                 self.write_dp_register(dp, ctrl_reg)?;
             }
 
-            let idr = self.read_dp_register::<DPIDR>(dp)?;
-            if idr.version() == 3 {
+            let idr: DebugPortId = self.read_dp_register::<DPIDR>(dp)?.into();
+            if idr.version == DebugPortVersion::DPv3 {
                 let idr1: DPIDR1 = self.read_dp_register(dp)?;
                 let base_ptr0: BASEPTR0 = self.read_dp_register(dp)?;
                 let base_ptr1: BASEPTR1 = self.read_dp_register(dp)?;

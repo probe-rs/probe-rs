@@ -1,13 +1,14 @@
 use std::fmt::Write;
 
 use anyhow::{anyhow, Result};
+use jep106::JEP106Code;
 use probe_rs::{
     architecture::{
         arm::{
             ap::{GenericAp, MemoryAp},
             armv6m::Demcr,
             component::Scs,
-            dp::{DLPIDR, DPIDR, TARGETID},
+            dp::{DebugPortId, DebugPortVersion, MinDpSupport, DLPIDR, DPIDR, TARGETID},
             memory::{Component, CoresightComponent, PeripheralType},
             sequences::DefaultArmSequence,
             ApAddress, ApInformation, ArmProbeInterface, DpAddress, MemoryApInformation, Register,
@@ -21,6 +22,8 @@ use probe_rs::{
 use termtree::Tree;
 
 use crate::util::common_options::ProbeOptions;
+
+const JEP_ARM: JEP106Code = JEP106Code::new(4, 0x3b);
 
 #[derive(clap::Parser)]
 pub struct Cmd {
@@ -124,7 +127,8 @@ fn try_show_info(
 
         for address in dp_addresses {
             if let Some(dp_version) = dp_version {
-                if dp_version < 2 && matches!(address, DpAddress::Multidrop(_)) {
+                if dp_version < DebugPortVersion::DPv2 && matches!(address, DpAddress::Multidrop(_))
+                {
                     println!("Debug port version 1 does not support SWD multidrop. Skipping address {:?}.", address);
                     continue;
                 }
@@ -193,7 +197,7 @@ fn try_show_info(
     (probe, Ok(()))
 }
 
-fn show_arm_dp_info(probe: Probe, dp_address: DpAddress) -> (Probe, Option<u8>) {
+fn show_arm_dp_info(probe: Probe, dp_address: DpAddress) -> (Probe, Option<DebugPortVersion>) {
     tracing::debug!("Trying to show ARM chip information");
     match probe.try_into_arm_interface() {
         Ok(interface) => match interface.initialize(DefaultArmSequence::create(), dp_address) {
@@ -232,23 +236,19 @@ fn show_arm_dp_info(probe: Probe, dp_address: DpAddress) -> (Probe, Option<u8>) 
 /// Try to show information about the ARM chip, connected to a DP at the given address.
 ///
 /// Returns the version of the DP.
-fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result<u8> {
+fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result<DebugPortVersion> {
     let dp_info = interface.read_raw_dp_register(dp, DPIDR::ADDRESS)?;
-    let dp_info = DPIDR(dp_info);
+    let dp_info = DebugPortId::from(DPIDR(dp_info));
 
     let mut dp_node = String::new();
 
-    write!(dp_node, "Debug Port: Version {}", dp_info.version())?;
+    write!(dp_node, "Debug Port: {}", dp_info.version)?;
 
-    if dp_info.min() {
+    if dp_info.min_dp_support == MinDpSupport::Implemented {
         write!(dp_node, ", MINDP")?;
     }
 
-    let jep_code = jep106::JEP106Code::new(dp_info.jep_cc(), dp_info.jep_id());
-
-    let dp_version = dp_info.version();
-
-    if dp_version == 2 {
+    if dp_info.version == DebugPortVersion::DPv2 {
         let target_id = interface.read_raw_dp_register(dp, TARGETID::ADDRESS)?;
 
         let target_id = TARGETID(target_id);
@@ -281,7 +281,7 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result
         write!(
             dp_node,
             ", DP Designer: {}",
-            jep_code.get().unwrap_or("<unknown>")
+            dp_info.designer.get().unwrap_or("<unknown>")
         )?;
     }
 
@@ -320,14 +320,9 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result
             }
 
             ApInformation::Other { address, idr } => {
-                let designer = idr.DESIGNER;
+                let jep = idr.DESIGNER;
 
-                let cc = (designer >> 7) as u8;
-                let id = (designer & 0x7f) as u8;
-
-                let jep = jep106::JEP106Code::new(cc, id);
-
-                let ap_type = if designer == 0x43b {
+                let ap_type = if idr.DESIGNER == JEP_ARM {
                     format!("{:?}", idr.TYPE)
                 } else {
                     format!("{:#x}", idr.TYPE as u8)
@@ -354,7 +349,7 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result
     }
     println!();
 
-    Ok(dp_version)
+    Ok(dp_info.version)
 }
 
 fn handle_memory_ap(
@@ -497,4 +492,12 @@ fn print_idcode_info(architecture: &str, idcode: u32) {
     println!("    Version:      {version}");
     println!("    Part:         {part_number}");
     println!("    Manufacturer: {manufacturer_id} ({jep_id})");
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn jep_arm_is_arm() {
+        assert_eq!(super::JEP_ARM.get(), Some("ARM Ltd"))
+    }
 }

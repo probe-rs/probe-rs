@@ -1,7 +1,7 @@
-use std::{fs::File, ops::Range, path::Path};
+use std::{ops::Range, path::Path};
 
 use super::session_data::{self, ActiveBreakpoint, BreakpointType, SourceLocationScope};
-use crate::util::rtt::{self, ChannelMode, DataFormat, RttActiveTarget};
+use crate::util::rtt::{self, ChannelMode, DataFormat, DefmtState, RttActiveTarget};
 use crate::{
     cmd::dap_server::{
         debug_adapter::{
@@ -437,10 +437,10 @@ fn try_attach_rtt(
     rtt_config: &RttConfig,
     timestamp_offset: UtcOffset,
 ) -> Result<RttActiveTarget, Error> {
-    let mut open_file = File::open(elf_file)
+    let elf = std::fs::read(elf_file)
         .map_err(|error| anyhow!("Error attempting to attach to RTT: {}", error))?;
 
-    let header_address = RttActiveTarget::get_rtt_symbol(&mut open_file)
+    let header_address = RttActiveTarget::get_rtt_symbol_from_bytes(&elf)
         .ok_or_else(|| anyhow!("No RTT control block found in ELF file"))?;
 
     let scan_region = ScanRegion::Exact(header_address);
@@ -451,7 +451,8 @@ fn try_attach_rtt(
         .map_err(|error| anyhow!("Error attempting to attach to RTT: {}", error))?;
 
     tracing::info!("RTT initialized.");
-    let target = RttActiveTarget::new(rtt, elf_file, rtt_config, timestamp_offset)?;
+    let defmt_state = DefmtState::try_from_bytes(&elf)?;
+    let target = RttActiveTarget::new(core, rtt, defmt_state, rtt_config, timestamp_offset)?;
 
     Ok(target)
 }

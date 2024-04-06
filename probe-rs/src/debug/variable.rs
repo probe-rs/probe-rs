@@ -717,7 +717,6 @@ impl Variable {
                             if remaining > 1 {
                                 break;
                             }
-                            break;
                         }
                         let Some(child) = children.next() else {
                             break;

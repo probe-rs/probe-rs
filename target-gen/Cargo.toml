@@ -15,9 +15,7 @@ license.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-probe-rs = { path = "../probe-rs", version = "0.23.0", default-features = false, features = [
-    "rtt",
-] }
+probe-rs = { path = "../probe-rs", version = "0.23.0", default-features = false }
 probe-rs-target = { path = "../probe-rs-target", version = "0.23.0", default-features = false }
 cmsis-pack = { version = "0.6.3" }
 goblin = { version = "0.8.0", default-features = false, features = [
@@ -28,15 +26,15 @@ goblin = { version = "0.8.0", default-features = false, features = [
     "std",
 ] }
 scroll = "0.12.0"
-serde_yaml = "^0.9.33"
+serde_yaml = "^0.9.34"
 log = "0.4.21"
 zip = "0.6.6"
 clap = { version = "4.5", features = ["derive"] }
 colored = "2"
 anyhow = "1.0.81"
-reqwest = { version = "0.12.0", features = ["json", "rustls-tls"], default-features = false }
+reqwest = { version = "0.12.3", features = ["json", "rustls-tls"], default-features = false }
 futures = "0.3.30"
-tokio = { version = "1.36.0", features = ["macros", "rt", "rt-multi-thread"] }
+tokio = { version = "1.37.0", features = ["macros", "rt", "rt-multi-thread"] }
 tracing-subscriber = { version = "0.3.18", features = [
     "env-filter",
     "tracing-log",

@@ -246,12 +246,12 @@ pub struct ComponentId {
 }
 
 impl ComponentId {
-    /// Retreive the address of the component.
+    /// Retrieve the address of the component.
     pub fn component_address(&self) -> u64 {
         self.component_address
     }
 
-    /// Retreive the peripheral ID of the component.
+    /// Retrieve the peripheral ID of the component.
     pub fn peripheral_id(&self) -> &PeripheralID {
         &self.peripheral_id
     }
