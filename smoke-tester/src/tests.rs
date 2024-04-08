@@ -1,4 +1,4 @@
-use std::{path::Path, time::Instant};
+use std::time::Instant;
 
 use colored::Colorize;
 use linkme::distributed_slice;
@@ -11,7 +11,7 @@ pub mod stepping;
 
 use miette::{IntoDiagnostic, Result, WrapErr};
 
-use crate::{println_test_status, TestFailure, TestResult, TestTracker, CORE_TESTS};
+use crate::{println_test_status, TestFailure, TestResult, TestTracker, CORE_TESTS, SESSION_TESTS};
 
 #[distributed_slice(CORE_TESTS)]
 pub fn test_register_read(tracker: &TestTracker, core: &mut Core) -> TestResult {
@@ -184,11 +184,18 @@ fn test_hw_breakpoints(tracker: &TestTracker, core: &mut Core) -> TestResult {
     Ok(())
 }
 
-pub fn test_flashing(
-    tracker: &TestTracker,
-    session: &mut Session,
-    test_binary: &Path,
-) -> Result<(), TestFailure> {
+#[distributed_slice(SESSION_TESTS)]
+pub fn test_flashing(tracker: &TestTracker, session: &mut Session) -> Result<(), TestFailure> {
+    let Some(test_binary) = tracker
+        .current_dut_definition()
+        .flash_test_binary
+        .as_deref()
+    else {
+        return Err(TestFailure::MissingResource(format!(
+            "No flash test binary specified"
+        )));
+    };
+
     let progress = FlashProgress::new(|event| {
         log::debug!("Flash Event: {:?}", event);
         eprint!(".");

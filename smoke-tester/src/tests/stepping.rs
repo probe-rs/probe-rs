@@ -7,17 +7,20 @@ use probe_rs::{
     Error, HaltReason, MemoryInterface,
 };
 
-use crate::{TestResult, TestTracker, CORE_TESTS};
+use crate::{TestFailure, TestResult, TestTracker, CORE_TESTS};
 
 const TEST_CODE: &[u8] = include_bytes!("test_arm.bin");
 
 #[distributed_slice(CORE_TESTS)]
-fn test_stepping(_tracker: &TestTracker, core: &mut Core) -> TestResult {
+fn test_stepping(tracker: &TestTracker, core: &mut Core) -> TestResult {
     println!("Testing stepping...");
 
     if core.architecture() == Architecture::Riscv {
         // Not implemented for RISC-V yet
-        return Ok(());
+        return Err(TestFailure::UnimplementedForTarget(
+            Box::new(tracker.current_target().clone()),
+            format!("Testing stepping is not implemented for RISC-V yet."),
+        ));
     }
 
     let ram_region = core.memory_regions().find_map(MemoryRegion::as_ram_region);
@@ -25,7 +28,9 @@ fn test_stepping(_tracker: &TestTracker, core: &mut Core) -> TestResult {
     let ram_region = if let Some(ram_region) = ram_region {
         ram_region.clone()
     } else {
-        return Err(miette::miette!("No RAM configured for core!").into());
+        return Err(TestFailure::Skipped(
+            "No RAM configured for core, unable to test stepping".to_string(),
+        ));
     };
 
     core.reset_and_halt(Duration::from_millis(100))

@@ -5,16 +5,12 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::{
-    dut_definition::{DefinitionSource, DutDefinition},
-    tests::test_flashing,
-};
-use colored::Colorize;
-use miette::Result;
-use miette::{Context, IntoDiagnostic};
+use crate::dut_definition::{DefinitionSource, DutDefinition};
 
 use clap::{Parser, Subcommand};
+use colored::Colorize;
 use linkme::distributed_slice;
+use miette::{Context, IntoDiagnostic, Result};
 use probe_rs::Permissions;
 
 mod dut_definition;
@@ -25,6 +21,10 @@ mod tests;
 pub enum TestFailure {
     #[error("Test returned an error")]
     Error(#[from] Box<dyn std::error::Error + Send + Sync + 'static>),
+
+    #[error("The test was skipped: {0}")]
+    Skipped(String),
+
     #[error("Test is not implemented for target {0:?}: {1}")]
     UnimplementedForTarget(Box<probe_rs::Target>, String),
     #[error("A resource necessary to execute the test is not available: {0}")]
@@ -48,6 +48,18 @@ impl From<probe_rs::Error> for TestFailure {
 }
 
 pub type TestResult = Result<(), TestFailure>;
+
+#[derive(Debug)]
+struct SingleTestReport {
+    result: TestResult,
+    duration: Duration,
+}
+
+impl SingleTestReport {
+    fn has_fatal_error(&self) -> bool {
+        matches!(self.result, Err(TestFailure::Fatal(_)))
+    }
+}
 
 #[derive(Debug, Subcommand)]
 enum Command {
@@ -133,7 +145,11 @@ fn run_test(definitions: &[DutDefinition], markdown_summary: Option<PathBuf>) ->
                 .into_diagnostic()?;
 
             for test_fn in CORE_TESTS {
-                tracker.run_test(|tracker| test_fn(tracker, &mut core))?
+                let result = tracker.run_test(|tracker| test_fn(tracker, &mut core));
+
+                if result.has_fatal_error() {
+                    return Err(miette::miette!("Test failed with fatal error"));
+                }
             }
 
             // Ensure core is not running anymore.
@@ -144,11 +160,12 @@ fn run_test(definitions: &[DutDefinition], markdown_summary: Option<PathBuf>) ->
                 })?;
         }
 
-        if let Some(flash_binary) = &definition.flash_test_binary {
-            tracker.run_test(|tracker| {
-                test_flashing(tracker, &mut session, flash_binary)?;
-                Ok(())
-            })?;
+        for test in SESSION_TESTS {
+            let result = tracker.run_test(|tracker| test(tracker, &mut session));
+
+            if result.has_fatal_error() {
+                return Err(miette::miette!("Test failed with fatal error"));
+            }
         }
 
         drop(session);
@@ -323,6 +340,14 @@ impl<'dut> TestTracker<'dut> {
         self.current_test += 1;
     }
 
+    pub fn current_target(&self) -> &probe_rs::Target {
+        &self.dut_definitions[self.current_dut].chip
+    }
+
+    pub fn current_dut_definition(&self) -> &DutDefinition {
+        &self.dut_definitions[self.current_dut]
+    }
+
     #[must_use]
     fn run(
         &mut self,
@@ -392,7 +417,7 @@ impl<'dut> TestTracker<'dut> {
     fn run_test(
         &mut self,
         test: impl FnOnce(&TestTracker) -> Result<(), TestFailure>,
-    ) -> Result<(), TestFailure> {
+    ) -> SingleTestReport {
         let start_time = Instant::now();
 
         let test_result = test(self);
@@ -418,13 +443,19 @@ impl<'dut> TestTracker<'dut> {
                     message
                 );
             }
+            Err(TestFailure::MissingResource(message)) => {
+                println_test_status!(self, yellow, "Missing resource for test: {}", message);
+            }
             Err(_e) => {
                 println_test_status!(self, red, "Test failed in {formatted_duration}.");
             }
         };
         self.advance_test();
 
-        test_result
+        SingleTestReport {
+            result: test_result,
+            duration,
+        }
     }
 }
 
@@ -433,3 +464,7 @@ type TestFn = fn(&TestTracker, &mut probe_rs::Core) -> TestResult;
 /// A list of all tests which run on cores.
 #[distributed_slice]
 pub static CORE_TESTS: [TestFn];
+
+/// A list of all tests which run on `Session`.
+#[distributed_slice]
+pub static SESSION_TESTS: [fn(&TestTracker, &mut probe_rs::Session) -> TestResult];
