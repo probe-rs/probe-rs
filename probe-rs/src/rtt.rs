@@ -142,14 +142,7 @@ impl RttControlBlockHeader {
     }
 
     pub fn header_size(&self) -> usize {
-        match self {
-            RttControlBlockHeader::Header32(_x) => {
-                std::mem::size_of::<RttControlBlockHeaderInner<u32>>()
-            }
-            RttControlBlockHeader::Header64(_x) => {
-                std::mem::size_of::<RttControlBlockHeaderInner<u64>>()
-            }
-        }
+        Self::minimal_header_size(matches!(self, Self::Header64(_)))
     }
 
     pub fn id(&self) -> &[u8; 16] {
