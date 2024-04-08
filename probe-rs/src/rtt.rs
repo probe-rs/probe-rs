@@ -400,10 +400,7 @@ impl Rtt {
             ScanRegion::Range(region) => {
                 tracing::debug!("Scanning region: {:?}", region);
 
-                vec![Range {
-                    start: region.start,
-                    end: region.end,
-                }]
+                vec![region.clone()]
             }
         };
 
