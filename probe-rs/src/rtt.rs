@@ -133,6 +133,14 @@ impl RttControlBlockHeader {
         Ok(Self::Header64(header))
     }
 
+    pub fn minimal_header_size(is_64_bit: bool) -> usize {
+        if is_64_bit {
+            std::mem::size_of::<RttControlBlockHeaderInner<u64>>()
+        } else {
+            std::mem::size_of::<RttControlBlockHeaderInner<u32>>()
+        }
+    }
+
     pub fn header_size(&self) -> usize {
         match self {
             RttControlBlockHeader::Header32(_x) => {
@@ -210,11 +218,7 @@ impl Rtt {
             None => {
                 // If memory wasn't passed in, read the minimum header size
                 let mut mem: Vec<u8> = Vec::new();
-                let new_length = if is_64_bit {
-                    std::mem::size_of::<RttControlBlockHeaderInner<u64>>()
-                } else {
-                    std::mem::size_of::<RttControlBlockHeaderInner<u32>>()
-                };
+                let new_length = RttControlBlockHeader::minimal_header_size(is_64_bit);
                 mem.resize(new_length, 0u8);
                 core.read(ptr, &mut mem)?;
                 Cow::Owned(mem)
@@ -408,7 +412,7 @@ impl Rtt {
             .into_iter()
             .filter_map(|range| {
                 let range_len = match range.end.checked_sub(range.start) {
-                    Some(v) if v < (if is_64_bit {std::mem::size_of::<RttControlBlockHeaderInner<u64>>()} else {std::mem::size_of::<RttControlBlockHeaderInner<u32>>()} as u64) => return None,
+                    Some(v) if v < (RttControlBlockHeader::minimal_header_size(is_64_bit) as u64) => return None,
                     Some(v) => v,
                     None => return None,
                 };
