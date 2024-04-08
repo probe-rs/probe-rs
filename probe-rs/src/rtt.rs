@@ -268,8 +268,8 @@ impl Rtt {
         let up_channels_start = rtt_header.header_size();
         let (up_channels_buffer, up_channels_end) = match rtt_header {
             RttControlBlockHeader::Header32(_) => {
-                let up_channels_end = up_channels_start
-                    + max_up_channels * std::mem::size_of::<RttChannelBufferInner<u32>>();
+                let up_channels_end =
+                    up_channels_start + max_up_channels * RttChannelBufferInner::<u32>::size();
 
                 (
                     RttChannelBufferInner::<u32>::slice_from(
@@ -283,8 +283,8 @@ impl Rtt {
                 )
             }
             RttControlBlockHeader::Header64(_) => {
-                let up_channels_end = up_channels_start
-                    + max_up_channels * std::mem::size_of::<RttChannelBufferInner<u64>>();
+                let up_channels_end =
+                    up_channels_start + max_up_channels * RttChannelBufferInner::<u64>::size();
 
                 (
                     RttChannelBufferInner::<u64>::slice_from(
@@ -334,10 +334,7 @@ impl Rtt {
             } else {
                 tracing::warn!("Buffer for up channel {} not initialized", i);
             }
-            offset += match &b {
-                RttChannelBuffer::Buffer32(x) => std::mem::size_of_val(x),
-                RttChannelBuffer::Buffer64(x) => std::mem::size_of_val(x),
-            } as u64;
+            offset += b.size() as u64;
         }
 
         for (i, b) in down_channels_buffer.iter().enumerate() {
@@ -346,10 +343,7 @@ impl Rtt {
             } else {
                 tracing::warn!("Buffer for down channel {} not initialized", i);
             }
-            offset += match &b {
-                RttChannelBuffer::Buffer32(x) => std::mem::size_of_val(x),
-                RttChannelBuffer::Buffer64(x) => std::mem::size_of_val(x),
-            } as u64;
+            offset += b.size() as u64;
         }
 
         Ok(Some(Rtt {

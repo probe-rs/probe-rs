@@ -39,12 +39,25 @@ impl<T> RttChannelBufferInner<T> {
     pub fn flags_offset(&self) -> usize {
         std::mem::offset_of!(RttChannelBufferInner<T>, flags)
     }
+
+    pub fn size() -> usize {
+        std::mem::size_of::<RttChannelBufferInner<T>>()
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
 pub(crate) enum RttChannelBuffer {
     Buffer32(RttChannelBufferInner<u32>),
     Buffer64(RttChannelBufferInner<u64>),
+}
+
+impl RttChannelBuffer {
+    pub fn size(&self) -> usize {
+        match self {
+            RttChannelBuffer::Buffer32(_) => RttChannelBufferInner::<u32>::size(),
+            RttChannelBuffer::Buffer64(_) => RttChannelBufferInner::<u64>::size(),
+        }
+    }
 }
 
 impl From<RttChannelBufferInner<u32>> for RttChannelBuffer {
