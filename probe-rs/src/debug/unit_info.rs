@@ -53,7 +53,8 @@ impl UnitInfo {
             "Failed to convert unit header offset to debug info offset. This is a bug, please report it."
         )))
     }
-    /// Get the DIEs for the function containing the given address.
+
+    /// Get the compilation unit DIEs for the function containing the given address.
     /// - The first entry in the vector will be the outermost function containing the address.
     /// - If the address is inlined, the innermost function will be the last entry in the vector.
     pub(crate) fn get_function_dies<'debug_info>(

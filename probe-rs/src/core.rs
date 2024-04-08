@@ -267,7 +267,8 @@ pub struct ExceptionInfo {
     /// A human readable explanation for the exception.
     pub description: String,
     /// The stackframe registers, and their values, for the frame that triggered the exception.
-    /// Note: In cases such as reset handlers, the calling frame information may be unavailable.
+    /// Note: In cases such as reset handlers, the calling frame information may be altered by
+    /// 'trampoline' functions.
     pub calling_frame_registers: DebugRegisters,
 }
 
@@ -290,6 +291,7 @@ pub trait ExceptionInterface {
         &self,
         memory: &mut dyn MemoryInterface,
         stackframe_registers: &crate::debug::DebugRegisters,
+        raw_exception: u32,
     ) -> Result<crate::debug::DebugRegisters, crate::Error>;
 
     /// Retrieve the architecture specific exception number.
@@ -326,6 +328,7 @@ impl ExceptionInterface for UnimplementedExceptionHandler {
         &self,
         _memory: &mut dyn MemoryInterface,
         _stackframe_registers: &crate::debug::DebugRegisters,
+        _raw_exception: u32,
     ) -> Result<crate::debug::DebugRegisters, crate::Error> {
         Err(Error::NotImplemented("calling frame registers"))
     }
