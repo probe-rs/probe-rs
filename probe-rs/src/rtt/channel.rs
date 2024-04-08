@@ -19,38 +19,26 @@ pub trait RttChannel {
 #[repr(C)]
 #[derive(Debug, FromZeroes, FromBytes, Copy, Clone)]
 pub(crate) struct RttChannelBufferInner<T> {
-    header: RttChannelBufferInnerHeader<T>,
-    buffer_offset: RttChannelBufferInnerBufferOffset<T>,
+    standard_name_pointer: T,
+    buffer_start_pointer: T,
+    size_of_buffer: T,
+    write_offset: T,
+    read_offset: T,
     flags: T,
 }
 
 impl<T> RttChannelBufferInner<T> {
     pub fn write_buffer_ptr_offset(&self) -> usize {
-        std::mem::size_of::<RttChannelBufferInnerHeader<T>>()
+        std::mem::offset_of!(RttChannelBufferInner<T>, write_offset)
     }
 
     pub fn read_buffer_ptr_offset(&self) -> usize {
-        std::mem::size_of::<RttChannelBufferInnerHeader<T>>() + std::mem::size_of::<T>()
+        std::mem::offset_of!(RttChannelBufferInner<T>, read_offset)
     }
 
     pub fn flags_offset(&self) -> usize {
-        std::mem::size_of::<Self>() - std::mem::size_of::<T>()
+        std::mem::offset_of!(RttChannelBufferInner<T>, flags)
     }
-}
-
-#[repr(C)]
-#[derive(Debug, FromZeroes, FromBytes, Copy, Clone)]
-pub(crate) struct RttChannelBufferInnerHeader<T> {
-    standard_name_pointer: T,
-    buffer_start_pointer: T,
-    size_of_buffer: T,
-}
-
-#[repr(C)]
-#[derive(Debug, FromZeroes, FromBytes, Copy, Clone)]
-pub(crate) struct RttChannelBufferInnerBufferOffset<T> {
-    write_offset: T,
-    read_offset: T,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -74,22 +62,22 @@ impl From<RttChannelBufferInner<u64>> for RttChannelBuffer {
 impl RttChannelBuffer {
     pub fn buffer_start_pointer(&self) -> u64 {
         match self {
-            RttChannelBuffer::Buffer32(x) => u64::from(x.header.buffer_start_pointer),
-            RttChannelBuffer::Buffer64(x) => x.header.buffer_start_pointer,
+            RttChannelBuffer::Buffer32(x) => u64::from(x.buffer_start_pointer),
+            RttChannelBuffer::Buffer64(x) => x.buffer_start_pointer,
         }
     }
 
     pub fn standard_name_pointer(&self) -> u64 {
         match self {
-            RttChannelBuffer::Buffer32(x) => u64::from(x.header.standard_name_pointer),
-            RttChannelBuffer::Buffer64(x) => x.header.standard_name_pointer,
+            RttChannelBuffer::Buffer32(x) => u64::from(x.standard_name_pointer),
+            RttChannelBuffer::Buffer64(x) => x.standard_name_pointer,
         }
     }
 
     pub fn size_of_buffer(&self) -> u64 {
         match self {
-            RttChannelBuffer::Buffer32(x) => u64::from(x.header.size_of_buffer),
-            RttChannelBuffer::Buffer64(x) => x.header.size_of_buffer,
+            RttChannelBuffer::Buffer32(x) => u64::from(x.size_of_buffer),
+            RttChannelBuffer::Buffer64(x) => x.size_of_buffer,
         }
     }
 
