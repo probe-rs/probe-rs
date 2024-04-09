@@ -48,7 +48,7 @@ unix-archive = ".tar.xz"
 # The installers to generate for each app
 installers = ["shell", "powershell", "homebrew"]
 # Publish jobs to run in CI
-pr-run-mode = "upload"
+pr-run-mode = "plan"
 # A GitHub repo to push Homebrew formulas to
 tap = "probe-rs/homebrew-probe-rs"
 # Publish jobs to run in CI
