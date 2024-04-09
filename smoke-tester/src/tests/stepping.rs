@@ -19,7 +19,7 @@ fn test_stepping(tracker: &TestTracker, core: &mut Core) -> TestResult {
         // Not implemented for RISC-V yet
         return Err(TestFailure::UnimplementedForTarget(
             Box::new(tracker.current_target().clone()),
-            format!("Testing stepping is not implemented for RISC-V yet."),
+            "Testing stepping is not implemented for RISC-V yet.".to_string(),
         ));
     }
 

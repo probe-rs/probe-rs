@@ -52,7 +52,7 @@ pub type TestResult = Result<(), TestFailure>;
 #[derive(Debug)]
 struct SingleTestReport {
     result: TestResult,
-    duration: Duration,
+    _duration: Duration,
 }
 
 impl SingleTestReport {
@@ -454,7 +454,7 @@ impl<'dut> TestTracker<'dut> {
 
         SingleTestReport {
             result: test_result,
-            duration,
+            _duration: duration,
         }
     }
 }

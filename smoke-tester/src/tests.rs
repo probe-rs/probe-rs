@@ -191,9 +191,9 @@ pub fn test_flashing(tracker: &TestTracker, session: &mut Session) -> Result<(),
         .flash_test_binary
         .as_deref()
     else {
-        return Err(TestFailure::MissingResource(format!(
-            "No flash test binary specified"
-        )));
+        return Err(TestFailure::MissingResource(
+            "No flash test binary specified".to_string(),
+        ));
     };
 
     let progress = FlashProgress::new(|event| {
