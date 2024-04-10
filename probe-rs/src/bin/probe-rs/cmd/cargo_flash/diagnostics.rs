@@ -240,11 +240,7 @@ fn generate_flash_error_hints(
     (
         error.to_string(),
         match error {
-            FlashError::NoSuitableNvm {
-                start: _,
-                end: _,
-                description_source,
-            } => {
+            FlashError::NoSuitableNvm { description_source, .. } => {
                 if &TargetDescriptionSource::Generic == description_source {
                     return (
                         error.to_string(),
@@ -273,9 +269,8 @@ fn generate_flash_error_hints(
                         MemoryRegion::Nvm(flash) => {
                             let _ = writeln!(
                                 hint_available_regions,
-                                "  {:#010x} - {:#010x} ({})",
-                                flash.range.start,
-                                flash.range.end,
+                                "  {:#010X?} ({})",
+                                flash.range,
                                 ByteSize(flash.range.end - flash.range.start)
                                     .to_string_as(true)
                             );
