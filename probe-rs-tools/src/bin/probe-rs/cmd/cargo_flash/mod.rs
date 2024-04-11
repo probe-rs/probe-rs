@@ -55,13 +55,7 @@ struct CliOptions {
     pub format_options: crate::FormatOptions,
 }
 
-pub fn main(mut args: &[OsString]) {
-    // When called by Cargo, the first argument after the binary name will be `flash`. If that's the
-    // case, remove one argument (`Opt::from_iter` will remove the binary name by itself).
-    if args.first().map(|t| t.as_ref()) == Some(std::ffi::OsStr::new("flash")) {
-        args = &args[1..];
-    }
-
+pub fn main(args: &[OsString]) {
     match main_try(args) {
         Ok(_) => (),
         Err(e) => {
@@ -79,7 +73,7 @@ pub fn main(mut args: &[OsString]) {
 
 fn main_try(args: &[OsString]) -> Result<(), OperationError> {
     // Parse the commandline options.
-    let opt = CliOptions::parse_from(&args);
+    let opt = CliOptions::parse_from(args);
 
     // Initialize the logger with the loglevel given on the commandline.
     let _log_guard = setup_logging(None, opt.log);

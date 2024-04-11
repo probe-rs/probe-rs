@@ -216,6 +216,10 @@ fn prune_logs(directory: &Path) -> Result<(), anyhow::Error> {
 
 /// Returns the cleaned arguments for the handler of the respective end binary
 /// (cli, cargo-flash, cargo-embed, etc.), without the executable name.
+///
+/// Note that this assumes that the program is executed via `cargo`. `cargo` inserts the
+/// subcommand's name (i.e. `embed` from `cargo embed`) into the argument list, which we pass to
+/// clap as the binary's name.
 fn multicall_check<'list>(args: &'list [OsString], want: &str) -> Option<&'list [OsString]> {
     let argv0 = Path::new(&args[0]);
     if let Some(command) = argv0.file_stem().and_then(|f| f.to_str()) {
@@ -308,5 +312,37 @@ fn main() -> Result<()> {
         Subcommand::Read(cmd) => cmd.run(&lister),
         Subcommand::Write(cmd) => cmd.run(&lister),
         Subcommand::Complete(cmd) => cmd.run(&lister),
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::multicall_check;
+
+    #[test]
+    fn argument_preprocessing() {
+        fn os_strs(args: &[&str]) -> Vec<std::ffi::OsString> {
+            args.iter().map(|s| s.into()).collect()
+        }
+
+        // cargo embed -h
+        assert_eq!(
+            multicall_check(
+                &os_strs(&["probe-rs", "cargo-embed", "embed", "-h"]),
+                "cargo-embed"
+            )
+            .unwrap(),
+            os_strs(&["embed", "-h"])
+        );
+
+        // cargo flash --chip esp32c2
+        assert_eq!(
+            multicall_check(
+                &os_strs(&["probe-rs", "cargo-flash", "flash", "--chip", "esp32c2"]),
+                "cargo-flash"
+            )
+            .unwrap(),
+            os_strs(&["flash", "--chip", "esp32c2"])
+        );
     }
 }
