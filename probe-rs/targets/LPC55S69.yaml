@@ -69,7 +69,7 @@ variants:
         cores:
           - cm33_core0
           # - cm33_core1
-      - !Generic
+      - !Nvm
         name: PROGRAM_FLASH_alias
         range:
           start: 0x10000000
@@ -184,7 +184,7 @@ variants:
         cores:
           - cm33_core0
           # - cm33_core1
-      - !Generic
+      - !Nvm
         name: PROGRAM_FLASH_alias
         range:
           start: 0x10000000
@@ -299,7 +299,7 @@ variants:
         cores:
           - cm33_core0
           # - cm33_core1
-      - !Generic
+      - !Nvm
         name: PROGRAM_FLASH_alias
         range:
           start: 0x10000000

@@ -3,14 +3,16 @@ mod error;
 mod rttui;
 
 use anyhow::{anyhow, Context, Result};
-use clap::Parser;
+use clap::{CommandFactory, FromArgMatches};
 use colored::*;
 use parking_lot::FairMutex;
 use probe_rs::gdb_server::GdbInstanceConfiguration;
 use probe_rs::probe::list::Lister;
 use probe_rs::rtt::ScanRegion;
 use probe_rs::{probe::DebugProbeSelector, Session};
+use probe_rs_target::MemoryRegion;
 use std::ffi::OsString;
+use std::fs;
 use std::{
     fs::File,
     io::Write,
@@ -26,13 +28,16 @@ use crate::util::cargo::target_instruction_set;
 use crate::util::common_options::{BinaryDownloadOptions, OperationError, ProbeOptions};
 use crate::util::flash::{build_loader, run_flash_download};
 use crate::util::logging::setup_logging;
-use crate::util::rtt::{self, RttActiveTarget, RttChannelConfig, RttConfig};
+use crate::util::rtt::{
+    self, try_attach_to_rtt_shared, DefmtState, RttActiveTarget, RttChannelConfig, RttConfig,
+};
 use crate::util::{cargo::build_artifact, common_options::CargoOptions, logging, rtt::DataFormat};
 use crate::FormatOptions;
 
 #[derive(Debug, clap::Parser)]
-#[command(after_long_help = CargoOptions::help_message("cargo-embed"))]
-struct Opt {
+#[command(after_long_help = CargoOptions::help_message("cargo embed"))]
+#[command(bin_name = "cargo embed", display_name = "cargo-embed")]
+struct CliOptions {
     /// Name of the configuration profile to use.
     #[arg()]
     config: Option<String>,
@@ -89,24 +94,31 @@ pub fn main(args: Vec<OsString>, offset: UtcOffset) {
 }
 
 fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
-    // When called by Cargo, the first argument after the binary name will be `flash`.
+    // When called by Cargo, the first argument after the binary name will be `embed`.
     // If that's the case, remove it.
     if args.get(1).and_then(|t| t.to_str()) == Some("embed") {
         args.remove(1);
     }
 
-    // Get commandline options.
-    let opt = Opt::parse_from(&args);
+    // Parse the commandline options.
+    let opt = {
+        let matches = CliOptions::command()
+            .version(crate::meta::CARGO_VERSION)
+            .long_version(crate::meta::LONG_VERSION)
+            .get_matches_from(&args);
 
-    if let Some(work_dir) = opt.work_dir {
-        std::env::set_current_dir(&work_dir).with_context(|| {
+        CliOptions::from_arg_matches(&matches)?
+    };
+
+    // Change the work dir if the user asked to do so.
+    if let Some(ref work_dir) = opt.work_dir {
+        std::env::set_current_dir(work_dir).with_context(|| {
             format!(
                 "Unable to change working directory to {}",
                 work_dir.display()
             )
         })?;
     }
-
     let work_dir = std::env::current_dir()?;
 
     // Get the config.
@@ -369,10 +381,16 @@ fn run_rttui_app(
         }
     }
 
-    let Some(rtt) = rtt_attach(
+    let memory_map = {
+        let session_handle = session.lock();
+        session_handle.target().memory_map.clone()
+    };
+
+    let Some(rtt) = attach_to_rtt_shared(
         session,
         core_id,
         config.rtt.timeout,
+        &memory_map,
         &ScanRegion::Ram,
         elf_path,
         &rtt_config,
@@ -438,13 +456,12 @@ fn run_rttui_app(
     }
 }
 
-/// Try to attach to RTT, with the given timeout
-// TODO: this is largely the same as `cmd::run::attach_to_rtt`. If we can figure out how to get
-// around the mutex issue required here, we should try to merge them.
-fn rtt_attach(
+#[allow(clippy::too_many_arguments)]
+fn attach_to_rtt_shared(
     session: &FairMutex<Session>,
     core_id: usize,
     timeout: Duration,
+    memory_map: &[MemoryRegion],
     rtt_region: &ScanRegion,
     elf_file: &Path,
     rtt_config: &RttConfig,
@@ -453,56 +470,21 @@ fn rtt_attach(
     // Try to find the RTT control block symbol in the ELF file.
     // If we find it, we can use the exact address to attach to the RTT control block. Otherwise, we
     // fall back to the caller-provided scan regions.
-    let mut file = File::open(elf_file)?;
-    let scan_region = if let Some(address) = RttActiveTarget::get_rtt_symbol(&mut file) {
+    let elf = fs::read(elf_file)?;
+    let scan_region = if let Some(address) = RttActiveTarget::get_rtt_symbol_from_bytes(&elf) {
         ScanRegion::Exact(address as u32)
     } else {
         rtt_region.clone()
     };
 
-    let t = std::time::Instant::now();
-    let mut rtt_init_attempt = 1;
-    let mut last_error = None;
-    while t.elapsed() < timeout {
-        tracing::debug!("Initializing RTT (attempt {})...", rtt_init_attempt);
-        rtt_init_attempt += 1;
+    let rtt = try_attach_to_rtt_shared(session, core_id, memory_map, timeout, &scan_region)?;
 
-        // Lock the session mutex in a block, so it gets dropped as soon as possible.
-        //
-        // GDB is also using the session
-        {
-            let mut session_handle = session.lock();
-            let memory_map = session_handle.target().memory_map.clone();
-            let mut core = session_handle.core(core_id)?;
+    let Some(rtt) = rtt else {
+        return Ok(None);
+    };
+    let mut session_handle = session.lock();
+    let mut core = session_handle.core(core_id)?;
 
-            match rtt::attach_to_rtt(&mut core, &memory_map, &scan_region) {
-                Ok(Some(rtt)) => {
-                    let app = RttActiveTarget::new(
-                        &mut core,
-                        rtt,
-                        elf_file,
-                        rtt_config,
-                        timestamp_offset,
-                    );
-
-                    match app {
-                        Ok(app) => return Ok(Some(app)),
-                        Err(error) => last_error = Some(error),
-                    }
-                }
-                Ok(None) => return Ok(None),
-                Err(e) => last_error = Some(e),
-            }
-        }
-
-        tracing::debug!("Failed to initialize RTT. Retrying until timeout.");
-        std::thread::sleep(Duration::from_millis(10));
-    }
-
-    // Timeout
-    if let Some(err) = last_error {
-        Err(err)
-    } else {
-        Err(anyhow!("Error setting up RTT"))
-    }
+    let defmt_state = DefmtState::try_from_bytes(&elf)?;
+    RttActiveTarget::new(&mut core, rtt, defmt_state, rtt_config, timestamp_offset).map(Some)
 }

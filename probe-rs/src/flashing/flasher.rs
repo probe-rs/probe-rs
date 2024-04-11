@@ -204,7 +204,6 @@ impl<'session> Flasher<'session> {
         &mut self,
         clock: Option<u32>,
     ) -> Result<ActiveFlasher<'_, O>, FlashError> {
-        #[cfg(feature = "rtt")]
         let memory_map = self.session.target().memory_map.clone();
         // Attach to memory and core.
         let core = self
@@ -215,9 +214,7 @@ impl<'session> Flasher<'session> {
         tracing::debug!("Preparing Flasher for operation {}", O::operation_name());
         let mut flasher = ActiveFlasher::<O> {
             core,
-            #[cfg(feature = "rtt")]
             rtt: None,
-            #[cfg(feature = "rtt")]
             memory_map,
             progress: self.progress.clone(),
             flash_algorithm: self.flash_algorithm.clone(),
@@ -563,9 +560,7 @@ fn into_reg(val: u64) -> Result<u32, FlashError> {
 
 pub(super) struct ActiveFlasher<'probe, O: Operation> {
     core: Core<'probe>,
-    #[cfg(feature = "rtt")]
     rtt: Option<crate::rtt::Rtt>,
-    #[cfg(feature = "rtt")]
     memory_map: Vec<MemoryRegion>,
     progress: FlashProgress,
     flash_algorithm: FlashAlgorithm,
@@ -714,8 +709,8 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
         // Resume target operation.
         self.core.run()?;
 
-        #[cfg(feature = "rtt")]
         if let Some(rtt_address) = self.flash_algorithm.rtt_control_block {
+            // FIXME: replace this with try_attach_to_rtt once it's been moved to the library
             let now = Instant::now();
             let mut last_error = None;
             while self.rtt.is_none() {
@@ -760,7 +755,6 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
                     timeout_ocurred = false;
                     // Once the core is halted we know for sure all RTT data is written
                     // so we can read all of it.
-                    #[cfg(feature = "rtt")]
                     self.read_rtt()?;
                     break;
                 }
@@ -775,7 +769,6 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
             }
 
             // Periodically read RTT.
-            #[cfg(feature = "rtt")]
             self.read_rtt()?;
 
             std::thread::sleep(Duration::from_millis(1));
@@ -789,7 +782,6 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
         Ok(r)
     }
 
-    #[cfg(feature = "rtt")]
     fn read_rtt(&mut self) -> Result<(), FlashError> {
         if let Some(rtt) = &mut self.rtt {
             for channel in rtt.up_channels().iter() {
