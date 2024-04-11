@@ -40,19 +40,14 @@ impl ChannelDataCallbacks for (&mut Option<TcpPublisher>, &mut ChannelData) {
     }
 }
 
-pub struct UpChannel<'defmt> {
+pub struct UpChannel {
     rtt_channel: RttActiveUpChannel,
-    defmt_state: Option<&'defmt DefmtState>,
     tcp_stream: Option<TcpPublisher>,
     pub data: ChannelData,
 }
 
-impl<'defmt> UpChannel<'defmt> {
-    pub fn new(
-        rtt_channel: RttActiveUpChannel,
-        defmt_state: Option<&'defmt DefmtState>,
-        tcp_stream: Option<SocketAddr>,
-    ) -> Self {
+impl UpChannel {
+    pub fn new(rtt_channel: RttActiveUpChannel, tcp_stream: Option<SocketAddr>) -> Self {
         Self {
             data: match rtt_channel.data_format {
                 ChannelDataConfig::String { .. } | ChannelDataConfig::Defmt { .. } => {
@@ -62,16 +57,19 @@ impl<'defmt> UpChannel<'defmt> {
                 }
                 ChannelDataConfig::BinaryLE => ChannelData::Binary { data: Vec::new() },
             },
-            defmt_state,
             tcp_stream: tcp_stream.map(TcpPublisher::new),
             rtt_channel,
         }
     }
 
-    pub fn poll_rtt(&mut self, core: &mut probe_rs::Core<'_>) -> anyhow::Result<()> {
+    pub fn poll_rtt(
+        &mut self,
+        core: &mut probe_rs::Core<'_>,
+        defmt_state: Option<&DefmtState>,
+    ) -> anyhow::Result<()> {
         self.rtt_channel.poll_process_rtt_data(
             core,
-            self.defmt_state,
+            defmt_state,
             &mut (&mut self.tcp_stream, &mut self.data),
         )
     }

@@ -6,14 +6,10 @@ use std::ops::Range;
 #[derive(thiserror::Error, Debug)]
 pub enum FlashError {
     /// No flash memory contains the entire requested memory range.
-    #[error(
-        "No flash memory contains the entire requested memory range {start:#010x}..{end:#010x}."
-    )]
+    #[error("No flash memory contains the entire requested memory range {range:#010X?}.")]
     NoSuitableNvm {
-        /// The start of the requested memory range.
-        start: u64,
-        /// The end of the requested memory range.
-        end: u64,
+        /// The requested memory range.
+        range: Range<u64>,
         /// The source of this target description (was it a built in target or one loaded externally and from what file path?).
         description_source: TargetDescriptionSource,
     },
@@ -103,7 +99,7 @@ pub enum FlashError {
     // TODO: 1 Add information about flash (name, address)
     // TODO: 2 Add source of target definition (built-in, yaml)
     /// No flash algorithm was linked to this target.
-    #[error("Trying to write to flash region {:#010X}..{:#010X}, but no suitable (default) flash loader algorithm is linked to the given target: {name}.", .range.start, .range.end)]
+    #[error("Trying to write to flash region {range:#010X?}, but no suitable (default) flash loader algorithm is linked to the given target: {name}.")]
     NoFlashLoaderAlgorithmAttached {
         /// The name of the chip.
         name: String,

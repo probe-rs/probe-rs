@@ -81,6 +81,7 @@ impl ProfileCmd {
             &mut session,
             &self.run.shared_options.path,
             self.run.shared_options.format_options,
+            None,
         )?;
 
         let bytes = std::fs::read(&self.run.shared_options.path)?;

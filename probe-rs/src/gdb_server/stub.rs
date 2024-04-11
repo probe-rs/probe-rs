@@ -1,8 +1,8 @@
 use crate::{CoreType, Error, Session};
 use anyhow::Result;
+use parking_lot::FairMutex;
 
 use std::net::{SocketAddr, ToSocketAddrs};
-use std::sync::Mutex;
 use std::time::Duration;
 
 use itertools::Itertools;
@@ -27,7 +27,7 @@ impl GdbInstanceConfiguration {
     /// # Arguments
     ///
     /// * session - the [Session] object to load target information from
-    /// * connection_string - The optional connection string to use.  
+    /// * connection_string - The optional connection string to use.
     ///                       If not specified `localhost:1337` is used.
     ///                       Multiple instances are bound by adding an offset to the supplied port.
     ///
@@ -76,14 +76,14 @@ impl GdbInstanceConfiguration {
 ///
 /// # Arguments
 ///
-/// * session - The [Session] to use, protected by a [std::sync::Mutex]
+/// * session - The [Session] to use, protected by a [FairMutex]
 /// * instances - a list of [GdbInstanceConfiguration] objects used to configure the GDB session
 ///
 /// # Remarks
 ///
 /// A default configuration can be created by calling [GdbInstanceConfiguration::from_session()]
 pub fn run<'a>(
-    session: &Mutex<Session>,
+    session: &FairMutex<Session>,
     instances: impl Iterator<Item = &'a GdbInstanceConfiguration>,
 ) -> Result<()> {
     // Turn our group list into GDB targets
@@ -93,9 +93,14 @@ pub fn run<'a>(
         })
         .collect::<Result<Vec<target::RuntimeTarget>, Error>>()?;
 
+    // Avoid getting stuck in an infinite loop if we have no targets
+    if targets.is_empty() {
+        return Ok(());
+    }
+
     // Process every target in a loop
     loop {
-        let mut wait_time = Duration::ZERO;
+        let mut wait_time = Duration::MAX;
 
         for target in targets.iter_mut() {
             wait_time = wait_time.min(target.process()?);

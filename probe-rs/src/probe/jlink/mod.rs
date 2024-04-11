@@ -909,9 +909,8 @@ impl DebugProbe for JLink {
     }
 
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
-        Err(DebugProbeError::NotImplemented {
-            function_name: "target_reset",
-        })
+        self.write_cmd(&[Command::ResetTarget as u8])?;
+        Ok(())
     }
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {

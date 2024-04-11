@@ -785,12 +785,14 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         }
     }
 
+    #[tracing::instrument(level = "debug", skip_all, name = "Handle configuration done")]
     pub(crate) fn configuration_done(
         &mut self,
         target_core: &mut CoreHandle,
         request: &Request,
     ) -> Result<()> {
         let current_core_status = target_core.core.status()?;
+
         if current_core_status.is_halted() {
             if self.halt_after_reset
                 || matches!(
@@ -816,9 +818,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 });
                 self.send_event("stopped", event_body)?;
             } else {
+                tracing::debug!("Core is halted, but not due to a breakpoint and halt_after_reset is not set. Continuing.");
                 self.r#continue(target_core, request)?;
             }
         }
+
         self.configuration_done = true;
         self.send_response::<()>(request, Ok(None))
     }
@@ -1538,58 +1542,46 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         target_core: &mut CoreHandle,
         request: &Request,
     ) -> Result<()> {
-        match target_core.core.run() {
-            Ok(_) => {
-                target_core.reset_core_status(self);
-                if request.command.as_str() == "continue" {
-                    // If this continue was initiated as part of some other request, then do not respond.
-                    self.send_response(
-                        request,
-                        Ok(Some(ContinueResponseBody {
-                            all_threads_continued: Some(false), // TODO: Implement multi-core logic here
-                        })),
-                    )?;
-                }
-                // We have to consider the fact that sometimes the `run()` is successfull,
-                // but "immediately" afterwards, the MCU hits a breakpoint or exception.
-                // So we have to check the status again to be sure.
-                match if target_core.core_data.breakpoints.is_empty() {
-                    target_core
-                        .core
-                        .wait_for_core_halted(Duration::from_millis(200))
-                } else {
-                    // Use slightly longer timeout when we know there breakpoints configured.
-                    target_core
-                        .core
-                        .wait_for_core_halted(Duration::from_millis(500))
-                } {
-                    Ok(_) => {
-                        // The core has halted, so we can proceed.
-                    }
-                    Err(wait_error) => {
-                        if matches!(
-                            wait_error,
-                            Error::Arm(ArmError::Timeout)
-                                | Error::Riscv(RiscvError::Timeout)
-                                | Error::Xtensa(XtensaError::Timeout)
-                        ) {
-                            // The core is still running.
-                        } else {
-                            // Some other error occurred, so we have to send an error response.
-                            return Err(wait_error.into());
-                        }
-                    }
-                }
+        if let Err(error) = target_core.core.run() {
+            self.send_response::<()>(request, Err(&DebuggerError::Other(anyhow!("{}", error))))?;
+            return Err(error.into());
+        }
 
-                Ok(())
-            }
-            Err(error) => {
-                self.send_response::<()>(
-                    request,
-                    Err(&DebuggerError::Other(anyhow!("{}", error))),
-                )?;
-                Err(error.into())
-            }
+        target_core.reset_core_status(self);
+
+        if request.command.as_str() == "continue" {
+            // If this continue was initiated as part of some other request, then do not respond.
+            self.send_response(
+                request,
+                Ok(Some(ContinueResponseBody {
+                    all_threads_continued: Some(false), // TODO: Implement multi-core logic here
+                })),
+            )?;
+        }
+        // We have to consider the fact that sometimes the `run()` is successfull,
+        // but "immediately" afterwards, the MCU hits a breakpoint or exception.
+        // So we have to check the status again to be sure.
+
+        // If there are breakpoints configured, we wait a bit longer
+        let wait_timeout = if target_core.core_data.breakpoints.is_empty() {
+            Duration::from_millis(200)
+        } else {
+            Duration::from_millis(500)
+        };
+
+        tracing::trace!("Checking if core halts again after continue, timeout = {wait_timeout:?}");
+
+        match target_core.core.wait_for_core_halted(wait_timeout) {
+            // The core has halted, so we can proceed.
+            Ok(_) => Ok(()),
+            // The core is still running.
+            Err(
+                Error::Arm(ArmError::Timeout)
+                | Error::Riscv(RiscvError::Timeout)
+                | Error::Xtensa(XtensaError::Timeout),
+            ) => Ok(()),
+            // Some other error occurred, so we have to send an error response.
+            Err(wait_error) => Err(wait_error.into()),
         }
     }
 
@@ -1755,6 +1747,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         event_type: &str,
         event_body: Option<S>,
     ) -> Result<()> {
+        tracing::debug!("Sending event: {}", event_type);
         self.adapter.send_event(event_type, event_body)
     }
 

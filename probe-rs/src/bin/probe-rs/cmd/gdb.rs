@@ -1,6 +1,6 @@
-use std::sync::Mutex;
 use std::time::Duration;
 
+use parking_lot::FairMutex;
 use probe_rs::probe::list::Lister;
 
 use crate::util::common_options::ProbeOptions;
@@ -50,7 +50,7 @@ impl Cmd {
             );
         }
 
-        let session = Mutex::new(session);
+        let session = FairMutex::new(session);
 
         if let Err(e) = probe_rs::gdb_server::run(&session, instances.iter()) {
             eprintln!("During the execution of GDB an error was encountered:");

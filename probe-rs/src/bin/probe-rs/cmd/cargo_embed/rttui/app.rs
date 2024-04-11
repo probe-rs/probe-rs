@@ -27,7 +27,7 @@ use super::{event::Events, tab::Tab};
 use event::KeyModifiers;
 
 /// App holds the state of the application
-pub struct App<'defmt> {
+pub struct App {
     tabs: Vec<Tab>,
     current_tab: usize,
 
@@ -36,17 +36,14 @@ pub struct App<'defmt> {
     history_path: Option<PathBuf>,
     logname: String,
 
+    defmt_state: Option<DefmtState>,
+
     down_channels: BTreeMap<usize, RttActiveDownChannel>,
-    up_channels: BTreeMap<usize, UpChannel<'defmt>>,
+    up_channels: BTreeMap<usize, UpChannel>,
 }
 
-impl<'defmt> App<'defmt> {
-    pub fn new(
-        rtt: RttActiveTarget,
-        config: config::Config,
-        logname: String,
-        defmt_state: Option<&'defmt DefmtState>,
-    ) -> Result<Self> {
+impl App {
+    pub fn new(rtt: RttActiveTarget, config: config::Config, logname: String) -> Result<Self> {
         let mut tab_config = config.rtt.tabs;
 
         // Create channel states
@@ -154,11 +151,12 @@ impl<'defmt> App<'defmt> {
             events,
             history_path,
             logname,
+            defmt_state: rtt.defmt_state,
 
             down_channels,
             up_channels: up_channels
                 .into_iter()
-                .map(|(num, (channel, socket))| (num, UpChannel::new(channel, defmt_state, socket)))
+                .map(|(num, (channel, socket))| (num, UpChannel::new(channel, socket)))
                 .collect(),
         })
     }
@@ -298,7 +296,7 @@ impl<'defmt> App<'defmt> {
     /// Polls the RTT target for new data on all channels.
     pub fn poll_rtt(&mut self, core: &mut Core) -> Result<()> {
         for (_, channel) in self.up_channels.iter_mut() {
-            channel.poll_rtt(core)?;
+            channel.poll_rtt(core, self.defmt_state.as_ref())?;
         }
 
         Ok(())
