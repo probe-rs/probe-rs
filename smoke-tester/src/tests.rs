@@ -3,6 +3,7 @@ use std::time::Instant;
 use colored::Colorize;
 use linkme::distributed_slice;
 use probe_rs::{
+    config::MemoryRegion,
     flashing::{download_file_with_options, DownloadOptions, FlashProgress, Format},
     Architecture, Core, MemoryInterface, Session,
 };
@@ -73,69 +74,70 @@ fn test_register_write(tracker: &TestTracker, core: &mut Core) -> TestResult {
 
 #[distributed_slice(CORE_TESTS)]
 fn test_memory_access(tracker: &TestTracker, core: &mut Core) -> TestResult {
-    let memory_regions = core.memory_regions().cloned().collect::<Vec<_>>();
+    let memory_regions = core
+        .memory_regions()
+        .filter_map(|region| match region {
+            MemoryRegion::Ram(ram) => Some(ram),
+            _ => None,
+        })
+        .cloned()
+        .collect::<Vec<_>>();
 
     // Try to write all memory regions
-    for region in memory_regions {
-        match region {
-            probe_rs::config::MemoryRegion::Ram(ram) => {
-                let ram_start = ram.range.start;
-                let ram_size = ram.range.end - ram.range.start;
+    for ram in memory_regions {
+        let ram_start = ram.range.start;
+        let ram_size = ram.range.end - ram.range.start;
 
-                println_test_status!(tracker, blue, "Test - RAM Start 32");
-                // Write first word
-                core.write_word_32(ram_start, 0xababab)?;
-                let value = core.read_word_32(ram_start).into_diagnostic()?;
-                assert_eq!(value, 0xababab);
+        println_test_status!(tracker, blue, "Test - RAM Start 32");
+        // Write first word
+        core.write_word_32(ram_start, 0xababab)?;
+        let value = core.read_word_32(ram_start).into_diagnostic()?;
+        assert_eq!(value, 0xababab);
 
-                println_test_status!(tracker, blue, "Test - RAM End 32");
-                // Write last word
-                core.write_word_32(ram_start + ram_size - 4, 0xababac)
-                    .into_diagnostic()?;
-                let value = core
-                    .read_word_32(ram_start + ram_size - 4)
-                    .into_diagnostic()?;
-                assert_eq!(value, 0xababac);
+        println_test_status!(tracker, blue, "Test - RAM End 32");
+        // Write last word
+        core.write_word_32(ram_start + ram_size - 4, 0xababac)
+            .into_diagnostic()?;
+        let value = core
+            .read_word_32(ram_start + ram_size - 4)
+            .into_diagnostic()?;
+        assert_eq!(value, 0xababac);
 
-                println_test_status!(tracker, blue, "Test - RAM Start 8");
-                // Write first byte
-                core.write_word_8(ram_start, 0xac).into_diagnostic()?;
-                let value = core.read_word_8(ram_start).into_diagnostic()?;
-                assert_eq!(value, 0xac);
+        println_test_status!(tracker, blue, "Test - RAM Start 8");
+        // Write first byte
+        core.write_word_8(ram_start, 0xac).into_diagnostic()?;
+        let value = core.read_word_8(ram_start).into_diagnostic()?;
+        assert_eq!(value, 0xac);
 
-                println_test_status!(tracker, blue, "Test - RAM 8 Unaligned");
-                let address = ram_start + 1;
-                let data = 0x23;
-                // Write last byte
-                core.write_word_8(address, data)
-                    .into_diagnostic()
-                    .wrap_err_with(|| format!("Write_word_8 to address {address:08x}"))?;
+        println_test_status!(tracker, blue, "Test - RAM 8 Unaligned");
+        let address = ram_start + 1;
+        let data = 0x23;
+        // Write last byte
+        core.write_word_8(address, data)
+            .into_diagnostic()
+            .wrap_err_with(|| format!("Write_word_8 to address {address:08x}"))?;
 
-                let value = core
-                    .read_word_8(address)
-                    .into_diagnostic()
-                    .wrap_err_with(|| format!("read_word_8 from address {address:08x}"))?;
-                assert_eq!(value, data);
+        let value = core
+            .read_word_8(address)
+            .into_diagnostic()
+            .wrap_err_with(|| format!("read_word_8 from address {address:08x}"))?;
+        assert_eq!(value, data);
 
-                println_test_status!(tracker, blue, "Test - RAM End 8");
-                // Write last byte
-                core.write_word_8(ram_start + ram_size - 1, 0xcd)
-                    .into_diagnostic()
-                    .wrap_err_with(|| {
-                        format!("Write_word_8 to address {:08x}", ram_start + ram_size - 1)
-                    })?;
+        println_test_status!(tracker, blue, "Test - RAM End 8");
+        // Write last byte
+        core.write_word_8(ram_start + ram_size - 1, 0xcd)
+            .into_diagnostic()
+            .wrap_err_with(|| {
+                format!("Write_word_8 to address {:08x}", ram_start + ram_size - 1)
+            })?;
 
-                let value = core
-                    .read_word_8(ram_start + ram_size - 1)
-                    .into_diagnostic()
-                    .wrap_err_with(|| {
-                        format!("read_word_8 from address {:08x}", ram_start + ram_size - 1)
-                    })?;
-                assert_eq!(value, 0xcd);
-            }
-            // Ignore other types of regions
-            _other => {}
-        }
+        let value = core
+            .read_word_8(ram_start + ram_size - 1)
+            .into_diagnostic()
+            .wrap_err_with(|| {
+                format!("read_word_8 from address {:08x}", ram_start + ram_size - 1)
+            })?;
+        assert_eq!(value, 0xcd);
     }
 
     Ok(())
@@ -145,39 +147,43 @@ fn test_memory_access(tracker: &TestTracker, core: &mut Core) -> TestResult {
 fn test_hw_breakpoints(tracker: &TestTracker, core: &mut Core) -> TestResult {
     println_test_status!(tracker, blue, "Testing HW breakpoints");
 
-    let memory_regions: Vec<_> = core.memory_regions().cloned().collect();
+    let memory_regions: Vec<_> = core
+        .memory_regions()
+        .filter_map(|region| match region {
+            MemoryRegion::Nvm(region) => Some(region),
+            _ => None,
+        })
+        .cloned()
+        .collect();
+
+    if memory_regions.is_empty() {
+        return Err(TestFailure::Skipped(
+            "No NVM memory regions found, unable to test HW breakpoints.".to_string(),
+        ));
+    }
 
     // For this test, we assume that code is executed from Flash / non-volatile memory, and try to set breakpoints
     // in these regions.
     for region in memory_regions {
-        match region {
-            probe_rs::config::MemoryRegion::Nvm(nvm) => {
-                let initial_breakpoint_addr = nvm.range.start;
+        let initial_breakpoint_addr = region.range.start;
 
-                let num_breakpoints = core.available_breakpoint_units().into_diagnostic()?;
+        let num_breakpoints = core.available_breakpoint_units().into_diagnostic()?;
 
-                println_test_status!(tracker, blue, "{} breakpoints supported", num_breakpoints);
+        println_test_status!(tracker, blue, "{} breakpoints supported", num_breakpoints);
 
-                for i in 0..num_breakpoints {
-                    core.set_hw_breakpoint(initial_breakpoint_addr + 4 * i as u64)
-                        .into_diagnostic()?;
-                }
+        for i in 0..num_breakpoints {
+            core.set_hw_breakpoint(initial_breakpoint_addr + 4 * i as u64)
+                .into_diagnostic()?;
+        }
 
-                // Try to set an additional breakpoint, which should fail
-                core.set_hw_breakpoint(initial_breakpoint_addr + num_breakpoints as u64 * 4)
-                    .expect_err(
-                        "Trying to use more than supported number of breakpoints should fail.",
-                    );
+        // Try to set an additional breakpoint, which should fail
+        core.set_hw_breakpoint(initial_breakpoint_addr + num_breakpoints as u64 * 4)
+            .expect_err("Trying to use more than supported number of breakpoints should fail.");
 
-                // Clear all breakpoints again
-                for i in 0..num_breakpoints {
-                    core.clear_hw_breakpoint(initial_breakpoint_addr + 4 * i as u64)
-                        .into_diagnostic()?;
-                }
-            }
-
-            // Skip other regions
-            _other => {}
+        // Clear all breakpoints again
+        for i in 0..num_breakpoints {
+            core.clear_hw_breakpoint(initial_breakpoint_addr + 4 * i as u64)
+                .into_diagnostic()?;
         }
     }
 
