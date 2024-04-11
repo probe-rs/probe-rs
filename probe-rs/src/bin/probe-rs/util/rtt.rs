@@ -472,14 +472,6 @@ impl RttActiveUpChannel {
         self.data_format
             .process(self.number(), buffer, defmt_state, collector)
     }
-
-    pub(crate) fn set_mode(
-        &self,
-        core: &mut Core<'_>,
-        block_if_full: ChannelMode,
-    ) -> Result<(), Error> {
-        self.up_channel.set_mode(core, block_if_full)
-    }
 }
 
 #[derive(Debug)]
