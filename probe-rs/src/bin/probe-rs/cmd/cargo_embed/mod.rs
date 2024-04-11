@@ -101,7 +101,7 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
     }
 
     // Parse the commandline options.
-    let opt = {
+    let mut opt = {
         let matches = CliOptions::command()
             .version(crate::meta::CARGO_VERSION)
             .long_version(crate::meta::LONG_VERSION)
@@ -141,6 +141,12 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
     if let Some(index) = args.iter().position(|x| x == config_name) {
         // We remove the argument we found.
         args.remove(index);
+    }
+
+    if let Some(ref default_bin) = config.general.default_bin {
+        // if the default bin is set in the config *and* no bin argument is given
+        //, we set it as the bin in the cargo options.
+        let _ = opt.cargo_options.bin.get_or_insert(default_bin.clone());
     }
 
     let cargo_options = opt.cargo_options.to_cargo_options();

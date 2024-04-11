@@ -101,7 +101,7 @@ pub(crate) fn render_diagnostics(error: OperationError) {
             ArtifactError::MultipleArtifacts => (
                 source.to_string(),
                 vec![
-                    "Use '--bin' to specify which binary to flash.".into(),
+                    "Use '--bin' or set a default bin to specify which binary to flash.".into(),
                 ],
             ),
             ArtifactError::CargoBuild(Some(101)) => (
@@ -127,7 +127,7 @@ pub(crate) fn render_diagnostics(error: OperationError) {
             ArtifactError::MultipleArtifacts => (
                 error.to_string(),
                 vec![
-                    "Use '--bin' to specify which binary to flash.".into(),
+                    "Use '--bin' or set a default bin to specify which binary to flash.".into(),
                 ],
             ),
             ArtifactError::CargoBuild(Some(101)) => (
