@@ -155,7 +155,7 @@ pub struct RttDownChannelConfig {
     pub operating_mode: Option<String>,
 }
 
-pub enum ChannelDataConfig {
+pub enum ChannelDataFormat {
     String {
         /// UTC offset used for creating timestamps, if enabled.
         ///
@@ -172,20 +172,20 @@ pub enum ChannelDataConfig {
     },
 }
 
-impl From<&ChannelDataConfig> for DataFormat {
-    fn from(config: &ChannelDataConfig) -> Self {
+impl From<&ChannelDataFormat> for DataFormat {
+    fn from(config: &ChannelDataFormat) -> Self {
         match config {
-            ChannelDataConfig::String { .. } => DataFormat::String,
-            ChannelDataConfig::BinaryLE => DataFormat::BinaryLE,
-            ChannelDataConfig::Defmt { .. } => DataFormat::Defmt,
+            ChannelDataFormat::String { .. } => DataFormat::String,
+            ChannelDataFormat::BinaryLE => DataFormat::BinaryLE,
+            ChannelDataFormat::Defmt { .. } => DataFormat::Defmt,
         }
     }
 }
 
-impl std::fmt::Debug for ChannelDataConfig {
+impl std::fmt::Debug for ChannelDataFormat {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ChannelDataConfig::String {
+            ChannelDataFormat::String {
                 timestamp_offset,
                 last_line_done,
             } => f
@@ -193,173 +193,42 @@ impl std::fmt::Debug for ChannelDataConfig {
                 .field("timestamp_offset", timestamp_offset)
                 .field("last_line_done", last_line_done)
                 .finish(),
-            ChannelDataConfig::BinaryLE => f.debug_struct("BinaryLE").finish(),
-            ChannelDataConfig::Defmt { .. } => f.debug_struct("Defmt").finish_non_exhaustive(),
+            ChannelDataFormat::BinaryLE => f.debug_struct("BinaryLE").finish(),
+            ChannelDataFormat::Defmt { .. } => f.debug_struct("Defmt").finish_non_exhaustive(),
         }
     }
 }
 
-pub trait ChannelDataCallbacks {
-    fn on_binary_data(&mut self, channel: usize, data: &[u8]) -> Result<()> {
-        let mut formatted_data = String::with_capacity(data.len() * 4);
-        for element in data {
-            // Width of 4 allows 0xFF to be printed.
-            write!(&mut formatted_data, "{element:#04x}").expect("Writing to String cannot fail");
-        }
-        self.on_string_data(channel, formatted_data)
+impl ChannelDataFormat {
+    /// Returns whether the channel is expected to output binary data (`true`)
+    /// or human-readable strings (`false`).
+    pub fn is_binary(&self) -> bool {
+        matches!(self, ChannelDataFormat::BinaryLE)
     }
 
-    fn on_string_data(&mut self, channel: usize, data: String) -> Result<()>;
-}
-
-#[derive(Debug)]
-pub struct RttActiveUpChannel {
-    pub up_channel: UpChannel,
-    pub channel_name: String,
-    pub data_format: ChannelDataConfig,
-    rtt_buffer: RttBuffer,
-}
-
-impl RttActiveUpChannel {
-    pub fn new(
-        core: &mut Core,
-        up_channel: UpChannel,
-        rtt_config: &RttConfig,
-        channel_config: &RttChannelConfig,
-        timestamp_offset: UtcOffset,
-        defmt_state: Option<&DefmtState>,
-    ) -> Result<Self> {
-        let is_defmt_channel = up_channel.name() == Some("defmt");
-
-        let data_format = match channel_config.data_format {
-            DataFormat::String if !is_defmt_channel => ChannelDataConfig::String {
-                timestamp_offset: channel_config.show_timestamps.then_some(timestamp_offset),
-                last_line_done: true,
-            },
-
-            DataFormat::BinaryLE if !is_defmt_channel => ChannelDataConfig::BinaryLE,
-
-            // either DataFormat::Defmt is configured, or defmt_enabled is true
-            _ => {
-                let has_timestamp = if let Some(defmt) = defmt_state {
-                    defmt.table.has_timestamp()
-                } else {
-                    tracing::warn!("No `Table` definition in DWARF info; compile your program with `debug = 2` to enable location info.");
-                    false
-                };
-
-                // Format options:
-                // 1. Custom format for the channel
-                // 2. Custom default format
-                // 3. Default with optional timestamp and location
-                let format = if let Some(format) = channel_config
-                    .defmt_log_format
-                    .as_deref()
-                    .or(rtt_config.log_format.as_deref())
-                {
-                    FormatterFormat::Custom(format)
-                } else {
-                    FormatterFormat::Default {
-                        with_location: channel_config.show_location,
-                    }
-                };
-
-                ChannelDataConfig::Defmt {
-                    formatter: Formatter::new(FormatterConfig {
-                        format,
-                        is_timestamp_available: has_timestamp,
-                    }),
-                    cwd: std::env::current_dir().unwrap(),
-                }
-            }
-        };
-
-        let channel_name = up_channel
-            .name()
-            .or(channel_config.channel_name.as_deref())
-            .map(ToString::to_string)
-            .unwrap_or_else(|| {
-                format!(
-                    "Unnamed {} RTT up channel - {}",
-                    channel_config.data_format,
-                    up_channel.number()
-                )
-            });
-
-        if let Some(mode) = channel_config.mode.or(
-            // Try not to corrupt the byte stream if using defmt
-            if matches!(data_format, ChannelDataConfig::Defmt { .. }) {
-                Some(ChannelMode::BlockIfFull)
-            } else {
-                None
-            },
-        ) {
-            up_channel.set_mode(core, mode)?;
-        }
-
-        Ok(Self {
-            rtt_buffer: RttBuffer::new(up_channel.buffer_size()),
-            up_channel,
-            channel_name,
-            data_format,
-        })
-    }
-
-    pub fn number(&self) -> usize {
-        self.up_channel.number()
-    }
-
-    /// Polls the RTT target for new data on the channel represented by `self`.
-    /// Processes all the new data into the channel internal buffer and returns the number of bytes that was read.
-    pub fn poll_rtt(&mut self, core: &mut Core) -> Option<usize> {
-        // Retry loop, in case the probe is temporarily unavailable, e.g. user pressed the `reset` button.
-        for _loop_count in 0..10 {
-            match self.up_channel.read(core, self.rtt_buffer.0.as_mut()) {
-                Ok(0) => return None,
-                Ok(count) => return Some(count),
-                Err(probe_rs::rtt::Error::Probe(_)) => {
-                    std::thread::sleep(std::time::Duration::from_millis(50));
-                }
-                Err(err) => {
-                    tracing::error!("\nError reading from RTT: {}", err);
-                    return None;
-                }
-            }
-        }
-
-        None
-    }
-
-    /// Retrieves available data from the channel and if available, returns `Some(channel_number:String, formatted_data:String)`.
-    /// If no data is available, or we encounter a recoverable error, it returns `None` value for `formatted_data`.
-    /// Non-recoverable errors are propagated to the caller.
-    pub fn poll_process_rtt_data(
+    fn process(
         &mut self,
-        core: &mut Core,
+        number: usize,
+        buffer: &[u8],
         defmt_state: Option<&DefmtState>,
         collector: &mut impl ChannelDataCallbacks,
     ) -> Result<()> {
-        let Some(bytes_read) = self.poll_rtt(core) else {
-            return Ok(());
-        };
-
-        let buffer = &self.rtt_buffer.0[..bytes_read];
-
-        match self.data_format {
-            ChannelDataConfig::BinaryLE => collector.on_binary_data(self.number(), buffer),
-            ChannelDataConfig::String {
+        // FIXME: clean this up by splitting the enum variants out into separate structs
+        match self {
+            ChannelDataFormat::BinaryLE => collector.on_binary_data(number, buffer),
+            ChannelDataFormat::String {
                 timestamp_offset,
                 ref mut last_line_done,
             } => {
-                let string = Self::process_string(buffer, timestamp_offset, last_line_done)?;
-                collector.on_string_data(self.number(), string)
+                let string = Self::process_string(buffer, *timestamp_offset, last_line_done)?;
+                collector.on_string_data(number, string)
             }
-            ChannelDataConfig::Defmt {
+            ChannelDataFormat::Defmt {
                 ref formatter,
                 ref cwd,
             } => {
                 let string = Self::process_defmt(buffer, defmt_state, formatter, cwd)?;
-                collector.on_string_data(self.number(), string)
+                collector.on_string_data(number, string)
             }
         }
     }
@@ -451,6 +320,157 @@ impl RttActiveUpChannel {
         }
 
         Ok(formatted_data)
+    }
+}
+
+pub trait ChannelDataCallbacks {
+    fn on_binary_data(&mut self, channel: usize, data: &[u8]) -> Result<()> {
+        let mut formatted_data = String::with_capacity(data.len() * 4);
+        for element in data {
+            // Width of 4 allows 0xFF to be printed.
+            write!(&mut formatted_data, "{element:#04x}").expect("Writing to String cannot fail");
+        }
+        self.on_string_data(channel, formatted_data)
+    }
+
+    fn on_string_data(&mut self, channel: usize, data: String) -> Result<()>;
+}
+
+#[derive(Debug)]
+pub struct RttActiveUpChannel {
+    pub up_channel: UpChannel,
+    pub channel_name: String,
+    pub data_format: ChannelDataFormat,
+    rtt_buffer: RttBuffer,
+}
+
+impl RttActiveUpChannel {
+    pub fn new(
+        core: &mut Core,
+        up_channel: UpChannel,
+        rtt_config: &RttConfig,
+        channel_config: &RttChannelConfig,
+        timestamp_offset: UtcOffset,
+        defmt_state: Option<&DefmtState>,
+    ) -> Result<Self> {
+        let is_defmt_channel = up_channel.name() == Some("defmt");
+
+        let data_format = match channel_config.data_format {
+            DataFormat::String if !is_defmt_channel => ChannelDataFormat::String {
+                timestamp_offset: channel_config.show_timestamps.then_some(timestamp_offset),
+                last_line_done: true,
+            },
+
+            DataFormat::BinaryLE if !is_defmt_channel => ChannelDataFormat::BinaryLE,
+
+            // either DataFormat::Defmt is configured, or defmt_enabled is true
+            _ => {
+                let has_timestamp = if let Some(defmt) = defmt_state {
+                    defmt.table.has_timestamp()
+                } else {
+                    tracing::warn!("No `Table` definition in DWARF info; compile your program with `debug = 2` to enable location info.");
+                    false
+                };
+
+                // Format options:
+                // 1. Custom format for the channel
+                // 2. Custom default format
+                // 3. Default with optional timestamp and location
+                let format = if let Some(format) = channel_config
+                    .defmt_log_format
+                    .as_deref()
+                    .or(rtt_config.log_format.as_deref())
+                {
+                    FormatterFormat::Custom(format)
+                } else {
+                    FormatterFormat::Default {
+                        with_location: channel_config.show_location,
+                    }
+                };
+
+                ChannelDataFormat::Defmt {
+                    formatter: Formatter::new(FormatterConfig {
+                        format,
+                        is_timestamp_available: has_timestamp,
+                    }),
+                    cwd: std::env::current_dir().unwrap(),
+                }
+            }
+        };
+
+        let channel_name = up_channel
+            .name()
+            .or(channel_config.channel_name.as_deref())
+            .map(ToString::to_string)
+            .unwrap_or_else(|| {
+                format!(
+                    "Unnamed {} RTT up channel - {}",
+                    channel_config.data_format,
+                    up_channel.number()
+                )
+            });
+
+        if let Some(mode) = channel_config.mode.or(
+            // Try not to corrupt the byte stream if using defmt
+            if matches!(data_format, ChannelDataFormat::Defmt { .. }) {
+                Some(ChannelMode::BlockIfFull)
+            } else {
+                None
+            },
+        ) {
+            up_channel.set_mode(core, mode)?;
+        }
+
+        Ok(Self {
+            rtt_buffer: RttBuffer::new(up_channel.buffer_size()),
+            up_channel,
+            channel_name,
+            data_format,
+        })
+    }
+
+    pub fn number(&self) -> usize {
+        self.up_channel.number()
+    }
+
+    /// Polls the RTT target for new data on the channel represented by `self`.
+    /// Processes all the new data into the channel internal buffer and returns the number of bytes that was read.
+    pub fn poll_rtt(&mut self, core: &mut Core) -> Option<usize> {
+        // Retry loop, in case the probe is temporarily unavailable, e.g. user pressed the `reset` button.
+        for _loop_count in 0..10 {
+            match self.up_channel.read(core, self.rtt_buffer.0.as_mut()) {
+                Ok(0) => return None,
+                Ok(count) => return Some(count),
+                Err(probe_rs::rtt::Error::Probe(_)) => {
+                    std::thread::sleep(std::time::Duration::from_millis(50));
+                }
+                Err(err) => {
+                    tracing::error!("\nError reading from RTT: {}", err);
+                    return None;
+                }
+            }
+        }
+
+        None
+    }
+
+    /// Retrieves available data from the channel and if available, returns `Some(channel_number:String, formatted_data:String)`.
+    /// If no data is available, or we encounter a recoverable error, it returns `None` value for `formatted_data`.
+    /// Non-recoverable errors are propagated to the caller.
+    pub fn poll_process_rtt_data(
+        &mut self,
+        core: &mut Core,
+        defmt_state: Option<&DefmtState>,
+        collector: &mut impl ChannelDataCallbacks,
+    ) -> Result<()> {
+        let Some(bytes_read) = self.poll_rtt(core) else {
+            return Ok(());
+        };
+
+        let buffer = &self.rtt_buffer.0[..bytes_read];
+
+        self.data_format
+            .process(self.number(), buffer, defmt_state, collector)
     }
 
     pub(crate) fn set_mode(
