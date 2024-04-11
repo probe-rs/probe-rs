@@ -297,7 +297,6 @@ impl ConsoleReportPrinter {
 pub struct TestTracker<'dut> {
     dut_definitions: &'dut [DutDefinition],
     current_dut: usize,
-    num_tests: usize,
     current_test: usize,
 }
 
@@ -306,7 +305,6 @@ impl<'dut> TestTracker<'dut> {
         Self {
             dut_definitions,
             current_dut: 0,
-            num_tests: 0,
             current_test: 0,
         }
     }
@@ -330,10 +328,6 @@ impl<'dut> TestTracker<'dut> {
 
     fn current_test(&self) -> usize {
         self.current_test + 1
-    }
-
-    fn num_tests(&self) -> usize {
-        self.num_tests
     }
 
     fn advance_test(&mut self) {
