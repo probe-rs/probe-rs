@@ -3,7 +3,7 @@ use crate::cmd::dap_server::{
     DebuggerError,
 };
 use std::{fmt::Debug, fs::File, io::Read, path::Path};
-use svd_parser::{self as svd, svd::Device, Config};
+use svd_parser::Config;
 
 use super::svd_cache::{SvdVariable, SvdVariableCache};
 
@@ -35,7 +35,7 @@ impl SvdCache {
 
         let _ = svd_opened_file.read_to_string(svd_xml)?;
 
-        let svd_cache = match svd::parse_with_config(
+        let svd_cache = match svd_parser::parse_with_config(
             svd_xml,
             &Config::default().expand(true).ignore_enums(true),
         ) {
@@ -69,8 +69,9 @@ impl SvdCache {
 }
 
 /// Create a [`probe_rs::debug::SvdVariableCache`] from a Device that was parsed from a CMSIS-SVD file.
+#[tracing::instrument(skip_all)]
 pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
-    peripheral_device: Device,
+    peripheral_device: svd_parser::svd::Device,
     debug_adapter: &mut DebugAdapter<P>,
     progress_id: i64,
 ) -> Result<SvdVariableCache, DebuggerError> {

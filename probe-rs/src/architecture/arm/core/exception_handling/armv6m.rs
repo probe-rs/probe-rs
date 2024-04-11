@@ -45,6 +45,46 @@ impl From<u32> for ExceptionReason {
     }
 }
 
+impl ExceptionReason {
+    /// Expands the exception reason, by providing additional information about the exception from the
+    /// HFSR and CFSR registers.
+    pub(crate) fn expanded_description(
+        &self,
+        _memory: &mut dyn MemoryInterface,
+    ) -> Result<String, Error> {
+        match self {
+            ExceptionReason::ThreadMode => Ok("No active exception.".to_string()),
+            ExceptionReason::Reset => Ok("Reset.".to_string()),
+            ExceptionReason::NonMaskableInterrupt => Ok("Non maskable interrupt.".to_string()),
+            ExceptionReason::HardFault => Ok("HardFault.".to_string()),
+            ExceptionReason::SVCall => Ok("Supervisor call.".to_string()),
+            ExceptionReason::PendSV => Ok("Pending Supervisor call.".to_string()),
+            ExceptionReason::SysTick => Ok("Systick.".to_string()),
+            ExceptionReason::ExternalInterrupt(exti) => Ok(format!("External interrupt #{exti}.")),
+            ExceptionReason::Reserved => {
+                Ok("Reserved by the ISA, and not usable by software.".to_string())
+            }
+        }
+    }
+
+    /// Determines how the exception return address should be offset when unwinding the stack.
+    /// See Armv6-M Architecture Reference Manual, section B1.5.6.
+    pub(crate) fn is_precise_fault(
+        &self,
+        _memory: &mut dyn MemoryInterface,
+    ) -> Result<bool, Error> {
+        let is_precise = match self {
+            ExceptionReason::HardFault => {
+                // This should be true for syncrhonous exceptions, and false otherwise.
+                // TODO: Figure out how to differentiate that on ARMv6-M.
+                true
+            }
+            _ => false,
+        };
+        Ok(is_precise)
+    }
+}
+
 /// Exception handling for cores based on the ARMv6-M architecture.
 pub struct ArmV6MExceptionHandler {}
 
@@ -61,8 +101,30 @@ impl ExceptionInterface for ArmV6MExceptionHandler {
         &self,
         memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &crate::debug::DebugRegisters,
+        raw_exception: u32,
     ) -> Result<crate::debug::DebugRegisters, Error> {
-        armv6m_armv7m_shared::calling_frame_registers(memory_interface, stackframe_registers)
+        let mut updated_registers = armv6m_armv7m_shared::calling_frame_registers(
+            memory_interface,
+            stackframe_registers,
+            raw_exception,
+        )?;
+
+        // Updating the program counter requires architecture-specific handling.
+        let exception_reason = ExceptionReason::from(raw_exception);
+        if exception_reason.is_precise_fault(memory_interface)? {
+            // The PC will be set to the address of the instruction that would have been executed next.
+            // For unwinding purposes we need to adjust the PC to the address of the instruction that caused the fault.
+            // We rewind the program counter by 2 bytes, even though the instruction we are looking for could have
+            // been a 2 or 4 byte instruction. This is good enough to allow us to identify the correct source location
+            // for unwinding purposes.
+            let program_counter =
+                updated_registers.get_register_mut_by_role(&crate::RegisterRole::ProgramCounter)?;
+            if let Some(pc_value) = program_counter.value.as_mut() {
+                pc_value.decrement_address(2)?;
+            }
+        }
+
+        Ok(updated_registers)
     }
 
     fn raw_exception(
@@ -75,13 +137,13 @@ impl ExceptionInterface for ArmV6MExceptionHandler {
     fn exception_description(
         &self,
         raw_exception: u32,
-        _memory_interface: &mut dyn MemoryInterface,
+        memory_interface: &mut dyn MemoryInterface,
     ) -> Result<String, Error> {
         // TODO: Some ARMv6-M cores (e.g. the Cortex-M0) do not have HFSR and CFGR registers, so we cannot
         //       determine the cause of the hard fault. We should add a check for this, and return a more
         //       helpful error message in this case (I'm not sure this is possible).
         //       Until then, this will return a generic error message for all hard faults on this architecture.
-        Ok(format!("{:?}", ExceptionReason::from(raw_exception)))
+        ExceptionReason::from(raw_exception).expanded_description(memory_interface)
     }
 }
 
@@ -122,7 +184,7 @@ mod test {
             .exception_description(raw_exception, &mut memory)
             .unwrap();
 
-        assert_eq!(description, "Reset")
+        assert_eq!(description, "Reset.")
     }
 
     #[test]
@@ -149,7 +211,7 @@ mod test {
             .exception_description(raw_exception, &mut memory)
             .unwrap();
 
-        assert_eq!(description, "ThreadMode")
+        assert_eq!(description, "No active exception.")
     }
 
     #[test]
@@ -266,7 +328,7 @@ mod test {
 
         let details = details.expect("Should detect an exception");
 
-        assert_eq!(details.description, "HardFault");
+        assert_eq!(details.description, "HardFault.");
 
         let mut expected_registers = DebugRegisters(vec![
             DebugRegister {

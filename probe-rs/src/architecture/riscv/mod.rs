@@ -11,7 +11,7 @@ use crate::{
     probe::DebugProbeError,
     semihosting::decode_semihosting_syscall,
     CoreInterface, CoreRegister, CoreStatus, CoreType, Error, HaltReason, InstructionSet,
-    MemoryInterface, MemoryMappedRegister,
+    MemoryInterface, MemoryMappedRegister, SemihostingCommand,
 };
 use anyhow::{anyhow, Result};
 use bitfield::bitfield;
@@ -74,6 +74,7 @@ impl<'probe> Riscv32<'probe> {
     // Resume the core.
     fn resume_core(&mut self) -> Result<(), crate::Error> {
         self.interface.select_hart(self.hart)?;
+        self.state.semihosting_command = None;
 
         // set resume request.
         let mut dmcontrol: Dmcontrol = self.interface.read_dm_register()?;
@@ -113,12 +114,8 @@ impl<'probe> Riscv32<'probe> {
     }
 
     /// Check if the current breakpoint is a semihosting call
-    fn check_for_semihosting(
-        old_reason: HaltReason,
-        core: &mut dyn CoreInterface,
-    ) -> Result<HaltReason, Error> {
-        let mut reason = old_reason;
-        let pc: u32 = core.read_core_reg(core.program_counter().id)?.try_into()?;
+    fn check_for_semihosting(&mut self) -> Result<Option<SemihostingCommand>, Error> {
+        let pc: u32 = self.read_core_reg(self.program_counter().id)?.try_into()?;
 
         // The Riscv Semihosting Specification, specificies the following sequence of instructions,
         // to trigger a semihosting call:
@@ -132,7 +129,7 @@ impl<'probe> Riscv32<'probe> {
 
         // Read the actual instructions, starting at the instruction before the ebreak (PC-4)
         let mut actual_instructions = [0u32; 3];
-        core.read_32((pc - 4) as u64, &mut actual_instructions)?;
+        self.read_32((pc - 4) as u64, &mut actual_instructions)?;
         let actual_instructions = actual_instructions.as_slice();
 
         tracing::debug!(
@@ -144,20 +141,26 @@ impl<'probe> Riscv32<'probe> {
 
         if TRAP_INSTRUCTIONS == actual_instructions {
             // Trap sequence found -> we're semihosting
-            let a0: u32 = core
-                .read_core_reg(core.registers().get_argument_register(0).unwrap().id())?
-                .try_into()?;
-            let a1: u32 = core
-                .read_core_reg(core.registers().get_argument_register(1).unwrap().id())?
-                .try_into()?;
+            match self.state.semihosting_command {
+                None => {
+                    // We only want to decode the semihosting command once, since answering it might change some of the registers
+                    let a0: u32 = self
+                        .read_core_reg(self.registers().get_argument_register(0).unwrap().id())?
+                        .try_into()?;
+                    let a1: u32 = self
+                        .read_core_reg(self.registers().get_argument_register(1).unwrap().id())?
+                        .try_into()?;
 
-            tracing::info!("Semihosting found pc={pc:#x} a0={a0:#x} a1={a1:#x}");
-
-            reason = HaltReason::Breakpoint(BreakpointCause::Semihosting(
-                decode_semihosting_syscall(core, a0, a1)?,
-            ));
+                    tracing::info!("Semihosting found pc={pc:#x} a0={a0:#x} a1={a1:#x}");
+                    let cmd = decode_semihosting_syscall(self, a0, a1)?;
+                    self.state.semihosting_command = Some(cmd);
+                    Ok(Some(cmd))
+                }
+                Some(command) => Ok(Some(command)),
+            }
+        } else {
+            Ok(None)
         }
-        Ok(reason)
     }
 }
 
@@ -190,8 +193,11 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
             let reason = match dcsr.cause() {
                 // An ebreak instruction was hit
                 1 => {
-                    let reason = HaltReason::Breakpoint(BreakpointCause::Software);
-                    Riscv32::check_for_semihosting(reason, self)?
+                    if let Some(cmd) = self.check_for_semihosting()? {
+                        HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd))
+                    } else {
+                        HaltReason::Breakpoint(BreakpointCause::Software)
+                    }
                     // TODO: Add testcase to probe-rs-debugger-test to validate semihosting exit/abort work and unknown semihosting operations are skipped
                 }
                 // Trigger module caused halt
@@ -877,6 +883,9 @@ pub struct RiscVState {
 
     /// Store the value of the `hasresethaltreq` bit of the `dmcstatus` register.
     hasresethaltreq: Option<bool>,
+
+    /// The semihosting command that was decoded at the current program counter
+    semihosting_command: Option<SemihostingCommand>,
 }
 
 impl RiscVState {
@@ -884,6 +893,7 @@ impl RiscVState {
         Self {
             hw_breakpoints_enabled: false,
             hasresethaltreq: None,
+            semihosting_command: None,
         }
     }
 }

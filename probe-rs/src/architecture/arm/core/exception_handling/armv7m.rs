@@ -218,12 +218,12 @@ impl ExceptionReason {
     ) -> Result<String, Error> {
         match self {
             ExceptionReason::ThreadMode => Ok("No active exception.".to_string()),
-            ExceptionReason::Reset => Ok("Reset handler.".to_string()),
+            ExceptionReason::Reset => Ok("Reset.".to_string()),
             ExceptionReason::NonMaskableInterrupt => Ok("Non maskable interrupt.".to_string()),
             ExceptionReason::HardFault => {
                 let hfsr = Hfsr(memory.read_word_32(Hfsr::get_mmio_address())?);
                 let description = if hfsr.debug_event() {
-                    "Synchronous debug fault.".to_string()
+                    "Debug fault.".to_string()
                 } else if hfsr.escalation_forced() {
                     let description = "Escalated ";
                     let cfsr = Cfsr(memory.read_word_32(Cfsr::get_mmio_address())?);
@@ -241,7 +241,7 @@ impl ExceptionReason {
                 } else {
                     "Undeterminable".to_string()
                 };
-                Ok(format!("HardFault handler. Cause: {description}."))
+                Ok(format!("HardFault. Cause: {description}."))
             }
             ExceptionReason::MemoryManagementFault => {
                 if let Some(source) = Cfsr(memory.read_word_32(Cfsr::get_mmio_address())?)
@@ -249,7 +249,7 @@ impl ExceptionReason {
                 {
                     Ok(source)
                 } else {
-                    Ok("UsageFault handler. Cause: Unknown.".to_string())
+                    Ok("UsageFault. Cause: Unknown.".to_string())
                 }
             }
             ExceptionReason::BusFault => {
@@ -258,7 +258,7 @@ impl ExceptionReason {
                 {
                     Ok(source)
                 } else {
-                    Ok("BusFault handler. Cause: Unknown.".to_string())
+                    Ok("BusFault. Cause: Unknown.".to_string())
                 }
             }
             ExceptionReason::UsageFault => {
@@ -267,18 +267,38 @@ impl ExceptionReason {
                 {
                     Ok(source)
                 } else {
-                    Ok("MemManage Fault handler. Cause: Unknown.".to_string())
+                    Ok("MemManage Fault. Cause: Unknown.".to_string())
                 }
             }
             ExceptionReason::SVCall => Ok("Supervisor call.".to_string()),
             ExceptionReason::DebugMonitor => Ok("Synchronous Debug monitor fault.".to_string()),
             ExceptionReason::PendSV => Ok("Pending Supervisor call.".to_string()),
-            ExceptionReason::SysTick => Ok("Systick handler.".to_string()),
+            ExceptionReason::SysTick => Ok("Systick.".to_string()),
             ExceptionReason::ExternalInterrupt(exti) => Ok(format!("External interrupt #{exti}.")),
             ExceptionReason::Reserved => {
                 Ok("Reserved by the ISA, and not usable by software.".to_string())
             }
         }
+    }
+
+    /// Determines how the exception return address should be offset when unwinding the stack.
+    /// See Armv7-M Architecture Reference Manual, Section B1.5.6.
+    pub(crate) fn is_precise_fault(&self, memory: &mut dyn MemoryInterface) -> Result<bool, Error> {
+        let is_precise = match self {
+            ExceptionReason::HardFault | ExceptionReason::BusFault => {
+                // Same logic for direct and escalated BusFault.
+                let cfsr = Cfsr(memory.read_word_32(Cfsr::get_mmio_address())?);
+                cfsr.bf_precise_data_access_error() || cfsr.bf_instruction_prefetch()
+            }
+            ExceptionReason::DebugMonitor => {
+                // This should be true for syncrhonous exceptions, and false otherwise.
+                // TODO: Identify if this debug event was triggered by a vector catch and decode the corresponding FSR.
+                true
+            }
+            ExceptionReason::MemoryManagementFault | ExceptionReason::UsageFault => true,
+            _ => false,
+        };
+        Ok(is_precise)
     }
 }
 
@@ -298,8 +318,29 @@ impl ExceptionInterface for ArmV7MExceptionHandler {
         &self,
         memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &crate::debug::DebugRegisters,
+        raw_exception: u32,
     ) -> Result<crate::debug::DebugRegisters, crate::Error> {
-        armv6m_armv7m_shared::calling_frame_registers(memory_interface, stackframe_registers)
+        let mut updated_registers = armv6m_armv7m_shared::calling_frame_registers(
+            memory_interface,
+            stackframe_registers,
+            raw_exception,
+        )?;
+
+        // Updating the program counter requires architecture-specific handling.
+        let exception_reason = ExceptionReason::from(raw_exception);
+        if exception_reason.is_precise_fault(memory_interface)? {
+            // The PC will be set to the address of the instruction that would have been executed next.
+            // For unwinding purposes we need to adjust the PC to the address of the instruction that caused the fault.
+            // We rewind the program counter by 2 bytes, even though the instruction we are looking for could have
+            // been a 2 or 4 byte instruction. This is good enough to allow us to identify the correct source location
+            // for unwinding purposes.
+            let program_counter =
+                updated_registers.get_register_mut_by_role(&crate::RegisterRole::ProgramCounter)?;
+            if let Some(pc_value) = program_counter.value.as_mut() {
+                pc_value.decrement_address(2)?;
+            }
+        }
+        Ok(updated_registers)
     }
 
     fn raw_exception(
@@ -314,9 +355,6 @@ impl ExceptionInterface for ArmV7MExceptionHandler {
         raw_exception: u32,
         memory_interface: &mut dyn MemoryInterface,
     ) -> Result<String, crate::Error> {
-        Ok(format!(
-            "{:?}",
-            ExceptionReason::from(raw_exception).expanded_description(memory_interface)?
-        ))
+        ExceptionReason::from(raw_exception).expanded_description(memory_interface)
     }
 }

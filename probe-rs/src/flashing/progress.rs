@@ -97,7 +97,6 @@ impl FlashProgress {
         self.emit(ProgressEvent::FinishedFilling);
     }
 
-    #[cfg(feature = "rtt")]
     pub(super) fn message(&self, message: String) {
         self.emit(ProgressEvent::DiagnosticMessage { message });
     }

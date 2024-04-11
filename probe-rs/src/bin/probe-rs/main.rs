@@ -1,8 +1,6 @@
 mod cmd;
 mod util;
 
-include!(concat!(env!("OUT_DIR"), "/meta.rs"));
-
 use std::cmp::Reverse;
 use std::ffi::OsStr;
 use std::fs;
@@ -30,8 +28,8 @@ const MAX_LOG_FILES: usize = 20;
 #[clap(
     name = "probe-rs",
     about = "The probe-rs CLI",
-    version = meta::CARGO_VERSION,
-    long_version = meta::LONG_VERSION
+    version = env!("PROBE_RS_VERSION"),
+    long_version = env!("PROBE_RS_LONG_VERSION")
 )]
 struct Cli {
     /// Location for log file
@@ -266,12 +264,6 @@ fn main() -> Result<()> {
     // Setup the probe lister, list all probes normally
     let lister = Lister::new();
 
-    // the DAP server has special logging requirements. Run it before initializing logging,
-    // so it can do its own special init.
-    if let Subcommand::DapServer(cmd) = matches.subcommand {
-        return cmd::dap_server::run(cmd, &lister, utc_offset);
-    }
-
     let log_path = if let Some(location) = matches.log_file {
         Some(location)
     } else if matches.log_to_folder {
@@ -286,6 +278,12 @@ fn main() -> Result<()> {
     } else {
         None
     };
+
+    // the DAP server has special logging requirements. Run it before initializing logging,
+    // so it can do its own special init.
+    if let Subcommand::DapServer(cmd) = matches.subcommand {
+        return cmd::dap_server::run(cmd, &lister, utc_offset, log_path.as_deref());
+    }
 
     let _logger_guard = setup_logging(log_path.as_deref(), None);
 

@@ -1,0 +1,1 @@
+Removed the `rtt` cargo feature

@@ -458,10 +458,7 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
             };
             let mut range_string = String::new();
             for memory_range in &ranges {
-                range_string.push_str(&format!(
-                    "{:#x}..{:#x}, ",
-                    &memory_range.start, &memory_range.end
-                ));
+                range_string.push_str(&format!("{memory_range:#X?}, "));
             }
             if range_string.is_empty() {
                 range_string = "(No memory ranges specified)".to_string();

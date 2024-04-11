@@ -32,13 +32,8 @@ impl EspFlashSizeDetector {
     pub fn stack_pointer(chip: &Chip) -> u32 {
         chip.memory_map
             .iter()
-            .find_map(|m| {
-                if let MemoryRegion::Ram(ram) = m {
-                    Some(ram.range.start as u32 + 0x1_0000)
-                } else {
-                    None
-                }
-            })
+            .find_map(MemoryRegion::as_ram_region)
+            .map(|ram| ram.range.start as u32 + 0x1_0000)
             .unwrap()
     }
 
