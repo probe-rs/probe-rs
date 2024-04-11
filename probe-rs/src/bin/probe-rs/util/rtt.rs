@@ -286,7 +286,7 @@ impl ChannelDataFormat {
                 Ok(frame) => {
                     let loc = locs.as_ref().and_then(|locs| locs.get(&frame.index()));
                     let (file, line, module) = if let Some(loc) = loc {
-                        let relpath = loc.file.strip_prefix(&cwd).unwrap_or(&loc.file);
+                        let relpath = loc.file.strip_prefix(cwd).unwrap_or(&loc.file);
                         (
                             relpath.display().to_string(),
                             Some(loc.line.try_into().unwrap()),
