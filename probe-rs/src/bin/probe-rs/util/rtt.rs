@@ -8,6 +8,7 @@ use probe_rs_target::MemoryRegion;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::File;
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
 use std::{
     fmt,
@@ -166,6 +167,8 @@ pub enum ChannelDataConfig {
     BinaryLE,
     Defmt {
         formatter: Formatter,
+        // CWD to strip from file paths in defmt output
+        cwd: PathBuf,
     },
 }
 
@@ -266,6 +269,7 @@ impl RttActiveUpChannel {
                         format,
                         is_timestamp_available: has_timestamp,
                     }),
+                    cwd: std::env::current_dir().unwrap(),
                 }
             }
         };
@@ -350,8 +354,11 @@ impl RttActiveUpChannel {
                 let string = Self::process_string(buffer, timestamp_offset, last_line_done)?;
                 collector.on_string_data(self.number(), string)
             }
-            ChannelDataConfig::Defmt { ref formatter } => {
-                let string = self.process_defmt(buffer, defmt_state, formatter)?;
+            ChannelDataConfig::Defmt {
+                ref formatter,
+                ref cwd,
+            } => {
+                let string = Self::process_defmt(buffer, defmt_state, formatter, cwd)?;
                 collector.on_string_data(self.number(), string)
             }
         }
@@ -386,10 +393,10 @@ impl RttActiveUpChannel {
     }
 
     fn process_defmt(
-        &self,
         buffer: &[u8],
         defmt_state: Option<&DefmtState>,
         formatter: &Formatter,
+        cwd: &Path,
     ) -> Result<String> {
         let Some(DefmtState { table, locs }) = defmt_state else {
             return Ok(String::from(
@@ -398,8 +405,11 @@ impl RttActiveUpChannel {
         };
 
         let mut stream_decoder = table.new_stream_decoder();
+
+        // FIXME: this assumes we read frames atomically which is implementation-defined and we
+        // should be able to handle the case where a frame is split across two reads with a
+        // temporary buffer.
         stream_decoder.received(buffer);
-        let current_dir = std::env::current_dir().unwrap();
 
         let mut formatted_data = String::new();
         loop {
@@ -407,7 +417,7 @@ impl RttActiveUpChannel {
                 Ok(frame) => {
                     let loc = locs.as_ref().and_then(|locs| locs.get(&frame.index()));
                     let (file, line, module) = if let Some(loc) = loc {
-                        let relpath = loc.file.strip_prefix(&current_dir).unwrap_or(&loc.file);
+                        let relpath = loc.file.strip_prefix(&cwd).unwrap_or(&loc.file);
                         (
                             relpath.display().to_string(),
                             Some(loc.line.try_into().unwrap()),
