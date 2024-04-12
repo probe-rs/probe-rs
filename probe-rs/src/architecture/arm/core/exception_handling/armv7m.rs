@@ -1,7 +1,7 @@
 use super::armv6m_armv7m_shared::{self};
 use crate::{
     core::{ExceptionInfo, ExceptionInterface},
-    debug::DebugRegisters,
+    debug::{DebugInfo, DebugRegisters},
     memory_mapped_bitfield_register, Error, MemoryInterface, MemoryMappedRegister,
 };
 
@@ -20,6 +20,8 @@ memory_mapped_bitfield_register! {
     pub struct Cfsr(u32);
     0xE000ED28, "CFSR",
     impl From;
+    /// Aggregate view of the UsageFault bits.
+    usage_fault, _: 25,16;
     /// When SDIV or UDIV instruction is used with a divisor of 0, this fault occurs if DIV_0_TRP is enabled in the CCR.
     uf_div_by_zero, _: 25;
     /// Multi-word accesses always fault if not word aligned. Software can configure unaligned word and halfword accesses to fault, by enabling UNALIGN_TRP in the CCR.
@@ -32,6 +34,8 @@ memory_mapped_bitfield_register! {
     uf_invalid_state, _: 17;
     /// The processor has attempted to execute an undefined instruction. This might be an undefined instruction associated with an enabled coprocessor.
     uf_undefined_instruction, _: 16;
+    /// Aggregate view of the BusFault bits.
+    bus_fault, _: 15,8;
     /// BFAR has valid contents.
     bf_address_register_valid, _: 15;
     /// A bus fault occurred during FP lazy state preservation.
@@ -46,6 +50,8 @@ memory_mapped_bitfield_register! {
     bf_precise_data_access_error, _: 9;
     ///  A bus fault on an instruction prefetch has occurred. The fault is signalled only if the instruction is issued.
     bf_instruction_prefetch, _: 8;
+    /// Aggregate view of the MemManage Fault bits.
+    mem_manage_fault, _: 7,0;
     ///  MMAR has valid contents.
     mm_address_register_valid, _: 7;
     /// A MemManage fault occurred during FP lazy state preservation.
@@ -285,17 +291,22 @@ impl ExceptionReason {
     /// See Armv7-M Architecture Reference Manual, Section B1.5.6.
     pub(crate) fn is_precise_fault(&self, memory: &mut dyn MemoryInterface) -> Result<bool, Error> {
         let is_precise = match self {
-            ExceptionReason::HardFault | ExceptionReason::BusFault => {
-                // Same logic for direct and escalated BusFault.
+            ExceptionReason::HardFault
+            | ExceptionReason::BusFault
+            | ExceptionReason::MemoryManagementFault
+            | ExceptionReason::UsageFault => {
+                // Same logic for direct and escalated faults.
                 let cfsr = Cfsr(memory.read_word_32(Cfsr::get_mmio_address())?);
-                cfsr.bf_precise_data_access_error() || cfsr.bf_instruction_prefetch()
+                cfsr.bf_precise_data_access_error()
+                    || cfsr.bf_instruction_prefetch()
+                    || cfsr.mem_manage_fault() > 0
+                    || cfsr.usage_fault() > 0
             }
             ExceptionReason::DebugMonitor => {
                 // This should be true for syncrhonous exceptions, and false otherwise.
-                // TODO: Identify if this debug event was triggered by a vector catch and decode the corresponding FSR.
+                // TODO: Identify if this debug event was triggered by a vector catch and decode the corresponding FSR. Not a priority for unwinding purposes.
                 true
             }
-            ExceptionReason::MemoryManagementFault | ExceptionReason::UsageFault => true,
             _ => false,
         };
         Ok(is_precise)
@@ -310,8 +321,14 @@ impl ExceptionInterface for ArmV7MExceptionHandler {
         &self,
         memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &DebugRegisters,
+        debug_info: &DebugInfo,
     ) -> Result<Option<ExceptionInfo>, Error> {
-        armv6m_armv7m_shared::exception_details(self, memory_interface, stackframe_registers)
+        armv6m_armv7m_shared::exception_details(
+            self,
+            memory_interface,
+            stackframe_registers,
+            debug_info,
+        )
     }
 
     fn calling_frame_registers(
@@ -320,26 +337,23 @@ impl ExceptionInterface for ArmV7MExceptionHandler {
         stackframe_registers: &crate::debug::DebugRegisters,
         raw_exception: u32,
     ) -> Result<crate::debug::DebugRegisters, crate::Error> {
-        let mut updated_registers = armv6m_armv7m_shared::calling_frame_registers(
-            memory_interface,
-            stackframe_registers,
-            raw_exception,
-        )?;
+        let mut updated_registers = stackframe_registers.clone();
 
-        // Updating the program counter requires architecture-specific handling.
+        // Identify the correct location for the exception context. This is different between Armv6-M and Armv7-M.
         let exception_reason = ExceptionReason::from(raw_exception);
         if exception_reason.is_precise_fault(memory_interface)? {
-            // The PC will be set to the address of the instruction that would have been executed next.
-            // For unwinding purposes we need to adjust the PC to the address of the instruction that caused the fault.
-            // We rewind the program counter by 2 bytes, even though the instruction we are looking for could have
-            // been a 2 or 4 byte instruction. This is good enough to allow us to identify the correct source location
-            // for unwinding purposes.
-            let program_counter =
-                updated_registers.get_register_mut_by_role(&crate::RegisterRole::ProgramCounter)?;
-            if let Some(pc_value) = program_counter.value.as_mut() {
-                pc_value.decrement_address(2)?;
+            let exception_context_address =
+                updated_registers.get_register_mut_by_role(&crate::RegisterRole::StackPointer)?;
+            if let Some(sp_value) = exception_context_address.value.as_mut() {
+                sp_value.increment_address(0x8)?;
             }
         }
+
+        updated_registers = armv6m_armv7m_shared::calling_frame_registers(
+            memory_interface,
+            &updated_registers,
+            raw_exception,
+        )?;
         Ok(updated_registers)
     }
 

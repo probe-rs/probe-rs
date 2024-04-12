@@ -1,8 +1,8 @@
 use crate::{
     core::{ExceptionInfo, ExceptionInterface},
-    debug::DebugRegisters,
+    debug::{get_object_reference, DebugInfo, DebugRegisters, StackFrame},
     memory::MemoryInterface,
-    memory_mapped_bitfield_register, Error, MemoryMappedRegister, RegisterValue,
+    memory_mapped_bitfield_register, Error, MemoryMappedRegister, RegisterRole, RegisterValue,
 };
 use bitfield::bitfield;
 
@@ -462,21 +462,39 @@ impl ExceptionInterface for ArmV8MExceptionHandler {
         &self,
         memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &DebugRegisters,
+        _debug_info: &DebugInfo,
     ) -> Result<Option<ExceptionInfo>, Error> {
         let stack_frame_return_address: u32 = get_stack_frame_return_address(stackframe_registers)?;
         if ExcReturn(stack_frame_return_address).is_exception_flag() == 0xFF {
             // This is an exception frame.
 
             let raw_exception = self.raw_exception(stackframe_registers)?;
+            let description = self.exception_description(raw_exception, memory_interface)?;
+            let registers = self.calling_frame_registers(
+                memory_interface,
+                stackframe_registers,
+                raw_exception,
+            )?;
+
+            let exception_frame_pc =
+                registers.get_register_value_by_role(&RegisterRole::ProgramCounter)?;
+
+            let handler_frame = StackFrame {
+                id: get_object_reference(),
+                function_name: description.clone(),
+                source_location: None,
+                registers,
+                pc: RegisterValue::U32(exception_frame_pc as u32),
+                frame_base: None,
+                is_inlined: false,
+                local_variables: None,
+                canonical_frame_address: None,
+            };
 
             Ok(Some(ExceptionInfo {
                 raw_exception,
-                description: self.exception_description(raw_exception, memory_interface)?,
-                calling_frame_registers: self.calling_frame_registers(
-                    memory_interface,
-                    stackframe_registers,
-                    raw_exception,
-                )?,
+                description,
+                handler_frame,
             }))
         } else {
             // This is a normal function return.

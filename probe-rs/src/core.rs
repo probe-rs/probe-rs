@@ -1,6 +1,9 @@
 use crate::{
-    architecture::arm::sequences::ArmDebugSequence, config::DebugSequence, debug::DebugRegisters,
-    error::Error, CoreType, InstructionSet, MemoryInterface, Target,
+    architecture::arm::sequences::ArmDebugSequence,
+    config::DebugSequence,
+    debug::{DebugInfo, DebugRegisters, StackFrame},
+    error::Error,
+    CoreType, InstructionSet, MemoryInterface, Target,
 };
 use anyhow::anyhow;
 pub use probe_rs_target::{Architecture, CoreAccessOptions};
@@ -259,17 +262,15 @@ impl<'probe> MemoryInterface for Core<'probe> {
 /// A struct containing key information about an exception.
 /// The exception details are architecture specific, and the abstraction is handled in the
 /// architecture specific implementations of [`crate::core::ExceptionInterface`].
-#[derive(Debug, PartialEq)]
+#[derive(PartialEq)]
 pub struct ExceptionInfo {
     /// The exception number.
     /// This is architecture specific and can be used to decode the architecture specific exception reason.
     pub raw_exception: u32,
     /// A human readable explanation for the exception.
     pub description: String,
-    /// The stackframe registers, and their values, for the frame that triggered the exception.
-    /// Note: In cases such as reset handlers, the calling frame information may be altered by
-    /// 'trampoline' functions.
-    pub calling_frame_registers: DebugRegisters,
+    /// A populated [`StackFrame`] for to represent the stack data in the exception handler.
+    pub handler_frame: StackFrame,
 }
 
 /// A generic interface to identify and decode exceptions during unwind processing.
@@ -284,6 +285,7 @@ pub trait ExceptionInterface {
         &self,
         memory: &mut dyn MemoryInterface,
         stackframe_registers: &DebugRegisters,
+        debug_info: &DebugInfo,
     ) -> Result<Option<ExceptionInfo>, Error>;
 
     /// Using the `stackframe_registers` for a "called frame", retrieve updated register values for the "calling frame".
@@ -317,6 +319,7 @@ impl ExceptionInterface for UnimplementedExceptionHandler {
         &self,
         _memory: &mut dyn MemoryInterface,
         _stackframe_registers: &DebugRegisters,
+        _debug_info: &DebugInfo,
     ) -> Result<Option<ExceptionInfo>, Error> {
         // For architectures where the exception handling has not been implemented in probe-rs,
         // this will result in maintaining the current `unwind` behavior, i.e. unwinding will include up
