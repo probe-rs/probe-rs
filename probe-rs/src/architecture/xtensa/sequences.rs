@@ -48,7 +48,8 @@ pub trait XtensaDebugSequence: Send + Sync + Debug {
         &self,
         interface: &mut XtensaCommunicationInterface,
     ) -> Result<(), XtensaError> {
-        interface.reset()?;
+        interface.assert_reset()?;
+        interface.deassert_reset()?;
 
         // TODO: this is only necessary to run code, so this might not be the best place
         // Make sure the CPU is in a known state and is able to run code we download.

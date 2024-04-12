@@ -65,7 +65,8 @@ pub trait RiscvDebugSequence: Send + Sync + Debug {
 
     /// Executes a system-wide reset without debug domain (or warm-reset that preserves debug connection) via software mechanisms.
     fn reset_system(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), RiscvError> {
-        interface.hart_reset()?;
+        interface.assert_hart_reset()?;
+        interface.deassert_hart_reset()?;
 
         Ok(())
     }

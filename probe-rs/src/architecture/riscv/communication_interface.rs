@@ -1568,7 +1568,7 @@ impl RiscvCommunicationInterface {
         Ok(())
     }
 
-    pub(super) fn hart_reset(&mut self) -> Result<(), RiscvError> {
+    pub(super) fn assert_hart_reset(&mut self) -> Result<(), RiscvError> {
         tracing::debug!("Resetting core, setting hartreset bit");
 
         let mut dmcontrol: Dmcontrol = self.read_dm_register()?;
@@ -1620,6 +1620,11 @@ impl RiscvCommunicationInterface {
             }
         }
 
+        Ok(())
+    }
+
+    pub(super) fn deassert_hart_reset(&mut self) -> Result<(), RiscvError> {
+        let mut dmcontrol: Dmcontrol = self.read_dm_register()?;
         // acknowledge the reset, clear the reset request
         dmcontrol.set_hartreset(false);
         dmcontrol.set_ndmreset(false);
