@@ -1639,7 +1639,7 @@ impl RiscvCommunicationInterface {
     }
 
     pub(super) fn debug_on_sw_breakpoint(&mut self, enabled: bool) -> Result<(), RiscvError> {
-        let mut dcsr = Dcsr(self.read_csr(0x7b0).map(|v| v.into())?);
+        let mut dcsr = Dcsr(self.read_csr(0x7b0)?);
 
         dcsr.set_ebreakm(enabled);
         dcsr.set_ebreaks(enabled);
