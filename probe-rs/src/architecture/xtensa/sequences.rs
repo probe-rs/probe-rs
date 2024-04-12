@@ -1,6 +1,8 @@
 use std::{fmt::Debug, sync::Arc};
 
-use crate::architecture::xtensa::communication_interface::XtensaCommunicationInterface;
+use crate::architecture::xtensa::communication_interface::{
+    XtensaCommunicationInterface, XtensaError,
+};
 
 /// A interface to operate debug sequences for Xtensa targets.
 ///
@@ -20,6 +22,25 @@ pub trait XtensaDebugSequence: Send + Sync + Debug {
         _interface: &mut XtensaCommunicationInterface,
     ) -> Result<Option<usize>, crate::Error> {
         Ok(None)
+    }
+
+    /// Configure the target to stop code execution after a reset. After this, the core will halt when it comes
+    /// out of reset.
+    fn reset_catch_set(
+        &self,
+        interface: &mut XtensaCommunicationInterface,
+    ) -> Result<(), XtensaError> {
+        interface.xdm.halt_on_reset(true);
+        Ok(())
+    }
+
+    /// Free hardware resources allocated by ResetCatchSet.
+    fn reset_catch_clear(
+        &self,
+        interface: &mut XtensaCommunicationInterface,
+    ) -> Result<(), XtensaError> {
+        interface.xdm.halt_on_reset(false);
+        Ok(())
     }
 }
 

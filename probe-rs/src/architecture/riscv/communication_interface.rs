@@ -314,6 +314,9 @@ pub struct RiscvCommunicationInterface {
     state: RiscvCommunicationInterfaceState,
     enabled_harts: u32,
     last_selected_hart: u32,
+
+    /// Store the value of the `hasresethaltreq` bit of the `dmcstatus` register.
+    hasresethaltreq: Option<bool>,
 }
 
 impl RiscvCommunicationInterface {
@@ -326,6 +329,7 @@ impl RiscvCommunicationInterface {
             state,
             enabled_harts: 0,
             last_selected_hart: 0,
+            hasresethaltreq: None,
         };
 
         if let Err(err) = s.enter_debug_mode() {
@@ -1525,6 +1529,22 @@ impl RiscvCommunicationInterface {
         R: LargeRegister,
     {
         V::schedule_write_to_register::<R>(self, value)
+    }
+
+    /// Check if the connected device supports halt after reset.
+    ///
+    /// Returns a cached value if available, otherwise queries the
+    /// `hasresethaltreq` bit in the `dmstatus` register.
+    pub(super) fn supports_reset_halt_req(&mut self) -> Result<bool, RiscvError> {
+        if let Some(has_reset_halt_req) = self.hasresethaltreq {
+            Ok(has_reset_halt_req)
+        } else {
+            let dmstatus: Dmstatus = self.read_dm_register()?;
+
+            self.hasresethaltreq = Some(dmstatus.hasresethaltreq());
+
+            Ok(dmstatus.hasresethaltreq())
+        }
     }
 }
 

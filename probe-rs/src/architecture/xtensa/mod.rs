@@ -63,18 +63,18 @@ impl XtensaState {
     }
 }
 
-/// An interface to operate Xtensa cores.
+/// An interface to operate an Xtensa core.
 pub struct Xtensa<'probe> {
     interface: &'probe mut XtensaCommunicationInterface,
     state: &'probe mut XtensaState,
-    _sequence: Arc<dyn XtensaDebugSequence>,
+    sequence: Arc<dyn XtensaDebugSequence>,
 }
 
 impl<'probe> Xtensa<'probe> {
     const IBREAKA_REGS: [SpecialRegister; 2] =
         [SpecialRegister::IBreakA0, SpecialRegister::IBreakA1];
 
-    /// Create a new Xtensa interface.
+    /// Create a new Xtensa interface for a particular core.
     pub fn new(
         interface: &'probe mut XtensaCommunicationInterface,
         state: &'probe mut XtensaState,
@@ -83,7 +83,7 @@ impl<'probe> Xtensa<'probe> {
         Self {
             interface,
             state,
-            _sequence: sequence,
+            sequence,
         }
     }
 
@@ -450,13 +450,11 @@ impl<'probe> CoreInterface for Xtensa<'probe> {
     }
 
     fn reset_catch_set(&mut self) -> Result<(), Error> {
-        self.interface.xdm.halt_on_reset(true);
-        Ok(())
+        Ok(self.sequence.reset_catch_set(self.interface)?)
     }
 
     fn reset_catch_clear(&mut self) -> Result<(), Error> {
-        self.interface.xdm.halt_on_reset(false);
-        Ok(())
+        Ok(self.sequence.reset_catch_clear(self.interface)?)
     }
 
     fn debug_core_stop(&mut self) -> Result<(), Error> {
