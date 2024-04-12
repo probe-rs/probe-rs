@@ -1,6 +1,6 @@
 //! All the interface bits for Xtensa.
 
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 use probe_rs_target::{Architecture, CoreType, InstructionSet};
 
@@ -9,6 +9,7 @@ use crate::{
         arch::{instruction::Instruction, Register, SpecialRegister},
         communication_interface::{DebugCause, IBreakEn},
         registers::{FP, PC, RA, SP, XTENSA_CORE_REGSISTERS},
+        sequences::XtensaDebugSequence,
     },
     core::{
         registers::{CoreRegisters, RegisterId, RegisterValue},
@@ -66,6 +67,7 @@ impl XtensaState {
 pub struct Xtensa<'probe> {
     interface: &'probe mut XtensaCommunicationInterface,
     state: &'probe mut XtensaState,
+    _sequence: Arc<dyn XtensaDebugSequence>,
 }
 
 impl<'probe> Xtensa<'probe> {
@@ -76,8 +78,13 @@ impl<'probe> Xtensa<'probe> {
     pub fn new(
         interface: &'probe mut XtensaCommunicationInterface,
         state: &'probe mut XtensaState,
+        sequence: Arc<dyn XtensaDebugSequence>,
     ) -> Self {
-        Self { interface, state }
+        Self {
+            interface,
+            state,
+            _sequence: sequence,
+        }
     }
 
     fn core_info(&mut self) -> Result<CoreInformation, Error> {

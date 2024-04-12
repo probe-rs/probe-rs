@@ -1,6 +1,12 @@
 use crate::{
-    architecture::arm::sequences::ArmDebugSequence, config::DebugSequence, debug::DebugRegisters,
-    error::Error, CoreType, InstructionSet, MemoryInterface, Target,
+    architecture::{
+        arm::sequences::ArmDebugSequence, riscv::sequences::RiscvDebugSequence,
+        xtensa::sequences::XtensaDebugSequence,
+    },
+    config::DebugSequence,
+    debug::DebugRegisters,
+    error::Error,
+    CoreType, InstructionSet, MemoryInterface, Target,
 };
 use anyhow::anyhow;
 pub use probe_rs_target::{Architecture, CoreAccessOptions};
@@ -415,7 +421,13 @@ impl<'probe> Core<'probe> {
                 }
             }
             CoreAccessOptions::Riscv(options) => {
-                let core_state = CoreState::new(ResolvedCoreOptions::Riscv { options });
+                let DebugSequence::Riscv(sequence) = target.debug_sequence.clone() else {
+                    panic!(
+                        "Mismatch between sequence and core kind. This is a bug, please report it."
+                    );
+                };
+
+                let core_state = CoreState::new(ResolvedCoreOptions::Riscv { sequence, options });
                 CombinedCoreState {
                     id,
                     core_state,
@@ -423,7 +435,13 @@ impl<'probe> Core<'probe> {
                 }
             }
             CoreAccessOptions::Xtensa(options) => {
-                let core_state = CoreState::new(ResolvedCoreOptions::Xtensa { options });
+                let DebugSequence::Xtensa(sequence) = target.debug_sequence.clone() else {
+                    panic!(
+                        "Mismatch between sequence and core kind. This is a bug, please report it."
+                    );
+                };
+
+                let core_state = CoreState::new(ResolvedCoreOptions::Xtensa { sequence, options });
                 CombinedCoreState {
                     id,
                     core_state,
@@ -892,9 +910,11 @@ pub enum ResolvedCoreOptions {
         options: ArmCoreAccessOptions,
     },
     Riscv {
+        sequence: Arc<dyn RiscvDebugSequence>,
         options: RiscvCoreAccessOptions,
     },
     Xtensa {
+        sequence: Arc<dyn XtensaDebugSequence>,
         options: XtensaCoreAccessOptions,
     },
 }
@@ -907,8 +927,16 @@ impl std::fmt::Debug for ResolvedCoreOptions {
                 .field("sequence", &"<ArmDebugSequence>")
                 .field("options", options)
                 .finish(),
-            Self::Riscv { options } => f.debug_struct("Riscv").field("options", options).finish(),
-            Self::Xtensa { options } => f.debug_struct("Xtensa").field("options", options).finish(),
+            Self::Riscv { options, .. } => f
+                .debug_struct("Riscv")
+                .field("sequence", &"<RiscvDebugSequence>")
+                .field("options", options)
+                .finish(),
+            Self::Xtensa { options, .. } => f
+                .debug_struct("Xtensa")
+                .field("sequence", &"<XtensaDebugSequence>")
+                .field("options", options)
+                .finish(),
         }
     }
 }

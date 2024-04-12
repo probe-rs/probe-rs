@@ -3,6 +3,7 @@
 #![allow(clippy::inconsistent_digit_grouping)]
 
 use crate::{
+    architecture::riscv::sequences::RiscvDebugSequence,
     core::{
         Architecture, BreakpointCause, CoreInformation, CoreRegisters, RegisterId, RegisterValue,
     },
@@ -17,7 +18,10 @@ use anyhow::{anyhow, Result};
 use bitfield::bitfield;
 use communication_interface::{AbstractCommandErrorKind, RiscvCommunicationInterface, RiscvError};
 use registers::{FP, RA, RISCV_CORE_REGSISTERS, SP};
-use std::time::{Duration, Instant};
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 #[macro_use]
 pub(crate) mod registers;
@@ -32,6 +36,7 @@ pub struct Riscv32<'probe> {
     hart: u32,
     interface: &'probe mut RiscvCommunicationInterface,
     state: &'probe mut RiscVState,
+    _sequence: Arc<dyn RiscvDebugSequence>,
 }
 
 impl<'probe> Riscv32<'probe> {
@@ -40,6 +45,7 @@ impl<'probe> Riscv32<'probe> {
         hart: u32,
         interface: &'probe mut RiscvCommunicationInterface,
         state: &'probe mut RiscVState,
+        sequence: Arc<dyn RiscvDebugSequence>,
     ) -> Result<Self, RiscvError> {
         if !interface.hart_enabled(hart) {
             return Err(RiscvError::HartUnavailable);
@@ -49,6 +55,7 @@ impl<'probe> Riscv32<'probe> {
             hart,
             interface,
             state,
+            _sequence: sequence,
         })
     }
 
