@@ -1546,6 +1546,108 @@ impl RiscvCommunicationInterface {
             Ok(dmstatus.hasresethaltreq())
         }
     }
+
+    // Resume the core.
+    pub(super) fn resume_core(&mut self) -> Result<(), RiscvError> {
+        // set resume request.
+        let mut dmcontrol: Dmcontrol = self.read_dm_register()?;
+        dmcontrol.set_dmactive(true);
+        dmcontrol.set_resumereq(true);
+        self.write_dm_register(dmcontrol)?;
+
+        // check if request has been acknowleged.
+        let status: Dmstatus = self.read_dm_register()?;
+        if !status.allresumeack() {
+            return Err(RiscvError::RequestNotAcknowledged);
+        };
+
+        // clear resume request.
+        dmcontrol.set_resumereq(false);
+        self.write_dm_register(dmcontrol)?;
+
+        Ok(())
+    }
+
+    pub(super) fn hart_reset(&mut self) -> Result<(), RiscvError> {
+        tracing::debug!("Resetting core, setting hartreset bit");
+
+        let mut dmcontrol: Dmcontrol = self.read_dm_register()?;
+        dmcontrol.set_dmactive(true);
+        dmcontrol.set_hartreset(true);
+
+        self.write_dm_register(dmcontrol)?;
+
+        // Read back register to verify reset is supported
+        let readback: Dmcontrol = self.read_dm_register()?;
+
+        if readback.hartreset() {
+            tracing::debug!("Clearing hartreset bit");
+            // Reset is performed by setting the bit high, and then low again
+            let mut dmcontrol = readback;
+            dmcontrol.set_dmactive(true);
+            dmcontrol.set_hartreset(false);
+
+            self.write_dm_register(dmcontrol)?;
+        } else {
+            // Hartreset is not supported, whole core needs to be reset
+            //
+            // TODO: Cache this
+            tracing::debug!("Hartreset bit not supported, using ndmreset");
+            dmcontrol.set_hartreset(false);
+            dmcontrol.set_ndmreset(true);
+
+            self.write_dm_register(dmcontrol)?;
+
+            tracing::debug!("Clearing ndmreset bit");
+            dmcontrol.set_ndmreset(false);
+
+            self.write_dm_register(dmcontrol)?;
+        }
+
+        let start = Instant::now();
+
+        let timeout = Duration::from_secs(1);
+        loop {
+            // check that cores have reset
+            let readback: Dmstatus = self.read_dm_register()?;
+
+            if readback.allhavereset() {
+                break;
+            }
+
+            if start.elapsed() > timeout {
+                return Err(RiscvError::RequestNotAcknowledged);
+            }
+        }
+
+        // acknowledge the reset, clear the reset request
+        dmcontrol.set_hartreset(false);
+        dmcontrol.set_ndmreset(false);
+        dmcontrol.set_ackhavereset(true);
+
+        self.write_dm_register(dmcontrol)?;
+
+        // Reenable halt on breakpoint because this gets disabled if we reset the core
+        self.debug_on_sw_breakpoint(true)?; // TODO: only restore if enabled before?
+
+        Ok(())
+    }
+
+    pub(super) fn debug_on_sw_breakpoint(&mut self, enabled: bool) -> Result<(), RiscvError> {
+        let mut dcsr = Dcsr(self.read_csr(0x7b0).map(|v| v.into())?);
+
+        dcsr.set_ebreakm(enabled);
+        dcsr.set_ebreaks(enabled);
+        dcsr.set_ebreaku(enabled);
+
+        match self.abstract_cmd_register_write(0x7b0, dcsr.0) {
+            Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
+                tracing::debug!("Could not write core register {:#x} with abstract command, falling back to program buffer", 0x7b0);
+                self.write_csr_progbuf(0x7b0, dcsr.0)
+            }
+            other => other,
+        }
+    }
 }
 
 pub(crate) trait LargeRegister {

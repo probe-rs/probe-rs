@@ -8,6 +8,7 @@ use crate::{
         xtensa::{
             arch::{instruction::Instruction, CpuRegister, Register},
             communication_interface::XtensaCommunicationInterface,
+            sequences::XtensaDebugSequence,
         },
     },
     MemoryInterface,
@@ -40,6 +41,7 @@ impl EspFlashSizeDetector {
     pub fn detect_flash_size_esp32(
         &self,
         interface: &mut XtensaCommunicationInterface,
+        sequence: &impl XtensaDebugSequence,
     ) -> Result<Option<usize>, crate::Error> {
         tracing::info!("Detecting flash size");
         attach_flash_xtensa(
@@ -47,6 +49,7 @@ impl EspFlashSizeDetector {
             self.stack_pointer,
             self.load_address,
             self.attach_fn,
+            sequence,
         )?;
         detect_flash_size_esp32(interface, self.spiflash_peripheral)
     }
@@ -54,6 +57,7 @@ impl EspFlashSizeDetector {
     pub fn detect_flash_size_xtensa(
         &self,
         interface: &mut XtensaCommunicationInterface,
+        sequence: &impl XtensaDebugSequence,
     ) -> Result<Option<usize>, crate::Error> {
         tracing::info!("Detecting flash size");
         attach_flash_xtensa(
@@ -61,6 +65,7 @@ impl EspFlashSizeDetector {
             self.stack_pointer,
             self.load_address,
             self.attach_fn,
+            sequence,
         )?;
         tracing::info!("Flash attached");
         detect_flash_size(interface, self.spiflash_peripheral)
@@ -120,9 +125,13 @@ fn attach_flash_xtensa(
     stack_pointer: u32,
     load_addr: u32,
     attach_fn: u32,
+    sequence: &impl XtensaDebugSequence,
 ) -> Result<(), crate::Error> {
     // We're very intrusive here but the flashing process should reset the MCU again anyway
-    interface.reset_and_halt(Duration::from_millis(500))?;
+    sequence.reset_catch_set(interface)?;
+    sequence.reset_system(interface)?;
+    interface.wait_for_core_halted(Duration::from_millis(500))?;
+    sequence.reset_catch_clear(interface)?;
 
     let mut instructions = vec![];
     Instruction::CallX8(CpuRegister::A4).encode_into_vec(&mut instructions);

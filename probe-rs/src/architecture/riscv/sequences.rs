@@ -62,6 +62,13 @@ pub trait RiscvDebugSequence: Send + Sync + Debug {
 
         Ok(())
     }
+
+    /// Executes a system-wide reset without debug domain (or warm-reset that preserves debug connection) via software mechanisms.
+    fn reset_system(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), RiscvError> {
+        interface.hart_reset()?;
+
+        Ok(())
+    }
 }
 
 /// The default sequences that is used for RISC-V chips that do not specify a specific sequence.

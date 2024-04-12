@@ -175,41 +175,6 @@ impl XtensaCommunicationInterface {
         Ok(())
     }
 
-    /// Resets the processor core.
-    pub fn reset(&mut self) -> Result<(), XtensaError> {
-        match self.reset_and_halt(Duration::from_millis(500)) {
-            Ok(_) => {
-                self.resume()?;
-
-                Ok(())
-            }
-            Err(error) => Err(XtensaError::DebugProbe(DebugProbeError::Other(
-                anyhow::anyhow!("Error during reset").context(error),
-            ))),
-        }
-    }
-
-    /// Resets the processor core and halts it immediately.
-    pub fn reset_and_halt(&mut self, timeout: Duration) -> Result<(), XtensaError> {
-        self.xdm.target_reset_assert()?;
-        self.xdm.halt_on_reset(true);
-        self.xdm.target_reset_deassert()?;
-        self.wait_for_core_halted(timeout)?;
-        self.xdm.halt_on_reset(false);
-
-        // TODO: this is only necessary to run code, so this might not be the best place
-        // Make sure the CPU is in a known state and is able to run code we download.
-        self.write_register({
-            let mut ps = ProgramStatus(0);
-            ps.set_intlevel(1);
-            ps.set_user_mode(true);
-            ps.set_woe(true);
-            ps
-        })?;
-
-        Ok(())
-    }
-
     /// Halts the core.
     pub fn halt(&mut self) -> Result<(), XtensaError> {
         tracing::debug!("Halting core");
@@ -662,7 +627,7 @@ impl XtensaCommunicationInterface {
         self.xdm.execute()
     }
 
-    fn write_memory(&mut self, address: u64, data: &[u8]) -> Result<(), XtensaError> {
+    pub(crate) fn write_memory(&mut self, address: u64, data: &[u8]) -> Result<(), XtensaError> {
         tracing::debug!("Writing {} bytes to address {:08x}", data.len(), address);
         if data.is_empty() {
             return Ok(());
@@ -725,6 +690,13 @@ impl XtensaCommunicationInterface {
         }
 
         // TODO: implement cache flushing on CPUs that need it.
+
+        Ok(())
+    }
+
+    pub(crate) fn reset(&mut self) -> Result<(), XtensaError> {
+        self.xdm.target_reset_assert()?;
+        self.xdm.target_reset_deassert()?;
 
         Ok(())
     }

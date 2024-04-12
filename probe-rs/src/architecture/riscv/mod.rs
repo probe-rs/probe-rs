@@ -75,29 +75,6 @@ impl<'probe> Riscv32<'probe> {
         }
     }
 
-    // Resume the core.
-    fn resume_core(&mut self) -> Result<(), crate::Error> {
-        self.state.semihosting_command = None;
-
-        // set resume request.
-        let mut dmcontrol: Dmcontrol = self.interface.read_dm_register()?;
-        dmcontrol.set_dmactive(true);
-        dmcontrol.set_resumereq(true);
-        self.interface.write_dm_register(dmcontrol)?;
-
-        // check if request has been acknowleged.
-        let status: Dmstatus = self.interface.read_dm_register()?;
-        if !status.allresumeack() {
-            return Err(RiscvError::RequestNotAcknowledged.into());
-        };
-
-        // clear resume request.
-        dmcontrol.set_resumereq(false);
-        self.interface.write_dm_register(dmcontrol)?;
-
-        Ok(())
-    }
-
     /// Check if the current breakpoint is a semihosting call
     fn check_for_semihosting(&mut self) -> Result<Option<SemihostingCommand>, Error> {
         let pc: u32 = self.read_core_reg(self.program_counter().id)?.try_into()?;
@@ -203,106 +180,42 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         }
     }
 
-    fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, crate::Error> {
+    fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
         Ok(self.interface.halt(timeout)?)
     }
 
-    fn run(&mut self) -> Result<(), crate::Error> {
+    fn run(&mut self) -> Result<(), Error> {
         // Before we run, we always perform a single instruction step, to account for possible breakpoints that might get us stuck on the current instruction.
         self.step()?;
 
         // resume the core.
-        self.resume_core()?;
+        self.interface.resume_core()?;
 
         Ok(())
     }
 
-    fn reset(&mut self) -> Result<(), crate::Error> {
-        match self.reset_and_halt(Duration::from_millis(500)) {
-            Ok(_) => self.resume_core()?,
-            Err(error) => {
-                return Err(RiscvError::DebugProbe(DebugProbeError::Other(
-                    anyhow::anyhow!("Error during reset").context(error),
-                ))
-                .into());
-            }
-        }
+    fn reset(&mut self) -> Result<(), Error> {
+        self.state.semihosting_command = None;
+        self.sequence.reset_system(self.interface)?;
+
         Ok(())
     }
 
-    fn reset_and_halt(
-        &mut self,
-        timeout: Duration,
-    ) -> Result<crate::core::CoreInformation, crate::Error> {
-        tracing::debug!("Resetting core, setting hartreset bit");
+    fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
+        self.sequence.reset_catch_set(self.interface)?;
 
-        let mut dmcontrol: Dmcontrol = self.interface.read_dm_register()?;
-        dmcontrol.set_dmactive(true);
-        dmcontrol.set_hartreset(true);
-        dmcontrol.set_haltreq(true);
+        self.reset()?;
+        self.wait_for_core_halted(timeout)?;
 
-        self.interface.write_dm_register(dmcontrol)?;
-
-        // Read back register to verify reset is supported
-        let readback: Dmcontrol = self.interface.read_dm_register()?;
-
-        if readback.hartreset() {
-            tracing::debug!("Clearing hartreset bit");
-            // Reset is performed by setting the bit high, and then low again
-            let mut dmcontrol = readback;
-            dmcontrol.set_dmactive(true);
-            dmcontrol.set_hartreset(false);
-
-            self.interface.write_dm_register(dmcontrol)?;
-        } else {
-            // Hartreset is not supported, whole core needs to be reset
-            //
-            // TODO: Cache this
-            tracing::debug!("Hartreset bit not supported, using ndmreset");
-            dmcontrol.set_hartreset(false);
-            dmcontrol.set_ndmreset(true);
-            dmcontrol.set_haltreq(true);
-
-            self.interface.write_dm_register(dmcontrol)?;
-
-            tracing::debug!("Clearing ndmreset bit");
-            dmcontrol.set_ndmreset(false);
-            dmcontrol.set_haltreq(true);
-
-            self.interface.write_dm_register(dmcontrol)?;
-        }
-
-        let start = Instant::now();
-
-        loop {
-            // check that cores have reset
-            let readback: Dmstatus = self.interface.read_dm_register()?;
-
-            if readback.allhavereset() && readback.allhalted() {
-                break;
-            }
-
-            if start.elapsed() > timeout {
-                return Err(RiscvError::RequestNotAcknowledged.into());
-            }
-        }
-
-        // acknowledge the reset, clear the halt request
-        dmcontrol.set_hartreset(false);
-        dmcontrol.set_ndmreset(false);
-        dmcontrol.set_ackhavereset(true);
-
-        self.interface.write_dm_register(dmcontrol)?;
-
-        // Reenable halt on breakpoint because this gets disabled if we reset the core
-        self.debug_on_sw_breakpoint(true)?; // TODO: only restore if enabled before?
+        self.sequence.reset_catch_clear(self.interface)?;
 
         let pc = self.read_core_reg(RegisterId(0x7b1))?;
 
         Ok(CoreInformation { pc: pc.try_into()? })
     }
 
-    fn step(&mut self) -> Result<crate::core::CoreInformation, crate::Error> {
+    fn step(&mut self) -> Result<CoreInformation, crate::Error> {
+        self.state.semihosting_command = None;
         let halt_reason = self.status()?;
         let flashing_done = self.state.hw_breakpoints_enabled;
         if matches!(
@@ -342,7 +255,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         self.write_csr(0x7b0, dcsr.0)?;
 
         // Now we can resume the core for the single step.
-        self.resume_core()?;
+        self.interface.resume_core()?;
         self.wait_for_core_halted(Duration::from_millis(100))?;
 
         let pc = self.read_core_reg(RegisterId(0x7b1))?;
@@ -499,7 +412,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         }
 
         if was_running {
-            self.resume_core()?;
+            self.interface.resume_core()?;
         }
 
         Ok(breakpoints)
@@ -611,7 +524,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         self.write_csr(tdata2, 0)?;
 
         if was_running {
-            self.resume_core()?;
+            self.interface.resume_core()?;
         }
 
         Ok(())
@@ -641,14 +554,9 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         self.state.hw_breakpoints_enabled
     }
 
-    fn debug_on_sw_breakpoint(&mut self, enabled: bool) -> Result<(), crate::error::Error> {
-        let mut dcsr = Dcsr(self.read_core_reg(RegisterId(0x7b0))?.try_into()?);
-
-        dcsr.set_ebreakm(enabled);
-        dcsr.set_ebreaks(enabled);
-        dcsr.set_ebreaku(enabled);
-
-        self.write_csr(0x7b0, dcsr.0).map_err(|e| e.into())
+    fn debug_on_sw_breakpoint(&mut self, enabled: bool) -> Result<(), Error> {
+        self.interface.debug_on_sw_breakpoint(enabled)?;
+        Ok(())
     }
 
     fn architecture(&self) -> Architecture {
