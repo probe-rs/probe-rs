@@ -16,6 +16,7 @@ use probe_rs::flashing::FileDownloadError;
 use probe_rs::probe::list::Lister;
 use probe_rs::probe::DebugProbeError;
 use probe_rs::CoreDumpError;
+use probe_rs::CoreInterface;
 use probe_rs::{
     debug::{debug_info::DebugInfo, registers::DebugRegisters, stack_frame::StackFrame},
     Core, CoreType, InstructionSet, MemoryInterface, RegisterValue,
@@ -538,6 +539,22 @@ impl DebugCli {
                 let address = get_int_argument(args, 0)?;
 
                 cli_data.core.clear_hw_breakpoint(address)?;
+
+                Ok(CliState::Continue)
+            },
+        });
+
+        cli.add_command(Command {
+            name: "list_break",
+            help_text: "List all set breakpoints",
+            function: |cli_data, _| {
+                cli_data
+                    .core
+                    .hw_breakpoints()?
+                    .into_iter()
+                    .enumerate()
+                    .flat_map(|(idx, bpt)| bpt.map(|bpt| (idx, bpt)))
+                    .for_each(|(idx, bpt)| println!("Breakpoint {idx} - {bpt:#010X}"));
 
                 Ok(CliState::Continue)
             },
