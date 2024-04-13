@@ -1,6 +1,6 @@
 //! Sequence for the ESP32C2.
 
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use probe_rs_target::Chip;
 
@@ -59,5 +59,30 @@ impl RiscvDebugSequence for ESP32C2 {
         interface: &mut RiscvCommunicationInterface,
     ) -> Result<Option<usize>, crate::Error> {
         self.inner.detect_flash_size_riscv(interface)
+    }
+
+    fn reset_system_and_halt(
+        &self,
+        interface: &mut RiscvCommunicationInterface,
+        timeout: Duration,
+    ) -> Result<(), crate::Error> {
+        interface.assert_hart_reset_and_halt(timeout)?;
+        interface.deassert_hart_reset()?;
+
+        // Reset all peripherals except for the RTC block.
+
+        // At this point the core is reset and halted, ready for us to issue a system reset
+        // Trigger reset via RTC_CNTL_SW_SYS_RST
+        interface.write_word_32(0x6000_8000, 0x9C00_A000)?;
+
+        // Workaround for stuck in cpu start during calibration.
+        interface.write_word_32(0x6001_F068, 0)?;
+
+        interface.assert_hart_reset_and_halt(timeout)?;
+        interface.deassert_hart_reset()?;
+
+        self.on_connect(interface)?;
+
+        Ok(())
     }
 }
