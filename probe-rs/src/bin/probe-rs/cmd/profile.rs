@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 use std::time::Duration;
+use std::time::Instant;
 
 use itm::TracePacket;
 use probe_rs::{
@@ -11,7 +12,6 @@ use probe_rs::{
     },
     probe::list::Lister,
 };
-use time::Instant;
 
 use addr2line::{
     gimli::{EndianRcSlice, RunTimeEndian},
@@ -117,7 +117,7 @@ impl ProfileCmd {
                     *samples.entry(pc).or_insert(1) += 1;
                     reads += 1;
                     core.run()?;
-                    if Instant::now() - start > duration {
+                    if start.elapsed() > duration {
                         break;
                     }
                 }
@@ -144,7 +144,7 @@ impl ProfileCmd {
                         *samples.entry(pc).or_insert(1) += 1;
                         reads += 1;
                     }
-                    if Instant::now() - start > duration {
+                    if start.elapsed() > duration {
                         break;
                     }
                 }
