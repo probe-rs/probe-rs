@@ -83,6 +83,9 @@ impl RiscvDebugSequence for ESP32C3 {
         // Workaround for stuck in cpu start during calibration.
         interface.write_word_32(0x6001_F068, 0)?;
 
+        interface.assert_hart_reset_and_halt(timeout)?;
+        interface.deassert_hart_reset()?;
+
         self.on_connect(interface)?;
 
         Ok(())
