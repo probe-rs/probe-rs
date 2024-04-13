@@ -1535,7 +1535,7 @@ impl RiscvCommunicationInterface {
     ///
     /// Returns a cached value if available, otherwise queries the
     /// `hasresethaltreq` bit in the `dmstatus` register.
-    pub(super) fn supports_reset_halt_req(&mut self) -> Result<bool, RiscvError> {
+    pub(crate) fn supports_reset_halt_req(&mut self) -> Result<bool, RiscvError> {
         if let Some(has_reset_halt_req) = self.hasresethaltreq {
             Ok(has_reset_halt_req)
         } else {
@@ -1548,7 +1548,7 @@ impl RiscvCommunicationInterface {
     }
 
     // Resume the core.
-    pub(super) fn resume_core(&mut self) -> Result<(), RiscvError> {
+    pub(crate) fn resume_core(&mut self) -> Result<(), RiscvError> {
         // set resume request.
         let mut dmcontrol: Dmcontrol = self.read_dm_register()?;
         dmcontrol.set_dmactive(true);
@@ -1568,7 +1568,7 @@ impl RiscvCommunicationInterface {
         Ok(())
     }
 
-    pub(super) fn assert_hart_reset_and_halt(
+    pub(crate) fn assert_hart_reset_and_halt(
         &mut self,
         timeout: Duration,
     ) -> Result<(), RiscvError> {
@@ -1634,7 +1634,7 @@ impl RiscvCommunicationInterface {
         Ok(())
     }
 
-    pub(super) fn deassert_hart_reset(&mut self) -> Result<(), RiscvError> {
+    pub(crate) fn deassert_hart_reset(&mut self) -> Result<(), RiscvError> {
         let mut dmcontrol: Dmcontrol = self.read_dm_register()?;
         // clear the reset request
         dmcontrol.set_hartreset(false);
@@ -1645,7 +1645,7 @@ impl RiscvCommunicationInterface {
         Ok(())
     }
 
-    pub(super) fn debug_on_sw_breakpoint(&mut self, enabled: bool) -> Result<(), RiscvError> {
+    pub(crate) fn debug_on_sw_breakpoint(&mut self, enabled: bool) -> Result<(), RiscvError> {
         let mut dcsr = Dcsr(self.read_csr(0x7b0)?);
 
         dcsr.set_ebreakm(enabled);

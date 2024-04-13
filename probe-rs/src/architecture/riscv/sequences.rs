@@ -69,7 +69,7 @@ pub trait RiscvDebugSequence: Send + Sync + Debug {
         &self,
         interface: &mut RiscvCommunicationInterface,
         timeout: Duration,
-    ) -> Result<(), RiscvError> {
+    ) -> Result<(), crate::Error> {
         interface.assert_hart_reset_and_halt(timeout)?;
         interface.deassert_hart_reset()?;
 
