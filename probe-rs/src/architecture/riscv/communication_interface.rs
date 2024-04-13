@@ -1625,22 +1625,21 @@ impl RiscvCommunicationInterface {
             }
         }
 
-        // acknowledge the reset, clear the halt request
-        dmcontrol.set_haltreq(false);
-        dmcontrol.set_ackhavereset(true);
-
-        self.write_dm_register(dmcontrol)?;
-
         Ok(())
     }
 
     pub(crate) fn deassert_hart_reset(&mut self) -> Result<(), RiscvError> {
         let mut dmcontrol: Dmcontrol = self.read_dm_register()?;
         // clear the reset request
+        dmcontrol.set_haltreq(false);
+        dmcontrol.set_ackhavereset(true);
         dmcontrol.set_hartreset(false);
         dmcontrol.set_ndmreset(false);
 
         self.write_dm_register(dmcontrol)?;
+
+        // Reenable halt on breakpoint because this gets disabled if we reset the core
+        self.debug_on_sw_breakpoint(true)?; // TODO: only restore if enabled before?
 
         Ok(())
     }

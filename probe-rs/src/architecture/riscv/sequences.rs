@@ -73,9 +73,6 @@ pub trait RiscvDebugSequence: Send + Sync + Debug {
         interface.assert_hart_reset_and_halt(timeout)?;
         interface.deassert_hart_reset()?;
 
-        // Reenable halt on breakpoint because this gets disabled if we reset the core
-        interface.debug_on_sw_breakpoint(true)?; // TODO: only restore if enabled before?
-
         Ok(())
     }
 }

@@ -85,9 +85,6 @@ impl RiscvDebugSequence for ESP32C3 {
 
         self.on_connect(interface)?;
 
-        // Reenable halt on breakpoint because this gets disabled if we reset the core
-        interface.debug_on_sw_breakpoint(true)?; // TODO: only restore if enabled before?
-
         Ok(())
     }
 }
