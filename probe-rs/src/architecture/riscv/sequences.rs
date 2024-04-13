@@ -6,6 +6,7 @@ use crate::architecture::riscv::Dmcontrol;
 use super::communication_interface::RiscvCommunicationInterface;
 use std::fmt::Debug;
 use std::sync::Arc;
+use std::time::Duration;
 
 /// A interface to operate debug sequences for RISC-V targets.
 ///
@@ -64,9 +65,16 @@ pub trait RiscvDebugSequence: Send + Sync + Debug {
     }
 
     /// Executes a system-wide reset without debug domain (or warm-reset that preserves debug connection) via software mechanisms.
-    fn reset_system(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), RiscvError> {
-        interface.assert_hart_reset()?;
+    fn reset_system_and_halt(
+        &self,
+        interface: &mut RiscvCommunicationInterface,
+        timeout: Duration,
+    ) -> Result<(), RiscvError> {
+        interface.assert_hart_reset_and_halt(timeout)?;
         interface.deassert_hart_reset()?;
+
+        // Reenable halt on breakpoint because this gets disabled if we reset the core
+        interface.debug_on_sw_breakpoint(true)?; // TODO: only restore if enabled before?
 
         Ok(())
     }

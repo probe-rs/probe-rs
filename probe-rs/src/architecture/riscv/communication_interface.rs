@@ -1559,7 +1559,7 @@ impl RiscvCommunicationInterface {
         let status: Dmstatus = self.read_dm_register()?;
         if !status.allresumeack() {
             return Err(RiscvError::RequestNotAcknowledged);
-        };
+        }
 
         // clear resume request.
         dmcontrol.set_resumereq(false);
@@ -1568,12 +1568,16 @@ impl RiscvCommunicationInterface {
         Ok(())
     }
 
-    pub(super) fn assert_hart_reset(&mut self) -> Result<(), RiscvError> {
+    pub(super) fn assert_hart_reset_and_halt(
+        &mut self,
+        timeout: Duration,
+    ) -> Result<(), RiscvError> {
         tracing::debug!("Resetting core, setting hartreset bit");
 
         let mut dmcontrol: Dmcontrol = self.read_dm_register()?;
         dmcontrol.set_dmactive(true);
         dmcontrol.set_hartreset(true);
+        dmcontrol.set_haltreq(true);
 
         self.write_dm_register(dmcontrol)?;
 
@@ -1595,23 +1599,24 @@ impl RiscvCommunicationInterface {
             tracing::debug!("Hartreset bit not supported, using ndmreset");
             dmcontrol.set_hartreset(false);
             dmcontrol.set_ndmreset(true);
+            dmcontrol.set_haltreq(true);
 
             self.write_dm_register(dmcontrol)?;
 
             tracing::debug!("Clearing ndmreset bit");
             dmcontrol.set_ndmreset(false);
+            dmcontrol.set_haltreq(true);
 
             self.write_dm_register(dmcontrol)?;
         }
 
         let start = Instant::now();
 
-        let timeout = Duration::from_secs(1);
         loop {
             // check that cores have reset
             let readback: Dmstatus = self.read_dm_register()?;
 
-            if readback.allhavereset() {
+            if readback.allhavereset() && readback.allhalted() {
                 break;
             }
 
@@ -1620,20 +1625,22 @@ impl RiscvCommunicationInterface {
             }
         }
 
+        // acknowledge the reset, clear the halt request
+        dmcontrol.set_haltreq(false);
+        dmcontrol.set_ackhavereset(true);
+
+        self.write_dm_register(dmcontrol)?;
+
         Ok(())
     }
 
     pub(super) fn deassert_hart_reset(&mut self) -> Result<(), RiscvError> {
         let mut dmcontrol: Dmcontrol = self.read_dm_register()?;
-        // acknowledge the reset, clear the reset request
+        // clear the reset request
         dmcontrol.set_hartreset(false);
         dmcontrol.set_ndmreset(false);
-        dmcontrol.set_ackhavereset(true);
 
         self.write_dm_register(dmcontrol)?;
-
-        // Reenable halt on breakpoint because this gets disabled if we reset the core
-        self.debug_on_sw_breakpoint(true)?; // TODO: only restore if enabled before?
 
         Ok(())
     }

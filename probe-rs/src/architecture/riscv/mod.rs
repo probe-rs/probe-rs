@@ -195,19 +195,16 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn reset(&mut self) -> Result<(), Error> {
-        self.state.semihosting_command = None;
-        self.sequence.reset_system(self.interface)?;
+        self.reset_and_halt(Duration::from_secs(1))?;
+        self.interface.resume_core()?;
 
         Ok(())
     }
 
     fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
-        self.sequence.reset_catch_set(self.interface)?;
-
-        self.reset()?;
-        self.wait_for_core_halted(timeout)?;
-
-        self.sequence.reset_catch_clear(self.interface)?;
+        self.state.semihosting_command = None;
+        self.sequence
+            .reset_system_and_halt(self.interface, timeout)?;
 
         let pc = self.read_core_reg(RegisterId(0x7b1))?;
 
