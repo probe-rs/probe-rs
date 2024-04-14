@@ -73,8 +73,7 @@ impl RiscvDebugSequence for ESP32H2 {
         interface: &mut RiscvCommunicationInterface,
         timeout: Duration,
     ) -> Result<(), crate::Error> {
-        interface.assert_hart_reset_and_halt(timeout)?;
-        interface.deassert_hart_reset()?;
+        interface.reset_hart_and_halt(timeout)?;
 
         // System reset, ported from OpenOCD.
         interface.write_word_32(0x6000_8000, 0x9C00_A000)?;
@@ -101,8 +100,7 @@ impl RiscvDebugSequence for ESP32H2 {
         dmcontrol.set_haltreq(true);
         interface.write_dm_register(dmcontrol)?;
 
-        interface.assert_hart_reset_and_halt(timeout)?;
-        interface.deassert_hart_reset()?;
+        interface.reset_hart_and_halt(timeout)?;
 
         self.on_connect(interface)?;
 

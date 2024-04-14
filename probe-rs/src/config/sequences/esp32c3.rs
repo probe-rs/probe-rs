@@ -71,8 +71,7 @@ impl RiscvDebugSequence for ESP32C3 {
         interface: &mut RiscvCommunicationInterface,
         timeout: Duration,
     ) -> Result<(), crate::Error> {
-        interface.assert_hart_reset_and_halt(timeout)?;
-        interface.deassert_hart_reset()?;
+        interface.reset_hart_and_halt(timeout)?;
 
         // Reset all peripherals except for the RTC block.
 
@@ -83,8 +82,7 @@ impl RiscvDebugSequence for ESP32C3 {
         // Workaround for stuck in cpu start during calibration.
         interface.write_word_32(0x6001_F068, 0)?;
 
-        interface.assert_hart_reset_and_halt(timeout)?;
-        interface.deassert_hart_reset()?;
+        interface.reset_hart_and_halt(timeout)?;
 
         self.on_connect(interface)?;
 
