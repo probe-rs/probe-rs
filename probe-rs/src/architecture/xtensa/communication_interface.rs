@@ -16,26 +16,25 @@ use crate::{
 use super::xdm::{Error as XdmError, Xdm};
 
 /// Possible Xtensa errors
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, docsplay::Display)]
 pub enum XtensaError {
-    /// An error originating from the DebugProbe
-    #[error("Debug Probe Error")]
+    /// An error originating from the DebugProbe occurred
     DebugProbe(#[from] DebugProbeError),
+
     /// Xtensa debug module error
-    #[error("Xtensa debug module error")]
     XdmError(#[from] XdmError),
-    /// A timeout occurred
+
+    /// The operation has timed out
     // TODO: maybe we could be a bit more specific
-    #[error("The operation has timed out")]
     Timeout,
+
     /// The connected target is not an Xtensa device.
-    #[error("Connected target is not an Xtensa device.")]
     NoXtensaTarget,
+
     /// The requested register is not available.
-    #[error("The requested register is not available.")]
     RegisterNotAvailable,
+
     /// The result index of a batched command is not available.
-    #[error("The requested data is not available due to a previous error.")]
     BatchedResultNotAvailable,
 }
 
