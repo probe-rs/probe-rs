@@ -24,32 +24,12 @@ pub trait XtensaDebugSequence: Send + Sync + Debug {
         Ok(None)
     }
 
-    /// Configure the target to stop code execution after a reset. After this, the core will halt when it comes
-    /// out of reset.
-    fn reset_catch_set(
-        &self,
-        interface: &mut XtensaCommunicationInterface,
-    ) -> Result<(), XtensaError> {
-        interface.xdm.halt_on_reset(true);
-        Ok(())
-    }
-
-    /// Free hardware resources allocated by ResetCatchSet.
-    fn reset_catch_clear(
-        &self,
-        interface: &mut XtensaCommunicationInterface,
-    ) -> Result<(), XtensaError> {
-        interface.xdm.halt_on_reset(false);
-        Ok(())
-    }
-
     /// Executes a system-wide reset without debug domain (or warm-reset that preserves debug connection) via software mechanisms.
-    fn reset_system(
+    fn reset_system_and_halt(
         &self,
         interface: &mut XtensaCommunicationInterface,
     ) -> Result<(), XtensaError> {
-        interface.assert_reset()?;
-        interface.deassert_reset()?;
+        interface.reset_and_halt()?;
 
         // TODO: this is only necessary to run code, so this might not be the best place
         // Make sure the CPU is in a known state and is able to run code we download.

@@ -126,8 +126,6 @@ pub struct Xdm {
 
     last_instruction: Option<Instruction>,
 
-    halt_on_reset: bool,
-
     queue: JtagCommandQueue,
     jtag_results: DeferredResultSet,
 
@@ -142,8 +140,6 @@ impl Xdm {
             probe,
             device_id: 0,
             last_instruction: None,
-
-            halt_on_reset: false,
 
             queue: JtagCommandQueue::new(),
             jtag_results: DeferredResultSet::new(),
@@ -567,7 +563,7 @@ impl Xdm {
         }
     }
 
-    pub fn target_reset_assert(&mut self) -> Result<(), XtensaError> {
+    pub fn reset_and_halt(&mut self) -> Result<(), XtensaError> {
         self.pwr_write(PowerDevice::PowerControl, {
             let mut pwr_control = PowerControl(0);
 
@@ -579,14 +575,7 @@ impl Xdm {
 
             pwr_control.0
         })?;
-
-        Ok(())
-    }
-
-    pub fn target_reset_deassert(&mut self) -> Result<(), XtensaError> {
-        if self.halt_on_reset {
-            self.halt()?;
-        }
+        self.halt()?;
 
         self.pwr_write(PowerDevice::PowerControl, {
             let mut pwr_control = PowerControl(0);
@@ -600,10 +589,6 @@ impl Xdm {
         })?;
 
         Ok(())
-    }
-
-    pub(crate) fn halt_on_reset(&mut self, en: bool) {
-        self.halt_on_reset = en;
     }
 
     pub(super) fn free(self) -> Box<dyn JTAGAccess> {

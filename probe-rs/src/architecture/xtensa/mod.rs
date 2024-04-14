@@ -300,18 +300,14 @@ impl<'probe> CoreInterface for Xtensa<'probe> {
 
     fn reset(&mut self) -> Result<(), Error> {
         self.state.semihosting_command = None;
-        self.sequence.reset_system(self.interface)?;
+        self.sequence.reset_system_and_halt(self.interface)?;
 
-        Ok(())
+        self.run()
     }
 
-    fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
-        self.sequence.reset_catch_set(self.interface)?;
-
-        self.reset()?;
-        self.wait_for_core_halted(timeout)?;
-
-        self.sequence.reset_catch_clear(self.interface)?;
+    fn reset_and_halt(&mut self, _timeout: Duration) -> Result<CoreInformation, Error> {
+        self.state.semihosting_command = None;
+        self.sequence.reset_system_and_halt(self.interface)?;
 
         self.core_info()
     }
@@ -456,11 +452,11 @@ impl<'probe> CoreInterface for Xtensa<'probe> {
     }
 
     fn reset_catch_set(&mut self) -> Result<(), Error> {
-        Ok(self.sequence.reset_catch_set(self.interface)?)
+        Err(Error::NotImplemented("reset_catch_set"))
     }
 
     fn reset_catch_clear(&mut self) -> Result<(), Error> {
-        Ok(self.sequence.reset_catch_clear(self.interface)?)
+        Err(Error::NotImplemented("reset_catch_clear"))
     }
 
     fn debug_core_stop(&mut self) -> Result<(), Error> {

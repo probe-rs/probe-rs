@@ -694,14 +694,8 @@ impl XtensaCommunicationInterface {
         Ok(())
     }
 
-    pub(crate) fn assert_reset(&mut self) -> Result<(), XtensaError> {
-        self.xdm.target_reset_assert()?;
-
-        Ok(())
-    }
-
-    pub(crate) fn deassert_reset(&mut self) -> Result<(), XtensaError> {
-        self.xdm.target_reset_deassert()?;
+    pub(crate) fn reset_and_halt(&mut self) -> Result<(), XtensaError> {
+        self.xdm.reset_and_halt()?;
 
         Ok(())
     }
