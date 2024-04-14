@@ -496,7 +496,11 @@ fn shift_ir(
 
     // Check the bit length, enough data has to be available
     if data.len() * 8 < len || len == 0 {
-        return Err(DebugProbeError::Other(anyhow!("Invalid data length")));
+        return Err(DebugProbeError::Other(anyhow!(
+            "Invalid data length. IR bits: {}, expected: {}",
+            data.len(),
+            len
+        )));
     }
 
     // BYPASS commands before and after shifting out data where required
@@ -546,7 +550,11 @@ fn shift_dr(
 
     // Check the bit length, enough data has to be available
     if data.len() * 8 < register_bits || register_bits == 0 {
-        return Err(DebugProbeError::Other(anyhow!("Invalid data length")));
+        return Err(DebugProbeError::Other(anyhow!(
+            "Invalid data length. DR bits: {}, expected: {}",
+            data.len(),
+            register_bits
+        )));
     }
 
     // Last bit of data is shifted out when we exit the SHIFT-DR State
