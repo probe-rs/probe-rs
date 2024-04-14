@@ -226,39 +226,28 @@ impl Registry {
         Ok((targ, family.clone()))
     }
 
-    fn get_targets_by_family_name(
-        &self,
-        family_name: impl AsRef<str>,
-    ) -> Result<Vec<String>, RegistryError> {
-        let name: &str = family_name.as_ref();
-
-        let family = {
-            let mut finded_family = None;
-            let mut exact_matches = 0;
-            for family in &self.families {
-                if match_name_prefix(&family.name, name) {
-                    if family.name.len() == name.len() {
-                        tracing::debug!("Exact match for family name: {}", family.name);
-                        exact_matches += 1;
-                    } else {
-                        tracing::debug!("Partial match for family name: {}", family.name);
-                        if exact_matches > 0 {
-                            continue;
-                        }
+    fn get_targets_by_family_name(&self, name: &str) -> Result<Vec<String>, RegistryError> {
+        let mut found_family = None;
+        let mut exact_matches = 0;
+        for family in self.families.iter() {
+            if match_name_prefix(&family.name, name) {
+                if family.name.len() == name.len() {
+                    tracing::debug!("Exact match for family name: {}", family.name);
+                    exact_matches += 1;
+                } else {
+                    tracing::debug!("Partial match for family name: {}", family.name);
+                    if exact_matches > 0 {
+                        continue;
                     }
-                    finded_family = Some(family);
                 }
+                found_family = Some(family);
             }
-            finded_family.ok_or_else(|| RegistryError::ChipNotFound(name.to_owned()))?
+        }
+        let Some(family) = found_family else {
+            return Err(RegistryError::ChipNotFound(name.to_string()));
         };
 
-        let mut all_family_targets = Vec::new();
-
-        for target in &family.variants {
-            all_family_targets.push(target.name.clone());
-        }
-
-        Ok(all_family_targets)
+        Ok(family.variants.iter().map(|v| v.name.to_string()).collect())
     }
 
     fn search_chips(&self, name: &str) -> Vec<String> {
@@ -363,7 +352,7 @@ pub fn get_targets_by_family_name(
     REGISTRY
         .lock()
         .unwrap()
-        .get_targets_by_family_name(family_name)
+        .get_targets_by_family_name(family_name.as_ref())
 }
 
 /// Returns targets from the internal registry that match the given name.
