@@ -711,21 +711,42 @@ impl RiscVState {
 }
 
 memory_mapped_bitfield_register! {
-    /// `dmcontrol` register, located at
-    /// address 0x10
+    /// `dmcontrol` register, located at address 0x10
     pub struct Dmcontrol(u32);
     0x10, "dmcontrol",
     impl From;
+
+    /// Requests the currently selected harts to halt.
     pub _, set_haltreq: 31;
+
+    /// Requests the currently selected harts to resume.
     pub _, set_resumereq: 30;
+
+    /// Requests the currently selected harts to reset. Optional.
     pub hartreset, set_hartreset: 29;
+
+    /// Writing 1 clears the `havereset` flag of selected harts.
     pub _, set_ackhavereset: 28;
+
+    /// Selects the definition of currently selected harts. If 1, multiple harts may be selected.
     pub hasel, set_hasel: 26;
+
+    /// The lower 10 bits of the currently selected harts.
     pub hartsello, set_hartsello: 25, 16;
+
+    /// The upper 10 bits of the currently selected harts.
     pub hartselhi, set_hartselhi: 15, 6;
+
+    /// Writes the halt-on-reset request bit for all currently selected hart. Optional.
     pub _, set_resethaltreq: 3;
+
+    /// Clears the halt-on-reset request bit for all currently selected harts. Optional.
     pub _, set_clrresethaltreq: 2;
+
+    /// This bit controls the reset signal from the DM to the rest of the system.
     pub ndmreset, set_ndmreset: 1;
+
+    /// Reset signal for the debug module.
     pub dmactive, set_dmactive: 0;
 }
 
@@ -733,7 +754,7 @@ impl Dmcontrol {
     /// Currently selected harts
     ///
     /// Combination of the `hartselhi` and `hartsello` registers.
-    fn hartsel(&self) -> u32 {
+    pub fn hartsel(&self) -> u32 {
         self.hartselhi() << 10 | self.hartsello()
     }
 
@@ -741,7 +762,7 @@ impl Dmcontrol {
     ///
     /// This sets the `hartselhi` and `hartsello` registers.
     /// This is a 20 bit register, larger values will be truncated.
-    fn set_hartsel(&mut self, value: u32) {
+    pub fn set_hartsel(&mut self, value: u32) {
         self.set_hartsello(value & 0x3ff);
         self.set_hartselhi((value >> 10) & 0x3ff);
     }
@@ -775,21 +796,21 @@ memory_mapped_bitfield_register! {
 }
 
 bitfield! {
-        struct Dcsr(u32);
-        impl Debug;
+    struct Dcsr(u32);
+    impl Debug;
 
-        xdebugver, _: 31, 28;
-        ebreakm, set_ebreakm: 15;
-        ebreaks, set_ebreaks: 13;
-        ebreaku, set_ebreaku: 12;
-        stepie, set_stepie: 11;
-        stopcount, set_stopcount: 10;
-        stoptime, set_stoptime: 9;
-        cause, set_cause: 8, 6;
-        mprven, set_mprven: 4;
-        nmip, _: 3;
-        step, set_step: 2;
-        prv, set_prv: 1,0;
+    xdebugver, _: 31, 28;
+    ebreakm, set_ebreakm: 15;
+    ebreaks, set_ebreaks: 13;
+    ebreaku, set_ebreaku: 12;
+    stepie, set_stepie: 11;
+    stopcount, set_stopcount: 10;
+    stoptime, set_stoptime: 9;
+    cause, set_cause: 8, 6;
+    mprven, set_mprven: 4;
+    nmip, _: 3;
+    step, set_step: 2;
+    prv, set_prv: 1,0;
 }
 
 memory_mapped_bitfield_register! {
