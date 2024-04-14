@@ -427,8 +427,8 @@ pub fn families() -> Result<Vec<ChipFamily>, RegistryError> {
 fn match_name_prefix(pattern: &str, name: &str) -> bool {
     // If `name` is shorter than `pattern` but all characters in `name` match,
     // the iterator will end early and the function returns true.
-    for (n, p) in name.to_ascii_lowercase().chars().zip(pattern.chars()) {
-        if p.to_ascii_lowercase() != n && p != 'x' {
+    for (n, p) in name.chars().zip(pattern.chars()) {
+        if !n.eq_ignore_ascii_case(&p) && p != 'x' {
             return false;
         }
     }
