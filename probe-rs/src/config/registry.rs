@@ -332,13 +332,9 @@ impl Registry {
             .validate()
             .map_err(|e| RegistryError::InvalidChipFamilyDefinition(Box::new(family.clone()), e))?;
 
-        let index = self
-            .families
-            .iter()
-            .position(|old_family| old_family.name == family.name);
-        if let Some(index) = index {
-            self.families.remove(index);
-        }
+        self.families
+            .retain(|old_family| !old_family.name.eq_ignore_ascii_case(&family.name));
+
         self.families.push(family);
 
         Ok(())
