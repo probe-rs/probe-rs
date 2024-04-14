@@ -2,7 +2,7 @@ use std::net::SocketAddr;
 
 use crate::{
     cmd::cargo_embed::rttui::tcp::TcpPublisher,
-    util::rtt::{ChannelDataCallbacks, ChannelDataConfig, DefmtState, RttActiveUpChannel},
+    util::rtt::{ChannelDataCallbacks, DefmtState, RttActiveUpChannel},
 };
 
 pub enum ChannelData {
@@ -49,13 +49,12 @@ pub struct UpChannel {
 impl UpChannel {
     pub fn new(rtt_channel: RttActiveUpChannel, tcp_stream: Option<SocketAddr>) -> Self {
         Self {
-            data: match rtt_channel.data_format {
-                ChannelDataConfig::String { .. } | ChannelDataConfig::Defmt { .. } => {
-                    ChannelData::Strings {
-                        messages: Vec::new(),
-                    }
+            data: if rtt_channel.data_format.is_binary() {
+                ChannelData::Binary { data: Vec::new() }
+            } else {
+                ChannelData::Strings {
+                    messages: Vec::new(),
                 }
-                ChannelDataConfig::BinaryLE => ChannelData::Binary { data: Vec::new() },
             },
             tcp_stream: tcp_stream.map(TcpPublisher::new),
             rtt_channel,
