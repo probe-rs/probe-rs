@@ -194,18 +194,21 @@ impl Registry {
                 }
                 matches => {
                     const MAX_PRINTED_MATCHES: usize = 100;
-                    tracing::warn!("Ignoring ambiguous matches for specified chip name {name}");
-                    let suggestions = if matches <= MAX_PRINTED_MATCHES {
-                        partial_matches.join(", ")
-                    } else {
-                        // prevent too much text being printed if too many matches
-                        let mut suggestions = partial_matches[0..MAX_PRINTED_MATCHES].join(", ");
+                    tracing::warn!(
+                        "Ignoring {matches} ambiguous matches for specified chip name {name}"
+                    );
 
-                        suggestions
-                            .push_str(&format!(" and {} more", matches - MAX_PRINTED_MATCHES));
+                    let (print, overflow) =
+                        partial_matches.split_at(MAX_PRINTED_MATCHES.min(matches));
 
-                        suggestions
-                    };
+                    let mut suggestions = print.join(", ");
+
+                    match overflow.len() {
+                        0 => {}
+                        1 => suggestions.push_str(&format!(", {}", overflow[0])),
+                        _ => suggestions.push_str(&format!("and {} more", overflow.len())),
+                    }
+
                     return Err(RegistryError::ChipNotUnique(name.to_string(), suggestions));
                 }
             }
