@@ -147,6 +147,11 @@ impl JtagDtm {
 }
 
 impl DtmAccess for JtagDtm {
+    fn init(&mut self) -> Result<(), DebugProbeError> {
+        self.probe.tap_reset()?;
+        Ok(())
+    }
+
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
         self.probe.target_reset_assert()
     }

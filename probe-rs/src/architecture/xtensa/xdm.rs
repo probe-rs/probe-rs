@@ -156,6 +156,8 @@ impl Xdm {
 
     #[tracing::instrument(skip(self))]
     fn init(&mut self) -> Result<(), XtensaError> {
+        self.probe.tap_reset()?;
+
         let mut pwr_control = PowerControl(0);
 
         pwr_control.set_debug_wakeup(true);
@@ -235,6 +237,8 @@ impl Xdm {
 
     pub(super) fn execute(&mut self) -> Result<(), XtensaError> {
         let mut queue = std::mem::take(&mut self.queue);
+
+        tracing::debug!("Executing {} commands", queue.len());
 
         // Drop the status readers when we're done.
         // We take now to avoid a possibly recursive call to clear before it's time.

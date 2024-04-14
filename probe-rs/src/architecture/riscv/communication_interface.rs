@@ -427,6 +427,7 @@ impl RiscvCommunicationInterface {
 
     pub(crate) fn enter_debug_mode(&mut self) -> Result<(), RiscvError> {
         tracing::debug!("Building RISC-V interface");
+        self.dtm.init()?;
 
         // Reset error bits from previous connections
         self.dtm.clear_error_state()?;

@@ -886,6 +886,9 @@ pub trait JTAGAccess: DebugProbe {
     /// will try to measure and extract `IR` lengths by driving the JTAG interface.
     fn scan_chain(&mut self) -> Result<Vec<JtagChainItem>, DebugProbeError>;
 
+    /// Executes a TAP reset.
+    fn tap_reset(&mut self) -> Result<(), DebugProbeError>;
+
     /// Read a JTAG register.
     ///
     /// This function emulates a read by performing a write with all zeros to the DR.
