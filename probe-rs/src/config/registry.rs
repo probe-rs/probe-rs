@@ -159,7 +159,7 @@ impl Registry {
         let mut selected_family_and_chip = None;
         let mut exact_matches = 0;
         let mut partial_matches = Vec::new();
-        for family in &self.families {
+        for family in self.families.iter() {
             for variant in family.variants.iter() {
                 if match_name_prefix(&variant.name, name) {
                     if variant.name.len() == name.len() {
