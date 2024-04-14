@@ -145,75 +145,80 @@ impl Registry {
     }
 
     fn get_target_by_name(&self, name: impl AsRef<str>) -> Result<Target, RegistryError> {
-        let (target, _) = self.get_target_and_family_by_name(name)?;
+        let (target, _) = self.get_target_and_family_by_name(name.as_ref())?;
         Ok(target)
     }
 
     fn get_target_and_family_by_name(
         &self,
-        name: impl AsRef<str>,
+        name: &str,
     ) -> Result<(Target, ChipFamily), RegistryError> {
-        let name = name.as_ref();
-
         tracing::debug!("Searching registry for chip with name {}", name);
 
-        let (family, chip) = {
-            // Try get the corresponding chip.
-            let mut selected_family_and_chip = None;
-            let mut exact_matches = 0;
-            let mut partial_matches = Vec::new();
-            for family in &self.families {
-                for variant in family.variants.iter() {
-                    if match_name_prefix(&variant.name, name) {
-                        if variant.name.len() == name.len() {
-                            tracing::debug!("Exact match for chip name: {}", variant.name);
-                            exact_matches += 1;
-                        } else {
-                            tracing::debug!("Partial match for chip name: {}", &variant.name);
-                            partial_matches.push(variant.name.clone());
-                            if exact_matches > 0 {
-                                continue;
-                            }
+        // Try get the corresponding chip.
+        let mut selected_family_and_chip = None;
+        let mut exact_matches = 0;
+        let mut partial_matches = Vec::new();
+        for family in &self.families {
+            for variant in family.variants.iter() {
+                if match_name_prefix(&variant.name, name) {
+                    if variant.name.len() == name.len() {
+                        tracing::debug!("Exact match for chip name: {}", variant.name);
+                        exact_matches += 1;
+                    } else {
+                        tracing::debug!("Partial match for chip name: {}", variant.name);
+                        partial_matches.push(variant.name.as_str());
+                        // Only select partial match if we don't have an exact match yet
+                        if exact_matches > 0 {
+                            continue;
                         }
-                        selected_family_and_chip = Some((family, variant));
                     }
+                    selected_family_and_chip = Some((family, variant));
                 }
             }
-            if exact_matches == 0 && partial_matches.len() > 1 {
-                tracing::warn!(
-                    "Ignoring ambiguous matches for specified chip name {}",
-                    name,
-                );
-                let mut suggestions;
-                if partial_matches.len() <= 100 {
-                    suggestions = partial_matches.join(", ");
-                } else {
-                    // prevent too much text being printed if too many matches
-                    suggestions = partial_matches[0..100].join(", ");
-                    suggestions.push_str(&format!(" and {} more", partial_matches.len() - 100))
-                }
-                return Err(RegistryError::ChipNotUnique(name.to_owned(), suggestions));
-            }
-            let (family, chip) = selected_family_and_chip
-                .ok_or_else(|| RegistryError::ChipNotFound(name.to_owned()))?;
-            if exact_matches == 0 && partial_matches.len() == 1 {
-                tracing::warn!(
-                    "Found chip {} which matches given partial name {}. Consider specifying its full name.",
-                    chip.name,
-                    name,
-                );
-            }
-            if chip.name.to_ascii_lowercase() != name.to_ascii_lowercase() {
-                tracing::warn!(
-                    "Matching {} based on wildcard. Consider specifying the chip as {} instead.",
-                    name,
-                    chip.name,
-                );
-            }
+        }
 
-            // Try get the correspnding flash algorithm.
-            (family, chip)
+        let Some((family, chip)) = selected_family_and_chip else {
+            return Err(RegistryError::ChipNotFound(name.to_string()));
         };
+
+        if exact_matches == 0 {
+            match partial_matches.len() {
+                0 => {}
+                1 => {
+                    tracing::warn!(
+                        "Found chip {} which matches given partial name {}. Consider specifying its full name.",
+                        chip.name,
+                        name,
+                    );
+                }
+                matches => {
+                    const MAX_PRINTED_MATCHES: usize = 100;
+                    tracing::warn!("Ignoring ambiguous matches for specified chip name {name}");
+                    let suggestions = if matches <= MAX_PRINTED_MATCHES {
+                        partial_matches.join(", ")
+                    } else {
+                        // prevent too much text being printed if too many matches
+                        let mut suggestions = partial_matches[0..MAX_PRINTED_MATCHES].join(", ");
+
+                        suggestions
+                            .push_str(&format!(" and {} more", matches - MAX_PRINTED_MATCHES));
+
+                        suggestions
+                    };
+                    return Err(RegistryError::ChipNotUnique(name.to_string(), suggestions));
+                }
+            }
+        }
+
+        if !chip.name.eq_ignore_ascii_case(name) {
+            tracing::warn!(
+                "Matching {} based on wildcard. Consider specifying the chip as {} instead.",
+                name,
+                chip.name,
+            );
+        }
+
         let targ = self.get_target(family, chip)?;
         Ok((targ, family.clone()))
     }
@@ -350,7 +355,10 @@ pub fn get_target_by_name(name: impl AsRef<str>) -> Result<Target, RegistryError
 pub fn get_target_and_family_by_name(
     name: impl AsRef<str>,
 ) -> Result<(Target, ChipFamily), RegistryError> {
-    REGISTRY.lock().unwrap().get_target_and_family_by_name(name)
+    REGISTRY
+        .lock()
+        .unwrap()
+        .get_target_and_family_by_name(name.as_ref())
 }
 
 /// Get all target from the internal registry based on its family name.
