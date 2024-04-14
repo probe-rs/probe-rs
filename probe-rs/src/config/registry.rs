@@ -370,7 +370,7 @@ pub fn get_targets_by_family_name(
         .get_targets_by_family_name(family_name)
 }
 
-/// Get a target from the internal registry based on its name.
+/// Returns targets from the internal registry that match the given name.
 pub fn search_chips(name: impl AsRef<str>) -> Result<Vec<String>, RegistryError> {
     Ok(REGISTRY.lock().unwrap().search_chips(name.as_ref()))
 }
