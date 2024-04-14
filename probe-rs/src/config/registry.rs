@@ -268,12 +268,8 @@ impl Registry {
 
         for family in &self.families {
             for variant in family.variants.iter() {
-                if variant
-                    .name
-                    .to_ascii_lowercase()
-                    .starts_with(&name.to_ascii_lowercase())
-                {
-                    targets.push(variant.name.to_string())
+                if match_name_prefix(name, &variant.name) {
+                    targets.push(variant.name.to_string());
                 }
             }
         }
