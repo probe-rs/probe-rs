@@ -716,17 +716,17 @@ memory_mapped_bitfield_register! {
     pub struct Dmcontrol(u32);
     0x10, "dmcontrol",
     impl From;
-    _, set_haltreq: 31;
-    _, set_resumereq: 30;
-    hartreset, set_hartreset: 29;
-    _, set_ackhavereset: 28;
-    hasel, set_hasel: 26;
-    hartsello, set_hartsello: 25, 16;
-    hartselhi, set_hartselhi: 15, 6;
-    _, set_resethaltreq: 3;
-    _, set_clrresethaltreq: 2;
-    ndmreset, set_ndmreset: 1;
-    dmactive, set_dmactive: 0;
+    pub _, set_haltreq: 31;
+    pub _, set_resumereq: 30;
+    pub hartreset, set_hartreset: 29;
+    pub _, set_ackhavereset: 28;
+    pub hasel, set_hasel: 26;
+    pub hartsello, set_hartsello: 25, 16;
+    pub hartselhi, set_hartselhi: 15, 6;
+    pub _, set_resethaltreq: 3;
+    pub _, set_clrresethaltreq: 2;
+    pub ndmreset, set_ndmreset: 1;
+    pub dmactive, set_dmactive: 0;
 }
 
 impl Dmcontrol {

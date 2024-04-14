@@ -715,7 +715,7 @@ impl RiscvCommunicationInterface {
         Ok(register_value)
     }
 
-    pub(super) fn write_dm_register<R: MemoryMappedRegister<u32>>(
+    pub(crate) fn write_dm_register<R: MemoryMappedRegister<u32>>(
         &mut self,
         register: R,
     ) -> Result<(), RiscvError> {
@@ -2230,17 +2230,17 @@ impl From<u32> for AccessMemoryCommand {
     }
 }
 
-memory_mapped_bitfield_register! { struct Sbaddress0(u32); 0x39, "sbaddress0", impl From; }
-memory_mapped_bitfield_register! { struct Sbaddress1(u32); 0x3a, "sbaddress1", impl From; }
-memory_mapped_bitfield_register! { struct Sbaddress2(u32); 0x3b, "sbaddress2", impl From; }
-memory_mapped_bitfield_register! { struct Sbaddress3(u32); 0x37, "sbaddress3", impl From; }
+memory_mapped_bitfield_register! { pub struct Sbaddress0(u32); 0x39, "sbaddress0", impl From; }
+memory_mapped_bitfield_register! { pub struct Sbaddress1(u32); 0x3a, "sbaddress1", impl From; }
+memory_mapped_bitfield_register! { pub struct Sbaddress2(u32); 0x3b, "sbaddress2", impl From; }
+memory_mapped_bitfield_register! { pub struct Sbaddress3(u32); 0x37, "sbaddress3", impl From; }
 
-memory_mapped_bitfield_register! { struct Sbdata0(u32); 0x3c, "sbdata0", impl From; }
-memory_mapped_bitfield_register! { struct Sbdata1(u32); 0x3d, "sbdata1", impl From; }
-memory_mapped_bitfield_register! { struct Sbdata2(u32); 0x3e, "sbdata2", impl From; }
-memory_mapped_bitfield_register! { struct Sbdata3(u32); 0x3f, "sbdata3", impl From; }
+memory_mapped_bitfield_register! { pub struct Sbdata0(u32); 0x3c, "sbdata0", impl From; }
+memory_mapped_bitfield_register! { pub struct Sbdata1(u32); 0x3d, "sbdata1", impl From; }
+memory_mapped_bitfield_register! { pub struct Sbdata2(u32); 0x3e, "sbdata2", impl From; }
+memory_mapped_bitfield_register! { pub struct Sbdata3(u32); 0x3f, "sbdata3", impl From; }
 
-memory_mapped_bitfield_register! { struct Confstrptr0(u32); 0x19, "confstrptr0", impl From; }
-memory_mapped_bitfield_register! { struct Confstrptr1(u32); 0x1a, "confstrptr1", impl From; }
-memory_mapped_bitfield_register! { struct Confstrptr2(u32); 0x1b, "confstrptr2", impl From; }
-memory_mapped_bitfield_register! { struct Confstrptr3(u32); 0x1c, "confstrptr3", impl From; }
+memory_mapped_bitfield_register! { pub struct Confstrptr0(u32); 0x19, "confstrptr0", impl From; }
+memory_mapped_bitfield_register! { pub struct Confstrptr1(u32); 0x1a, "confstrptr1", impl From; }
+memory_mapped_bitfield_register! { pub struct Confstrptr2(u32); 0x1b, "confstrptr2", impl From; }
+memory_mapped_bitfield_register! { pub struct Confstrptr3(u32); 0x1c, "confstrptr3", impl From; }
