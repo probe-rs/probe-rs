@@ -755,7 +755,7 @@ impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
             )
             .map_err(|e| BatchExecutionError::new(e.into(), DeferredResultSet::new()))?;
 
-            bits.push((idx, write.transform, op));
+            bits.push((idx, write, op));
         }
 
         tracing::debug!("Sending to chip...");
@@ -768,13 +768,13 @@ impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
         let mut responses = DeferredResultSet::with_capacity(bits.len());
 
         let mut bitstream = bitstream.as_bitslice();
-        for (idx, transform, bits) in bits.into_iter() {
+        for (idx, command, bits) in bits.into_iter() {
             if idx.should_capture() {
                 // TODO: this back-and-forth between BitVec and Vec is probably unnecessary
                 let mut reg_bits = bitstream[..bits].to_bitvec();
                 reg_bits.force_align();
                 let response = reg_bits.into_vec();
-                match transform(response) {
+                match (command.transform)(command, response) {
                     Ok(response) => responses.push(idx, response),
                     Err(e) => return Err(BatchExecutionError::new(e, responses)),
                 }
