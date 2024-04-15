@@ -128,6 +128,7 @@ impl StLinkUsbDevice {
         let mut endpoint_out = false;
         let mut endpoint_in = false;
         let mut endpoint_swo = false;
+        let mut interface_number = 0;
 
         let config = device_handle.configurations().next().unwrap();
         if let Some(interface) = config.interfaces().next() {
@@ -140,6 +141,9 @@ impl StLinkUsbDevice {
                     } else if endpoint.address() == info.ep_swo {
                         endpoint_swo = true;
                     }
+                }
+                if descriptor.interface_number() != 0 {
+                    interface_number = descriptor.interface_number();
                 }
             }
         }
@@ -154,8 +158,9 @@ impl StLinkUsbDevice {
             return Err(StlinkError::EndpointNotFound.into());
         }
 
+
         let interface = device_handle
-            .claim_interface(0)
+            .claim_interface(interface_number)
             .map_err(ProbeCreationError::Usb)?;
 
         tracing::debug!("Claimed interface 0 of USB device.");
