@@ -158,7 +158,6 @@ impl StLinkUsbDevice {
             return Err(StlinkError::EndpointNotFound.into());
         }
 
-
         let interface = device_handle
             .claim_interface(interface_number)
             .map_err(ProbeCreationError::Usb)?;

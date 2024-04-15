@@ -345,7 +345,7 @@ impl FlashAlgorithm {
         tracing::debug!("Page buffers: {:08x?}", page_buffers);
 
         let name = raw.name.clone();
-        
+
         Ok(FlashAlgorithm {
             name,
             default: raw.default,
