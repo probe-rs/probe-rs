@@ -257,8 +257,13 @@ impl DtmAccess for JtagDtm {
         value: u32,
         timeout: Duration,
     ) -> Result<Option<u32>, RiscvError> {
-        self.dmi_register_access_with_timeout(DmiOperation::Write { address, value }, timeout)
-            .map(Some)
+        let result = self
+            .dmi_register_access_with_timeout(DmiOperation::Write { address, value }, timeout)
+            .map(Some)?;
+
+        self.dmi_register_access_with_timeout(DmiOperation::NoOp, timeout)?;
+
+        Ok(result)
     }
 
     fn read_idcode(&mut self) -> Result<Option<u32>, DebugProbeError> {

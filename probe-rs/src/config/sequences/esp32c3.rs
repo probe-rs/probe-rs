@@ -7,6 +7,7 @@ use probe_rs_target::Chip;
 use crate::{
     architecture::riscv::{
         communication_interface::RiscvCommunicationInterface, sequences::RiscvDebugSequence,
+        Dmcontrol,
     },
     config::sequences::esp::EspFlashSizeDetector,
     MemoryInterface,
@@ -82,9 +83,17 @@ impl RiscvDebugSequence for ESP32C3 {
         // Workaround for stuck in cpu start during calibration.
         interface.write_word_32(0x6001_F068, 0)?;
 
-        interface.reset_hart_and_halt(timeout)?;
+        // Wait for the reset to take effect.
+        std::thread::sleep(Duration::from_millis(10));
+
+        let mut dmcontrol = Dmcontrol(0);
+        dmcontrol.set_dmactive(true);
+        dmcontrol.set_ackhavereset(true);
+        interface.write_dm_register(dmcontrol)?;
 
         self.on_connect(interface)?;
+
+        interface.reset_hart_and_halt(timeout)?;
 
         Ok(())
     }

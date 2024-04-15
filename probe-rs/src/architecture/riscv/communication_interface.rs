@@ -684,7 +684,7 @@ impl RiscvCommunicationInterface {
     }
 
     /// Schedules a DM register read, flushes the queue and returns the result.
-    pub(super) fn read_dm_register<R: MemoryMappedRegister<u32>>(
+    pub(crate) fn read_dm_register<R: MemoryMappedRegister<u32>>(
         &mut self,
     ) -> Result<R, RiscvError> {
         tracing::debug!(

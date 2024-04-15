@@ -73,36 +73,38 @@ impl RiscvDebugSequence for ESP32C6 {
         interface: &mut RiscvCommunicationInterface,
         timeout: Duration,
     ) -> Result<(), crate::Error> {
-        interface.reset_hart_and_halt(timeout)?;
+        interface.halt(timeout)?;
 
         // System reset, ported from OpenOCD.
-        interface.write_word_32(0x6000_8000, 0x9C00_A000)?;
-
-        // Workaround for stuck in cpu start during calibration.
-        interface.write_word_32(0x6001_F068, 0)?;
-
         interface.write_dm_register(Sbcs(0x48000))?;
         interface.write_dm_register(Sbaddress0(0x600b1034))?;
-        interface.write_dm_register(Sbdata0(0x80000000))?;
+        interface.write_dm_register(Sbdata0(0x80000000_u32))?;
 
         // clear dmactive to clear sbbusy otherwise debug module gets stuck
         interface.write_dm_register(Dmcontrol(0))?;
 
         interface.write_dm_register(Sbcs(0x48000))?;
         interface.write_dm_register(Sbaddress0(0x600b1038))?;
-        interface.write_dm_register(Sbdata0(0x10000000))?;
+        interface.write_dm_register(Sbdata0(0x10000000_u32))?;
 
         // clear dmactive to clear sbbusy otherwise debug module gets stuck
         interface.write_dm_register(Dmcontrol(0))?;
 
         let mut dmcontrol = Dmcontrol(0);
         dmcontrol.set_dmactive(true);
-        dmcontrol.set_haltreq(true);
+        dmcontrol.set_resumereq(true);
         interface.write_dm_register(dmcontrol)?;
 
-        interface.reset_hart_and_halt(timeout)?;
+        std::thread::sleep(Duration::from_millis(10));
+
+        let mut dmcontrol = Dmcontrol(0);
+        dmcontrol.set_dmactive(true);
+        dmcontrol.set_ackhavereset(true);
+        interface.write_dm_register(dmcontrol)?;
 
         self.on_connect(interface)?;
+
+        interface.reset_hart_and_halt(timeout)?;
 
         Ok(())
     }
