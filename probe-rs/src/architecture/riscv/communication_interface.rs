@@ -1084,7 +1084,8 @@ impl RiscvCommunicationInterface {
             let error = AbstractCommandErrorKind::parse(status.cmderr() as u8);
 
             tracing::error!(
-                "Executing the abstract command for perform_memory_write failed: {:?} ({:x?})",
+                "Executing the abstract command for write_{} failed: {:?} ({:x?})",
+                V::WIDTH.byte_width() * 8,
                 error,
                 status,
             );
@@ -1146,7 +1147,8 @@ impl RiscvCommunicationInterface {
             let error = AbstractCommandErrorKind::parse(status.cmderr() as u8);
 
             tracing::error!(
-                "Executing the abstract command for write_32 failed: {:?} ({:x?})",
+                "Executing the abstract command for write_multiple_{} failed: {:?} ({:x?})",
+                V::WIDTH.byte_width() * 8,
                 error,
                 status,
             );

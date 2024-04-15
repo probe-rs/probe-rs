@@ -239,7 +239,9 @@ impl RunLoop {
         F: FnMut(HaltReason, &mut Core) -> Result<Option<R>>,
     {
         if catch_hardfault || catch_reset {
-            core.halt(Duration::from_millis(100))?;
+            if !core.core_halted()? {
+                core.halt(Duration::from_millis(100))?;
+            }
 
             if catch_hardfault {
                 match core.enable_vector_catch(VectorCatchCondition::HardFault) {
