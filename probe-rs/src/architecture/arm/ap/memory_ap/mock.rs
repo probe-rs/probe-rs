@@ -8,7 +8,6 @@ use crate::architecture::arm::{
 };
 use crate::probe::DebugProbeError;
 use std::collections::HashMap;
-use std::convert::TryInto;
 
 #[derive(Debug)]
 pub struct MockMemoryAp {
@@ -52,9 +51,9 @@ impl FlushableArmAccess for MockMemoryAp {
         >,
         DebugProbeError,
     > {
-        Err(DebugProbeError::NotImplemented(
-            "get_arm_communication_interface",
-        ))
+        Err(DebugProbeError::NotImplemented {
+            function_name: "get_arm_communication_interface",
+        })
     }
 }
 

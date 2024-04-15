@@ -1,6 +1,5 @@
 use svg::{
     node::element::{Group, Rectangle, Text},
-    node::Text as Content,
     Document, Node,
 };
 
@@ -43,23 +42,21 @@ impl<'layout> FlashVisualizer<'layout> {
         );
 
         group.append(
-            Text::new()
+            Text::new(format!("{address:#08X?}"))
                 .set("x", dimensions.0 + 1)
                 .set("y", start + height - 2.0)
                 .set("font-size", 5)
                 .set("font-family", "Arial")
-                .set("fill", "Black")
-                .add(Content::new(format!("{address:#08X?}"))),
+                .set("fill", "Black"),
         );
 
         group.append(
-            Text::new()
+            Text::new(format!("{:#08X?}", address + size))
                 .set("x", dimensions.0 + 1)
                 .set("y", start + 5.0)
                 .set("font-size", 5)
                 .set("font-family", "Arial")
-                .set("fill", "Black")
-                .add(Content::new(format!("{:#08X?}", address + size))),
+                .set("fill", "Black"),
         );
 
         group

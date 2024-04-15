@@ -243,11 +243,12 @@ impl JtagAdapter {
 }
 
 /// A factory for creating [`FtdiProbe`] instances.
+#[derive(Debug)]
 pub struct FtdiProbeFactory;
 
-impl std::fmt::Debug for FtdiProbeFactory {
+impl std::fmt::Display for FtdiProbeFactory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("FTDI").finish()
+        f.write_str("FTDI")
     }
 }
 
@@ -331,7 +332,7 @@ impl DebugProbe for FtdiProbe {
         tracing::info!("Found {} TAPs on reset scan", chain.len());
 
         if chain.len() > 1 {
-            tracing::warn!("More than one TAP detected, defaulting to tap0");
+            tracing::info!("More than one TAP detected, defaulting to tap0");
         }
 
         self.select_target(&chain, 0)
@@ -344,21 +345,21 @@ impl DebugProbe for FtdiProbe {
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
         // TODO we could add this by using a GPIO. However, different probes may connect
         // different pins (if any) to the reset line, so we would need to make this configurable.
-        Err(DebugProbeError::NotImplemented(
-            "target_reset is not implemented for FTDI probes",
-        ))
+        Err(DebugProbeError::NotImplemented {
+            function_name: "target_reset",
+        })
     }
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
-        Err(DebugProbeError::NotImplemented(
-            "target_reset_assert is not implemented for FTDI probes",
-        ))
+        Err(DebugProbeError::NotImplemented {
+            function_name: "target_reset_assert",
+        })
     }
 
     fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
-        Err(DebugProbeError::NotImplemented(
-            "target_reset_deassert is not implemented for FTDI probes",
-        ))
+        Err(DebugProbeError::NotImplemented {
+            function_name: "target_reset_deassert",
+        })
     }
 
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
@@ -452,9 +453,9 @@ impl RawProtocolIo for FtdiProbe {
         D: IntoIterator<Item = bool>,
         S: IntoIterator<Item = bool>,
     {
-        Err(DebugProbeError::NotImplemented(
-            "swd_io is not implemented for FTDI probes",
-        ))
+        Err(DebugProbeError::NotImplemented {
+            function_name: "swd_io",
+        })
     }
 
     fn swj_pins(
@@ -463,7 +464,9 @@ impl RawProtocolIo for FtdiProbe {
         _pin_select: u32,
         _pin_wait: u32,
     ) -> Result<u32, DebugProbeError> {
-        Err(DebugProbeError::CommandNotSupportedByProbe("swj_pins"))
+        Err(DebugProbeError::CommandNotSupportedByProbe {
+            command_name: "swj_pins",
+        })
     }
 
     fn swd_settings(&self) -> &SwdSettings {
@@ -628,7 +631,7 @@ fn get_device_info(device: &DeviceInfo) -> Option<DebugProbeInfo> {
             vendor_id: device.vendor_id(),
             product_id: device.product_id(),
             serial_number: device.serial_number().map(|s| s.to_string()),
-            probe_type: &FtdiProbeFactory,
+            probe_factory: &FtdiProbeFactory,
             hid_interface: None,
         })
     })

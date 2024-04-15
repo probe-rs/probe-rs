@@ -1,6 +1,5 @@
 use super::*;
 use crate::core::RegisterValue;
-use std;
 
 #[cfg(test)]
 pub use test::TestFormatter;
@@ -42,8 +41,6 @@ pub struct StackFrame {
     pub frame_base: Option<u64>,
     /// Indicate if this stack frame belongs to an inlined function.
     pub is_inlined: bool,
-    /// A cache of 'static' scoped variables for this stackframe
-    pub static_variables: Option<VariableCache>,
     /// A cache of 'local' scoped variables for this stackframe, with a `Variable` for each in-scope variable.
     /// - Complex variables and pointers will have additional children.
     ///   - This structure is recursive until a base type is encountered.

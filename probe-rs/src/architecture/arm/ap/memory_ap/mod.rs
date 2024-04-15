@@ -1,6 +1,5 @@
 //! Memory access port
 
-#[doc(hidden)]
 pub(crate) mod mock;
 
 use super::{AccessPort, ApAccess, ApRegister, GenericAp, Register};
@@ -258,6 +257,7 @@ define_ap_register!(
     ///
     /// The control and status word register (CSW) is used
     /// to configure memory access through the memory AP.
+    #[derive(Default)]
     name: CSW,
     address: 0x00,
     fields: [

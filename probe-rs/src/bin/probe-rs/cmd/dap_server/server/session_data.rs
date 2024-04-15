@@ -2,11 +2,15 @@ use super::{
     configuration::{self, CoreConfig, SessionConfig},
     core_data::{CoreData, CoreHandle},
 };
-use crate::cmd::dap_server::{
-    debug_adapter::{
-        dap::adapter::DebugAdapter, dap::dap_types::Source, protocol::ProtocolAdapter,
+use crate::{
+    cmd::dap_server::{
+        debug_adapter::{
+            dap::{adapter::DebugAdapter, dap_types::Source},
+            protocol::ProtocolAdapter,
+        },
+        DebuggerError,
     },
-    DebuggerError,
+    util::common_options::OperationError,
 };
 use anyhow::{anyhow, Result};
 use probe_rs::{
@@ -71,7 +75,28 @@ impl SessionData {
 
         let options = config.probe_options().load()?;
         let target_probe = options.attach_probe(lister)?;
-        let target_session = options.attach_session(target_probe, target_selector)?;
+        let target_session = options
+            .attach_session(target_probe, target_selector)
+            .map_err(|operation_error| {
+                match operation_error {
+                    OperationError::AttachingFailed {
+                        source,
+                        connect_under_reset,
+                    } => match source {
+                        probe_rs::Error::Timeout => {
+                            let shared_cause = "This can happen if the target is in a state where it can not be attached to. A hard reset during attach usually helps. For probes that support this option, please try using the `connect_under_reset` option.";
+                            if !connect_under_reset {
+                                DebuggerError::UserMessage(format!("{source} {shared_cause}"))
+                            } else {
+                                DebuggerError::UserMessage(format!("{source} {shared_cause} It is possible that your probe does not support this behaviour, or something else is preventing the attach. Please try again without `connect_under_reset`."))
+                            }
+                        }
+                        other_attach_error => other_attach_error.into(),
+                    },
+                    // Return the orginal error.
+                    other => other.into(),
+                }
+            })?;
 
         // Change the current working directory if `config.cwd` is `Some(T)`.
         if let Some(new_cwd) = config.cwd.clone() {
@@ -112,6 +137,7 @@ impl SessionData {
                     target_session.target().name
                 ),
                 debug_info: debug_info_from_binary(core_configuration)?,
+                static_variables: None,
                 core_peripherals: None,
                 stack_frames: vec![],
                 breakpoints: vec![],
@@ -180,6 +206,7 @@ impl SessionData {
     ///   - The first time we have entered halted status, to ensure the buffers are drained. After that, for as long as we remain in halted state, we don't need to check RTT again.
     ///
     /// Return a Vec of [`CoreStatus`] (one entry per core) after this process has completed, as well as a boolean indicating whether we should consider a short delay before the next poll.
+    #[tracing::instrument(skip_all)]
     pub(crate) fn poll_cores<P: ProtocolAdapter>(
         &mut self,
         session_config: &SessionConfig,
@@ -249,6 +276,7 @@ impl SessionData {
             // If currently halted, and was previously running
             // update the stack frames
             } else if !cores_halted_previously {
+                let _stackframe_span = tracing::debug_span!("Update Stack Frames").entered();
                 tracing::debug!(
                     "Updating the stack frame data for core #{}",
                     target_core.core.id()
@@ -257,6 +285,10 @@ impl SessionData {
                 let initial_registers = DebugRegisters::from_core(&mut target_core.core);
                 let exception_interface = exception_handler_for_core(target_core.core.core_type());
                 let instruction_set = target_core.core.instruction_set().ok();
+
+                target_core.core_data.static_variables =
+                    Some(target_core.core_data.debug_info.create_static_scope_cache());
+
                 target_core.core_data.stack_frames = target_core.core_data.debug_info.unwind(
                     &mut target_core.core,
                     initial_registers,

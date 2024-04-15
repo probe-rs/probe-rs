@@ -18,10 +18,13 @@ pub fn erase_all(session: &mut Session, progress: Option<FlashProgress>) -> Resu
     tracing::debug!("Regions:");
     for region in &session.target().memory_map {
         if let MemoryRegion::Nvm(region) = region {
+            if region.is_alias {
+                tracing::debug!("Skipping alias memory region {:#010X?}", region.range);
+                continue;
+            }
             tracing::debug!(
-                "    region: {:08x}-{:08x} ({} bytes)",
-                region.range.start,
-                region.range.end,
+                "    region: {:#010X?} ({} bytes)",
+                region.range,
                 region.range.end - region.range.start
             );
 
@@ -104,10 +107,13 @@ pub fn erase_sectors(
     tracing::debug!("Regions:");
     for region in &session.target().memory_map {
         if let MemoryRegion::Nvm(region) = region {
+            if region.is_alias {
+                tracing::debug!("Skipping alias memory region {:#010X?}", region.range);
+                continue;
+            }
             tracing::debug!(
-                "    region: {:08x}-{:08x} ({} bytes)",
-                region.range.start,
-                region.range.end,
+                "    region: {:#010X?} ({} bytes)",
+                region.range,
                 region.range.end - region.range.start
             );
 

@@ -37,7 +37,7 @@ use probe_rs::{
 use serde::{de::DeserializeOwned, Serialize};
 use typed_path::NativePathBuf;
 
-use std::{convert::TryInto, str, string::ToString, time::Duration};
+use std::{fmt::Display, str, time::Duration};
 
 /// Progress ID used for progress reporting when the debug adapter protocol is used.
 type ProgressId = i64;
@@ -445,40 +445,34 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         let mut variable: Option<probe_rs::debug::Variable> = None;
                         let mut variable_cache: Option<&mut probe_rs::debug::VariableCache> = None;
                         // Search through available caches and stop as soon as the variable is found
-                        #[allow(clippy::manual_flatten)]
-                        for variable_cache_entry in [
-                            stack_frame.local_variables.as_mut(),
-                            stack_frame.static_variables.as_mut(),
-                        ] {
-                            if let Some(search_cache) = variable_cache_entry {
-                                if search_cache.len() == 1 {
-                                    // This is a special case where we have a single variable in the cache, and it is the root of a scope.
-                                    // These variables don't have cached children by default, so we need to resolve them before we proceed.
-                                    // We check for len() == 1, so unwrap() on first_mut() is safe.
-                                    target_core.core_data.debug_info.cache_deferred_variables(
-                                        search_cache,
-                                        &mut target_core.core,
-                                        &mut search_cache.root_variable(),
-                                        StackFrameInfo {
-                                            registers: &stack_frame.registers,
-                                            frame_base: stack_frame.frame_base,
-                                            canonical_frame_address: stack_frame
-                                                .canonical_frame_address,
-                                        },
-                                    )?;
-                                }
+                        if let Some(search_cache) = stack_frame.local_variables.as_mut() {
+                            if search_cache.len() == 1 {
+                                let mut root_variable = search_cache.root_variable().clone();
 
-                                if let Ok(expression_as_key) = expression.parse::<ObjectRef>() {
-                                    variable = search_cache.get_variable_by_key(expression_as_key);
-                                } else {
-                                    variable = search_cache.get_variable_by_name(
-                                        &VariableName::Named(expression.clone()),
-                                    );
-                                }
-                                if variable.is_some() {
-                                    variable_cache = Some(search_cache);
-                                    break;
-                                }
+                                // This is a special case where we have a single variable in the cache, and it is the root of a scope.
+                                // These variables don't have cached children by default, so we need to resolve them before we proceed.
+                                // We check for len() == 1, so unwrap() on first_mut() is safe.
+                                target_core.core_data.debug_info.cache_deferred_variables(
+                                    search_cache,
+                                    &mut target_core.core,
+                                    &mut root_variable,
+                                    StackFrameInfo {
+                                        registers: &stack_frame.registers,
+                                        frame_base: stack_frame.frame_base,
+                                        canonical_frame_address: stack_frame
+                                            .canonical_frame_address,
+                                    },
+                                )?;
+                            }
+
+                            if let Ok(expression_as_key) = expression.parse::<ObjectRef>() {
+                                variable = search_cache.get_variable_by_key(expression_as_key);
+                            } else {
+                                variable = search_cache
+                                    .get_variable_by_name(&VariableName::Named(expression.clone()));
+                            }
+                            if variable.is_some() {
+                                variable_cache = Some(search_cache);
                             }
                         }
                         // Check if we found a variable.
@@ -493,7 +487,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                 Some(variable.memory_location.to_string());
                             response_body.named_variables = Some(named_child_variables_cnt);
                             response_body.result = variable.get_value(variable_cache);
-                            response_body.type_ = Some(variable.type_name.to_string());
+                            response_body.type_ = Some(variable.type_name());
                             response_body.variables_reference = variables_reference.into();
                         } else {
                             // If we made it to here, no register or variable matched the expression.
@@ -605,15 +599,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 let mut variable_cache: Option<&mut probe_rs::debug::VariableCache> = None;
                 for search_frame in target_core.core_data.stack_frames.iter_mut() {
                     if let Some(search_cache) = &mut search_frame.local_variables {
-                        if let Some(search_variable) =
-                            search_cache.get_variable_by_name_and_parent(&variable_name, parent_key)
-                        {
-                            cache_variable = Some(search_variable);
-                            variable_cache = Some(search_cache);
-                            break;
-                        }
-                    }
-                    if let Some(search_cache) = &mut search_frame.static_variables {
                         if let Some(search_variable) =
                             search_cache.get_variable_by_name_and_parent(&variable_name, parent_key)
                         {
@@ -800,12 +785,14 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         }
     }
 
+    #[tracing::instrument(level = "debug", skip_all, name = "Handle configuration done")]
     pub(crate) fn configuration_done(
         &mut self,
         target_core: &mut CoreHandle,
         request: &Request,
     ) -> Result<()> {
         let current_core_status = target_core.core.status()?;
+
         if current_core_status.is_halted() {
             if self.halt_after_reset
                 || matches!(
@@ -831,9 +818,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 });
                 self.send_event("stopped", event_body)?;
             } else {
+                tracing::debug!("Core is halted, but not due to a breakpoint and halt_after_reset is not set. Continuing.");
                 self.r#continue(target_core, request)?;
             }
         }
+
         self.configuration_done = true;
         self.send_response::<()>(request, Ok(None))
     }
@@ -1182,6 +1171,27 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             });
         };
 
+        if let Some(static_root_variable) = target_core
+            .core_data
+            .static_variables
+            .as_ref()
+            .map(|stack_frame| stack_frame.root_variable())
+        {
+            dap_scopes.push(Scope {
+                line: None,
+                column: None,
+                end_column: None,
+                end_line: None,
+                expensive: true, // VSCode won't open this tree by default.
+                indexed_variables: None,
+                name: "Static".to_string(),
+                presentation_hint: Some("statics".to_string()),
+                named_variables: None,
+                source: None,
+                variables_reference: static_root_variable.variable_key().into(),
+            });
+        };
+
         let frame_id: ObjectRef = arguments.frame_id.into();
 
         tracing::trace!("Getting scopes for frame {:?}", frame_id);
@@ -1201,26 +1211,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 // We use the stack_frame.id for registers, so that we don't need to cache copies of the registers.
                 variables_reference: stack_frame.id.into(),
             });
-
-            if let Some(static_root_variable) = stack_frame
-                .static_variables
-                .as_ref()
-                .map(|stack_frame| stack_frame.root_variable())
-            {
-                dap_scopes.push(Scope {
-                    line: None,
-                    column: None,
-                    end_column: None,
-                    end_line: None,
-                    expensive: true, // VSCode won't open this tree by default.
-                    indexed_variables: None,
-                    name: "Static".to_string(),
-                    presentation_hint: Some("statics".to_string()),
-                    named_variables: None,
-                    source: None,
-                    variables_reference: static_root_variable.variable_key().into(),
-                });
-            };
 
             if let Some(locals_root_variable) = stack_frame
                 .local_variables
@@ -1408,57 +1398,66 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         let mut variable_cache: Option<&mut probe_rs::debug::VariableCache> = None;
         let mut frame_info: Option<StackFrameInfo<'_>> = None;
 
-        for stack_frame in target_core.core_data.stack_frames.iter_mut() {
-            if let Some(search_cache) = &mut stack_frame.local_variables {
-                if let Some(search_variable) = search_cache.get_variable_by_key(variable_ref) {
-                    parent_variable = Some(search_variable);
-                    variable_cache = Some(search_cache);
+        let registers;
+
+        if let Some(search_cache) = &mut target_core.core_data.static_variables {
+            if let Some(search_variable) = search_cache.get_variable_by_key(variable_ref) {
+                parent_variable = Some(search_variable);
+                variable_cache = Some(search_cache);
+
+                if let Some(top_level_frame) = target_core.core_data.stack_frames.first() {
+                    registers = top_level_frame.registers.clone();
+
                     frame_info = Some(StackFrameInfo {
-                        registers: &stack_frame.registers,
-                        frame_base: stack_frame.frame_base,
-                        canonical_frame_address: stack_frame.canonical_frame_address,
+                        registers: &registers,
+                        frame_base: top_level_frame.frame_base,
+                        canonical_frame_address: top_level_frame.canonical_frame_address,
                     });
-                    break;
                 }
             }
-            if let Some(search_cache) = &mut stack_frame.static_variables {
-                if let Some(search_variable) = search_cache.get_variable_by_key(variable_ref) {
-                    parent_variable = Some(search_variable);
-                    variable_cache = Some(search_cache);
-                    frame_info = Some(StackFrameInfo {
-                        registers: &stack_frame.registers,
-                        frame_base: stack_frame.frame_base,
-                        canonical_frame_address: stack_frame.canonical_frame_address,
-                    });
-                    break;
+        }
+
+        if parent_variable.is_none() {
+            for stack_frame in target_core.core_data.stack_frames.iter_mut() {
+                if let Some(search_cache) = &mut stack_frame.local_variables {
+                    if let Some(search_variable) = search_cache.get_variable_by_key(variable_ref) {
+                        parent_variable = Some(search_variable);
+                        variable_cache = Some(search_cache);
+                        frame_info = Some(StackFrameInfo {
+                            registers: &stack_frame.registers,
+                            frame_base: stack_frame.frame_base,
+                            canonical_frame_address: stack_frame.canonical_frame_address,
+                        });
+                        break;
+                    }
                 }
-            }
 
-            if stack_frame.id == variable_ref {
-                // This is a special case, where we just want to return the stack frame registers.
+                if stack_frame.id == variable_ref {
+                    // This is a special case, where we just want to return the stack frame registers.
 
-                let dap_variables: Vec<Variable> = stack_frame
-                    .registers
-                    .0
-                    .iter()
-                    .map(|register| Variable {
-                        name: register.get_register_name(),
-                        evaluate_name: Some(register.get_register_name()),
-                        memory_reference: None,
-                        indexed_variables: None,
-                        named_variables: None,
-                        presentation_hint: None, // TODO: Implement hint as Hex for registers
-                        type_: Some(format!("{}", VariableName::RegistersRoot)),
-                        value: register.value.unwrap_or_default().to_string(),
-                        variables_reference: 0,
-                    })
-                    .collect();
-                return self.send_response(
-                    request,
-                    Ok(Some(VariablesResponseBody {
-                        variables: dap_variables,
-                    })),
-                );
+                    let dap_variables: Vec<Variable> = stack_frame
+                        .registers
+                        .0
+                        .iter()
+                        .map(|register| Variable {
+                            name: register.get_register_name(),
+                            evaluate_name: Some(register.get_register_name()),
+                            memory_reference: None,
+                            indexed_variables: None,
+                            named_variables: None,
+                            presentation_hint: None, // TODO: Implement hint as Hex for registers
+                            type_: Some(format!("{}", VariableName::RegistersRoot)),
+                            value: register.value.unwrap_or_default().to_string(),
+                            variables_reference: 0,
+                        })
+                        .collect();
+                    return self.send_response(
+                        request,
+                        Ok(Some(VariablesResponseBody {
+                            variables: dap_variables,
+                        })),
+                    );
+                }
             }
         }
 
@@ -1514,7 +1513,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         indexed_variables: Some(indexed_child_variables_cnt),
                         named_variables: Some(named_child_variables_cnt),
                         presentation_hint: None,
-                        type_: Some(variable.type_name.to_string()),
+                        type_: Some(variable.type_name()),
                         value: variable.get_value(variable_cache),
                         variables_reference: variables_reference.into(),
                     }
@@ -1543,58 +1542,46 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         target_core: &mut CoreHandle,
         request: &Request,
     ) -> Result<()> {
-        match target_core.core.run() {
-            Ok(_) => {
-                target_core.reset_core_status(self);
-                if request.command.as_str() == "continue" {
-                    // If this continue was initiated as part of some other request, then do not respond.
-                    self.send_response(
-                        request,
-                        Ok(Some(ContinueResponseBody {
-                            all_threads_continued: Some(false), // TODO: Implement multi-core logic here
-                        })),
-                    )?;
-                }
-                // We have to consider the fact that sometimes the `run()` is successfull,
-                // but "immediately" afterwards, the MCU hits a breakpoint or exception.
-                // So we have to check the status again to be sure.
-                match if target_core.core_data.breakpoints.is_empty() {
-                    target_core
-                        .core
-                        .wait_for_core_halted(Duration::from_millis(200))
-                } else {
-                    // Use slightly longer timeout when we know there breakpoints configured.
-                    target_core
-                        .core
-                        .wait_for_core_halted(Duration::from_millis(500))
-                } {
-                    Ok(_) => {
-                        // The core has halted, so we can proceed.
-                    }
-                    Err(wait_error) => {
-                        if matches!(
-                            wait_error,
-                            Error::Arm(ArmError::Timeout)
-                                | Error::Riscv(RiscvError::Timeout)
-                                | Error::Xtensa(XtensaError::Timeout)
-                        ) {
-                            // The core is still running.
-                        } else {
-                            // Some other error occurred, so we have to send an error response.
-                            return Err(wait_error.into());
-                        }
-                    }
-                }
+        if let Err(error) = target_core.core.run() {
+            self.send_response::<()>(request, Err(&DebuggerError::Other(anyhow!("{}", error))))?;
+            return Err(error.into());
+        }
 
-                Ok(())
-            }
-            Err(error) => {
-                self.send_response::<()>(
-                    request,
-                    Err(&DebuggerError::Other(anyhow!("{}", error))),
-                )?;
-                Err(error.into())
-            }
+        target_core.reset_core_status(self);
+
+        if request.command.as_str() == "continue" {
+            // If this continue was initiated as part of some other request, then do not respond.
+            self.send_response(
+                request,
+                Ok(Some(ContinueResponseBody {
+                    all_threads_continued: Some(false), // TODO: Implement multi-core logic here
+                })),
+            )?;
+        }
+        // We have to consider the fact that sometimes the `run()` is successfull,
+        // but "immediately" afterwards, the MCU hits a breakpoint or exception.
+        // So we have to check the status again to be sure.
+
+        // If there are breakpoints configured, we wait a bit longer
+        let wait_timeout = if target_core.core_data.breakpoints.is_empty() {
+            Duration::from_millis(200)
+        } else {
+            Duration::from_millis(500)
+        };
+
+        tracing::trace!("Checking if core halts again after continue, timeout = {wait_timeout:?}");
+
+        match target_core.core.wait_for_core_halted(wait_timeout) {
+            // The core has halted, so we can proceed.
+            Ok(_) => Ok(()),
+            // The core is still running.
+            Err(
+                Error::Arm(ArmError::Timeout)
+                | Error::Riscv(RiscvError::Timeout)
+                | Error::Xtensa(XtensaError::Timeout),
+            ) => Ok(()),
+            // Some other error occurred, so we have to send an error response.
+            Err(wait_error) => Err(wait_error.into()),
         }
     }
 
@@ -1660,15 +1647,15 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         {
             Ok((new_status, program_counter)) => (new_status, program_counter),
             Err(error) => match &error {
-                probe_rs::debug::DebugError::NoValidHaltLocation {
-                    message,
-                    pc_at_error,
-                } => {
+                probe_rs::debug::DebugError::WarnAndContinue { message } => {
+                    let pc_at_error = target_core
+                        .core
+                        .read_core_reg(target_core.core.program_counter())?;
                     self.show_message(
                         MessageSeverity::Information,
                         format!("Step error @{pc_at_error:#010X}: {message}"),
                     );
-                    (target_core.core.status()?, *pc_at_error)
+                    (target_core.core.status()?, pc_at_error)
                 }
                 other_error => {
                     target_core.core.halt(Duration::from_millis(100)).ok();
@@ -1760,6 +1747,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         event_type: &str,
         event_body: Option<S>,
     ) -> Result<()> {
+        tracing::debug!("Sending event: {}", event_type);
         self.adapter.send_event(event_type, event_body)
     }
 
@@ -1780,31 +1768,27 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         channel_name: String,
         data_format: rtt::DataFormat,
     ) -> bool {
-        let event_body = match serde_json::to_value(RttChannelEventBody {
+        let Ok(event_body) = serde_json::to_value(RttChannelEventBody {
             channel_number,
             channel_name,
             data_format,
-        }) {
-            Ok(event_body) => event_body,
-            Err(_) => {
-                return false;
-            }
+        }) else {
+            return false;
         };
+
         self.send_event("probe-rs-rtt-channel-config", Some(event_body))
             .is_ok()
     }
 
     /// Send a custom `probe-rs-rtt-data` event to the MS DAP Client, to
     pub fn rtt_output(&mut self, channel_number: usize, rtt_data: String) -> bool {
-        let event_body = match serde_json::to_value(RttDataEventBody {
+        let Ok(event_body) = serde_json::to_value(RttDataEventBody {
             channel_number,
             data: rtt_data,
-        }) {
-            Ok(event_body) => event_body,
-            Err(_) => {
-                return false;
-            }
+        }) else {
+            return false;
         };
+
         self.send_event("probe-rs-rtt-data", Some(event_body))
             .is_ok()
     }
@@ -1864,7 +1848,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     pub fn update_progress(
         &mut self,
         progress: Option<f64>,
-        message: Option<impl Into<String>>,
+        message: Option<impl Display>,
         progress_id: i64,
     ) -> Result<ProgressId> {
         anyhow::ensure!(
@@ -1872,11 +1856,17 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             "Progress reporting is not supported by client."
         );
 
+        let percentage = progress.map(|progress| progress * 100.0);
+
         self.send_event(
             "progressUpdate",
             Some(ProgressUpdateEventBody {
-                message: message.map(|v| v.into()),
-                percentage: progress.map(|progress| progress * 100.0),
+                message: message.map(|msg| match percentage {
+                    None => msg.to_string(),
+                    Some(percentage) if percentage == 100.0 => msg.to_string(),
+                    Some(percentage) => format!("{msg} ({percentage:02.0}%)"),
+                }),
+                percentage,
                 progress_id: progress_id.to_string(),
             }),
         )?;

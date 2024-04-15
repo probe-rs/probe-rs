@@ -1,0 +1,1 @@
+Added `into_iter()` to `rtt::Channels`

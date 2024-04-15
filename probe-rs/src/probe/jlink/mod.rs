@@ -10,14 +10,12 @@ mod speed;
 pub mod swo;
 
 use core::panic;
-use std::convert::TryFrom;
 use std::iter;
 use std::mem::take;
 use std::time::Duration;
 use std::{cmp, fmt};
 
 use bitvec::prelude::*;
-use bitvec::vec::BitVec;
 
 use nusb::transfer::{Direction, EndpointType};
 use nusb::DeviceInfo;
@@ -57,11 +55,12 @@ const SWO_BUFFER_SIZE: u16 = 128;
 const TIMEOUT_DEFAULT: Duration = Duration::from_millis(500);
 
 /// Factory to create [`JLink`] probes.
+#[derive(Debug)]
 pub struct JLinkFactory;
 
-impl std::fmt::Debug for JLinkFactory {
+impl std::fmt::Display for JLinkFactory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("JLink").finish()
+        f.write_str("J-Link")
     }
 }
 
@@ -897,7 +896,7 @@ impl DebugProbe for JLink {
                 tracing::info!("Found {} TAPs on reset scan", chain.len());
 
                 if chain.len() > 1 {
-                    tracing::warn!("More than one TAP detected, defaulting to tap0");
+                    tracing::info!("More than one TAP detected, defaulting to tap0");
                 }
 
                 self.select_target(&chain, 0)?;
@@ -919,7 +918,8 @@ impl DebugProbe for JLink {
     }
 
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
-        Err(DebugProbeError::NotImplemented("target_reset"))
+        self.write_cmd(&[Command::ResetTarget as u8])?;
+        Ok(())
     }
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
@@ -948,7 +948,13 @@ impl DebugProbe for JLink {
                 Err((probe, err)) => Err((probe.into_probe(), err)),
             }
         } else {
-            Err((self, DebugProbeError::InterfaceNotAvailable("JTAG").into()))
+            Err((
+                self,
+                DebugProbeError::InterfaceNotAvailable {
+                    interface_name: "JTAG",
+                }
+                .into(),
+            ))
         }
     }
 
@@ -1002,7 +1008,12 @@ impl DebugProbe for JLink {
                 Err((probe, err)) => Err((probe.into_probe(), err)),
             }
         } else {
-            Err((self, DebugProbeError::InterfaceNotAvailable("JTAG")))
+            Err((
+                self,
+                DebugProbeError::InterfaceNotAvailable {
+                    interface_name: "JTAG",
+                },
+            ))
         }
     }
 
@@ -1112,7 +1123,9 @@ impl RawProtocolIo for JLink {
             Ok(0xFFFF_FFFF)
         } else {
             // This is not supported for J-Links, unfortunately.
-            Err(DebugProbeError::CommandNotSupportedByProbe("swj_pins"))
+            Err(DebugProbeError::CommandNotSupportedByProbe {
+                command_name: "swj_pins",
+            })
         }
     }
 

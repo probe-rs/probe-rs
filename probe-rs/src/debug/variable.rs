@@ -1,4 +1,4 @@
-use crate::debug::unit_info::UnitInfo;
+use crate::debug::{language::ProgrammingLanguage, unit_info::UnitInfo};
 
 use super::*;
 use anyhow::anyhow;
@@ -41,7 +41,7 @@ impl std::fmt::Display for VariableValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             VariableValue::Valid(value) => value.fmt(f),
-            VariableValue::Error(error) => write!(f, "< {error} >",),
+            VariableValue::Error(error) => write!(f, "< {error} >"),
             VariableValue::Empty => write!(
                 f,
                 "Value not set. Please use Variable::get_value() to infer a human readable variable value"
@@ -105,16 +105,14 @@ impl std::fmt::Display for VariableName {
 /// The rules for 'lazy loading'/deferred recursion of [Variable] children are described under each of the enum values.
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub enum VariableNodeType {
-    /// For pointer values, their referenced variables are found at an [gimli::UnitOffset] in the [DebugInfo].
-    /// - Rule: Pointers to `struct` variables WILL NOT BE recursed, because  this may lead to infinite loops/stack overflows in `struct`s that self-reference.
-    /// - Rule: Pointers to "base" datatypes SHOULD BE, but ARE NOT resolved, because it would keep the UX simple, but DWARF doesn't make it easy to determine when a pointer points to a base data type. We can read ahead in the DIE children, but that feels rather inefficient.
-    ReferenceOffset(UnitOffset),
     /// Use the `header_offset` and `type_offset` as direct references for recursing the variable children. With the current implementation, the `type_offset` will point to a DIE with a tag of `DW_TAG_structure_type`.
     /// - Rule: For structured variables, we WILL NOT automatically expand their children, but we have enough information to expand it on demand. Except if they fall into one of the special cases handled by [VariableNodeType::RecurseToBaseType]
-    TypeOffset(UnitOffset),
+    TypeOffset(DebugInfoOffset, UnitOffset),
     /// Use the `header_offset` and `entries_offset` as direct references for recursing the variable children.
-    /// - Rule: All top level variables in a [StackFrame] are automatically deferred, i.e [VariableName::LocalScopeRoot], [VariableName::RegistersRoot], [VariableName::LocalScopeRoot].
-    DirectLookup,
+    /// - Rule: All top level variables in a [StackFrame] are automatically deferred, i.e [VariableName::LocalScopeRoot], [VariableName::RegistersRoot].
+    DirectLookup(DebugInfoOffset, UnitOffset),
+    /// Look up information from all compilation units. This is used to resolve static variables, so when [`VariableName::StaticScopeRoot`] is used.
+    UnitsLookup,
     /// Sometimes it doesn't make sense to recurse the children of a specific node type
     /// - Rule: Pointers to `unit` datatypes WILL NOT BE resolved, because it doesn't make sense.
     /// - Rule: Once we determine that a variable can not be recursed further, we update the variable_node_type to indicate that no further recursion is possible/required. This can be because the variable is a 'base' data type, or because there was some kind of error in processing the current node, so we don't want to incur cascading errors.
@@ -135,12 +133,108 @@ impl VariableNodeType {
     /// Will return true if any of the `variable_node_type` value implies that the variable will be 'lazy' resolved.
     pub fn is_deferred(&self) -> bool {
         match self {
-            VariableNodeType::ReferenceOffset(_)
-            | VariableNodeType::TypeOffset(_)
-            | VariableNodeType::DirectLookup => true,
-            _other => false,
+            VariableNodeType::TypeOffset(_, _)
+            | VariableNodeType::DirectLookup(_, _)
+            | VariableNodeType::UnitsLookup => true,
+            VariableNodeType::DoNotRecurse | VariableNodeType::RecurseToBaseType => false,
         }
     }
+}
+
+/// The starting bit (and direction) of a bit field type.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub enum BitOffset {
+    /// The bit offset is from the least significant bit.
+    FromLsb(u64),
+
+    /// The bit offset is from the most significant bit.
+    FromMsb(u64),
+}
+
+/// Bitfield information for a variable.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct Bitfield {
+    /// The starting bit (and direction) of a bit field type.
+    pub offset: BitOffset,
+    /// The length of the bit field.
+    pub length: u64,
+}
+
+impl Default for Bitfield {
+    fn default() -> Self {
+        Bitfield {
+            offset: BitOffset::FromLsb(0),
+            length: 0,
+        }
+    }
+}
+
+impl Bitfield {
+    /// Returns a Bitfield that has a FromLsb offset.
+    pub(crate) fn normalize(&self, byte_size: u64) -> Self {
+        let offset = self.offset(byte_size);
+        Bitfield {
+            offset: BitOffset::FromLsb(offset),
+            length: self.length,
+        }
+    }
+
+    pub(crate) fn offset(&self, byte_size: u64) -> u64 {
+        match self.offset {
+            BitOffset::FromLsb(offset) => offset,
+            BitOffset::FromMsb(offset) => byte_size * 8 - offset - self.length,
+        }
+    }
+
+    pub(crate) fn normalized_offset(&self) -> u64 {
+        match self.offset {
+            BitOffset::FromLsb(offset) => offset,
+            BitOffset::FromMsb(_) => unreachable!("Bitfield should have been normalized first"),
+        }
+    }
+
+    pub(crate) fn length(&self) -> u64 {
+        self.length
+    }
+
+    pub(crate) fn mask(&self) -> u128 {
+        (1 << self.length) - 1
+    }
+
+    pub(crate) fn extract(&self, value: u128) -> u128 {
+        let offset = self.normalized_offset();
+        let mask = self.mask();
+
+        (value >> offset) & mask
+    }
+
+    pub(crate) fn insert(&self, value: u128, new_value: u128) -> u128 {
+        let offset = self.normalized_offset();
+        let mask = self.mask();
+
+        let shifted_mask = mask << offset;
+        let new_value = (new_value & mask) << offset;
+        (value & !shifted_mask) | new_value
+    }
+}
+
+/// A modifier to a variable type. Currently only used to format the type name.
+#[derive(Debug, Clone, Eq, PartialEq, Serialize)]
+pub enum Modifier {
+    /// The type is declared as `volatile`.
+    Volatile,
+
+    /// The type is declared as `const`.
+    Const,
+
+    /// The type is declared as `restrict`.
+    Restrict,
+
+    /// The type is declared as `atomic`.
+    Atomic,
+
+    /// The type is an alias with the given name.
+    Typedef(String),
 }
 
 /// The variants of VariableType allows us to streamline the conditional logic that requires specific handling depending on the nature of the variable.
@@ -148,6 +242,8 @@ impl VariableNodeType {
 pub enum VariableType {
     /// A variable with a Rust base datatype.
     Base(String),
+    /// The variable is a range of bits in a wider (integer) type.
+    Bitfield(Bitfield, Box<VariableType>),
     /// A Rust struct.
     Struct(String),
     /// A Rust enum.
@@ -159,10 +255,12 @@ pub enum VariableType {
     /// A Rust array.
     Array {
         /// The type name of the variable.
-        item_type_name: String,
+        item_type_name: Box<VariableType>,
         /// The number of entries in the array.
         count: usize,
     },
+    /// A type alias.
+    Modified(Modifier, Box<VariableType>),
     /// When we are unable to determine the name of a variable.
     #[default]
     Unknown,
@@ -171,18 +269,28 @@ pub enum VariableType {
 }
 
 impl VariableType {
+    /// Get the inner type of a modified type.
+    pub fn inner(&self) -> &Self {
+        if let Self::Modified(_, ty) = self {
+            ty.inner()
+        } else {
+            self
+        }
+    }
+
+    /// Get the inner type of a modified type, stopping at typedef aliases.
+    fn skip_modifiers(&self) -> &Self {
+        match self {
+            Self::Modified(Modifier::Typedef(_), _) => self,
+            Self::Modified(_, ty) => ty.skip_modifiers(),
+            _ => self,
+        }
+    }
+
     /// Is this variable of a Rust PhantomData marker type?
     pub fn is_phantom_data(&self) -> bool {
         match self {
             VariableType::Struct(name) => name.starts_with("PhantomData"),
-            _ => false,
-        }
-    }
-
-    /// Is this variable is a reference to another variable?
-    pub fn is_reference(&self) -> bool {
-        match self {
-            VariableType::Pointer(Some(name)) => name.starts_with('&'),
             _ => false,
         }
     }
@@ -196,6 +304,7 @@ impl VariableType {
     pub fn kind(&self) -> &str {
         match self {
             VariableType::Base(_) => "base",
+            VariableType::Bitfield(..) => "bitfield",
             VariableType::Struct(_) => "struct",
             VariableType::Enum(_) => "enum",
             VariableType::Namespace => "namespace",
@@ -203,28 +312,62 @@ impl VariableType {
             VariableType::Array { .. } => "array",
             VariableType::Unknown => "unknown",
             VariableType::Other(_) => "other",
+            VariableType::Modified(_, inner) => inner.kind(),
         }
     }
-}
 
-impl std::fmt::Display for VariableType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    pub(crate) fn display_name(&self, language: &dyn ProgrammingLanguage) -> String {
         match self {
-            VariableType::Base(base) => base.fmt(f),
-            VariableType::Struct(struct_name) => struct_name.fmt(f),
-            VariableType::Enum(enum_name) => enum_name.fmt(f),
-            VariableType::Namespace => "<namespace>".fmt(f),
-            VariableType::Pointer(pointer_name) => pointer_name
-                .clone()
-                .unwrap_or_else(|| "<referenced type>".to_string())
-                .fmt(f),
+            VariableType::Modified(Modifier::Typedef(name), _) => name.clone(),
+            VariableType::Modified(modifier, ty) => {
+                language.modified_type_name(modifier, &ty.display_name(language))
+            }
+
             VariableType::Array {
-                item_type_name: entry_type,
+                item_type_name,
                 count,
-            } => write!(f, "[{entry_type}; {count}]"),
-            VariableType::Unknown => "<unknown>".fmt(f),
-            VariableType::Other(other) => other.fmt(f),
+            } => language.format_array_type(
+                // In case the compiler points at a modified item type (e.g. const), skip the
+                // modifier.
+                &item_type_name.skip_modifiers().display_name(language),
+                *count,
+            ),
+
+            VariableType::Bitfield(bitfield, name) => {
+                language.format_bitfield_type(&name.display_name(language), *bitfield)
+            }
+
+            _ => self.type_name(language),
         }
+    }
+
+    /// Returns the type name after resolving aliases.
+    pub(crate) fn type_name(&self, language: &dyn ProgrammingLanguage) -> String {
+        let type_name = match self {
+            VariableType::Base(name)
+            | VariableType::Struct(name)
+            | VariableType::Enum(name)
+            | VariableType::Other(name) => Some(name.as_str()),
+
+            VariableType::Namespace => Some("namespace"),
+            VariableType::Unknown => None,
+
+            VariableType::Pointer(pointee) => {
+                // TODO: we should also carry the constness
+                return language.format_pointer_type(pointee.as_deref());
+            }
+
+            VariableType::Array {
+                item_type_name,
+                count,
+            } => return language.format_array_type(&item_type_name.type_name(language), *count),
+
+            VariableType::Bitfield(_, ty) | VariableType::Modified(_, ty) => {
+                return ty.type_name(language)
+            }
+        };
+
+        type_name.unwrap_or("<unknown>").to_string()
     }
 }
 
@@ -251,7 +394,7 @@ impl VariableLocation {
     pub fn memory_address(&self) -> Result<u64, DebugError> {
         match self {
             VariableLocation::Address(address) => Ok(*address),
-            other => Err(DebugError::UnwindIncompleteResults {
+            other => Err(DebugError::WarnAndContinue {
                 message: format!("Variable does not have a memory location: location={other:?}"),
             }),
         }
@@ -302,12 +445,6 @@ pub struct Variable {
 
     /// The name of the type of this variable.
     pub type_name: VariableType,
-    /// The unit_header_offset and variable_unit_offset are cached to allow on-demand access to the variable's gimli::Unit, through functions like:
-    ///   `gimli::Read::DebugInfo.header_from_offset()`, and
-    ///   `gimli::Read::UnitHeader.entries_tree()`
-    pub unit_header_offset: Option<DebugInfoOffset>,
-    /// The offset of this variable into the compilation unit debug information.
-    pub variable_unit_offset: Option<UnitOffset>,
     /// For 'lazy loading' of certain variable types we have to determine if the variable recursion should be deferred, and if so, how to resolve it when the request for further recursion happens.
     /// See [VariableNodeType] for more information.
     pub variable_node_type: VariableNodeType,
@@ -323,11 +460,8 @@ pub struct Variable {
 
 impl Variable {
     /// In most cases, Variables will be initialized with their ELF references so that we resolve their data types and values on demand.
-    pub fn new(entries_offset: Option<UnitOffset>, unit_info: Option<&UnitInfo>) -> Variable {
+    pub fn new(unit_info: Option<&UnitInfo>) -> Variable {
         Variable {
-            unit_header_offset: unit_info
-                .and_then(|info| info.unit.header.offset().as_debug_info_offset()),
-            variable_unit_offset: entries_offset,
             language: unit_info
                 .map(|info| info.get_language())
                 .unwrap_or(gimli::DW_LANG_Rust),
@@ -344,6 +478,12 @@ impl Variable {
             member_index: None,
             role: Default::default(),
         }
+    }
+
+    /// Returns the readable name of the variable type.
+    pub fn type_name(&self) -> String {
+        self.type_name
+            .display_name(language::from_dwarf(self.language).as_ref())
     }
 
     /// Get a unique key for this variable.
@@ -395,7 +535,7 @@ impl Variable {
             // We have everything we need to update the variable value.
             language::from_dwarf(self.language)
                 .update_variable(self, memory, &new_value)
-                .map_err(|error| DebugError::UnwindIncompleteResults {
+                .map_err(|error| DebugError::WarnAndContinue {
                     message: format!("Invalid data value={new_value:?}: {error}"),
                 })?;
 
@@ -425,11 +565,12 @@ impl Variable {
         } else {
             // We need to construct a 'human readable' value using `fmt::Display` to represent the values of complex types and pointers.
             if variable_cache.has_children(self) {
-                self.formatted_variable_value(variable_cache, 0_usize, false)
+                self.formatted_variable_value(variable_cache, 0, false)
             } else if self.type_name == VariableType::Unknown || !self.memory_location.valid() {
                 if self.variable_node_type.is_deferred() {
                     // When we will do a lazy-load of variable children, and they have not yet been requested by the user, just display the type_name as the value
-                    format!("{:?}", self.type_name.clone())
+                    self.type_name
+                        .display_name(language::from_dwarf(self.language).as_ref())
                 } else {
                     // This condition should only be true for intermediate nodes from DWARF. These should not show up in the final `VariableCache`
                     // If a user sees this error, then there is a logic problem in the stack unwind
@@ -438,10 +579,10 @@ impl Variable {
             } else if matches!(self.type_name, VariableType::Struct(ref name) if name == "None") {
                 "None".to_string()
             } else if matches!(self.type_name, VariableType::Array { count: 0, .. }) {
-                self.formatted_variable_value(variable_cache, 0_usize, false)
+                self.formatted_variable_value(variable_cache, 0, false)
             } else {
                 format!(
-                    "Unimplemented: Evaluate type {:?} of ({:?} bytes) at location 0x{:08x?}",
+                    "Unimplemented: Get value of type {:?} of ({:?} bytes) at location {}",
                     self.type_name, self.byte_size, self.memory_location
                 )
             }
@@ -463,17 +604,23 @@ impl Variable {
         // The value was set explicitly, so just leave it as is, or it was an error, so don't attempt anything else
         || !self.memory_location.valid()
         // This may just be that we are early on in the process of `Variable` evaluation
-        || self.type_name == VariableType::Unknown
+        || matches!(self.type_name.inner(), VariableType::Unknown)
         // This may just be that we are early on in the process of `Variable` evaluation
         {
             // Quick exit if we don't really need to do much more.
             return;
         }
 
-        if self.variable_node_type.is_deferred() {
+        if self.variable_node_type.is_deferred()
+            || matches!(self.type_name, VariableType::Pointer(_))
+        {
             // And we have not previously assigned the value, then assign the type and address as the value
-            self.value =
-                VariableValue::Valid(format!("{} @ {}", self.type_name, self.memory_location));
+            self.value = VariableValue::Valid(format!(
+                "{} @ {}",
+                self.type_name
+                    .display_name(language::from_dwarf(self.language).as_ref()),
+                self.memory_location
+            ));
             return;
         }
 
@@ -503,7 +650,7 @@ impl Variable {
     }
 
     /// `true` if the Variable has a valid value, or an empty value.
-    /// `false` if the Variable has a VariableValue::Error(_)value
+    /// `false` if the Variable has a VariableValue::Error(_) value
     pub fn is_valid(&self) -> bool {
         self.value.is_valid()
     }
@@ -515,40 +662,35 @@ impl Variable {
         show_name: bool,
     ) -> String {
         let line_feed = if indentation == 0 { "" } else { "\n" };
-        // Allow for chained `if let` without complaining
-        #[allow(clippy::if_same_then_else)]
+        let line_start = format!("{}{:\t<indentation$}", line_feed, "");
+        let type_name = self.type_name();
+
         if !self.value.is_empty() {
+            // Use the supplied value or error message.
             if show_name {
-                // Use the supplied value or error message.
-                format!(
-                    "{}{:\t<indentation$}{}: {} = {}",
-                    line_feed, "", self.name, self.type_name, self.value
-                )
+                format!("{line_start}{}: {} = {}", self.name, type_name, self.value)
             } else {
-                // Use the supplied value or error message.
-                format!("{}{:\t<indentation$}{}", line_feed, "", self.value)
+                format!("{line_start}{}", self.value)
             }
-        } else if let VariableName::AnonymousNamespace = self.name {
-            // Namespaces do not have values
-            String::new()
-        } else if let VariableName::Namespace(_) = self.name {
+        } else if matches!(
+            self.name,
+            VariableName::AnonymousNamespace | VariableName::Namespace(_)
+        ) {
             // Namespaces do not have values
             String::new()
         } else {
             // Infer a human readable value using the available children of this variable.
             let mut compound_value = String::new();
-            let children: Vec<_> = variable_cache.get_children(self.variable_key).collect();
+            let children = variable_cache.get_children(self.variable_key);
+            let first_child = children.clone().next();
 
             // Make sure we can safely unwrap() children.
-            match &self.type_name {
+            match self.type_name.inner() {
                 VariableType::Pointer(_) => {
                     // Pointers
-                    compound_value = format!(
-                        "{}{}{:\t<indentation$}{}",
-                        compound_value,
-                        line_feed,
-                        "",
-                        if let Some(first_child) = children.first() {
+                    format!(
+                        "{line_start}{}",
+                        if let Some(first_child) = first_child {
                             first_child.formatted_variable_value(
                                 variable_cache,
                                 indentation + 1,
@@ -557,134 +699,149 @@ impl Variable {
                         } else {
                             "Unable to resolve referenced variable value".to_string()
                         }
-                    );
-                    compound_value
+                    )
                 }
                 VariableType::Array { .. } => {
-                    // Arrays
-                    compound_value = format!(
-                        "{}{}{:\t<indentation$}: {} = [",
-                        compound_value, line_feed, "", self.type_name,
-                    );
-                    let mut child_count: usize = 0;
-                    for child in &children {
-                        child_count += 1;
+                    // Limit arrays to 10(+1) elements
+                    const ARRAY_MAX_LENGTH: usize = 10;
+
+                    let mut comma = "";
+                    let mut printed_count = 0;
+                    let mut children = children.clone();
+
+                    compound_value = format!("{line_start}{type_name} = [");
+                    loop {
+                        if printed_count >= ARRAY_MAX_LENGTH {
+                            // Be a bit lenient with the limit, avoid showing "1 more" for a single child.
+                            let remaining = children.clone().count();
+                            if remaining > 1 {
+                                break;
+                            }
+                        }
+                        let Some(child) = children.next() else {
+                            break;
+                        };
 
                         compound_value = format!(
-                            "{}{}{}",
-                            compound_value,
+                            "{compound_value}{comma}{}",
                             child.formatted_variable_value(variable_cache, indentation + 1, false),
-                            if child_count == children.len() {
-                                // Do not add a separator at the end of the list
-                                ""
-                            } else {
-                                ", "
-                            }
+                        );
+                        printed_count += 1;
+                        comma = ",";
+                    }
+
+                    let remaining = children.count();
+                    if remaining > 0 {
+                        compound_value = format!(
+                            "{compound_value},\n{line_start}\t... and {} more",
+                            remaining
                         );
                     }
-                    format!("{}{}{:\t<indentation$}]", compound_value, line_feed, "")
+
+                    format!("{compound_value}{line_start}]")
                 }
-                VariableType::Struct(name) if name == "Ok" || name == "Err" => {
+
+                VariableType::Struct(name) if name == "Some" || name == "Ok" || name == "Err" => {
+                    // FIXME: this is not hit by any of the unwind tests, which is weird because
+                    // some of them contain `Some` structs.
                     // Handle special structure types like the variant values of `Option<>` and `Result<>`
-                    compound_value = format!(
-                        "{}{:\t<indentation$}{}: {} = {}(",
-                        line_feed, "", self.name, self.type_name, compound_value
-                    );
+                    compound_value = format!("{line_start}{} = (", type_name);
                     for child in children {
                         compound_value = format!(
-                            "{}{}",
-                            compound_value,
+                            "{compound_value}{}",
                             child.formatted_variable_value(variable_cache, indentation + 1, false)
                         );
                     }
-                    format!("{}{}{:\t<indentation$})", compound_value, line_feed, "")
+                    format!("{compound_value}{line_start})")
                 }
+
+                _ if first_child.is_none() => {
+                    // Struct with no children -> just print type name
+                    // This is for example the None value of an Option.
+                    format!("{compound_value}{type_name}")
+                }
+
+                _ if matches!(
+                    self.name,
+                    VariableName::StaticScopeRoot
+                        | VariableName::LocalScopeRoot
+                        | VariableName::RegistersRoot
+                ) =>
+                {
+                    compound_value = format!("{compound_value}{line_start}{type_name} {{");
+
+                    let mut comma = "";
+                    for child in children {
+                        let formatted =
+                            child.formatted_variable_value(variable_cache, indentation + 1, true);
+                        if formatted.is_empty() {
+                            // Avoid printing empty commas
+                            continue;
+                        }
+                        compound_value = format!("{compound_value}{comma}{formatted}");
+                        comma = ",";
+                    }
+                    format!("{compound_value}{line_start}}}")
+                }
+
                 _ => {
                     // Generic handling of other structured types.
                     // The pre- and post- fix is determined by the type of children.
                     // compound_value = format!("{} {}", compound_value, self.type_name);
+                    let (mut pre_fix, mut post_fix) = (None, None);
 
-                    if children.is_empty() {
-                        // Struct with no children -> just print type name
-                        // This is for example the None value of an Option.
+                    let mut is_tuple = false;
 
-                        format!("{}{:\t<indentation$}{}", line_feed, "", self.name)
-                    } else {
-                        let (mut pre_fix, mut post_fix): (Option<String>, Option<String>) =
-                            (None, None);
-
-                        let mut child_count: usize = 0;
-
-                        let mut is_tuple = false;
-
-                        for child in children.iter() {
-                            child_count += 1;
-                            if pre_fix.is_none() && post_fix.is_none() {
-                                if let VariableName::Named(child_name) = &child.name {
-                                    if child_name.starts_with("__0") {
-                                        is_tuple = true;
-                                        // Treat this structure as a tuple
-                                        pre_fix = Some(format!(
-                                            "{}{:\t<indentation$}{}: {}({}) = {}(",
-                                            line_feed,
-                                            "",
-                                            self.name,
-                                            self.type_name,
-                                            child.type_name,
-                                            self.type_name,
-                                        ));
-                                        post_fix =
-                                            Some(format!("{}{:\t<indentation$})", line_feed, ""));
-                                    } else {
-                                        // Treat this structure as a `struct`
-
-                                        if show_name {
-                                            pre_fix = Some(format!(
-                                                "{}{:\t<indentation$}{}: {} = {} {{",
-                                                line_feed,
-                                                "",
-                                                self.name,
-                                                self.type_name,
-                                                self.type_name,
-                                            ));
-                                        } else {
-                                            pre_fix = Some(format!(
-                                                "{}{:\t<indentation$}{} {{",
-                                                line_feed, "", self.type_name,
-                                            ));
-                                        }
-                                        post_fix =
-                                            Some(format!("{}{:\t<indentation$}}}", line_feed, ""));
-                                    }
-                                };
-                                if let Some(pre_fix) = &pre_fix {
-                                    compound_value = format!("{compound_value}{pre_fix}");
-                                };
-                            }
-
-                            let print_name = !is_tuple;
-
-                            compound_value = format!(
-                                "{}{}{}",
-                                compound_value,
-                                child.formatted_variable_value(
-                                    variable_cache,
-                                    indentation + 1,
-                                    print_name
-                                ),
-                                if child_count == children.len() {
-                                    // Do not add a separator at the end of the list
-                                    ""
-                                } else {
-                                    ", "
-                                }
-                            );
+                    if let Some((child, child_name)) = children.clone().find_map(|c| {
+                        if let VariableName::Named(child_name) = &c.name {
+                            Some((c, child_name))
+                        } else {
+                            None
                         }
-                        if let Some(post_fix) = &post_fix {
-                            compound_value = format!("{compound_value}{post_fix}");
-                        };
-                        compound_value
+                    }) {
+                        if child_name.starts_with("__0") {
+                            is_tuple = true;
+                            // Treat this structure as a tuple
+                            pre_fix = Some(format!(
+                                "{}: {}({}) = {}(",
+                                self.name,
+                                type_name,
+                                child.type_name(),
+                                type_name,
+                            ));
+                            post_fix = Some(')');
+                        } else {
+                            // Treat this structure as a `struct`
+                            pre_fix = if show_name {
+                                Some(format!("{}: {} = {} {{", self.name, type_name, type_name))
+                            } else {
+                                Some(format!("{} {{", type_name))
+                            };
+                            post_fix = Some('}');
+                        }
                     }
+                    if let Some(pre_fix) = &pre_fix {
+                        compound_value = format!("{compound_value}{line_start}{pre_fix}");
+                    }
+
+                    let print_name = !is_tuple;
+
+                    let mut comma = "";
+                    for child in children {
+                        compound_value = format!(
+                            "{compound_value}{comma}{}",
+                            child.formatted_variable_value(
+                                variable_cache,
+                                indentation + 1,
+                                print_name
+                            ),
+                        );
+                        comma = ",";
+                    }
+                    if let Some(post_fix) = &post_fix {
+                        compound_value = format!("{compound_value}{line_start}{post_fix}");
+                    }
+                    compound_value
                 }
             }
         }

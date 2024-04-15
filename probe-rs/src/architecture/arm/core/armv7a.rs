@@ -999,8 +999,7 @@ impl<'probe> MemoryInterface for Armv7a<'probe> {
 mod test {
     use crate::{
         architecture::arm::{
-            ap::MemoryAp, communication_interface::SwdSequence,
-            memory::adi_v5_memory_interface::ArmProbe, sequences::DefaultArmSequence, ArmError,
+            ap::MemoryAp, communication_interface::SwdSequence, sequences::DefaultArmSequence,
         },
         probe::DebugProbeError,
     };
@@ -1155,9 +1154,9 @@ mod test {
             >,
             DebugProbeError,
         > {
-            Err(DebugProbeError::NotImplemented(
-                "get_arm_communication_interface",
-            ))
+            Err(DebugProbeError::NotImplemented {
+                function_name: "get_arm_communication_interface",
+            })
         }
 
         fn read_64(&mut self, _address: u64, _data: &mut [u64]) -> Result<(), ArmError> {

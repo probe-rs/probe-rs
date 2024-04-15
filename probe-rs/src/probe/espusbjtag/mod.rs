@@ -25,11 +25,12 @@ use crate::architecture::riscv::dtm::jtag_dtm::JtagDtm;
 use probe_rs_target::ScanChainElement;
 
 /// Probe factory for USB JTAG interfaces built into certain ESP32 chips.
+#[derive(Debug)]
 pub struct EspUsbJtagFactory;
 
-impl std::fmt::Debug for EspUsbJtagFactory {
+impl std::fmt::Display for EspUsbJtagFactory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("EspJtag").finish()
+        f.write_str("EspJtag")
     }
 }
 
@@ -122,7 +123,7 @@ impl DebugProbe for EspUsbJtag {
         tracing::info!("Found {} TAPs on reset scan", chain.len());
 
         if chain.len() > 1 {
-            tracing::warn!("More than one TAP detected, defaulting to tap0");
+            tracing::info!("More than one TAP detected, defaulting to tap0");
         }
 
         self.select_target(&chain, 0)
@@ -133,7 +134,9 @@ impl DebugProbe for EspUsbJtag {
     }
 
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
-        Err(DebugProbeError::NotImplemented("target_reset"))
+        Err(DebugProbeError::NotImplemented {
+            function_name: "target_reset",
+        })
     }
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
@@ -196,7 +199,12 @@ impl DebugProbe for EspUsbJtag {
     ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)>
     {
         // This probe cannot debug ARM targets.
-        Err((self, DebugProbeError::InterfaceNotAvailable("SWD/ARM")))
+        Err((
+            self,
+            DebugProbeError::InterfaceNotAvailable {
+                interface_name: "SWD/ARM",
+            },
+        ))
     }
 
     fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {

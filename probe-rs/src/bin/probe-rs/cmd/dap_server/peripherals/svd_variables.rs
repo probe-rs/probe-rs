@@ -3,7 +3,7 @@ use crate::cmd::dap_server::{
     DebuggerError,
 };
 use std::{fmt::Debug, fs::File, io::Read, path::Path};
-use svd_parser::{self as svd, svd::Device, Config};
+use svd_parser::Config;
 
 use super::svd_cache::{SvdVariable, SvdVariableCache};
 
@@ -29,13 +29,13 @@ impl SvdCache {
         let mut svd_opened_file = File::open(svd_file)?;
 
         let progress_id = debug_adapter.start_progress(
-            format!("Loading SVD file : {}", svd_file.display()).as_str(),
+            format!("Loading SVD file: {}", svd_file.display()).as_str(),
             Some(dap_request_id),
         )?;
 
         let _ = svd_opened_file.read_to_string(svd_xml)?;
 
-        let svd_cache = match svd::parse_with_config(
+        let svd_cache = match svd_parser::parse_with_config(
             svd_xml,
             &Config::default().expand(true).ignore_enums(true),
         ) {
@@ -43,7 +43,7 @@ impl SvdCache {
                 debug_adapter
                     .update_progress(
                         None,
-                        Some(format!("Done loading SVD file :{:?}", &svd_file)),
+                        Some(format!("Done loading SVD file: {}", svd_file.display())),
                         progress_id,
                     )
                     .ok();
@@ -69,8 +69,9 @@ impl SvdCache {
 }
 
 /// Create a [`probe_rs::debug::SvdVariableCache`] from a Device that was parsed from a CMSIS-SVD file.
+#[tracing::instrument(skip_all)]
 pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
-    peripheral_device: Device,
+    peripheral_device: svd_parser::svd::Device,
     debug_adapter: &mut DebugAdapter<P>,
     progress_id: i64,
 ) -> Result<SvdVariableCache, DebuggerError> {
@@ -107,8 +108,7 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
                 .update_progress(
                     None,
                     Some(format!(
-                        "SVD loading peripheral group:{}",
-                        peripheral_group_name
+                        "SVD loading peripheral group: {peripheral_group_name}",
                     )),
                     progress_id,
                 )

@@ -343,7 +343,9 @@ impl DebugProbe for FakeProbe {
 
     /// Resets the target device.
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
-        Err(DebugProbeError::CommandNotSupportedByProbe("target_reset"))
+        Err(DebugProbeError::CommandNotSupportedByProbe {
+            command_name: "target_reset",
+        })
     }
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
@@ -426,29 +428,6 @@ impl FakeArmInterface<Uninitialized> {
 
         Self { probe, state }
     }
-
-    fn into_initialized(
-        self,
-        sequence: Arc<dyn ArmDebugSequence>,
-        dp: DpAddress,
-    ) -> Result<FakeArmInterface<Initialized>, (Box<Self>, DebugProbeError)> {
-        Ok(FakeArmInterface::<Initialized>::from_uninitialized(
-            self, sequence, dp,
-        ))
-    }
-}
-
-impl FakeArmInterface<Initialized> {
-    fn from_uninitialized(
-        interface: FakeArmInterface<Uninitialized>,
-        sequence: Arc<dyn ArmDebugSequence>,
-        dp: DpAddress,
-    ) -> Self {
-        FakeArmInterface::<Initialized> {
-            probe: interface.probe,
-            state: Initialized::new(sequence, false, dp),
-        }
-    }
 }
 
 impl<S: ArmDebugState> SwdSequence for FakeArmInterface<S> {
@@ -479,9 +458,10 @@ impl UninitializedArmProbe for FakeArmInterface<Uninitialized> {
         // TODO: Do we need this?
         // sequence.debug_port_setup(&mut self.probe)?;
 
-        let interface = self
-            .into_initialized(sequence, dp)
-            .map_err(|(s, err)| (s as Box<_>, Error::Probe(err)))?;
+        let interface = FakeArmInterface::<Initialized> {
+            probe: self.probe,
+            state: Initialized::new(sequence, dp, false),
+        };
 
         Ok(Box::new(interface))
     }

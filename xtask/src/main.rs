@@ -390,6 +390,9 @@ fn write_changelog_section(
             )
         })?;
 
+        // Replace paragraph breaks which screw up list item spacing.
+        let text = text.replace("\n\n", "<br>\n");
+
         let mut lines = text.lines();
 
         let Some(first_line) = lines.next() else {
@@ -398,13 +401,10 @@ fn write_changelog_section(
 
         write!(writer, " - {}", first_line)?;
 
-        let mut multiline = false;
-
         // Write remaining lines
         for line in lines {
             writeln!(writer)?;
             write!(writer, "   {}", line)?;
-            multiline = true;
         }
 
         if let Some(pr_number) = &fragment.pr_number {
@@ -416,11 +416,6 @@ fn write_changelog_section(
         }
 
         writeln!(writer)?;
-
-        // Add an empty line between multiline fragments
-        if multiline {
-            writeln!(writer)?;
-        }
     }
 
     writeln!(writer)?;

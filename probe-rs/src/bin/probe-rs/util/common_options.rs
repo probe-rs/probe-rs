@@ -1,45 +1,7 @@
-#![allow(clippy::needless_doctest_main)]
-//! Collection of `#[derive(StructOpt)] struct`s common to programs that
-//! extend then functionality of cargo-flash.
-//!
-//! Example usage:
-//! ```no_run
-//! use clap::Parser;
-//! use crate::util::common_options::FlashOptions;
-//!
-//! #[derive(clap::Parser)]
-//! struct Opts {
-//!     #[arg(long = "some-opt")]
-//!     opt: String,
-//!
-//!     #[arg(flatten)]
-//!     flash_options: FlashOptions,
-//! }
-//!
-//! fn main() {
-//!     let opts = Opts::parse();
-//!
-//!     opts.flash_options.probe_options.maybe_load_chip_desc().unwrap();
-//!
-//!     // handle --list-{chips,probes}
-//!     if opts.flash_options.early_exit(std::io::stdout()).unwrap() {
-//!         return;
-//!     }
-//!
-//!     let target_session = opts.flash_options.probe_options.simple_attach().unwrap();
-//!
-//!     // ...
-//! }
-//! ```
-use super::ArtifactError;
-
 use std::{fs::File, path::Path, path::PathBuf};
 
-use crate::{
-    cmd::dap_server::DebuggerError,
-    util::{logging::LevelFilter, parse_u64},
-};
-use clap;
+use super::cargo::ArtifactError;
+use crate::util::parse_u64;
 use probe_rs::{
     config::{RegistryError, TargetSelector},
     flashing::{FileDownloadError, FlashError},
@@ -53,54 +15,25 @@ use serde::{Deserialize, Serialize};
 
 /// Common options when flashing a target device.
 #[derive(Debug, clap::Parser)]
-pub struct FlashOptions {
-    /// Use this flag to reset and halt (instead of just a reset) the attached core after flashing the target.
-    #[arg(long)]
-    pub reset_halt: bool,
-    /// Use this flag to set the log level.
-    ///
-    /// Configurable via the `RUST_LOG` environment variable.
-    /// Default is `warn`. Possible choices are [error, warn, info, debug, trace].
-    #[arg(value_name = "level", long)]
-    pub log: Option<LevelFilter>,
-    /// The path to the file to be flashed.
-    #[arg(value_name = "path", long)]
-    pub path: Option<PathBuf>,
-    /// The work directory from which cargo-flash should operate from.
-    #[arg(value_name = "directory", long)]
-    pub work_dir: Option<PathBuf>,
-
-    #[command(flatten)]
-    /// Arguments which are forwarded to 'cargo build'.
-    pub cargo_options: CargoOptions,
-    #[command(flatten)]
-    /// Argument relating to probe/chip selection/configuration.
-    pub probe_options: ProbeOptions,
-    #[command(flatten)]
-    /// Argument relating to probe/chip selection/configuration.
-    pub download_options: BinaryDownloadOptions,
-
-    #[command(flatten)]
-    pub format_options: crate::FormatOptions,
-}
-
-/// Common options when flashing a target device.
-#[derive(Debug, clap::Parser)]
 pub struct BinaryDownloadOptions {
-    #[arg(long)]
+    #[arg(long, help_heading = "DOWNLOAD CONFIGURATION")]
     pub disable_progressbars: bool,
     /// Use this flag to disable double-buffering when downloading flash data. If
     /// download fails during programming with timeout errors, try this option.
-    #[arg(long)]
+    #[arg(long, help_heading = "DOWNLOAD CONFIGURATION")]
     pub disable_double_buffering: bool,
     /// Enable this flag to restore all bytes erased in the sector erase but not overwritten by any page.
-    #[arg(long)]
+    #[arg(long, help_heading = "DOWNLOAD CONFIGURATION")]
     pub restore_unwritten: bool,
     /// Requests the flash builder to output the layout into the given file in SVG format.
-    #[arg(value_name = "filename", long = "flash-layout")]
+    #[arg(
+        value_name = "filename",
+        long = "flash-layout",
+        help_heading = "DOWNLOAD CONFIGURATION"
+    )]
     pub flash_layout_output_path: Option<String>,
     /// After flashing, read back all the flashed data to verify it has been written correctly.
-    #[arg(long)]
+    #[arg(long, help_heading = "DOWNLOAD CONFIGURATION")]
     pub verify: bool,
 }
 
@@ -130,33 +63,46 @@ pub struct ReadWriteOptions {
 /// Common options and logic when interfacing with a [Probe].
 #[derive(clap::Parser, Debug)]
 pub struct ProbeOptions {
-    #[arg(long, env = "PROBE_RS_CHIP")]
+    #[arg(long, env = "PROBE_RS_CHIP", help_heading = "PROBE CONFIGURATION")]
     pub chip: Option<String>,
-    #[arg(value_name = "chip description file path", long)]
+    #[arg(
+        value_name = "chip description file path",
+        long,
+        env = "PROBE_RS_CHIP_DESCRIPTION_PATH",
+        help_heading = "PROBE CONFIGURATION"
+    )]
     pub chip_description_path: Option<PathBuf>,
 
     /// Protocol used to connect to chip. Possible options: [swd, jtag]
-    #[arg(long, help_heading = "PROBE CONFIGURATION")]
+    #[arg(long, env = "PROBE_RS_PROTOCOL", help_heading = "PROBE CONFIGURATION")]
     pub protocol: Option<WireProtocol>,
 
     /// Use this flag to select a specific probe in the list.
     ///
     /// Use '--probe VID:PID' or '--probe VID:PID:Serial' if you have more than one
     /// probe with the same VID:PID.",
-    #[arg(long = "probe", help_heading = "PROBE CONFIGURATION")]
-    pub probe_selector: Option<DebugProbeSelector>,
+    #[arg(long, env = "PROBE_RS_PROBE", help_heading = "PROBE CONFIGURATION")]
+    pub probe: Option<DebugProbeSelector>,
     /// The protocol speed in kHz.
-    #[arg(long, help_heading = "PROBE CONFIGURATION")]
+    #[arg(long, env = "PROBE_RS_SPEED", help_heading = "PROBE CONFIGURATION")]
     pub speed: Option<u32>,
     /// Use this flag to assert the nreset & ntrst pins during attaching the probe to
     /// the chip.
-    #[arg(long)]
+    #[arg(
+        long,
+        env = "PROBE_RS_CONNECT_UNDER_RESET",
+        help_heading = "PROBE CONFIGURATION"
+    )]
     pub connect_under_reset: bool,
-    #[arg(long)]
+    #[arg(long, env = "PROBE_RS_DRY_RUN", help_heading = "PROBE CONFIGURATION")]
     pub dry_run: bool,
     /// Use this flag to allow all memory, including security keys and 3rd party
     /// firmware, to be erased even when it has read-only protection.
-    #[arg(long)]
+    #[arg(
+        long,
+        env = "PROBE_RS_ALLOW_ERASE_ALL",
+        help_heading = "PROBE CONFIGURATION"
+    )]
     pub allow_erase_all: bool,
 }
 
@@ -243,7 +189,7 @@ impl LoadedProbeOptions {
         } else {
             // If we got a probe selector as an argument, open the probe
             // matching the selector if possible.
-            let probe = match &self.0.probe_selector {
+            let probe = match &self.0.probe {
                 Some(selector) => lister.open(selector),
                 None => {
                     // Only automatically select a probe if there is
@@ -551,11 +497,11 @@ pub enum OperationError {
 }
 
 /// Used in errors it can print a list of items.
-fn print_list(list: &[impl std::fmt::Debug]) -> String {
+fn print_list(list: &[impl std::fmt::Display]) -> String {
     let mut output = String::new();
 
     for (i, entry) in list.iter().enumerate() {
-        output.push_str(&format!("\n    {}. {:?}", i + 1, entry));
+        output.push_str(&format!("\n    {}. {}", i + 1, entry));
     }
 
     output
@@ -564,12 +510,6 @@ fn print_list(list: &[impl std::fmt::Debug]) -> String {
 impl From<std::io::Error> for OperationError {
     fn from(e: std::io::Error) -> Self {
         OperationError::IOError(e)
-    }
-}
-
-impl From<OperationError> for DebuggerError {
-    fn from(e: OperationError) -> Self {
-        DebuggerError::Other(e.into())
     }
 }
 

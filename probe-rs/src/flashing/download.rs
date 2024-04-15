@@ -1,10 +1,14 @@
 use object::{
-    elf::FileHeader32, elf::PT_LOAD, read::elf::FileHeader, read::elf::ProgramHeader, Endianness,
-    Object, ObjectSection,
+    elf::FileHeader32, elf::FileHeader64, elf::PT_LOAD, read::elf::ElfFile, read::elf::FileHeader,
+    read::elf::ProgramHeader, Endianness, Object, ObjectSection,
 };
-use probe_rs_target::MemoryRange;
+use probe_rs_target::{InstructionSet, MemoryRange};
 
-use std::{fs::File, path::Path, str::FromStr};
+use std::{
+    fs::File,
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 
 use super::*;
 use crate::session::Session;
@@ -22,9 +26,9 @@ pub struct BinOptions {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Default)]
 pub struct IdfOptions {
     /// The bootloader
-    pub bootloader: Option<Vec<u8>>,
+    pub bootloader: Option<PathBuf>,
     /// The partition table
-    pub partition_table: Option<esp_idf_part::PartitionTable>,
+    pub partition_table: Option<PathBuf>,
 }
 
 /// A finite list of all the available binary formats probe-rs understands.
@@ -68,39 +72,56 @@ impl FromStr for Format {
 ///
 /// This includes corrupt file issues,
 /// OS permission issues as well as chip connectivity and memory boundary issues.
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, thiserror::Error, docsplay::Display)]
 pub enum FileDownloadError {
-    /// An error with the actual flashing procedure has occurred.
+    /// An error with the flashing procedure has occurred.
+    #[ignore_extra_doc_attributes]
     ///
     /// This is mostly an error in the communication with the target inflicted by a bad hardware connection or a probe-rs bug.
-    #[error("Error while flashing")]
     Flash(#[from] FlashError),
-    /// Reading and decoding the IHEX file has failed due to the given error.
-    #[error("Could not read ihex format")]
+
+    /// Failed to read or decode the IHEX file.
     IhexRead(#[from] ihex::ReaderError),
+
     /// An IO error has occurred while reading the firmware file.
-    #[error("I/O error")]
     IO(#[from] std::io::Error),
-    /// The given error has occurred while reading the object file.
-    #[error("Object Error: {0}.")]
+
+    /// Error while reading the object file: {0}.
     Object(&'static str),
-    /// Reading and decoding the given ELF file has resulted in the given error.
-    #[error("Could not read ELF file")]
+
+    /// Failed to read or decode the ELF file.
     Elf(#[from] object::read::Error),
-    /// Espflash format error
-    #[error("Failed to format as esp-idf binary")]
+
+    /// Failed to format as esp-idf binary
     Idf(#[from] espflash::error::Error),
-    /// The target doesn't support the esp-idf format
-    #[error("Target {0} does not support the esp-idf format")]
+
+    /// Target {0} does not support the esp-idf format
     IdfUnsupported(String),
+
     /// No loadable segments were found in the ELF file.
+    #[ignore_extra_doc_attributes]
     ///
     /// This is most likely because of a bad linker script.
-    #[error("No loadable ELF sections were found.")]
     NoLoadableSegments,
-    /// Some error returned by the flash size detection.
-    #[error("Could not determine flash size.")]
+
+    /// Could not determine flash size.
     FlashSizeDetection(#[from] crate::Error),
+
+    /// The image ({image:?}) is not compatible with the target ({print_instr_sets(target)}).
+    IncompatibleImage {
+        /// The target's instruction set.
+        target: Vec<InstructionSet>,
+        /// The image's instruction set.
+        image: InstructionSet,
+    },
+}
+
+fn print_instr_sets(instr_sets: &[InstructionSet]) -> String {
+    instr_sets
+        .iter()
+        .map(|instr_set| format!("{instr_set:?}"))
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 /// Options for downloading a file onto a target chip.
@@ -177,13 +198,7 @@ pub fn download_file_with_options<P: AsRef<Path>>(
 
     let mut loader = session.target().flash_loader();
 
-    match format {
-        Format::Bin(options) => loader.load_bin_data(&mut file, options),
-        Format::Elf => loader.load_elf_data(&mut file),
-        Format::Hex => loader.load_hex_data(&mut file),
-        Format::Idf(options) => loader.load_idf_data(session, &mut file, options),
-        Format::Uf2 => loader.load_uf2_data(&mut file),
-    }?;
+    loader.load_image(session, &mut file, format, None)?;
 
     loader
         .commit(session, options)
@@ -215,25 +230,14 @@ impl std::fmt::Debug for ExtractedFlashData<'_> {
     }
 }
 
-pub(super) fn extract_from_elf<'data>(
-    extracted_data: &mut Vec<ExtractedFlashData<'data>>,
+fn extract_from_elf_inner<'data, T: FileHeader>(
+    elf_header: &T,
+    binary: ElfFile<'_, T>,
     elf_data: &'data [u8],
-) -> Result<usize, FileDownloadError> {
-    let file_kind = object::FileKind::parse(elf_data)?;
-
-    match file_kind {
-        object::FileKind::Elf32 => (),
-        _ => return Err(FileDownloadError::Object("Unsupported file type")),
-    }
-
-    let elf_header = FileHeader32::<Endianness>::parse(elf_data)?;
-
-    let binary = object::read::elf::ElfFile::<FileHeader32<Endianness>>::parse(elf_data)?;
-
+) -> Result<Vec<ExtractedFlashData<'data>>, FileDownloadError> {
     let endian = elf_header.endian()?;
 
-    let mut extracted_sections = 0;
-
+    let mut extracted_data = Vec::new();
     for segment in elf_header.program_headers(elf_header.endian()?, elf_data)? {
         // Get the physical address of the segment. The data will be programmed to that location.
         let p_paddr: u64 = segment.p_paddr(endian).into();
@@ -258,7 +262,7 @@ pub(super) fn extract_from_elf<'data>(
 
             let (segment_offset, segment_filesize) = segment.file_range(endian);
 
-            let sector: core::ops::Range<u64> = segment_offset..segment_offset + segment_filesize;
+            let sector = segment_offset..segment_offset + segment_filesize;
 
             for section in binary.sections() {
                 let (section_offset, section_filesize) = match section.file_range() {
@@ -297,13 +301,31 @@ pub(super) fn extract_from_elf<'data>(
                     address: p_paddr as u32,
                     data: section_data,
                 });
-
-                extracted_sections += 1;
             }
         }
     }
 
-    Ok(extracted_sections)
+    Ok(extracted_data)
+}
+
+pub(super) fn extract_from_elf(
+    elf_data: &[u8],
+) -> Result<Vec<ExtractedFlashData<'_>>, FileDownloadError> {
+    let file_kind = object::FileKind::parse(elf_data)?;
+
+    match file_kind {
+        object::FileKind::Elf32 => {
+            let elf_header = FileHeader32::<Endianness>::parse(elf_data)?;
+            let binary = object::read::elf::ElfFile::<FileHeader32<Endianness>>::parse(elf_data)?;
+            extract_from_elf_inner(elf_header, binary, elf_data)
+        }
+        object::FileKind::Elf64 => {
+            let elf_header = FileHeader64::<Endianness>::parse(elf_data)?;
+            let binary = object::read::elf::ElfFile::<FileHeader64<Endianness>>::parse(elf_data)?;
+            extract_from_elf_inner(elf_header, binary, elf_data)
+        }
+        _ => Err(FileDownloadError::Object("Unsupported file type")),
+    }
 }
 
 #[cfg(test)]

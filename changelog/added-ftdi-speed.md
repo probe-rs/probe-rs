@@ -1,1 +1,0 @@
-It is now possible to configure the speed of FTDI probes

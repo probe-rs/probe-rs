@@ -1,1 +1,0 @@
-Fixed STM32G431xB flashing, which was broken by adopting the [version 1.5.0](https://www.keil.arm.com/packs/stm32g4xx_dfp-keil/versions/) STM32G4 target pack from upstream.

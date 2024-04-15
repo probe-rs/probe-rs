@@ -1,7 +1,6 @@
 pub mod error;
 
 use std::collections::VecDeque;
-use std::convert::TryInto;
 use std::io::{self, Read, Write};
 use std::time::Duration;
 
@@ -370,7 +369,7 @@ impl Device {
                 if read_ep.address() != interface.read_ep()
                     || write_ep.address() != interface.write_ep()
                 {
-                    warn!(
+                    debug!(
                         "interface {} does not match requested interface {:?}",
                         descr.interface_number(),
                         interface

@@ -309,9 +309,7 @@ impl ExceptionInterface for UnimplementedExceptionHandler {
         // For architectures where the exception handling has not been implemented in probe-rs,
         // this will result in maintaining the current `unwind` behavior, i.e. unwinding will stop
         // when the first frame is reached that was called from an exception handler.
-        Err(Error::NotImplemented(
-            "Unwinding of exception frames has not yet been implemented for this architecture.",
-        ))
+        Err(Error::NotImplemented("unwinding of exception frames"))
     }
 
     fn calling_frame_registers(
@@ -319,9 +317,7 @@ impl ExceptionInterface for UnimplementedExceptionHandler {
         _memory: &mut dyn MemoryInterface,
         _stackframe_registers: &crate::debug::DebugRegisters,
     ) -> Result<crate::debug::DebugRegisters, crate::Error> {
-        Err(Error::NotImplemented(
-            "Not implemented for this architecture.",
-        ))
+        Err(Error::NotImplemented("calling frame registers"))
     }
 
     fn exception_description(
@@ -329,9 +325,7 @@ impl ExceptionInterface for UnimplementedExceptionHandler {
         _memory: &mut dyn MemoryInterface,
         _stackframe_registers: &crate::debug::DebugRegisters,
     ) -> Result<String, crate::Error> {
-        Err(Error::NotImplemented(
-            "Not implemented for this architecture.",
-        ))
+        Err(Error::NotImplemented("exception description"))
     }
 }
 

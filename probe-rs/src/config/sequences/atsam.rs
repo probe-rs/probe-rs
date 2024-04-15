@@ -259,7 +259,7 @@ impl AtSAM {
         let mut dsu_ctrl = DsuCtrl(0);
         dsu_ctrl.set_ce(true);
         memory.write_word_8(DsuCtrl::ADDRESS, dsu_ctrl.0)?;
-        tracing::info!("Chip-Erase started..");
+        tracing::info!("Chip-Erase started...");
 
         // Wait for it to finish
         let start = std::time::Instant::now();
@@ -267,12 +267,16 @@ impl AtSAM {
             let current_dsu_statusa = DsuStatusA::from(memory.read_word_8(DsuStatusA::ADDRESS)?);
             if current_dsu_statusa.done() {
                 tracing::info!("Chip-Erase complete");
+                let interface = memory.get_arm_communication_interface()?;
+
                 // If the device was in Reset Extension when we started put it back into Reset Extension
-                if dsu_status_a.crstext() {
-                    self.reset_hardware_with_extension(memory.get_arm_communication_interface()?)?;
+                let result = if dsu_status_a.crstext() {
+                    self.reset_hardware_with_extension(interface)
                 } else {
-                    self.reset_hardware(memory.get_arm_communication_interface()?)?;
-                }
+                    self.reset_hardware(interface)
+                };
+
+                self.ensure_target_reset(result, interface)?;
 
                 // We need to reconnect to target to finalize the unlock.
                 // Signal ReAttachRequired so that the session will try to re-connect
@@ -363,10 +367,45 @@ impl AtSAM {
         std::thread::sleep(std::time::Duration::from_millis(10));
 
         pin_values.set_nreset(true);
+
         let _ = interface.swj_pins(pin_values.0 as u32, pins.0 as u32, 0)?;
         std::thread::sleep(std::time::Duration::from_millis(10));
 
         Ok(())
+    }
+
+    /// Some probes only support setting `nRESET` directly, but not the SWDIO/SWCLK pins. For those,
+    /// we can use this fallback method.
+    fn ensure_target_reset(
+        &self,
+        result: Result<(), ArmError>,
+        interface: &mut dyn architecture::arm::communication_interface::SwdSequence,
+    ) -> Result<(), ArmError> {
+        // Fall back if the probe's swj_pins does not support the full set of pins
+        match result {
+            Err(ArmError::Probe(DebugProbeError::CommandNotSupportedByProbe {
+                command_name: "swj_pins",
+            })) => {
+                tracing::warn!("Using fallback reset method");
+
+                let mut pins = architecture::arm::Pins(0);
+                pins.set_nreset(true);
+
+                let mut pin_values = pins;
+                pin_values.set_nreset(false);
+
+                let _ = interface.swj_pins(pin_values.0 as u32, pins.0 as u32, 0)?;
+                std::thread::sleep(std::time::Duration::from_millis(10));
+
+                pin_values.set_nreset(true);
+
+                let _ = interface.swj_pins(pin_values.0 as u32, pins.0 as u32, 0)?;
+                std::thread::sleep(std::time::Duration::from_millis(10));
+
+                Ok(())
+            }
+            other => other,
+        }
     }
 }
 
@@ -380,7 +419,9 @@ impl ArmDebugSequence for AtSAM {
         interface: &mut dyn architecture::arm::communication_interface::DapProbe,
     ) -> Result<(), ArmError> {
         let mut shim = SwdSequenceShim::from(interface);
-        self.reset_hardware_with_extension(&mut shim)
+        let result = self.reset_hardware_with_extension(&mut shim);
+
+        self.ensure_target_reset(result, &mut shim)
     }
 
     /// `reset_hardware_deassert` for ATSAM devices

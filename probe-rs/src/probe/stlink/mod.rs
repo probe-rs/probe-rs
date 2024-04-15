@@ -25,7 +25,7 @@ use crate::{
 use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
 use probe_rs_target::ScanChainElement;
 use scroll::{Pread, Pwrite, BE, LE};
-use std::{cmp::Ordering, convert::TryInto, sync::Arc, time::Duration};
+use std::{cmp::Ordering, sync::Arc, time::Duration};
 use usb_interface::TIMEOUT;
 
 /// Maximum length of 32 bit reads in bytes.
@@ -42,11 +42,12 @@ const STLINK_MAX_WRITE_LEN: usize = 0xFFFC;
 const DP_PORT: u16 = 0xFFFF;
 
 /// A factory for creating [`StLink`] probes.
+#[derive(Debug)]
 pub struct StLinkFactory;
 
-impl std::fmt::Debug for StLinkFactory {
+impl std::fmt::Display for StLinkFactory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("StLink").finish()
+        f.write_str("ST-LINK")
     }
 }
 
@@ -369,7 +370,9 @@ impl StLink<StLinkUsbDevice> {
             Ok(0xFFFF_FFFF)
         } else {
             // This is not supported for ST-Links, unfortunately.
-            Err(DebugProbeError::CommandNotSupportedByProbe("swj_pins"))
+            Err(DebugProbeError::CommandNotSupportedByProbe {
+                command_name: "swj_pins",
+            })
         }
     }
 }
@@ -590,9 +593,9 @@ impl<D: StLinkUsb> StLink<D> {
         frequency_khz: u32,
     ) -> Result<(), DebugProbeError> {
         if self.hw_version != 3 {
-            return Err(DebugProbeError::CommandNotSupportedByProbe(
-                "set_communication_frequency",
-            ));
+            return Err(DebugProbeError::CommandNotSupportedByProbe {
+                command_name: "set_communication_frequency",
+            });
         }
 
         let cmd_proto = match protocol {
@@ -615,9 +618,9 @@ impl<D: StLinkUsb> StLink<D> {
         protocol: WireProtocol,
     ) -> Result<(Vec<u32>, u32), DebugProbeError> {
         if self.hw_version != 3 {
-            return Err(DebugProbeError::CommandNotSupportedByProbe(
-                "get_communication_frequencies",
-            ));
+            return Err(DebugProbeError::CommandNotSupportedByProbe {
+                command_name: "get_communication_frequencies",
+            });
         }
 
         let cmd_proto = match protocol {
@@ -678,7 +681,9 @@ impl<D: StLinkUsb> StLink<D> {
     fn open_ap(&mut self, apsel: u8) -> Result<(), DebugProbeError> {
         // Ensure this command is actually supported
         if self.hw_version < 3 && self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
-            return Err(DebugProbeError::CommandNotSupportedByProbe("open_ap"));
+            return Err(DebugProbeError::CommandNotSupportedByProbe {
+                command_name: "open_ap",
+            });
         }
 
         let mut buf = [0; 2];
@@ -702,7 +707,9 @@ impl<D: StLinkUsb> StLink<D> {
     fn _close_ap(&mut self, apsel: u8) -> Result<(), DebugProbeError> {
         // Ensure this command is actually supported
         if self.hw_version < 3 && self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
-            return Err(DebugProbeError::CommandNotSupportedByProbe("close_ap"));
+            return Err(DebugProbeError::CommandNotSupportedByProbe {
+                command_name: "close_ap",
+            });
         }
 
         let mut buf = [0; 2];
@@ -1349,7 +1356,9 @@ impl UninitializedArmProbe for UninitializedStLink {
 impl SwdSequence for UninitializedStLink {
     fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), DebugProbeError> {
         // This is not supported for ST-Links, unfortunately.
-        Err(DebugProbeError::CommandNotSupportedByProbe("swj_sequence"))
+        Err(DebugProbeError::CommandNotSupportedByProbe {
+            command_name: "swj_sequence",
+        })
     }
 
     fn swj_pins(
@@ -1545,7 +1554,9 @@ impl ArmProbeInterface for StlinkArmDebug {
 impl SwdSequence for StlinkArmDebug {
     fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), DebugProbeError> {
         // This is not supported for ST-Links, unfortunately.
-        Err(DebugProbeError::CommandNotSupportedByProbe("swj_seqeuence"))
+        Err(DebugProbeError::CommandNotSupportedByProbe {
+            command_name: "swj_seqeuence",
+        })
     }
 
     fn swj_pins(
@@ -1867,9 +1878,9 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
         &mut crate::architecture::arm::ArmCommunicationInterface<Initialized>,
         DebugProbeError,
     > {
-        Err(DebugProbeError::NotImplemented(
-            "ST-Links do not support raw SWD access.",
-        ))
+        Err(DebugProbeError::InterfaceNotAvailable {
+            interface_name: "ARM",
+        })
     }
 
     fn ap(&mut self) -> MemoryAp {
@@ -1911,10 +1922,7 @@ fn retry_on_wait<R>(mut f: impl FnMut() -> Result<R, StlinkError>) -> Result<R, 
 
 #[cfg(test)]
 mod test {
-
     use super::*;
-
-    use scroll::Pwrite;
 
     #[derive(Debug)]
     struct MockUsb {

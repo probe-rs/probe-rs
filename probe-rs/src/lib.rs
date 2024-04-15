@@ -1,6 +1,6 @@
 //! # Debugging toolset for embedded devices
 //!
-//!  
+//!
 //! # Prerequisites
 //!
 //! - Udev rules
@@ -20,7 +20,7 @@
 //! let probes = lister.list_all();
 //!
 //! // Use the first probe found.
-//! let mut probe = probes[0].open(&lister)?;
+//! let mut probe = probes[0].open()?;
 //!
 //! // Attach to a chip.
 //! let mut session = probe.attach("nrf52", Permissions::default())?;
@@ -83,8 +83,8 @@ pub mod gdb_server;
 pub mod integration;
 mod memory;
 pub mod probe;
-#[cfg(feature = "rtt")]
 pub mod rtt;
+mod semihosting;
 mod session;
 #[cfg(test)]
 mod test;
@@ -94,9 +94,12 @@ pub use crate::core::{
     dump::{CoreDump, CoreDumpError},
     exception_handler_for_core, Architecture, BreakpointCause, Core, CoreInformation,
     CoreInterface, CoreRegister, CoreRegisters, CoreState, CoreStatus, HaltReason,
-    MemoryMappedRegister, RegisterId, RegisterRole, RegisterValue, SemihostingCommand,
-    SpecificCoreState, VectorCatchCondition,
+    MemoryMappedRegister, RegisterId, RegisterRole, RegisterValue, SpecificCoreState,
+    VectorCatchCondition,
 };
 pub use crate::error::Error;
 pub use crate::memory::MemoryInterface;
+pub use crate::semihosting::{
+    ExitErrorDetails, GetCommandLineRequest, SemihostingCommand, UnknownCommandDetails,
+};
 pub use crate::session::{Permissions, Session};

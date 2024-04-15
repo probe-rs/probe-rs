@@ -1,0 +1,1 @@
+Renamed `--probe-selector` to `--probe` in `cargo embed`

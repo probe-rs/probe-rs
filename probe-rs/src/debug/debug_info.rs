@@ -1,46 +1,34 @@
 use super::{
-    function_die::FunctionDie, get_object_reference, unit_info::UnitInfo, variable::*, DebugError,
-    DebugRegisters, SourceLocation, StackFrame, VariableCache,
+    function_die::{Die, FunctionDie},
+    get_object_reference,
+    unit_info::UnitInfo,
+    variable::*,
+    DebugError, DebugRegisters, StackFrame, VariableCache,
 };
-use crate::core::UnwindRule;
-use crate::debug::source_statement::SourceStatement;
-use crate::debug::stack_frame::StackFrameInfo;
 use crate::{
-    core::{ExceptionInterface, RegisterRole, RegisterValue},
-    debug::{registers, source_statement::SourceStatements},
+    core::{ExceptionInterface, RegisterRole, RegisterValue, UnwindRule},
+    debug::{
+        registers, stack_frame::StackFrameInfo, unit_info::RangeExt, SourceLocation,
+        VerifiedBreakpoint,
+    },
     MemoryInterface,
 };
 use anyhow::anyhow;
 use gimli::{
-    BaseAddresses, ColumnType, DebugFrame, FileEntry, LineProgramHeader, UnwindContext,
-    UnwindSection, UnwindTableRow,
+    BaseAddresses, DebugFrame, DebugInfoOffset, UnwindContext, UnwindSection, UnwindTableRow,
 };
 use object::read::{Object, ObjectSection};
 use probe_rs_target::InstructionSet;
-use typed_path::{TypedPath, TypedPathBuf};
-
 use std::{
-    borrow, cmp::Ordering, convert::TryInto, num::NonZeroU64, ops::ControlFlow, path::Path, rc::Rc,
-    str::from_utf8,
+    borrow, cmp::Ordering, num::NonZeroU64, ops::ControlFlow, path::Path, rc::Rc, str::from_utf8,
 };
+use typed_path::{TypedPath, TypedPathBuf};
 
 pub(crate) type GimliReader = gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>;
 
 pub(crate) type GimliAttribute = gimli::Attribute<GimliReader>;
 
 pub(crate) type DwarfReader = gimli::read::EndianRcSlice<gimli::LittleEndian>;
-
-/// Capture the required information when a breakpoint is set based on a requested source location.
-/// It is possible that the requested source location cannot be resolved to a valid instruction address,
-/// in which case the first 'valid' instruction address will be used, and the source location will be
-/// updated to reflect the actual source location, not the requested source location.
-#[derive(Clone, Debug)]
-pub struct VerifiedBreakpoint {
-    /// The address in target memory, where the breakpoint was set.
-    pub address: u64,
-    /// If the breakpoint request was for a specific source location, then this field will contain the resolved source location.
-    pub source_location: SourceLocation,
-}
 
 /// Debug information which is parsed from DWARF debugging information.
 pub struct DebugInfo {
@@ -95,8 +83,14 @@ impl DebugInfo {
 
         while let Ok(Some(header)) = iter.next() {
             if let Ok(unit) = dwarf_cow.unit(header) {
-                // TODO: maybe it's not correct to read from arbitrary units
+                // The DWARF V5 standard, section 2.4 specifies that the address size
+                // for the object file (or the target architecture default) will be used for
+                // DWARF debugging information.
+                // The following line is a workaround for instances where the address size of the
+                // CIE (Common Information Entry) is not correctly set.
+                // The frame section address size is only used for CIE versions before 4.
                 frame_section.set_address_size(unit.encoding().address_size);
+
                 unit_infos.push(UnitInfo::new(unit));
             };
         }
@@ -111,38 +105,6 @@ impl DebugInfo {
         })
     }
 
-    /// Get the name of the function at the given address.
-    ///
-    /// If no function is found, `None` will be returned.
-    ///
-    /// ## Inlined functions
-    /// Multiple nested inline functions could exist at the given address.
-    /// This function will currently return the innermost function in that case.
-    // TODO: This function takes a memory interface. This seems odd, but gimli sometimes needs to read memory to resolve.
-    // Maybe this can be factored out if we can be sure that memory is never read for this use case.
-    // Until we have more tests we cannot be sure though and it should stay like this.
-    pub fn function_name(
-        &self,
-        address: u64,
-        find_inlined: bool,
-    ) -> Result<Option<String>, DebugError> {
-        for unit_info in &self.unit_infos {
-            let mut functions = unit_info.get_function_dies(self, address, find_inlined)?;
-
-            // Use the last functions from the list, this is the function which most closely
-            // corresponds to the PC in case of multiple inlined functions.
-            if let Some(die_cursor_state) = functions.pop() {
-                let function_name = die_cursor_state.function_name(self);
-
-                if function_name.is_some() {
-                    return Ok(function_name);
-                }
-            }
-        }
-
-        Ok(None)
-    }
-
     /// Try get the [`SourceLocation`] for a given address.
     pub fn get_source_location(&self, address: u64) -> Option<SourceLocation> {
         for unit_info in &self.unit_infos {
@@ -152,8 +114,8 @@ impl DebugInfo {
                 Ok(ranges) => ranges,
                 Err(error) => {
                     tracing::warn!(
-                        "No valid source code ranges found for address {}: {:?}",
-                        address,
+                        "No valid source code ranges found for unit {:?}: {:?}",
+                        unit.dwo_name(),
                         error
                     );
                     continue;
@@ -164,8 +126,7 @@ impl DebugInfo {
                 if !(range.begin <= address && address < range.end) {
                     continue;
                 }
-                // Get the function name.
-
+                // Get the DWARF LineProgram.
                 let ilnp = unit.line_program.as_ref()?.clone();
 
                 let (program, sequences) = match ilnp.sequences() {
@@ -198,7 +159,7 @@ impl DebugInfo {
 
                 let mut rows = program.resume_from(target_seq);
 
-                while let Ok(Some((header, row))) = rows.next_row() {
+                while let Ok(Some((_, row))) = rows.next_row() {
                     match row.address().cmp(&address) {
                         Ordering::Greater => {
                             // The address is after the current row, so we use the previous row data.
@@ -206,40 +167,32 @@ impl DebugInfo {
                             // (If we don't do this, you get the artificial effect where the debugger
                             // steps to the top of the file when it is steppping out of a function.)
                             if let Some(previous_row) = previous_row {
-                                if let Some(file_entry) = previous_row.file(header) {
-                                    if let Some((file, directory)) =
-                                        self.find_file_and_directory(unit, header, file_entry)
-                                    {
-                                        tracing::debug!("{} - {:?}", address, previous_row.isa());
-                                        return Some(SourceLocation {
-                                            line: previous_row.line().map(NonZeroU64::get),
-                                            column: Some(previous_row.column().into()),
-                                            file,
-                                            directory,
-                                            low_pc: Some(target_seq.start as u32),
-                                            high_pc: Some(target_seq.end as u32),
-                                        });
-                                    }
+                                if let Some((file, directory)) =
+                                    self.find_file_and_directory(unit, previous_row.file_index())
+                                {
+                                    tracing::debug!("{} - {:?}", address, previous_row.isa());
+                                    return Some(SourceLocation {
+                                        line: previous_row.line().map(NonZeroU64::get),
+                                        column: Some(previous_row.column().into()),
+                                        file,
+                                        directory,
+                                    });
                                 }
                             }
                         }
                         Ordering::Less => {}
                         Ordering::Equal => {
-                            if let Some(file_entry) = row.file(header) {
-                                if let Some((file, directory)) =
-                                    self.find_file_and_directory(unit, header, file_entry)
-                                {
-                                    tracing::debug!("{} - {:?}", address, row.isa());
+                            if let Some((file, directory)) =
+                                self.find_file_and_directory(unit, row.file_index())
+                            {
+                                tracing::debug!("{} - {:?}", address, row.isa());
 
-                                    return Some(SourceLocation {
-                                        line: row.line().map(NonZeroU64::get),
-                                        column: Some(row.column().into()),
-                                        file,
-                                        directory,
-                                        low_pc: Some(target_seq.start as u32),
-                                        high_pc: Some(target_seq.end as u32),
-                                    });
-                                }
+                                return Some(SourceLocation {
+                                    line: row.line().map(NonZeroU64::get),
+                                    column: Some(row.column().into()),
+                                    file,
+                                    directory,
+                                });
                             }
                         }
                     }
@@ -253,21 +206,8 @@ impl DebugInfo {
     /// We do not actually resolve the children of `[VariableName::StaticScope]` automatically, and only create the necessary header in the `VariableCache`.
     /// This allows us to resolve the `[VariableName::StaticScope]` on demand/lazily, when a user requests it from the debug client.
     /// This saves a lot of overhead when a user only wants to see the `[VariableName::LocalScope]` or `[VariableName::Registers]` while stepping through code (the most common use cases)
-    pub(crate) fn create_static_scope_cache(
-        &self,
-        unit_info: &UnitInfo,
-    ) -> Result<VariableCache, gimli::Error> {
-        // Only process statics for this unit header.
-        let abbrevs = &unit_info.unit.abbreviations;
-        // Navigate the current unit from the header down.
-        let mut header_tree = unit_info.unit.header.entries_tree(abbrevs, None)?;
-        let unit_node = header_tree.root()?;
-
-        Ok(VariableCache::new_dwarf_cache(
-            unit_node.entry().offset(),
-            VariableName::StaticScopeRoot,
-            Some(unit_info),
-        ))
+    pub fn create_static_scope_cache(&self) -> VariableCache {
+        VariableCache::new_static_cache()
     }
 
     /// Creates the unpopulated cache for `function` variables
@@ -276,23 +216,17 @@ impl DebugInfo {
         die_cursor_state: &FunctionDie,
         unit_info: &UnitInfo,
     ) -> Result<VariableCache, DebugError> {
-        let abbrevs = &unit_info.unit.abbreviations;
-        let mut tree = unit_info
-            .unit
-            .header
-            .entries_tree(abbrevs, Some(die_cursor_state.function_die.offset()))?;
-        let function_node = tree.root()?;
-
         let function_variable_cache = VariableCache::new_dwarf_cache(
-            function_node.entry().offset(),
+            die_cursor_state.function_die.offset(),
             VariableName::LocalScopeRoot,
-            Some(unit_info),
-        );
+            unit_info,
+        )?;
 
         Ok(function_variable_cache)
     }
 
     /// This effects the on-demand expansion of lazy/deferred load of all the 'child' `Variable`s for a given 'parent'.
+    #[tracing::instrument(level = "trace", skip_all, fields(parent_variable = ?parent_variable.variable_key()))]
     pub fn cache_deferred_variables(
         &self,
         cache: &mut VariableCache,
@@ -310,83 +244,86 @@ impl DebugInfo {
             return Ok(());
         }
 
-        let Some(header_offset) = parent_variable.unit_header_offset else {
-            return Ok(());
-        };
-
-        let unit_header = self.dwarf.debug_info.header_from_offset(header_offset)?;
-        let unit_info = UnitInfo::new(gimli::Unit::new(&self.dwarf, unit_header)?);
-
         match parent_variable.variable_node_type {
-            VariableNodeType::ReferenceOffset(reference_offset) => {
-                // Reference to a type, or an node.entry() to another type or a type modifier which will point to another type.
-                let mut type_tree = unit_info
-                    .unit
-                    .header
-                    .entries_tree(&unit_info.unit.abbreviations, Some(reference_offset))?;
-                let referenced_node = type_tree.root()?;
-                let mut referenced_variable = cache.create_variable(
-                    parent_variable.variable_key,
-                    Some(referenced_node.entry().offset()),
-                    Some(&unit_info),
-                )?;
+            VariableNodeType::TypeOffset(header_offset, type_offset) => {
+                let unit_header = self.dwarf.debug_info.header_from_offset(header_offset)?;
+                let unit_info = UnitInfo::new(gimli::Unit::new(&self.dwarf, unit_header)?);
 
-                referenced_variable.name = match &parent_variable.name {
-                    VariableName::Named(name) if name.starts_with("Some ") => VariableName::Named(name.replacen('&', "*", 1)) ,
-                    VariableName::Named(name) => VariableName::Named(format!("*{name}")),
-                    other => VariableName::Named(format!("Error: Unable to generate name, parent variable does not have a name but is special variable {other:?}")),
+                // Find the parent node
+                let mut type_tree = unit_info.unit.entries_tree(Some(type_offset))?;
+                let parent_node = type_tree.root()?;
+
+                unit_info.process_tree(
+                    self,
+                    parent_node,
+                    parent_variable,
+                    memory,
+                    cache,
+                    frame_info,
+                )?;
+            }
+            VariableNodeType::DirectLookup(header_offset, unit_offset) => {
+                let unit_header = self.dwarf.debug_info.header_from_offset(header_offset)?;
+                let unit_info = UnitInfo::new(gimli::Unit::new(&self.dwarf, unit_header)?);
+
+                // Find the parent node
+                let mut type_tree = unit_info.unit.entries_tree(Some(unit_offset))?;
+
+                let parent_node = type_tree.root()?;
+
+                unit_info.process_tree(
+                    self,
+                    parent_node,
+                    parent_variable,
+                    memory,
+                    cache,
+                    frame_info,
+                )?;
+            }
+            VariableNodeType::UnitsLookup => {
+                // Look up static variables from all units
+                let mut unit_infos = self.unit_infos.iter();
+
+                let Some(unit_info) = unit_infos.next() else {
+                    // No unit infos
+                    return Err(DebugError::Other(anyhow::anyhow!("Missing unit infos")));
                 };
 
-                unit_info.extract_type(
+                let mut entries = unit_info.unit.entries();
+
+                // Only process statics for this unit header.
+                // Navigate the current unit from the header down.
+                let (_, unit_node) = entries.next_dfs()?.unwrap();
+
+                let mut tree = unit_info.unit.entries_tree(Some(unit_node.offset()))?;
+
+                unit_info.process_tree(
                     self,
-                    referenced_node,
+                    tree.root()?,
                     parent_variable,
-                    &mut referenced_variable,
                     memory,
                     cache,
                     frame_info,
                 )?;
 
-                if matches!(referenced_variable.type_name, VariableType::Base(ref name) if name == "()")
-                {
-                    // Only use this, if it is NOT a unit datatype.
-                    cache.remove_cache_entry(referenced_variable.variable_key)?;
+                for unit in unit_infos {
+                    let mut entries = unit.unit.entries();
+
+                    // Only process statics for this unit header.
+                    // Navigate the current unit from the header down.
+                    let (_, unit_node) = entries.next_dfs()?.unwrap();
+
+                    let mut tree = unit.unit.entries_tree(Some(unit_node.offset()))?;
+
+                    unit.process_tree(
+                        self,
+                        tree.root()?,
+                        parent_variable,
+                        memory,
+                        cache,
+                        frame_info,
+                    )?;
                 }
-            }
-            VariableNodeType::TypeOffset(type_offset) => {
-                // Find the parent node
-                let mut type_tree = unit_info
-                    .unit
-                    .header
-                    .entries_tree(&unit_info.unit.abbreviations, Some(type_offset))?;
-                let parent_node = type_tree.root()?;
-
-                unit_info.process_tree(
-                    self,
-                    parent_node,
-                    parent_variable,
-                    memory,
-                    cache,
-                    frame_info,
-                )?;
-            }
-            VariableNodeType::DirectLookup => {
-                // Find the parent node
-                let mut type_tree = unit_info.unit.header.entries_tree(
-                    &unit_info.unit.abbreviations,
-                    parent_variable.variable_unit_offset,
-                )?;
-
-                let parent_node = type_tree.root()?;
-
-                unit_info.process_tree(
-                    self,
-                    parent_node,
-                    parent_variable,
-                    memory,
-                    cache,
-                    frame_info,
-                )?;
             }
             _ => {
                 // Do nothing. These have already been recursed to their maximum.
@@ -418,7 +355,7 @@ impl DebugInfo {
 
         let mut functions = None;
         for unit_info in &self.unit_infos {
-            let function_dies = unit_info.get_function_dies(self, address, true)?;
+            let function_dies = unit_info.get_function_dies(self, address)?;
 
             if !function_dies.is_empty() {
                 functions = Some((unit_info, function_dies));
@@ -465,9 +402,16 @@ impl DebugInfo {
             // Calculate the call site for this function, so that we can use it later to create an additional 'callee' `StackFrame` from that PC.
             let address_size = unit_info.unit.header.address_size() as u64;
 
-            if next_function.low_pc > address_size && next_function.low_pc < u32::MAX.into() {
+            let Some(next_function_low_pc) = next_function.low_pc() else {
+                tracing::warn!(
+                    "UNWIND: Unknown starting address for inlined function {}.",
+                    function_name
+                );
+                continue;
+            };
+            if next_function_low_pc > address_size && next_function_low_pc < u32::MAX.into() {
                 // The first instruction of the inlined function is used as the call site
-                let inlined_call_site = RegisterValue::from(next_function.low_pc);
+                let inlined_call_site = RegisterValue::from(next_function_low_pc);
 
                 tracing::debug!(
                     "UNWIND: Callsite for inlined function {:?}",
@@ -480,17 +424,6 @@ impl DebugInfo {
 
                 // Now that we have the function_name and function_source_location, we can create the appropriate variable caches for this stack frame.
                 // Resolve the statics that belong to the compilation unit that this function is in.
-                let static_variables = self.create_static_scope_cache(unit_info).map_or_else(
-                    |error| {
-                        tracing::error!(
-                            "Could not resolve static variables. {}. Continuing...",
-                            error
-                        );
-                        None
-                    },
-                    Some,
-                );
-
                 // Next, resolve and cache the function variables.
                 let local_variables = self
                     .create_function_scope_cache(function_die, unit_info)
@@ -513,7 +446,6 @@ impl DebugInfo {
                     pc: inlined_call_site,
                     frame_base,
                     is_inlined: function_die.is_inline(),
-                    static_variables,
                     local_variables,
                     canonical_frame_address: cfa,
                 });
@@ -537,19 +469,7 @@ impl DebugInfo {
         let function_location = self.get_source_location(address);
 
         // Now that we have the function_name and function_source_location, we can create the appropriate variable caches for this stack frame.
-        // Resolve the statics that belong to the compilation unit that this function is in.
-        let static_variables = self.create_static_scope_cache(unit_info).map_or_else(
-            |error| {
-                tracing::error!(
-                    "Could not resolve static variables. {}. Continuing...",
-                    error
-                );
-                None
-            },
-            Some,
-        );
-
-        // Next, resolve and cache the function variables.
+        // Resolve and cache the function variables.
         let local_variables = self
             .create_function_scope_cache(last_function, unit_info)
             .map_or_else(
@@ -575,7 +495,6 @@ impl DebugInfo {
             },
             frame_base,
             is_inlined: last_function.is_inline(),
-            static_variables,
             local_variables,
             canonical_frame_address: cfa,
         });
@@ -644,7 +563,7 @@ impl DebugInfo {
                     None
                 }
                 Err(e) => {
-                    tracing::warn!("UNWIND: Error while checking for exception context. The stack trace will not include the calling frames. : {}", e);
+                    tracing::debug!("UNWIND: Error while checking for exception context. The stack trace will not include the calling frames. : {}", e);
                     None
                 }
             };
@@ -709,7 +628,6 @@ impl DebugInfo {
                             },
                             frame_base: None,
                             is_inlined: false,
-                            static_variables: None,
                             local_variables: None,
                             canonical_frame_address: None,
                         }
@@ -736,7 +654,6 @@ impl DebugInfo {
                             },
                             frame_base: None,
                             is_inlined: false,
-                            static_variables: None,
                             local_variables: None,
                             canonical_frame_address: None,
                         }
@@ -894,7 +811,6 @@ impl DebugInfo {
                                 },
                                 frame_base: None,
                                 is_inlined: false,
-                                static_variables: None,
                                 local_variables: None,
                                 canonical_frame_address: None,
                             };
@@ -917,6 +833,8 @@ impl DebugInfo {
 
     /// Find the program counter where a breakpoint should be set,
     /// given a source file, a line and optionally a column.
+    // TODO: Move (and fix) this to the [`InstructionSequence::for_source_location`] method.
+    #[tracing::instrument(skip_all)]
     pub fn get_breakpoint_location(
         &self,
         path: &TypedPathBuf,
@@ -931,134 +849,7 @@ impl DebugInfo {
                 .map(|c| c.to_string())
                 .unwrap_or_else(|| "-".to_owned())
         );
-
-        for unit_header in &self.unit_infos {
-            let Some(ref line_program) = &unit_header.unit.line_program else {
-                continue;
-            };
-
-            if let Some(location) =
-                self.get_breakpoint_location_in_unit(unit_header, line_program, path, line, column)?
-            {
-                return Ok(location);
-            };
-        }
-
-        let p = path.to_path();
-
-        Err(DebugError::Other(anyhow::anyhow!(
-            "No valid breakpoint information found for file: {}, line: {:?}, column: {:?}",
-            p.display(),
-            line,
-            column
-        )))
-    }
-
-    fn get_breakpoint_location_in_unit(
-        &self,
-        unit_header: &UnitInfo,
-        line_program: &gimli::IncompleteLineProgram<GimliReader, usize>,
-        path: &TypedPathBuf,
-        line: u64,
-        column: Option<u64>,
-    ) -> Result<Option<VerifiedBreakpoint>, DebugError> {
-        let unit = &unit_header.unit;
-        let header: &LineProgramHeader<GimliReader, usize> = line_program.header();
-
-        // Check if any of the file names in the header match the path we are looking for.
-        if !header.file_names().iter().any(|file_name| {
-            let combined_path = self.get_path(unit, header, file_name);
-
-            combined_path
-                .map(|p| canonical_path_eq(path, &p))
-                .unwrap_or(false)
-        }) {
-            return Ok(None);
-        }
-
-        let mut rows = line_program.clone().rows();
-
-        while let Some((header, row)) = rows.next_row()? {
-            let row_path = row
-                .file(header)
-                .and_then(|file_entry| self.get_path(unit, header, file_entry));
-
-            if row_path
-                .map(|p| !canonical_path_eq(path, &p))
-                .unwrap_or(true)
-            {
-                continue;
-            }
-
-            let Some(cur_line) = row.line() else {
-                continue;
-            };
-
-            if cur_line.get() != line {
-                continue;
-            }
-
-            // The first match of the file and row will be used to build the SourceStatements, and then:
-            // 1. If there is an exact column match, we will use the low_pc of the statement at that column and line.
-            // 2. If there is no exact column match, we use the first available statement in the line.
-            let source_statements =
-                SourceStatements::new(self, unit_header, row.address())?.statements;
-
-            let halt_address_and_location = |source_statement: &SourceStatement| {
-                (
-                    source_statement.low_pc(),
-                    line_program
-                        .header()
-                        .file(source_statement.file_index)
-                        .and_then(|file_entry| {
-                            self.find_file_and_directory(
-                                &unit_header.unit,
-                                line_program.header(),
-                                file_entry,
-                            )
-                            .map(|(file, directory)| SourceLocation {
-                                line: source_statement.line.map(std::num::NonZeroU64::get),
-                                column: Some(source_statement.column.into()),
-                                file,
-                                directory,
-                                low_pc: Some(source_statement.low_pc() as u32),
-                                high_pc: Some(source_statement.instruction_range.end as u32),
-                            })
-                        }),
-                )
-            };
-
-            let first_find = source_statements.iter().find(|statement| {
-                column
-                    .and_then(NonZeroU64::new)
-                    .map(ColumnType::Column)
-                    .map_or(false, |col| col == statement.column)
-                    && statement.line == Some(cur_line)
-            });
-
-            if let Some((halt_address, Some(halt_location))) =
-                first_find.map(halt_address_and_location)
-            {
-                return Ok(Some(VerifiedBreakpoint {
-                    address: halt_address,
-                    source_location: halt_location,
-                }));
-            }
-            let second_find = source_statements
-                .iter()
-                .find(|statement| statement.line == Some(cur_line));
-
-            if let Some((halt_address, Some(halt_location))) =
-                second_find.map(halt_address_and_location)
-            {
-                return Ok(Some(VerifiedBreakpoint {
-                    address: halt_address,
-                    source_location: halt_location,
-                }));
-            }
-        }
-
-        Ok(None)
+        VerifiedBreakpoint::for_source_location(self, path, line, column)
     }
 
     /// Get the path for an entry in a line program header, using the compilation unit's directory and file entries.
@@ -1066,9 +857,17 @@ impl DebugInfo {
     pub(crate) fn get_path(
         &self,
         unit: &gimli::read::Unit<DwarfReader>,
-        header: &LineProgramHeader<DwarfReader>,
-        file_entry: &FileEntry<DwarfReader>,
+        file_index: u64,
     ) -> Option<TypedPathBuf> {
+        let line_program = unit.line_program.as_ref()?;
+        let header = line_program.header();
+        let Some(file_entry) = header.file(file_index) else {
+            tracing::warn!(
+                "Unable to extract file entry for file_index {:?}.",
+                file_index
+            );
+            return None;
+        };
         let file_name_attr_string = self.dwarf.attr_string(unit, file_entry.path_name()).ok()?;
         let name_path = from_utf8(&file_name_attr_string).ok()?;
 
@@ -1106,10 +905,9 @@ impl DebugInfo {
     pub(crate) fn find_file_and_directory(
         &self,
         unit: &gimli::read::Unit<DwarfReader>,
-        header: &LineProgramHeader<DwarfReader>,
-        file_entry: &FileEntry<DwarfReader>,
+        file_index: u64,
     ) -> Option<(Option<String>, Option<TypedPathBuf>)> {
-        let combined_path = self.get_path(unit, header, file_entry)?;
+        let combined_path = self.get_path(unit, file_index)?;
 
         let file_name = combined_path
             .file_name()
@@ -1119,13 +917,80 @@ impl DebugInfo {
 
         Some((file_name, directory))
     }
+
+    // Return the compilation unit that contains the given address
+    pub(crate) fn compile_unit_info(
+        &self,
+        address: u64,
+    ) -> Result<&super::unit_info::UnitInfo, DebugError> {
+        for header in &self.unit_infos {
+            match self.dwarf.unit_ranges(&header.unit) {
+                Ok(mut ranges) => {
+                    while let Ok(Some(range)) = ranges.next() {
+                        if range.contains(address) {
+                            return Ok(header);
+                        }
+                    }
+                }
+                Err(_) => continue,
+            };
+        }
+        Err(DebugError::WarnAndContinue {
+            message: format!("No debug information available for the instruction at {address:#010x}. Please consider using instruction level stepping.")
+        })
+    }
+
+    /// Get the DIE at the given offset into the debug info section.
+    pub(crate) fn get_die_at_offset(&self, offset: DebugInfoOffset) -> Result<Die, DebugError> {
+        for unit_info in &self.unit_infos {
+            if let Some(unit_offset) = offset.to_unit_offset(&unit_info.unit.header) {
+                return unit_info.unit.entry(unit_offset).map_err(|error| {
+                    DebugError::Other(anyhow::anyhow!(
+                        "Error reading DIE at debug info offset {:#x} : {}",
+                        offset.0,
+                        error
+                    ))
+                });
+            }
+        }
+
+        Err(DebugError::Other(anyhow::anyhow!(
+            "DIE at debug info offset {:#010x} not found",
+            offset.0
+        )))
+    }
+
+    /// Look up the DIE reference for the given attribute, if it exists.
+    pub(crate) fn resolve_die_reference<'abbrev, 'unit>(
+        &'abbrev self,
+        attribute: gimli::DwAt,
+        die: &Die<'abbrev, 'unit>,
+        unit_info: &'unit UnitInfo,
+    ) -> Option<Die<'abbrev, 'unit>>
+    where
+        'abbrev: 'unit,
+        'unit: 'abbrev,
+    {
+        die.attr(attribute)
+            .ok()
+            .flatten()
+            .and_then(move |specification_attr| match specification_attr.value() {
+                gimli::AttributeValue::UnitRef(unit_ref) => unit_info.unit.entry(unit_ref).ok(),
+                gimli::AttributeValue::DebugInfoRef(debug_info_ref) => {
+                    self.get_die_at_offset(debug_info_ref).ok()
+                }
+                other_value => {
+                    tracing::warn!(
+                        "Unsupported {:?} value: {other_value:?}",
+                        attribute.static_string(),
+                    );
+                    None
+                }
+            })
+    }
 }
 
-/// Uses the [std::fs::canonicalize] function to canonicalize both paths before applying the [std::path::PathBuf::eq]
-/// to test if the secondary path is equal or a suffix of the primary path.
-/// If for some reason (e.g., the paths don't exist) the canonicalization fails, the original equality check is used.
-/// We do this to maximize the chances of finding a match where the secondary path can be given as
-/// an absolute, relative, or partial path.
+/// Uses the [`TypedPathBuf::normalize`] function to normalize both paths before comparing them
 pub(crate) fn canonical_path_eq(
     primary_path: &TypedPathBuf,
     secondary_path: &TypedPathBuf,
@@ -1494,7 +1359,9 @@ mod test {
     /// Load the DebugInfo from the `elf_file` for the test.
     /// `elf_file` should be the name of a file(or relative path) in the `tests` directory.
     fn load_test_elf_as_debug_info(elf_file: &str) -> DebugInfo {
-        DebugInfo::from_file(get_path_for_test_files(elf_file)).unwrap()
+        let path = get_path_for_test_files(elf_file);
+        DebugInfo::from_file(&path)
+            .unwrap_or_else(|err| panic!("Failed to open file {}: {:?}", path.display(), err))
     }
 
     #[test]
@@ -1998,6 +1865,7 @@ mod test {
 
     #[test_case("RP2040"; "Armv6-m using RP2040")]
     #[test_case("nRF52833_xxAA"; "Armv7-m using nRF52833_xxAA")]
+    #[test_case("atsamd51p19a"; "Armv7-em from C source code")]
     //TODO:  #[test_case("esp32c3"; "RISC-V32E using esp32c3")]
     fn full_unwind(chip_name: &str) {
         // TODO: Add RISC-V tests.
@@ -2027,9 +1895,6 @@ mod test {
         // Expand and validate the static and local variables for each stack frame.
         for frame in stack_frames.iter_mut() {
             let mut variable_caches = Vec::new();
-            if let Some(static_variables) = &mut frame.static_variables {
-                variable_caches.push(static_variables);
-            }
             if let Some(local_variables) = &mut frame.local_variables {
                 variable_caches.push(local_variables);
             }
@@ -2051,5 +1916,41 @@ mod test {
         // Using YAML output because it is easier to read than the default snapshot output,
         // and also because they provide better diffs.
         insta::assert_yaml_snapshot!(snapshot_name, stack_frames);
+    }
+
+    #[test_case("RP2040"; "Armv6-m using RP2040")]
+    #[test_case("nRF52833_xxAA"; "Armv7-m using nRF52833_xxAA")]
+    #[test_case("atsamd51p19a"; "Armv7-em from C source code")]
+    //TODO:  #[test_case("esp32c3"; "RISC-V32E using esp32c3")]
+    fn static_variables(chip_name: &str) {
+        // TODO: Add RISC-V tests.
+
+        let debug_info =
+            load_test_elf_as_debug_info(format!("debug-unwind-tests/{chip_name}.elf").as_str());
+
+        let mut adapter = CoreDump::load(&get_path_for_test_files(
+            format!("debug-unwind-tests/{chip_name}.coredump").as_str(),
+        ))
+        .unwrap();
+
+        let initial_registers = adapter.debug_registers();
+
+        let snapshot_name = format!("{chip_name}__static_variables");
+
+        let mut static_variables = debug_info.create_static_scope_cache();
+
+        static_variables.recurse_deferred_variables(
+            &debug_info,
+            &mut adapter,
+            10,
+            StackFrameInfo {
+                registers: &initial_registers,
+                frame_base: None,
+                canonical_frame_address: None,
+            },
+        );
+        // Using YAML output because it is easier to read than the default snapshot output,
+        // and also because they provide better diffs.
+        insta::assert_yaml_snapshot!(snapshot_name, static_variables);
     }
 }

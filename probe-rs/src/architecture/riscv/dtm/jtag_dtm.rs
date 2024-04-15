@@ -4,10 +4,7 @@
 //! Currently, only JTAG is supported.
 use crate::architecture::riscv::dtm::dtm_access::DtmAccess;
 use bitfield::bitfield;
-use std::{
-    convert::TryInto,
-    time::{Duration, Instant},
-};
+use std::time::{Duration, Instant};
 
 use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::probe::{

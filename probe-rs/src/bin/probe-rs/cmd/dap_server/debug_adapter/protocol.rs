@@ -12,7 +12,6 @@ use std::{
     collections::{BTreeMap, HashMap},
     io::{BufRead, BufReader, Read, Write},
     str,
-    string::ToString,
 };
 
 pub trait ProtocolAdapter {
@@ -472,7 +471,7 @@ fn get_content_len(header: &str) -> Option<usize> {
 #[cfg(test)]
 #[allow(clippy::unwrap_used)]
 mod test {
-    use std::io::{self, ErrorKind, Read};
+    use std::io::{self, ErrorKind};
 
     use super::*;
 

@@ -372,7 +372,7 @@ impl FlashBuilder {
 
 #[cfg(test)]
 mod tests {
-    use probe_rs_target::{FlashProperties, NvmRegion, SectorDescription};
+    use probe_rs_target::{FlashProperties, SectorDescription};
 
     use super::*;
 
@@ -399,6 +399,7 @@ mod tests {
             is_boot_memory: true,
             range: 0..1 << 16,
             cores: vec!["main".into()],
+            is_alias: false,
         };
 
         (region, flash_algorithm)
@@ -427,6 +428,7 @@ mod tests {
             is_boot_memory: true,
             range: 0..1 << 16,
             cores: vec!["main".into()],
+            is_alias: false,
         };
 
         (region, flash_algorithm)

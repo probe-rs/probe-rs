@@ -1,1 +1,0 @@
-Fixed `--speed` being ignored by J-Links

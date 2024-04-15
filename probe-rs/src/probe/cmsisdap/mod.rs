@@ -4,8 +4,7 @@ mod tools;
 
 use crate::{
     architecture::arm::{
-        communication_interface::DapProbe,
-        communication_interface::UninitializedArmProbe,
+        communication_interface::{DapProbe, UninitializedArmProbe},
         dp::{Abort, Ctrl},
         swo::poll_interval_from_buf_size,
         ArmCommunicationInterface, ArmError, DapError, Pins, PortType, RawDapAccess, Register,
@@ -55,18 +54,19 @@ use commands::{
 };
 use probe_rs_target::ScanChainElement;
 
-use std::{fmt::Write, result::Result, time::Duration};
+use std::{fmt::Write, time::Duration};
 
 use bitvec::prelude::*;
 
 use super::common::{extract_idcodes, extract_ir_lengths, ScanChainError};
 
 /// A factory for creating [`CmsisDap`] probes.
+#[derive(Debug)]
 pub struct CmsisDapFactory;
 
-impl std::fmt::Debug for CmsisDapFactory {
+impl std::fmt::Display for CmsisDapFactory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("CmsisDap").finish()
+        f.write_str("CMSIS-DAP")
     }
 }
 
@@ -162,7 +162,7 @@ impl CmsisDap {
     ///
     /// The actual clock frequency used by the device might be lower.
     fn set_swj_clock(&mut self, clock_hz: u32) -> Result<(), CmsisDapError> {
-        commands::send_command::<SWJClockRequest>(&mut self.device, SWJClockRequest(clock_hz))
+        commands::send_command(&mut self.device, SWJClockRequest(clock_hz))
             .map_err(CmsisDapError::from)
             .and_then(|v| match v {
                 SWJClockResponse(Status::DAPOk) => Ok(()),
@@ -171,7 +171,7 @@ impl CmsisDap {
     }
 
     fn transfer_configure(&mut self, request: ConfigureRequest) -> Result<(), CmsisDapError> {
-        commands::send_command::<ConfigureRequest>(&mut self.device, request)
+        commands::send_command(&mut self.device, request)
             .map_err(CmsisDapError::from)
             .and_then(|v| match v {
                 ConfigureResponse(Status::DAPOk) => Ok(()),
@@ -183,7 +183,7 @@ impl CmsisDap {
         &mut self,
         request: swd::configure::ConfigureRequest,
     ) -> Result<(), CmsisDapError> {
-        commands::send_command::<swd::configure::ConfigureRequest>(&mut self.device, request)
+        commands::send_command(&mut self.device, request)
             .map_err(CmsisDapError::from)
             .and_then(|v| match v {
                 swd::configure::ConfigureResponse(Status::DAPOk) => Ok(()),
@@ -375,7 +375,7 @@ impl CmsisDap {
     }
 
     fn send_jtag_configure(&mut self, request: JtagConfigureRequest) -> Result<(), CmsisDapError> {
-        commands::send_command::<JtagConfigureRequest>(&mut self.device, request)
+        commands::send_command(&mut self.device, request)
             .map_err(CmsisDapError::from)
             .and_then(|v| match v {
                 JtagConfigureResponse(Status::DAPOk) => Ok(()),
@@ -387,7 +387,7 @@ impl CmsisDap {
         &mut self,
         request: JtagSequenceRequest,
     ) -> Result<Vec<u8>, CmsisDapError> {
-        commands::send_command::<JtagSequenceRequest>(&mut self.device, request)
+        commands::send_command(&mut self.device, request)
             .map_err(CmsisDapError::from)
             .and_then(|v| match v {
                 JtagSequenceResponse(Status::DAPOk, tdo) => Ok(tdo),
@@ -399,7 +399,7 @@ impl CmsisDap {
         // Ensure all pending commands are processed.
         //self.process_batch()?;
 
-        commands::send_command::<SequenceRequest>(&mut self.device, request)
+        commands::send_command(&mut self.device, request)
             .map_err(CmsisDapError::from)
             .and_then(|v| match v {
                 SequenceResponse(Status::DAPOk) => Ok(()),
@@ -488,12 +488,10 @@ impl CmsisDap {
                 })
                 .collect();
 
-            let response = commands::send_command::<TransferRequest>(
-                &mut self.device,
-                TransferRequest::new(&transfers),
-            )
-            .map_err(CmsisDapError::from)
-            .map_err(DebugProbeError::from)?;
+            let response =
+                commands::send_command(&mut self.device, TransferRequest::new(&transfers))
+                    .map_err(CmsisDapError::from)
+                    .map_err(DebugProbeError::from)?;
 
             let count = response.transfer_count as usize;
 
@@ -505,58 +503,41 @@ impl CmsisDap {
                 }
 
                 return Err(DapError::SwdProtocol.into());
-            } else {
-                match response.last_transfer_response.ack {
-                    Ack::Ok => {
-                        tracing::trace!("Transfer status: ACK");
-                        return Ok(response.transfers[response.transfers.len() - 1].data);
-                    }
-                    Ack::NoAck => {
-                        tracing::trace!(
-                            "Transfer status for batch item {}/{}: NACK",
-                            count,
-                            batch.len()
-                        );
-                        // TODO: Try a reset?
-                        return Err(DapError::NoAcknowledge.into());
-                    }
-                    Ack::Fault => {
-                        tracing::trace!(
-                            "Transfer status for batch item {}/{}: FAULT",
-                            count,
-                            batch.len()
-                        );
+            }
 
-                        // To avoid a potential endless recursion,
-                        // call a separate function to read the ctrl register,
-                        // which doesn't use the batch API.
-                        let ctrl = self.read_ctrl_register()?;
+            match response.last_transfer_response.ack {
+                Ack::Ok => {
+                    tracing::trace!("Transfer status: ACK");
+                    return Ok(response.transfers[response.transfers.len() - 1].data);
+                }
+                Ack::NoAck => {
+                    tracing::trace!(
+                        "Transfer status for batch item {}/{}: NACK",
+                        count,
+                        batch.len()
+                    );
+                    // TODO: Try a reset?
+                    return Err(DapError::NoAcknowledge.into());
+                }
+                Ack::Fault => {
+                    tracing::trace!(
+                        "Transfer status for batch item {}/{}: FAULT",
+                        count,
+                        batch.len()
+                    );
 
-                        tracing::trace!("Ctrl/Stat register value is: {:?}", ctrl);
+                    // To avoid a potential endless recursion,
+                    // call a separate function to read the ctrl register,
+                    // which doesn't use the batch API.
+                    let ctrl = self.read_ctrl_register()?;
 
-                        if ctrl.sticky_err() {
-                            let mut abort = Abort(0);
+                    tracing::trace!("Ctrl/Stat register value is: {:?}", ctrl);
 
-                            // Clear sticky error flags.
-                            abort.set_stkerrclr(ctrl.sticky_err());
-
-                            RawDapAccess::raw_write_register(
-                                self,
-                                PortType::DebugPort,
-                                Abort::ADDRESS,
-                                abort.into(),
-                            )?;
-                        }
-
-                        tracing::trace!("draining {:?} and retries left {:?}", count, retry);
-                        batch.drain(0..count);
-                        continue;
-                    }
-                    Ack::Wait => {
-                        tracing::trace!("wait",);
-
+                    if ctrl.sticky_err() {
                         let mut abort = Abort(0);
-                        abort.set_dapabort(true);
+
+                        // Clear sticky error flags.
+                        abort.set_stkerrclr(ctrl.sticky_err());
 
                         RawDapAccess::raw_write_register(
                             self,
@@ -564,9 +545,26 @@ impl CmsisDap {
                             Abort::ADDRESS,
                             abort.into(),
                         )?;
-
-                        return Err(DapError::WaitResponse.into());
                     }
+
+                    tracing::trace!("draining {:?} and retries left {:?}", count, retry);
+                    batch.drain(0..count);
+                    continue;
+                }
+                Ack::Wait => {
+                    tracing::trace!("wait",);
+
+                    let mut abort = Abort(0);
+                    abort.set_dapabort(true);
+
+                    RawDapAccess::raw_write_register(
+                        self,
+                        PortType::DebugPort,
+                        Abort::ADDRESS,
+                        abort.into(),
+                    )?;
+
+                    return Err(DapError::WaitResponse.into());
                 }
             }
         }
@@ -818,14 +816,15 @@ impl DebugProbe for CmsisDap {
 
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
         match protocol {
-            WireProtocol::Jtag => {
+            WireProtocol::Jtag if self.capabilities._jtag_implemented => {
                 self.protocol = Some(WireProtocol::Jtag);
                 Ok(())
             }
-            WireProtocol::Swd => {
+            WireProtocol::Swd if self.capabilities._swd_implemented => {
                 self.protocol = Some(WireProtocol::Swd);
                 Ok(())
             }
+            _ => Err(DebugProbeError::UnsupportedProtocol(protocol)),
         }
     }
 

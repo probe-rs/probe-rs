@@ -5,7 +5,7 @@ use std::time::Duration;
 use anyhow::anyhow;
 use capstone::{
     arch::arm::ArchMode as armArchMode, arch::arm64::ArchMode as aarch64ArchMode,
-    arch::riscv::ArchMode as riscvArchMode, prelude::*, Capstone, Endian,
+    arch::riscv::ArchMode as riscvArchMode, prelude::*, Endian,
 };
 use num_traits::Num;
 use parse_int::parse;
@@ -742,7 +742,7 @@ impl DebugCli {
                             return Ok(CliState::Continue);
                         };
 
-                        let mut locals = local_variable_cache.root_variable();
+                        let mut locals = local_variable_cache.root_variable().clone();
                         // By default, the first level children are always are lazy loaded, so we will force a load here.
                         if locals.variable_node_type.is_deferred()
                             && !local_variable_cache.has_children(&locals)
@@ -773,7 +773,7 @@ impl DebugCli {
                             println!(
                                 "{}: {} = {}",
                                 child.name,
-                                child.type_name,
+                                child.type_name(),
                                 child.get_value(local_variable_cache)
                             );
                         }

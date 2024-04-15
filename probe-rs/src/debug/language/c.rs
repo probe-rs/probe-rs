@@ -1,17 +1,17 @@
 use crate::{
     debug::{
         language::{
-            parsing::ParseToBytes,
             value::{format_float, Value},
             ProgrammingLanguage,
         },
-        DebugError, Variable, VariableCache, VariableLocation, VariableName, VariableType,
-        VariableValue,
+        Bitfield, DebugError, Variable, VariableCache, VariableLocation, VariableName,
+        VariableType, VariableValue,
     },
     MemoryInterface,
 };
+use std::fmt::{Display, Write};
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct C;
 
 impl ProgrammingLanguage for C {
@@ -21,21 +21,19 @@ impl ProgrammingLanguage for C {
         memory: &mut dyn MemoryInterface,
         variable_cache: &VariableCache,
     ) -> VariableValue {
-        match &variable.type_name {
-            VariableType::Base(_) if variable.memory_location == VariableLocation::Unknown => {
-                VariableValue::Empty
-            }
+        match variable.type_name.inner() {
+            _ if variable.memory_location == VariableLocation::Unknown => VariableValue::Empty,
 
-            VariableType::Base(type_name) => match type_name.as_str() {
-                "_Bool" => UnsignedInt::get_value(variable, memory, variable_cache).into(),
+            VariableType::Base(name) => match name.as_str() {
+                "_Bool" => UnsignedInt::get_value(variable, None, memory, variable_cache).into(),
                 "char" => CChar::get_value(variable, memory, variable_cache).into(),
 
                 "unsigned char" | "unsigned int" | "short unsigned int" | "long unsigned int" => {
-                    UnsignedInt::get_value(variable, memory, variable_cache).into()
+                    UnsignedInt::get_value(variable, None, memory, variable_cache).into()
                 }
                 "signed char" | "int" | "short int" | "long int" | "signed int"
                 | "short signed int" | "long signed int" => {
-                    SignedInt::get_value(variable, memory, variable_cache).into()
+                    SignedInt::get_value(variable, None, memory, variable_cache).into()
                 }
 
                 "float" => match variable.byte_size {
@@ -49,6 +47,21 @@ impl ProgrammingLanguage for C {
                 // TODO: doubles
                 _undetermined_value => VariableValue::Empty,
             },
+
+            VariableType::Bitfield(bitfield, name) => match name.inner() {
+                VariableType::Base(name) => {
+                    if name.as_str().contains("unsigned") {
+                        UnsignedInt::get_value(variable, Some(*bitfield), memory, variable_cache)
+                            .into()
+                    } else {
+                        SignedInt::get_value(variable, Some(*bitfield), memory, variable_cache)
+                            .into()
+                    }
+                }
+
+                _undetermined_value => VariableValue::Empty,
+            },
+
             _other => VariableValue::Empty,
         }
     }
@@ -59,36 +72,71 @@ impl ProgrammingLanguage for C {
         memory: &mut dyn MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
-        match &variable.type_name {
+        match variable.type_name.inner() {
             VariableType::Base(name) => match name.as_str() {
-                "_Bool" => UnsignedInt::update_value(variable, memory, new_value),
+                "_Bool" => UnsignedInt::update_value(variable, None, memory, new_value),
                 "char" => CChar::update_value(variable, memory, new_value),
                 "unsigned char" | "unsigned int" | "short unsigned int" | "long unsigned int" => {
-                    UnsignedInt::update_value(variable, memory, new_value)
+                    UnsignedInt::update_value(variable, None, memory, new_value)
                 }
                 "signed char" | "int" | "short int" | "long int" | "signed int"
                 | "short signed int" | "long signed int" => {
-                    SignedInt::update_value(variable, memory, new_value)
+                    SignedInt::update_value(variable, None, memory, new_value)
                 }
                 "float" => f32::update_value(variable, memory, new_value),
                 // TODO: doubles
-                other => Err(DebugError::UnwindIncompleteResults {
+                other => Err(DebugError::WarnAndContinue {
                     message: format!("Updating {other} variables is not yet supported."),
                 }),
             },
-            other => Err(DebugError::UnwindIncompleteResults {
+
+            VariableType::Bitfield(bitfield, name) => match name.inner() {
+                VariableType::Base(name) => {
+                    if name.as_str().contains("unsigned") {
+                        UnsignedInt::update_value(variable, Some(*bitfield), memory, new_value)
+                    } else {
+                        SignedInt::update_value(variable, Some(*bitfield), memory, new_value)
+                    }
+                }
+
+                other => Err(DebugError::WarnAndContinue {
+                    message: format!(
+                        "Updating {} bitfield variables is not yet supported.",
+                        other.kind()
+                    ),
+                }),
+            },
+
+            other => Err(DebugError::WarnAndContinue {
                 message: format!("Updating {} variables is not yet supported.", other.kind()),
             }),
         }
+    }
+
+    fn format_array_type(&self, item_type: &str, length: usize) -> String {
+        format!("{item_type}[{length}]")
     }
 
     fn format_enum_value(&self, _type_name: &VariableType, value: &VariableName) -> VariableValue {
         VariableValue::Valid(value.to_string())
     }
 
-    fn process_tag_with_no_type(&self, tag: gimli::DwTag) -> VariableValue {
+    fn format_pointer_type(&self, pointee: Option<&str>) -> String {
+        format!("{}*", pointee.unwrap_or("void"))
+    }
+
+    fn process_tag_with_no_type(&self, variable: &Variable, tag: gimli::DwTag) -> VariableValue {
         match tag {
-            gimli::DW_TAG_const_type => VariableValue::Valid("<void>".to_string()),
+            gimli::DW_TAG_const_type => VariableValue::Valid("const void".to_string()),
+            gimli::DW_TAG_pointer_type => {
+                let name = if let VariableLocation::Address(addr) = variable.memory_location {
+                    format!("void* @ {addr:X}")
+                } else {
+                    "void*".to_string()
+                };
+
+                VariableValue::Valid(name)
+            }
             _ => VariableValue::Error(format!("Error: Failed to decode {tag} type reference")),
         }
     }
@@ -96,13 +144,13 @@ impl ProgrammingLanguage for C {
 
 struct CChar(u8);
 
-impl ToString for CChar {
-    fn to_string(&self) -> String {
+impl Display for CChar {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let c = self.0;
         if c.is_ascii() {
-            (c as char).to_string()
+            f.write_char(c as char)
         } else {
-            format!("\\x{:02x}", c)
+            f.write_fmt(format_args!("\\x{:02x}", c))
         }
     }
 }
@@ -131,7 +179,7 @@ impl Value for CChar {
         new_value: &str,
     ) -> Result<(), DebugError> {
         fn input_error(value: &str) -> DebugError {
-            DebugError::UnwindIncompleteResults {
+            DebugError::WarnAndContinue {
                 message: format!(
                     "Invalid value for char: {value}. Please provide a single character."
                 ),
@@ -156,90 +204,157 @@ impl Value for CChar {
 
 struct UnsignedInt(u128);
 
-impl ToString for UnsignedInt {
-    fn to_string(&self) -> String {
-        self.0.to_string()
+impl Display for UnsignedInt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{}", self.0))
     }
 }
 
-impl Value for UnsignedInt {
+impl UnsignedInt {
     fn get_value(
         variable: &Variable,
+        bitfield: Option<Bitfield>,
         memory: &mut dyn MemoryInterface,
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError>
     where
         Self: Sized,
     {
+        // Read the bits
         let mut buff = [0u8; 16];
         let bytes = variable.byte_size.unwrap_or(1).min(16) as usize;
         memory.read(
             variable.memory_location.memory_address()?,
             &mut buff[..bytes],
         )?;
+        let value = u128::from_le_bytes(buff);
 
-        Ok(Self(u128::from_le_bytes(buff)))
+        // Extract bitfield bits
+        let value = match bitfield {
+            Some(bitfield) => bitfield.extract(value),
+            None => value,
+        };
+
+        Ok(Self(value))
     }
 
     fn update_value(
         variable: &Variable,
+        bitfield: Option<Bitfield>,
         memory: &mut dyn MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
-        let buff = u128::parse_to_bytes(new_value)?;
-
-        // TODO: check that value actually fits into `bytes` number of bytes
-        let bytes = variable.byte_size.unwrap_or(1) as usize;
-        memory.write_8(variable.memory_location.memory_address()?, &buff[..bytes])?;
-
-        Ok(())
+        match parse_int::parse::<u128>(new_value) {
+            Ok(value) => write_unsigned_bytes(variable, bitfield, memory, value),
+            Err(e) => Err(DebugError::WarnAndContinue {
+                message: format!("Invalid data conversion from value: {new_value:?}. {e:?}"),
+            }),
+        }
     }
+}
+
+fn write_unsigned_bytes(
+    variable: &Variable,
+    bitfield: Option<Bitfield>,
+    memory: &mut dyn MemoryInterface,
+    unsigned: u128,
+) -> Result<(), DebugError> {
+    // TODO: check that value actually fits into `bytes` number of bytes
+    let bytes = variable.byte_size.unwrap_or(1) as usize;
+
+    // Figure out the bitfield offset & bit count
+    let Some(bitfield) = bitfield else {
+        let buff = unsigned.to_le_bytes();
+        memory.write_8(variable.memory_location.memory_address()?, &buff[..bytes])?;
+        return Ok(());
+    };
+
+    // We are writing a bitfield, we need to do a read-modify-write operation.
+
+    // Read the bits
+    let mut buff = [0u8; 16];
+    memory.read(
+        variable.memory_location.memory_address()?,
+        &mut buff[..bytes],
+    )?;
+    let read_value = u128::from_le_bytes(buff);
+
+    let new_value = bitfield.insert(read_value, unsigned);
+
+    // Write the new value
+    let buff = new_value.to_le_bytes();
+    memory.write_8(variable.memory_location.memory_address()?, &buff[..bytes])?;
+
+    Ok(())
 }
 
 struct SignedInt(i128);
 
-impl ToString for SignedInt {
-    fn to_string(&self) -> String {
-        self.0.to_string()
+impl Display for SignedInt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{}", self.0))
     }
 }
 
-impl Value for SignedInt {
+impl SignedInt {
     fn get_value(
         variable: &Variable,
+        bitfield: Option<Bitfield>,
         memory: &mut dyn MemoryInterface,
-        _variable_cache: &VariableCache,
+        variable_cache: &VariableCache,
     ) -> Result<Self, DebugError>
     where
         Self: Sized,
     {
-        let mut buff = [0u8; 16];
+        // We read the number as Unsigned first, to avoid duplicating the bitfield handling.
+        let unsigned = UnsignedInt::get_value(variable, bitfield, memory, variable_cache)?.0;
         let bytes = variable.byte_size.unwrap_or(1).min(16) as usize;
-        memory.read(
-            variable.memory_location.memory_address()?,
-            &mut buff[..bytes],
-        )?;
 
-        // sign extend
-        let negative = buff[bytes - 1] >= 0x80;
-        if negative {
-            buff[bytes..].fill(0xFF);
-        }
+        // Sign extend
+        let sign_bit_shift = match bitfield {
+            Some(bitfield) => bitfield.length() as usize - 1,
+            None => (bytes * 8) - 1,
+        };
 
-        Ok(Self(i128::from_le_bytes(buff)))
+        let negative = unsigned & (1 << sign_bit_shift) != 0;
+        let value = if negative {
+            (unsigned | (!0 << sign_bit_shift)) as i128
+        } else {
+            unsigned as i128
+        };
+
+        Ok(Self(value))
     }
 
     fn update_value(
         variable: &Variable,
+        bitfield: Option<Bitfield>,
         memory: &mut dyn MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
-        let buff = i128::parse_to_bytes(new_value)?;
+        match parse_int::parse::<i128>(new_value) {
+            Ok(value) => write_unsigned_bytes(variable, bitfield, memory, value as u128),
+            Err(e) => Err(DebugError::WarnAndContinue {
+                message: format!("Invalid data conversion from value: {new_value:?}. {e:?}"),
+            }),
+        }
+    }
+}
 
-        // TODO: check that value actually fits into `bytes` number of bytes
-        let bytes = variable.byte_size.unwrap_or(1) as usize;
-        memory.write_8(variable.memory_location.memory_address()?, &buff[..bytes])?;
+impl From<Result<UnsignedInt, DebugError>> for VariableValue {
+    fn from(val: Result<UnsignedInt, DebugError>) -> Self {
+        val.map_or_else(
+            |err| VariableValue::Error(format!("{err:?}")),
+            |value| VariableValue::Valid(value.to_string()),
+        )
+    }
+}
 
-        Ok(())
+impl From<Result<SignedInt, DebugError>> for VariableValue {
+    fn from(val: Result<SignedInt, DebugError>) -> Self {
+        val.map_or_else(
+            |err| VariableValue::Error(format!("{err:?}")),
+            |value| VariableValue::Valid(value.to_string()),
+        )
     }
 }
