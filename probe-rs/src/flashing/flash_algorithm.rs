@@ -216,7 +216,7 @@ impl FlashAlgorithm {
     ) -> Result<Self, FlashError> {
         use std::mem::size_of;
 
-        if raw.flash_properties.page_size % 4 != 0 {
+        if raw.flash_properties.page_size % 4 != 0 && raw.flash_properties.page_size != 2 {
             // TODO move to yaml validation
             return Err(FlashError::InvalidPageSize {
                 size: raw.flash_properties.page_size,
@@ -345,6 +345,8 @@ impl FlashAlgorithm {
         tracing::debug!("Page buffers: {:08x?}", page_buffers);
 
         let name = raw.name.clone();
+        tracing::debug!(" KURAGA RAZ'EB code_start {:08x?}  raw.pc_program_page {:08x?}", code_start,   raw.pc_program_page);
+        tracing::debug!(" KURAGA RAZ'EB2  pc_program_page {:08x?}", code_start + raw.pc_program_page);
 
         Ok(FlashAlgorithm {
             name,
