@@ -75,6 +75,14 @@ impl<'probe> Riscv32<'probe> {
         }
     }
 
+    /// Resume the core.
+    fn resume_core(&mut self) -> Result<(), crate::Error> {
+        self.state.semihosting_command = None;
+        self.interface.resume_core()?;
+
+        Ok(())
+    }
+
     /// Check if the current breakpoint is a semihosting call
     fn check_for_semihosting(&mut self) -> Result<Option<SemihostingCommand>, Error> {
         let pc: u32 = self.read_core_reg(self.program_counter().id)?.try_into()?;
@@ -189,20 +197,19 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         self.step()?;
 
         // resume the core.
-        self.interface.resume_core()?;
+        self.resume_core()?;
 
         Ok(())
     }
 
     fn reset(&mut self) -> Result<(), Error> {
         self.reset_and_halt(Duration::from_secs(1))?;
-        self.interface.resume_core()?;
+        self.resume_core()?;
 
         Ok(())
     }
 
     fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
-        self.state.semihosting_command = None;
         self.sequence
             .reset_system_and_halt(self.interface, timeout)?;
 
@@ -212,7 +219,6 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn step(&mut self) -> Result<CoreInformation, crate::Error> {
-        self.state.semihosting_command = None;
         let halt_reason = self.status()?;
         let flashing_done = self.state.hw_breakpoints_enabled;
         if matches!(
@@ -252,7 +258,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         self.write_csr(0x7b0, dcsr.0)?;
 
         // Now we can resume the core for the single step.
-        self.interface.resume_core()?;
+        self.resume_core()?;
         self.wait_for_core_halted(Duration::from_millis(100))?;
 
         let pc = self.read_core_reg(RegisterId(0x7b1))?;
@@ -409,7 +415,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         }
 
         if was_running {
-            self.interface.resume_core()?;
+            self.resume_core()?;
         }
 
         Ok(breakpoints)
@@ -521,7 +527,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         self.write_csr(tdata2, 0)?;
 
         if was_running {
-            self.interface.resume_core()?;
+            self.resume_core()?;
         }
 
         Ok(())
