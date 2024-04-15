@@ -25,6 +25,8 @@ use std::{
 use typed_path::{TypedPath, TypedPathBuf};
 
 pub(crate) type GimliReader = gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>;
+pub(crate) type GimliReaderOffset =
+    <gimli::EndianReader<gimli::LittleEndian, Rc<[u8]>> as gimli::Reader>::Offset;
 
 pub(crate) type GimliAttribute = gimli::Attribute<GimliReader>;
 
@@ -338,7 +340,7 @@ impl DebugInfo {
         &self,
         memory: &mut impl MemoryInterface,
         address: u64,
-        unwind_context: &mut UnwindContext<DwarfReader>,
+        unwind_context: &mut UnwindContext<GimliReaderOffset>,
         unwind_registers: &registers::DebugRegisters,
     ) -> Result<Vec<StackFrame>, DebugError> {
         // When reporting the address, we format it as a hex string, with the width matching
@@ -999,11 +1001,11 @@ pub(crate) fn canonical_path_eq(
 }
 
 /// Get a handle to the [`gimli::UnwindTableRow`] for this call frame, so that we can reference it to unwind register values.
-fn get_unwind_info<'a>(
-    unwind_context: &'a mut UnwindContext<DwarfReader>,
-    frame_section: &'a DebugFrame<DwarfReader>,
+fn get_unwind_info<'a, 'b>(
+    unwind_context: &'a mut UnwindContext<GimliReaderOffset>,
+    frame_section: &'b DebugFrame<DwarfReader>,
     frame_program_counter: u64,
-) -> Result<&'a gimli::UnwindTableRow<DwarfReader, gimli::StoreOnHeap>, DebugError> {
+) -> Result<&'a gimli::UnwindTableRow<GimliReaderOffset>, DebugError> {
     let transform_error = |error| {
         DebugError::Other(anyhow::anyhow!(
             "UNWIND: Error reading FrameDescriptorEntry at PC={} : {}",
@@ -1033,7 +1035,7 @@ fn get_unwind_info<'a>(
 }
 
 /// Determines the CFA (canonical frame address) for the current [`gimli::UnwindTableRow`], using the current register values.
-fn determine_cfa<R: gimli::Reader>(
+fn determine_cfa<R: gimli::ReaderOffset>(
     unwind_registers: &DebugRegisters,
     unwind_info: &UnwindTableRow<R>,
 ) -> Result<Option<u64>, crate::Error> {
@@ -1083,7 +1085,7 @@ fn unwind_register(
     debug_register: &mut super::DebugRegister,
     // The callee_frame_registers are used to lookup values and never updated.
     callee_frame_registers: &DebugRegisters,
-    unwind_info: Option<&gimli::UnwindTableRow<DwarfReader, gimli::StoreOnHeap>>,
+    unwind_info: Option<&gimli::UnwindTableRow<GimliReaderOffset>>,
     unwind_cfa: Option<u64>,
     unwound_return_address: &mut Option<RegisterValue>,
     memory: &mut dyn MemoryInterface,

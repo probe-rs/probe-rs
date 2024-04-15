@@ -86,7 +86,7 @@ bitfield = "0.14"
 bitvec = "1"
 docsplay = { workspace = true }
 enum-primitive-derive = "0.3"
-gimli = { version = "0.28", default-features = false, features = [
+gimli = { version = "0.29", default-features = false, features = [
     "endian-reader",
     "read",
     "std",
