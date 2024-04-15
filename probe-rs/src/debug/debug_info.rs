@@ -1001,9 +1001,9 @@ pub(crate) fn canonical_path_eq(
 }
 
 /// Get a handle to the [`gimli::UnwindTableRow`] for this call frame, so that we can reference it to unwind register values.
-fn get_unwind_info<'a, 'b>(
+fn get_unwind_info<'a>(
     unwind_context: &'a mut UnwindContext<GimliReaderOffset>,
-    frame_section: &'b DebugFrame<DwarfReader>,
+    frame_section: &DebugFrame<DwarfReader>,
     frame_program_counter: u64,
 ) -> Result<&'a gimli::UnwindTableRow<GimliReaderOffset>, DebugError> {
     let transform_error = |error| {
