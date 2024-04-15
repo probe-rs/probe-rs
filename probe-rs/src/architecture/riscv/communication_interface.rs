@@ -425,7 +425,7 @@ impl RiscvCommunicationInterface {
         Ok(())
     }
 
-    fn enter_debug_mode(&mut self) -> Result<(), RiscvError> {
+    pub(crate) fn enter_debug_mode(&mut self) -> Result<(), RiscvError> {
         tracing::debug!("Building RISC-V interface");
 
         // Reset error bits from previous connections
@@ -434,6 +434,7 @@ impl RiscvCommunicationInterface {
         // read the  version of the debug module
         let status: Dmstatus = self.read_dm_register()?;
 
+        self.state.progbuf_cache.fill(0);
         self.state.debug_version = DebugModuleVersion::from(status.version() as u8);
 
         // Only version of 0.13 of the debug specification is currently supported.

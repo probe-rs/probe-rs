@@ -91,6 +91,7 @@ impl RiscvDebugSequence for ESP32C3 {
         dmcontrol.set_ackhavereset(true);
         interface.write_dm_register(dmcontrol)?;
 
+        interface.enter_debug_mode()?;
         self.on_connect(interface)?;
 
         interface.reset_hart_and_halt(timeout)?;
