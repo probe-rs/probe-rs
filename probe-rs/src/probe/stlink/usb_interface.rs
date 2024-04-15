@@ -163,7 +163,7 @@ impl StLinkUsbDevice {
             .claim_interface(interface_number)
             .map_err(ProbeCreationError::Usb)?;
 
-        tracing::debug!("Claimed interface 0 of USB device.");
+        tracing::debug!("Claimed interface {} of USB device.", interface_number);
 
         let usb_stlink = Self {
             device_handle,
