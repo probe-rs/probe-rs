@@ -345,9 +345,7 @@ impl FlashAlgorithm {
         tracing::debug!("Page buffers: {:08x?}", page_buffers);
 
         let name = raw.name.clone();
-        tracing::debug!(" KURAGA RAZ'EB code_start {:08x?}  raw.pc_program_page {:08x?}", code_start,   raw.pc_program_page);
-        tracing::debug!(" KURAGA RAZ'EB2  pc_program_page {:08x?}", code_start + raw.pc_program_page);
-
+        
         Ok(FlashAlgorithm {
             name,
             default: raw.default,
