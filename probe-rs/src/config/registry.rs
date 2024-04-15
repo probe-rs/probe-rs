@@ -203,6 +203,7 @@ impl Registry {
 
                     let mut suggestions = print.join(", ");
 
+                    // Avoid "and 1 more" by printing the last item.
                     match overflow.len() {
                         0 => {}
                         1 => suggestions.push_str(&format!(", {}", overflow[0])),
