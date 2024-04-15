@@ -299,6 +299,15 @@ impl Session {
             configured_trace_sink: None,
         };
 
+        {
+            // Wait for the cores to be halted.
+            for core_id in 0..session.cores.len() {
+                let mut core = session.core(core_id)?;
+
+                core.halt(Duration::from_millis(100))?;
+            }
+        }
+
         session.halted_access(|sess| sequence_handle.on_connect(sess.get_riscv_interface()?))?;
 
         Ok(session)
@@ -334,6 +343,15 @@ impl Session {
             cores,
             configured_trace_sink: None,
         };
+
+        {
+            // Wait for the cores to be halted.
+            for core_id in 0..session.cores.len() {
+                let mut core = session.core(core_id)?;
+
+                core.halt(Duration::from_millis(100))?;
+            }
+        }
 
         session.halted_access(|sess| sequence_handle.on_connect(sess.get_xtensa_interface()?))?;
 
