@@ -19,10 +19,10 @@ enum_and_set!(
         Bdm3 = 2,
         /// FINE, a two-wire debugging interface used by Renesas RX MCUs.
         ///
-        /// **Note**: due to a bug, attempting to select FINE with [`JayLink::select_inferface`] will
+        /// **Note**: due to a bug, attempting to select FINE with [`JLink::select_inferface`] will
         /// currently hang the probe.
         ///
-        /// [`JayLink::select_inferface`]: crate::JayLink::select_interface
+        /// [`JLink::select_inferface`]: crate::JLink::select_interface
         // FIXME: There's a curious bug that hangs the probe when selecting the FINE interface.
         // Specifically, the probe never sends back the previous interface after it receives the `c7 03`
         // SELECT_IF cmd, even though the normal J-Link software also just sends `c7 03` and gets back

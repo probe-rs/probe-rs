@@ -492,6 +492,11 @@ impl Probe {
     pub fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {
         self.inner.get_target_voltage()
     }
+
+    /// Try to get a J-Link interface from the debug probe.
+    pub fn try_into_jlink(&mut self) -> Result<&mut jlink::JLink, DebugProbeError> {
+        self.inner.try_into_jlink()
+    }
 }
 
 /// An abstraction over a probe driver type.
@@ -667,6 +672,13 @@ pub trait DebugProbe: Send + fmt::Debug {
     /// if the probe doesn’t support reading the target voltage.
     fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {
         Ok(None)
+    }
+
+    /// Try to get a J-Link interface from the debug probe.
+    fn try_into_jlink(&mut self) -> Result<&mut jlink::JLink, DebugProbeError> {
+        Err(DebugProbeError::Other(anyhow::anyhow!(
+            "This probe does not support J-Link functionality."
+        )))
     }
 }
 
