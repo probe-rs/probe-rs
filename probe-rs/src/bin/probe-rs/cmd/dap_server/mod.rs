@@ -14,7 +14,12 @@ use probe_rs::{
     probe::DebugProbeError, CoreDumpError, Error,
 };
 use server::startup::debug;
-use std::{fs::File, io::stderr, net::{IpAddr, Ipv4Addr, SocketAddr}, path::Path};
+use std::{
+    fs::File,
+    io::stderr,
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+    path::Path,
+};
 use time::UtcOffset;
 use tracing::metadata::LevelFilter;
 use tracing_subscriber::{
