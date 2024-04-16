@@ -499,5 +499,13 @@ fn attach_to_rtt(
     };
 
     let defmt_state = DefmtState::try_from_bytes(&elf)?;
-    RttActiveTarget::new(core, rtt, defmt_state, rtt_config, timestamp_offset).map(Some)
+    RttActiveTarget::new(
+        core,
+        rtt,
+        defmt_state,
+        rtt_config,
+        &Default::default(),
+        timestamp_offset,
+    )
+    .map(Some)
 }
