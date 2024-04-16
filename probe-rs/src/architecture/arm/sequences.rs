@@ -11,7 +11,10 @@ use std::{
 use probe_rs_target::CoreType;
 
 use crate::{
-    architecture::arm::ArmProbeInterface,
+    architecture::arm::{
+        dp::{DLPIDR, TARGETID},
+        ArmProbeInterface,
+    },
     probe::{DebugProbeError, WireProtocol},
     MemoryMappedRegister,
 };
@@ -404,7 +407,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     /// Assert a system-wide reset line nRST. This is based on the
     /// `ResetHardwareAssert` function from the [ARM SVD Debug Description].
     ///
-    /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#resetHardwareAssert
+    /// [ARM SVD Debug Description]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/debug_description.html#resetHardwareAssert
     #[doc(alias = "ResetHardwareAssert")]
     fn reset_hardware_assert(&self, interface: &mut dyn DapProbe) -> Result<(), ArmError> {
         let mut n_reset = Pins(0);
@@ -418,7 +421,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     /// De-Assert a system-wide reset line nRST. This is based on the
     /// `ResetHardwareDeassert` function from the [ARM SVD Debug Description].
     ///
-    /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#resetHardwareDeassert
+    /// [ARM SVD Debug Description]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/debug_description.html#resetHardwareDeassert
     #[doc(alias = "ResetHardwareDeassert")]
     fn reset_hardware_deassert(&self, memory: &mut dyn ArmProbe) -> Result<(), ArmError> {
         let mut n_reset = Pins(0);
@@ -452,7 +455,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     ///
     /// If this function cannot read the DPIDR register, it will retry up to 5 times, and return an error if it still cannot read it.
     ///
-    /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#debugPortSetup
+    /// [ARM SVD Debug Description]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/debug_description.html#debugPortSetup
     #[doc(alias = "DebugPortSetup")]
     fn debug_port_setup(
         &self,
@@ -460,7 +463,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         dp: DpAddress,
     ) -> Result<(), ArmError> {
         // TODO: Handle this differently for ST-Link?
-        tracing::debug!("Setting up debug port {dp:?}");
+        tracing::debug!("Setting up debug port {dp:x?}");
 
         // Assume that multidrop means SWD version 2 and dormant state.
         // There could also be chips with SWD version 2 that don't use multidrop,
@@ -488,14 +491,14 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
 
         for _ in 0..num_retries {
             // Ensure current debug interface is in reset state.
-            swd_line_reset(interface)?;
+            swd_line_reset(interface, 0)?;
 
             // Make sure the debug port is in the correct mode based on what the probe
             // has selected via active_protocol
             match interface.active_protocol() {
                 Some(WireProtocol::Jtag) => {
                     if has_dormant {
-                        tracing::trace!("Select Dormant State (from SWD)");
+                        tracing::debug!("Select Dormant State (from SWD)");
                         interface.swj_sequence(16, 0xE3BC)?;
 
                         // Send alert sequence
@@ -520,7 +523,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
                 Some(WireProtocol::Swd) => {
                     if has_dormant {
                         // Select Dormant State (from JTAG)
-                        tracing::trace!("Select Dormant State (from JTAG)");
+                        tracing::debug!("Select Dormant State (from JTAG)");
                         interface.swj_sequence(31, 0x33BBBBBA)?;
 
                         // Leave dormant state
@@ -533,10 +536,8 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
                         // Change if SWJ-DP uses deprecated switch code (0xEDB6).
                         interface.swj_sequence(16, 0xE79E)?;
 
-                        // > 50 cycles SWDIO/TMS High.
-                        swd_line_reset(interface)?;
-                        // At least 2 idle cycles (SWDIO/TMS Low).
-                        interface.swj_sequence(3, 0x00)?;
+                        // > 50 cycles SWDIO/TMS High, at least 2 idle cycles (SWDIO/TMS Low).
+                        // -> done in debug_port_connect
                     }
                 }
                 _ => {
@@ -563,7 +564,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     /// Connect to the target debug port and power it up. This is based on the
     /// `DebugPortStart` function from the [ARM SVD Debug Description].
     ///
-    /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#debugPortStart
+    /// [ARM SVD Debug Description]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/debug_description.html#debugPortStart
     #[doc(alias = "DebugPortStart")]
     fn debug_port_start(
         &self,
@@ -588,6 +589,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         let powered_down = !(ctrl.csyspwrupack() && ctrl.cdbgpwrupack());
 
         if powered_down {
+            tracing::debug!("Debug port is powered down, powering up");
             let mut ctrl = Ctrl(0);
             ctrl.set_cdbgpwrupreq(true);
             ctrl.set_csyspwrupreq(true);
@@ -634,7 +636,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     /// Initialize core debug system. This is based on the
     /// `DebugCoreStart` function from the [ARM SVD Debug Description].
     ///
-    /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#debugCoreStart
+    /// [ARM SVD Debug Description]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/debug_description.html#debugCoreStart
     #[doc(alias = "DebugCoreStart")]
     fn debug_core_start(
         &self,
@@ -661,7 +663,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     /// out of reset. This is based on the `ResetCatchSet` function from
     /// the [ARM SVD Debug Description].
     ///
-    /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#resetCatchSet
+    /// [ARM SVD Debug Description]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/debug_description.html#resetCatchSet
     #[doc(alias = "ResetCatchSet")]
     fn reset_catch_set(
         &self,
@@ -684,7 +686,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     /// This is based on the `ResetCatchSet` function from
     /// the [ARM SVD Debug Description].
     ///
-    /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#resetCatchClear
+    /// [ARM SVD Debug Description]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/debug_description.html#resetCatchClear
     #[doc(alias = "ResetCatchClear")]
     fn reset_catch_clear(
         &self,
@@ -710,7 +712,8 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     /// trace funnels, to route trace data to the specified trace sink.
     ///
     /// This is based on the `TraceStart` function from the [ARM SVD Debug Description].
-    /// [ARM SVD Debug Description]: <http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#resetCatchClear>
+    ///
+    /// [ARM SVD Debug Description]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/debug_description.html#traceStart
     fn trace_start(
         &self,
         interface: &mut dyn ArmProbeInterface,
@@ -736,7 +739,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     /// for example AIRCR.SYSRESETREQ.  This is based on the
     /// `ResetSystem` function from the [ARM SVD Debug Description].
     ///
-    /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#resetSystem
+    /// [ARM SVD Debug Description]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/debug_description.html#resetSystem
     #[doc(alias = "ResetSystem")]
     fn reset_system(
         &self,
@@ -760,7 +763,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     /// Executed after having powered up the debug port. This is based on the
     /// `DebugDeviceUnlock` function from the [ARM SVD Debug Description].
     ///
-    /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#debugDeviceUnlock
+    /// [ARM SVD Debug Description]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/debug_description.html#debugDeviceUnlock
     #[doc(alias = "DebugDeviceUnlock")]
     fn debug_device_unlock(
         &self,
@@ -775,7 +778,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     /// Executed before step or run command to support recovery from a lost target connection, e.g. after a low power mode.
     /// This is based on the `RecoverSupportStart` function from the [ARM SVD Debug Description].
     ///
-    /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#recoverSupportStart
+    /// [ARM SVD Debug Description]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/debug_description.htmll#recoverSupportStart
     #[doc(alias = "RecoverSupportStart")]
     fn recover_support_start(&self, _interface: &mut dyn ArmProbe) -> Result<(), ArmError> {
         // Empty by default
@@ -786,7 +789,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     ///
     /// This is based on the `DebugCoreStop` function from the [ARM SVD Debug Description].
     ///
-    /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#recoverSupportStart
+    /// [ARM SVD Debug Description]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/debug_description.html#debugCoreStop
     #[doc(alias = "DebugCoreStop")]
     fn debug_core_stop(
         &self,
@@ -808,6 +811,22 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         Ok(())
     }
 
+    /// Sequence executed when disconnecting from a debug port.
+    ///
+    /// Based on the `DebugPortStop` function from the [ARM SVD Debug Description].
+    ///
+    /// [ARM SVD Debug Description]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/debug_description.html#debugPortStop
+    #[doc(alias = "DebugPortStop")]
+    fn debug_port_stop(&self, interface: &mut dyn DapProbe) -> Result<(), ArmError> {
+        // Select Bank 0
+        interface.raw_write_register(PortType::DebugPort, Select::ADDRESS, 0)?;
+
+        // De-assert debug power request
+        interface.raw_write_register(PortType::DebugPort, Ctrl::ADDRESS, 0)?;
+
+        Ok(())
+    }
+
     /// Perform a SWD line reset or enter the JTAG Run-Test-Idle state, and then try to connect to a debug port.
     ///
     /// This is executed as part of the standard `debug_port_setup` sequence,
@@ -820,6 +839,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     /// done after the line reset, followed by a read of the `DPIDR` register.
     ///
     /// This is not based on a sequence from the Open-CMSIS-Pack standard.
+    #[tracing::instrument(level = "debug", skip_all)]
     fn debug_port_connect(
         &self,
         interface: &mut dyn DapProbe,
@@ -831,7 +851,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
                 return Ok(());
             }
             Some(WireProtocol::Swd) => {
-                tracing::debug!("SWD: Connecting to debug port with address {:?}", dp);
+                tracing::debug!("SWD: Connecting to debug port with address {:x?}", dp);
             }
             None => {
                 return Err(ArmDebugSequenceError::SequenceSpecific(
@@ -841,12 +861,14 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
             }
         }
 
-        // Enter SWD Line Reset State
-        swd_line_reset(interface)?;
-        interface.swj_sequence(3, 0x00)?; // At least 2 idle cycles (SWDIO/TMS Low)
+        // Enter SWD Line Reset State, afterwards at least 2 idle cycles (SWDIO/TMS Low)
+
+        swd_line_reset(interface, 3)?;
 
         // If multidrop is used, we now have to select a target
         if let DpAddress::Multidrop(targetsel) = dp {
+            // Deselect other debug ports first?
+
             tracing::debug!("Writing targetsel {:#x}", targetsel);
             // TARGETSEL write.
             // The TARGETSEL write is not ACKed by design. We can't use a normal register write
@@ -861,6 +883,8 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
                 .map_err(DebugProbeError::from)?;
         }
 
+        tracing::debug!("Reading DPIDR to enable SWD interface");
+
         // Read DPIDR to enable SWD interface.
         let dpidr = interface.raw_read_register(PortType::DebugPort, DPIDR::ADDRESS)?;
 
@@ -873,10 +897,45 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         abort.set_stkerrclr(true);
         abort.set_stkcmpclr(true);
 
+        // DPBANKSEL does not matter for ABORT
         interface.raw_write_register(PortType::DebugPort, Abort::ADDRESS, abort.0)?;
+        interface.raw_flush()?;
 
+        // Check that we are connected to the right DP
+
+        if let DpAddress::Multidrop(targetsel) = dp {
+            tracing::debug!("Checking TARGETID and DLPIDR match");
+            // Select DP Bank 2
+            interface.raw_write_register(PortType::DebugPort, Select::ADDRESS, 2)?;
+
+            let target_id =
+                interface.raw_read_register(PortType::DebugPort, TARGETID::ADDRESS & 0xf)?;
+
+            // Select DP Bank 3
+            interface.raw_write_register(PortType::DebugPort, Select::ADDRESS, 3)?;
+            let dlpidr = interface.raw_read_register(PortType::DebugPort, DLPIDR::ADDRESS & 0xf)?;
+
+            const TARGETID_MASK: u32 = 0x0FFF_FFFF;
+            const DLPIDR_MASK: u32 = 0xF000_0000;
+
+            let targetid_match = (target_id & TARGETID_MASK) == (targetsel & TARGETID_MASK);
+            let dlpdir_match = (dlpidr & DLPIDR_MASK) == (targetsel & DLPIDR_MASK);
+
+            if !(targetid_match && dlpdir_match) {
+                tracing::warn!(
+                    "Target ID and DLPIDR do not match, failed to select debug port. Target ID: {:#x?}, DLPIDR: {:#x?}",
+                    target_id,
+                    dlpidr
+                );
+                return Err(ArmError::Other(anyhow::anyhow!(
+                    "Target ID and DLPIDR do not match, failed to select debug port"
+                )));
+            }
+        }
+
+        interface.raw_write_register(PortType::DebugPort, Select::ADDRESS, 0)?;
         let ctrl_stat = interface
-            .raw_read_register(PortType::DebugPort, Ctrl::ADDRESS)
+            .raw_read_register(PortType::DebugPort, Ctrl::ADDRESS & 0xf)
             .map(Ctrl);
 
         match ctrl_stat {
@@ -911,17 +970,21 @@ pub trait DebugEraseSequence: Send + Sync {
     /// Some devices require the probe to be disconnected and re-attached after a successful chip-erase in
     /// which case it will return `Error::Probe(DebugProbeError::ReAttachRequired)`
     fn erase_all(&self, _interface: &mut dyn ArmProbeInterface) -> Result<(), ArmError> {
-        Err(
-            DebugProbeError::NotImplemented("Debug erase sequence is not available on this device")
-                .into(),
-        )
+        Err(DebugProbeError::NotImplemented {
+            function_name: "erase_all",
+        }
+        .into())
     }
 }
 
 /// Perform a SWD line reset (SWDIO high for 50 clock cycles)
-fn swd_line_reset(interface: &mut dyn DapProbe) -> Result<(), ArmError> {
+///
+/// After the line reset, SWDIO will be kept low for `swdio_low_cycles` cycles.
+fn swd_line_reset(interface: &mut dyn DapProbe, swdio_low_cycles: u8) -> Result<(), ArmError> {
+    assert!(swdio_low_cycles + 51 <= 64);
+
     tracing::debug!("Performing SWD line reset");
-    interface.swj_sequence(51, 0x0007_FFFF_FFFF_FFFF)?;
+    interface.swj_sequence(51 + swdio_low_cycles, 0x0007_FFFF_FFFF_FFFF)?;
 
     Ok(())
 }

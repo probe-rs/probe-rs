@@ -343,7 +343,9 @@ impl DebugProbe for FakeProbe {
 
     /// Resets the target device.
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
-        Err(DebugProbeError::CommandNotSupportedByProbe("target_reset"))
+        Err(DebugProbeError::CommandNotSupportedByProbe {
+            command_name: "target_reset",
+        })
     }
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
@@ -451,14 +453,14 @@ impl UninitializedArmProbe for FakeArmInterface<Uninitialized> {
     fn initialize(
         self: Box<Self>,
         sequence: Arc<dyn ArmDebugSequence>,
-        _dp: DpAddress,
+        dp: DpAddress,
     ) -> Result<Box<dyn ArmProbeInterface>, (Box<dyn UninitializedArmProbe>, Error)> {
         // TODO: Do we need this?
         // sequence.debug_port_setup(&mut self.probe)?;
 
         let interface = FakeArmInterface::<Initialized> {
             probe: self.probe,
-            state: Initialized::new(sequence, false),
+            state: Initialized::new(sequence, dp, false),
         };
 
         Ok(Box::new(interface))
@@ -518,7 +520,7 @@ impl ArmProbeInterface for FakeArmInterface<Initialized> {
     }
 
     fn current_debug_port(&self) -> DpAddress {
-        self.state.current_dp.expect("A DpAddress is selected")
+        self.state.current_dp
     }
 }
 

@@ -69,7 +69,7 @@ variants:
         cores:
           - cm33_core0
           # - cm33_core1
-      - !Generic
+      - !Nvm
         name: PROGRAM_FLASH_alias
         range:
           start: 0x10000000
@@ -184,7 +184,7 @@ variants:
         cores:
           - cm33_core0
           # - cm33_core1
-      - !Generic
+      - !Nvm
         name: PROGRAM_FLASH_alias
         range:
           start: 0x10000000
@@ -299,7 +299,7 @@ variants:
         cores:
           - cm33_core0
           # - cm33_core1
-      - !Generic
+      - !Nvm
         name: PROGRAM_FLASH_alias
         range:
           start: 0x10000000
@@ -373,7 +373,6 @@ flash_algorithms:
       sectors:
         - size: 0x200
           address: 0x0
-    stack_size: 4096
   - name: lpc55xx_s_640
     description: LPC55xx S IAP 630kB Flash
     default: true
@@ -396,4 +395,3 @@ flash_algorithms:
       sectors:
         - size: 0x200
           address: 0x0
-    stack_size: 4096

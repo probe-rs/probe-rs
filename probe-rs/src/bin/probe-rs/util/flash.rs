@@ -9,10 +9,9 @@ use std::{path::Path, time::Instant};
 
 use colored::Colorize;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
+use probe_rs::InstructionSet;
 use probe_rs::{
-    flashing::{
-        DownloadOptions, FileDownloadError, FlashLoader, FlashProgress, Format, ProgressEvent,
-    },
+    flashing::{DownloadOptions, FileDownloadError, FlashLoader, FlashProgress, ProgressEvent},
     Session,
 };
 
@@ -29,7 +28,7 @@ fn init_progress_bar(bar: &ProgressBar) {
 /// This function also manages the update and display of progress bars.
 pub fn run_flash_download(
     session: &mut Session,
-    path: &Path,
+    path: impl AsRef<Path>,
     download_options: &BinaryDownloadOptions,
     probe_options: &LoadedProbeOptions,
     loader: FlashLoader,
@@ -150,7 +149,7 @@ pub fn run_flash_download(
             source: error,
             target: Box::new(session.target().clone()),
             target_spec: probe_options.chip(),
-            path: path.to_path_buf(),
+            path: path.as_ref().to_path_buf(),
         })?;
 
     // If we don't do this, the progress bars disappear.
@@ -174,6 +173,7 @@ pub fn build_loader(
     session: &mut Session,
     path: impl AsRef<Path>,
     format_options: FormatOptions,
+    image_instruction_set: Option<InstructionSet>,
 ) -> anyhow::Result<FlashLoader> {
     // Create the flash loader
     let mut loader = session.target().flash_loader();
@@ -185,13 +185,7 @@ pub fn build_loader(
     };
 
     let format = format_options.into_format(session.target())?;
-    match format {
-        Format::Bin(options) => loader.load_bin_data(&mut file, options),
-        Format::Elf => loader.load_elf_data(&mut file),
-        Format::Hex => loader.load_hex_data(&mut file),
-        Format::Idf(options) => loader.load_idf_data(session, &mut file, options),
-        Format::Uf2 => loader.load_uf2_data(&mut file),
-    }?;
+    loader.load_image(session, &mut file, format, image_instruction_set)?;
 
     Ok(loader)
 }

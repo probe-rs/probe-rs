@@ -19,13 +19,11 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
 
-      - uses: ./.github/actions/setup
-        with:
-          targets:
-            aarch64-unknown-linux-gnu
+      - name: Install target for cross-compilation
+        run: rustup target add aarch64-unknown-linux-gnu
 
       - name: Install cross 
-        uses: taiki-e/install-action@v2.28.4
+        uses: taiki-e/install-action@v2.32.17
         with:
           tool: cross
 

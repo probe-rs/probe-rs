@@ -866,7 +866,7 @@ fn line_reset<P: RawProtocolIo + JTAGAccess + RawDapAccess>(this: &mut P) -> Res
         //
         // The `raw_read_register` function cannot be called here, because that function can call `line_reset` again,
         // resulting in an endless loop.
-        let mut transfers = [DapTransfer::read(PortType::DebugPort, 0)];
+        let mut transfers = [DapTransfer::read(PortType::DebugPort, DPIDR::ADDRESS)];
 
         perform_transfers(this, &mut transfers, idle_cycles)?;
 
@@ -889,6 +889,8 @@ fn line_reset<P: RawProtocolIo + JTAGAccess + RawDapAccess>(this: &mut P) -> Res
 
 impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for Probe {
     fn raw_read_register(&mut self, port: PortType, address: u8) -> Result<u32, ArmError> {
+        assert!(address < 0x10, "Invalid register address {:#x}", address);
+
         let dap_wait_retries = self.swd_settings().num_retries_after_wait;
         let mut idle_cycles = std::cmp::max(1, self.swd_settings().num_idle_cycles_between_writes);
 
@@ -943,6 +945,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                     // this could end up being an endless recursion.
 
                     if address != Ctrl::ADDRESS {
+                        // TODO: This should write SELECT first
                         let response = RawDapAccess::raw_read_register(
                             self,
                             PortType::DebugPort,
@@ -950,7 +953,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                         )?;
                         let ctrl = Ctrl::try_from(response)?;
                         tracing::warn!(
-                            "Reading DAP register failed. Ctrl/Stat register value is: {:#?}",
+                            "Reading DAP register {address:#X} failed. Ctrl/Stat register value is: {:#?}",
                             ctrl
                         );
 
@@ -989,7 +992,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                     // Because we clock the SWDCLK line after receving the WAIT response,
                     // the target might be in weird state. If we perform a line reset,
                     // we should be able to recover from this.
-                    line_reset(self)?;
+                    // line_reset(self, dp)?;
 
                     // Retry operation again
                     continue;
@@ -1073,12 +1076,14 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
         Ok(())
     }
 
+    #[tracing::instrument(level = "debug", skip(self))]
     fn raw_write_register(
         &mut self,
         port: PortType,
         address: u8,
         value: u32,
     ) -> Result<(), ArmError> {
+        assert!(address < 0x10, "Invalid register address {:#x}", address);
         let dap_wait_retries = self.swd_settings().num_retries_after_wait;
         let mut idle_cycles = std::cmp::max(1, self.swd_settings().num_idle_cycles_between_writes);
 
@@ -1134,7 +1139,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
 
                     let ctrl = Ctrl::try_from(response)?;
                     tracing::warn!(
-                        "Writing DAP register failed. Ctrl/Stat register value is: {:#?}",
+                        "Writing DAP register {address:#X} failed. Ctrl/Stat register value is: {:#?}",
                         ctrl
                     );
 
@@ -1627,7 +1632,9 @@ mod test {
             _pin_select: u32,
             _pin_wait: u32,
         ) -> Result<u32, DebugProbeError> {
-            Err(DebugProbeError::CommandNotSupportedByProbe("swj_pins"))
+            Err(DebugProbeError::CommandNotSupportedByProbe {
+                command_name: "swj_pins",
+            })
         }
 
         fn swd_settings(&self) -> &SwdSettings {

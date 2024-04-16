@@ -26,9 +26,8 @@ probe-rs = { path = "probe-rs", version = "0.23.0" }
 probe-rs-target = { path = "probe-rs-target", version = "0.23.0" }
 
 docsplay = "0.1.1"
-pretty_env_logger = "0.5"
-thiserror = "1"
-anyhow = "1"
+thiserror = "1.0.58"
+anyhow = "1.0.82"
 
 [workspace.metadata.release]
 shared-version = true
@@ -38,8 +37,6 @@ tag-name = "v{{version}}"
 [workspace.metadata.dist]
 # The preferred cargo-dist version to use in CI (Cargo.toml SemVer syntax)
 cargo-dist-version = "0.11.1"
-# The preferred Rust toolchain to use in CI (rustup toolchain syntax)
-rust-toolchain-version = "1.74.0"
 # CI backends to support
 ci = ["github"]
 # Target platforms to build apps for (Rust target-triple syntax)

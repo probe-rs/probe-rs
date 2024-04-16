@@ -3,43 +3,62 @@ use defmt_decoder::log::format::{Formatter, FormatterConfig, FormatterFormat};
 use defmt_decoder::DecodeError;
 pub use probe_rs::rtt::ChannelMode;
 use probe_rs::rtt::{DownChannel, Error, Rtt, ScanRegion, UpChannel};
-use probe_rs::Core;
+use probe_rs::{Core, Session};
 use probe_rs_target::MemoryRegion;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::File;
+use std::path::PathBuf;
+use std::time::{Duration, Instant};
 use std::{
     fmt,
     fmt::Write,
-    fs,
     io::{Read, Seek},
     path::Path,
+    thread,
 };
 use time::{macros::format_description, OffsetDateTime, UtcOffset};
+
+/// Infer the target core from the RTT symbol. Useful for multi-core targets.
+pub fn get_target_core_id(session: &mut Session, elf_file: impl AsRef<Path>) -> usize {
+    let maybe_core_id = || {
+        let mut file = File::open(elf_file).ok()?;
+        let address = RttActiveTarget::get_rtt_symbol(&mut file)?;
+
+        tracing::debug!("RTT symbol found at 0x{:08x}", address);
+
+        let target_memory = session
+            .target()
+            .memory_map
+            .iter()
+            .filter_map(MemoryRegion::as_ram_region)
+            .find(|region| region.range.contains(&address))?;
+
+        tracing::debug!("RTT symbol is in RAM region {:?}", target_memory.name);
+
+        let core_name = target_memory.cores.first()?;
+        let core_id = session
+            .target()
+            .cores
+            .iter()
+            .position(|core| core.name == *core_name)?;
+
+        tracing::debug!("RTT symbol is in core {}", core_id);
+
+        Some(core_id)
+    };
+    maybe_core_id().unwrap_or(0)
+}
 
 /// Try to find the RTT control block in the ELF file and attach to it.
 ///
 /// This function can return `Ok(None)` to indicate that RTT is not available on the target.
-pub fn attach_to_rtt(
+fn attach_to_rtt(
     core: &mut Core,
     memory_map: &[MemoryRegion],
     rtt_region: &ScanRegion,
-    elf_file: &Path,
 ) -> Result<Option<Rtt>> {
-    // Try to find the RTT control block symbol in the ELF file.
-
-    // If we find it, we can use the exact address to attach to the RTT control block. Otherwise, we
-    // fall back to the caller-provided scan regions.
-    let exact_rtt_region;
-    let mut rtt_region = rtt_region;
-
-    let mut file = File::open(elf_file)?;
-    if let Some(address) = RttActiveTarget::get_rtt_symbol(&mut file) {
-        exact_rtt_region = ScanRegion::Exact(address as u32);
-        rtt_region = &exact_rtt_region;
-    }
-
-    tracing::info!("Initializing RTT");
+    tracing::debug!("Initializing RTT");
 
     if let ScanRegion::Ranges(rngs) = &rtt_region {
         if rngs.is_empty() {
@@ -108,6 +127,10 @@ pub struct RttChannelConfig {
     #[serde(default)]
     pub data_format: DataFormat,
 
+    /// RTT channel operating mode. Defaults to the target's configuration.
+    #[serde(default)]
+    pub mode: Option<ChannelMode>,
+
     #[serde(default)]
     /// Control the inclusion of timestamps for DataFormat::String.
     pub show_timestamps: bool,
@@ -132,7 +155,7 @@ pub struct RttDownChannelConfig {
     pub operating_mode: Option<String>,
 }
 
-pub enum ChannelDataConfig {
+pub enum ChannelDataFormat {
     String {
         /// UTC offset used for creating timestamps, if enabled.
         ///
@@ -144,23 +167,25 @@ pub enum ChannelDataConfig {
     BinaryLE,
     Defmt {
         formatter: Formatter,
+        // CWD to strip from file paths in defmt output
+        cwd: PathBuf,
     },
 }
 
-impl From<&ChannelDataConfig> for DataFormat {
-    fn from(config: &ChannelDataConfig) -> Self {
+impl From<&ChannelDataFormat> for DataFormat {
+    fn from(config: &ChannelDataFormat) -> Self {
         match config {
-            ChannelDataConfig::String { .. } => DataFormat::String,
-            ChannelDataConfig::BinaryLE => DataFormat::BinaryLE,
-            ChannelDataConfig::Defmt { .. } => DataFormat::Defmt,
+            ChannelDataFormat::String { .. } => DataFormat::String,
+            ChannelDataFormat::BinaryLE => DataFormat::BinaryLE,
+            ChannelDataFormat::Defmt { .. } => DataFormat::Defmt,
         }
     }
 }
 
-impl std::fmt::Debug for ChannelDataConfig {
+impl std::fmt::Debug for ChannelDataFormat {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ChannelDataConfig::String {
+            ChannelDataFormat::String {
                 timestamp_offset,
                 last_line_done,
             } => f
@@ -168,9 +193,133 @@ impl std::fmt::Debug for ChannelDataConfig {
                 .field("timestamp_offset", timestamp_offset)
                 .field("last_line_done", last_line_done)
                 .finish(),
-            ChannelDataConfig::BinaryLE => f.debug_struct("BinaryLE").finish(),
-            ChannelDataConfig::Defmt { .. } => f.debug_struct("Defmt").finish_non_exhaustive(),
+            ChannelDataFormat::BinaryLE => f.debug_struct("BinaryLE").finish(),
+            ChannelDataFormat::Defmt { .. } => f.debug_struct("Defmt").finish_non_exhaustive(),
         }
+    }
+}
+
+impl ChannelDataFormat {
+    /// Returns whether the channel is expected to output binary data (`true`)
+    /// or human-readable strings (`false`).
+    pub fn is_binary(&self) -> bool {
+        matches!(self, ChannelDataFormat::BinaryLE)
+    }
+
+    fn process(
+        &mut self,
+        number: usize,
+        buffer: &[u8],
+        defmt_state: Option<&DefmtState>,
+        collector: &mut impl ChannelDataCallbacks,
+    ) -> Result<()> {
+        // FIXME: clean this up by splitting the enum variants out into separate structs
+        match self {
+            ChannelDataFormat::BinaryLE => collector.on_binary_data(number, buffer),
+            ChannelDataFormat::String {
+                timestamp_offset,
+                ref mut last_line_done,
+            } => {
+                let string = Self::process_string(buffer, *timestamp_offset, last_line_done)?;
+                collector.on_string_data(number, string)
+            }
+            ChannelDataFormat::Defmt {
+                ref formatter,
+                ref cwd,
+            } => {
+                let string = Self::process_defmt(buffer, defmt_state, formatter, cwd)?;
+                collector.on_string_data(number, string)
+            }
+        }
+    }
+
+    fn process_string(
+        buffer: &[u8],
+        offset: Option<UtcOffset>,
+        last_line_done: &mut bool,
+    ) -> Result<String> {
+        let incoming = String::from_utf8_lossy(buffer);
+
+        let Some(offset) = offset else {
+            return Ok(incoming.to_string());
+        };
+
+        let timestamp = OffsetDateTime::now_utc()
+            .to_offset(offset)
+            .format(format_description!(
+                "[hour repr:24]:[minute]:[second].[subsecond digits:3]"
+            ))?;
+
+        let mut formatted_data = String::new();
+        for line in incoming.split_inclusive('\n') {
+            if *last_line_done {
+                write!(formatted_data, "{timestamp}: ").expect("Writing to String cannot fail");
+            }
+            write!(formatted_data, "{line}").expect("Writing to String cannot fail");
+            *last_line_done = line.ends_with('\n');
+        }
+        Ok(formatted_data)
+    }
+
+    fn process_defmt(
+        buffer: &[u8],
+        defmt_state: Option<&DefmtState>,
+        formatter: &Formatter,
+        cwd: &Path,
+    ) -> Result<String> {
+        let Some(DefmtState { table, locs }) = defmt_state else {
+            return Ok(String::from(
+                "Trying to process defmt data but table or locations could not be loaded.\n",
+            ));
+        };
+
+        let mut stream_decoder = table.new_stream_decoder();
+
+        // FIXME: this assumes we read frames atomically which is implementation-defined and we
+        // should be able to handle the case where a frame is split across two reads with a
+        // temporary buffer.
+        stream_decoder.received(buffer);
+
+        let mut formatted_data = String::new();
+        loop {
+            match stream_decoder.decode() {
+                Ok(frame) => {
+                    let loc = locs.as_ref().and_then(|locs| locs.get(&frame.index()));
+                    let (file, line, module) = if let Some(loc) = loc {
+                        let relpath = loc.file.strip_prefix(cwd).unwrap_or(&loc.file);
+                        (
+                            relpath.display().to_string(),
+                            Some(loc.line.try_into().unwrap()),
+                            Some(loc.module.as_str()),
+                        )
+                    } else {
+                        (
+                            format!(
+                                "└─ <invalid location: defmt frame-index: {}>",
+                                frame.index()
+                            ),
+                            None,
+                            None,
+                        )
+                    };
+                    let s = formatter.format_frame(frame, Some(&file), line, module);
+                    writeln!(formatted_data, "{s}").expect("Writing to String cannot fail");
+                }
+                Err(DecodeError::UnexpectedEof) => break,
+                Err(DecodeError::Malformed) if table.encoding().can_recover() => {
+                    // If recovery is possible, skip the current frame and continue with new data.
+                }
+                Err(DecodeError::Malformed) => {
+                    return Err(anyhow!(
+                        "Unrecoverable error while decoding Defmt \
+                        data and some data may have been lost: {:?}",
+                        DecodeError::Malformed
+                    ));
+                }
+            }
+        }
+
+        Ok(formatted_data)
     }
 }
 
@@ -191,27 +340,28 @@ pub trait ChannelDataCallbacks {
 pub struct RttActiveUpChannel {
     pub up_channel: UpChannel,
     pub channel_name: String,
-    pub data_format: ChannelDataConfig,
+    pub data_format: ChannelDataFormat,
     rtt_buffer: RttBuffer,
 }
 
 impl RttActiveUpChannel {
     pub fn new(
+        core: &mut Core,
         up_channel: UpChannel,
         rtt_config: &RttConfig,
         channel_config: &RttChannelConfig,
         timestamp_offset: UtcOffset,
         defmt_state: Option<&DefmtState>,
-    ) -> Self {
+    ) -> Result<Self> {
         let is_defmt_channel = up_channel.name() == Some("defmt");
 
         let data_format = match channel_config.data_format {
-            DataFormat::String if !is_defmt_channel => ChannelDataConfig::String {
+            DataFormat::String if !is_defmt_channel => ChannelDataFormat::String {
                 timestamp_offset: channel_config.show_timestamps.then_some(timestamp_offset),
                 last_line_done: true,
             },
 
-            DataFormat::BinaryLE if !is_defmt_channel => ChannelDataConfig::BinaryLE,
+            DataFormat::BinaryLE if !is_defmt_channel => ChannelDataFormat::BinaryLE,
 
             // either DataFormat::Defmt is configured, or defmt_enabled is true
             _ => {
@@ -238,11 +388,12 @@ impl RttActiveUpChannel {
                     }
                 };
 
-                ChannelDataConfig::Defmt {
+                ChannelDataFormat::Defmt {
                     formatter: Formatter::new(FormatterConfig {
                         format,
                         is_timestamp_available: has_timestamp,
                     }),
+                    cwd: std::env::current_dir().unwrap(),
                 }
             }
         };
@@ -259,12 +410,23 @@ impl RttActiveUpChannel {
                 )
             });
 
-        Self {
+        if let Some(mode) = channel_config.mode.or(
+            // Try not to corrupt the byte stream if using defmt
+            if matches!(data_format, ChannelDataFormat::Defmt { .. }) {
+                Some(ChannelMode::BlockIfFull)
+            } else {
+                None
+            },
+        ) {
+            up_channel.set_mode(core, mode)?;
+        }
+
+        Ok(Self {
             rtt_buffer: RttBuffer::new(up_channel.buffer_size()),
             up_channel,
             channel_name,
             data_format,
-        }
+        })
     }
 
     pub fn number(&self) -> usize {
@@ -307,114 +469,8 @@ impl RttActiveUpChannel {
 
         let buffer = &self.rtt_buffer.0[..bytes_read];
 
-        match self.data_format {
-            ChannelDataConfig::BinaryLE => collector.on_binary_data(self.number(), buffer),
-            ChannelDataConfig::String {
-                timestamp_offset,
-                ref mut last_line_done,
-            } => {
-                let string = Self::process_string(buffer, timestamp_offset, last_line_done)?;
-                collector.on_string_data(self.number(), string)
-            }
-            ChannelDataConfig::Defmt { ref formatter } => {
-                let string = self.process_defmt(buffer, defmt_state, formatter)?;
-                collector.on_string_data(self.number(), string)
-            }
-        }
-    }
-
-    fn process_string(
-        buffer: &[u8],
-        offset: Option<UtcOffset>,
-        last_line_done: &mut bool,
-    ) -> Result<String> {
-        let incoming = String::from_utf8_lossy(buffer);
-
-        let Some(offset) = offset else {
-            return Ok(incoming.to_string());
-        };
-
-        let timestamp = OffsetDateTime::now_utc()
-            .to_offset(offset)
-            .format(format_description!(
-                "[hour repr:24]:[minute]:[second].[subsecond digits:3]"
-            ))?;
-
-        let mut formatted_data = String::new();
-        for line in incoming.split_inclusive('\n') {
-            if *last_line_done {
-                write!(formatted_data, "{timestamp}: ").expect("Writing to String cannot fail");
-            }
-            write!(formatted_data, "{line}").expect("Writing to String cannot fail");
-            *last_line_done = line.ends_with('\n');
-        }
-        Ok(formatted_data)
-    }
-
-    fn process_defmt(
-        &self,
-        buffer: &[u8],
-        defmt_state: Option<&DefmtState>,
-        formatter: &Formatter,
-    ) -> Result<String> {
-        let Some(DefmtState { table, locs }) = defmt_state else {
-            return Ok(String::from(
-                "Trying to process defmt data but table or locations could not be loaded.\n",
-            ));
-        };
-
-        let mut stream_decoder = table.new_stream_decoder();
-        stream_decoder.received(buffer);
-        let current_dir = std::env::current_dir().unwrap();
-
-        let mut formatted_data = String::new();
-        loop {
-            match stream_decoder.decode() {
-                Ok(frame) => {
-                    let loc = locs.as_ref().and_then(|locs| locs.get(&frame.index()));
-                    let (file, line, module) = if let Some(loc) = loc {
-                        let relpath = loc.file.strip_prefix(&current_dir).unwrap_or(&loc.file);
-                        (
-                            relpath.display().to_string(),
-                            Some(loc.line.try_into().unwrap()),
-                            Some(loc.module.as_str()),
-                        )
-                    } else {
-                        (
-                            format!(
-                                "└─ <invalid location: defmt frame-index: {}>",
-                                frame.index()
-                            ),
-                            None,
-                            None,
-                        )
-                    };
-                    let s = formatter.format_frame(frame, Some(&file), line, module);
-                    writeln!(formatted_data, "{s}").expect("Writing to String cannot fail");
-                }
-                Err(DecodeError::UnexpectedEof) => break,
-                Err(DecodeError::Malformed) if table.encoding().can_recover() => {
-                    // If recovery is possible, skip the current frame and continue with new data.
-                }
-                Err(DecodeError::Malformed) => {
-                    return Err(anyhow!(
-                        "Unrecoverable error while decoding Defmt \
-                        data and some data may have been lost: {:?}",
-                        DecodeError::Malformed
-                    ));
-                }
-            }
-        }
-
-        Ok(formatted_data)
-    }
-
-    pub(crate) fn set_mode(
-        &self,
-        core: &mut Core<'_>,
-        block_if_full: ChannelMode,
-    ) -> Result<(), Error> {
-        self.up_channel.set_mode(core, block_if_full)
+        self.data_format
+            .process(self.number(), buffer, defmt_state, collector)
     }
 }
 
@@ -462,17 +518,10 @@ pub struct DefmtState {
     pub locs: Option<defmt_decoder::Locations>,
 }
 impl DefmtState {
-    pub fn try_from_elf(elf: &Path) -> Result<Option<Self>> {
-        let elf = fs::read(elf).map_err(|err| {
-            anyhow!(
-                "Error reading program binary while initalizing RTT: {}",
-                err
-            )
-        })?;
-
-        if let Some(table) = defmt_decoder::Table::parse(&elf)? {
+    pub fn try_from_bytes(buffer: &[u8]) -> Result<Option<Self>> {
+        if let Some(table) = defmt_decoder::Table::parse(buffer)? {
             let locs = {
-                let locs = table.get_locations(&elf)?;
+                let locs = table.get_locations(buffer)?;
 
                 if !table.is_empty() && locs.is_empty() {
                     tracing::warn!("Insufficient DWARF info; compile your program with `debug = 2` to enable location info.");
@@ -502,13 +551,12 @@ impl fmt::Debug for DefmtState {
 impl RttActiveTarget {
     /// RttActiveTarget collects references to all the `RttActiveChannel`s, for latter polling/pushing of data.
     pub fn new(
+        core: &mut Core,
         rtt: probe_rs::rtt::Rtt,
-        elf_file: &Path,
+        defmt_state: Option<DefmtState>,
         rtt_config: &RttConfig,
         timestamp_offset: UtcOffset,
     ) -> Result<Self> {
-        let defmt_state = DefmtState::try_from_elf(elf_file)?;
-
         let mut active_up_channels = HashMap::new();
         let mut active_down_channels = HashMap::new();
 
@@ -521,12 +569,13 @@ impl RttActiveTarget {
             active_up_channels.insert(
                 channel.number(),
                 RttActiveUpChannel::new(
+                    core,
                     channel,
                     rtt_config,
                     &channel_config,
                     timestamp_offset,
                     defmt_state.as_ref(),
-                ),
+                )?,
             );
         }
 
@@ -558,18 +607,26 @@ impl RttActiveTarget {
     pub fn get_rtt_symbol<T: Read + Seek>(file: &mut T) -> Option<u64> {
         let mut buffer = Vec::new();
         if file.read_to_end(&mut buffer).is_ok() {
-            if let Ok(binary) = goblin::elf::Elf::parse(buffer.as_slice()) {
-                for sym in &binary.syms {
-                    if binary.strtab.get_at(sym.st_name) == Some("_SEGGER_RTT") {
-                        return Some(sym.st_value);
-                    }
-                }
+            if let Some(rtt) = Self::get_rtt_symbol_from_bytes(buffer.as_slice()) {
+                return Some(rtt);
             }
         }
 
         tracing::warn!(
             "No RTT header info was present in the ELF file. Does your firmware run RTT?"
         );
+        None
+    }
+
+    pub fn get_rtt_symbol_from_bytes(buffer: &[u8]) -> Option<u64> {
+        if let Ok(binary) = goblin::elf::Elf::parse(buffer) {
+            for sym in &binary.syms {
+                if binary.strtab.get_at(sym.st_name) == Some("_SEGGER_RTT") {
+                    return Some(sym.st_value);
+                }
+            }
+        }
+
         None
     }
 
@@ -601,4 +658,73 @@ impl fmt::Debug for RttBuffer {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.0.fmt(f)
     }
+}
+
+fn try_attach_to_rtt_inner(
+    mut attach: impl FnMut(&[MemoryRegion], &ScanRegion) -> Result<Option<Rtt>>,
+    timeout: Duration,
+    memory_map: &[MemoryRegion],
+    rtt_region: &ScanRegion,
+) -> Result<Option<Rtt>> {
+    let t = Instant::now();
+    let mut rtt_init_attempt = 1;
+    let mut last_error = None;
+    while t.elapsed() < timeout {
+        tracing::debug!("Initializing RTT (attempt {})...", rtt_init_attempt);
+        rtt_init_attempt += 1;
+
+        match attach(memory_map, rtt_region) {
+            Ok(rtt) => return Ok(rtt),
+            Err(e) => last_error = Some(e),
+        }
+
+        tracing::debug!("Failed to initialize RTT. Retrying until timeout.");
+        thread::sleep(Duration::from_millis(10));
+    }
+
+    // Timeout
+    if let Some(err) = last_error {
+        Err(err)
+    } else {
+        Err(anyhow!("Error setting up RTT"))
+    }
+}
+
+// TODO: these should be part of the library, but that requires refactoring the errors to not use
+// anyhow. Also, we probably should only have one variant of this function and pass the closure
+// in as an argument.
+
+/// Try to attach to RTT, with the given timeout.
+pub fn try_attach_to_rtt(
+    core: &mut Core<'_>,
+    timeout: Duration,
+    memory_map: &[MemoryRegion],
+    rtt_region: &ScanRegion,
+) -> Result<Option<Rtt>> {
+    try_attach_to_rtt_inner(
+        |memory_map, rtt_region| attach_to_rtt(core, memory_map, rtt_region),
+        timeout,
+        memory_map,
+        rtt_region,
+    )
+}
+
+/// Try to attach to RTT, with the given timeout.
+pub fn try_attach_to_rtt_shared(
+    session: &parking_lot::FairMutex<Session>,
+    core_id: usize,
+    memory_map: &[MemoryRegion],
+    timeout: Duration,
+    rtt_region: &ScanRegion,
+) -> Result<Option<Rtt>> {
+    try_attach_to_rtt_inner(
+        |memory_map, rtt_region| {
+            let mut session_handle = session.lock();
+            let mut core = session_handle.core(core_id)?;
+            attach_to_rtt(&mut core, memory_map, rtt_region)
+        },
+        timeout,
+        memory_map,
+        rtt_region,
+    )
 }

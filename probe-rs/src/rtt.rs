@@ -11,8 +11,7 @@
 //! ## Example
 //!
 //! ```no_run
-//! use std::sync::{Arc, Mutex};
-//! use probe_rs::probe::{list::Lister, Probe};
+//! use probe_rs::probe::list::Lister;
 //! use probe_rs::Permissions;
 //! use probe_rs::rtt::Rtt;
 //!
@@ -242,13 +241,8 @@ impl Rtt {
 
                 memory_map
                     .iter()
-                    .filter_map(|r| match r {
-                        MemoryRegion::Ram(r) => Some(Range {
-                            start: r.range.start,
-                            end: r.range.end,
-                        }),
-                        _ => None,
-                    })
+                    .filter_map(MemoryRegion::as_ram_region)
+                    .map(|r| r.range.clone())
                     .collect()
             }
             ScanRegion::Ranges(regions) => regions.clone(),
@@ -266,69 +260,45 @@ impl Rtt {
             .into_iter()
             .filter_map(|range| {
                 let range_len = match range.end.checked_sub(range.start) {
-                    Some(v) => if v < (Self::MIN_SIZE as u64) {
-                        return None;
-                    } else {
-                        v
-                    },
+                    Some(v) if v < Self::MIN_SIZE as u64 => return None,
+                    Some(v) => v,
                     None => return None,
                 };
 
-                let range_len_usize: usize = match range_len.try_into() {
-                    Ok(v) => v,
-                    Err(_) => {
-                        // FIXME: This is not ideal because it means that we
-                        // won't consider a >4GiB region if probe-rs is running
-                        // on a 32-bit host, but it would be relatively unusual
-                        // to use a 32-bit host to debug a 64-bit target.
-                        tracing::warn!("ignoring region of length {} because it is too long to buffer in host memory", range_len);
-                        return None;
-                    }
+                let Ok(range_len) = range_len.try_into() else {
+                    // FIXME: This is not ideal because it means that we
+                    // won't consider a >4GiB region if probe-rs is running
+                    // on a 32-bit host, but it would be relatively unusual
+                    // to use a 32-bit host to debug a 64-bit target.
+                    tracing::warn!("ignoring region of length {} because it is too long to buffer in host memory", range_len);
+                    return None;
                 };
 
-                let mut mem = vec![0; range_len_usize];
+                let mut mem = vec![0; range_len];
                 {
                     core.read(range.start, mem.as_mut()).ok()?;
                 }
 
-                match kmp::kmp_find(&Self::RTT_ID, mem.as_slice()) {
-                    Some(offset) => {
-                        let target_ptr = range.start + (offset as u64);
-                        let target_ptr: u32 = match target_ptr.try_into() {
-                            Ok(v) => v,
-                            Err(_) => {
-                                // FIXME: The RTT API currently supports only
-                                // 32-bit addresses, and so it can't accept
-                                // an RTT block at an address >4GiB.
-                                tracing::warn!("can't use RTT block at {:#010x}; must be at a location reachable by 32-bit addressing", target_ptr);
-                                return None;
-                            },
-                        };
+                let offset = mem.windows(Self::RTT_ID.len()).position(|w| w == Self::RTT_ID)?;
 
-                        Rtt::from(
-                            core,
-                            memory_map,
-                            target_ptr,
-                            Some(&mem[offset..]),
-                        )
-                        .transpose()
-                    },
-                    None => None,
-                }
+                let target_ptr = range.start + (offset as u64);
+                let Ok(target_ptr) = target_ptr.try_into() else {
+                    // FIXME: The RTT API currently supports only
+                    // 32-bit addresses, and so it can't accept
+                    // an RTT block at an address >4GiB.
+                    tracing::warn!("can't use RTT block at {:#010x}; must be at a location reachable by 32-bit addressing", target_ptr);
+                    return None;
+                };
+
+                Rtt::from(core, memory_map, target_ptr, Some(&mem[offset..])).transpose()
             })
             .collect::<Result<Vec<_>, _>>()?;
 
-        if instances.is_empty() {
-            return Err(Error::ControlBlockNotFound);
+        match instances.len() {
+            0 => Err(Error::ControlBlockNotFound),
+            1 => Ok(instances.remove(0)),
+            _ => Err(Error::MultipleControlBlocksFound(instances)),
         }
-
-        if instances.len() > 1 {
-            return Err(Error::MultipleControlBlocksFound(
-                instances.into_iter().map(|i| i.ptr).collect(),
-            ));
-        }
-
-        Ok(instances.remove(0))
     }
 
     /// Returns the memory address of the control block in target memory.
@@ -377,14 +347,14 @@ pub enum ScanRegion {
 #[derive(thiserror::Error, Debug, docsplay::Display)]
 pub enum Error {
     /// RTT control block not found in target memory.
-    /// - Make sure RTT is initialized on the target, AND that there are NO target breakpoints before RTT initalization.
+    /// - Make sure RTT is initialized on the target, AND that there are NO target breakpoints before RTT initialization.
     /// - For VSCode and probe-rs-debugger users, using `halt_after_reset:true` in your `launch.json` file will prevent RTT
     ///   initialization from happening on time.
     /// - Depending on the target, sleep modes can interfere with RTT.
     ControlBlockNotFound,
 
     /// Multiple control blocks found in target memory: {display_list(_0)}.
-    MultipleControlBlocksFound(Vec<u32>),
+    MultipleControlBlocksFound(Vec<Rtt>),
 
     /// The control block has been corrupted. {0}
     ControlBlockCorrupted(String),
@@ -399,21 +369,31 @@ pub enum Error {
     MemoryRead(String),
 }
 
-fn display_list(list: &[u32]) -> String {
+fn display_list(list: &[Rtt]) -> String {
     list.iter()
-        .map(|x| format!("{:#x}", x))
+        .map(|rtt| format!("{:#010X}", rtt.ptr))
         .collect::<Vec<_>>()
         .join(", ")
 }
 
 #[cfg(test)]
 mod test {
+    use super::*;
+
     #[test]
     fn test_how_control_block_list_looks() {
-        let error = super::Error::MultipleControlBlocksFound(vec![0x2000, 0x3000]);
+        fn rtt(ptr: u32) -> Rtt {
+            Rtt {
+                ptr,
+                up_channels: Channels(std::collections::BTreeMap::new()),
+                down_channels: Channels(std::collections::BTreeMap::new()),
+            }
+        }
+
+        let error = Error::MultipleControlBlocksFound(vec![rtt(0x2000), rtt(0x3000)]);
         assert_eq!(
             error.to_string(),
-            "Multiple control blocks found in target memory: 0x2000, 0x3000."
+            "Multiple control blocks found in target memory: 0x00002000, 0x00003000."
         );
     }
 }

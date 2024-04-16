@@ -19,7 +19,7 @@ use crate::{
     error::Error,
     memory::valid_32bit_address,
     probe::DebugProbeError,
-    CoreRegister, CoreType, InstructionSet, MemoryInterface,
+    BreakpointCause, CoreRegister, CoreType, InstructionSet, MemoryInterface,
 };
 use anyhow::{anyhow, Result};
 use bitfield::bitfield;
@@ -719,7 +719,14 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
             self.set_core_status(CoreStatus::Halted(reason));
 
             if let HaltReason::Breakpoint(_) = reason {
-                reason = super::cortex_m::check_for_semihosting(reason, self)?;
+                self.state.semihosting_command = super::cortex_m::check_for_semihosting(
+                    self.state.semihosting_command.take(),
+                    self,
+                )?;
+                if let Some(command) = self.state.semihosting_command {
+                    reason = HaltReason::Breakpoint(BreakpointCause::Semihosting(command));
+                }
+
                 // Set it again if it's changed
                 self.set_core_status(CoreStatus::Halted(reason));
             }
@@ -789,6 +796,8 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
     }
 
     fn reset(&mut self) -> Result<(), Error> {
+        self.state.semihosting_command = None;
+
         self.sequence
             .reset_system(&mut *self.memory, crate::CoreType::Armv7m, None)?;
         Ok(())
@@ -824,6 +833,8 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
     }
 
     fn step(&mut self) -> Result<CoreInformation, Error> {
+        self.state.semihosting_command = None;
+
         // First check if we stopped on a breakpoint, because this requires special handling before we can continue.
         let breakpoint_at_pc = if matches!(
             self.state.current_state,
@@ -911,9 +922,9 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
             Ok(reg.num_code())
         } else {
             tracing::warn!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", reg.rev());
-            Err(Error::Probe(DebugProbeError::CommandNotSupportedByProbe(
-                "get_available_breakpoint_units",
-            )))
+            Err(Error::Probe(DebugProbeError::CommandNotSupportedByProbe {
+                command_name: "get_available_breakpoint_units",
+            }))
         }
     }
 
@@ -1130,115 +1141,85 @@ impl<'probe> MemoryInterface for Armv7m<'probe> {
     }
 
     fn read_word_64(&mut self, address: u64) -> Result<u64, Error> {
-        self.memory
-            .read_word_64(address)
-            .map_err(From::<ArmError>::from)
+        self.memory.read_word_64(address).map_err(Error::from)
     }
 
     fn read_word_32(&mut self, address: u64) -> Result<u32, Error> {
-        self.memory
-            .read_word_32(address)
-            .map_err(From::<ArmError>::from)
+        self.memory.read_word_32(address).map_err(Error::from)
     }
 
     fn read_word_16(&mut self, address: u64) -> Result<u16, Error> {
-        self.memory
-            .read_word_16(address)
-            .map_err(From::<ArmError>::from)
+        self.memory.read_word_16(address).map_err(Error::from)
     }
 
     fn read_word_8(&mut self, address: u64) -> Result<u8, Error> {
-        self.memory
-            .read_word_8(address)
-            .map_err(From::<ArmError>::from)
+        self.memory.read_word_8(address).map_err(Error::from)
     }
 
     fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), Error> {
-        self.memory
-            .read_64(address, data)
-            .map_err(From::<ArmError>::from)
+        self.memory.read_64(address, data).map_err(Error::from)
     }
 
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
-        self.memory
-            .read_32(address, data)
-            .map_err(From::<ArmError>::from)
+        self.memory.read_32(address, data).map_err(Error::from)
     }
 
     fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), Error> {
-        self.memory
-            .read_16(address, data)
-            .map_err(From::<ArmError>::from)
+        self.memory.read_16(address, data).map_err(Error::from)
     }
 
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
-        self.memory
-            .read_8(address, data)
-            .map_err(From::<ArmError>::from)
+        self.memory.read_8(address, data).map_err(Error::from)
     }
 
     fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), Error> {
         self.memory
             .write_word_64(address, data)
-            .map_err(From::<ArmError>::from)
+            .map_err(Error::from)
     }
 
     fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
         self.memory
             .write_word_32(address, data)
-            .map_err(From::<ArmError>::from)
+            .map_err(Error::from)
     }
 
     fn write_word_16(&mut self, address: u64, data: u16) -> Result<(), Error> {
         self.memory
             .write_word_16(address, data)
-            .map_err(From::<ArmError>::from)
+            .map_err(Error::from)
     }
 
     fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
-        self.memory
-            .write_word_8(address, data)
-            .map_err(From::<ArmError>::from)
+        self.memory.write_word_8(address, data).map_err(Error::from)
     }
 
     fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), Error> {
-        self.memory
-            .write_64(address, data)
-            .map_err(From::<ArmError>::from)
+        self.memory.write_64(address, data).map_err(Error::from)
     }
 
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
-        self.memory
-            .write_32(address, data)
-            .map_err(From::<ArmError>::from)
+        self.memory.write_32(address, data).map_err(Error::from)
     }
 
     fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), Error> {
-        self.memory
-            .write_16(address, data)
-            .map_err(From::<ArmError>::from)
+        self.memory.write_16(address, data).map_err(Error::from)
     }
 
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
-        self.memory
-            .write_8(address, data)
-            .map_err(From::<ArmError>::from)
+        self.memory.write_8(address, data).map_err(Error::from)
     }
 
     fn write(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
-        self.memory
-            .write(address, data)
-            .map_err(From::<ArmError>::from)
+        self.memory.write(address, data).map_err(Error::from)
     }
 
     fn supports_8bit_transfers(&self) -> Result<bool, Error> {
-        self.memory
-            .supports_8bit_transfers()
-            .map_err(From::<ArmError>::from)
+        self.memory.supports_8bit_transfers().map_err(Error::from)
     }
 
     fn flush(&mut self) -> Result<(), Error> {
-        self.memory.flush().map_err(From::<ArmError>::from)
+        self.memory.flush().map_err(Error::from)
     }
 }
 

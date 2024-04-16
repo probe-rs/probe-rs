@@ -228,7 +228,7 @@ impl VariableCache {
             "VariableCache: Add Variable: key={:?}, parent={:?}, name={:?}",
             cache_variable.variable_key,
             cache_variable.parent_key,
-            &cache_variable.name
+            cache_variable.name
         );
 
         if let Some(old_variable) = self
@@ -245,10 +245,6 @@ impl VariableCache {
     ///
     /// This function does not update the value of the variable.
     pub fn update_variable(&mut self, cache_variable: &Variable) -> Result<(), Error> {
-        if cache_variable.variable_key == ObjectRef::Invalid {
-            return Err(anyhow!("Attempt to update an existing `Variable`:{:?} with a non-existent cache key: {:?}. Please report this as a bug.", cache_variable.name, cache_variable.variable_key).into());
-        }
-
         // Attempt to update an existing `Variable` in the cache
         tracing::trace!(
             "VariableCache: Update Variable, key={:?}, name={:?}",

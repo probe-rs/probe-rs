@@ -16,7 +16,7 @@ impl MultiThreadBase for RuntimeTarget<'_> {
         regs: &mut RuntimeRegisters,
         tid: Tid,
     ) -> gdbstub::target::TargetResult<(), Self> {
-        let mut session = self.session.lock().unwrap();
+        let mut session = self.session.lock();
         let mut core = session.core(tid.get() - 1).into_target_result()?;
 
         regs.pc = core
@@ -47,7 +47,7 @@ impl MultiThreadBase for RuntimeTarget<'_> {
         regs: &RuntimeRegisters,
         tid: Tid,
     ) -> gdbstub::target::TargetResult<(), Self> {
-        let mut session = self.session.lock().unwrap();
+        let mut session = self.session.lock();
         let mut core = session.core(tid.get() - 1).into_target_result()?;
 
         core.write_core_reg(core.program_counter(), regs.pc)
@@ -94,7 +94,7 @@ impl MultiThreadBase for RuntimeTarget<'_> {
         data: &mut [u8],
         tid: Tid,
     ) -> gdbstub::target::TargetResult<usize, Self> {
-        let mut session = self.session.lock().unwrap();
+        let mut session = self.session.lock();
         let mut core = session.core(tid.get() - 1).into_target_result()?;
 
         // We currently either read the entire buffer or nothing
@@ -111,7 +111,7 @@ impl MultiThreadBase for RuntimeTarget<'_> {
         data: &[u8],
         tid: Tid,
     ) -> gdbstub::target::TargetResult<(), Self> {
-        let mut session = self.session.lock().unwrap();
+        let mut session = self.session.lock();
         let mut core = session.core(tid.get() - 1).into_target_result()?;
 
         core.write_8(start_addr, data)
@@ -151,7 +151,7 @@ impl SingleRegisterAccess<Tid> for RuntimeTarget<'_> {
         reg_id: RuntimeRegId,
         buf: &mut [u8],
     ) -> gdbstub::target::TargetResult<usize, Self> {
-        let mut session = self.session.lock().unwrap();
+        let mut session = self.session.lock();
         let mut core = session.core(tid.get() - 1).into_target_result()?;
 
         let reg = self.target_desc.get_register(reg_id.into());
@@ -175,7 +175,7 @@ impl SingleRegisterAccess<Tid> for RuntimeTarget<'_> {
         reg_id: RuntimeRegId,
         val: &[u8],
     ) -> gdbstub::target::TargetResult<(), Self> {
-        let mut session = self.session.lock().unwrap();
+        let mut session = self.session.lock();
         let mut core = session.core(tid.get() - 1).into_target_result()?;
 
         let reg = self.target_desc.get_register(reg_id.into());

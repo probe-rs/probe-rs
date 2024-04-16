@@ -10,8 +10,8 @@ publish = false
 
 [dependencies]
 probe-rs = { workspace = true }
-toml = "0.8.10"
-anyhow = "1.0.80"
+toml = "0.8.12"
+anyhow = "1.0.82"
 serde = { version = "1", features = ["derive"] }
 pretty_env_logger = "0.5.0"
 log = "0.4.21"
