@@ -612,7 +612,7 @@ variants:
         name: SRAM1
         range:
           start: 0x20000000
-          end: 0x20040000
+          end: 0x20030000
         cores:
           - main
       - !Nvm
