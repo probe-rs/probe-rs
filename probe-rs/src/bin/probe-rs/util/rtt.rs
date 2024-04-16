@@ -122,7 +122,6 @@ impl RttConfig {
 #[serde(rename_all = "camelCase")]
 pub struct RttChannelConfig {
     pub channel_number: Option<usize>,
-    pub channel_name: Option<String>,
     #[serde(default)]
     pub data_format: DataFormat,
 
@@ -272,7 +271,6 @@ impl RttActiveUpChannel {
 
         let channel_name = up_channel
             .name()
-            .or(channel_config.channel_name.as_deref())
             .map(ToString::to_string)
             .unwrap_or_else(|| {
                 format!(
@@ -459,10 +457,9 @@ pub struct RttActiveDownChannel {
 }
 
 impl RttActiveDownChannel {
-    pub fn new(down_channel: DownChannel, channel_config: &RttChannelConfig) -> Self {
+    pub fn new(down_channel: DownChannel) -> Self {
         let channel_name = down_channel
             .name()
-            .or(channel_config.channel_name.as_deref())
             .map(ToString::to_string)
             .unwrap_or_else(|| format!("Unnamed RTT down channel - {}", down_channel.number()));
 
@@ -559,14 +556,7 @@ impl RttActiveTarget {
         }
 
         for channel in rtt.down_channels.into_iter() {
-            let channel_config = rtt_config
-                .channel_config(channel.number())
-                .cloned()
-                .unwrap_or_else(|| default_channel_config.clone());
-            active_down_channels.insert(
-                channel.number(),
-                RttActiveDownChannel::new(channel, &channel_config),
-            );
+            active_down_channels.insert(channel.number(), RttActiveDownChannel::new(channel));
         }
 
         // It doesn't make sense to pretend RTT is active, if there are no active up channels

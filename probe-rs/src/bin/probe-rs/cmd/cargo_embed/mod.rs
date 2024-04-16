@@ -344,7 +344,6 @@ fn run_rttui_app(
     for channel_config in config.rtt.up_channels.iter() {
         rtt_config.channels.push(RttChannelConfig {
             channel_number: Some(channel_config.channel),
-            channel_name: None,
             data_format: channel_config.format,
             show_timestamps: channel_config
                 .show_timestamps
@@ -369,7 +368,6 @@ fn run_rttui_app(
             // Set up channel defaults, we don't read from it anyway.
             rtt_config.channels.push(RttChannelConfig {
                 channel_number: Some(channel_config.channel),
-                channel_name: None,
                 data_format: DataFormat::String,
                 show_timestamps: false,
                 show_location: false,
