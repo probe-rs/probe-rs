@@ -74,7 +74,7 @@ extern crate serde;
 pub mod architecture;
 pub mod config;
 
-mod core;
+pub mod core;
 pub mod debug;
 mod error;
 pub mod flashing;
