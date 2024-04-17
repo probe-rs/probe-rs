@@ -190,7 +190,10 @@ impl DutDefinition {
 }
 
 fn lookup_unique_target(chip: &str) -> Result<Target> {
-    let targets = search_chips(chip)?;
+    let targets = search_chips(chip)?
+        .into_iter()
+        .map(|chip| chip.to_ascii_lowercase())
+        .collect::<Vec<_>>();
 
     ensure!(
         !targets.is_empty(),
@@ -199,7 +202,7 @@ fn lookup_unique_target(chip: &str) -> Result<Target> {
     );
 
     if targets.len() > 1 {
-        let target_string = String::from(chip).to_ascii_uppercase();
+        let target_string = chip.to_ascii_lowercase();
         if targets.contains(&target_string) {
             // Multiple chips returned, but one was an exact match so we're using it
             let target = get_target_by_name(target_string)?;
