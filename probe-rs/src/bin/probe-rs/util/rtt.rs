@@ -530,7 +530,6 @@ impl RttActiveTarget {
         rtt: probe_rs::rtt::Rtt,
         defmt_state: Option<DefmtState>,
         rtt_config: &RttConfig,
-        default_channel_config: &RttChannelConfig,
         timestamp_offset: UtcOffset,
     ) -> Result<Self> {
         let mut active_up_channels = HashMap::new();
@@ -541,7 +540,7 @@ impl RttActiveTarget {
             let channel_config = rtt_config
                 .channel_config(channel.number())
                 .cloned()
-                .unwrap_or_else(|| default_channel_config.clone());
+                .unwrap_or_default();
             active_up_channels.insert(
                 channel.number(),
                 RttActiveUpChannel::new(

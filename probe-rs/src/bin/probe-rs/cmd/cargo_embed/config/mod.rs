@@ -119,10 +119,6 @@ pub struct Rtt {
     /// Connection timeout in ms.
     #[serde(with = "duration_ms")]
     pub timeout: Duration,
-    /// Whether to show timestamps in RTTUI
-    pub show_timestamps: bool,
-    /// Whether to show location info in RTTUI for defmt channels.
-    pub show_location: bool,
     /// Whether to save rtt history buffer on exit to file named history.txt
     pub log_enabled: bool,
     /// Where to save rtt history buffer relative to manifest path.

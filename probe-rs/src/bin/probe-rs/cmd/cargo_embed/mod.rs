@@ -345,12 +345,8 @@ fn run_rttui_app(
         rtt_config.channels.push(RttChannelConfig {
             channel_number: Some(channel_config.channel),
             data_format: channel_config.format,
-            show_timestamps: channel_config
-                .show_timestamps
-                .unwrap_or(config.rtt.show_timestamps),
-            show_location: channel_config
-                .show_location
-                .unwrap_or(config.rtt.show_location),
+            show_timestamps: channel_config.show_timestamps.unwrap_or(true),
+            show_location: channel_config.show_location.unwrap_or(false),
             defmt_log_format: channel_config.defmt_log_format.clone(),
             mode: channel_config.mode,
         });
@@ -390,11 +386,6 @@ fn run_rttui_app(
         &ScanRegion::Ram,
         elf_path,
         &rtt_config,
-        &RttChannelConfig {
-            show_timestamps: config.rtt.show_timestamps,
-            show_location: config.rtt.show_location,
-            ..Default::default()
-        },
         timezone_offset,
     )
     .context("Failed to attach to RTT")?
@@ -466,7 +457,6 @@ fn attach_to_rtt_shared(
     rtt_region: &ScanRegion,
     elf_file: &Path,
     rtt_config: &RttConfig,
-    default_channel_config: &RttChannelConfig,
     timestamp_offset: UtcOffset,
 ) -> Result<Option<RttActiveTarget>> {
     // Try to find the RTT control block symbol in the ELF file.
@@ -488,13 +478,5 @@ fn attach_to_rtt_shared(
     let mut core = session_handle.core(core_id)?;
 
     let defmt_state = DefmtState::try_from_bytes(&elf)?;
-    RttActiveTarget::new(
-        &mut core,
-        rtt,
-        defmt_state,
-        rtt_config,
-        default_channel_config,
-        timestamp_offset,
-    )
-    .map(Some)
+    RttActiveTarget::new(&mut core, rtt, defmt_state, rtt_config, timestamp_offset).map(Some)
 }

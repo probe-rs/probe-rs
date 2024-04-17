@@ -452,14 +452,7 @@ fn try_attach_rtt(
 
     tracing::info!("RTT initialized.");
     let defmt_state = DefmtState::try_from_bytes(&elf)?;
-    let target = RttActiveTarget::new(
-        core,
-        rtt,
-        defmt_state,
-        rtt_config,
-        &Default::default(),
-        timestamp_offset,
-    )?;
+    let target = RttActiveTarget::new(core, rtt, defmt_state, rtt_config, timestamp_offset)?;
 
     Ok(target)
 }
