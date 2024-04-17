@@ -5,6 +5,7 @@ use crate::{
         self,
         arm::{
             ap::MemoryAp,
+            armv7m::Dhcsr,
             communication_interface::{DapProbe, SwdSequence},
             memory::adi_v5_memory_interface::ArmProbe,
             sequences::{ArmDebugSequence, ArmDebugSequenceError, DebugEraseSequence},
@@ -13,7 +14,7 @@ use crate::{
     },
     probe::DebugProbeError,
     session::MissingPermissions,
-    Permissions,
+    MemoryMappedRegister, Permissions,
 };
 use bitfield::bitfield;
 use probe_rs_target::CoreType;
@@ -333,6 +334,13 @@ impl AtSAM {
     /// # Errors
     /// Subject to probe communication errors
     pub fn release_reset_extension(&self, memory: &mut dyn ArmProbe) -> Result<(), ArmError> {
+        // Enable debug mode if it is not already enabled
+        let mut dhcsr = Dhcsr(0);
+        dhcsr.enable_write();
+        dhcsr.set_c_debugen(true);
+        dhcsr.set_c_halt(true);
+        memory.write_word_32(Dhcsr::ADDRESS_OFFSET, dhcsr.0)?;
+
         // clear the reset extension bit
         let mut dsu_statusa = DsuStatusA(0);
         dsu_statusa.set_crstext(true);
