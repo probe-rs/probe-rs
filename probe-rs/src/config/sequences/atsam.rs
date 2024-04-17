@@ -16,6 +16,7 @@ use crate::{
     Permissions,
 };
 use bitfield::bitfield;
+use probe_rs_target::CoreType;
 use std::{
     sync::Arc,
     time::{Duration, Instant},
@@ -402,6 +403,19 @@ impl AtSAM {
 }
 
 impl ArmDebugSequence for AtSAM {
+    fn debug_core_start(
+        &self,
+        interface: &mut dyn ArmProbeInterface,
+        core_ap: MemoryAp,
+        _core_type: CoreType,
+        _debug_base: Option<u64>,
+        _cti_base: Option<u64>,
+    ) -> Result<(), ArmError> {
+        let mut core = interface.memory_interface(core_ap)?;
+
+        self.release_reset_extension(&mut *core)
+    }
+
     /// `reset_hardware_assert` for ATSAM devices
     ///
     /// Instead of keeping `nReset` asserted, the device is instead put into CPU Reset Extension
