@@ -1,8 +1,6 @@
 mod cmd;
 mod util;
 
-include!(concat!(env!("OUT_DIR"), "/meta.rs"));
-
 use std::cmp::Reverse;
 use std::ffi::OsStr;
 use std::fs;
@@ -30,8 +28,8 @@ const MAX_LOG_FILES: usize = 20;
 #[clap(
     name = "probe-rs",
     about = "The probe-rs CLI",
-    version = meta::CARGO_VERSION,
-    long_version = meta::LONG_VERSION
+    version = env!("PROBE_RS_VERSION"),
+    long_version = env!("PROBE_RS_LONG_VERSION")
 )]
 struct Cli {
     /// Location for log file

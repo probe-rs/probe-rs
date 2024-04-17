@@ -492,6 +492,11 @@ impl Probe {
     pub fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {
         self.inner.get_target_voltage()
     }
+
+    /// Try to get a J-Link interface from the debug probe.
+    pub fn try_into_jlink(&mut self) -> Result<&mut jlink::JLink, DebugProbeError> {
+        self.inner.try_into_jlink()
+    }
 }
 
 /// An abstraction over a probe driver type.
@@ -667,6 +672,13 @@ pub trait DebugProbe: Send + fmt::Debug {
     /// if the probe doesn’t support reading the target voltage.
     fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {
         Ok(None)
+    }
+
+    /// Try to get a J-Link interface from the debug probe.
+    fn try_into_jlink(&mut self) -> Result<&mut jlink::JLink, DebugProbeError> {
+        Err(DebugProbeError::Other(anyhow::anyhow!(
+            "This probe does not support J-Link functionality."
+        )))
     }
 }
 
@@ -886,6 +898,9 @@ pub trait JTAGAccess: DebugProbe {
     /// will try to measure and extract `IR` lengths by driving the JTAG interface.
     fn scan_chain(&mut self) -> Result<Vec<JtagChainItem>, DebugProbeError>;
 
+    /// Executes a TAP reset.
+    fn tap_reset(&mut self) -> Result<(), DebugProbeError>;
+
     /// Read a JTAG register.
     ///
     /// This function emulates a read by performing a write with all zeros to the DR.
@@ -928,7 +943,7 @@ pub trait JTAGAccess: DebugProbe {
             match self
                 .write_register(write.address, &write.data, write.len)
                 .map_err(crate::Error::Probe)
-                .and_then(|response| (write.transform)(response))
+                .and_then(|response| (write.transform)(write, response))
             {
                 Ok(res) => results.push(idx, res),
                 Err(e) => return Err(BatchExecutionError::new(e, results)),
@@ -952,7 +967,7 @@ pub struct JtagWriteCommand {
     pub len: u32,
 
     /// A function to transform the raw response into a [`CommandResult`]
-    pub transform: fn(Vec<u8>) -> Result<CommandResult, crate::Error>,
+    pub transform: fn(&JtagWriteCommand, Vec<u8>) -> Result<CommandResult, crate::Error>,
 }
 
 /// Represents a Jtag Tap within the chain.

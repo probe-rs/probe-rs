@@ -158,12 +158,14 @@ impl CombinedCoreState {
         let memory_regions = &target.memory_map;
         let name = &target.cores[self.id].name;
 
-        let ResolvedCoreOptions::Riscv { options } = &self.core_state.core_access_options else {
+        let ResolvedCoreOptions::Riscv { options, sequence } = &self.core_state.core_access_options
+        else {
             unreachable!(
                 "The stored core state is not compatible with the RISC-V architecture. \
                 This should never happen. Please file a bug if it does."
             );
         };
+        let debug_sequence = sequence.clone();
 
         let SpecificCoreState::Riscv(s) = &mut self.specific_state else {
             unreachable!(
@@ -180,6 +182,7 @@ impl CombinedCoreState {
                 options.hart_id.unwrap_or_default(),
                 interface,
                 s,
+                debug_sequence,
             )?,
         ))
     }
@@ -192,6 +195,15 @@ impl CombinedCoreState {
         let memory_regions = &target.memory_map;
         let name = &target.cores[self.id].name;
 
+        let ResolvedCoreOptions::Xtensa { sequence, .. } = &self.core_state.core_access_options
+        else {
+            unreachable!(
+                "The stored core state is not compatible with the Xtensa architecture. \
+                This should never happen. Please file a bug if it does."
+            );
+        };
+        let debug_sequence = sequence.clone();
+
         let SpecificCoreState::Xtensa(s) = &mut self.specific_state else {
             unreachable!(
                 "The stored core state is not compatible with the Xtensa architecture. \
@@ -203,7 +215,7 @@ impl CombinedCoreState {
             self.id,
             name,
             memory_regions,
-            crate::architecture::xtensa::Xtensa::new(interface, s),
+            crate::architecture::xtensa::Xtensa::new(interface, s, debug_sequence),
         ))
     }
 

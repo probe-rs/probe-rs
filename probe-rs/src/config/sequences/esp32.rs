@@ -69,6 +69,6 @@ impl XtensaDebugSequence for ESP32 {
         &self,
         interface: &mut XtensaCommunicationInterface,
     ) -> Result<Option<usize>, crate::Error> {
-        self.inner.detect_flash_size_esp32(interface)
+        self.inner.detect_flash_size_esp32(interface, self)
     }
 }
