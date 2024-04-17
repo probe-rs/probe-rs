@@ -309,7 +309,7 @@ impl FlashAlgorithm {
 
         let remaining_ram = ram_region.range.end - code_end;
 
-        // How much space do a data buffer take up in the current RAM region?
+        // How much space does a data buffer take up in the current RAM region?
         // If the data is in a different region, we don't need to account for it for the stack.
         let buffer_page_size_in_instr_region = if ram_region == data_ram_region {
             buffer_page_size
