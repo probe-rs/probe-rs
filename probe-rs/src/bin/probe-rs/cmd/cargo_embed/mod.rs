@@ -340,19 +340,33 @@ fn run_rttui_app(
         channels: vec![],
     };
 
+    // Make sure our defauls are the same as the ones intended in the config struct.
+    let default_channel_config = RttChannelConfig::default();
+
     let mut require_defmt = false;
     for channel_config in config.rtt.up_channels.iter() {
-        rtt_config.channels.push(RttChannelConfig {
+        // Where `channel_config` is unspecified, apply default from `default_channel_config`.
+        let rtt_channel_config = RttChannelConfig {
             channel_number: Some(channel_config.channel),
-            data_format: channel_config.format,
-            show_timestamps: channel_config.show_timestamps.unwrap_or(true),
-            show_location: channel_config.show_location.unwrap_or(false),
-            defmt_log_format: channel_config.defmt_log_format.clone(),
-            mode: channel_config.mode,
-        });
-        if channel_config.format == DataFormat::Defmt {
+            data_format: channel_config
+                .format
+                .unwrap_or(default_channel_config.data_format),
+            show_timestamps: channel_config
+                .show_timestamps
+                .unwrap_or(default_channel_config.show_timestamps),
+            show_location: channel_config
+                .show_location
+                .unwrap_or(default_channel_config.show_location),
+            defmt_log_format: channel_config
+                .defmt_log_format
+                .clone()
+                .or_else(|| default_channel_config.defmt_log_format.clone()),
+            mode: channel_config.mode.or(default_channel_config.mode),
+        };
+        if rtt_channel_config.data_format == DataFormat::Defmt {
             require_defmt = true;
         }
+        rtt_config.channels.push(rtt_channel_config);
     }
     // In case we have down channels without up channels, add them separately.
     for channel_config in config.rtt.down_channels.iter() {

@@ -76,9 +76,8 @@ fn attach_to_rtt(
     }
 }
 
-/// Used by serde to provide defaults for `RttChannelConfig::show_location`
-fn default_include_location() -> bool {
-    // Setting this to true to allow compatibility with behaviour prior to when this option was introduced.
+/// Used by serde to provide defaults for `RttChannelConfig::show_timestamps`
+fn default_show_timestamps() -> bool {
     true
 }
 
@@ -129,13 +128,12 @@ pub struct RttChannelConfig {
     #[serde(default)]
     pub mode: Option<ChannelMode>,
 
-    #[serde(default)]
+    #[serde(default = "default_show_timestamps")]
     /// Control the inclusion of timestamps for DataFormat::String.
     pub show_timestamps: bool,
 
-    #[serde(default = "default_include_location")]
+    #[serde(default)]
     /// Control the inclusion of source location information for DataFormat::Defmt.
-    // TODO: third option: if available
     pub show_location: bool,
 
     #[serde(default)]

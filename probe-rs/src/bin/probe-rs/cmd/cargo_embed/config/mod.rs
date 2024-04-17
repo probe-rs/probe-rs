@@ -77,12 +77,13 @@ pub struct General {
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+// Note: default values are defined in `RttChannelConfig`.
 pub struct UpChannelConfig {
     pub channel: usize,
     #[serde(default)]
     pub mode: Option<ChannelMode>,
     #[serde(default)]
-    pub format: DataFormat,
+    pub format: Option<DataFormat>,
     #[serde(default)]
     pub show_location: Option<bool>,
     #[serde(default)]
