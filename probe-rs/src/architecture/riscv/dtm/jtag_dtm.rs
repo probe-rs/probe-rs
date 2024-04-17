@@ -41,7 +41,7 @@ impl JtagDtm {
 
         let dtmcs = Dtmcs(raw_dtmcs);
 
-        tracing::debug!("Dtmcs: {:?}", dtmcs);
+        tracing::debug!("{:?}", dtmcs);
 
         let abits = dtmcs.abits();
         let idle_cycles = dtmcs.idle();
