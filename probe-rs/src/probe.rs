@@ -943,7 +943,7 @@ pub trait JTAGAccess: DebugProbe {
             match self
                 .write_register(write.address, &write.data, write.len)
                 .map_err(crate::Error::Probe)
-                .and_then(|response| (write.transform)(response))
+                .and_then(|response| (write.transform)(write, response))
             {
                 Ok(res) => results.push(idx, res),
                 Err(e) => return Err(BatchExecutionError::new(e, results)),
@@ -967,7 +967,7 @@ pub struct JtagWriteCommand {
     pub len: u32,
 
     /// A function to transform the raw response into a [`CommandResult`]
-    pub transform: fn(Vec<u8>) -> Result<CommandResult, crate::Error>,
+    pub transform: fn(&JtagWriteCommand, Vec<u8>) -> Result<CommandResult, crate::Error>,
 }
 
 /// Represents a Jtag Tap within the chain.

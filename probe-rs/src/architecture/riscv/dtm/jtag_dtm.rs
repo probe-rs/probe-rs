@@ -109,7 +109,7 @@ impl JtagDtm {
         Ok(self.queued_commands.schedule(JtagWriteCommand {
             address: DMI_ADDRESS,
             data: bytes.to_vec(),
-            transform: |result| {
+            transform: |_, result| {
                 Self::transform_dmi_result(result)
                     .map(CommandResult::U32)
                     .map_err(|e| crate::Error::Riscv(e.map_as_err().unwrap_err()))
