@@ -17,7 +17,7 @@ members = [
     "rtthost",
     "smoke-tester",
     "xtask",
-    "target-gen",
+    "target-gen", "cli",
 ]
 exclude = ["probe-rs/tests/gpio-hal-blinky"]
 

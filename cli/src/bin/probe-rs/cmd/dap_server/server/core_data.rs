@@ -35,7 +35,7 @@ pub struct CoreData {
     pub core_index: usize,
     /// Track the last_known_status of the core.
     /// The debug client needs to be notified when the core changes state, and this can happen in one of two ways:
-    /// 1. By polling the core status periodically (in [`crate::server::debugger::Debugger::process_next_request()`]).
+    /// 1. By polling the core status periodically (in [`crate::cmd::dap_server::server::debugger::Debugger::process_next_request()`]).
     ///   For instance, when the client sets the core running, and the core halts because of a breakpoint, we need to notify the client.
     /// 2. Some requests, like [`DebugAdapter::next()`], has an implicit action of setting the core running, before it waits for it to halt at the next statement.
     ///   To ensure the [`CoreHandle::poll_core()`] behaves correctly, it will set the `last_known_status` to [`CoreStatus::Running`],
@@ -374,7 +374,7 @@ impl<'p> CoreHandle<'p> {
 
     /// Traverse all the variables in the available stack frames, and return the memory ranges
     /// required to resolve the values of these variables. This is used to provide the minimal
-    /// memory ranges required to create a [`CoreDump`] for the current scope.
+    /// memory ranges required to create a [`CoreDump`](probe_rs::CoreDump) for the current scope.
     pub(crate) fn get_memory_ranges(&mut self) -> Vec<Range<u64>> {
         let recursion_limit = 10;
 
