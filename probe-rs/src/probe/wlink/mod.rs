@@ -390,6 +390,10 @@ impl JTAGAccess for WchLink {
         Ok(vec![])
     }
 
+    fn tap_reset(&mut self) -> Result<(), DebugProbeError> {
+        Ok(())
+    }
+
     fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError> {
         tracing::debug!("read register 0x{:08x}", address);
         assert_eq!(len, 32);

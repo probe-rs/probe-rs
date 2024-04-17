@@ -1,12 +1,14 @@
 //! Sequences for the ESP32H2.
 
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use probe_rs_target::Chip;
 
 use crate::{
     architecture::riscv::{
-        communication_interface::RiscvCommunicationInterface, sequences::RiscvDebugSequence,
+        communication_interface::{RiscvCommunicationInterface, Sbaddress0, Sbcs, Sbdata0},
+        sequences::RiscvDebugSequence,
+        Dmcontrol,
     },
     config::sequences::esp::EspFlashSizeDetector,
     MemoryInterface,
@@ -64,5 +66,47 @@ impl RiscvDebugSequence for ESP32H2 {
         interface: &mut RiscvCommunicationInterface,
     ) -> Result<Option<usize>, crate::Error> {
         self.inner.detect_flash_size_riscv(interface)
+    }
+
+    fn reset_system_and_halt(
+        &self,
+        interface: &mut RiscvCommunicationInterface,
+        timeout: Duration,
+    ) -> Result<(), crate::Error> {
+        interface.halt(timeout)?;
+
+        // System reset, ported from OpenOCD.
+        interface.write_dm_register(Sbcs(0x48000))?;
+        interface.write_dm_register(Sbaddress0(0x600b1034))?;
+        interface.write_dm_register(Sbdata0(0x80000000_u32))?;
+
+        // clear dmactive to clear sbbusy otherwise debug module gets stuck
+        interface.write_dm_register(Dmcontrol(0))?;
+
+        interface.write_dm_register(Sbcs(0x48000))?;
+        interface.write_dm_register(Sbaddress0(0x600b1038))?;
+        interface.write_dm_register(Sbdata0(0x10000000_u32))?;
+
+        // clear dmactive to clear sbbusy otherwise debug module gets stuck
+        interface.write_dm_register(Dmcontrol(0))?;
+
+        let mut dmcontrol = Dmcontrol(0);
+        dmcontrol.set_dmactive(true);
+        dmcontrol.set_resumereq(true);
+        interface.write_dm_register(dmcontrol)?;
+
+        std::thread::sleep(Duration::from_millis(10));
+
+        let mut dmcontrol = Dmcontrol(0);
+        dmcontrol.set_dmactive(true);
+        dmcontrol.set_ackhavereset(true);
+        interface.write_dm_register(dmcontrol)?;
+
+        interface.enter_debug_mode()?;
+        self.on_connect(interface)?;
+
+        interface.reset_hart_and_halt(timeout)?;
+
+        Ok(())
     }
 }

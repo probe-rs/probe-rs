@@ -1,6 +1,6 @@
 //! All the interface bits for Xtensa.
 
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 use probe_rs_target::{Architecture, CoreType, InstructionSet};
 
@@ -9,6 +9,7 @@ use crate::{
         arch::{instruction::Instruction, Register, SpecialRegister},
         communication_interface::{DebugCause, IBreakEn},
         registers::{FP, PC, RA, SP, XTENSA_CORE_REGSISTERS},
+        sequences::XtensaDebugSequence,
     },
     core::{
         registers::{CoreRegisters, RegisterId, RegisterValue},
@@ -62,22 +63,28 @@ impl XtensaState {
     }
 }
 
-/// An interface to operate Xtensa cores.
+/// An interface to operate an Xtensa core.
 pub struct Xtensa<'probe> {
     interface: &'probe mut XtensaCommunicationInterface,
     state: &'probe mut XtensaState,
+    sequence: Arc<dyn XtensaDebugSequence>,
 }
 
 impl<'probe> Xtensa<'probe> {
     const IBREAKA_REGS: [SpecialRegister; 2] =
         [SpecialRegister::IBreakA0, SpecialRegister::IBreakA1];
 
-    /// Create a new Xtensa interface.
+    /// Create a new Xtensa interface for a particular core.
     pub fn new(
         interface: &'probe mut XtensaCommunicationInterface,
         state: &'probe mut XtensaState,
+        sequence: Arc<dyn XtensaDebugSequence>,
     ) -> Self {
-        Self { interface, state }
+        Self {
+            interface,
+            state,
+            sequence,
+        }
     }
 
     fn core_info(&mut self) -> Result<CoreInformation, Error> {
@@ -293,12 +300,14 @@ impl<'probe> CoreInterface for Xtensa<'probe> {
 
     fn reset(&mut self) -> Result<(), Error> {
         self.state.semihosting_command = None;
-        Ok(self.interface.reset()?)
+        self.sequence.reset_system_and_halt(self.interface)?;
+
+        self.run()
     }
 
-    fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
+    fn reset_and_halt(&mut self, _timeout: Duration) -> Result<CoreInformation, Error> {
         self.state.semihosting_command = None;
-        self.interface.reset_and_halt(timeout)?;
+        self.sequence.reset_system_and_halt(self.interface)?;
 
         self.core_info()
     }
@@ -443,13 +452,11 @@ impl<'probe> CoreInterface for Xtensa<'probe> {
     }
 
     fn reset_catch_set(&mut self) -> Result<(), Error> {
-        self.interface.xdm.halt_on_reset(true);
-        Ok(())
+        Err(Error::NotImplemented("reset_catch_set"))
     }
 
     fn reset_catch_clear(&mut self) -> Result<(), Error> {
-        self.interface.xdm.halt_on_reset(false);
-        Ok(())
+        Err(Error::NotImplemented("reset_catch_clear"))
     }
 
     fn debug_core_stop(&mut self) -> Result<(), Error> {

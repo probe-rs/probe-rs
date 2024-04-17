@@ -4,6 +4,11 @@ use std::fmt;
 use std::time::Duration;
 
 pub trait DtmAccess: Send + fmt::Debug {
+    /// Perform interface-specific initialisation upon attaching.
+    fn init(&mut self) -> Result<(), DebugProbeError> {
+        Ok(())
+    }
+
     /// Asserts a reset of the physical pins
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError>;
 
