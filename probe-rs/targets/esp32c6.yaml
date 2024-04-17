@@ -34,12 +34,6 @@ variants:
           end: 0x4087FFFF
         cores:
           - main
-      - !Ram
-        range:
-          start: 0x50000000
-          end: 0x50003FFF
-        cores:
-          - main
     flash_algorithms:
       - esp32c6-flashloader
 flash_algorithms:
