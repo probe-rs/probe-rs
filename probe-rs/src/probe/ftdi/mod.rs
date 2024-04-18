@@ -5,7 +5,7 @@ use crate::{
             communication_interface::{DapProbe, UninitializedArmProbe},
             ArmCommunicationInterface,
         },
-        riscv::communication_interface::{RiscvCommunicationInterface, RiscvError},
+        riscv::{communication_interface::RiscvFactory, dtm::jtag_dtm::JtagDtmFactory},
         xtensa::communication_interface::XtensaCommunicationInterface,
     },
     probe::{
@@ -28,7 +28,6 @@ use std::{
 mod command_compacter;
 mod ftdaye;
 
-use crate::architecture::riscv::dtm::jtag_dtm::JtagDtm;
 use command_compacter::Command;
 use ftdaye::{error::FtdiError, ChipType};
 
@@ -376,11 +375,10 @@ impl DebugProbe for FtdiProbe {
         Some(WireProtocol::Jtag)
     }
 
-    fn try_get_riscv_interface(
-        self: Box<Self>,
-    ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, RiscvError)> {
-        let jtag_dtm = Box::new(JtagDtm::new(self));
-        Ok(RiscvCommunicationInterface::new(jtag_dtm))
+    fn try_get_riscv_interface_factory<'probe>(
+        &'probe mut self,
+    ) -> Result<Box<dyn RiscvFactory<'probe> + 'probe>, DebugProbeError> {
+        Ok(Box::new(JtagDtmFactory::new(self)))
     }
 
     fn has_riscv_interface(&self) -> bool {

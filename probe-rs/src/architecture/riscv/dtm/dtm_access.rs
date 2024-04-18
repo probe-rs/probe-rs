@@ -1,5 +1,5 @@
 use crate::architecture::riscv::communication_interface::RiscvError;
-use crate::probe::{CommandResult, DebugProbe, DebugProbeError, DeferredResultIndex, Probe};
+use crate::probe::{CommandResult, DebugProbeError, DeferredResultIndex};
 use std::fmt;
 use std::time::Duration;
 
@@ -23,12 +23,6 @@ pub trait DtmAccess: Send + fmt::Debug {
         &mut self,
         index: DeferredResultIndex,
     ) -> Result<CommandResult, RiscvError>;
-
-    /// Close the DTM access and return the underlying probe instance
-    fn close(self: Box<Self>) -> Probe;
-
-    /// Close the DTM access and return the underlying boxed debug access
-    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe>;
 
     /// Execute scheduled dmi accesses
     fn execute(&mut self) -> Result<(), RiscvError>;

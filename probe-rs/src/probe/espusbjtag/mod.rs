@@ -9,7 +9,7 @@ use crate::{
             communication_interface::{DapProbe, UninitializedArmProbe},
             SwoAccess,
         },
-        riscv::communication_interface::{RiscvCommunicationInterface, RiscvError},
+        riscv::{communication_interface::RiscvFactory, dtm::jtag_dtm::JtagDtmFactory},
         xtensa::communication_interface::XtensaCommunicationInterface,
     },
     probe::{
@@ -23,7 +23,6 @@ use self::protocol::ProtocolHandler;
 
 use super::{common::JtagDriverState, JTAGAccess};
 
-use crate::architecture::riscv::dtm::jtag_dtm::JtagDtm;
 use probe_rs_target::ScanChainElement;
 
 /// Probe factory for USB JTAG interfaces built into certain ESP32 chips.
@@ -153,12 +152,10 @@ impl DebugProbe for EspUsbJtag {
         Ok(())
     }
 
-    fn try_get_riscv_interface(
-        self: Box<Self>,
-    ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, RiscvError)> {
-        let jtag_dtm = Box::new(JtagDtm::new(self));
-        // This probe is intended for RISC-V.
-        Ok(RiscvCommunicationInterface::new(jtag_dtm))
+    fn try_get_riscv_interface_factory<'probe>(
+        &'probe mut self,
+    ) -> Result<Box<dyn RiscvFactory<'probe> + 'probe>, DebugProbeError> {
+        Ok(Box::new(JtagDtmFactory::new(self)))
     }
 
     fn get_swo_interface(&self) -> Option<&dyn SwoAccess> {

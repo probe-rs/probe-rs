@@ -30,25 +30,24 @@ use self::interface::{Interface, Interfaces};
 use self::speed::SpeedConfig;
 use self::swo::SwoMode;
 use crate::architecture::arm::{ArmError, Pins};
-use crate::architecture::riscv::communication_interface::RiscvError;
-use crate::architecture::riscv::dtm::jtag_dtm::JtagDtm;
 use crate::architecture::xtensa::communication_interface::XtensaCommunicationInterface;
 use crate::probe::common::{JtagDriverState, RawJtagIo};
 use crate::probe::jlink::bits::IteratorExt;
 use crate::probe::usb_util::InterfaceExt;
 use crate::probe::JTAGAccess;
-use crate::probe::ProbeFactory;
 use crate::{
     architecture::{
         arm::{
-            communication_interface::DapProbe, communication_interface::UninitializedArmProbe,
-            swo::SwoConfig, ArmCommunicationInterface, SwoAccess,
+            communication_interface::{DapProbe, UninitializedArmProbe},
+            swo::SwoConfig,
+            ArmCommunicationInterface, SwoAccess,
         },
-        riscv::communication_interface::RiscvCommunicationInterface,
+        riscv::{communication_interface::RiscvFactory, dtm::jtag_dtm::JtagDtmFactory},
     },
     probe::{
         arm_debug_interface::{ProbeStatistics, RawProtocolIo, SwdSettings},
-        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, WireProtocol,
+        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeFactory,
+        WireProtocol,
     },
 };
 
@@ -933,23 +932,16 @@ impl DebugProbe for JLink {
         Ok(())
     }
 
-    fn try_get_riscv_interface(
-        mut self: Box<Self>,
-    ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, RiscvError)> {
+    fn try_get_riscv_interface_factory<'probe>(
+        &'probe mut self,
+    ) -> Result<Box<dyn RiscvFactory<'probe> + 'probe>, DebugProbeError> {
         if self.supported_protocols.contains(&WireProtocol::Jtag) {
-            if let Err(e) = self.select_protocol(WireProtocol::Jtag) {
-                return Err((self, e.into()));
-            }
-            let jtag_dtm = Box::new(JtagDtm::new(self));
-            Ok(RiscvCommunicationInterface::new(jtag_dtm))
+            self.select_protocol(WireProtocol::Jtag)?;
+            Ok(Box::new(JtagDtmFactory::new(self)))
         } else {
-            Err((
-                self,
-                DebugProbeError::InterfaceNotAvailable {
-                    interface_name: "JTAG",
-                }
-                .into(),
-            ))
+            Err(DebugProbeError::InterfaceNotAvailable {
+                interface_name: "JTAG",
+            })
         }
     }
 

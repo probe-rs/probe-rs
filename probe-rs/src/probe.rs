@@ -18,9 +18,7 @@ use crate::architecture::arm::{
     communication_interface::{DapProbe, UninitializedArmProbe},
     PortType, SwoAccess,
 };
-use crate::architecture::riscv::communication_interface::{
-    RiscvCommunicationInterface, RiscvError,
-};
+use crate::architecture::riscv::communication_interface::{RiscvError, RiscvFactory};
 use crate::architecture::xtensa::communication_interface::{
     XtensaCommunicationInterface, XtensaError,
 };
@@ -448,20 +446,17 @@ impl Probe {
         self.inner.has_riscv_interface()
     }
 
-    /// Try to get a [`RiscvCommunicationInterface`], which can
-    /// can be used to communicate with chips using the RISC-V
-    /// architecture.
+    /// Try to get a [`RiscvFactory`] object, which can be used to set up a communication interface
+    /// with chips using the RISC-V architecture.
     ///
     /// If an error occurs while trying to connect, the probe is returned.
-    pub fn try_into_riscv_interface(
-        self,
-    ) -> Result<RiscvCommunicationInterface, (Self, RiscvError)> {
+    pub fn try_get_riscv_interface_factory<'probe>(
+        &'probe mut self,
+    ) -> Result<Box<dyn RiscvFactory<'probe> + 'probe>, DebugProbeError> {
         if !self.attached {
-            Err((self, DebugProbeError::NotAttached.into()))
+            Err(DebugProbeError::NotAttached)
         } else {
-            self.inner
-                .try_get_riscv_interface()
-                .map_err(|(probe, err)| (Probe::from_attached_probe(probe), err))
+            self.inner.try_get_riscv_interface_factory()
         }
     }
 
@@ -607,18 +602,17 @@ pub trait DebugProbe: Send + fmt::Debug {
         ))
     }
 
-    /// Get the dedicated interface to debug RISC-V chips. Ensure that the
-    /// probe actually supports this by calling [DebugProbe::has_riscv_interface] first.
-    fn try_get_riscv_interface(
-        self: Box<Self>,
-    ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, RiscvError)> {
-        Err((
-            self.into_probe(),
-            DebugProbeError::InterfaceNotAvailable {
-                interface_name: "RISC-V",
-            }
-            .into(),
-        ))
+    /// Try to get a [`RiscvFactory`] object, which can be used to set up a communication interface
+    /// with chips using the RISC-V architecture.
+    ///
+    /// Ensure that the probe actually supports this by calling
+    /// [DebugProbe::has_riscv_interface] first.
+    fn try_get_riscv_interface_factory<'probe>(
+        &'probe mut self,
+    ) -> Result<Box<dyn RiscvFactory<'probe> + 'probe>, DebugProbeError> {
+        Err(DebugProbeError::InterfaceNotAvailable {
+            interface_name: "RISC-V",
+        })
     }
 
     /// Check if the probe offers an interface to debug RISC-V chips.

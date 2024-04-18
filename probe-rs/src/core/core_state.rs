@@ -156,7 +156,7 @@ impl CombinedCoreState {
     pub(crate) fn attach_riscv<'probe>(
         &'probe mut self,
         target: &'probe Target,
-        interface: &'probe mut RiscvCommunicationInterface,
+        mut interface: RiscvCommunicationInterface<'probe>,
     ) -> Result<Core<'probe>, Error> {
         let memory_regions = &target.memory_map;
         let name = &target.cores[self.id].name;

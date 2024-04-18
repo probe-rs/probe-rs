@@ -32,17 +32,17 @@ pub(crate) mod dtm;
 pub mod sequences;
 
 /// An interface to operate a RISC-V core.
-pub struct Riscv32<'probe> {
-    interface: &'probe mut RiscvCommunicationInterface,
-    state: &'probe mut RiscVState,
+pub struct Riscv32<'state> {
+    interface: RiscvCommunicationInterface<'state>,
+    state: &'state mut RiscVState,
     sequence: Arc<dyn RiscvDebugSequence>,
 }
 
-impl<'probe> Riscv32<'probe> {
+impl<'state> Riscv32<'state> {
     /// Create a new RISC-V interface for a particular hart.
     pub fn new(
-        interface: &'probe mut RiscvCommunicationInterface,
-        state: &'probe mut RiscVState,
+        interface: RiscvCommunicationInterface<'state>,
+        state: &'state mut RiscVState,
         sequence: Arc<dyn RiscvDebugSequence>,
     ) -> Result<Self, RiscvError> {
         Ok(Self {
@@ -196,7 +196,7 @@ impl<'probe> Riscv32<'probe> {
     }
 }
 
-impl<'probe> CoreInterface for Riscv32<'probe> {
+impl<'state> CoreInterface for Riscv32<'state> {
     fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), crate::Error> {
         self.interface.wait_for_core_halted(timeout)?;
         self.state.pc_written = false;
@@ -279,7 +279,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 
     fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
         self.sequence
-            .reset_system_and_halt(self.interface, timeout)?;
+            .reset_system_and_halt(&mut self.interface, timeout)?;
 
         let pc = self.read_core_reg(RegisterId(0x7b1))?;
 
@@ -619,12 +619,12 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn reset_catch_set(&mut self) -> Result<(), Error> {
-        self.sequence.reset_catch_set(self.interface)?;
+        self.sequence.reset_catch_set(&mut self.interface)?;
         Ok(())
     }
 
     fn reset_catch_clear(&mut self) -> Result<(), Error> {
-        self.sequence.reset_catch_clear(self.interface)?;
+        self.sequence.reset_catch_clear(&mut self.interface)?;
         Ok(())
     }
 
@@ -634,7 +634,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 }
 
-impl<'probe> MemoryInterface for Riscv32<'probe> {
+impl MemoryInterface for Riscv32<'_> {
     fn supports_native_64bit_access(&mut self) -> bool {
         self.interface.supports_native_64bit_access()
     }

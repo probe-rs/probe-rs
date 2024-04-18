@@ -2,7 +2,7 @@ use crate::architecture::arm::ap::AccessPort;
 use crate::architecture::arm::component::get_arm_components;
 use crate::architecture::arm::sequences::{ArmDebugSequence, DefaultArmSequence};
 use crate::architecture::arm::{ArmError, DpAddress};
-use crate::architecture::riscv::communication_interface::RiscvError;
+use crate::architecture::riscv::communication_interface::{RiscvError, RiscvSaveState};
 use crate::architecture::xtensa::communication_interface::{
     XtensaCommunicationInterface, XtensaError, XtensaSaveState,
 };
@@ -39,7 +39,7 @@ use std::{fmt, sync::Arc, time::Duration};
 ///
 /// # Usage
 /// The Session is the common handle that gives a user exclusive access to an active probe.
-/// You can create and share a session between threads to enable multiple stakeholders (e.g. GDB and RTT) to access the target taking turns, by using  `Arc<FairMutex<Session>>.`
+/// You can create and share a session between threads to enable multiple stakeholders (e.g. GDB and RTT) to access the target taking turns, by using `Arc<FairMutex<Session>>`.
 ///
 /// If you do so, make sure that both threads sleep in between tasks such that other stakeholders may take their turn.
 ///
@@ -54,9 +54,10 @@ pub struct Session {
     configured_trace_sink: Option<TraceSink>,
 }
 
+#[allow(clippy::large_enum_variant)]
 pub(crate) enum ArchitectureInterface {
     Arm(Box<dyn ArmProbeInterface + 'static>),
-    Riscv(Box<RiscvCommunicationInterface>),
+    Riscv(Probe, RiscvSaveState),
     Xtensa(Probe, XtensaSaveState),
 }
 
@@ -64,7 +65,7 @@ impl fmt::Debug for ArchitectureInterface {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             ArchitectureInterface::Arm(_) => f.write_str("ArchitectureInterface::Arm(..)"),
-            ArchitectureInterface::Riscv(_) => {
+            ArchitectureInterface::Riscv(..) => {
                 f.debug_tuple("ArchitectureInterface::Riscv(..)").finish()
             }
             ArchitectureInterface::Xtensa(..) => {
@@ -78,7 +79,7 @@ impl From<&ArchitectureInterface> for Architecture {
     fn from(value: &ArchitectureInterface) -> Self {
         match value {
             ArchitectureInterface::Arm(_) => Architecture::Arm,
-            ArchitectureInterface::Riscv(_) => Architecture::Riscv,
+            ArchitectureInterface::Riscv(..) => Architecture::Riscv,
             ArchitectureInterface::Xtensa(..) => Architecture::Xtensa,
         }
     }
@@ -92,7 +93,11 @@ impl ArchitectureInterface {
     ) -> Result<Core<'probe>, Error> {
         match self {
             ArchitectureInterface::Arm(iface) => combined_state.attach_arm(target, iface),
-            ArchitectureInterface::Riscv(iface) => combined_state.attach_riscv(target, iface),
+            ArchitectureInterface::Riscv(probe, state) => {
+                let factory = probe.try_get_riscv_interface_factory()?;
+                let iface = factory.attach(state)?;
+                combined_state.attach_riscv(target, iface)
+            }
             ArchitectureInterface::Xtensa(probe, state) => {
                 let iface = probe.try_get_xtensa_interface(&mut *state)?;
                 combined_state.attach_xtensa(target, iface)
@@ -292,18 +297,19 @@ impl Session {
 
         probe.attach_to_unspecified()?;
 
-        let mut interface = Box::new(
-            probe
-                .try_into_riscv_interface()
-                .map_err(|(_probe, err)| err)?,
-        );
+        // TODO: multicore RISC-V may or may not require multiple interfaces using the same probe
+        let factory = probe.try_get_riscv_interface_factory()?;
+        let mut state = factory.create_state();
 
-        // TODO: multicore
-        cores[0].enable_riscv_debug(&mut interface)?;
+        {
+            let mut interface = factory.attach(&mut state)?;
+            // TODO: this shouldn't go through a core I think
+            cores[0].enable_riscv_debug(&mut interface)?;
+        }
 
         let mut session = Session {
             target,
-            interface: ArchitectureInterface::Riscv(interface),
+            interface: ArchitectureInterface::Riscv(probe, state),
             cores,
             configured_trace_sink: None,
         };
@@ -315,7 +321,8 @@ impl Session {
             core.halt(Duration::from_millis(100))?;
         }
 
-        session.halted_access(|sess| sequence_handle.on_connect(sess.get_riscv_interface()?))?;
+        session
+            .halted_access(|sess| sequence_handle.on_connect(&mut sess.get_riscv_interface()?))?;
 
         Ok(session)
     }
@@ -500,9 +507,12 @@ impl Session {
     }
 
     /// Get the RISC-V probe interface.
-    pub fn get_riscv_interface(&mut self) -> Result<&mut RiscvCommunicationInterface, RiscvError> {
+    pub fn get_riscv_interface(&mut self) -> Result<RiscvCommunicationInterface, RiscvError> {
         let interface = match &mut self.interface {
-            ArchitectureInterface::Riscv(interface) => interface,
+            ArchitectureInterface::Riscv(probe, state) => {
+                let factory = probe.try_get_riscv_interface_factory()?;
+                factory.attach(state)?
+            }
             _ => return Err(RiscvError::NoRiscvTarget),
         };
 
@@ -796,17 +806,16 @@ fn get_target_from_selector(
             }
 
             if found_chip.is_none() && probe.has_riscv_interface() {
-                match probe.try_into_riscv_interface() {
-                    Ok(mut interface) => {
+                match probe.try_get_riscv_interface_factory() {
+                    Ok(factory) => {
+                        let mut state = factory.create_state();
+                        let mut interface = factory.attach(&mut state)?;
                         let idcode = interface.read_idcode();
 
                         tracing::debug!("ID Code read over JTAG: {:x?}", idcode);
-
-                        probe = interface.close();
                     }
-                    Err((returned_probe, err)) => {
+                    Err(err) => {
                         tracing::debug!("Error during autodetection of RISC-V chips: {}", err);
-                        probe = returned_probe;
                     }
                 }
             } else {
