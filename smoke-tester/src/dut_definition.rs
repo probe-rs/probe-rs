@@ -202,3 +202,25 @@ fn lookup_unique_target(chip: &str) -> Result<Target> {
 
     Ok(target)
 }
+
+#[test]
+fn find_unique_target() {
+    let target = lookup_unique_target("nRF52840_xxAA").unwrap();
+
+    assert_eq!(target.name, "nRF52840_xxAA");
+}
+
+#[test]
+fn find_unique_target_failure() {
+    // this should fail because the full name is nRF52840_xxAA
+    lookup_unique_target("nRF52840_xx").unwrap_err();
+}
+
+#[test]
+fn find_unique_target_with_non_unique_prefix() {
+    // There is also a chip named "esp32c6_lp" in the registry, this ensures
+    // that looking up just "esp32c6" still works.
+    let target = lookup_unique_target("esp32c6").unwrap();
+
+    assert_eq!(target.name, "esp32c6");
+}
