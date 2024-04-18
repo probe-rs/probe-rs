@@ -818,22 +818,19 @@ impl DebugProbeSelector {
 impl TryFrom<&str> for DebugProbeSelector {
     type Error = DebugProbeSelectorParseError;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        let split = value.split(':').collect::<Vec<_>>();
-        let mut selector = if split.len() > 1 {
-            DebugProbeSelector {
-                vendor_id: u16::from_str_radix(split[0], 16)?,
-                product_id: u16::from_str_radix(split[1], 16)?,
-                serial_number: None,
-            }
-        } else {
+        // Split into at most 3 parts: VID, PID, Serial.
+        // We limit the number of splits to allow for colons in the
+        // serial number (EspJtag uses MAC address)
+        let split = value.splitn(3, ':').collect::<Vec<_>>();
+        if split.len() <= 1 {
             return Err(DebugProbeSelectorParseError::Format);
-        };
-
-        if split.len() == 3 {
-            selector.serial_number = Some(split[2].to_string());
         }
 
-        Ok(selector)
+        Ok(DebugProbeSelector {
+            vendor_id: u16::from_str_radix(split[0], 16)?,
+            product_id: u16::from_str_radix(split[1], 16)?,
+            serial_number: split.get(2).map(|s| s.to_string()),
+        })
     }
 }
 
@@ -1250,5 +1247,17 @@ mod test {
 
         assert!(probe_info.is_probe_type::<ftdi::FtdiProbeFactory>());
         assert!(!probe_info.is_probe_type::<espusbjtag::EspUsbJtagFactory>());
+    }
+
+    #[test]
+    fn test_parsing_many_colons() {
+        let selector: DebugProbeSelector = "303a:1001:DC:DA:0C:D3:FE:D8".try_into().unwrap();
+
+        assert_eq!(selector.vendor_id, 0x303a);
+        assert_eq!(selector.product_id, 0x1001);
+        assert_eq!(
+            selector.serial_number,
+            Some("DC:DA:0C:D3:FE:D8".to_string())
+        );
     }
 }
