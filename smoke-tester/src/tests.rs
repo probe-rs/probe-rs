@@ -92,22 +92,32 @@ fn test_memory_access(tracker: &TestTracker, core: &mut Core) -> TestResult {
         // Write first word
         core.write_word_32(ram_start, 0xababab)?;
         let value = core.read_word_32(ram_start).into_diagnostic()?;
-        assert_eq!(value, 0xababab);
+        assert_eq!(
+            value, 0xababab,
+            "Error reading back 4 bytes from address {:#010X}",
+            ram_start
+        );
 
         println_test_status!(tracker, blue, "Test - RAM End 32");
         // Write last word
-        core.write_word_32(ram_start + ram_size - 4, 0xababac)
-            .into_diagnostic()?;
-        let value = core
-            .read_word_32(ram_start + ram_size - 4)
-            .into_diagnostic()?;
-        assert_eq!(value, 0xababac);
+        let addr = ram_start + ram_size - 4;
+        core.write_word_32(addr, 0xababac).into_diagnostic()?;
+        let value = core.read_word_32(addr).into_diagnostic()?;
+        assert_eq!(
+            value, 0xababac,
+            "Error reading back 4 bytes from address {:#010X}",
+            addr
+        );
 
         println_test_status!(tracker, blue, "Test - RAM Start 8");
         // Write first byte
         core.write_word_8(ram_start, 0xac).into_diagnostic()?;
         let value = core.read_word_8(ram_start).into_diagnostic()?;
-        assert_eq!(value, 0xac);
+        assert_eq!(
+            value, 0xac,
+            "Error reading back 1 byte from address {:#010X}",
+            ram_start
+        );
 
         println_test_status!(tracker, blue, "Test - RAM 8 Unaligned");
         let address = ram_start + 1;
@@ -115,29 +125,34 @@ fn test_memory_access(tracker: &TestTracker, core: &mut Core) -> TestResult {
         // Write last byte
         core.write_word_8(address, data)
             .into_diagnostic()
-            .wrap_err_with(|| format!("Write_word_8 to address {address:08x}"))?;
+            .wrap_err_with(|| format!("write_word_8 to address {address:#010X}"))?;
 
         let value = core
             .read_word_8(address)
             .into_diagnostic()
-            .wrap_err_with(|| format!("read_word_8 from address {address:08x}"))?;
-        assert_eq!(value, data);
+            .wrap_err_with(|| format!("read_word_8 from address {address:#010X}"))?;
+        assert_eq!(
+            value, data,
+            "Error reading back 1 byte from address {:#010X}",
+            address
+        );
 
         println_test_status!(tracker, blue, "Test - RAM End 8");
         // Write last byte
-        core.write_word_8(ram_start + ram_size - 1, 0xcd)
+        let address = ram_start + ram_size - 1;
+        core.write_word_8(address, 0xcd)
             .into_diagnostic()
-            .wrap_err_with(|| {
-                format!("Write_word_8 to address {:08x}", ram_start + ram_size - 1)
-            })?;
+            .wrap_err_with(|| format!("write_word_8 to address {address:#010X}"))?;
 
         let value = core
-            .read_word_8(ram_start + ram_size - 1)
+            .read_word_8(address)
             .into_diagnostic()
-            .wrap_err_with(|| {
-                format!("read_word_8 from address {:08x}", ram_start + ram_size - 1)
-            })?;
-        assert_eq!(value, 0xcd);
+            .wrap_err_with(|| format!("read_word_8 from address {address:#010X}"))?;
+        assert_eq!(
+            value, 0xcd,
+            "Error reading back 1 byte from address {:#010X}",
+            address
+        );
     }
 
     Ok(())
