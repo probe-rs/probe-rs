@@ -24,14 +24,14 @@ variants:
       - !Nvm
         range: # External Flash on Instruction/Data Bus
           start: 0x42000000
-          end: 0x42FFFFFF
+          end: 0x43000000
         is_alias: true
         cores:
           - main
       - !Ram
         range:
           start: 0x40800000
-          end: 0x4087FFFF
+          end: 0x40880000
         cores:
           - main
     flash_algorithms:

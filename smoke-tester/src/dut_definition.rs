@@ -7,7 +7,7 @@ use miette::IntoDiagnostic;
 use miette::Result;
 use miette::WrapErr;
 use probe_rs::{
-    config::{get_target_by_name, search_chips},
+    config::get_target_by_name,
     probe::{list::Lister, DebugProbeSelector, Probe},
     Target,
 };
@@ -194,35 +194,11 @@ impl DutDefinition {
 }
 
 fn lookup_unique_target(chip: &str) -> Result<Target> {
-    let targets = search_chips(chip).into_diagnostic()?;
+    let target = get_target_by_name(chip).into_diagnostic()?;
 
-    miette::ensure!(
-        !targets.is_empty(),
-        "Unable to find any chip matching {}",
-        &chip
-    );
-
-    if targets.len() > 1 {
-        let target_string = String::from(chip).to_ascii_uppercase();
-        if targets.contains(&target_string) {
-            // Multiple chips returned, but one was an exact match so we're using it
-            let target = get_target_by_name(target_string).into_diagnostic()?;
-            return Ok(target);
-        } else {
-            eprintln!(
-                "For tests, chip definition must be exact. Chip name {} matches multiple chips:",
-                &chip
-            );
-
-            for target in &targets {
-                eprintln!("\t{target}");
-            }
-
-            miette::bail!("Chip definition does not match exactly.");
-        }
+    if !target.name.eq_ignore_ascii_case(chip) {
+        miette::bail!("Chip definition does not match exactly, the chip is specified as {}, but the entry in the registry is {}", chip, target.name);
     }
-
-    let target = get_target_by_name(&targets[0]).into_diagnostic()?;
 
     Ok(target)
 }

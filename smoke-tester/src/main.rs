@@ -453,11 +453,9 @@ impl<'dut> TestTracker<'dut> {
     }
 }
 
-type TestFn = fn(&TestTracker, &mut probe_rs::Core) -> TestResult;
-
 /// A list of all tests which run on cores.
 #[distributed_slice]
-pub static CORE_TESTS: [TestFn];
+pub static CORE_TESTS: [fn(&TestTracker, &mut probe_rs::Core) -> TestResult];
 
 /// A list of all tests which run on `Session`.
 #[distributed_slice]
