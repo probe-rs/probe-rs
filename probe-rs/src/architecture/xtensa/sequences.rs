@@ -1,4 +1,4 @@
-use std::{fmt::Debug, sync::Arc};
+use std::{fmt::Debug, sync::Arc, time::Duration};
 
 use crate::architecture::xtensa::communication_interface::{
     ProgramStatus, XtensaCommunicationInterface, XtensaError,
@@ -28,8 +28,9 @@ pub trait XtensaDebugSequence: Send + Sync + Debug {
     fn reset_system_and_halt(
         &self,
         interface: &mut XtensaCommunicationInterface,
+        timeout: Duration,
     ) -> Result<(), XtensaError> {
-        interface.reset_and_halt()?;
+        interface.reset_and_halt(timeout)?;
 
         // TODO: this is only necessary to run code, so this might not be the best place
         // Make sure the CPU is in a known state and is able to run code we download.

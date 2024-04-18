@@ -300,14 +300,16 @@ impl<'probe> CoreInterface for Xtensa<'probe> {
 
     fn reset(&mut self) -> Result<(), Error> {
         self.state.semihosting_command = None;
-        self.sequence.reset_system_and_halt(self.interface)?;
+        self.sequence
+            .reset_system_and_halt(self.interface, Duration::from_millis(500))?;
 
         self.run()
     }
 
-    fn reset_and_halt(&mut self, _timeout: Duration) -> Result<CoreInformation, Error> {
+    fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
         self.state.semihosting_command = None;
-        self.sequence.reset_system_and_halt(self.interface)?;
+        self.sequence
+            .reset_system_and_halt(self.interface, timeout)?;
 
         self.core_info()
     }
