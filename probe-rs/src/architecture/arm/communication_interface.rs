@@ -442,29 +442,19 @@ impl UninitializedArmProbe for ArmCommunicationInterface<Uninitialized> {
         dp: DpAddress,
     ) -> Result<Box<dyn ArmProbeInterface>, (Box<dyn UninitializedArmProbe>, ProbeRsError)> {
         let use_overrun_detect = self.state.use_overrun_detect;
-        let setup_result = tracing::debug_span!("debug_port_setup")
-            .in_scope(|| sequence.debug_port_setup(&mut *self.probe_mut(), dp));
+        let probe = self.probe.take().expect("ArmCommunicationInterface is in an inconsistent state. This is a bug, please report it.");
 
-        if let Err(e) = setup_result {
-            return Err((self as Box<_>, e.into()));
-        }
-
-        let probe = self.probe.take();
-
-        let mut initialized_interface = ArmCommunicationInterface {
+        match ArmCommunicationInterface::<Initialized>::try_setup(
             probe,
-            state: Initialized::new(sequence, dp, use_overrun_detect),
-        };
-
-        match initialized_interface.select_dp(dp) {
-            Ok(_) => Ok(Box::new(initialized_interface) as Box<_>),
-            Err(err) => {
-                let probe = initialized_interface.probe.take().unwrap();
-                Err((
-                    Box::new(ArmCommunicationInterface::new(probe, use_overrun_detect)) as Box<_>,
-                    ProbeRsError::Arm(err),
-                ))
-            }
+            sequence,
+            dp,
+            use_overrun_detect,
+        ) {
+            Ok(initialized) => Ok(Box::new(initialized)),
+            Err((probe, err)) => Err((
+                Box::new(ArmCommunicationInterface::new(probe, use_overrun_detect)),
+                ProbeRsError::Arm(err),
+            )),
         }
     }
 
@@ -474,6 +464,67 @@ impl UninitializedArmProbe for ArmCommunicationInterface<Uninitialized> {
 }
 
 impl<'interface> ArmCommunicationInterface<Initialized> {
+    /// Set up and start the debug port with brand-new state.
+    fn try_setup(
+        mut probe: Box<dyn DapProbe>,
+        sequence: Arc<dyn ArmDebugSequence>,
+        dp: DpAddress,
+        use_overrun_detect: bool,
+    ) -> Result<Self, (Box<dyn DapProbe>, ArmError)> {
+        if let Err(err) = tracing::debug_span!("debug_port_setup")
+            .in_scope(|| sequence.debug_port_setup(&mut *probe, dp))
+        {
+            return Err((probe, err));
+        }
+
+        let mut initializing = Self {
+            probe: Some(probe),
+            state: Initialized::new(sequence, dp, use_overrun_detect),
+        };
+
+        if let Err(err) = initializing.select_dp(dp) {
+            return Err((initializing.probe.take().unwrap(), err));
+        }
+
+        Ok(initializing)
+    }
+
+    /// Reinitialize the communication interface (in place).
+    ///
+    /// Some chip-specific reset sequences may disable the debug port. `reinitialize` allows
+    /// a debug sequence to re-initialize the debug port, staying true to the `Initialized`
+    /// type state.
+    ///
+    /// If you're invoking this from a debug sequence, know that `reinitialize` will call back
+    /// onto you! Specifically, it will invoke some sequence of `debug_port_*` sequences with
+    /// varying internal state. If you're not prepared for this, you might recurse.
+    ///
+    /// `reinitialize` does handle `debug_core_start` to re-initialize any core's debugging.
+    /// If you're a chip-specific debug sequence, you're expected to handle this yourself.
+    pub(crate) fn reinitialize(&mut self) -> Result<(), ArmError> {
+        // Simulate the drop / close of the initialized communication interface.
+        let mut probe = self.probe.take().expect("ArmCommunicationInterface is in an inconsistent state. This is a bug, please report it.");
+        self.state.disconnect(&mut *probe);
+
+        match Self::try_setup(
+            probe,
+            self.state.sequence.clone(),
+            self.current_debug_port(),
+            self.state.use_overrun_detect,
+        ) {
+            Ok(reinitialized) => {
+                let _ = std::mem::replace(self, reinitialized);
+                // Dropping the original self. Since we've taken the probe, we've ensured
+                // that the drop effects don't happen again.
+                Ok(())
+            }
+            Err((probe, err)) => {
+                self.probe.replace(probe);
+                Err(err)
+            }
+        }
+    }
+
     /// Inform the probe of the [`CoreStatus`] of the chip attached to the probe.
     pub fn core_status_notification(&mut self, state: CoreStatus) {
         self.probe_mut().core_status_notification(state).ok();
