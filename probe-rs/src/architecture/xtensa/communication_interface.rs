@@ -110,10 +110,10 @@ pub struct XtensaCommunicationInterface {
 
 impl XtensaCommunicationInterface {
     /// Create the Xtensa communication interface using the underlying probe driver
-    pub fn new(probe: Box<dyn JTAGAccess>) -> Result<Self, (Box<dyn JTAGAccess>, DebugProbeError)> {
-        let xdm = Xdm::new(probe).map_err(|(probe, e)| (probe, e.into()))?;
+    pub fn new(probe: Box<dyn JTAGAccess>) -> Self {
+        let xdm = Xdm::new(probe);
 
-        let mut s = Self {
+        Self {
             xdm,
             state: XtensaCommunicationInterfaceState {
                 saved_registers: Default::default(),
@@ -122,12 +122,6 @@ impl XtensaCommunicationInterface {
             // TODO chip-specific configuration
             hw_breakpoint_num: 2,
             debug_level: DebugLevel::L6,
-        };
-
-        match s.init() {
-            Ok(()) => Ok(s),
-
-            Err(e) => Err((s.xdm.free(), e.into())),
         }
     }
 
@@ -141,8 +135,9 @@ impl XtensaCommunicationInterface {
         Ok(self.xdm.read_idcode()?)
     }
 
-    fn init(&mut self) -> Result<(), XtensaError> {
-        // TODO any initialization that needs to be done
+    /// Enter debug mode.
+    pub fn enter_debug_mode(&mut self) -> Result<(), XtensaError> {
+        self.xdm.enter_debug_mode()?;
         Ok(())
     }
 

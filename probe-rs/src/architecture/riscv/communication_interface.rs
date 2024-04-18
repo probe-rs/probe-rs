@@ -321,22 +321,16 @@ pub struct RiscvCommunicationInterface {
 
 impl RiscvCommunicationInterface {
     /// Creates a new RISC-V communication interface with a given probe driver.
-    pub fn new(dtm_access: Box<dyn DtmAccess>) -> Result<Self, (Box<dyn DtmAccess>, RiscvError)> {
+    pub fn new(dtm_access: Box<dyn DtmAccess>) -> Self {
         let state = RiscvCommunicationInterfaceState::new();
 
-        let mut s = Self {
+        Self {
             dtm: dtm_access,
             state,
             enabled_harts: 0,
             last_selected_hart: 0,
             hasresethaltreq: None,
-        };
-
-        if let Err(err) = s.enter_debug_mode() {
-            return Err((s.dtm, err));
         }
-
-        Ok(s)
     }
 
     /// Select current hart

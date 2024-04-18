@@ -308,7 +308,7 @@ impl DebugProbe for WchLink {
 
         self.chip_family = resp.chip_family;
 
-        tracing::info!("attached riscvchip {:?}", self.chip_family);
+        tracing::info!("attached riscv chip {:?}", self.chip_family);
 
         self.chip_id = resp.chip_id;
 
@@ -369,11 +369,8 @@ impl DebugProbe for WchLink {
     fn try_get_riscv_interface(
         self: Box<Self>,
     ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, RiscvError)> {
-        let jtag_dtm = match JtagDtm::new(self) {
-            Ok(jtag_dtm) => Box::new(jtag_dtm),
-            Err((access, err)) => return Err((access.into_probe(), err)),
-        };
-        RiscvCommunicationInterface::new(jtag_dtm).map_err(|(probe, err)| (probe.into_probe(), err))
+        let jtag_dtm = Box::new(JtagDtm::new(self));
+        Ok(RiscvCommunicationInterface::new(jtag_dtm))
     }
 
     fn set_scan_chain(

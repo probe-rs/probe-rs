@@ -939,14 +939,8 @@ impl DebugProbe for JLink {
             if let Err(e) = self.select_protocol(WireProtocol::Jtag) {
                 return Err((self, e.into()));
             }
-            let jtag_dtm = match JtagDtm::new(self) {
-                Ok(jtag_dtm) => Box::new(jtag_dtm),
-                Err((access, err)) => return Err((access.into_probe(), err)),
-            };
-            match RiscvCommunicationInterface::new(jtag_dtm) {
-                Ok(interface) => Ok(interface),
-                Err((probe, err)) => Err((probe.into_probe(), err)),
-            }
+            let jtag_dtm = Box::new(JtagDtm::new(self));
+            Ok(RiscvCommunicationInterface::new(jtag_dtm))
         } else {
             Err((
                 self,
@@ -1003,10 +997,7 @@ impl DebugProbe for JLink {
             if let Err(e) = self.select_protocol(WireProtocol::Jtag) {
                 return Err((self, e));
             }
-            match XtensaCommunicationInterface::new(self) {
-                Ok(interface) => Ok(interface),
-                Err((probe, err)) => Err((probe.into_probe(), err)),
-            }
+            Ok(XtensaCommunicationInterface::new(self))
         } else {
             Err((
                 self,

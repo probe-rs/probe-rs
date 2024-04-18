@@ -5,7 +5,7 @@ use std::time::Duration;
 
 pub trait DtmAccess: Send + fmt::Debug {
     /// Perform interface-specific initialisation upon attaching.
-    fn init(&mut self) -> Result<(), DebugProbeError> {
+    fn init(&mut self) -> Result<(), RiscvError> {
         Ok(())
     }
 

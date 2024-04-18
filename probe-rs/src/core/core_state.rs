@@ -5,7 +5,10 @@ use crate::{
             core::{CortexAState, CortexMState},
             ApAddress, ArmProbeInterface, DpAddress,
         },
-        riscv::{communication_interface::RiscvCommunicationInterface, RiscVState},
+        riscv::{
+            communication_interface::{RiscvCommunicationInterface, RiscvError},
+            RiscVState,
+        },
         xtensa::{communication_interface::XtensaCommunicationInterface, XtensaState},
     },
     Core, CoreType, Error, Target,
@@ -174,17 +177,39 @@ impl CombinedCoreState {
             );
         };
 
+        let hart = options.hart_id.unwrap_or_default();
+        if !interface.hart_enabled(hart) {
+            return Err(RiscvError::HartUnavailable.into());
+        }
+
+        interface.select_hart(hart)?;
+
         Ok(Core::new(
             self.id,
             name,
             memory_regions,
-            crate::architecture::riscv::Riscv32::new(
-                options.hart_id.unwrap_or_default(),
-                interface,
-                s,
-                debug_sequence,
-            )?,
+            crate::architecture::riscv::Riscv32::new(interface, s, debug_sequence)?,
         ))
+    }
+
+    pub(crate) fn enable_riscv_debug(
+        &self,
+        interface: &mut RiscvCommunicationInterface,
+    ) -> Result<(), Error> {
+        let ResolvedCoreOptions::Riscv { sequence, .. } = &self.core_state.core_access_options
+        else {
+            unreachable!(
+                "The stored core state is not compatible with the RISC-V architecture. \
+                This should never happen. Please file a bug if it does."
+            );
+        };
+
+        tracing::debug_span!("init_debug_module", id = self.id()).in_scope(|| {
+            // Enable debug mode
+            sequence.init_debug_module(interface)
+        })?;
+
+        Ok(())
     }
 
     pub(crate) fn attach_xtensa<'probe>(
@@ -217,6 +242,26 @@ impl CombinedCoreState {
             memory_regions,
             crate::architecture::xtensa::Xtensa::new(interface, s, debug_sequence),
         ))
+    }
+
+    pub(crate) fn enable_xtensa_debug(
+        &self,
+        interface: &mut XtensaCommunicationInterface,
+    ) -> Result<(), Error> {
+        let ResolvedCoreOptions::Xtensa { sequence, .. } = &self.core_state.core_access_options
+        else {
+            unreachable!(
+                "The stored core state is not compatible with the Xtensa architecture. \
+                This should never happen. Please file a bug if it does."
+            );
+        };
+
+        tracing::debug_span!("init_debug_module", id = self.id()).in_scope(|| {
+            // Enable debug mode
+            sequence.init_debug_module(interface)
+        })?;
+
+        Ok(())
     }
 
     /// Get the memory AP for this core.

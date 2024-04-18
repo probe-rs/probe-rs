@@ -27,41 +27,13 @@ pub struct JtagDtm {
 }
 
 impl JtagDtm {
-    pub fn new(mut probe: Box<dyn JTAGAccess>) -> Result<Self, (Box<dyn JTAGAccess>, RiscvError)> {
-        let dtmcs_raw = match probe.read_register(DTMCS_ADDRESS, DTMCS_WIDTH) {
-            Ok(value) => value,
-            Err(e) => return Err((probe, e.into())),
-        };
-
-        let raw_dtmcs = u32::from_le_bytes((&dtmcs_raw[..]).try_into().unwrap());
-
-        if raw_dtmcs == 0 {
-            return Err((probe, RiscvError::NoRiscvTarget));
-        }
-
-        let dtmcs = Dtmcs(raw_dtmcs);
-
-        tracing::debug!("{:?}", dtmcs);
-
-        let abits = dtmcs.abits();
-        let idle_cycles = dtmcs.idle();
-
-        if dtmcs.version() != 1 {
-            return Err((
-                probe,
-                RiscvError::UnsupportedDebugTransportModuleVersion(dtmcs.version() as u8),
-            ));
-        }
-
-        // Setup the number of idle cycles between JTAG accesses
-        probe.set_idle_cycles(idle_cycles as u8);
-
-        Ok(Self {
+    pub fn new(probe: Box<dyn JTAGAccess>) -> Self {
+        Self {
             probe,
-            abits,
+            abits: 0,
             queued_commands: JtagCommandQueue::new(),
             jtag_results: DeferredResultSet::new(),
-        })
+        }
     }
 
     fn transform_dmi_result(response_bytes: Vec<u8>) -> Result<u32, DmiOperationStatus> {
@@ -147,8 +119,33 @@ impl JtagDtm {
 }
 
 impl DtmAccess for JtagDtm {
-    fn init(&mut self) -> Result<(), DebugProbeError> {
+    fn init(&mut self) -> Result<(), RiscvError> {
         self.probe.tap_reset()?;
+        let dtmcs_raw = self.probe.read_register(DTMCS_ADDRESS, DTMCS_WIDTH)?;
+
+        let raw_dtmcs = u32::from_le_bytes((&dtmcs_raw[..]).try_into().unwrap());
+
+        if raw_dtmcs == 0 {
+            return Err(RiscvError::NoRiscvTarget);
+        }
+
+        let dtmcs = Dtmcs(raw_dtmcs);
+
+        tracing::debug!("{:?}", dtmcs);
+
+        let abits = dtmcs.abits();
+        let idle_cycles = dtmcs.idle();
+
+        if dtmcs.version() != 1 {
+            return Err(RiscvError::UnsupportedDebugTransportModuleVersion(
+                dtmcs.version() as u8,
+            ));
+        }
+
+        // Setup the number of idle cycles between JTAG accesses
+        self.probe.set_idle_cycles(idle_cycles as u8);
+        self.abits = abits;
+
         Ok(())
     }
 

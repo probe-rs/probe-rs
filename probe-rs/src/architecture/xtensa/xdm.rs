@@ -137,10 +137,10 @@ pub struct Xdm {
 }
 
 impl Xdm {
-    pub fn new(probe: Box<dyn JTAGAccess>) -> Result<Self, (Box<dyn JTAGAccess>, XtensaError)> {
+    pub fn new(probe: Box<dyn JTAGAccess>) -> Self {
         // TODO implement openocd's esp32_queue_tdi_idle() to prevent potentially damaging flash ICs
 
-        let mut x = Self {
+        Self {
             probe,
             device_id: 0,
             last_instruction: None,
@@ -149,17 +149,11 @@ impl Xdm {
             jtag_results: DeferredResultSet::new(),
 
             status_idxs: Vec::new(),
-        };
-
-        if let Err(e) = x.init() {
-            return Err((x.free(), e));
         }
-
-        Ok(x)
     }
 
     #[tracing::instrument(skip(self))]
-    fn init(&mut self) -> Result<(), XtensaError> {
+    pub(crate) fn enter_debug_mode(&mut self) -> Result<(), XtensaError> {
         self.probe.tap_reset()?;
 
         let mut pwr_control = PowerControl(0);
@@ -592,10 +586,6 @@ impl Xdm {
         })?;
 
         Ok(())
-    }
-
-    pub(super) fn free(self) -> Box<dyn JTAGAccess> {
-        self.probe
     }
 }
 

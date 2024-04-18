@@ -41,17 +41,10 @@ pub struct Riscv32<'probe> {
 impl<'probe> Riscv32<'probe> {
     /// Create a new RISC-V interface for a particular hart.
     pub fn new(
-        hart: u32,
         interface: &'probe mut RiscvCommunicationInterface,
         state: &'probe mut RiscVState,
         sequence: Arc<dyn RiscvDebugSequence>,
     ) -> Result<Self, RiscvError> {
-        if !interface.hart_enabled(hart) {
-            return Err(RiscvError::HartUnavailable);
-        }
-
-        interface.select_hart(hart)?;
-
         Ok(Self {
             interface,
             state,

@@ -123,6 +123,8 @@ impl Session {
             })
             .collect();
 
+        // TODO: some targets have multiple cores with different architectures. We should attach to
+        // each core (or each debug module) separately.
         let mut session = match target.architecture() {
             Architecture::Arm => {
                 Self::attach_arm(probe, target, attach_method, permissions, cores)?
@@ -288,24 +290,27 @@ impl Session {
 
         probe.attach_to_unspecified()?;
 
-        let interface = probe
-            .try_into_riscv_interface()
-            .map_err(|(_probe, err)| err)?;
+        let mut interface = Box::new(
+            probe
+                .try_into_riscv_interface()
+                .map_err(|(_probe, err)| err)?,
+        );
+
+        // TODO: multicore
+        cores[0].enable_riscv_debug(&mut interface)?;
 
         let mut session = Session {
             target,
-            interface: ArchitectureInterface::Riscv(Box::new(interface)),
+            interface: ArchitectureInterface::Riscv(interface),
             cores,
             configured_trace_sink: None,
         };
 
-        {
-            // Wait for the cores to be halted.
-            for core_id in 0..session.cores.len() {
-                let mut core = session.core(core_id)?;
+        // Wait for the cores to be halted.
+        for core_id in 0..session.cores.len() {
+            let mut core = session.core(core_id)?;
 
-                core.halt(Duration::from_millis(100))?;
-            }
+            core.halt(Duration::from_millis(100))?;
         }
 
         session.halted_access(|sess| sequence_handle.on_connect(sess.get_riscv_interface()?))?;
@@ -333,24 +338,27 @@ impl Session {
 
         probe.attach_to_unspecified()?;
 
-        let interface = probe
-            .try_into_xtensa_interface()
-            .map_err(|(_probe, err)| err)?;
+        let mut interface = Box::new(
+            probe
+                .try_into_xtensa_interface()
+                .map_err(|(_probe, err)| err)?,
+        );
+
+        // TODO: multicore
+        cores[0].enable_xtensa_debug(&mut interface)?;
 
         let mut session = Session {
             target,
-            interface: ArchitectureInterface::Xtensa(Box::new(interface)),
+            interface: ArchitectureInterface::Xtensa(interface),
             cores,
             configured_trace_sink: None,
         };
 
-        {
-            // Wait for the cores to be halted.
-            for core_id in 0..session.cores.len() {
-                let mut core = session.core(core_id)?;
+        // Wait for the cores to be halted.
+        for core_id in 0..session.cores.len() {
+            let mut core = session.core(core_id)?;
 
-                core.halt(Duration::from_millis(100))?;
-            }
+            core.halt(Duration::from_millis(100))?;
         }
 
         session.halted_access(|sess| sequence_handle.on_connect(sess.get_xtensa_interface()?))?;

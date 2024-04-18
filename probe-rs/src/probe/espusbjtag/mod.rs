@@ -154,15 +154,9 @@ impl DebugProbe for EspUsbJtag {
     fn try_get_riscv_interface(
         self: Box<Self>,
     ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, RiscvError)> {
-        let jtag_dtm = match JtagDtm::new(self) {
-            Ok(dtm) => Box::new(dtm),
-            Err((probe, err)) => return Err((probe.into_probe(), err)),
-        };
+        let jtag_dtm = Box::new(JtagDtm::new(self));
         // This probe is intended for RISC-V.
-        match RiscvCommunicationInterface::new(jtag_dtm) {
-            Ok(interface) => Ok(interface),
-            Err((probe, err)) => Err((probe.into_probe(), err)),
-        }
+        Ok(RiscvCommunicationInterface::new(jtag_dtm))
     }
 
     fn get_swo_interface(&self) -> Option<&dyn SwoAccess> {
@@ -216,10 +210,7 @@ impl DebugProbe for EspUsbJtag {
         self: Box<Self>,
     ) -> Result<XtensaCommunicationInterface, (Box<dyn DebugProbe>, DebugProbeError)> {
         // This probe is intended for Xtensa.
-        match XtensaCommunicationInterface::new(self) {
-            Ok(interface) => Ok(interface),
-            Err((probe, err)) => Err((probe.into_probe(), err)),
-        }
+        Ok(XtensaCommunicationInterface::new(self))
     }
 
     fn has_xtensa_interface(&self) -> bool {

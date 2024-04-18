@@ -8,6 +8,15 @@ use crate::architecture::xtensa::communication_interface::{
 ///
 /// Should be implemented on a custom handle for chips that require special sequence code.
 pub trait XtensaDebugSequence: Send + Sync + Debug {
+    /// Initialise the debug module.
+    fn init_debug_module(
+        &self,
+        interface: &mut XtensaCommunicationInterface,
+    ) -> Result<(), crate::Error> {
+        interface.xdm.enter_debug_mode()?;
+        Ok(())
+    }
+
     /// Executed when the probe establishes a connection to the target.
     fn on_connect(
         &self,

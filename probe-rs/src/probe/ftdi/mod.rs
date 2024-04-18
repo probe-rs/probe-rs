@@ -378,14 +378,8 @@ impl DebugProbe for FtdiProbe {
     fn try_get_riscv_interface(
         self: Box<Self>,
     ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, RiscvError)> {
-        let jtag_dtm = match JtagDtm::new(self) {
-            Ok(jtag_dtm) => Box::new(jtag_dtm),
-            Err((access, err)) => return Err((access.into_probe(), err)),
-        };
-        match RiscvCommunicationInterface::new(jtag_dtm) {
-            Ok(interface) => Ok(interface),
-            Err((probe, err)) => Err((probe.into_probe(), err)),
-        }
+        let jtag_dtm = Box::new(JtagDtm::new(self));
+        Ok(RiscvCommunicationInterface::new(jtag_dtm))
     }
 
     fn has_riscv_interface(&self) -> bool {
@@ -412,10 +406,7 @@ impl DebugProbe for FtdiProbe {
     fn try_get_xtensa_interface(
         self: Box<Self>,
     ) -> Result<XtensaCommunicationInterface, (Box<dyn DebugProbe>, DebugProbeError)> {
-        match XtensaCommunicationInterface::new(self) {
-            Ok(interface) => Ok(interface),
-            Err((probe, err)) => Err((probe.into_probe(), err)),
-        }
+        Ok(XtensaCommunicationInterface::new(self))
     }
 
     fn has_xtensa_interface(&self) -> bool {
