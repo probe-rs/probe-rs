@@ -821,15 +821,16 @@ impl TryFrom<&str> for DebugProbeSelector {
         // Split into at most 3 parts: VID, PID, Serial.
         // We limit the number of splits to allow for colons in the
         // serial number (EspJtag uses MAC address)
-        let split = value.splitn(3, ':').collect::<Vec<_>>();
-        if split.len() <= 1 {
-            return Err(DebugProbeSelectorParseError::Format);
-        }
+        let mut split = value.splitn(3, ':');
+
+        let vendor_id = split.next().unwrap(); // First split is always successful
+        let product_id = split.next().ok_or(DebugProbeSelectorParseError::Format)?;
+        let serial_number = split.next().map(|s| s.to_string());
 
         Ok(DebugProbeSelector {
-            vendor_id: u16::from_str_radix(split[0], 16)?,
-            product_id: u16::from_str_radix(split[1], 16)?,
-            serial_number: split.get(2).map(|s| s.to_string()),
+            vendor_id: u16::from_str_radix(vendor_id, 16)?,
+            product_id: u16::from_str_radix(product_id, 16)?,
+            serial_number,
         })
     }
 }
