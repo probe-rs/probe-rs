@@ -128,8 +128,7 @@ fn attach_flash_xtensa(
     sequence: &impl XtensaDebugSequence,
 ) -> Result<(), crate::Error> {
     // We're very intrusive here but the flashing process should reset the MCU again anyway
-    sequence.reset_system_and_halt(interface)?;
-    interface.resume()?;
+    sequence.reset_system_and_halt(interface, Duration::from_millis(500))?;
 
     let mut instructions = vec![];
     Instruction::CallX8(CpuRegister::A4).encode_into_vec(&mut instructions);

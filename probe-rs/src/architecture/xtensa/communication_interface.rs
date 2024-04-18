@@ -693,8 +693,9 @@ impl XtensaCommunicationInterface {
         Ok(())
     }
 
-    pub(crate) fn reset_and_halt(&mut self) -> Result<(), XtensaError> {
+    pub(crate) fn reset_and_halt(&mut self, timeout: Duration) -> Result<(), XtensaError> {
         self.xdm.reset_and_halt()?;
+        self.wait_for_core_halted(timeout)?;
 
         Ok(())
     }
