@@ -377,6 +377,10 @@ impl DebugProbe for WchLink {
     ) -> Result<(), DebugProbeError> {
         Ok(())
     }
+
+    fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
+        Ok(&[])
+    }
 }
 
 /// Wrap WCH-Link's USB based DMI access as a fake JTAGAccess

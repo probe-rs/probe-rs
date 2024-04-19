@@ -1670,6 +1670,10 @@ mod test {
             todo!()
         }
 
+        fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
+            todo!()
+        }
+
         fn attach(&mut self) -> Result<(), DebugProbeError> {
             todo!()
         }

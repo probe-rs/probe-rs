@@ -12,15 +12,6 @@ use std::time::Duration;
 ///
 /// Should be implemented on a custom handle for chips that require special sequence code.
 pub trait RiscvDebugSequence: Send + Sync + Debug {
-    /// Initialise the debug module.
-    fn init_debug_module(
-        &self,
-        interface: &mut RiscvCommunicationInterface,
-    ) -> Result<(), crate::Error> {
-        interface.enter_debug_mode()?;
-        Ok(())
-    }
-
     /// Executed when the probe establishes a connection to the target.
     fn on_connect(&self, _interface: &mut RiscvCommunicationInterface) -> Result<(), crate::Error> {
         Ok(())

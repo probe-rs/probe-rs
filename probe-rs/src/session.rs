@@ -49,38 +49,54 @@ use std::{fmt, sync::Arc, time::Duration};
 #[derive(Debug)]
 pub struct Session {
     target: Target,
-    interface: ArchitectureInterface,
+    interfaces: ArchitectureInterface,
     cores: Vec<CombinedCoreState>,
     configured_trace_sink: Option<TraceSink>,
 }
 
 #[allow(clippy::large_enum_variant)]
-pub(crate) enum ArchitectureInterface {
+enum InnerInterface {
+    Riscv(RiscvSaveState),
+    Xtensa(XtensaSaveState),
+    Unknown,
+}
+
+impl InnerInterface {
+    /// Returns the debug module's intended architecture.
+    fn architecture(&self) -> Option<Architecture> {
+        match self {
+            InnerInterface::Riscv(_) => Some(Architecture::Riscv),
+            InnerInterface::Xtensa(_) => Some(Architecture::Xtensa),
+            InnerInterface::Unknown => None,
+        }
+    }
+}
+
+impl fmt::Debug for InnerInterface {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            InnerInterface::Riscv(_) => f.write_str("Riscv(..)"),
+            InnerInterface::Xtensa(_) => f.write_str("Xtensa(..)"),
+            InnerInterface::Unknown => f.write_str("Unknown"),
+        }
+    }
+}
+
+// TODO: this is somewhat messy because I omitted separating the Probe out of the ARM interface.
+#[allow(clippy::large_enum_variant)]
+enum ArchitectureInterface {
     Arm(Box<dyn ArmProbeInterface + 'static>),
-    Riscv(Probe, RiscvSaveState),
-    Xtensa(Probe, XtensaSaveState),
+    Other(Probe, Vec<InnerInterface>),
 }
 
 impl fmt::Debug for ArchitectureInterface {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             ArchitectureInterface::Arm(_) => f.write_str("ArchitectureInterface::Arm(..)"),
-            ArchitectureInterface::Riscv(..) => {
-                f.debug_tuple("ArchitectureInterface::Riscv(..)").finish()
-            }
-            ArchitectureInterface::Xtensa(..) => {
-                f.debug_tuple("ArchitectureInterface::Xtensa(..)").finish()
-            }
-        }
-    }
-}
-
-impl From<&ArchitectureInterface> for Architecture {
-    fn from(value: &ArchitectureInterface) -> Self {
-        match value {
-            ArchitectureInterface::Arm(_) => Architecture::Arm,
-            ArchitectureInterface::Riscv(..) => Architecture::Riscv,
-            ArchitectureInterface::Xtensa(..) => Architecture::Xtensa,
+            ArchitectureInterface::Other(_, ifaces) => f
+                .debug_tuple("ArchitectureInterface::Other(..)")
+                .field(ifaces)
+                .finish(),
         }
     }
 }
@@ -92,15 +108,23 @@ impl ArchitectureInterface {
         combined_state: &'probe mut CombinedCoreState,
     ) -> Result<Core<'probe>, Error> {
         match self {
-            ArchitectureInterface::Arm(iface) => combined_state.attach_arm(target, iface),
-            ArchitectureInterface::Riscv(probe, state) => {
-                let factory = probe.try_get_riscv_interface_factory()?;
-                let iface = factory.attach(state)?;
-                combined_state.attach_riscv(target, iface)
-            }
-            ArchitectureInterface::Xtensa(probe, state) => {
-                let iface = probe.try_get_xtensa_interface(&mut *state)?;
-                combined_state.attach_xtensa(target, iface)
+            ArchitectureInterface::Arm(interface) => combined_state.attach_arm(target, interface),
+            ArchitectureInterface::Other(probe, ifaces) => {
+                let idx = combined_state.interface_idx();
+                match &mut ifaces[idx] {
+                    InnerInterface::Riscv(state) => {
+                        let factory = probe.try_get_riscv_interface_factory()?;
+                        let iface = factory.attach(state)?;
+                        combined_state.attach_riscv(target, iface)
+                    }
+                    InnerInterface::Xtensa(state) => {
+                        let iface = probe.try_get_xtensa_interface(state)?;
+                        combined_state.attach_xtensa(target, iface)
+                    }
+                    InnerInterface::Unknown => {
+                        unreachable!("Tried to attach to unknown interface {idx}")
+                    }
+                }
             }
         }
     }
@@ -130,18 +154,10 @@ impl Session {
             })
             .collect();
 
-        // TODO: some targets have multiple cores with different architectures. We should attach to
-        // each core (or each debug module) separately.
-        let mut session = match target.architecture() {
-            Architecture::Arm => {
-                Self::attach_arm(probe, target, attach_method, permissions, cores)?
-            }
-            Architecture::Riscv => {
-                Self::attach_riscv(probe, target, attach_method, permissions, cores)?
-            }
-            Architecture::Xtensa => {
-                Self::attach_xtensa(probe, target, attach_method, permissions, cores)?
-            }
+        let mut session = if let Architecture::Arm = target.architecture() {
+            Self::attach_arm(probe, target, attach_method, permissions, cores)?
+        } else {
+            Self::attach_riscv_or_xtensa(probe, target, attach_method, permissions, cores)?
         };
 
         session.clear_all_hw_breakpoints()?;
@@ -245,7 +261,7 @@ impl Session {
 
             let mut session = Session {
                 target,
-                interface: ArchitectureInterface::Arm(interface),
+                interfaces: ArchitectureInterface::Arm(interface),
                 cores,
                 configured_trace_sink: None,
             };
@@ -268,27 +284,23 @@ impl Session {
         } else {
             Ok(Session {
                 target,
-                interface: ArchitectureInterface::Arm(interface),
+                interfaces: ArchitectureInterface::Arm(interface),
                 cores,
                 configured_trace_sink: None,
             })
         }
     }
 
-    fn attach_riscv(
+    fn attach_riscv_or_xtensa(
         mut probe: Probe,
         target: Target,
         _attach_method: AttachMethod,
         _permissions: Permissions,
         cores: Vec<CombinedCoreState>,
     ) -> Result<Self, Error> {
-        // TODO: Handle attach under reset
-
-        let sequence_handle = match &target.debug_sequence {
-            DebugSequence::Riscv(sequence) => sequence.clone(),
-            _ => unreachable!("Mismatch between architecture and sequence type!"),
-        };
-
+        // While we still don't support mixed architectures
+        // (they'd need per-core debug sequences), we can at least
+        // handle most of the setup in the same way.
         if let Some(jtag) = target.jtag.as_ref() {
             if let Some(scan_chain) = jtag.scan_chain.clone() {
                 probe.set_scan_chain(scan_chain)?;
@@ -297,19 +309,73 @@ impl Session {
 
         probe.attach_to_unspecified()?;
 
-        // TODO: multicore RISC-V may or may not require multiple interfaces using the same probe
-        let factory = probe.try_get_riscv_interface_factory()?;
-        let mut state = factory.create_state();
+        // We try to guess the TAP number. Normally we trust the scan chain, but some probes are
+        // only quasi-JTAG (wch-link), so we'll have to work with at least 1, but if we're guessing
+        // we can also use the highest number specified in the target YAML.
 
-        {
-            let mut interface = factory.attach(&mut state)?;
-            // TODO: this shouldn't go through a core I think
-            cores[0].enable_riscv_debug(&mut interface)?;
+        // FIXME: This is terribly JTAG-specific. Since we don't really support anything else yet,
+        // it should be fine for now.
+        let highest_idx = cores.iter().map(|c| c.interface_idx()).max().unwrap_or(0);
+        let tap_count = match probe.scan_chain() {
+            Ok(scan_chain) => scan_chain.len().max(highest_idx + 1),
+            Err(_) => highest_idx + 1,
+        };
+        let mut interfaces = std::iter::repeat_with(|| InnerInterface::Unknown)
+            .take(tap_count)
+            .collect::<Vec<_>>();
+
+        // Create a new interface by walking through the cores and initialising the TAPs that
+        // we find mentioned.
+        for core in cores.iter() {
+            let iface_idx = core.interface_idx();
+
+            let core_arch = core.core_type().architecture();
+
+            if let Some(debug_arch) = interfaces[iface_idx].architecture() {
+                if core_arch == debug_arch {
+                    // Already initialised.
+                    continue;
+                }
+                return Err(Error::Probe(DebugProbeError::Other(anyhow::anyhow!(
+                    "{core_arch:?} core can not be mixed with a {debug_arch:?} debug module.",
+                ))));
+            }
+
+            probe.select_jtag_tap(iface_idx)?;
+
+            interfaces[iface_idx] = match core_arch {
+                Architecture::Riscv => {
+                    let factory = probe.try_get_riscv_interface_factory()?;
+                    let mut state = factory.create_state();
+                    {
+                        let mut interface = factory.attach(&mut state)?;
+                        interface.enter_debug_mode()?;
+                    }
+
+                    InnerInterface::Riscv(state)
+                }
+                Architecture::Xtensa => {
+                    let mut state = XtensaSaveState::default();
+                    {
+                        let mut interface = probe.try_get_xtensa_interface(&mut state)?;
+                        interface.enter_debug_mode()?;
+                    }
+
+                    InnerInterface::Xtensa(state)
+                }
+                _ => {
+                    return Err(Error::Probe(DebugProbeError::Other(anyhow::anyhow!(
+                        "Unsupported core architecture {core_arch:?}",
+                    ))));
+                }
+            };
         }
+
+        let interfaces = ArchitectureInterface::Other(probe, interfaces);
 
         let mut session = Session {
             target,
-            interface: ArchitectureInterface::Riscv(probe, state),
+            interfaces,
             cores,
             configured_trace_sink: None,
         };
@@ -321,55 +387,21 @@ impl Session {
             core.halt(Duration::from_millis(100))?;
         }
 
-        session
-            .halted_access(|sess| sequence_handle.on_connect(&mut sess.get_riscv_interface()?))?;
-
-        Ok(session)
-    }
-
-    fn attach_xtensa(
-        mut probe: Probe,
-        target: Target,
-        _attach_method: AttachMethod,
-        _permissions: Permissions,
-        cores: Vec<CombinedCoreState>,
-    ) -> Result<Self, Error> {
-        let sequence_handle = match &target.debug_sequence {
-            DebugSequence::Xtensa(sequence) => sequence.clone(),
-            _ => unreachable!("Mismatch between architecture and sequence type!"),
-        };
-
-        if let Some(jtag) = target.jtag.as_ref() {
-            if let Some(scan_chain) = jtag.scan_chain.clone() {
-                probe.set_scan_chain(scan_chain)?;
+        // Connect to the cores
+        match session.target.debug_sequence.clone() {
+            DebugSequence::Xtensa(sequence) => {
+                for core_id in 0..session.cores.len() {
+                    sequence.on_connect(&mut session.get_xtensa_interface(core_id)?)?;
+                }
             }
-        }
 
-        probe.attach_to_unspecified()?;
-
-        // TODO: probe should return a factory that has an associated state type or constructor.
-        // TODO: multicore Xtensa requires multiple interfaces using the same probe
-        let mut state = XtensaSaveState::default();
-        let mut interface = probe.try_get_xtensa_interface(&mut state)?;
-
-        interface.enter_debug_mode()?;
-
-        let mut session = Session {
-            target,
-            interface: ArchitectureInterface::Xtensa(probe, state),
-            cores,
-            configured_trace_sink: None,
+            DebugSequence::Riscv(sequence) => {
+                for core_id in 0..session.cores.len() {
+                    sequence.on_connect(&mut session.get_riscv_interface(core_id)?)?;
+                }
+            }
+            _ => unreachable!("Other architectures should have already been handled"),
         };
-
-        // Wait for the cores to be halted.
-        for core_id in 0..session.cores.len() {
-            let mut core = session.core(core_id)?;
-
-            core.halt(Duration::from_millis(100))?;
-        }
-
-        session
-            .halted_access(|sess| sequence_handle.on_connect(&mut sess.get_xtensa_interface()?))?;
 
         Ok(session)
     }
@@ -430,6 +462,13 @@ impl Session {
         r
     }
 
+    fn interface_idx(&self, core: usize) -> Result<usize, Error> {
+        self.cores
+            .get(core)
+            .map(|c| c.interface_idx())
+            .ok_or(Error::CoreNotFound(core))
+    }
+
     /// Attaches to the core with the given number.
     ///
     /// ## Usage
@@ -451,7 +490,8 @@ impl Session {
             .cores
             .get_mut(core_index)
             .ok_or(Error::CoreNotFound(core_index))?;
-        self.interface.attach(&self.target, combined_state)
+
+        self.interfaces.attach(&self.target, combined_state)
     }
 
     /// Read available trace data from the specified data sink.
@@ -467,7 +507,7 @@ impl Session {
 
         match sink {
             TraceSink::Swo(_) => {
-                let interface = self.get_arm_interface()?;
+                let interface = self.get_arm_interface(0)?;
                 interface.read_swo()
             }
 
@@ -477,7 +517,7 @@ impl Session {
 
             TraceSink::TraceMemory => {
                 let components = self.get_arm_components(DpAddress::Default)?;
-                let interface = self.get_arm_interface()?;
+                let interface = self.get_arm_interface(0)?;
                 crate::architecture::arm::component::read_trace_memory(interface, &components)
             }
         }
@@ -492,13 +532,16 @@ impl Session {
     ///
     /// [SwoAccess::read_swo]: crate::architecture::arm::swo::SwoAccess
     pub fn swo_reader(&mut self) -> Result<SwoReader, Error> {
-        let interface = self.get_arm_interface()?;
+        let interface = self.get_arm_interface(0)?;
         Ok(SwoReader::new(interface))
     }
 
     /// Get the Arm probe interface.
-    pub fn get_arm_interface(&mut self) -> Result<&mut dyn ArmProbeInterface, ArmError> {
-        let interface = match &mut self.interface {
+    pub fn get_arm_interface(
+        &mut self,
+        _idx: usize,
+    ) -> Result<&mut dyn ArmProbeInterface, ArmError> {
+        let interface = match &mut self.interfaces {
             ArchitectureInterface::Arm(state) => state.deref_mut(),
             _ => return Err(ArmError::NoArmTarget),
         };
@@ -507,26 +550,32 @@ impl Session {
     }
 
     /// Get the RISC-V probe interface.
-    pub fn get_riscv_interface(&mut self) -> Result<RiscvCommunicationInterface, RiscvError> {
-        let interface = match &mut self.interface {
-            ArchitectureInterface::Riscv(probe, state) => {
+    pub fn get_riscv_interface(
+        &mut self,
+        core_id: usize,
+    ) -> Result<RiscvCommunicationInterface, Error> {
+        let tap_idx = self.interface_idx(core_id)?;
+        if let ArchitectureInterface::Other(probe, ifaces) = &mut self.interfaces {
+            if let InnerInterface::Riscv(state) = &mut ifaces[tap_idx] {
                 let factory = probe.try_get_riscv_interface_factory()?;
-                factory.attach(state)?
+                return Ok(factory.attach(state)?);
             }
-            _ => return Err(RiscvError::NoRiscvTarget),
-        };
-
-        Ok(interface)
+        }
+        Err(RiscvError::NoRiscvTarget.into())
     }
 
     /// Get the Xtensa probe interface.
-    pub fn get_xtensa_interface(&mut self) -> Result<XtensaCommunicationInterface, XtensaError> {
-        let interface = match &mut self.interface {
-            ArchitectureInterface::Xtensa(probe, state) => probe.try_get_xtensa_interface(state)?,
-            _ => return Err(XtensaError::NoXtensaTarget),
-        };
-
-        Ok(interface)
+    pub fn get_xtensa_interface(
+        &mut self,
+        core_id: usize,
+    ) -> Result<XtensaCommunicationInterface, Error> {
+        let tap_idx = self.interface_idx(core_id)?;
+        if let ArchitectureInterface::Other(probe, ifaces) = &mut self.interfaces {
+            if let InnerInterface::Xtensa(state) = &mut ifaces[tap_idx] {
+                return Ok(probe.try_get_xtensa_interface(state)?);
+            }
+        }
+        Err(XtensaError::NoXtensaTarget.into())
     }
 
     #[tracing::instrument(skip_all)]
@@ -584,7 +633,7 @@ impl Session {
     /// NotImplemented if no custom erase sequence exists
     /// Err(e) if the custom erase sequence failed
     pub fn sequence_erase_all(&mut self) -> Result<(), Error> {
-        let ArchitectureInterface::Arm(ref mut interface) = self.interface else {
+        let ArchitectureInterface::Arm(ref mut interface) = self.interfaces else {
             return Err(Error::Probe(DebugProbeError::NotImplemented {
                 function_name: "Debug Erase Sequence",
             }));
@@ -627,7 +676,7 @@ impl Session {
         &mut self,
         dp: DpAddress,
     ) -> Result<Vec<CoresightComponent>, ArmError> {
-        let interface = self.get_arm_interface()?;
+        let interface = self.get_arm_interface(0)?;
 
         get_arm_components(interface, dp)
     }
@@ -655,7 +704,7 @@ impl Session {
         };
 
         let components = self.get_arm_components(DpAddress::Default)?;
-        let interface = self.get_arm_interface()?;
+        let interface = self.get_arm_interface(0)?;
 
         // Configure SWO on the probe when the trace sink is configured for a serial output. Note
         // that on some architectures, the TPIU is configured to drive SWO.
@@ -686,7 +735,7 @@ impl Session {
     /// Begin tracing a memory address over SWV.
     pub fn add_swv_data_trace(&mut self, unit: usize, address: u32) -> Result<(), ArmError> {
         let components = self.get_arm_components(DpAddress::Default)?;
-        let interface = self.get_arm_interface()?;
+        let interface = self.get_arm_interface(0)?;
         crate::architecture::arm::component::add_swv_data_trace(
             interface,
             &components,
@@ -698,13 +747,22 @@ impl Session {
     /// Stop tracing from a given SWV unit
     pub fn remove_swv_data_trace(&mut self, unit: usize) -> Result<(), ArmError> {
         let components = self.get_arm_components(DpAddress::Default)?;
-        let interface = self.get_arm_interface()?;
+        let interface = self.get_arm_interface(0)?;
         crate::architecture::arm::component::remove_swv_data_trace(interface, &components, unit)
     }
 
     /// Return the `Architecture` of the currently connected chip.
     pub fn architecture(&self) -> Architecture {
-        Architecture::from(&self.interface)
+        match &self.interfaces {
+            ArchitectureInterface::Arm(_) => Architecture::Arm,
+            ArchitectureInterface::Other(_, ifaces) => {
+                if let InnerInterface::Riscv(_) = &ifaces[0] {
+                    Architecture::Riscv
+                } else {
+                    Architecture::Xtensa
+                }
+            }
+        }
     }
 
     /// Clears all hardware breakpoints on all cores

@@ -316,6 +316,15 @@ impl DebugProbe for FakeProbe {
         Ok(())
     }
 
+    fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
+        match &self.scan_chain {
+            Some(chain) => Ok(chain),
+            None => Err(DebugProbeError::Other(anyhow::anyhow!(
+                "No scan chain set for fake probe"
+            ))),
+        }
+    }
+
     fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
         self.speed = speed_khz;
 

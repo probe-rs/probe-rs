@@ -321,6 +321,14 @@ impl DebugProbe for FtdiProbe {
         Ok(())
     }
 
+    fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
+        if let Some(ref scan_chain) = self.jtag_state.expected_scan_chain {
+            Ok(scan_chain)
+        } else {
+            Ok(&[])
+        }
+    }
+
     fn attach(&mut self) -> Result<(), DebugProbeError> {
         tracing::debug!("Attaching...");
 

@@ -387,6 +387,16 @@ impl Probe {
         }
     }
 
+    /// Returns the JTAG scan chain
+    pub fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
+        self.inner.scan_chain()
+    }
+
+    /// Selects the JTAG TAP to be used for communication.
+    pub fn select_jtag_tap(&mut self, index: usize) -> Result<(), DebugProbeError> {
+        self.inner.select_jtag_tap(index)
+    }
+
     /// Get the currently used maximum speed for the debug protocol in kHz.
     ///
     /// Not all probes report which speed is used, meaning this value is not
@@ -553,6 +563,9 @@ pub trait DebugProbe: Send + fmt::Debug {
     /// scan_chain since the scan chain only applies to the attached target.
     ///
     fn set_scan_chain(&mut self, scan_chain: Vec<ScanChainElement>) -> Result<(), DebugProbeError>;
+
+    /// Returns the JTAG scan chain
+    fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError>;
 
     /// Attach to the chip.
     ///

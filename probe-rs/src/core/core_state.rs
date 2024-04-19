@@ -34,6 +34,10 @@ impl CombinedCoreState {
         self.specific_state.core_type()
     }
 
+    pub fn interface_idx(&self) -> usize {
+        self.core_state.core_access_options.interface_idx()
+    }
+
     pub(crate) fn attach_arm<'probe>(
         &'probe mut self,
         target: &'probe Target,
@@ -190,26 +194,6 @@ impl CombinedCoreState {
             memory_regions,
             crate::architecture::riscv::Riscv32::new(interface, s, debug_sequence)?,
         ))
-    }
-
-    pub(crate) fn enable_riscv_debug(
-        &self,
-        interface: &mut RiscvCommunicationInterface,
-    ) -> Result<(), Error> {
-        let ResolvedCoreOptions::Riscv { sequence, .. } = &self.core_state.core_access_options
-        else {
-            unreachable!(
-                "The stored core state is not compatible with the RISC-V architecture. \
-                This should never happen. Please file a bug if it does."
-            );
-        };
-
-        tracing::debug_span!("init_debug_module", id = self.id()).in_scope(|| {
-            // Enable debug mode
-            sequence.init_debug_module(interface)
-        })?;
-
-        Ok(())
     }
 
     pub(crate) fn attach_xtensa<'probe>(

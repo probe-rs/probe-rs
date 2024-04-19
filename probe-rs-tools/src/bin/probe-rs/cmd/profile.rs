@@ -128,7 +128,7 @@ impl ProfileCmd {
 
                 let components = session.get_arm_components(DpAddress::Default)?;
                 let component = find_component(&components, PeripheralType::Dwt)?;
-                let interface = session.get_arm_interface()?;
+                let interface = session.get_arm_interface(0)?;
                 let mut dwt = Dwt::new(interface, component);
                 dwt.enable_pc_sampling()?;
 
