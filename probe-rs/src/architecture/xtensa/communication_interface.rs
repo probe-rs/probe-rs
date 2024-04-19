@@ -153,27 +153,6 @@ impl XtensaCommunicationInterface {
         self.hw_breakpoint_num
     }
 
-    /// Enters OCD mode and halts the core.
-    pub fn enter_ocd_mode(&mut self) -> Result<(), XtensaError> {
-        self.xdm.halt()?;
-        tracing::info!("Entered OCD mode");
-        Ok(())
-    }
-
-    /// Returns whether the core is in OCD mode.
-    pub fn is_in_ocd_mode(&mut self) -> Result<bool, XtensaError> {
-        self.xdm.is_in_ocd_mode()
-    }
-
-    /// Leaves OCD mode, restores state and resumes program execution.
-    pub fn leave_ocd_mode(&mut self) -> Result<(), XtensaError> {
-        self.restore_registers()?;
-        self.resume()?;
-        self.xdm.leave_ocd_mode()?;
-        tracing::info!("Left OCD mode");
-        Ok(())
-    }
-
     /// Halts the core.
     pub fn halt(&mut self) -> Result<(), XtensaError> {
         tracing::debug!("Halting core");
@@ -183,7 +162,7 @@ impl XtensaCommunicationInterface {
     /// Returns whether the core is halted.
     pub fn is_halted(&mut self) -> Result<bool, XtensaError> {
         if !self.state.is_halted {
-            self.state.is_halted = self.xdm.is_halted()?;
+            self.state.is_halted = self.xdm.status()?.stopped();
         }
 
         Ok(self.state.is_halted)
@@ -429,7 +408,7 @@ impl XtensaCommunicationInterface {
     }
 
     #[tracing::instrument(skip(self))]
-    fn restore_registers(&mut self) -> Result<(), XtensaError> {
+    pub(super) fn restore_registers(&mut self) -> Result<(), XtensaError> {
         tracing::debug!("Restoring registers");
 
         // Clone the list of saved registers so we can iterate over it, but code may still save
