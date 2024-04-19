@@ -7,7 +7,7 @@ use probe_rs_target::{Architecture, CoreType, InstructionSet};
 use crate::{
     architecture::xtensa::{
         arch::{instruction::Instruction, Register, SpecialRegister},
-        communication_interface::{DebugCause, IBreakEn},
+        communication_interface::{DebugCause, IBreakEn, XtensaCommunicationInterface},
         registers::{FP, PC, RA, SP, XTENSA_CORE_REGSISTERS},
         sequences::XtensaDebugSequence,
     },
@@ -19,8 +19,6 @@ use crate::{
     CoreInformation, CoreInterface, CoreRegister, CoreStatus, Error, HaltReason, MemoryInterface,
     SemihostingCommand,
 };
-
-use self::communication_interface::XtensaCommunicationInterface;
 
 pub(crate) mod arch;
 mod xdm;
@@ -65,7 +63,7 @@ impl XtensaState {
 
 /// An interface to operate an Xtensa core.
 pub struct Xtensa<'probe> {
-    interface: &'probe mut XtensaCommunicationInterface,
+    interface: XtensaCommunicationInterface<'probe>,
     state: &'probe mut XtensaState,
     sequence: Arc<dyn XtensaDebugSequence>,
 }
@@ -76,7 +74,7 @@ impl<'probe> Xtensa<'probe> {
 
     /// Create a new Xtensa interface for a particular core.
     pub fn new(
-        interface: &'probe mut XtensaCommunicationInterface,
+        interface: XtensaCommunicationInterface<'probe>,
         state: &'probe mut XtensaState,
         sequence: Arc<dyn XtensaDebugSequence>,
     ) -> Self {
@@ -301,7 +299,7 @@ impl<'probe> CoreInterface for Xtensa<'probe> {
     fn reset(&mut self) -> Result<(), Error> {
         self.state.semihosting_command = None;
         self.sequence
-            .reset_system_and_halt(self.interface, Duration::from_millis(500))?;
+            .reset_system_and_halt(&mut self.interface, Duration::from_millis(500))?;
 
         self.run()
     }
@@ -309,7 +307,7 @@ impl<'probe> CoreInterface for Xtensa<'probe> {
     fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
         self.state.semihosting_command = None;
         self.sequence
-            .reset_system_and_halt(self.interface, timeout)?;
+            .reset_system_and_halt(&mut self.interface, timeout)?;
 
         self.core_info()
     }

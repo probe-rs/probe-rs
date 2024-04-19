@@ -1,6 +1,8 @@
 //! ESP USB JTAG probe implementation.
 mod protocol;
 
+use std::any::Any;
+
 use crate::{
     architecture::{
         arm::{
@@ -206,11 +208,11 @@ impl DebugProbe for EspUsbJtag {
         Ok(None)
     }
 
-    fn try_get_xtensa_interface(
-        self: Box<Self>,
-    ) -> Result<XtensaCommunicationInterface, (Box<dyn DebugProbe>, DebugProbeError)> {
-        // This probe is intended for Xtensa.
-        Ok(XtensaCommunicationInterface::new(self))
+    fn try_get_xtensa_interface<'probe>(
+        &'probe mut self,
+        state: &'probe mut dyn Any,
+    ) -> Result<XtensaCommunicationInterface<'probe>, DebugProbeError> {
+        Ok(XtensaCommunicationInterface::new(self, state))
     }
 
     fn has_xtensa_interface(&self) -> bool {

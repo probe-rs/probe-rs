@@ -14,7 +14,7 @@ use probe_rs::{
             ApAddress, ApInformation, ArmProbeInterface, DpAddress, MemoryApInformation, Register,
         },
         riscv::communication_interface::RiscvCommunicationInterface,
-        xtensa::communication_interface::XtensaCommunicationInterface,
+        xtensa::communication_interface::{XtensaCommunicationInterface, XtensaSaveState},
     },
     probe::{list::Lister, Probe, WireProtocol},
     MemoryMappedRegister,
@@ -186,23 +186,21 @@ fn try_show_info(
     // If the current protocol we want to use is SWD, we have avoid this.
     if probe.has_xtensa_interface() && protocol == WireProtocol::Jtag {
         tracing::debug!("Trying to show Xtensa chip information");
-        match probe.try_into_xtensa_interface() {
+        let mut state = XtensaSaveState::default();
+        match probe.try_get_xtensa_interface(&mut state) {
             Ok(mut interface) => {
                 if let Err(e) = show_xtensa_info(&mut interface) {
                     println!("Error showing Xtensa chip information: {:?}", anyhow!(e));
                 }
-
-                probe = interface.close();
             }
-            Err((interface_probe, e)) => {
+            Err(e) => {
                 println!("Error showing Xtensa chip information: {:?}", anyhow!(e));
-                probe = interface_probe;
             }
         }
     } else if protocol == WireProtocol::Swd {
         println!(
-                "Debugging Xtensa targets over SWD is not supported. For these targets, JTAG is the only supported protocol. Xtensa specific information cannot be printed."
-            );
+            "Debugging Xtensa targets over SWD is not supported. For these targets, JTAG is the only supported protocol. Xtensa specific information cannot be printed."
+        );
     } else {
         println!(
             "Unable to debug Xtensa targets using the current probe. Xtensa specific information cannot be printed."

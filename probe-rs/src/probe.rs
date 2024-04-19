@@ -30,6 +30,7 @@ use crate::probe::common::IdCode;
 use crate::{Error, Permissions, Session};
 use nusb::DeviceInfo;
 use probe_rs_target::ScanChainElement;
+use std::any::Any;
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
@@ -408,15 +409,14 @@ impl Probe {
     /// architecture.
     ///
     /// If an error occurs while trying to connect, the probe is returned.
-    pub fn try_into_xtensa_interface(
-        self,
-    ) -> Result<XtensaCommunicationInterface, (Self, DebugProbeError)> {
+    pub fn try_get_xtensa_interface<'probe>(
+        &'probe mut self,
+        state: &'probe mut dyn Any,
+    ) -> Result<XtensaCommunicationInterface<'probe>, DebugProbeError> {
         if !self.attached {
-            Err((self, DebugProbeError::NotAttached))
+            Err(DebugProbeError::NotAttached)
         } else {
-            self.inner
-                .try_get_xtensa_interface()
-                .map_err(|(probe, err)| (Probe::from_attached_probe(probe), err))
+            Ok(self.inner.try_get_xtensa_interface(state)?)
         }
     }
 
@@ -628,15 +628,13 @@ pub trait DebugProbe: Send + fmt::Debug {
 
     /// Get the dedicated interface to debug Xtensa chips. Ensure that the
     /// probe actually supports this by calling [DebugProbe::has_xtensa_interface] first.
-    fn try_get_xtensa_interface(
-        self: Box<Self>,
-    ) -> Result<XtensaCommunicationInterface, (Box<dyn DebugProbe>, DebugProbeError)> {
-        Err((
-            self.into_probe(),
-            DebugProbeError::InterfaceNotAvailable {
-                interface_name: "Xtensa",
-            },
-        ))
+    fn try_get_xtensa_interface<'probe>(
+        &'probe mut self,
+        _state: &'probe mut dyn Any,
+    ) -> Result<XtensaCommunicationInterface<'probe>, DebugProbeError> {
+        Err(DebugProbeError::InterfaceNotAvailable {
+            interface_name: "Xtensa",
+        })
     }
 
     /// Check if the probe offers an interface to debug Xtensa chips.

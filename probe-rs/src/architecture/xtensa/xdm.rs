@@ -122,10 +122,8 @@ pub enum Error {
     XdmPoweredOff,
 }
 
-#[derive(Debug)]
-pub struct Xdm {
-    pub probe: Box<dyn JTAGAccess>,
-
+#[derive(Debug, Default)]
+pub struct XdmState {
     device_id: u32,
 
     last_instruction: Option<Instruction>,
@@ -136,20 +134,17 @@ pub struct Xdm {
     status_idxs: Vec<DeferredResultIndex>,
 }
 
-impl Xdm {
-    pub fn new(probe: Box<dyn JTAGAccess>) -> Self {
+#[derive(Debug)]
+pub struct Xdm<'probe> {
+    pub probe: &'probe mut dyn JTAGAccess,
+    state: &'probe mut XdmState,
+}
+
+impl<'probe> Xdm<'probe> {
+    pub fn new(probe: &'probe mut dyn JTAGAccess, state: &'probe mut XdmState) -> Self {
         // TODO implement openocd's esp32_queue_tdi_idle() to prevent potentially damaging flash ICs
 
-        Self {
-            probe,
-            device_id: 0,
-            last_instruction: None,
-
-            queue: JtagCommandQueue::new(),
-            jtag_results: DeferredResultSet::new(),
-
-            status_idxs: Vec::new(),
-        }
+        Self { probe, state }
     }
 
     #[tracing::instrument(skip(self))]
@@ -216,7 +211,7 @@ impl Xdm {
         })?;
 
         // TODO check status and clear bits if required
-        self.device_id = device_id;
+        self.state.device_id = device_id;
 
         Ok(())
     }
@@ -234,18 +229,18 @@ impl Xdm {
     }
 
     pub(super) fn execute(&mut self) -> Result<(), XtensaError> {
-        let mut queue = std::mem::take(&mut self.queue);
+        let mut queue = std::mem::take(&mut self.state.queue);
 
         tracing::debug!("Executing {} commands", queue.len());
 
         // Drop the status readers when we're done.
         // We take now to avoid a possibly recursive call to clear before it's time.
-        let _idxs = std::mem::take(&mut self.status_idxs);
+        let _idxs = std::mem::take(&mut self.state.status_idxs);
 
         while !queue.is_empty() {
             match self.probe.write_register_batch(&queue) {
                 Ok(result) => {
-                    self.jtag_results.merge_from(result);
+                    self.state.jtag_results.merge_from(result);
                     return Ok(());
                 }
                 Err(e) => {
@@ -271,7 +266,7 @@ impl Xdm {
 
                     // queue up the remaining commands when we retry
                     queue.consume(e.results.len());
-                    self.jtag_results.merge_from(e.results);
+                    self.state.jtag_results.merge_from(e.results);
                 }
             }
         }
@@ -283,12 +278,13 @@ impl Xdm {
         &mut self,
         index: DeferredResultIndex,
     ) -> Result<CommandResult, XtensaError> {
-        match self.jtag_results.take(index) {
+        match self.state.jtag_results.take(index) {
             Ok(result) => Ok(result),
             Err(index) => {
                 self.execute()?;
                 // We can lose data if `execute` fails.
-                self.jtag_results
+                self.state
+                    .jtag_results
                     .take(index)
                     .map_err(|_| XtensaError::BatchedResultNotAvailable)
             }
@@ -296,7 +292,7 @@ impl Xdm {
     }
 
     fn do_nexus_op(&mut self, nar: u8, ndr: u32, transform: TransformFn) -> DeferredResultIndex {
-        let nar = self.queue.schedule(JtagWriteCommand {
+        let nar = self.state.queue.schedule(JtagWriteCommand {
             address: TapInstruction::Nar.code(),
             data: nar.to_le_bytes().to_vec(),
             len: TapInstruction::Nar.bits(),
@@ -320,9 +316,9 @@ impl Xdm {
         });
 
         // We save the nar reader because we want to capture the previous status.
-        self.status_idxs.push(nar);
+        self.state.status_idxs.push(nar);
 
-        self.queue.schedule(JtagWriteCommand {
+        self.state.queue.schedule(JtagWriteCommand {
             address: TapInstruction::Ndr.code(),
             data: ndr.to_le_bytes().to_vec(),
             len: TapInstruction::Ndr.bits(),
@@ -413,7 +409,7 @@ impl Xdm {
         let status_reader = self
             .schedule_dbg_read_and_transform(DebugStatus::ADDRESS, transform_instruction_status);
 
-        self.status_idxs.push(status_reader);
+        self.state.status_idxs.push(status_reader);
     }
 
     /// Instructs Core to enter Core Stopped state instead of vectoring on a Debug Exception/Interrupt.
@@ -496,7 +492,7 @@ impl Xdm {
 
     pub(super) fn schedule_write_instruction(&mut self, instruction: Instruction) {
         tracing::debug!("Preparing instruction: {:?}", instruction);
-        self.last_instruction = Some(instruction);
+        self.state.last_instruction = Some(instruction);
 
         match instruction.encode() {
             InstructionEncoding::Narrow(inst) => {
@@ -507,7 +503,7 @@ impl Xdm {
 
     pub(super) fn schedule_execute_instruction(&mut self, instruction: Instruction) {
         tracing::debug!("Executing instruction: {:?}", instruction);
-        self.last_instruction = Some(instruction);
+        self.state.last_instruction = Some(instruction);
 
         match instruction.encode() {
             InstructionEncoding::Narrow(inst) => {
@@ -534,7 +530,7 @@ impl Xdm {
     }
 
     pub(super) fn schedule_write_ddr_and_execute(&mut self, ddr: u32) {
-        if let Some(instruction) = self.last_instruction {
+        if let Some(instruction) = self.state.last_instruction {
             tracing::debug!("Executing instruction via DDREXEC write: {:?}", instruction);
         } else {
             tracing::warn!("Writing DDREXEC without instruction");
@@ -548,7 +544,7 @@ impl Xdm {
         // Assume some instructions complete practically instantly and don't waste bandwidth
         // checking their results.
         if !matches!(
-            self.last_instruction,
+            self.state.last_instruction,
             Some(
                 Instruction::Lddr32P(_)
                     | Instruction::Sddr32P(_)

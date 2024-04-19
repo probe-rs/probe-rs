@@ -19,6 +19,7 @@ use anyhow::anyhow;
 use bitvec::prelude::*;
 use nusb::DeviceInfo;
 use std::{
+    any::Any,
     io::{Read, Write},
     iter,
     time::{Duration, Instant},
@@ -403,10 +404,11 @@ impl DebugProbe for FtdiProbe {
         true
     }
 
-    fn try_get_xtensa_interface(
-        self: Box<Self>,
-    ) -> Result<XtensaCommunicationInterface, (Box<dyn DebugProbe>, DebugProbeError)> {
-        Ok(XtensaCommunicationInterface::new(self))
+    fn try_get_xtensa_interface<'probe>(
+        &'probe mut self,
+        state: &'probe mut dyn Any,
+    ) -> Result<XtensaCommunicationInterface<'probe>, DebugProbeError> {
+        Ok(XtensaCommunicationInterface::new(self, state))
     }
 
     fn has_xtensa_interface(&self) -> bool {

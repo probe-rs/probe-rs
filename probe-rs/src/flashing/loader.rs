@@ -188,7 +188,7 @@ impl FlashLoader {
                     sequence.detect_flash_size(sess.get_riscv_interface()?)
                 }
                 DebugSequence::Xtensa(sequence) => {
-                    sequence.detect_flash_size(sess.get_xtensa_interface()?)
+                    sequence.detect_flash_size(&mut sess.get_xtensa_interface()?)
                 }
                 DebugSequence::Arm(_) => panic!("There are no ARM ESP targets."),
             })

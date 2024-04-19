@@ -215,7 +215,7 @@ impl CombinedCoreState {
     pub(crate) fn attach_xtensa<'probe>(
         &'probe mut self,
         target: &'probe Target,
-        interface: &'probe mut XtensaCommunicationInterface,
+        interface: XtensaCommunicationInterface<'probe>,
     ) -> Result<Core<'probe>, Error> {
         let memory_regions = &target.memory_map;
         let name = &target.cores[self.id].name;
@@ -242,26 +242,6 @@ impl CombinedCoreState {
             memory_regions,
             crate::architecture::xtensa::Xtensa::new(interface, s, debug_sequence),
         ))
-    }
-
-    pub(crate) fn enable_xtensa_debug(
-        &self,
-        interface: &mut XtensaCommunicationInterface,
-    ) -> Result<(), Error> {
-        let ResolvedCoreOptions::Xtensa { sequence, .. } = &self.core_state.core_access_options
-        else {
-            unreachable!(
-                "The stored core state is not compatible with the Xtensa architecture. \
-                This should never happen. Please file a bug if it does."
-            );
-        };
-
-        tracing::debug_span!("init_debug_module", id = self.id()).in_scope(|| {
-            // Enable debug mode
-            sequence.init_debug_module(interface)
-        })?;
-
-        Ok(())
     }
 
     /// Get the memory AP for this core.

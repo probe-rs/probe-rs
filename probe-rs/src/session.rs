@@ -4,7 +4,7 @@ use crate::architecture::arm::sequences::{ArmDebugSequence, DefaultArmSequence};
 use crate::architecture::arm::{ArmError, DpAddress};
 use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::architecture::xtensa::communication_interface::{
-    XtensaCommunicationInterface, XtensaError,
+    XtensaCommunicationInterface, XtensaError, XtensaSaveState,
 };
 use crate::config::{ChipInfo, CoreExt, RegistryError, Target, TargetSelector};
 use crate::core::{Architecture, CombinedCoreState};
@@ -57,18 +57,17 @@ pub struct Session {
 pub(crate) enum ArchitectureInterface {
     Arm(Box<dyn ArmProbeInterface + 'static>),
     Riscv(Box<RiscvCommunicationInterface>),
-    Xtensa(Box<XtensaCommunicationInterface>),
+    Xtensa(Probe, XtensaSaveState),
 }
 
 impl fmt::Debug for ArchitectureInterface {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             ArchitectureInterface::Arm(_) => f.write_str("ArchitectureInterface::Arm(..)"),
-            ArchitectureInterface::Riscv(iface) => f
-                .debug_tuple("ArchitectureInterface::Riscv")
-                .field(iface)
-                .finish(),
-            ArchitectureInterface::Xtensa(_) => {
+            ArchitectureInterface::Riscv(_) => {
+                f.debug_tuple("ArchitectureInterface::Riscv(..)").finish()
+            }
+            ArchitectureInterface::Xtensa(..) => {
                 f.debug_tuple("ArchitectureInterface::Xtensa(..)").finish()
             }
         }
@@ -80,7 +79,7 @@ impl From<&ArchitectureInterface> for Architecture {
         match value {
             ArchitectureInterface::Arm(_) => Architecture::Arm,
             ArchitectureInterface::Riscv(_) => Architecture::Riscv,
-            ArchitectureInterface::Xtensa(_) => Architecture::Xtensa,
+            ArchitectureInterface::Xtensa(..) => Architecture::Xtensa,
         }
     }
 }
@@ -94,7 +93,10 @@ impl ArchitectureInterface {
         match self {
             ArchitectureInterface::Arm(iface) => combined_state.attach_arm(target, iface),
             ArchitectureInterface::Riscv(iface) => combined_state.attach_riscv(target, iface),
-            ArchitectureInterface::Xtensa(iface) => combined_state.attach_xtensa(target, iface),
+            ArchitectureInterface::Xtensa(probe, state) => {
+                let iface = probe.try_get_xtensa_interface(&mut *state)?;
+                combined_state.attach_xtensa(target, iface)
+            }
         }
     }
 }
@@ -338,18 +340,16 @@ impl Session {
 
         probe.attach_to_unspecified()?;
 
-        let mut interface = Box::new(
-            probe
-                .try_into_xtensa_interface()
-                .map_err(|(_probe, err)| err)?,
-        );
+        // TODO: probe should return a factory that has an associated state type or constructor.
+        // TODO: multicore Xtensa requires multiple interfaces using the same probe
+        let mut state = XtensaSaveState::default();
+        let mut interface = probe.try_get_xtensa_interface(&mut state)?;
 
-        // TODO: multicore
-        cores[0].enable_xtensa_debug(&mut interface)?;
+        interface.enter_debug_mode()?;
 
         let mut session = Session {
             target,
-            interface: ArchitectureInterface::Xtensa(interface),
+            interface: ArchitectureInterface::Xtensa(probe, state),
             cores,
             configured_trace_sink: None,
         };
@@ -361,7 +361,8 @@ impl Session {
             core.halt(Duration::from_millis(100))?;
         }
 
-        session.halted_access(|sess| sequence_handle.on_connect(sess.get_xtensa_interface()?))?;
+        session
+            .halted_access(|sess| sequence_handle.on_connect(&mut sess.get_xtensa_interface()?))?;
 
         Ok(session)
     }
@@ -509,11 +510,9 @@ impl Session {
     }
 
     /// Get the Xtensa probe interface.
-    pub fn get_xtensa_interface(
-        &mut self,
-    ) -> Result<&mut XtensaCommunicationInterface, XtensaError> {
+    pub fn get_xtensa_interface(&mut self) -> Result<XtensaCommunicationInterface, XtensaError> {
         let interface = match &mut self.interface {
-            ArchitectureInterface::Xtensa(interface) => interface,
+            ArchitectureInterface::Xtensa(probe, state) => probe.try_get_xtensa_interface(state)?,
             _ => return Err(XtensaError::NoXtensaTarget),
         };
 

@@ -10,6 +10,7 @@ mod speed;
 pub mod swo;
 
 use core::panic;
+use std::any::Any;
 use std::iter;
 use std::mem::take;
 use std::time::Duration;
@@ -990,21 +991,17 @@ impl DebugProbe for JLink {
         Ok(Some((self.read_target_voltage()? as f32) / 1000f32))
     }
 
-    fn try_get_xtensa_interface(
-        mut self: Box<Self>,
-    ) -> Result<XtensaCommunicationInterface, (Box<dyn DebugProbe>, DebugProbeError)> {
+    fn try_get_xtensa_interface<'probe>(
+        &'probe mut self,
+        state: &'probe mut dyn Any,
+    ) -> Result<XtensaCommunicationInterface<'probe>, DebugProbeError> {
         if self.supported_protocols.contains(&WireProtocol::Jtag) {
-            if let Err(e) = self.select_protocol(WireProtocol::Jtag) {
-                return Err((self, e));
-            }
-            Ok(XtensaCommunicationInterface::new(self))
+            self.select_protocol(WireProtocol::Jtag)?;
+            Ok(XtensaCommunicationInterface::new(self, state))
         } else {
-            Err((
-                self,
-                DebugProbeError::InterfaceNotAvailable {
-                    interface_name: "JTAG",
-                },
-            ))
+            Err(DebugProbeError::InterfaceNotAvailable {
+                interface_name: "JTAG",
+            })
         }
     }
 
