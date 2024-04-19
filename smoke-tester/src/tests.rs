@@ -8,7 +8,7 @@ use probe_rs::{
     Architecture, Core, MemoryInterface, Session,
 };
 
-pub mod stepping;
+pub mod test_arm;
 
 use miette::{IntoDiagnostic, Result, WrapErr};
 
