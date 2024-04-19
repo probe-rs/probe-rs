@@ -1,7 +1,7 @@
 use std::{ops::Range, path::Path};
 
 use super::session_data::{self, ActiveBreakpoint, BreakpointType, SourceLocationScope};
-use crate::util::rtt::{self, ChannelMode, DataFormat, DefmtState, RttActiveTarget};
+use crate::util::rtt::{self, DataFormat, DefmtState, RttActiveTarget};
 use crate::{
     cmd::dap_server::{
         debug_adapter::{
@@ -194,11 +194,6 @@ impl<'p> CoreHandle<'p> {
         };
 
         for up_channel in target_rtt.active_up_channels.values() {
-            let data_format = DataFormat::from(&up_channel.data_format);
-            if data_format == DataFormat::Defmt {
-                // For defmt, we set the channel to be blocking when full.
-                up_channel.set_mode(&mut self.core, ChannelMode::BlockIfFull)?;
-            }
             debugger_rtt_channels.push(debug_rtt::DebuggerRttChannel {
                 channel_number: up_channel.number(),
                 // This value will eventually be set to true by a VSCode client request "rttWindowOpened"
@@ -207,7 +202,7 @@ impl<'p> CoreHandle<'p> {
             debug_adapter.rtt_window(
                 up_channel.number(),
                 up_channel.channel_name.clone(),
-                data_format,
+                DataFormat::from(&up_channel.data_format),
             );
         }
 

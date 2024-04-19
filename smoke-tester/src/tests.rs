@@ -1,20 +1,21 @@
-use std::{path::Path, time::Instant};
+use std::time::Instant;
 
 use colored::Colorize;
 use linkme::distributed_slice;
 use probe_rs::{
+    config::MemoryRegion,
     flashing::{download_file_with_options, DownloadOptions, FlashProgress, Format},
     Architecture, Core, MemoryInterface, Session,
 };
 
 pub mod stepping;
 
-use anyhow::{Context, Result};
+use miette::{IntoDiagnostic, Result, WrapErr};
 
-use crate::{println_test_status, TestTracker, CORE_TESTS};
+use crate::{println_test_status, TestFailure, TestResult, TestTracker, CORE_TESTS, SESSION_TESTS};
 
 #[distributed_slice(CORE_TESTS)]
-pub fn test_register_read(tracker: &TestTracker, core: &mut Core) -> Result<(), probe_rs::Error> {
+pub fn test_register_read(tracker: &TestTracker, core: &mut Core) -> TestResult {
     println_test_status!(tracker, blue, "Testing register read...");
 
     let register = core.registers();
@@ -22,6 +23,7 @@ pub fn test_register_read(tracker: &TestTracker, core: &mut Core) -> Result<(), 
     for register in register.core_registers() {
         let _: u64 = core
             .read_core_reg(register)
+            .into_diagnostic()
             .with_context(|| format!("Failed to read register {}", register.name()))?;
     }
 
@@ -29,7 +31,7 @@ pub fn test_register_read(tracker: &TestTracker, core: &mut Core) -> Result<(), 
 }
 
 #[distributed_slice(CORE_TESTS)]
-fn test_register_write(tracker: &TestTracker, core: &mut Core) -> Result<(), probe_rs::Error> {
+fn test_register_write(tracker: &TestTracker, core: &mut Core) -> TestResult {
     println_test_status!(tracker, blue, "Testing register write...");
 
     let register = core.registers();
@@ -54,9 +56,10 @@ fn test_register_write(tracker: &TestTracker, core: &mut Core) -> Result<(), pro
 
         // Write new value
 
-        core.write_core_reg(register, test_value)?;
+        core.write_core_reg(register, test_value)
+            .into_diagnostic()?;
 
-        let readback: u64 = core.read_core_reg(register)?;
+        let readback: u64 = core.read_core_reg(register).into_diagnostic()?;
 
         assert_eq!(
             test_value, readback,
@@ -70,114 +73,150 @@ fn test_register_write(tracker: &TestTracker, core: &mut Core) -> Result<(), pro
 }
 
 #[distributed_slice(CORE_TESTS)]
-fn test_memory_access(tracker: &TestTracker, core: &mut Core) -> Result<(), probe_rs::Error> {
-    let memory_regions = core.memory_regions().cloned().collect::<Vec<_>>();
+fn test_memory_access(tracker: &TestTracker, core: &mut Core) -> TestResult {
+    let memory_regions = core
+        .memory_regions()
+        .filter_map(|region| match region {
+            MemoryRegion::Ram(ram) => Some(ram),
+            _ => None,
+        })
+        .cloned()
+        .collect::<Vec<_>>();
 
     // Try to write all memory regions
-    for region in memory_regions {
-        match region {
-            probe_rs::config::MemoryRegion::Ram(ram) => {
-                let ram_start = ram.range.start;
-                let ram_size = ram.range.end - ram.range.start;
+    for ram in memory_regions {
+        let ram_start = ram.range.start;
+        let ram_size = ram.range.end - ram.range.start;
 
-                println_test_status!(tracker, blue, "Test - RAM Start 32");
-                // Write first word
-                core.write_word_32(ram_start, 0xababab)?;
-                let value = core.read_word_32(ram_start)?;
-                assert_eq!(value, 0xababab);
+        println_test_status!(tracker, blue, "Test - RAM Start 32");
+        // Write first word
+        core.write_word_32(ram_start, 0xababab)?;
+        let value = core.read_word_32(ram_start).into_diagnostic()?;
+        assert_eq!(
+            value, 0xababab,
+            "Error reading back 4 bytes from address {:#010X}",
+            ram_start
+        );
 
-                println_test_status!(tracker, blue, "Test - RAM End 32");
-                // Write last word
-                core.write_word_32(ram_start + ram_size - 4, 0xababac)?;
-                let value = core.read_word_32(ram_start + ram_size - 4)?;
-                assert_eq!(value, 0xababac);
+        println_test_status!(tracker, blue, "Test - RAM End 32");
+        // Write last word
+        let addr = ram_start + ram_size - 4;
+        core.write_word_32(addr, 0xababac).into_diagnostic()?;
+        let value = core.read_word_32(addr).into_diagnostic()?;
+        assert_eq!(
+            value, 0xababac,
+            "Error reading back 4 bytes from address {:#010X}",
+            addr
+        );
 
-                println_test_status!(tracker, blue, "Test - RAM Start 8");
-                // Write first byte
-                core.write_word_8(ram_start, 0xac)?;
-                let value = core.read_word_8(ram_start)?;
-                assert_eq!(value, 0xac);
+        println_test_status!(tracker, blue, "Test - RAM Start 8");
+        // Write first byte
+        core.write_word_8(ram_start, 0xac).into_diagnostic()?;
+        let value = core.read_word_8(ram_start).into_diagnostic()?;
+        assert_eq!(
+            value, 0xac,
+            "Error reading back 1 byte from address {:#010X}",
+            ram_start
+        );
 
-                println_test_status!(tracker, blue, "Test - RAM 8 Unaligned");
-                let address = ram_start + 1;
-                let data = 0x23;
-                // Write last byte
-                core.write_word_8(address, data)
-                    .with_context(|| format!("Write_word_8 to address {address:08x}"))?;
+        println_test_status!(tracker, blue, "Test - RAM 8 Unaligned");
+        let address = ram_start + 1;
+        let data = 0x23;
+        // Write last byte
+        core.write_word_8(address, data)
+            .into_diagnostic()
+            .wrap_err_with(|| format!("write_word_8 to address {address:#010X}"))?;
 
-                let value = core
-                    .read_word_8(address)
-                    .with_context(|| format!("read_word_8 from address {address:08x}"))?;
-                assert_eq!(value, data);
+        let value = core
+            .read_word_8(address)
+            .into_diagnostic()
+            .wrap_err_with(|| format!("read_word_8 from address {address:#010X}"))?;
+        assert_eq!(
+            value, data,
+            "Error reading back 1 byte from address {:#010X}",
+            address
+        );
 
-                println_test_status!(tracker, blue, "Test - RAM End 8");
-                // Write last byte
-                core.write_word_8(ram_start + ram_size - 1, 0xcd)
-                    .with_context(|| {
-                        format!("Write_word_8 to address {:08x}", ram_start + ram_size - 1)
-                    })?;
+        println_test_status!(tracker, blue, "Test - RAM End 8");
+        // Write last byte
+        let address = ram_start + ram_size - 1;
+        core.write_word_8(address, 0xcd)
+            .into_diagnostic()
+            .wrap_err_with(|| format!("write_word_8 to address {address:#010X}"))?;
 
-                let value = core
-                    .read_word_8(ram_start + ram_size - 1)
-                    .with_context(|| {
-                        format!("read_word_8 from address {:08x}", ram_start + ram_size - 1)
-                    })?;
-                assert_eq!(value, 0xcd);
-            }
-            // Ignore other types of regions
-            _other => {}
-        }
+        let value = core
+            .read_word_8(address)
+            .into_diagnostic()
+            .wrap_err_with(|| format!("read_word_8 from address {address:#010X}"))?;
+        assert_eq!(
+            value, 0xcd,
+            "Error reading back 1 byte from address {:#010X}",
+            address
+        );
     }
 
     Ok(())
 }
 
 #[distributed_slice(CORE_TESTS)]
-fn test_hw_breakpoints(tracker: &TestTracker, core: &mut Core) -> Result<(), probe_rs::Error> {
+fn test_hw_breakpoints(tracker: &TestTracker, core: &mut Core) -> TestResult {
     println_test_status!(tracker, blue, "Testing HW breakpoints");
 
-    let memory_regions: Vec<_> = core.memory_regions().cloned().collect();
+    let memory_regions: Vec<_> = core
+        .memory_regions()
+        .filter_map(|region| match region {
+            MemoryRegion::Nvm(region) => Some(region),
+            _ => None,
+        })
+        .cloned()
+        .collect();
+
+    if memory_regions.is_empty() {
+        return Err(TestFailure::Skipped(
+            "No NVM memory regions found, unable to test HW breakpoints.".to_string(),
+        ));
+    }
 
     // For this test, we assume that code is executed from Flash / non-volatile memory, and try to set breakpoints
     // in these regions.
     for region in memory_regions {
-        match region {
-            probe_rs::config::MemoryRegion::Nvm(nvm) => {
-                let initial_breakpoint_addr = nvm.range.start;
+        let initial_breakpoint_addr = region.range.start;
 
-                let num_breakpoints = core.available_breakpoint_units()?;
+        let num_breakpoints = core.available_breakpoint_units().into_diagnostic()?;
 
-                println_test_status!(tracker, blue, "{} breakpoints supported", num_breakpoints);
+        println_test_status!(tracker, blue, "{} breakpoints supported", num_breakpoints);
 
-                for i in 0..num_breakpoints {
-                    core.set_hw_breakpoint(initial_breakpoint_addr + 4 * i as u64)?;
-                }
+        for i in 0..num_breakpoints {
+            core.set_hw_breakpoint(initial_breakpoint_addr + 4 * i as u64)
+                .into_diagnostic()?;
+        }
 
-                // Try to set an additional breakpoint, which should fail
-                core.set_hw_breakpoint(initial_breakpoint_addr + num_breakpoints as u64 * 4)
-                    .expect_err(
-                        "Trying to use more than supported number of breakpoints should fail.",
-                    );
+        // Try to set an additional breakpoint, which should fail
+        core.set_hw_breakpoint(initial_breakpoint_addr + num_breakpoints as u64 * 4)
+            .expect_err("Trying to use more than supported number of breakpoints should fail.");
 
-                // Clear all breakpoints again
-                for i in 0..num_breakpoints {
-                    core.clear_hw_breakpoint(initial_breakpoint_addr + 4 * i as u64)?;
-                }
-            }
-
-            // Skip other regions
-            _other => {}
+        // Clear all breakpoints again
+        for i in 0..num_breakpoints {
+            core.clear_hw_breakpoint(initial_breakpoint_addr + 4 * i as u64)
+                .into_diagnostic()?;
         }
     }
 
     Ok(())
 }
 
-pub fn test_flashing(
-    tracker: &TestTracker,
-    session: &mut Session,
-    test_binary: &Path,
-) -> Result<()> {
+#[distributed_slice(SESSION_TESTS)]
+pub fn test_flashing(tracker: &TestTracker, session: &mut Session) -> Result<(), TestFailure> {
+    let Some(test_binary) = tracker
+        .current_dut_definition()
+        .flash_test_binary
+        .as_deref()
+    else {
+        return Err(TestFailure::MissingResource(
+            "No flash test binary specified".to_string(),
+        ));
+    };
+
     let progress = FlashProgress::new(|event| {
         log::debug!("Flash Event: {:?}", event);
         eprint!(".");
@@ -191,7 +230,8 @@ pub fn test_flashing(
 
     let start_time = Instant::now();
 
-    download_file_with_options(session, test_binary, Format::Elf, options)?;
+    download_file_with_options(session, test_binary, Format::Elf, options)
+        .map_err(|err| TestFailure::Error(Box::new(err)))?;
 
     println!();
 

@@ -239,7 +239,9 @@ impl RunLoop {
         F: FnMut(HaltReason, &mut Core) -> Result<Option<R>>,
     {
         if catch_hardfault || catch_reset {
-            core.halt(Duration::from_millis(100))?;
+            if !core.core_halted()? {
+                core.halt(Duration::from_millis(100))?;
+            }
 
             if catch_hardfault {
                 match core.enable_vector_catch(VectorCatchCondition::HardFault) {
@@ -297,11 +299,11 @@ impl RunLoop {
             }
         };
 
-        let mut return_reason = None;
-        while !exit.load(Ordering::Relaxed) && return_reason.is_none() {
+        let return_reason = loop {
             // check for halt first, poll rtt after.
             // this is important so we do one last poll after halt, so we flush all messages
             // the core printed before halting, such as a panic message.
+            let mut return_reason = None;
             match core.status()? {
                 probe_rs::CoreStatus::Halted(reason) => match predicate(reason, core) {
                     Ok(Some(r)) => return_reason = Some(Ok(ReturnReason::Predicate(r))),
@@ -321,13 +323,20 @@ impl RunLoop {
 
             let had_rtt_data = poll_rtt(&mut rtta, core, output_stream)?;
 
-            match timeout {
-                Some(timeout) if start.elapsed() >= timeout => {
-                    core.halt(Duration::from_secs(1))?;
-                    return_reason = Some(Ok(ReturnReason::Timeout));
-                    break;
+            if return_reason.is_none() {
+                if exit.load(Ordering::Relaxed) {
+                    return_reason = Some(Ok(ReturnReason::User));
                 }
-                _ => {}
+
+                if let Some(timeout) = timeout {
+                    if start.elapsed() >= timeout {
+                        return_reason = Some(Ok(ReturnReason::Timeout));
+                    }
+                }
+            }
+
+            if let Some(reason) = return_reason {
+                break reason;
             }
 
             // Poll RTT with a frequency of 10 Hz if we do not receive any new data.
@@ -340,21 +349,15 @@ impl RunLoop {
             } else {
                 std::thread::sleep(Duration::from_millis(100));
             }
-        }
-
-        let return_reason = match return_reason {
-            None => {
-                // manually halted with Control+C. Stop the core.
-                core.halt(Duration::from_secs(1))?;
-                Ok(ReturnReason::User)
-            }
-            Some(r) => r,
         };
 
         if self.always_print_stacktrace
             || return_reason.is_err()
             || matches!(return_reason, Ok(ReturnReason::Timeout))
         {
+            if !core.core_halted()? {
+                core.halt(Duration::from_secs(1))?;
+            }
             print_stacktrace(core, Path::new(&self.path), output_stream)?;
         }
 

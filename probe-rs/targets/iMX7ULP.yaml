@@ -22,7 +22,7 @@ variants:
       - !Ram
           range:
             start: 0x60000000
-            end: 0x7fffffff
+            end: 0x80000000
           is_boot_memory: false
           cores:
             - core0

@@ -5,7 +5,7 @@ use probe_rs::probe::list::Lister;
 use serde::Deserialize;
 use std::{
     fs,
-    net::{Ipv4Addr, TcpListener},
+    net::TcpListener,
     path::Path,
     time::{Duration, UNIX_EPOCH},
 };
@@ -33,7 +33,7 @@ impl std::str::FromStr for TargetSessionType {
 
 pub fn debug(
     lister: &Lister,
-    port: u16,
+    addr: std::net::SocketAddr,
     single_session: bool,
     log_info_message: &str,
     timestamp_offset: UtcOffset,
@@ -41,8 +41,6 @@ pub fn debug(
     let mut debugger = Debugger::new(timestamp_offset);
 
     log_to_console_and_tracing("Starting as a DAP Protocol server");
-
-    let addr = std::net::SocketAddr::new(std::net::IpAddr::V4(Ipv4Addr::LOCALHOST), port);
 
     // Tell the user if (and where) RUST_LOG messages are written.
     log_to_console_and_tracing(log_info_message);

@@ -31,7 +31,7 @@ log = "0.4.21"
 zip = "0.6.6"
 clap = { version = "4.5", features = ["derive"] }
 colored = "2"
-anyhow = "1.0.81"
+anyhow = "1.0.82"
 reqwest = { version = "0.12.3", features = ["json", "rustls-tls"], default-features = false }
 futures = "0.3.30"
 tokio = { version = "1.37.0", features = ["macros", "rt", "rt-multi-thread"] }

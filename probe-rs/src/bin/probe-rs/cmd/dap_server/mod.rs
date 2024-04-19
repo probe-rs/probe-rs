@@ -14,7 +14,12 @@ use probe_rs::{
     probe::DebugProbeError, CoreDumpError, Error,
 };
 use server::startup::debug;
-use std::{fs::File, io::stderr, path::Path};
+use std::{
+    fs::File,
+    io::stderr,
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+    path::Path,
+};
 use time::UtcOffset;
 use tracing::metadata::LevelFilter;
 use tracing_subscriber::{
@@ -75,6 +80,10 @@ pub struct Cmd {
     #[clap(long)]
     port: u16,
 
+    /// IP address to listen for incoming DAP connections, e.g. "127.0.0.1"
+    #[clap(long, default_value_t = Ipv4Addr::LOCALHOST.into())]
+    ip: IpAddr,
+
     /// Some editors and IDEs expect the debug adapter processes to exit at the end of every debug
     /// session (on receiving a `Disconnect` or `Terminate` request).
     ///
@@ -92,10 +101,11 @@ pub fn run(
     log_file: Option<&Path>,
 ) -> Result<()> {
     let log_info_message = setup_logging(log_file)?;
+    let addr = SocketAddr::new(cmd.ip, cmd.port);
 
     debug(
         lister,
-        cmd.port,
+        addr,
         cmd.single_session,
         &log_info_message,
         time_offset,

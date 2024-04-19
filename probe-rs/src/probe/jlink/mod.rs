@@ -362,7 +362,7 @@ pub struct JLink {
 
 impl fmt::Debug for JLink {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("JayLink").finish()
+        f.debug_struct("JLink").finish()
     }
 }
 
@@ -537,7 +537,7 @@ impl JLink {
 
     /// Selects the interface to use for talking to the target MCU.
     ///
-    /// Switching interfaces will reset the configured transfer speed, so [`JayLink::set_speed`]
+    /// Switching interfaces will reset the configured transfer speed, so [`JLink::set_speed`]
     /// needs to be called *after* `select_interface`.
     ///
     /// This requires the probe to support [`Capability::SelectIf`].
@@ -775,6 +775,15 @@ impl JLink {
 
         Ok(BitIter::new(&buf[..num_bytes], dir_bit_count).collect())
     }
+
+    /// Enable/Disable the Target Power Supply of the probe.
+    ///
+    /// This is not available on all probes.
+    /// This is avialable on some J-Links
+    pub fn set_kickstart_power(&mut self, enable: bool) -> Result<(), JlinkError> {
+        self.require_capability(Capability::SetKsPower)?;
+        self.write_cmd(&[Command::SetKsPower as u8, if enable { 1 } else { 0 }])
+    }
 }
 
 impl DebugProbe for JLink {
@@ -1010,6 +1019,10 @@ impl DebugProbe for JLink {
 
     fn has_xtensa_interface(&self) -> bool {
         self.supported_protocols.contains(&WireProtocol::Jtag)
+    }
+
+    fn try_into_jlink(&mut self) -> Result<&mut JLink, DebugProbeError> {
+        Ok(self)
     }
 }
 

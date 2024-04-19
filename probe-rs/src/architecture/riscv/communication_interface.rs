@@ -314,6 +314,9 @@ pub struct RiscvCommunicationInterface {
     state: RiscvCommunicationInterfaceState,
     enabled_harts: u32,
     last_selected_hart: u32,
+
+    /// Store the value of the `hasresethaltreq` bit of the `dmcstatus` register.
+    hasresethaltreq: Option<bool>,
 }
 
 impl RiscvCommunicationInterface {
@@ -326,6 +329,7 @@ impl RiscvCommunicationInterface {
             state,
             enabled_harts: 0,
             last_selected_hart: 0,
+            hasresethaltreq: None,
         };
 
         if let Err(err) = s.enter_debug_mode() {
@@ -421,8 +425,9 @@ impl RiscvCommunicationInterface {
         Ok(())
     }
 
-    fn enter_debug_mode(&mut self) -> Result<(), RiscvError> {
+    pub(crate) fn enter_debug_mode(&mut self) -> Result<(), RiscvError> {
         tracing::debug!("Building RISC-V interface");
+        self.dtm.init()?;
 
         // Reset error bits from previous connections
         self.dtm.clear_error_state()?;
@@ -430,6 +435,7 @@ impl RiscvCommunicationInterface {
         // read the  version of the debug module
         let status: Dmstatus = self.read_dm_register()?;
 
+        self.state.progbuf_cache.fill(0);
         self.state.debug_version = DebugModuleVersion::from(status.version() as u8);
 
         // Only version of 0.13 of the debug specification is currently supported.
@@ -680,7 +686,7 @@ impl RiscvCommunicationInterface {
     }
 
     /// Schedules a DM register read, flushes the queue and returns the result.
-    pub(super) fn read_dm_register<R: MemoryMappedRegister<u32>>(
+    pub(crate) fn read_dm_register<R: MemoryMappedRegister<u32>>(
         &mut self,
     ) -> Result<R, RiscvError> {
         tracing::debug!(
@@ -711,7 +717,7 @@ impl RiscvCommunicationInterface {
         Ok(register_value)
     }
 
-    pub(super) fn write_dm_register<R: MemoryMappedRegister<u32>>(
+    pub(crate) fn write_dm_register<R: MemoryMappedRegister<u32>>(
         &mut self,
         register: R,
     ) -> Result<(), RiscvError> {
@@ -1080,7 +1086,8 @@ impl RiscvCommunicationInterface {
             let error = AbstractCommandErrorKind::parse(status.cmderr() as u8);
 
             tracing::error!(
-                "Executing the abstract command for perform_memory_write failed: {:?} ({:x?})",
+                "Executing the abstract command for write_{} failed: {:?} ({:x?})",
+                V::WIDTH.byte_width() * 8,
                 error,
                 status,
             );
@@ -1142,7 +1149,8 @@ impl RiscvCommunicationInterface {
             let error = AbstractCommandErrorKind::parse(status.cmderr() as u8);
 
             tracing::error!(
-                "Executing the abstract command for write_32 failed: {:?} ({:x?})",
+                "Executing the abstract command for write_multiple_{} failed: {:?} ({:x?})",
+                V::WIDTH.byte_width() * 8,
                 error,
                 status,
             );
@@ -1525,6 +1533,127 @@ impl RiscvCommunicationInterface {
         R: LargeRegister,
     {
         V::schedule_write_to_register::<R>(self, value)
+    }
+
+    /// Check if the connected device supports halt after reset.
+    ///
+    /// Returns a cached value if available, otherwise queries the
+    /// `hasresethaltreq` bit in the `dmstatus` register.
+    pub(crate) fn supports_reset_halt_req(&mut self) -> Result<bool, RiscvError> {
+        if let Some(has_reset_halt_req) = self.hasresethaltreq {
+            Ok(has_reset_halt_req)
+        } else {
+            let dmstatus: Dmstatus = self.read_dm_register()?;
+
+            self.hasresethaltreq = Some(dmstatus.hasresethaltreq());
+
+            Ok(dmstatus.hasresethaltreq())
+        }
+    }
+
+    // Resume the core.
+    pub(crate) fn resume_core(&mut self) -> Result<(), RiscvError> {
+        // set resume request.
+        let mut dmcontrol: Dmcontrol = self.read_dm_register()?;
+        dmcontrol.set_dmactive(true);
+        dmcontrol.set_resumereq(true);
+        self.write_dm_register(dmcontrol)?;
+
+        // check if request has been acknowleged.
+        let status: Dmstatus = self.read_dm_register()?;
+        if !status.allresumeack() {
+            return Err(RiscvError::RequestNotAcknowledged);
+        }
+
+        // clear resume request.
+        dmcontrol.set_resumereq(false);
+        self.write_dm_register(dmcontrol)?;
+
+        Ok(())
+    }
+
+    pub(crate) fn reset_hart_and_halt(&mut self, timeout: Duration) -> Result<(), RiscvError> {
+        tracing::debug!("Resetting core, setting hartreset bit");
+
+        let mut dmcontrol: Dmcontrol = self.read_dm_register()?;
+        dmcontrol.set_dmactive(true);
+        dmcontrol.set_hartreset(true);
+        dmcontrol.set_haltreq(true);
+
+        self.write_dm_register(dmcontrol)?;
+
+        // Read back register to verify reset is supported
+        let readback: Dmcontrol = self.read_dm_register()?;
+
+        if readback.hartreset() {
+            tracing::debug!("Clearing hartreset bit");
+            // Reset is performed by setting the bit high, and then low again
+            let mut dmcontrol = readback;
+            dmcontrol.set_dmactive(true);
+            dmcontrol.set_hartreset(false);
+
+            self.write_dm_register(dmcontrol)?;
+        } else {
+            // Hartreset is not supported, whole core needs to be reset
+            //
+            // TODO: Cache this
+            tracing::debug!("Hartreset bit not supported, using ndmreset");
+            dmcontrol.set_hartreset(false);
+            dmcontrol.set_ndmreset(true);
+            dmcontrol.set_haltreq(true);
+
+            self.write_dm_register(dmcontrol)?;
+
+            tracing::debug!("Clearing ndmreset bit");
+            dmcontrol.set_ndmreset(false);
+            dmcontrol.set_haltreq(true);
+
+            self.write_dm_register(dmcontrol)?;
+        }
+
+        let start = Instant::now();
+
+        loop {
+            // check that cores have reset
+            let readback: Dmstatus = self.read_dm_register()?;
+
+            if readback.allhavereset() && readback.allhalted() {
+                break;
+            }
+
+            if start.elapsed() > timeout {
+                return Err(RiscvError::RequestNotAcknowledged);
+            }
+        }
+
+        // clear the reset request
+        dmcontrol.set_haltreq(false);
+        dmcontrol.set_ackhavereset(true);
+        dmcontrol.set_hartreset(false);
+        dmcontrol.set_ndmreset(false);
+
+        self.write_dm_register(dmcontrol)?;
+
+        // Reenable halt on breakpoint because this gets disabled if we reset the core
+        self.debug_on_sw_breakpoint(true)?; // TODO: only restore if enabled before?
+
+        Ok(())
+    }
+
+    pub(crate) fn debug_on_sw_breakpoint(&mut self, enabled: bool) -> Result<(), RiscvError> {
+        let mut dcsr = Dcsr(self.read_csr(0x7b0)?);
+
+        dcsr.set_ebreakm(enabled);
+        dcsr.set_ebreaks(enabled);
+        dcsr.set_ebreaku(enabled);
+
+        match self.abstract_cmd_register_write(0x7b0, dcsr.0) {
+            Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
+                tracing::debug!("Could not write core register {:#x} with abstract command, falling back to program buffer", 0x7b0);
+                self.write_csr_progbuf(0x7b0, dcsr.0)
+            }
+            other => other,
+        }
     }
 }
 
@@ -2097,17 +2226,17 @@ impl From<u32> for AccessMemoryCommand {
     }
 }
 
-memory_mapped_bitfield_register! { struct Sbaddress0(u32); 0x39, "sbaddress0", impl From; }
-memory_mapped_bitfield_register! { struct Sbaddress1(u32); 0x3a, "sbaddress1", impl From; }
-memory_mapped_bitfield_register! { struct Sbaddress2(u32); 0x3b, "sbaddress2", impl From; }
-memory_mapped_bitfield_register! { struct Sbaddress3(u32); 0x37, "sbaddress3", impl From; }
+memory_mapped_bitfield_register! { pub struct Sbaddress0(u32); 0x39, "sbaddress0", impl From; }
+memory_mapped_bitfield_register! { pub struct Sbaddress1(u32); 0x3a, "sbaddress1", impl From; }
+memory_mapped_bitfield_register! { pub struct Sbaddress2(u32); 0x3b, "sbaddress2", impl From; }
+memory_mapped_bitfield_register! { pub struct Sbaddress3(u32); 0x37, "sbaddress3", impl From; }
 
-memory_mapped_bitfield_register! { struct Sbdata0(u32); 0x3c, "sbdata0", impl From; }
-memory_mapped_bitfield_register! { struct Sbdata1(u32); 0x3d, "sbdata1", impl From; }
-memory_mapped_bitfield_register! { struct Sbdata2(u32); 0x3e, "sbdata2", impl From; }
-memory_mapped_bitfield_register! { struct Sbdata3(u32); 0x3f, "sbdata3", impl From; }
+memory_mapped_bitfield_register! { pub struct Sbdata0(u32); 0x3c, "sbdata0", impl From; }
+memory_mapped_bitfield_register! { pub struct Sbdata1(u32); 0x3d, "sbdata1", impl From; }
+memory_mapped_bitfield_register! { pub struct Sbdata2(u32); 0x3e, "sbdata2", impl From; }
+memory_mapped_bitfield_register! { pub struct Sbdata3(u32); 0x3f, "sbdata3", impl From; }
 
-memory_mapped_bitfield_register! { struct Confstrptr0(u32); 0x19, "confstrptr0", impl From; }
-memory_mapped_bitfield_register! { struct Confstrptr1(u32); 0x1a, "confstrptr1", impl From; }
-memory_mapped_bitfield_register! { struct Confstrptr2(u32); 0x1b, "confstrptr2", impl From; }
-memory_mapped_bitfield_register! { struct Confstrptr3(u32); 0x1c, "confstrptr3", impl From; }
+memory_mapped_bitfield_register! { pub struct Confstrptr0(u32); 0x19, "confstrptr0", impl From; }
+memory_mapped_bitfield_register! { pub struct Confstrptr1(u32); 0x1a, "confstrptr1", impl From; }
+memory_mapped_bitfield_register! { pub struct Confstrptr2(u32); 0x1b, "confstrptr2", impl From; }
+memory_mapped_bitfield_register! { pub struct Confstrptr3(u32); 0x1c, "confstrptr3", impl From; }

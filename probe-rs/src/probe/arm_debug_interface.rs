@@ -1533,6 +1533,10 @@ mod test {
             todo!()
         }
 
+        fn tap_reset(&mut self) -> Result<(), DebugProbeError> {
+            todo!()
+        }
+
         fn read_register(&mut self, _address: u32, _len: u32) -> Result<Vec<u8>, DebugProbeError> {
             todo!()
         }

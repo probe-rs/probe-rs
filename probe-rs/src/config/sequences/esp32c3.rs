@@ -1,12 +1,13 @@
 //! Sequence for the ESP32C3.
 
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use probe_rs_target::Chip;
 
 use crate::{
     architecture::riscv::{
         communication_interface::RiscvCommunicationInterface, sequences::RiscvDebugSequence,
+        Dmcontrol,
     },
     config::sequences::esp::EspFlashSizeDetector,
     MemoryInterface,
@@ -64,5 +65,37 @@ impl RiscvDebugSequence for ESP32C3 {
         interface: &mut RiscvCommunicationInterface,
     ) -> Result<Option<usize>, crate::Error> {
         self.inner.detect_flash_size_riscv(interface)
+    }
+
+    fn reset_system_and_halt(
+        &self,
+        interface: &mut RiscvCommunicationInterface,
+        timeout: Duration,
+    ) -> Result<(), crate::Error> {
+        interface.reset_hart_and_halt(timeout)?;
+
+        // Reset all peripherals except for the RTC block.
+
+        // At this point the core is reset and halted, ready for us to issue a system reset
+        // Trigger reset via RTC_CNTL_SW_SYS_RST
+        interface.write_word_32(0x6000_8000, 0x9C00_A000)?;
+
+        // Workaround for stuck in cpu start during calibration.
+        interface.write_word_32(0x6001_F068, 0)?;
+
+        // Wait for the reset to take effect.
+        std::thread::sleep(Duration::from_millis(10));
+
+        let mut dmcontrol = Dmcontrol(0);
+        dmcontrol.set_dmactive(true);
+        dmcontrol.set_ackhavereset(true);
+        interface.write_dm_register(dmcontrol)?;
+
+        interface.enter_debug_mode()?;
+        self.on_connect(interface)?;
+
+        interface.reset_hart_and_halt(timeout)?;
+
+        Ok(())
     }
 }

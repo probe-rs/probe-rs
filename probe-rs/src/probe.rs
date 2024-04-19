@@ -492,6 +492,11 @@ impl Probe {
     pub fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {
         self.inner.get_target_voltage()
     }
+
+    /// Try to get a J-Link interface from the debug probe.
+    pub fn try_into_jlink(&mut self) -> Result<&mut jlink::JLink, DebugProbeError> {
+        self.inner.try_into_jlink()
+    }
 }
 
 /// An abstraction over a probe driver type.
@@ -668,6 +673,13 @@ pub trait DebugProbe: Send + fmt::Debug {
     fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {
         Ok(None)
     }
+
+    /// Try to get a J-Link interface from the debug probe.
+    fn try_into_jlink(&mut self) -> Result<&mut jlink::JLink, DebugProbeError> {
+        Err(DebugProbeError::Other(anyhow::anyhow!(
+            "This probe does not support J-Link functionality."
+        )))
+    }
 }
 
 impl PartialEq for dyn ProbeFactory {
@@ -806,22 +818,20 @@ impl DebugProbeSelector {
 impl TryFrom<&str> for DebugProbeSelector {
     type Error = DebugProbeSelectorParseError;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        let split = value.split(':').collect::<Vec<_>>();
-        let mut selector = if split.len() > 1 {
-            DebugProbeSelector {
-                vendor_id: u16::from_str_radix(split[0], 16)?,
-                product_id: u16::from_str_radix(split[1], 16)?,
-                serial_number: None,
-            }
-        } else {
-            return Err(DebugProbeSelectorParseError::Format);
-        };
+        // Split into at most 3 parts: VID, PID, Serial.
+        // We limit the number of splits to allow for colons in the
+        // serial number (EspJtag uses MAC address)
+        let mut split = value.splitn(3, ':');
 
-        if split.len() == 3 {
-            selector.serial_number = Some(split[2].to_string());
-        }
+        let vendor_id = split.next().unwrap(); // First split is always successful
+        let product_id = split.next().ok_or(DebugProbeSelectorParseError::Format)?;
+        let serial_number = split.next().map(|s| s.to_string());
 
-        Ok(selector)
+        Ok(DebugProbeSelector {
+            vendor_id: u16::from_str_radix(vendor_id, 16)?,
+            product_id: u16::from_str_radix(product_id, 16)?,
+            serial_number,
+        })
     }
 }
 
@@ -886,6 +896,9 @@ pub trait JTAGAccess: DebugProbe {
     /// will try to measure and extract `IR` lengths by driving the JTAG interface.
     fn scan_chain(&mut self) -> Result<Vec<JtagChainItem>, DebugProbeError>;
 
+    /// Executes a TAP reset.
+    fn tap_reset(&mut self) -> Result<(), DebugProbeError>;
+
     /// Read a JTAG register.
     ///
     /// This function emulates a read by performing a write with all zeros to the DR.
@@ -928,7 +941,7 @@ pub trait JTAGAccess: DebugProbe {
             match self
                 .write_register(write.address, &write.data, write.len)
                 .map_err(crate::Error::Probe)
-                .and_then(|response| (write.transform)(response))
+                .and_then(|response| (write.transform)(write, response))
             {
                 Ok(res) => results.push(idx, res),
                 Err(e) => return Err(BatchExecutionError::new(e, results)),
@@ -952,7 +965,7 @@ pub struct JtagWriteCommand {
     pub len: u32,
 
     /// A function to transform the raw response into a [`CommandResult`]
-    pub transform: fn(Vec<u8>) -> Result<CommandResult, crate::Error>,
+    pub transform: fn(&JtagWriteCommand, Vec<u8>) -> Result<CommandResult, crate::Error>,
 }
 
 /// Represents a Jtag Tap within the chain.
@@ -1235,5 +1248,17 @@ mod test {
 
         assert!(probe_info.is_probe_type::<ftdi::FtdiProbeFactory>());
         assert!(!probe_info.is_probe_type::<espusbjtag::EspUsbJtagFactory>());
+    }
+
+    #[test]
+    fn test_parsing_many_colons() {
+        let selector: DebugProbeSelector = "303a:1001:DC:DA:0C:D3:FE:D8".try_into().unwrap();
+
+        assert_eq!(selector.vendor_id, 0x303a);
+        assert_eq!(selector.product_id, 0x1001);
+        assert_eq!(
+            selector.serial_number,
+            Some("DC:DA:0C:D3:FE:D8".to_string())
+        );
     }
 }
