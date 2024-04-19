@@ -559,6 +559,17 @@ pub trait DebugProbe: Send + fmt::Debug {
     /// This should run all the necessary protocol init routines.
     fn attach(&mut self) -> Result<(), DebugProbeError>;
 
+    /// Selects the JTAG TAP to be used for communication.
+    fn select_jtag_tap(&mut self, index: usize) -> Result<(), DebugProbeError> {
+        if index != 0 {
+            return Err(DebugProbeError::NotImplemented {
+                function_name: "select_jtag_tap",
+            });
+        }
+
+        Ok(())
+    }
+
     /// Detach from the chip.
     ///
     /// This should run all the necessary protocol deinit routines.
@@ -882,11 +893,13 @@ impl fmt::Display for DebugProbeSelector {
 /// This trait should be implemented by all probes which offer low-level access to
 /// the JTAG protocol, i.e. direction control over the bytes sent and received.
 pub trait JTAGAccess: DebugProbe {
-    /// Returns `IDCODE` and `IR` length information about the devices on the JTAG chain.
+    /// Scans `IDCODE` and `IR` length information about the devices on the JTAG chain.
     ///
     /// If configured, this will use the data from [`DebugProbe::set_scan_chain`]. Otherwise, it
     /// will try to measure and extract `IR` lengths by driving the JTAG interface.
-    fn scan_chain(&mut self) -> Result<Vec<JtagChainItem>, DebugProbeError>;
+    ///
+    /// The measured scan chain will be stored in the probe's internal state.
+    fn scan_chain(&mut self) -> Result<(), DebugProbeError>;
 
     /// Executes a TAP reset.
     fn tap_reset(&mut self) -> Result<(), DebugProbeError>;

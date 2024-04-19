@@ -379,6 +379,7 @@ pub(crate) struct JtagDriverState {
     // The maximum IR address
     pub max_ir_address: u32,
     pub expected_scan_chain: Option<Vec<ScanChainElement>>,
+    pub scan_chain: Vec<JtagChainItem>,
     pub chain_params: ChainParams,
     /// Idle cycles necessary between consecutive
     /// accesses to the DMI register
@@ -392,6 +393,7 @@ impl Default for JtagDriverState {
             current_ir_reg: 1,
             max_ir_address: 0x0F,
             expected_scan_chain: None,
+            scan_chain: Vec::new(),
             chain_params: ChainParams::default(),
             jtag_idle_cycles: 0,
         }
@@ -446,12 +448,10 @@ pub(crate) trait RawJtagIo {
     }
 
     /// Configures the probe to address the given target.
-    fn select_target(
-        &mut self,
-        chain: &[JtagChainItem],
-        target: usize,
-    ) -> Result<(), DebugProbeError> {
-        let Some(params) = ChainParams::from_jtag_chain(chain, target) else {
+    fn select_target(&mut self, target: usize) -> Result<(), DebugProbeError> {
+        let state = self.state_mut();
+
+        let Some(params) = ChainParams::from_jtag_chain(&state.scan_chain, target) else {
             return Err(DebugProbeError::TargetNotFound);
         };
 
@@ -630,7 +630,7 @@ fn prepare_write_register(
 }
 
 impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
-    fn scan_chain(&mut self) -> Result<Vec<JtagChainItem>, DebugProbeError> {
+    fn scan_chain(&mut self) -> Result<(), DebugProbeError> {
         const MAX_CHAIN: usize = 8;
 
         self.reset_jtag_state_machine()?;
@@ -695,13 +695,18 @@ impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
         )
         .map_err(|e| DebugProbeError::Other(e.into()))?;
 
+        tracing::info!("Found {} TAPs on reset scan", idcodes.len());
         tracing::debug!("Detected IR lens: {:?}", ir_lens);
 
-        Ok(idcodes
+        let chain = idcodes
             .into_iter()
             .zip(ir_lens)
             .map(|(idcode, irlen)| JtagChainItem { irlen, idcode })
-            .collect())
+            .collect::<Vec<_>>();
+
+        self.state_mut().scan_chain = chain;
+
+        Ok(())
     }
 
     fn tap_reset(&mut self) -> Result<(), DebugProbeError> {

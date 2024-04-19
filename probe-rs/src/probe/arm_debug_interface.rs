@@ -1320,9 +1320,7 @@ mod test {
     use crate::{
         architecture::arm::{PortType, RawDapAccess},
         error::Error,
-        probe::{
-            DebugProbe, DebugProbeError, JTAGAccess, JtagChainItem, ScanChainElement, WireProtocol,
-        },
+        probe::{DebugProbe, DebugProbeError, JTAGAccess, ScanChainElement, WireProtocol},
     };
 
     use super::{
@@ -1529,7 +1527,7 @@ mod test {
     }
 
     impl JTAGAccess for MockJaylink {
-        fn scan_chain(&mut self) -> Result<Vec<JtagChainItem>, DebugProbeError> {
+        fn scan_chain(&mut self) -> Result<(), DebugProbeError> {
             todo!()
         }
 

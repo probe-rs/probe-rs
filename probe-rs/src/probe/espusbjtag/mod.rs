@@ -117,17 +117,15 @@ impl DebugProbe for EspUsbJtag {
         Ok(())
     }
 
+    fn select_jtag_tap(&mut self, index: usize) -> Result<(), DebugProbeError> {
+        self.select_target(index)
+    }
+
     fn attach(&mut self) -> Result<(), DebugProbeError> {
         tracing::debug!("Attaching to ESP USB JTAG");
 
-        let chain = self.scan_chain()?;
-        tracing::info!("Found {} TAPs on reset scan", chain.len());
-
-        if chain.len() > 1 {
-            tracing::info!("More than one TAP detected, defaulting to tap0");
-        }
-
-        self.select_target(&chain, 0)
+        self.scan_chain()?;
+        self.select_target(0)
     }
 
     fn detach(&mut self) -> Result<(), crate::Error> {
