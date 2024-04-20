@@ -219,7 +219,7 @@ pub fn test_flashing(tracker: &TestTracker, session: &mut Session) -> Result<(),
 
     let progress = FlashProgress::new(|event| {
         log::debug!("Flash Event: {:?}", event);
-        eprint!(".");
+        print!(".");
     });
 
     let mut options = DownloadOptions::default();
