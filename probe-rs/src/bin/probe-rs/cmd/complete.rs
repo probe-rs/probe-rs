@@ -268,7 +268,7 @@ impl ShellExt for Bash {
 
 impl ShellExt for PowerShell {
     fn install(&self, _file_name: &str, script: &str) -> Result<()> {
-        eprintln!("Install the script in location of your choice and run it with `Import-Module completion-script.ps`");
+        eprintln!("Install the script in location of your choice and run it with `Import-Module completion-script.ps1`");
         println!("{script}");
         Ok(())
     }
