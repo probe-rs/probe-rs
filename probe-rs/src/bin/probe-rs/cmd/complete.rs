@@ -267,9 +267,22 @@ impl ShellExt for Bash {
 }
 
 impl ShellExt for PowerShell {
-    fn install(&self, _file_name: &str, script: &str) -> Result<()> {
-        eprintln!("Install the script in location of your choice and run it with `Import-Module completion-script.ps1`");
-        println!("{script}");
-        Ok(())
+    fn install(&self, file_name: &str, script: &str) -> Result<()> {
+        let Some(dir) = directories::UserDirs::new() else {
+            eprintln!("The user home directory could not be located.");
+            eprintln!("Install the script in ~\\Documents\\WindowsPowerShell\\{file_name}");
+            println!("{script}");
+            return Ok(());
+        };
+        let path = dir
+            .home_dir()
+            .join("Documents")
+            .join("WindowsPowerShell")
+            .join(file_name);
+        eprintln!(
+            "Install the autocompletion with `Import-Module {}`",
+            path.display()
+        );
+        std::fs::write(path, script).context("Writing the autocompletion script failed.")
     }
 }
