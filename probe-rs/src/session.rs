@@ -55,29 +55,29 @@ pub struct Session {
 }
 
 #[allow(clippy::large_enum_variant)]
-enum InnerInterface {
+enum JtagInterface {
     Riscv(RiscvSaveState),
     Xtensa(XtensaSaveState),
     Unknown,
 }
 
-impl InnerInterface {
+impl JtagInterface {
     /// Returns the debug module's intended architecture.
     fn architecture(&self) -> Option<Architecture> {
         match self {
-            InnerInterface::Riscv(_) => Some(Architecture::Riscv),
-            InnerInterface::Xtensa(_) => Some(Architecture::Xtensa),
-            InnerInterface::Unknown => None,
+            JtagInterface::Riscv(_) => Some(Architecture::Riscv),
+            JtagInterface::Xtensa(_) => Some(Architecture::Xtensa),
+            JtagInterface::Unknown => None,
         }
     }
 }
 
-impl fmt::Debug for InnerInterface {
+impl fmt::Debug for JtagInterface {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            InnerInterface::Riscv(_) => f.write_str("Riscv(..)"),
-            InnerInterface::Xtensa(_) => f.write_str("Xtensa(..)"),
-            InnerInterface::Unknown => f.write_str("Unknown"),
+            JtagInterface::Riscv(_) => f.write_str("Riscv(..)"),
+            JtagInterface::Xtensa(_) => f.write_str("Xtensa(..)"),
+            JtagInterface::Unknown => f.write_str("Unknown"),
         }
     }
 }
@@ -86,14 +86,14 @@ impl fmt::Debug for InnerInterface {
 #[allow(clippy::large_enum_variant)]
 enum ArchitectureInterface {
     Arm(Box<dyn ArmProbeInterface + 'static>),
-    Other(Probe, Vec<InnerInterface>),
+    Jtag(Probe, Vec<JtagInterface>),
 }
 
 impl fmt::Debug for ArchitectureInterface {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             ArchitectureInterface::Arm(_) => f.write_str("ArchitectureInterface::Arm(..)"),
-            ArchitectureInterface::Other(_, ifaces) => f
+            ArchitectureInterface::Jtag(_, ifaces) => f
                 .debug_tuple("ArchitectureInterface::Other(..)")
                 .field(ifaces)
                 .finish(),
@@ -109,20 +109,22 @@ impl ArchitectureInterface {
     ) -> Result<Core<'probe>, Error> {
         match self {
             ArchitectureInterface::Arm(interface) => combined_state.attach_arm(target, interface),
-            ArchitectureInterface::Other(probe, ifaces) => {
+            ArchitectureInterface::Jtag(probe, ifaces) => {
                 let idx = combined_state.interface_idx();
                 match &mut ifaces[idx] {
-                    InnerInterface::Riscv(state) => {
+                    JtagInterface::Riscv(state) => {
                         let factory = probe.try_get_riscv_interface_factory()?;
                         let iface = factory.attach(state)?;
                         combined_state.attach_riscv(target, iface)
                     }
-                    InnerInterface::Xtensa(state) => {
+                    JtagInterface::Xtensa(state) => {
                         let iface = probe.try_get_xtensa_interface(state)?;
                         combined_state.attach_xtensa(target, iface)
                     }
-                    InnerInterface::Unknown => {
-                        unreachable!("Tried to attach to unknown interface {idx}")
+                    JtagInterface::Unknown => {
+                        unreachable!(
+                            "Tried to attach to unknown interface {idx}. This should never happen."
+                        )
                     }
                 }
             }
@@ -157,7 +159,7 @@ impl Session {
         let mut session = if let Architecture::Arm = target.architecture() {
             Self::attach_arm(probe, target, attach_method, permissions, cores)?
         } else {
-            Self::attach_riscv_or_xtensa(probe, target, attach_method, permissions, cores)?
+            Self::attach_jtag(probe, target, attach_method, permissions, cores)?
         };
 
         session.clear_all_hw_breakpoints()?;
@@ -291,7 +293,7 @@ impl Session {
         }
     }
 
-    fn attach_riscv_or_xtensa(
+    fn attach_jtag(
         mut probe: Probe,
         target: Target,
         _attach_method: AttachMethod,
@@ -320,7 +322,7 @@ impl Session {
             Ok(scan_chain) => scan_chain.len().max(highest_idx + 1),
             Err(_) => highest_idx + 1,
         };
-        let mut interfaces = std::iter::repeat_with(|| InnerInterface::Unknown)
+        let mut interfaces = std::iter::repeat_with(|| JtagInterface::Unknown)
             .take(tap_count)
             .collect::<Vec<_>>();
 
@@ -352,7 +354,7 @@ impl Session {
                         interface.enter_debug_mode()?;
                     }
 
-                    InnerInterface::Riscv(state)
+                    JtagInterface::Riscv(state)
                 }
                 Architecture::Xtensa => {
                     let mut state = XtensaSaveState::default();
@@ -361,7 +363,7 @@ impl Session {
                         interface.enter_debug_mode()?;
                     }
 
-                    InnerInterface::Xtensa(state)
+                    JtagInterface::Xtensa(state)
                 }
                 _ => {
                     return Err(Error::Probe(DebugProbeError::Other(anyhow::anyhow!(
@@ -371,7 +373,7 @@ impl Session {
             };
         }
 
-        let interfaces = ArchitectureInterface::Other(probe, interfaces);
+        let interfaces = ArchitectureInterface::Jtag(probe, interfaces);
 
         let mut session = Session {
             target,
@@ -555,8 +557,8 @@ impl Session {
         core_id: usize,
     ) -> Result<RiscvCommunicationInterface, Error> {
         let tap_idx = self.interface_idx(core_id)?;
-        if let ArchitectureInterface::Other(probe, ifaces) = &mut self.interfaces {
-            if let InnerInterface::Riscv(state) = &mut ifaces[tap_idx] {
+        if let ArchitectureInterface::Jtag(probe, ifaces) = &mut self.interfaces {
+            if let JtagInterface::Riscv(state) = &mut ifaces[tap_idx] {
                 let factory = probe.try_get_riscv_interface_factory()?;
                 return Ok(factory.attach(state)?);
             }
@@ -570,8 +572,8 @@ impl Session {
         core_id: usize,
     ) -> Result<XtensaCommunicationInterface, Error> {
         let tap_idx = self.interface_idx(core_id)?;
-        if let ArchitectureInterface::Other(probe, ifaces) = &mut self.interfaces {
-            if let InnerInterface::Xtensa(state) = &mut ifaces[tap_idx] {
+        if let ArchitectureInterface::Jtag(probe, ifaces) = &mut self.interfaces {
+            if let JtagInterface::Xtensa(state) = &mut ifaces[tap_idx] {
                 return Ok(probe.try_get_xtensa_interface(state)?);
             }
         }
@@ -755,8 +757,8 @@ impl Session {
     pub fn architecture(&self) -> Architecture {
         match &self.interfaces {
             ArchitectureInterface::Arm(_) => Architecture::Arm,
-            ArchitectureInterface::Other(_, ifaces) => {
-                if let InnerInterface::Riscv(_) = &ifaces[0] {
+            ArchitectureInterface::Jtag(_, ifaces) => {
+                if let JtagInterface::Riscv(_) = &ifaces[0] {
                     Architecture::Riscv
                 } else {
                     Architecture::Xtensa
