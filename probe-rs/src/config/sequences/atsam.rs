@@ -338,7 +338,6 @@ impl AtSAM {
         let mut dhcsr = Dhcsr(0);
         dhcsr.enable_write();
         dhcsr.set_c_debugen(true);
-        dhcsr.set_c_halt(true);
         memory.write_word_32(Dhcsr::ADDRESS_OFFSET, dhcsr.0)?;
 
         // clear the reset extension bit
