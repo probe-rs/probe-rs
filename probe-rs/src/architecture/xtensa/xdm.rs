@@ -411,7 +411,7 @@ impl Xdm {
         self.execute()
     }
 
-    fn status(&mut self) -> Result<DebugStatus, XtensaError> {
+    pub(super) fn status(&mut self) -> Result<DebugStatus, XtensaError> {
         self.read_nexus_register::<DebugStatus>()
     }
 
@@ -450,11 +450,6 @@ impl Xdm {
         });
     }
 
-    pub(super) fn is_in_ocd_mode(&mut self) -> Result<bool, XtensaError> {
-        let reg = self.read_nexus_register::<DebugControlSet>()?;
-        Ok(reg.0.enable_ocd())
-    }
-
     pub(super) fn leave_ocd_mode(&mut self) -> Result<(), XtensaError> {
         // clear all clearable status bits
         self.write_nexus_register({
@@ -487,10 +482,6 @@ impl Xdm {
         }))?;
 
         Ok(())
-    }
-
-    pub(super) fn is_halted(&mut self) -> Result<bool, XtensaError> {
-        self.status().map(|status| status.stopped())
     }
 
     pub(super) fn resume(&mut self) -> Result<(), XtensaError> {
