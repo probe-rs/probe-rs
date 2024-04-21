@@ -16,7 +16,7 @@ use crate::parser::extract_flash_algo;
 pub fn cmd_elf(
     file: &Path,
     fixed_load_address: bool,
-    output: Option<&Path>,
+    output_path: Option<&Path>,
     update: bool,
     name: Option<String>,
 ) -> Result<()> {
@@ -32,14 +32,15 @@ pub fn cmd_elf(
     if update {
         // Update an existing target file
 
-        let target_description_file = output.unwrap(); // Argument is checked by structopt, so we now its present.
+        let target_path = output_path.unwrap();
+        let target_description_path = target_path.join("generated").with_extension("yaml");
 
-        let target_description = File::open(target_description_file).context(format!(
+        let target_description_file = File::open(&target_description_path).context(format!(
             "Unable to open target specification '{}'",
-            target_description_file.display()
+            target_description_path.display()
         ))?;
 
-        let mut family: ChipFamily = serde_yaml::from_reader(target_description)?;
+        let mut family: ChipFamily = serde_yaml::from_reader(target_description_file)?;
 
         let algorithm_to_update = family
             .flash_algorithms
@@ -47,7 +48,7 @@ pub fn cmd_elf(
             .position(|old_algorithm| old_algorithm.name == algorithm.name);
 
         match algorithm_to_update {
-            None => bail!("Unable to update flash algorithm in target description file '{}'. Did not find an existing algorithm with name '{}'", target_description_file.display(), &algorithm.name),
+            None => bail!("Unable to update flash algorithm in target description file '{}'. Did not find an existing algorithm with name '{}'", target_description_path.display(), &algorithm.name),
             Some(index) => {
                 let current = &family.flash_algorithms[index];
 
@@ -64,8 +65,8 @@ pub fn cmd_elf(
             },
         }
 
-        let target_description = File::create(target_description_file)?;
-        serialize_to_yaml_file(&family, &target_description)?;
+        let target_description_file = File::create(&target_description_path)?;
+        serialize_to_yaml_file(&family, &target_description_file, target_path)?;
     } else {
         // Create a complete target specification, with place holder values
         let algorithm_name = algorithm.name.clone();
@@ -114,18 +115,18 @@ pub fn cmd_elf(
             source: BuiltIn,
         };
 
-        match output {
-            Some(output) => {
+        match output_path {
+            Some(output_path) => {
                 // Ensure we don't overwrite an existing file
                 let file = OpenOptions::new()
                     .write(true)
                     .create_new(true)
-                    .open(output)
+                    .open(output_path)
                     .context(format!(
                         "Failed to create target file '{}'.",
-                        output.display()
+                        output_path.display()
                     ))?;
-                serialize_to_yaml_file(&chip_family, &file)?;
+                serialize_to_yaml_file(&chip_family, &file, output_path)?;
             }
             None => println!("{}", serde_yaml::to_string(&chip_family)?),
         }
@@ -138,7 +139,11 @@ pub fn cmd_elf(
 /// - If `Option<T>` is `None`, it is serialized as `null` ... we want to omit it.
 /// - If `Vec<T>` is empty, it is serialized as `[]` ... we want to omit it.
 /// - `serde_yaml` serializes hex formatted integers as single quoted strings, e.g. '0x1234' ... we need to remove the single quotes so that it round-trips properly.
-pub fn serialize_to_yaml_file(family: &ChipFamily, file: &File) -> Result<(), anyhow::Error> {
+pub fn serialize_to_yaml_file(
+    family: &ChipFamily,
+    file: &File,
+    path: &Path,
+) -> Result<(), anyhow::Error> {
     let yaml_string = serde_yaml::to_string(&family)?;
     let mut reader = std::io::BufReader::new(yaml_string.as_bytes());
     let mut reader_line = String::new();
@@ -147,6 +152,7 @@ pub fn serialize_to_yaml_file(family: &ChipFamily, file: &File) -> Result<(), an
         if reader_line.ends_with(": null\n")
             || reader_line.ends_with(": []\n")
             || reader_line.ends_with(": false\n")
+            || reader_line.contains("instructions:")
         {
             // Skip the line
         } else if (reader_line.contains("'0x") || reader_line.contains("'0X"))
@@ -159,6 +165,13 @@ pub fn serialize_to_yaml_file(family: &ChipFamily, file: &File) -> Result<(), an
             writer.write_all(reader_line.as_bytes())?;
         }
         reader_line.clear();
+    }
+
+    for algo in &family.flash_algorithms {
+        std::fs::write(
+            path.join(&algo.name).with_extension("elf"),
+            algo.instructions.clone(),
+        )?;
     }
     Ok(())
 }

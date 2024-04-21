@@ -201,11 +201,13 @@ fn cmd_pack(input: &Path, out_dir: &Path) -> Result<()> {
     let mut generated_files = Vec::with_capacity(families.len());
 
     for family in &families {
-        let path = out_dir.join(family.name.clone().replace(' ', "_") + ".yaml");
-        let file = std::fs::File::create(&path)
+        let path = out_dir.join(family.name.clone().replace(' ', "_"));
+        std::fs::create_dir_all(&path)
+            .context(format!("Failed to create dir '{}'.", path.display()))?;
+        let file = std::fs::File::create(&path.join("generated.yaml"))
             .context(format!("Failed to create file '{}'.", path.display()))?;
 
-        serialize_to_yaml_file(family, &file)?;
+        serialize_to_yaml_file(family, &file, &path)?;
 
         generated_files.push(path);
     }
@@ -253,10 +255,13 @@ async fn cmd_arm(out_dir: Option<PathBuf>, chip_family: Option<String>, list: bo
     let mut generated_files = Vec::with_capacity(families.len());
 
     for family in &families {
-        let path = out_dir.join(family.name.clone().replace(' ', "_") + ".yaml");
-        let file = std::fs::File::create(&path)
+        let path = out_dir.join(family.name.clone().replace(' ', "_"));
+        std::fs::create_dir_all(&path)
+            .context(format!("Failed to create dir '{}'.", path.display()))?;
+        let file = std::fs::File::create(&path.join("generated.yaml"))
             .context(format!("Failed to create file '{}'.", path.display()))?;
-        serialize_to_yaml_file(family, &file)?;
+
+        serialize_to_yaml_file(family, &file, &path)?;
 
         generated_files.push(path);
     }
