@@ -60,7 +60,7 @@ impl From<XtensaError> for ProbeRsError {
 
 #[derive(Clone, Copy)]
 #[allow(unused)]
-pub(super) enum DebugLevel {
+enum DebugLevel {
     L2 = 2,
     L3 = 3,
     L4 = 4,
@@ -93,14 +93,20 @@ impl DebugLevel {
     }
 }
 
-/// A state to carry all the state data across multiple core switches in a session.
-pub struct XtensaInterfaceState {
-    /// Pairs of (register, deferred value). The value is optional where None means "being restored"
+/// Xtensa interface state.
+// FIXME: This struct is a weird mix between core state, debug module state and core configuration.
+pub(super) struct XtensaInterfaceState {
+    /// Pairs of (register, read handle). The value is optional where None means "being restored"
     saved_registers: HashMap<Register, Option<DeferredResultIndex>>,
 
+    /// Whether the core is halted.
+    // This roughly relates to Core Debug States (true = Running, false = [Stopped, Stepping])
     is_halted: bool,
 
+    /// The number of hardware breakpoints the target supports. CPU-specific configuration value.
     hw_breakpoint_num: u32,
+
+    /// The interrupt level at which debug exceptions are generated. CPU-specific configuration value.
     debug_level: DebugLevel,
 }
 
@@ -119,12 +125,14 @@ impl Default for XtensaInterfaceState {
 
 /// Debug module and transport state.
 #[derive(Default)]
-pub struct XtensaSaveState {
+pub struct XtensaDebugInterfaceState {
     interface_state: XtensaInterfaceState,
     xdm_state: XdmState,
 }
 
-/// An interface that implements controls for Xtensa cores.
+/// The higher level of the XDM functionality.
+// TODO: this includes core state and CPU configuration that don't exactly belong
+// here but one layer up.
 pub struct XtensaCommunicationInterface<'probe> {
     /// The Xtensa debug module
     pub(super) xdm: Xdm<'probe>,
@@ -134,10 +142,10 @@ pub struct XtensaCommunicationInterface<'probe> {
 impl<'probe> XtensaCommunicationInterface<'probe> {
     /// Create the Xtensa communication interface using the underlying probe driver
     pub fn new(probe: &'probe mut dyn JTAGAccess, state: &'probe mut dyn Any) -> Self {
-        let XtensaSaveState {
+        let XtensaDebugInterfaceState {
             interface_state,
             xdm_state,
-        } = state.downcast_mut::<XtensaSaveState>().unwrap();
+        } = state.downcast_mut::<XtensaDebugInterfaceState>().unwrap();
         let xdm = Xdm::new(probe, xdm_state);
 
         Self {

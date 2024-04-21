@@ -14,7 +14,9 @@ use probe_rs::{
             ApAddress, ApInformation, ArmProbeInterface, DpAddress, MemoryApInformation, Register,
         },
         riscv::communication_interface::RiscvCommunicationInterface,
-        xtensa::communication_interface::{XtensaCommunicationInterface, XtensaSaveState},
+        xtensa::communication_interface::{
+            XtensaCommunicationInterface, XtensaDebugInterfaceState,
+        },
     },
     probe::{list::Lister, Probe, WireProtocol},
     MemoryMappedRegister,
@@ -190,7 +192,7 @@ fn try_show_info(
     // If the current protocol we want to use is SWD, we have avoid this.
     if probe.has_xtensa_interface() && protocol == WireProtocol::Jtag {
         tracing::debug!("Trying to show Xtensa chip information");
-        let mut state = XtensaSaveState::default();
+        let mut state = XtensaDebugInterfaceState::default();
         match probe.try_get_xtensa_interface(&mut state) {
             Ok(mut interface) => {
                 if let Err(e) = show_xtensa_info(&mut interface) {

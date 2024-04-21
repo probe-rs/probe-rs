@@ -34,7 +34,7 @@ pub mod sequences;
 /// An interface to operate a RISC-V core.
 pub struct Riscv32<'state> {
     interface: RiscvCommunicationInterface<'state>,
-    state: &'state mut RiscVState,
+    state: &'state mut RiscvCoreState,
     sequence: Arc<dyn RiscvDebugSequence>,
 }
 
@@ -42,7 +42,7 @@ impl<'state> Riscv32<'state> {
     /// Create a new RISC-V interface for a particular hart.
     pub fn new(
         interface: RiscvCommunicationInterface<'state>,
-        state: &'state mut RiscVState,
+        state: &'state mut RiscvCoreState,
         sequence: Arc<dyn RiscvDebugSequence>,
     ) -> Result<Self, RiscvError> {
         Ok(Self {
@@ -718,7 +718,7 @@ impl MemoryInterface for Riscv32<'_> {
 
 #[derive(Debug)]
 /// Flags used to control the [`SpecificCoreState`](crate::core::SpecificCoreState) for RiscV architecture
-pub struct RiscVState {
+pub struct RiscvCoreState {
     /// A flag to remember whether we want to use hw_breakpoints during stepping of the core.
     hw_breakpoints_enabled: bool,
 
@@ -732,7 +732,7 @@ pub struct RiscVState {
     semihosting_command: Option<SemihostingCommand>,
 }
 
-impl RiscVState {
+impl RiscvCoreState {
     pub(crate) fn new() -> Self {
         Self {
             hw_breakpoints_enabled: false,

@@ -97,46 +97,72 @@ pub enum DebugRegisterError {
     Unexpected(u8),
 }
 
-#[derive(thiserror::Error, Debug, Clone, Copy)]
+#[derive(thiserror::Error, Debug, Clone, Copy, docsplay::Display)]
 pub enum Error {
-    #[error("Error {access} register {narsel:#04X}")]
+    /// Error {access} register {narsel:#04X}
     Xdm {
+        /// Nexus Address Register selector. Contains the ID of the register being accessed.
         narsel: u8,
+
+        /// Access type (reading or writing)
         access: &'static str,
+
+        /// The error that occurred.
         source: DebugRegisterError,
     },
 
-    #[error("ExecExeception")]
+    /// The instruction execution has encountered an exception.
     ExecExeception,
 
-    #[error("ExecBusy")]
+    /// The core is still executing a previous instruction.
     ExecBusy,
 
-    #[error("ExecOverrun")]
+    /// Instruction execution overrun.
     ExecOverrun,
 
-    #[error("Instruction ignored")]
+    /// The instruction was ignored. Most often this indicates that the core was not halted before
+    /// requesting instruction execution.
     InstructionIgnored,
 
-    #[error("XdmPoweredOff")]
+    /// The Xtensa Debug Module is powered off.
     XdmPoweredOff,
 }
 
 #[derive(Debug, Default)]
 pub struct XdmState {
-    device_id: u32,
-
+    /// The last instruction to be executed.
+    // This is used to:
+    // - detect incorrect uses of `schedule_write_ddr_and_execute` which expects an instruction to
+    //   be loaded
+    // - wait for the last instruction to complete before proceeding, as some instructions can be
+    //   assumed to complete instantly.
     last_instruction: Option<Instruction>,
 
+    /// The command queue for the current batch. JTAG accesses are batched to reduce the number of
+    /// IO operations.
     queue: JtagCommandQueue,
+
+    /// The results of the reads in the already executed batched JTAG commands.
     jtag_results: DeferredResultSet,
 
+    /// Read handles for accesses that need to force capturing their bits.
+    ///
+    /// The batching system tries to minimize the number of captured bits, in order to reduce
+    /// the number of JTAG operations. However, some accesses need to capture their bits to
+    /// complete correctly, or to - ironically - increase performance. We store their otherwise
+    /// ignored handles in this vector and drop them when we're done with the batch.
     status_idxs: Vec<DeferredResultIndex>,
 }
 
+/// The lower level functions of the Xtensa Debug Module.
+// TODO: this is mostly JTAG-specific, but not specifically. We should probably split this up, e.g.
+// move the instruction execution into the current communication_interface module.
 #[derive(Debug)]
 pub struct Xdm<'probe> {
+    /// The JTAG interface.
     pub probe: &'probe mut dyn JTAGAccess,
+
+    /// Debug module state.
     state: &'probe mut XdmState,
 }
 
@@ -209,9 +235,6 @@ impl<'probe> Xdm<'probe> {
 
             status
         })?;
-
-        // TODO check status and clear bits if required
-        self.state.device_id = device_id;
 
         Ok(())
     }

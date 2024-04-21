@@ -4,7 +4,7 @@ use crate::architecture::arm::sequences::{ArmDebugSequence, DefaultArmSequence};
 use crate::architecture::arm::{ArmError, DpAddress};
 use crate::architecture::riscv::communication_interface::{RiscvError, RiscvSaveState};
 use crate::architecture::xtensa::communication_interface::{
-    XtensaCommunicationInterface, XtensaError, XtensaSaveState,
+    XtensaCommunicationInterface, XtensaDebugInterfaceState, XtensaError,
 };
 use crate::config::{ChipInfo, CoreExt, RegistryError, Target, TargetSelector};
 use crate::core::{Architecture, CombinedCoreState};
@@ -57,7 +57,7 @@ pub struct Session {
 #[allow(clippy::large_enum_variant)]
 enum JtagInterface {
     Riscv(RiscvSaveState),
-    Xtensa(XtensaSaveState),
+    Xtensa(XtensaDebugInterfaceState),
     Unknown,
 }
 
@@ -357,7 +357,7 @@ impl Session {
                     JtagInterface::Riscv(state)
                 }
                 Architecture::Xtensa => {
-                    let mut state = XtensaSaveState::default();
+                    let mut state = XtensaDebugInterfaceState::default();
                     {
                         let mut interface = probe.try_get_xtensa_interface(&mut state)?;
                         interface.enter_debug_mode()?;
@@ -509,7 +509,7 @@ impl Session {
 
         match sink {
             TraceSink::Swo(_) => {
-                let interface = self.get_arm_interface(0)?;
+                let interface = self.get_arm_interface()?;
                 interface.read_swo()
             }
 
@@ -519,7 +519,7 @@ impl Session {
 
             TraceSink::TraceMemory => {
                 let components = self.get_arm_components(DpAddress::Default)?;
-                let interface = self.get_arm_interface(0)?;
+                let interface = self.get_arm_interface()?;
                 crate::architecture::arm::component::read_trace_memory(interface, &components)
             }
         }
@@ -534,15 +534,12 @@ impl Session {
     ///
     /// [SwoAccess::read_swo]: crate::architecture::arm::swo::SwoAccess
     pub fn swo_reader(&mut self) -> Result<SwoReader, Error> {
-        let interface = self.get_arm_interface(0)?;
+        let interface = self.get_arm_interface()?;
         Ok(SwoReader::new(interface))
     }
 
     /// Get the Arm probe interface.
-    pub fn get_arm_interface(
-        &mut self,
-        _idx: usize,
-    ) -> Result<&mut dyn ArmProbeInterface, ArmError> {
+    pub fn get_arm_interface(&mut self) -> Result<&mut dyn ArmProbeInterface, ArmError> {
         let interface = match &mut self.interfaces {
             ArchitectureInterface::Arm(state) => state.deref_mut(),
             _ => return Err(ArmError::NoArmTarget),
@@ -678,7 +675,7 @@ impl Session {
         &mut self,
         dp: DpAddress,
     ) -> Result<Vec<CoresightComponent>, ArmError> {
-        let interface = self.get_arm_interface(0)?;
+        let interface = self.get_arm_interface()?;
 
         get_arm_components(interface, dp)
     }
@@ -706,7 +703,7 @@ impl Session {
         };
 
         let components = self.get_arm_components(DpAddress::Default)?;
-        let interface = self.get_arm_interface(0)?;
+        let interface = self.get_arm_interface()?;
 
         // Configure SWO on the probe when the trace sink is configured for a serial output. Note
         // that on some architectures, the TPIU is configured to drive SWO.
@@ -737,7 +734,7 @@ impl Session {
     /// Begin tracing a memory address over SWV.
     pub fn add_swv_data_trace(&mut self, unit: usize, address: u32) -> Result<(), ArmError> {
         let components = self.get_arm_components(DpAddress::Default)?;
-        let interface = self.get_arm_interface(0)?;
+        let interface = self.get_arm_interface()?;
         crate::architecture::arm::component::add_swv_data_trace(
             interface,
             &components,
@@ -749,7 +746,7 @@ impl Session {
     /// Stop tracing from a given SWV unit
     pub fn remove_swv_data_trace(&mut self, unit: usize) -> Result<(), ArmError> {
         let components = self.get_arm_components(DpAddress::Default)?;
-        let interface = self.get_arm_interface(0)?;
+        let interface = self.get_arm_interface()?;
         crate::architecture::arm::component::remove_swv_data_trace(interface, &components, unit)
     }
 

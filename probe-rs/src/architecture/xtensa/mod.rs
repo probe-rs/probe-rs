@@ -28,10 +28,14 @@ pub(crate) mod registers;
 pub(crate) mod sequences;
 
 #[derive(Debug)]
-/// Flags used to control the [`SpecificCoreState`](crate::core::SpecificCoreState) for Xtensa
-/// architecture.
-pub struct XtensaState {
+/// Xtensa core state.
+pub struct XtensaCoreState {
+    /// Whether hardware breakpoints are enabled.
     breakpoints_enabled: bool,
+
+    /// Whether each hardware breakpoint is set.
+    // 2 is the architectural upper limit. The actual count is stored in
+    // [`communication_interface::XtensaInterfaceState`]
     breakpoint_set: [bool; 2],
 
     /// Whether the PC was written since we last halted. Used to avoid incrementing the PC on
@@ -42,7 +46,7 @@ pub struct XtensaState {
     semihosting_command: Option<SemihostingCommand>,
 }
 
-impl XtensaState {
+impl XtensaCoreState {
     /// Creates a new [`XtensaState`].
     pub(crate) fn new() -> Self {
         Self {
@@ -53,6 +57,7 @@ impl XtensaState {
         }
     }
 
+    /// Creates a bitmask of the currently set breakpoints.
     fn breakpoint_mask(&self) -> u32 {
         self.breakpoint_set
             .iter()
@@ -64,7 +69,7 @@ impl XtensaState {
 /// An interface to operate an Xtensa core.
 pub struct Xtensa<'probe> {
     interface: XtensaCommunicationInterface<'probe>,
-    state: &'probe mut XtensaState,
+    state: &'probe mut XtensaCoreState,
     sequence: Arc<dyn XtensaDebugSequence>,
 }
 
@@ -75,7 +80,7 @@ impl<'probe> Xtensa<'probe> {
     /// Create a new Xtensa interface for a particular core.
     pub fn new(
         interface: XtensaCommunicationInterface<'probe>,
-        state: &'probe mut XtensaState,
+        state: &'probe mut XtensaCoreState,
         sequence: Arc<dyn XtensaDebugSequence>,
     ) -> Self {
         Self {

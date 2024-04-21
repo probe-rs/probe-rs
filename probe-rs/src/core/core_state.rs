@@ -7,9 +7,9 @@ use crate::{
         },
         riscv::{
             communication_interface::{RiscvCommunicationInterface, RiscvError},
-            RiscVState,
+            RiscvCoreState,
         },
-        xtensa::{communication_interface::XtensaCommunicationInterface, XtensaState},
+        xtensa::{communication_interface::XtensaCommunicationInterface, XtensaCoreState},
     },
     Core, CoreType, Error, Target,
 };
@@ -288,9 +288,9 @@ pub enum SpecificCoreState {
     /// The state of an ARMv8-M core.
     Armv8m(CortexMState),
     /// The state of an RISC-V core.
-    Riscv(RiscVState),
+    Riscv(RiscvCoreState),
     /// The state of an Xtensa core.
-    Xtensa(XtensaState),
+    Xtensa(XtensaCoreState),
 }
 
 impl SpecificCoreState {
@@ -302,8 +302,8 @@ impl SpecificCoreState {
             CoreType::Armv7em => SpecificCoreState::Armv7m(CortexMState::new()),
             CoreType::Armv8a => SpecificCoreState::Armv8a(CortexAState::new()),
             CoreType::Armv8m => SpecificCoreState::Armv8m(CortexMState::new()),
-            CoreType::Riscv => SpecificCoreState::Riscv(RiscVState::new()),
-            CoreType::Xtensa => SpecificCoreState::Xtensa(XtensaState::new()),
+            CoreType::Riscv => SpecificCoreState::Riscv(RiscvCoreState::new()),
+            CoreType::Xtensa => SpecificCoreState::Xtensa(XtensaCoreState::new()),
         }
     }
 

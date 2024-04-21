@@ -91,7 +91,7 @@ pub enum AbstractCommandErrorKind {
     /// registers was read or written. This status is only
     /// written if `cmderr` contains 0.
     Busy = 1,
-    /// The requested command is not supported, reg
+    /// The requested command is not supported
     NotSupported = 2,
     /// An exception occurred while executing the command (e.g. while executing the Program Buffer).
     Exception = 3,
@@ -121,7 +121,7 @@ impl AbstractCommandErrorKind {
             5 => Bus,
             6 => _Reserved,
             7 => Other,
-            _ => panic!("cmderr is a 3 bit value, values higher than 7 should not occur."),
+            _ => unreachable!("cmderr is a 3 bit value, values higher than 7 should not occur."),
         }
     }
 }
@@ -173,33 +173,20 @@ impl CoreRegisterAbstractCmdSupport {
     }
 }
 
-#[derive(Debug)]
+/// Save stack of a scratch register.
+// TODO: we probably only need an Option, we don't seem to use scratch registers is nested situations.
+#[derive(Debug, Default)]
 struct ScratchState {
-    stack: Vec<(bool, u32)>,
-    should_save: bool,
-}
-
-impl Default for ScratchState {
-    fn default() -> Self {
-        Self {
-            stack: vec![],
-            should_save: true,
-        }
-    }
+    stack: Vec<u32>,
 }
 
 impl ScratchState {
     fn push(&mut self, value: u32) {
-        self.stack.push((self.should_save, value));
-        self.should_save = false;
+        self.stack.push(value);
     }
 
     fn pop(&mut self) -> Option<u32> {
-        let (should_save, value) = self.stack.pop()?;
-
-        self.should_save = should_save;
-
-        Some(value)
+        self.stack.pop()
     }
 }
 
@@ -222,8 +209,10 @@ pub struct RiscvCommunicationInterfaceState {
     /// Number of data registers for abstract commands
     data_register_count: u8,
 
+    /// Number of scratch registers
     nscratch: u8,
 
+    /// Whether the target supports autoexecuting the program buffer
     supports_autoexec: bool,
 
     /// Pointer to the configuration string
@@ -235,15 +224,23 @@ pub struct RiscvCommunicationInterfaceState {
     /// Number of harts
     num_harts: u32,
 
+    /// Describes, which memory access method should be used for a given access width
     memory_access_info: HashMap<RiscvBusAccess, MemoryAccessMethod>,
 
     /// describes, if the given register can be read / written with an
     /// abstract command
     abstract_cmd_register_info: HashMap<RegisterId, CoreRegisterAbstractCmdSupport>,
 
+    /// First scratch register's state
     s0: ScratchState,
+
+    /// Second scratch register's state
     s1: ScratchState,
+
+    /// Bitfield of enabled harts
     enabled_harts: u32,
+
+    /// The index of the last selected hart
     last_selected_hart: u32,
 
     /// Store the value of the `hasresethaltreq` bit of the `dmcstatus` register.
@@ -402,12 +399,6 @@ impl<'state> RiscvCommunicationInterface<'state> {
         self.dtm.read_idcode()
     }
 
-    /// Mark S0 to be saved on the next `save_s0` call.
-    #[allow(unused)]
-    fn should_save_s0(&mut self, should_save: bool) {
-        self.state.s0.should_save = should_save;
-    }
-
     fn save_s0(&mut self) -> Result<bool, RiscvError> {
         let s0 = self.abstract_cmd_register_read(&registers::S0)?;
 
@@ -424,12 +415,6 @@ impl<'state> RiscvCommunicationInterface<'state> {
         }
 
         Ok(())
-    }
-
-    /// Mark S0 to be saved on the next `save_s0` call.
-    #[allow(unused)]
-    fn should_save_s1(&mut self, should_save: bool) {
-        self.state.s1.should_save = should_save;
     }
 
     fn save_s1(&mut self) -> Result<bool, RiscvError> {
