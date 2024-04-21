@@ -836,7 +836,7 @@ impl<'probe> CoreInterface for Core<'probe> {
     }
 
     fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, Error> {
-        todo!()
+        self.inner.hw_breakpoints()
     }
 
     fn enable_breakpoints(&mut self, state: bool) -> Result<(), Error> {
