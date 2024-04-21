@@ -172,7 +172,9 @@ impl Tab {
             ChannelData::Binary { data } => {
                 let mut string = self.messages.pop().unwrap_or_default();
 
-                string.reserve(data.len() * 5 - 1);
+                if !data.is_empty() {
+                    string.reserve(data.len() * 5 - 1);
+                }
 
                 let string =
                     data.iter()
