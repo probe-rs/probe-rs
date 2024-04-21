@@ -43,7 +43,7 @@ use crate::{
             swo::SwoConfig,
             ArmCommunicationInterface, SwoAccess,
         },
-        riscv::{communication_interface::RiscvInterfaceBuilder, dtm::jtag_dtm::JtagDtmFactory},
+        riscv::{communication_interface::RiscvInterfaceBuilder, dtm::jtag_dtm::JtagDtmBuilder},
     },
     probe::{
         arm_debug_interface::{ProbeStatistics, RawProtocolIo, SwdSettings},
@@ -951,7 +951,7 @@ impl DebugProbe for JLink {
     ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, DebugProbeError> {
         if self.supported_protocols.contains(&WireProtocol::Jtag) {
             self.select_protocol(WireProtocol::Jtag)?;
-            Ok(Box::new(JtagDtmFactory::new(self)))
+            Ok(Box::new(JtagDtmBuilder::new(self)))
         } else {
             Err(DebugProbeError::InterfaceNotAvailable {
                 interface_name: "JTAG",

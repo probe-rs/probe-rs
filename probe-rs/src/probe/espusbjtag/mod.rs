@@ -7,7 +7,7 @@ use crate::{
             communication_interface::{DapProbe, UninitializedArmProbe},
             SwoAccess,
         },
-        riscv::{communication_interface::RiscvInterfaceBuilder, dtm::jtag_dtm::JtagDtmFactory},
+        riscv::{communication_interface::RiscvInterfaceBuilder, dtm::jtag_dtm::JtagDtmBuilder},
         xtensa::communication_interface::{
             XtensaCommunicationInterface, XtensaDebugInterfaceState,
         },
@@ -161,7 +161,7 @@ impl DebugProbe for EspUsbJtag {
     fn try_get_riscv_interface_builder<'probe>(
         &'probe mut self,
     ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, DebugProbeError> {
-        Ok(Box::new(JtagDtmFactory::new(self)))
+        Ok(Box::new(JtagDtmBuilder::new(self)))
     }
 
     fn get_swo_interface(&self) -> Option<&dyn SwoAccess> {

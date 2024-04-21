@@ -7,7 +7,7 @@ use bitfield::bitfield;
 use std::time::{Duration, Instant};
 
 use crate::architecture::riscv::communication_interface::{
-    RiscvCommunicationInterface, RiscvError, RiscvInterfaceBuilder, RiscvSaveState,
+    RiscvCommunicationInterface, RiscvDebugInterfaceState, RiscvError, RiscvInterfaceBuilder,
 };
 use crate::probe::DebugProbeError;
 use crate::probe::{
@@ -24,22 +24,22 @@ struct DtmState {
     abits: u32,
 }
 
-pub struct JtagDtmFactory<'f>(&'f mut dyn JTAGAccess);
+pub struct JtagDtmBuilder<'f>(&'f mut dyn JTAGAccess);
 
-impl<'f> JtagDtmFactory<'f> {
+impl<'f> JtagDtmBuilder<'f> {
     pub fn new(probe: &'f mut dyn JTAGAccess) -> Self {
         Self(probe)
     }
 }
 
-impl<'probe> RiscvInterfaceBuilder<'probe> for JtagDtmFactory<'probe> {
-    fn create_state(&self) -> RiscvSaveState {
-        RiscvSaveState::new(Box::<DtmState>::default())
+impl<'probe> RiscvInterfaceBuilder<'probe> for JtagDtmBuilder<'probe> {
+    fn create_state(&self) -> RiscvDebugInterfaceState {
+        RiscvDebugInterfaceState::new(Box::<DtmState>::default())
     }
 
     fn attach<'state>(
         self: Box<Self>,
-        state: &'state mut RiscvSaveState,
+        state: &'state mut RiscvDebugInterfaceState,
     ) -> Result<RiscvCommunicationInterface<'state>, DebugProbeError>
     where
         'probe: 'state,

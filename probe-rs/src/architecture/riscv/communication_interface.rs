@@ -311,12 +311,12 @@ impl Default for RiscvCommunicationInterfaceState {
 }
 
 /// The combined state of a RISC-V debug module and its transport interface.
-pub struct RiscvSaveState {
+pub struct RiscvDebugInterfaceState {
     pub(super) interface_state: RiscvCommunicationInterfaceState,
     pub(super) dtm_state: Box<dyn Any + Send>,
 }
 
-impl RiscvSaveState {
+impl RiscvDebugInterfaceState {
     pub(super) fn new(dtm_state: Box<dyn Any + Send>) -> Self {
         Self {
             interface_state: RiscvCommunicationInterfaceState::new(),
@@ -331,13 +331,13 @@ pub trait RiscvInterfaceBuilder<'probe> {
     ///
     /// The state object needs to be stored separately from the communication interface
     /// and can be used to restore the state of the interface at a later time.
-    fn create_state(&self) -> RiscvSaveState;
+    fn create_state(&self) -> RiscvDebugInterfaceState;
 
     /// Consumes the factory and creates a communication interface
     /// object initialised with the given state.
     fn attach<'state>(
         self: Box<Self>,
-        state: &'state mut RiscvSaveState,
+        state: &'state mut RiscvDebugInterfaceState,
     ) -> Result<RiscvCommunicationInterface<'state>, DebugProbeError>
     where
         'probe: 'state;

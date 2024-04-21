@@ -2,7 +2,7 @@ use crate::architecture::arm::ap::AccessPort;
 use crate::architecture::arm::component::get_arm_components;
 use crate::architecture::arm::sequences::{ArmDebugSequence, DefaultArmSequence};
 use crate::architecture::arm::{ArmError, DpAddress};
-use crate::architecture::riscv::communication_interface::{RiscvError, RiscvSaveState};
+use crate::architecture::riscv::communication_interface::{RiscvDebugInterfaceState, RiscvError};
 use crate::architecture::xtensa::communication_interface::{
     XtensaCommunicationInterface, XtensaDebugInterfaceState, XtensaError,
 };
@@ -56,7 +56,7 @@ pub struct Session {
 
 #[allow(clippy::large_enum_variant)]
 enum JtagInterface {
-    Riscv(RiscvSaveState),
+    Riscv(RiscvDebugInterfaceState),
     Xtensa(XtensaDebugInterfaceState),
     Unknown,
 }
