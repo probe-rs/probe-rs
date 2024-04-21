@@ -161,7 +161,7 @@ fn try_show_info(
     // If the current protocol we want to use is SWD, we have avoid this.
     if probe.has_riscv_interface() && protocol == WireProtocol::Jtag {
         tracing::debug!("Trying to show RISC-V chip information");
-        match probe.try_get_riscv_interface_factory() {
+        match probe.try_get_riscv_interface_builder() {
             Ok(factory) => {
                 let mut state = factory.create_state();
                 match factory.attach(&mut state) {

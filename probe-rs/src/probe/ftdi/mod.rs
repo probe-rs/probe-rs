@@ -5,8 +5,10 @@ use crate::{
             communication_interface::{DapProbe, UninitializedArmProbe},
             ArmCommunicationInterface,
         },
-        riscv::{communication_interface::RiscvFactory, dtm::jtag_dtm::JtagDtmFactory},
-        xtensa::communication_interface::XtensaCommunicationInterface,
+        riscv::{communication_interface::RiscvInterfaceBuilder, dtm::jtag_dtm::JtagDtmFactory},
+        xtensa::communication_interface::{
+            XtensaCommunicationInterface, XtensaDebugInterfaceState,
+        },
     },
     probe::{
         arm_debug_interface::{ProbeStatistics, RawProtocolIo, SwdSettings},
@@ -19,7 +21,6 @@ use anyhow::anyhow;
 use bitvec::prelude::*;
 use nusb::DeviceInfo;
 use std::{
-    any::Any,
     io::{Read, Write},
     iter,
     time::{Duration, Instant},
@@ -381,9 +382,9 @@ impl DebugProbe for FtdiProbe {
         Some(WireProtocol::Jtag)
     }
 
-    fn try_get_riscv_interface_factory<'probe>(
+    fn try_get_riscv_interface_builder<'probe>(
         &'probe mut self,
-    ) -> Result<Box<dyn RiscvFactory<'probe> + 'probe>, DebugProbeError> {
+    ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, DebugProbeError> {
         Ok(Box::new(JtagDtmFactory::new(self)))
     }
 
@@ -410,7 +411,7 @@ impl DebugProbe for FtdiProbe {
 
     fn try_get_xtensa_interface<'probe>(
         &'probe mut self,
-        state: &'probe mut dyn Any,
+        state: &'probe mut XtensaDebugInterfaceState,
     ) -> Result<XtensaCommunicationInterface<'probe>, DebugProbeError> {
         Ok(XtensaCommunicationInterface::new(self, state))
     }

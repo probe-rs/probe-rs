@@ -113,7 +113,7 @@ impl ArchitectureInterface {
                 let idx = combined_state.interface_idx();
                 match &mut ifaces[idx] {
                     JtagInterface::Riscv(state) => {
-                        let factory = probe.try_get_riscv_interface_factory()?;
+                        let factory = probe.try_get_riscv_interface_builder()?;
                         let iface = factory.attach(state)?;
                         combined_state.attach_riscv(target, iface)
                     }
@@ -347,7 +347,7 @@ impl Session {
 
             interfaces[iface_idx] = match core_arch {
                 Architecture::Riscv => {
-                    let factory = probe.try_get_riscv_interface_factory()?;
+                    let factory = probe.try_get_riscv_interface_builder()?;
                     let mut state = factory.create_state();
                     {
                         let mut interface = factory.attach(&mut state)?;
@@ -556,7 +556,7 @@ impl Session {
         let tap_idx = self.interface_idx(core_id)?;
         if let ArchitectureInterface::Jtag(probe, ifaces) = &mut self.interfaces {
             if let JtagInterface::Riscv(state) = &mut ifaces[tap_idx] {
-                let factory = probe.try_get_riscv_interface_factory()?;
+                let factory = probe.try_get_riscv_interface_builder()?;
                 return Ok(factory.attach(state)?);
             }
         }
@@ -863,7 +863,7 @@ fn get_target_from_selector(
             }
 
             if found_chip.is_none() && probe.has_riscv_interface() {
-                match probe.try_get_riscv_interface_factory() {
+                match probe.try_get_riscv_interface_builder() {
                     Ok(factory) => {
                         let mut state = factory.create_state();
                         let mut interface = factory.attach(&mut state)?;

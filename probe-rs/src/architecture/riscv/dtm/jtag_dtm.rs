@@ -7,7 +7,7 @@ use bitfield::bitfield;
 use std::time::{Duration, Instant};
 
 use crate::architecture::riscv::communication_interface::{
-    RiscvCommunicationInterface, RiscvError, RiscvFactory, RiscvSaveState,
+    RiscvCommunicationInterface, RiscvError, RiscvInterfaceBuilder, RiscvSaveState,
 };
 use crate::probe::DebugProbeError;
 use crate::probe::{
@@ -32,7 +32,7 @@ impl<'f> JtagDtmFactory<'f> {
     }
 }
 
-impl<'probe> RiscvFactory<'probe> for JtagDtmFactory<'probe> {
+impl<'probe> RiscvInterfaceBuilder<'probe> for JtagDtmFactory<'probe> {
     fn create_state(&self) -> RiscvSaveState {
         RiscvSaveState::new(Box::<DtmState>::default())
     }

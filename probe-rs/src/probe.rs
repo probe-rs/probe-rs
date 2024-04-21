@@ -18,9 +18,9 @@ use crate::architecture::arm::{
     communication_interface::{DapProbe, UninitializedArmProbe},
     PortType, SwoAccess,
 };
-use crate::architecture::riscv::communication_interface::{RiscvError, RiscvFactory};
+use crate::architecture::riscv::communication_interface::{RiscvError, RiscvInterfaceBuilder};
 use crate::architecture::xtensa::communication_interface::{
-    XtensaCommunicationInterface, XtensaError,
+    XtensaCommunicationInterface, XtensaDebugInterfaceState, XtensaError,
 };
 use crate::config::RegistryError;
 use crate::config::TargetSelector;
@@ -28,7 +28,6 @@ use crate::probe::common::IdCode;
 use crate::{Error, Permissions, Session};
 use nusb::DeviceInfo;
 use probe_rs_target::ScanChainElement;
-use std::any::Any;
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
@@ -416,10 +415,13 @@ impl Probe {
     /// can be used to communicate with chips using the Xtensa
     /// architecture.
     ///
+    /// The user is responsible for creating and managing the [`XtensaDebugInterfaceState`] state
+    /// object.
+    ///
     /// If an error occurs while trying to connect, the probe is returned.
     pub fn try_get_xtensa_interface<'probe>(
         &'probe mut self,
-        state: &'probe mut dyn Any,
+        state: &'probe mut XtensaDebugInterfaceState,
     ) -> Result<XtensaCommunicationInterface<'probe>, DebugProbeError> {
         if !self.attached {
             Err(DebugProbeError::NotAttached)
@@ -450,23 +452,25 @@ impl Probe {
         }
     }
 
-    /// Check if the probe has an interface to
-    /// debug RISC-V chips.
+    /// Check if the probe has an interface to debug RISC-V chips.
     pub fn has_riscv_interface(&self) -> bool {
         self.inner.has_riscv_interface()
     }
 
-    /// Try to get a [`RiscvFactory`] object, which can be used to set up a communication interface
-    /// with chips using the RISC-V architecture.
+    /// Try to get a [`RiscvInterfaceBuilder`] object, which can be used to set up a communication
+    /// interface with chips using the RISC-V architecture.
+    ///
+    /// The returned object can be used to create the interface state, which is required to
+    /// attach to the RISC-V target. The user is responsible for managing this state object.
     ///
     /// If an error occurs while trying to connect, the probe is returned.
-    pub fn try_get_riscv_interface_factory<'probe>(
+    pub fn try_get_riscv_interface_builder<'probe>(
         &'probe mut self,
-    ) -> Result<Box<dyn RiscvFactory<'probe> + 'probe>, DebugProbeError> {
+    ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, DebugProbeError> {
         if !self.attached {
             Err(DebugProbeError::NotAttached)
         } else {
-            self.inner.try_get_riscv_interface_factory()
+            self.inner.try_get_riscv_interface_builder()
         }
     }
 
@@ -626,14 +630,14 @@ pub trait DebugProbe: Send + fmt::Debug {
         ))
     }
 
-    /// Try to get a [`RiscvFactory`] object, which can be used to set up a communication interface
-    /// with chips using the RISC-V architecture.
+    /// Try to get a [`RiscvInterfaceBuilder`] object, which can be used to set up a communication
+    /// interface with chips using the RISC-V architecture.
     ///
     /// Ensure that the probe actually supports this by calling
     /// [DebugProbe::has_riscv_interface] first.
-    fn try_get_riscv_interface_factory<'probe>(
+    fn try_get_riscv_interface_builder<'probe>(
         &'probe mut self,
-    ) -> Result<Box<dyn RiscvFactory<'probe> + 'probe>, DebugProbeError> {
+    ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, DebugProbeError> {
         Err(DebugProbeError::InterfaceNotAvailable {
             interface_name: "RISC-V",
         })
@@ -648,7 +652,7 @@ pub trait DebugProbe: Send + fmt::Debug {
     /// probe actually supports this by calling [DebugProbe::has_xtensa_interface] first.
     fn try_get_xtensa_interface<'probe>(
         &'probe mut self,
-        _state: &'probe mut dyn Any,
+        _state: &'probe mut XtensaDebugInterfaceState,
     ) -> Result<XtensaCommunicationInterface<'probe>, DebugProbeError> {
         Err(DebugProbeError::InterfaceNotAvailable {
             interface_name: "Xtensa",

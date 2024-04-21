@@ -1,16 +1,16 @@
 //! ESP USB JTAG probe implementation.
 mod protocol;
 
-use std::any::Any;
-
 use crate::{
     architecture::{
         arm::{
             communication_interface::{DapProbe, UninitializedArmProbe},
             SwoAccess,
         },
-        riscv::{communication_interface::RiscvFactory, dtm::jtag_dtm::JtagDtmFactory},
-        xtensa::communication_interface::XtensaCommunicationInterface,
+        riscv::{communication_interface::RiscvInterfaceBuilder, dtm::jtag_dtm::JtagDtmFactory},
+        xtensa::communication_interface::{
+            XtensaCommunicationInterface, XtensaDebugInterfaceState,
+        },
     },
     probe::{
         common::RawJtagIo, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
@@ -158,9 +158,9 @@ impl DebugProbe for EspUsbJtag {
         Ok(())
     }
 
-    fn try_get_riscv_interface_factory<'probe>(
+    fn try_get_riscv_interface_builder<'probe>(
         &'probe mut self,
-    ) -> Result<Box<dyn RiscvFactory<'probe> + 'probe>, DebugProbeError> {
+    ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, DebugProbeError> {
         Ok(Box::new(JtagDtmFactory::new(self)))
     }
 
@@ -213,7 +213,7 @@ impl DebugProbe for EspUsbJtag {
 
     fn try_get_xtensa_interface<'probe>(
         &'probe mut self,
-        state: &'probe mut dyn Any,
+        state: &'probe mut XtensaDebugInterfaceState,
     ) -> Result<XtensaCommunicationInterface<'probe>, DebugProbeError> {
         Ok(XtensaCommunicationInterface::new(self, state))
     }

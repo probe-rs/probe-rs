@@ -12,7 +12,9 @@ use probe_rs_target::ScanChainElement;
 use self::{commands::Speed, usb_interface::WchLinkUsbDevice};
 use super::JTAGAccess;
 use crate::{
-    architecture::riscv::{communication_interface::RiscvFactory, dtm::jtag_dtm::JtagDtmFactory},
+    architecture::riscv::{
+        communication_interface::RiscvInterfaceBuilder, dtm::jtag_dtm::JtagDtmFactory,
+    },
     probe::{
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
         ProbeFactory, WireProtocol,
@@ -365,9 +367,9 @@ impl DebugProbe for WchLink {
         true
     }
 
-    fn try_get_riscv_interface_factory<'probe>(
+    fn try_get_riscv_interface_builder<'probe>(
         &'probe mut self,
-    ) -> Result<Box<dyn RiscvFactory<'probe> + 'probe>, DebugProbeError> {
+    ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, DebugProbeError> {
         Ok(Box::new(JtagDtmFactory::new(self)))
     }
 

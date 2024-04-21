@@ -326,7 +326,7 @@ impl RiscvSaveState {
 }
 
 /// A single-use factory for creating RISC-V communication interfaces and their states.
-pub trait RiscvFactory<'probe> {
+pub trait RiscvInterfaceBuilder<'probe> {
     /// Creates a new RISC-V communication interface state object.
     ///
     /// The state object needs to be stored separately from the communication interface

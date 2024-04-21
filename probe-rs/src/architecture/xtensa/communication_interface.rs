@@ -1,7 +1,6 @@
 //! Xtensa Debug Module Communication
 
 use std::{
-    any::Any,
     collections::HashMap,
     time::{Duration, Instant},
 };
@@ -141,11 +140,14 @@ pub struct XtensaCommunicationInterface<'probe> {
 
 impl<'probe> XtensaCommunicationInterface<'probe> {
     /// Create the Xtensa communication interface using the underlying probe driver
-    pub fn new(probe: &'probe mut dyn JTAGAccess, state: &'probe mut dyn Any) -> Self {
+    pub fn new(
+        probe: &'probe mut dyn JTAGAccess,
+        state: &'probe mut XtensaDebugInterfaceState,
+    ) -> Self {
         let XtensaDebugInterfaceState {
             interface_state,
             xdm_state,
-        } = state.downcast_mut::<XtensaDebugInterfaceState>().unwrap();
+        } = state;
         let xdm = Xdm::new(probe, xdm_state);
 
         Self {

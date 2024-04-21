@@ -10,7 +10,6 @@ mod speed;
 pub mod swo;
 
 use core::panic;
-use std::any::Any;
 use std::iter;
 use std::mem::take;
 use std::time::Duration;
@@ -30,7 +29,9 @@ use self::interface::{Interface, Interfaces};
 use self::speed::SpeedConfig;
 use self::swo::SwoMode;
 use crate::architecture::arm::{ArmError, Pins};
-use crate::architecture::xtensa::communication_interface::XtensaCommunicationInterface;
+use crate::architecture::xtensa::communication_interface::{
+    XtensaCommunicationInterface, XtensaDebugInterfaceState,
+};
 use crate::probe::common::{JtagDriverState, RawJtagIo};
 use crate::probe::jlink::bits::IteratorExt;
 use crate::probe::usb_util::InterfaceExt;
@@ -42,7 +43,7 @@ use crate::{
             swo::SwoConfig,
             ArmCommunicationInterface, SwoAccess,
         },
-        riscv::{communication_interface::RiscvFactory, dtm::jtag_dtm::JtagDtmFactory},
+        riscv::{communication_interface::RiscvInterfaceBuilder, dtm::jtag_dtm::JtagDtmFactory},
     },
     probe::{
         arm_debug_interface::{ProbeStatistics, RawProtocolIo, SwdSettings},
@@ -945,9 +946,9 @@ impl DebugProbe for JLink {
         Ok(())
     }
 
-    fn try_get_riscv_interface_factory<'probe>(
+    fn try_get_riscv_interface_builder<'probe>(
         &'probe mut self,
-    ) -> Result<Box<dyn RiscvFactory<'probe> + 'probe>, DebugProbeError> {
+    ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, DebugProbeError> {
         if self.supported_protocols.contains(&WireProtocol::Jtag) {
             self.select_protocol(WireProtocol::Jtag)?;
             Ok(Box::new(JtagDtmFactory::new(self)))
@@ -998,7 +999,7 @@ impl DebugProbe for JLink {
 
     fn try_get_xtensa_interface<'probe>(
         &'probe mut self,
-        state: &'probe mut dyn Any,
+        state: &'probe mut XtensaDebugInterfaceState,
     ) -> Result<XtensaCommunicationInterface<'probe>, DebugProbeError> {
         if self.supported_protocols.contains(&WireProtocol::Jtag) {
             self.select_protocol(WireProtocol::Jtag)?;
