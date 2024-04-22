@@ -26,7 +26,7 @@ probe-rs = { path = "probe-rs", version = "0.23.0" }
 probe-rs-target = { path = "probe-rs-target", version = "0.23.0" }
 
 docsplay = "0.1.1"
-thiserror = "1.0.59"
+thiserror = "1.0.58"
 anyhow = "1.0.82"
 
 [workspace.metadata.release]
