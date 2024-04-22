@@ -844,24 +844,19 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
         tracing::info!("Erasing sector at address {:#010x}", address);
         let t1 = Instant::now();
 
-        let result = self
-            .call_function_and_wait(
-                &Registers {
-                    pc: into_reg(self.flash_algorithm.pc_erase_sector)?,
-                    r0: Some(into_reg(address)?),
-                    r1: None,
-                    r2: None,
-                    r3: None,
-                },
-                false,
-                Duration::from_millis(
-                    self.flash_algorithm.flash_properties.erase_sector_timeout as u64,
-                ),
-            )
-            .map_err(|error| FlashError::EraseFailed {
-                sector_address: address,
-                source: Box::new(error),
-            })?;
+        let result = self.call_function_and_wait(
+            &Registers {
+                pc: into_reg(self.flash_algorithm.pc_erase_sector)?,
+                r0: Some(into_reg(address)?),
+                r1: None,
+                r2: None,
+                r3: None,
+            },
+            false,
+            Duration::from_millis(
+                self.flash_algorithm.flash_properties.erase_sector_timeout as u64,
+            ),
+        )?;
         tracing::info!(
             "Done erasing sector. Result is {}. This took {:?}",
             result,
