@@ -105,14 +105,14 @@ object = { version = "0.35", default-features = false, features = [
     "std",
 ] }
 paste = "1"
-nusb = { version = "0.1.7" }
+nusb = { version = "0.1.8" }
 futures-lite = "2"
 async-io = "2"
 scroll = "0.12"
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9"
 static_assertions = "1"
-svg = "0.16"
+svg = "0.17"
 thiserror = { workspace = true }
 tracing = { version = "0.1", features = ["log"] }
 uf2-decode = "0.2"
@@ -160,7 +160,7 @@ rand = { version = "0.8", optional = true }
 rustyline = { version = "14", optional = true }
 sanitize-filename = { version = "0.5", optional = true }
 schemafy = { version = "0.6", optional = true }
-serde_json = { version = "1.0.115", optional = true }
+serde_json = { version = "1.0.116", optional = true }
 signal-hook = { version = "0.3", optional = true }
 svd-parser = { version = "0.14", features = ["expand"], optional = true }
 termtree = { version = "0.4", optional = true }
@@ -182,7 +182,7 @@ ratatui = { version = "0.26.2", default-features = false, features = [
 ], optional = true }
 ansi-parser = { version = "0.9.0", optional = true }
 parking_lot = "0.12.1"
-cargo-config2 = { version = "0.1.24", optional = true }
+cargo-config2 = { version = "0.1.26", optional = true }
 
 [build-dependencies]
 bincode = "1"
