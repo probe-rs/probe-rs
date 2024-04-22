@@ -61,7 +61,7 @@ flash_algorithms:
     pc_erase_all: 0x1c
     data_section_offset: 0x4038c2a0
     load_address: 0x4038C000
-    data_load_address: 0x3FCC0000
+    data_load_address: 0x403A0000
     transfer_encoding: miniz
     flash_properties:
       address_range:
