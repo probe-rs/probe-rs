@@ -340,7 +340,7 @@ fn run_rttui_app(
         channels: vec![],
     };
 
-    // Make sure our defauls are the same as the ones intended in the config struct.
+    // Make sure our defaults are the same as the ones intended in the config struct.
     let default_channel_config = RttChannelConfig::default();
 
     let mut require_defmt = false;
