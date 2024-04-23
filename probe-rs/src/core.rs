@@ -4,7 +4,7 @@ use crate::{
         xtensa::sequences::XtensaDebugSequence,
     },
     config::DebugSequence,
-    debug::DebugRegisters,
+    debug::{DebugInfo, DebugRegisters, StackFrame},
     error::Error,
     CoreType, InstructionSet, MemoryInterface, Target,
 };

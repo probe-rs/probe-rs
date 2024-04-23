@@ -401,7 +401,7 @@ impl DebugInfo {
                 );
                 continue;
             };
-            if next_function_low_pc > address_size && next_function_low_pc < u32::MAX.into() {
+            if next_function_low_pc > address_size && next_function_low_pc < u32::MAX as u64 {
                 // The first instruction of the inlined function is used as the call site
                 let inlined_call_site = RegisterValue::from(next_function_low_pc);
 
@@ -963,7 +963,7 @@ pub(crate) fn canonical_path_eq(
 }
 
 /// Get a handle to the [`gimli::UnwindTableRow`] for this call frame, so that we can reference it to unwind register values.
-fn get_unwind_info<'a>(
+pub fn get_unwind_info<'a>(
     unwind_context: &'a mut UnwindContext<GimliReaderOffset>,
     frame_section: &DebugFrame<DwarfReader>,
     frame_program_counter: u64,
