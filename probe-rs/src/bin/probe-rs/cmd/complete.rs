@@ -1,5 +1,5 @@
-use std::fmt::Write;
 use std::path::PathBuf;
+use std::{fmt::Write, path::Path};
 
 use anyhow::{anyhow, Context, Result};
 use clap::CommandFactory;
@@ -73,9 +73,9 @@ impl Cmd {
                 PowerShell.install(&file_name, &script)?;
             }
             shell => {
-                eprintln!("{shell} does not have automatic install support yet.");
-                eprintln!("Please install the script below in the appropriate location.");
                 println!("{script}");
+                eprintln!("{shell} does not have automatic install support yet.");
+                eprintln!("Please install the script above in the appropriate location.");
             }
         }
 
@@ -241,37 +241,40 @@ trait ShellExt {
 impl ShellExt for Zsh {
     fn install(&self, file_name: &str, script: &str) -> Result<()> {
         let Some(dir) = directories::UserDirs::new() else {
-            eprintln!("The user home directory could not be located.");
-            eprintln!("Install the script in ~/.zfunc/{file_name}");
             println!("{script}");
+            eprintln!("The user home directory could not be located.");
+            eprintln!("Write the script to ~/.zfunc/{file_name}");
+            eprintln!("Install the autocompletion by reloading the zsh");
             return Ok(());
         };
-        let dir = dir.home_dir();
-        std::fs::write(dir.join(".zfunc/").join(file_name), script)
-            .context("Writing the autocompletion script failed.")
+
+        let path = dir.home_dir().join(".zfunc/").join(file_name);
+        write_script(&path, script)
     }
 }
 
 impl ShellExt for Bash {
     fn install(&self, file_name: &str, script: &str) -> Result<()> {
         let Some(dir) = directories::UserDirs::new() else {
-            eprintln!("The user home directory could not be located.");
-            eprintln!("Install the script in ~/.bash_completion/{file_name}");
             println!("{script}");
+            eprintln!("The user home directory could not be located.");
+            eprintln!("Write the script to ~/.bash_completion/{file_name}");
+            eprintln!("Install the autocompletion by reloading the bash");
             return Ok(());
         };
-        let dir = dir.home_dir();
-        std::fs::write(dir.join(".bash_completions/").join(file_name), script)
-            .context("Writing the autocompletion script failed.")
+
+        let path = dir.home_dir().join(".bash_completions/").join(file_name);
+        write_script(&path, script)
     }
 }
 
 impl ShellExt for PowerShell {
     fn install(&self, file_name: &str, script: &str) -> Result<()> {
         let Some(dir) = directories::UserDirs::new() else {
-            eprintln!("The user home directory could not be located.");
-            eprintln!("Install the script in ~\\Documents\\WindowsPowerShell\\{file_name}");
             println!("{script}");
+            eprintln!("The user home directory could not be located.");
+            eprintln!("Write the script to ~\\Documents\\WindowsPowerShell\\{file_name}");
+            eprintln!("Install the autocompletion with `Import-Module ~\\Documents\\WindowsPowerShell\\{file_name}`");
             return Ok(());
         };
         let path = dir
@@ -283,6 +286,20 @@ impl ShellExt for PowerShell {
             "Install the autocompletion with `Import-Module {}`",
             path.display()
         );
-        std::fs::write(path, script).context("Writing the autocompletion script failed.")
+        write_script(&path, script)
     }
+}
+
+fn write_script(path: &Path, script: &str) -> Result<()> {
+    let res = std::fs::write(path, script);
+    if res.is_err() {
+        println!("{script}");
+        println!("Writing the autocompletion script failed");
+        println!(
+            "Please write the above script to {} manually",
+            path.display()
+        );
+    }
+
+    res.context("Writing th script failed")
 }
