@@ -541,7 +541,7 @@ impl TryFrom<(FtdiDevice, Option<ChipType>)> for FtdiProperties {
             },
             ChipType::FT232H => Self {
                 buffer_size: 1024,
-                max_clock: 6_000,
+                max_clock: 30_000,
                 has_divide_by_5: true,
             },
             ChipType::FT2232C => Self {
