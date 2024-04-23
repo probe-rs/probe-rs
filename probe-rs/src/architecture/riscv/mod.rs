@@ -3,6 +3,7 @@
 #![allow(clippy::inconsistent_digit_grouping)]
 
 use crate::{
+    architecture::riscv::sequences::RiscvDebugSequence,
     core::{
         Architecture, BreakpointCause, CoreInformation, CoreRegisters, RegisterId, RegisterValue,
     },
@@ -17,7 +18,10 @@ use anyhow::{anyhow, Result};
 use bitfield::bitfield;
 use communication_interface::{AbstractCommandErrorKind, RiscvCommunicationInterface, RiscvError};
 use registers::{FP, RA, RISCV_CORE_REGSISTERS, SP};
-use std::time::{Duration, Instant};
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 #[macro_use]
 pub(crate) mod registers;
@@ -27,39 +31,39 @@ pub mod communication_interface;
 pub(crate) mod dtm;
 pub mod sequences;
 
-/// An interface to operate RISC-V cores.
+/// An interface to operate a RISC-V core.
 pub struct Riscv32<'probe> {
-    hart: u32,
     interface: &'probe mut RiscvCommunicationInterface,
     state: &'probe mut RiscVState,
+    sequence: Arc<dyn RiscvDebugSequence>,
 }
 
 impl<'probe> Riscv32<'probe> {
-    /// Create a new RISC-V interface.
+    /// Create a new RISC-V interface for a particular hart.
     pub fn new(
         hart: u32,
         interface: &'probe mut RiscvCommunicationInterface,
         state: &'probe mut RiscVState,
+        sequence: Arc<dyn RiscvDebugSequence>,
     ) -> Result<Self, RiscvError> {
         if !interface.hart_enabled(hart) {
             return Err(RiscvError::HartUnavailable);
         }
 
+        interface.select_hart(hart)?;
+
         Ok(Self {
-            hart,
             interface,
             state,
+            sequence,
         })
     }
 
     fn read_csr(&mut self, address: u16) -> Result<u32, RiscvError> {
-        self.interface.select_hart(self.hart)?;
         self.interface.read_csr(address)
     }
 
     fn write_csr(&mut self, address: u16, value: u32) -> Result<(), RiscvError> {
-        self.interface.select_hart(self.hart)?;
-
         tracing::debug!("Writing CSR {:#x}", address);
 
         match self.interface.abstract_cmd_register_write(address, value) {
@@ -71,46 +75,12 @@ impl<'probe> Riscv32<'probe> {
         }
     }
 
-    // Resume the core.
+    /// Resume the core.
     fn resume_core(&mut self) -> Result<(), crate::Error> {
-        self.interface.select_hart(self.hart)?;
         self.state.semihosting_command = None;
-
-        // set resume request.
-        let mut dmcontrol: Dmcontrol = self.interface.read_dm_register()?;
-        dmcontrol.set_dmactive(true);
-        dmcontrol.set_resumereq(true);
-        self.interface.write_dm_register(dmcontrol)?;
-
-        // check if request has been acknowleged.
-        let status: Dmstatus = self.interface.read_dm_register()?;
-        if !status.allresumeack() {
-            return Err(RiscvError::RequestNotAcknowledged.into());
-        };
-
-        // clear resume request.
-        dmcontrol.set_resumereq(false);
-        self.interface.write_dm_register(dmcontrol)?;
+        self.interface.resume_core()?;
 
         Ok(())
-    }
-
-    /// Check if the connected device supports halt after reset.
-    ///
-    /// Returns a cached value if available, otherwise queries the
-    /// `hasresethaltreq` bit in the `dmstatus` register.
-    fn supports_reset_halt_req(&mut self) -> Result<bool, crate::Error> {
-        self.interface.select_hart(self.hart)?;
-
-        if let Some(has_reset_halt_req) = self.state.hasresethaltreq {
-            Ok(has_reset_halt_req)
-        } else {
-            let dmstatus: Dmstatus = self.interface.read_dm_register()?;
-
-            self.state.hasresethaltreq = Some(dmstatus.hasresethaltreq());
-
-            Ok(dmstatus.hasresethaltreq())
-        }
     }
 
     /// Check if the current breakpoint is a semihosting call
@@ -166,21 +136,16 @@ impl<'probe> Riscv32<'probe> {
 
 impl<'probe> CoreInterface for Riscv32<'probe> {
     fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), crate::Error> {
-        self.interface.select_hart(self.hart)?;
         Ok(self.interface.wait_for_core_halted(timeout)?)
     }
 
     fn core_halted(&mut self) -> Result<bool, crate::Error> {
-        self.interface.select_hart(self.hart)?;
-
         let dmstatus: Dmstatus = self.interface.read_dm_register()?;
 
         Ok(dmstatus.allhalted())
     }
 
     fn status(&mut self) -> Result<crate::core::CoreStatus, crate::Error> {
-        self.interface.select_hart(self.hart)?;
-
         // TODO: We should use hartsum to determine if any hart is halted
         //       quickly
 
@@ -223,14 +188,11 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         }
     }
 
-    fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, crate::Error> {
-        self.interface.select_hart(self.hart)?;
+    fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
         Ok(self.interface.halt(timeout)?)
     }
 
-    fn run(&mut self) -> Result<(), crate::Error> {
-        self.interface.select_hart(self.hart)?;
-
+    fn run(&mut self) -> Result<(), Error> {
         // Before we run, we always perform a single instruction step, to account for possible breakpoints that might get us stuck on the current instruction.
         self.step()?;
 
@@ -240,98 +202,23 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         Ok(())
     }
 
-    fn reset(&mut self) -> Result<(), crate::Error> {
-        self.interface.select_hart(self.hart)?;
+    fn reset(&mut self) -> Result<(), Error> {
+        self.reset_and_halt(Duration::from_secs(1))?;
+        self.resume_core()?;
 
-        match self.reset_and_halt(Duration::from_millis(500)) {
-            Ok(_) => self.resume_core()?,
-            Err(error) => {
-                return Err(RiscvError::DebugProbe(DebugProbeError::Other(
-                    anyhow::anyhow!("Error during reset").context(error),
-                ))
-                .into());
-            }
-        }
         Ok(())
     }
 
-    fn reset_and_halt(
-        &mut self,
-        timeout: Duration,
-    ) -> Result<crate::core::CoreInformation, crate::Error> {
-        self.interface.select_hart(self.hart)?;
-
-        tracing::debug!("Resetting core, setting hartreset bit");
-
-        let mut dmcontrol: Dmcontrol = self.interface.read_dm_register()?;
-        dmcontrol.set_dmactive(true);
-        dmcontrol.set_hartreset(true);
-        dmcontrol.set_haltreq(true);
-
-        self.interface.write_dm_register(dmcontrol)?;
-
-        // Read back register to verify reset is supported
-        let readback: Dmcontrol = self.interface.read_dm_register()?;
-
-        if readback.hartreset() {
-            tracing::debug!("Clearing hartreset bit");
-            // Reset is performed by setting the bit high, and then low again
-            let mut dmcontrol = readback;
-            dmcontrol.set_dmactive(true);
-            dmcontrol.set_hartreset(false);
-
-            self.interface.write_dm_register(dmcontrol)?;
-        } else {
-            // Hartreset is not supported, whole core needs to be reset
-            //
-            // TODO: Cache this
-            tracing::debug!("Hartreset bit not supported, using ndmreset");
-            dmcontrol.set_hartreset(false);
-            dmcontrol.set_ndmreset(true);
-            dmcontrol.set_haltreq(true);
-
-            self.interface.write_dm_register(dmcontrol)?;
-
-            tracing::debug!("Clearing ndmreset bit");
-            dmcontrol.set_ndmreset(false);
-            dmcontrol.set_haltreq(true);
-
-            self.interface.write_dm_register(dmcontrol)?;
-        }
-
-        let start = Instant::now();
-
-        loop {
-            // check that cores have reset
-            let readback: Dmstatus = self.interface.read_dm_register()?;
-
-            if readback.allhavereset() && readback.allhalted() {
-                break;
-            }
-
-            if start.elapsed() > timeout {
-                return Err(RiscvError::RequestNotAcknowledged.into());
-            }
-        }
-
-        // acknowledge the reset, clear the halt request
-        dmcontrol.set_hartreset(false);
-        dmcontrol.set_ndmreset(false);
-        dmcontrol.set_ackhavereset(true);
-
-        self.interface.write_dm_register(dmcontrol)?;
-
-        // Reenable halt on breakpoint because this gets disabled if we reset the core
-        self.debug_on_sw_breakpoint(true)?; // TODO: only restore if enabled before?
+    fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
+        self.sequence
+            .reset_system_and_halt(self.interface, timeout)?;
 
         let pc = self.read_core_reg(RegisterId(0x7b1))?;
 
         Ok(CoreInformation { pc: pc.try_into()? })
     }
 
-    fn step(&mut self) -> Result<crate::core::CoreInformation, crate::Error> {
-        self.interface.select_hart(self.hart)?;
-
+    fn step(&mut self) -> Result<CoreInformation, crate::Error> {
         let halt_reason = self.status()?;
         let flashing_done = self.state.hw_breakpoints_enabled;
         if matches!(
@@ -397,8 +284,6 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn read_core_reg(&mut self, address: RegisterId) -> Result<RegisterValue, crate::Error> {
-        self.interface.select_hart(self.hart)?;
-
         self.read_csr(address.0)
             .map(|v| v.into())
             .map_err(|e| e.into())
@@ -409,15 +294,11 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         address: RegisterId,
         value: RegisterValue,
     ) -> Result<(), crate::Error> {
-        self.interface.select_hart(self.hart)?;
-
         let value: u32 = value.try_into()?;
         self.write_csr(address.0, value).map_err(|e| e.into())
     }
 
     fn available_breakpoint_units(&mut self) -> Result<u32, crate::Error> {
-        self.interface.select_hart(self.hart)?;
-
         // TODO: This should probably only be done once, when initialising
 
         tracing::debug!("Determining number of HW breakpoints supported");
@@ -492,7 +373,6 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     /// NOTE: For riscv, this assumes that only execution breakpoints are used.
     fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, Error> {
         // this can be called w/o halting the core via Session::new - temporarily halt if not halted
-        self.interface.select_hart(self.hart)?;
 
         let was_running = !self.core_halted()?;
         if was_running {
@@ -542,8 +422,6 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn enable_breakpoints(&mut self, state: bool) -> Result<(), crate::Error> {
-        self.interface.select_hart(self.hart)?;
-
         // Loop through all triggers, and enable/disable them.
         let tselect = 0x7a0;
         let tdata1 = 0x7a1;
@@ -579,8 +457,6 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn set_hw_breakpoint(&mut self, bp_unit_index: usize, addr: u64) -> Result<(), crate::Error> {
-        self.interface.select_hart(self.hart)?;
-
         let addr = valid_32bit_address(addr)?;
 
         if !self.hw_breakpoints_enabled() {
@@ -636,7 +512,6 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 
     fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), crate::Error> {
         // this can be called w/o halting the core via Session::new - temporarily halt if not halted
-        self.interface.select_hart(self.hart)?;
 
         let was_running = !self.core_halted()?;
         if was_running {
@@ -682,16 +557,9 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         self.state.hw_breakpoints_enabled
     }
 
-    fn debug_on_sw_breakpoint(&mut self, enabled: bool) -> Result<(), crate::error::Error> {
-        self.interface.select_hart(self.hart)?;
-
-        let mut dcsr = Dcsr(self.read_core_reg(RegisterId(0x7b0))?.try_into()?);
-
-        dcsr.set_ebreakm(enabled);
-        dcsr.set_ebreaks(enabled);
-        dcsr.set_ebreaku(enabled);
-
-        self.write_csr(0x7b0, dcsr.0).map_err(|e| e.into())
+    fn debug_on_sw_breakpoint(&mut self, enabled: bool) -> Result<(), Error> {
+        self.interface.debug_on_sw_breakpoint(enabled)?;
+        Ok(())
     }
 
     fn architecture(&self) -> Architecture {
@@ -723,8 +591,6 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn fpu_support(&mut self) -> Result<bool, crate::error::Error> {
-        self.interface.select_hart(self.hart)?;
-
         // Read the extensions from the Machine ISA regiseter.
         let isa_extensions =
             Misa::from(self.read_csr(Misa::get_mmio_address() as u16)?).extensions();
@@ -734,42 +600,16 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn reset_catch_set(&mut self) -> Result<(), Error> {
-        self.interface.select_hart(self.hart)?;
-
-        if !self.supports_reset_halt_req()? {
-            return Err(Error::Riscv(RiscvError::ResetHaltRequestNotSupported));
-        }
-
-        let mut dmcontrol: Dmcontrol = self.interface.read_dm_register()?;
-
-        dmcontrol.set_dmactive(true);
-        dmcontrol.set_resethaltreq(true);
-
-        self.interface.write_dm_register(dmcontrol)?;
-
+        self.sequence.reset_catch_set(self.interface)?;
         Ok(())
     }
 
     fn reset_catch_clear(&mut self) -> Result<(), Error> {
-        self.interface.select_hart(self.hart)?;
-
-        if !self.supports_reset_halt_req()? {
-            return Err(Error::Riscv(RiscvError::ResetHaltRequestNotSupported));
-        }
-
-        let mut dmcontrol: Dmcontrol = self.interface.read_dm_register()?;
-
-        dmcontrol.set_dmactive(true);
-        dmcontrol.set_clrresethaltreq(true);
-
-        self.interface.write_dm_register(dmcontrol)?;
-
+        self.sequence.reset_catch_clear(self.interface)?;
         Ok(())
     }
 
     fn debug_core_stop(&mut self) -> Result<(), Error> {
-        self.interface.select_hart(self.hart)?;
-
         self.debug_on_sw_breakpoint(false)?;
         Ok(())
     }
@@ -781,87 +621,70 @@ impl<'probe> MemoryInterface for Riscv32<'probe> {
     }
 
     fn read_word_64(&mut self, address: u64) -> Result<u64, crate::error::Error> {
-        self.interface.select_hart(self.hart)?;
         self.interface.read_word_64(address)
     }
 
     fn read_word_32(&mut self, address: u64) -> Result<u32, Error> {
-        self.interface.select_hart(self.hart)?;
         self.interface.read_word_32(address)
     }
 
     fn read_word_16(&mut self, address: u64) -> Result<u16, Error> {
-        self.interface.select_hart(self.hart)?;
         self.interface.read_word_16(address)
     }
 
     fn read_word_8(&mut self, address: u64) -> Result<u8, Error> {
-        self.interface.select_hart(self.hart)?;
         self.interface.read_word_8(address)
     }
 
     fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), Error> {
-        self.interface.select_hart(self.hart)?;
         self.interface.read_64(address, data)
     }
 
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
-        self.interface.select_hart(self.hart)?;
         self.interface.read_32(address, data)
     }
 
     fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), Error> {
-        self.interface.select_hart(self.hart)?;
         self.interface.read_16(address, data)
     }
 
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
-        self.interface.select_hart(self.hart)?;
         self.interface.read_8(address, data)
     }
 
     fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), Error> {
-        self.interface.select_hart(self.hart)?;
         self.interface.write_word_64(address, data)
     }
 
     fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
-        self.interface.select_hart(self.hart)?;
         self.interface.write_word_32(address, data)
     }
 
     fn write_word_16(&mut self, address: u64, data: u16) -> Result<(), Error> {
-        self.interface.select_hart(self.hart)?;
         self.interface.write_word_16(address, data)
     }
 
     fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
-        self.interface.select_hart(self.hart)?;
         self.interface.write_word_8(address, data)
     }
 
     fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), Error> {
-        self.interface.select_hart(self.hart)?;
         self.interface.write_64(address, data)
     }
 
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
-        self.interface.select_hart(self.hart)?;
         self.interface.write_32(address, data)
     }
 
     fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), Error> {
-        self.interface.select_hart(self.hart)?;
         self.interface.write_16(address, data)
     }
 
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
-        self.interface.select_hart(self.hart)?;
         self.interface.write_8(address, data)
     }
 
     fn write(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
-        self.interface.select_hart(self.hart)?;
         self.interface.write(address, data)
     }
 
@@ -870,7 +693,6 @@ impl<'probe> MemoryInterface for Riscv32<'probe> {
     }
 
     fn flush(&mut self) -> Result<(), Error> {
-        self.interface.select_hart(self.hart)?;
         self.interface.flush()
     }
 }
@@ -881,9 +703,6 @@ pub struct RiscVState {
     /// A flag to remember whether we want to use hw_breakpoints during stepping of the core.
     hw_breakpoints_enabled: bool,
 
-    /// Store the value of the `hasresethaltreq` bit of the `dmcstatus` register.
-    hasresethaltreq: Option<bool>,
-
     /// The semihosting command that was decoded at the current program counter
     semihosting_command: Option<SemihostingCommand>,
 }
@@ -892,36 +711,56 @@ impl RiscVState {
     pub(crate) fn new() -> Self {
         Self {
             hw_breakpoints_enabled: false,
-            hasresethaltreq: None,
             semihosting_command: None,
         }
     }
 }
 
 memory_mapped_bitfield_register! {
-    /// `dmcontrol` register, located at
-    /// address 0x10
+    /// `dmcontrol` register, located at address 0x10
     pub struct Dmcontrol(u32);
     0x10, "dmcontrol",
     impl From;
-    _, set_haltreq: 31;
-    _, set_resumereq: 30;
-    hartreset, set_hartreset: 29;
-    _, set_ackhavereset: 28;
-    hasel, set_hasel: 26;
-    hartsello, set_hartsello: 25, 16;
-    hartselhi, set_hartselhi: 15, 6;
-    _, set_resethaltreq: 3;
-    _, set_clrresethaltreq: 2;
-    ndmreset, set_ndmreset: 1;
-    dmactive, set_dmactive: 0;
+
+    /// Requests the currently selected harts to halt.
+    pub _, set_haltreq: 31;
+
+    /// Requests the currently selected harts to resume.
+    pub _, set_resumereq: 30;
+
+    /// Requests the currently selected harts to reset. Optional.
+    pub hartreset, set_hartreset: 29;
+
+    /// Writing 1 clears the `havereset` flag of selected harts.
+    pub _, set_ackhavereset: 28;
+
+    /// Selects the definition of currently selected harts. If 1, multiple harts may be selected.
+    pub hasel, set_hasel: 26;
+
+    /// The lower 10 bits of the currently selected harts.
+    pub hartsello, set_hartsello: 25, 16;
+
+    /// The upper 10 bits of the currently selected harts.
+    pub hartselhi, set_hartselhi: 15, 6;
+
+    /// Writes the halt-on-reset request bit for all currently selected hart. Optional.
+    pub _, set_resethaltreq: 3;
+
+    /// Clears the halt-on-reset request bit for all currently selected harts. Optional.
+    pub _, set_clrresethaltreq: 2;
+
+    /// This bit controls the reset signal from the DM to the rest of the system.
+    pub ndmreset, set_ndmreset: 1;
+
+    /// Reset signal for the debug module.
+    pub dmactive, set_dmactive: 0;
 }
 
 impl Dmcontrol {
     /// Currently selected harts
     ///
     /// Combination of the `hartselhi` and `hartsello` registers.
-    fn hartsel(&self) -> u32 {
+    pub fn hartsel(&self) -> u32 {
         self.hartselhi() << 10 | self.hartsello()
     }
 
@@ -929,7 +768,7 @@ impl Dmcontrol {
     ///
     /// This sets the `hartselhi` and `hartsello` registers.
     /// This is a 20 bit register, larger values will be truncated.
-    fn set_hartsel(&mut self, value: u32) {
+    pub fn set_hartsel(&mut self, value: u32) {
         self.set_hartsello(value & 0x3ff);
         self.set_hartselhi((value >> 10) & 0x3ff);
     }
@@ -963,21 +802,21 @@ memory_mapped_bitfield_register! {
 }
 
 bitfield! {
-        struct Dcsr(u32);
-        impl Debug;
+    struct Dcsr(u32);
+    impl Debug;
 
-        xdebugver, _: 31, 28;
-        ebreakm, set_ebreakm: 15;
-        ebreaks, set_ebreaks: 13;
-        ebreaku, set_ebreaku: 12;
-        stepie, set_stepie: 11;
-        stopcount, set_stopcount: 10;
-        stoptime, set_stoptime: 9;
-        cause, set_cause: 8, 6;
-        mprven, set_mprven: 4;
-        nmip, _: 3;
-        step, set_step: 2;
-        prv, set_prv: 1,0;
+    xdebugver, _: 31, 28;
+    ebreakm, set_ebreakm: 15;
+    ebreaks, set_ebreaks: 13;
+    ebreaku, set_ebreaku: 12;
+    stepie, set_stepie: 11;
+    stopcount, set_stopcount: 10;
+    stoptime, set_stoptime: 9;
+    cause, set_cause: 8, 6;
+    mprven, set_mprven: 4;
+    nmip, _: 3;
+    step, set_step: 2;
+    prv, set_prv: 1,0;
 }
 
 memory_mapped_bitfield_register! {

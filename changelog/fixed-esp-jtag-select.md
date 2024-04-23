@@ -1,0 +1,1 @@
+Fixed selecting one of multiple ESP USB JTAG probes

@@ -9,24 +9,22 @@ enum_and_set!(
     #[non_exhaustive]
     #[derive(Debug, Copy, Clone, PartialEq, Eq)]
     pub enum Interface {
-        /// JTAG interface (IEEE 1149.1). Supported by most J-Link probes (some embedded J-Links might
-        /// only support SWD).
+        /// JTAG interface (IEEE 1149.1). Supported by most J-Link probes (some embedded J-Links
+        /// might only support SWD).
         Jtag = 0,
-        /// SWD interface (Serial Wire Debug), used by most Cortex-M chips, and supported by almost all
-        /// J-Link probes.
+        /// SWD interface (Serial Wire Debug), used by most Cortex-M chips, and supported by almost
+        /// all J-Link probes.
         Swd = 1,
         /// Background Debug Mode 3, a single-wire debug interface used on some NXP microcontrollers.
         Bdm3 = 2,
         /// FINE, a two-wire debugging interface used by Renesas RX MCUs.
         ///
-        /// **Note**: due to a bug, attempting to select FINE with [`JayLink::select_inferface`] will
+        /// **Note**: due to a bug, attempting to select FINE with `JLink::select_interface()` will
         /// currently hang the probe.
-        ///
-        /// [`JayLink::select_inferface`]: crate::JayLink::select_interface
         // FIXME: There's a curious bug that hangs the probe when selecting the FINE interface.
-        // Specifically, the probe never sends back the previous interface after it receives the `c7 03`
-        // SELECT_IF cmd, even though the normal J-Link software also just sends `c7 03` and gets back
-        // the right response.
+        // Specifically, the probe never sends back the previous interface after it receives the
+        // `c7 03` SELECT_IF cmd, even though the normal J-Link software also just sends `c7 03`
+        // and gets back the right response.
         Fine = 3,
         /// In-Circuit System Programming (ICSP) interface of PIC32 chips.
         Pic32Icsp = 4,

@@ -8,6 +8,7 @@ use probe_rs_target::MemoryRegion;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::File;
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
 use std::{
     fmt,
@@ -154,7 +155,7 @@ pub struct RttDownChannelConfig {
     pub operating_mode: Option<String>,
 }
 
-pub enum ChannelDataConfig {
+pub enum ChannelDataFormat {
     String {
         /// UTC offset used for creating timestamps, if enabled.
         ///
@@ -166,23 +167,25 @@ pub enum ChannelDataConfig {
     BinaryLE,
     Defmt {
         formatter: Formatter,
+        // CWD to strip from file paths in defmt output
+        cwd: PathBuf,
     },
 }
 
-impl From<&ChannelDataConfig> for DataFormat {
-    fn from(config: &ChannelDataConfig) -> Self {
+impl From<&ChannelDataFormat> for DataFormat {
+    fn from(config: &ChannelDataFormat) -> Self {
         match config {
-            ChannelDataConfig::String { .. } => DataFormat::String,
-            ChannelDataConfig::BinaryLE => DataFormat::BinaryLE,
-            ChannelDataConfig::Defmt { .. } => DataFormat::Defmt,
+            ChannelDataFormat::String { .. } => DataFormat::String,
+            ChannelDataFormat::BinaryLE => DataFormat::BinaryLE,
+            ChannelDataFormat::Defmt { .. } => DataFormat::Defmt,
         }
     }
 }
 
-impl std::fmt::Debug for ChannelDataConfig {
+impl std::fmt::Debug for ChannelDataFormat {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ChannelDataConfig::String {
+            ChannelDataFormat::String {
                 timestamp_offset,
                 last_line_done,
             } => f
@@ -190,9 +193,133 @@ impl std::fmt::Debug for ChannelDataConfig {
                 .field("timestamp_offset", timestamp_offset)
                 .field("last_line_done", last_line_done)
                 .finish(),
-            ChannelDataConfig::BinaryLE => f.debug_struct("BinaryLE").finish(),
-            ChannelDataConfig::Defmt { .. } => f.debug_struct("Defmt").finish_non_exhaustive(),
+            ChannelDataFormat::BinaryLE => f.debug_struct("BinaryLE").finish(),
+            ChannelDataFormat::Defmt { .. } => f.debug_struct("Defmt").finish_non_exhaustive(),
         }
+    }
+}
+
+impl ChannelDataFormat {
+    /// Returns whether the channel is expected to output binary data (`true`)
+    /// or human-readable strings (`false`).
+    pub fn is_binary(&self) -> bool {
+        matches!(self, ChannelDataFormat::BinaryLE)
+    }
+
+    fn process(
+        &mut self,
+        number: usize,
+        buffer: &[u8],
+        defmt_state: Option<&DefmtState>,
+        collector: &mut impl ChannelDataCallbacks,
+    ) -> Result<()> {
+        // FIXME: clean this up by splitting the enum variants out into separate structs
+        match self {
+            ChannelDataFormat::BinaryLE => collector.on_binary_data(number, buffer),
+            ChannelDataFormat::String {
+                timestamp_offset,
+                ref mut last_line_done,
+            } => {
+                let string = Self::process_string(buffer, *timestamp_offset, last_line_done)?;
+                collector.on_string_data(number, string)
+            }
+            ChannelDataFormat::Defmt {
+                ref formatter,
+                ref cwd,
+            } => {
+                let string = Self::process_defmt(buffer, defmt_state, formatter, cwd)?;
+                collector.on_string_data(number, string)
+            }
+        }
+    }
+
+    fn process_string(
+        buffer: &[u8],
+        offset: Option<UtcOffset>,
+        last_line_done: &mut bool,
+    ) -> Result<String> {
+        let incoming = String::from_utf8_lossy(buffer);
+
+        let Some(offset) = offset else {
+            return Ok(incoming.to_string());
+        };
+
+        let timestamp = OffsetDateTime::now_utc()
+            .to_offset(offset)
+            .format(format_description!(
+                "[hour repr:24]:[minute]:[second].[subsecond digits:3]"
+            ))?;
+
+        let mut formatted_data = String::new();
+        for line in incoming.split_inclusive('\n') {
+            if *last_line_done {
+                write!(formatted_data, "{timestamp}: ").expect("Writing to String cannot fail");
+            }
+            write!(formatted_data, "{line}").expect("Writing to String cannot fail");
+            *last_line_done = line.ends_with('\n');
+        }
+        Ok(formatted_data)
+    }
+
+    fn process_defmt(
+        buffer: &[u8],
+        defmt_state: Option<&DefmtState>,
+        formatter: &Formatter,
+        cwd: &Path,
+    ) -> Result<String> {
+        let Some(DefmtState { table, locs }) = defmt_state else {
+            return Ok(String::from(
+                "Trying to process defmt data but table or locations could not be loaded.\n",
+            ));
+        };
+
+        let mut stream_decoder = table.new_stream_decoder();
+
+        // FIXME: this assumes we read frames atomically which is implementation-defined and we
+        // should be able to handle the case where a frame is split across two reads with a
+        // temporary buffer.
+        stream_decoder.received(buffer);
+
+        let mut formatted_data = String::new();
+        loop {
+            match stream_decoder.decode() {
+                Ok(frame) => {
+                    let loc = locs.as_ref().and_then(|locs| locs.get(&frame.index()));
+                    let (file, line, module) = if let Some(loc) = loc {
+                        let relpath = loc.file.strip_prefix(cwd).unwrap_or(&loc.file);
+                        (
+                            relpath.display().to_string(),
+                            Some(loc.line.try_into().unwrap()),
+                            Some(loc.module.as_str()),
+                        )
+                    } else {
+                        (
+                            format!(
+                                "└─ <invalid location: defmt frame-index: {}>",
+                                frame.index()
+                            ),
+                            None,
+                            None,
+                        )
+                    };
+                    let s = formatter.format_frame(frame, Some(&file), line, module);
+                    writeln!(formatted_data, "{s}").expect("Writing to String cannot fail");
+                }
+                Err(DecodeError::UnexpectedEof) => break,
+                Err(DecodeError::Malformed) if table.encoding().can_recover() => {
+                    // If recovery is possible, skip the current frame and continue with new data.
+                }
+                Err(DecodeError::Malformed) => {
+                    return Err(anyhow!(
+                        "Unrecoverable error while decoding Defmt \
+                        data and some data may have been lost: {:?}",
+                        DecodeError::Malformed
+                    ));
+                }
+            }
+        }
+
+        Ok(formatted_data)
     }
 }
 
@@ -213,7 +340,7 @@ pub trait ChannelDataCallbacks {
 pub struct RttActiveUpChannel {
     pub up_channel: UpChannel,
     pub channel_name: String,
-    pub data_format: ChannelDataConfig,
+    pub data_format: ChannelDataFormat,
     rtt_buffer: RttBuffer,
 }
 
@@ -229,12 +356,12 @@ impl RttActiveUpChannel {
         let is_defmt_channel = up_channel.name() == Some("defmt");
 
         let data_format = match channel_config.data_format {
-            DataFormat::String if !is_defmt_channel => ChannelDataConfig::String {
+            DataFormat::String if !is_defmt_channel => ChannelDataFormat::String {
                 timestamp_offset: channel_config.show_timestamps.then_some(timestamp_offset),
                 last_line_done: true,
             },
 
-            DataFormat::BinaryLE if !is_defmt_channel => ChannelDataConfig::BinaryLE,
+            DataFormat::BinaryLE if !is_defmt_channel => ChannelDataFormat::BinaryLE,
 
             // either DataFormat::Defmt is configured, or defmt_enabled is true
             _ => {
@@ -261,11 +388,12 @@ impl RttActiveUpChannel {
                     }
                 };
 
-                ChannelDataConfig::Defmt {
+                ChannelDataFormat::Defmt {
                     formatter: Formatter::new(FormatterConfig {
                         format,
                         is_timestamp_available: has_timestamp,
                     }),
+                    cwd: std::env::current_dir().unwrap(),
                 }
             }
         };
@@ -284,7 +412,7 @@ impl RttActiveUpChannel {
 
         if let Some(mode) = channel_config.mode.or(
             // Try not to corrupt the byte stream if using defmt
-            if matches!(data_format, ChannelDataConfig::Defmt { .. }) {
+            if matches!(data_format, ChannelDataFormat::Defmt { .. }) {
                 Some(ChannelMode::BlockIfFull)
             } else {
                 None
@@ -341,114 +469,8 @@ impl RttActiveUpChannel {
 
         let buffer = &self.rtt_buffer.0[..bytes_read];
 
-        match self.data_format {
-            ChannelDataConfig::BinaryLE => collector.on_binary_data(self.number(), buffer),
-            ChannelDataConfig::String {
-                timestamp_offset,
-                ref mut last_line_done,
-            } => {
-                let string = Self::process_string(buffer, timestamp_offset, last_line_done)?;
-                collector.on_string_data(self.number(), string)
-            }
-            ChannelDataConfig::Defmt { ref formatter } => {
-                let string = self.process_defmt(buffer, defmt_state, formatter)?;
-                collector.on_string_data(self.number(), string)
-            }
-        }
-    }
-
-    fn process_string(
-        buffer: &[u8],
-        offset: Option<UtcOffset>,
-        last_line_done: &mut bool,
-    ) -> Result<String> {
-        let incoming = String::from_utf8_lossy(buffer);
-
-        let Some(offset) = offset else {
-            return Ok(incoming.to_string());
-        };
-
-        let timestamp = OffsetDateTime::now_utc()
-            .to_offset(offset)
-            .format(format_description!(
-                "[hour repr:24]:[minute]:[second].[subsecond digits:3]"
-            ))?;
-
-        let mut formatted_data = String::new();
-        for line in incoming.split_inclusive('\n') {
-            if *last_line_done {
-                write!(formatted_data, "{timestamp}: ").expect("Writing to String cannot fail");
-            }
-            write!(formatted_data, "{line}").expect("Writing to String cannot fail");
-            *last_line_done = line.ends_with('\n');
-        }
-        Ok(formatted_data)
-    }
-
-    fn process_defmt(
-        &self,
-        buffer: &[u8],
-        defmt_state: Option<&DefmtState>,
-        formatter: &Formatter,
-    ) -> Result<String> {
-        let Some(DefmtState { table, locs }) = defmt_state else {
-            return Ok(String::from(
-                "Trying to process defmt data but table or locations could not be loaded.\n",
-            ));
-        };
-
-        let mut stream_decoder = table.new_stream_decoder();
-        stream_decoder.received(buffer);
-        let current_dir = std::env::current_dir().unwrap();
-
-        let mut formatted_data = String::new();
-        loop {
-            match stream_decoder.decode() {
-                Ok(frame) => {
-                    let loc = locs.as_ref().and_then(|locs| locs.get(&frame.index()));
-                    let (file, line, module) = if let Some(loc) = loc {
-                        let relpath = loc.file.strip_prefix(&current_dir).unwrap_or(&loc.file);
-                        (
-                            relpath.display().to_string(),
-                            Some(loc.line.try_into().unwrap()),
-                            Some(loc.module.as_str()),
-                        )
-                    } else {
-                        (
-                            format!(
-                                "└─ <invalid location: defmt frame-index: {}>",
-                                frame.index()
-                            ),
-                            None,
-                            None,
-                        )
-                    };
-                    let s = formatter.format_frame(frame, Some(&file), line, module);
-                    writeln!(formatted_data, "{s}").expect("Writing to String cannot fail");
-                }
-                Err(DecodeError::UnexpectedEof) => break,
-                Err(DecodeError::Malformed) if table.encoding().can_recover() => {
-                    // If recovery is possible, skip the current frame and continue with new data.
-                }
-                Err(DecodeError::Malformed) => {
-                    return Err(anyhow!(
-                        "Unrecoverable error while decoding Defmt \
-                        data and some data may have been lost: {:?}",
-                        DecodeError::Malformed
-                    ));
-                }
-            }
-        }
-
-        Ok(formatted_data)
-    }
-
-    pub(crate) fn set_mode(
-        &self,
-        core: &mut Core<'_>,
-        block_if_full: ChannelMode,
-    ) -> Result<(), Error> {
-        self.up_channel.set_mode(core, block_if_full)
+        self.data_format
+            .process(self.number(), buffer, defmt_state, collector)
     }
 }
 

@@ -85,22 +85,26 @@ impl From<PowerDevice> for TapInstruction {
     }
 }
 
-#[derive(thiserror::Error, Debug, Copy, Clone)]
+#[derive(thiserror::Error, Debug, Copy, Clone, docsplay::Display)]
 pub enum DebugRegisterError {
-    #[error("Register is busy")]
+    /// Register is busy
     Busy,
 
-    #[error("Register-specific error")]
+    /// Register-specific error
     Error,
 
-    #[error("Unexpected value")]
-    Unexpected,
+    /// Unexpected value {0}
+    Unexpected(u8),
 }
 
 #[derive(thiserror::Error, Debug, Clone, Copy)]
 pub enum Error {
-    #[error("Error while accessing register")]
-    Xdm(#[from] DebugRegisterError),
+    #[error("Error {access} register {narsel:#04X}")]
+    Xdm {
+        narsel: u8,
+        access: &'static str,
+        source: DebugRegisterError,
+    },
 
     #[error("ExecExeception")]
     ExecExeception,
@@ -126,8 +130,6 @@ pub struct Xdm {
 
     last_instruction: Option<Instruction>,
 
-    halt_on_reset: bool,
-
     queue: JtagCommandQueue,
     jtag_results: DeferredResultSet,
 
@@ -142,8 +144,6 @@ impl Xdm {
             probe,
             device_id: 0,
             last_instruction: None,
-
-            halt_on_reset: false,
 
             queue: JtagCommandQueue::new(),
             jtag_results: DeferredResultSet::new(),
@@ -160,6 +160,8 @@ impl Xdm {
 
     #[tracing::instrument(skip(self))]
     fn init(&mut self) -> Result<(), XtensaError> {
+        self.probe.tap_reset()?;
+
         let mut pwr_control = PowerControl(0);
 
         pwr_control.set_debug_wakeup(true);
@@ -240,6 +242,8 @@ impl Xdm {
     pub(super) fn execute(&mut self) -> Result<(), XtensaError> {
         let mut queue = std::mem::take(&mut self.queue);
 
+        tracing::debug!("Executing {} commands", queue.len());
+
         // Drop the status readers when we're done.
         // We take now to avoid a possibly recursive call to clear before it's time.
         let _idxs = std::mem::take(&mut self.status_idxs);
@@ -252,9 +256,10 @@ impl Xdm {
                 }
                 Err(e) => {
                     match e.error {
-                        ProbeRsError::Xtensa(XtensaError::XdmError(Error::Xdm(
-                            DebugRegisterError::Busy,
-                        ))) => {
+                        ProbeRsError::Xtensa(XtensaError::XdmError(Error::Xdm {
+                            source: DebugRegisterError::Busy,
+                            ..
+                        })) => {
                             // The specific nexus register may need some longer delay. For now we just
                             // retry, but we should probably add some no-ops later.
                         }
@@ -301,19 +306,22 @@ impl Xdm {
             address: TapInstruction::Nar.code(),
             data: nar.to_le_bytes().to_vec(),
             len: TapInstruction::Nar.bits(),
-            transform: |capture| {
-                let nar = TapInstruction::Nar.capture_to_u8(&capture);
-                let error = match nar & 0b00000011 {
-                    0 => return Ok(CommandResult::None),
-                    1 => DebugRegisterError::Error,
-                    2 => DebugRegisterError::Busy,
-                    _ => DebugRegisterError::Unexpected,
-                };
+            transform: |write, capture| {
+                let capture = TapInstruction::Nar.capture_to_u8(&capture);
+                let nar = write.data[0] >> 1;
+                let write = write.data[0] & 1 == 1;
 
                 // eww...?
-                Err(ProbeRsError::Xtensa(XtensaError::XdmError(Error::Xdm(
-                    error,
-                ))))
+                Err(ProbeRsError::Xtensa(XtensaError::XdmError(Error::Xdm {
+                    narsel: nar,
+                    access: if write { "writing" } else { "reading" },
+                    source: match capture & 0b00000011 {
+                        0 => return Ok(CommandResult::None),
+                        1 => DebugRegisterError::Error,
+                        2 => DebugRegisterError::Busy,
+                        _ => DebugRegisterError::Unexpected(capture),
+                    },
+                })))
             },
         });
 
@@ -403,7 +411,7 @@ impl Xdm {
         self.execute()
     }
 
-    fn status(&mut self) -> Result<DebugStatus, XtensaError> {
+    pub(super) fn status(&mut self) -> Result<DebugStatus, XtensaError> {
         self.read_nexus_register::<DebugStatus>()
     }
 
@@ -442,11 +450,6 @@ impl Xdm {
         });
     }
 
-    pub(super) fn is_in_ocd_mode(&mut self) -> Result<bool, XtensaError> {
-        let reg = self.read_nexus_register::<DebugControlSet>()?;
-        Ok(reg.0.enable_ocd())
-    }
-
     pub(super) fn leave_ocd_mode(&mut self) -> Result<(), XtensaError> {
         // clear all clearable status bits
         self.write_nexus_register({
@@ -479,10 +482,6 @@ impl Xdm {
         }))?;
 
         Ok(())
-    }
-
-    pub(super) fn is_halted(&mut self) -> Result<bool, XtensaError> {
-        self.status().map(|status| status.stopped())
     }
 
     pub(super) fn resume(&mut self) -> Result<(), XtensaError> {
@@ -567,7 +566,7 @@ impl Xdm {
         }
     }
 
-    pub fn target_reset_assert(&mut self) -> Result<(), XtensaError> {
+    pub fn reset_and_halt(&mut self) -> Result<(), XtensaError> {
         self.pwr_write(PowerDevice::PowerControl, {
             let mut pwr_control = PowerControl(0);
 
@@ -579,14 +578,7 @@ impl Xdm {
 
             pwr_control.0
         })?;
-
-        Ok(())
-    }
-
-    pub fn target_reset_deassert(&mut self) -> Result<(), XtensaError> {
-        if self.halt_on_reset {
-            self.halt()?;
-        }
+        self.halt()?;
 
         self.pwr_write(PowerDevice::PowerControl, {
             let mut pwr_control = PowerControl(0);
@@ -602,28 +594,33 @@ impl Xdm {
         Ok(())
     }
 
-    pub(crate) fn halt_on_reset(&mut self, en: bool) {
-        self.halt_on_reset = en;
-    }
-
     pub(super) fn free(self) -> Box<dyn JTAGAccess> {
         self.probe
     }
 }
 
-type TransformFn = fn(Vec<u8>) -> Result<CommandResult, ProbeRsError>;
+type TransformFn = fn(&JtagWriteCommand, Vec<u8>) -> Result<CommandResult, ProbeRsError>;
 
-fn transform_u32(capture: Vec<u8>) -> Result<CommandResult, ProbeRsError> {
+fn transform_u32(
+    _command: &JtagWriteCommand,
+    capture: Vec<u8>,
+) -> Result<CommandResult, ProbeRsError> {
     Ok(CommandResult::U32(
         TapInstruction::Ndr.capture_to_u32(&capture),
     ))
 }
 
-fn transform_noop(_capture: Vec<u8>) -> Result<CommandResult, ProbeRsError> {
+fn transform_noop(
+    _command: &JtagWriteCommand,
+    _capture: Vec<u8>,
+) -> Result<CommandResult, ProbeRsError> {
     Ok(CommandResult::None)
 }
 
-fn transform_instruction_status(capture: Vec<u8>) -> Result<CommandResult, ProbeRsError> {
+fn transform_instruction_status(
+    _command: &JtagWriteCommand,
+    capture: Vec<u8>,
+) -> Result<CommandResult, ProbeRsError> {
     let status = DebugStatus(TapInstruction::Ndr.capture_to_u32(&capture));
 
     if status.exec_overrun() {
@@ -643,14 +640,6 @@ fn transform_instruction_status(capture: Vec<u8>) -> Result<CommandResult, Probe
     }
 
     Ok(CommandResult::None)
-}
-
-// TODO: I don't think these should be transformed into XtensaError directly. We might want to
-// attach register-specific messages via an in-between type.
-impl From<DebugRegisterError> for XtensaError {
-    fn from(e: DebugRegisterError) -> Self {
-        XtensaError::XdmError(e.into())
-    }
 }
 
 bitfield::bitfield! {
