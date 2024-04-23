@@ -134,8 +134,7 @@ impl<'probe> Xtensa<'probe> {
             actual_instructions[2],
         );
 
-        let mut expected_instruction = vec![];
-        Instruction::Break(1, 14).encode_into_vec(&mut expected_instruction);
+        let expected_instruction = Instruction::Break(1, 14).to_bytes();
 
         tracing::debug!(
             "Expected instructions={0:#08x} {1:#08x} {2:#08x}",
