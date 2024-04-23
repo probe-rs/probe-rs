@@ -352,7 +352,7 @@ impl<'dut> TestTracker<'dut> {
         let mut tests_ok = true;
 
         for definition in self.dut_definitions {
-            print_dut_status!(self, blue, "Starting Test",);
+            print_dut_status!(self, blue, "Starting Test");
 
             if let DefinitionSource::File(path) = &definition.source {
                 print!(" - {}", path.display());
@@ -368,7 +368,7 @@ impl<'dut> TestTracker<'dut> {
                         name: definition.chip.name.clone(),
                         succesful: true,
                     });
-                    println_dut_status!(self, green, "Tests Passed",);
+                    println_dut_status!(self, green, "Tests Passed");
                 }
                 Ok(Err(e)) => {
                     tests_ok = false;
@@ -383,7 +383,7 @@ impl<'dut> TestTracker<'dut> {
                         println_dut_status!(self, red, " caused by:    {}", source);
                     }
 
-                    println_dut_status!(self, red, "Tests Failed",);
+                    println_dut_status!(self, red, "Tests Failed");
                 }
                 Err(_join_err) => {
                     tests_ok = false;
@@ -400,9 +400,9 @@ impl<'dut> TestTracker<'dut> {
         }
 
         if tests_ok {
-            println_status!(self, green, "All DUTs passed.",);
+            println_status!(self, green, "All DUTs passed.");
         } else {
-            println_status!(self, red, "Some DUTs failed some tests.",);
+            println_status!(self, red, "Some DUTs failed some tests.");
         }
 
         report
