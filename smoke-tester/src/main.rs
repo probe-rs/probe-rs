@@ -59,6 +59,13 @@ impl SingleTestReport {
     fn has_fatal_error(&self) -> bool {
         matches!(self.result, Err(TestFailure::Fatal(_)))
     }
+
+    fn failed(&self) -> bool {
+        matches!(
+            self.result,
+            Err(TestFailure::Error(_) | TestFailure::Fatal(_))
+        )
+    }
 }
 
 #[derive(Debug, Subcommand)]
@@ -126,6 +133,8 @@ fn run_test(definitions: &[DutDefinition], markdown_summary: Option<PathBuf>) ->
         // We don't care about existing flash contents
         let permissions = Permissions::default().allow_erase_all();
 
+        let mut fail_counter = 0;
+
         let mut session = probe
             .attach(definition.chip.clone(), permissions)
             .into_diagnostic()
@@ -150,6 +159,10 @@ fn run_test(definitions: &[DutDefinition], markdown_summary: Option<PathBuf>) ->
                 if result.has_fatal_error() {
                     return Err(miette::miette!("Test failed with fatal error"));
                 }
+
+                if result.failed() {
+                    fail_counter += 1;
+                }
             }
 
             // Ensure core is not running anymore.
@@ -166,6 +179,10 @@ fn run_test(definitions: &[DutDefinition], markdown_summary: Option<PathBuf>) ->
             if result.has_fatal_error() {
                 return Err(miette::miette!("Test failed with fatal error"));
             }
+
+            if result.failed() {
+                fail_counter += 1;
+            }
         }
 
         drop(session);
@@ -180,7 +197,11 @@ fn run_test(definitions: &[DutDefinition], markdown_summary: Option<PathBuf>) ->
                 .into_diagnostic()?;
         }
 
-        Ok(())
+        match fail_counter {
+            0 => Ok(()),
+            1 => Err(miette::miette!("1 test failed")),
+            count => Err(miette::miette!("{count} tests failed")),
+        }
     });
 
     println!();
