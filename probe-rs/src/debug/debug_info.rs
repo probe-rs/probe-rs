@@ -1898,7 +1898,7 @@ mod test {
             format!("debug-unwind-tests/{test_name}.coredump").as_str(),
         ))
         .unwrap();
-        let snapshot_name = format!("{test_name}");
+        let snapshot_name = test_name.to_string();
 
         let initial_registers = adapter.debug_registers();
         let exception_handler = exception_handler_for_core(adapter.core_type());
