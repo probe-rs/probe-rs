@@ -81,6 +81,7 @@ enum Subcommand {
     Profile(cmd::profile::ProfileCmd),
     Read(cmd::read::Cmd),
     Write(cmd::write::Cmd),
+    Complete(cmd::complete::Cmd),
 }
 
 /// Shared options for core selection, shared between commands
@@ -305,5 +306,6 @@ fn main() -> Result<()> {
         Subcommand::Profile(cmd) => cmd.run(&lister),
         Subcommand::Read(cmd) => cmd.run(&lister),
         Subcommand::Write(cmd) => cmd.run(&lister),
+        Subcommand::Complete(cmd) => cmd.run(&lister),
     }
 }

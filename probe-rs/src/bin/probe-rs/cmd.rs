@@ -3,6 +3,7 @@ pub mod benchmark;
 pub mod cargo_embed;
 pub mod cargo_flash;
 pub mod chip;
+pub mod complete;
 pub mod dap_server;
 pub mod debug;
 pub mod download;
