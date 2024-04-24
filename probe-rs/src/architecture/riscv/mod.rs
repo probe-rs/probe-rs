@@ -58,15 +58,7 @@ impl<'state> Riscv32<'state> {
     }
 
     fn write_csr(&mut self, address: u16, value: u32) -> Result<(), RiscvError> {
-        tracing::debug!("Writing CSR {:#x}", address);
-
-        match self.interface.abstract_cmd_register_write(address, value) {
-            Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
-                tracing::debug!("Could not write core register {:#x} with abstract command, falling back to program buffer", address);
-                self.interface.write_csr_progbuf(address, value)
-            }
-            other => other,
-        }
+        self.interface.write_csr(address, value)
     }
 
     /// Resume the core.
@@ -334,9 +326,7 @@ impl<'state> CoreInterface for Riscv32<'state> {
     }
 
     fn core_halted(&mut self) -> Result<bool, Error> {
-        let dmstatus: Dmstatus = self.interface.read_dm_register()?;
-
-        Ok(dmstatus.allhalted())
+        Ok(self.interface.core_halted()?)
     }
 
     fn status(&mut self) -> Result<CoreStatus, Error> {
@@ -765,6 +755,7 @@ impl MemoryInterface for Riscv32<'_> {
     }
 }
 
+/// State of a trigger (a hardware breakpoint unit)
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
 enum Trigger {
     #[default]
