@@ -43,12 +43,7 @@ where
 
     for (device_name, device) in devices {
         // Only process this, if this belongs to a supported family.
-        let currently_supported_chip_families = probe_rs::config::families().map_err(|e| {
-            anyhow!(
-                "Currently supported chip families could not be read: {:?}",
-                e
-            )
-        })?;
+        let currently_supported_chip_families = probe_rs::config::families();
 
         if only_supported_familes
             && !currently_supported_chip_families
