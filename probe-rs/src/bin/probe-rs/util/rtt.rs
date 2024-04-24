@@ -77,9 +77,8 @@ fn attach_to_rtt(
     }
 }
 
-/// Used by serde to provide defaults for `RttChannelConfig::show_location`
-fn default_include_location() -> bool {
-    // Setting this to true to allow compatibility with behaviour prior to when this option was introduced.
+/// Used by serde to provide defaults for `RttChannelConfig::show_timestamps`
+fn default_show_timestamps() -> bool {
     true
 }
 
@@ -123,7 +122,6 @@ impl RttConfig {
 #[serde(rename_all = "camelCase")]
 pub struct RttChannelConfig {
     pub channel_number: Option<usize>,
-    pub channel_name: Option<String>,
     #[serde(default)]
     pub data_format: DataFormat,
 
@@ -131,13 +129,12 @@ pub struct RttChannelConfig {
     #[serde(default)]
     pub mode: Option<ChannelMode>,
 
-    #[serde(default)]
+    #[serde(default = "default_show_timestamps")]
     /// Control the inclusion of timestamps for DataFormat::String.
     pub show_timestamps: bool,
 
-    #[serde(default = "default_include_location")]
+    #[serde(default)]
     /// Control the inclusion of source location information for DataFormat::Defmt.
-    // TODO: third option: if available
     pub show_location: bool,
 
     #[serde(default)]
@@ -400,7 +397,6 @@ impl RttActiveUpChannel {
 
         let channel_name = up_channel
             .name()
-            .or(channel_config.channel_name.as_deref())
             .map(ToString::to_string)
             .unwrap_or_else(|| {
                 format!(
@@ -481,10 +477,9 @@ pub struct RttActiveDownChannel {
 }
 
 impl RttActiveDownChannel {
-    pub fn new(down_channel: DownChannel, channel_config: &RttChannelConfig) -> Self {
+    pub fn new(down_channel: DownChannel) -> Self {
         let channel_name = down_channel
             .name()
-            .or(channel_config.channel_name.as_deref())
             .map(ToString::to_string)
             .unwrap_or_else(|| format!("Unnamed RTT down channel - {}", down_channel.number()));
 
@@ -580,14 +575,7 @@ impl RttActiveTarget {
         }
 
         for channel in rtt.down_channels.into_iter() {
-            let channel_config = rtt_config
-                .channel_config(channel.number())
-                .cloned()
-                .unwrap_or_default();
-            active_down_channels.insert(
-                channel.number(),
-                RttActiveDownChannel::new(channel, &channel_config),
-            );
+            active_down_channels.insert(channel.number(), RttActiveDownChannel::new(channel));
         }
 
         // It doesn't make sense to pretend RTT is active, if there are no active up channels

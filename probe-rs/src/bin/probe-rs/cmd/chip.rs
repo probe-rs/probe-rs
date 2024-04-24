@@ -35,7 +35,7 @@ impl Cmd {
 /// commandline.
 pub fn print_families(mut output: impl std::io::Write) -> anyhow::Result<()> {
     writeln!(output, "Available chips:")?;
-    for family in probe_rs::config::families()? {
+    for family in probe_rs::config::families() {
         writeln!(output, "{}", &family.name)?;
         writeln!(output, "    Variants:")?;
         for variant in family.variants() {
