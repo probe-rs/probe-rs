@@ -505,7 +505,7 @@ impl<'state> CoreInterface for Riscv32<'state> {
     }
 
     fn available_breakpoint_units(&mut self) -> Result<u32, Error> {
-        Ok(self.triggers().map(|triggers| triggers.len() as u32)?)
+        self.triggers().map(|triggers| triggers.len() as u32)
     }
 
     /// See docs on the [`CoreInterface::hw_breakpoints`] trait
@@ -537,7 +537,8 @@ impl<'state> CoreInterface for Riscv32<'state> {
         // Loop through all triggers, and enable/disable them.
         if state {
             // Write trigger data into registers
-            for (tsel, trigger) in self.triggers()?.to_vec().into_iter().enumerate() {
+            let triggers = self.triggers()?.to_vec();
+            for (tsel, trigger) in triggers.into_iter().enumerate() {
                 match trigger {
                     Trigger::None => {} // trigger should already be disabled
                     Trigger::AddressMatch(addr) => {
