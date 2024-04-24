@@ -992,7 +992,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                     // Because we clock the SWDCLK line after receving the WAIT response,
                     // the target might be in weird state. If we perform a line reset,
                     // we should be able to recover from this.
-                    // line_reset(self, dp)?;
+                    line_reset(self)?;
 
                     // Retry operation again
                     continue;

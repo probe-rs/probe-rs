@@ -589,7 +589,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         let powered_down = !(ctrl.csyspwrupack() && ctrl.cdbgpwrupack());
 
         if powered_down {
-            tracing::debug!("Debug port is powered down, powering up");
+            tracing::info!("Debug port is powered down, powering up");
             let mut ctrl = Ctrl(0);
             ctrl.set_cdbgpwrupreq(true);
             ctrl.set_csyspwrupreq(true);
@@ -818,6 +818,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     /// [ARM SVD Debug Description]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/debug_description.html#debugPortStop
     #[doc(alias = "DebugPortStop")]
     fn debug_port_stop(&self, interface: &mut dyn DapProbe) -> Result<(), ArmError> {
+        tracing::info!("Stopping debug port");
         // Select Bank 0
         interface.raw_write_register(PortType::DebugPort, Select::ADDRESS, 0)?;
 

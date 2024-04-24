@@ -512,10 +512,6 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
 
             self.probe_mut().raw_flush()?;
 
-            let stop_span = tracing::debug_span!("debug_port_stop").entered();
-            sequence.debug_port_stop(&mut *self.probe_mut())?;
-            drop(stop_span);
-
             // Try to switch to the new DP.
             if let Err(e) = sequence.debug_port_connect(&mut *self.probe_mut(), dp) {
                 tracing::warn!("Failed to switch to DP {:x?}: {}", dp, e);
