@@ -219,7 +219,7 @@ pub fn test_flashing(tracker: &TestTracker, session: &mut Session) -> Result<(),
 
     let progress = FlashProgress::new(|event| {
         log::debug!("Flash Event: {:?}", event);
-        eprint!(".");
+        print!(".");
     });
 
     let mut options = DownloadOptions::default();
@@ -230,7 +230,11 @@ pub fn test_flashing(tracker: &TestTracker, session: &mut Session) -> Result<(),
 
     let start_time = Instant::now();
 
-    download_file_with_options(session, test_binary, Format::Elf, options)
+    let format = match session.target().default_format {
+        probe_rs_target::BinaryFormat::Idf => Format::Idf(Default::default()),
+        probe_rs_target::BinaryFormat::Raw => Default::default(),
+    };
+    download_file_with_options(session, test_binary, format, options)
         .map_err(|err| TestFailure::Error(Box::new(err)))?;
 
     println!();

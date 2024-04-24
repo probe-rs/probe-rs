@@ -47,10 +47,6 @@ connect_under_reset = false
 enabled = false
 # The duration in ms for which the logger should retry to attach to RTT.
 timeout = 3000
-# Whether timestamps in the RTTUI are enabled
-show_timestamps = true
-# Whether locations for defmt messages are enabled in the RTTUI
-show_location = false
 # Whether to save rtt history buffer on exit.
 log_enabled = false
 # Where to save rtt history buffer relative to manifest path.

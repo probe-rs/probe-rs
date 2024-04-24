@@ -1,4 +1,7 @@
-use std::{fs::File, path::Path, path::PathBuf};
+use std::{
+    fs::File,
+    path::{Path, PathBuf},
+};
 
 use super::cargo::ArtifactError;
 use crate::util::parse_u64;

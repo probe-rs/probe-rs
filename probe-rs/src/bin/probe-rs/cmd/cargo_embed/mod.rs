@@ -340,24 +340,33 @@ fn run_rttui_app(
         channels: vec![],
     };
 
+    // Make sure our defaults are the same as the ones intended in the config struct.
+    let default_channel_config = RttChannelConfig::default();
+
     let mut require_defmt = false;
     for channel_config in config.rtt.up_channels.iter() {
-        rtt_config.channels.push(RttChannelConfig {
+        // Where `channel_config` is unspecified, apply default from `default_channel_config`.
+        let rtt_channel_config = RttChannelConfig {
             channel_number: Some(channel_config.channel),
-            channel_name: None,
-            data_format: channel_config.format,
+            data_format: channel_config
+                .format
+                .unwrap_or(default_channel_config.data_format),
             show_timestamps: channel_config
                 .show_timestamps
-                .unwrap_or(config.rtt.show_timestamps),
+                .unwrap_or(default_channel_config.show_timestamps),
             show_location: channel_config
                 .show_location
-                .unwrap_or(config.rtt.show_location),
-            defmt_log_format: channel_config.defmt_log_format.clone(),
-            mode: channel_config.mode,
-        });
-        if channel_config.format == DataFormat::Defmt {
+                .unwrap_or(default_channel_config.show_location),
+            defmt_log_format: channel_config
+                .defmt_log_format
+                .clone()
+                .or_else(|| default_channel_config.defmt_log_format.clone()),
+            mode: channel_config.mode.or(default_channel_config.mode),
+        };
+        if rtt_channel_config.data_format == DataFormat::Defmt {
             require_defmt = true;
         }
+        rtt_config.channels.push(rtt_channel_config);
     }
     // In case we have down channels without up channels, add them separately.
     for channel_config in config.rtt.down_channels.iter() {
@@ -369,7 +378,6 @@ fn run_rttui_app(
             // Set up channel defaults, we don't read from it anyway.
             rtt_config.channels.push(RttChannelConfig {
                 channel_number: Some(channel_config.channel),
-                channel_name: None,
                 data_format: DataFormat::String,
                 show_timestamps: false,
                 show_location: false,

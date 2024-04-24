@@ -23,7 +23,7 @@ jobs:
         run: rustup target add aarch64-unknown-linux-gnu
 
       - name: Install cross
-        uses: taiki-e/install-action@v2.32.17
+        uses: taiki-e/install-action@v2.33.3
         with:
           tool: cross
 
@@ -40,7 +40,10 @@ jobs:
           path: target/aarch64-unknown-linux-gnu/release/smoke_tester
 
   test:
-    runs-on: ["self-hosted", "linux", "ARM64", "smoke-test"]
+    runs-on: ["self-hosted", "linux", "ARM64", "${{ matrix.runner }}"]
+    strategy:
+      matrix:
+        runner: ["smoke-test", "smoke-tester-2"]
 
     needs: build
 

@@ -24,7 +24,7 @@ impl TcpPublisher {
         }
 
         if let Some(socket) = self.socket.as_mut() {
-            if socket.write(bytes).is_err() {
+            if socket.write_all(bytes).is_err() {
                 // Discard socket on error. Try reconnect next time.
                 self.socket = None;
             }
