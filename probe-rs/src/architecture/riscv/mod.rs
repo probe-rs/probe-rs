@@ -132,6 +132,75 @@ impl<'probe> Riscv32<'probe> {
             Ok(None)
         }
     }
+
+    fn determine_number_of_hardware_breakpoints(&mut self) -> Result<u32, RiscvError> {
+        tracing::debug!("Determining number of HW breakpoints supported");
+
+        let tselect = 0x7a0;
+        let tdata1 = 0x7a1;
+        let tinfo = 0x7a4;
+
+        let mut tselect_index = 0;
+
+        // These steps follow the debug specification 0.13, section 5.1 Enumeration
+        loop {
+            tracing::debug!("Trying tselect={}", tselect_index);
+            if let Err(e) = self.write_csr(tselect, tselect_index) {
+                match e {
+                    RiscvError::AbstractCommand(AbstractCommandErrorKind::Exception) => break,
+                    other_error => return Err(other_error),
+                }
+            }
+
+            let readback = self.read_csr(tselect)?;
+
+            if readback != tselect_index {
+                break;
+            }
+
+            match self.read_csr(tinfo) {
+                Ok(tinfo_val) => {
+                    if tinfo_val & 0xffff == 1 {
+                        // Trigger doesn't exist, break the loop
+                        break;
+                    } else {
+                        tracing::info!(
+                            "Discovered trigger with index {} and type {}",
+                            tselect_index,
+                            tinfo_val & 0xffff
+                        );
+                    }
+                }
+                Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::Exception)) => {
+                    // An exception means we have to read tdata1 to discover the type
+                    let tdata_val = self.read_csr(tdata1)?;
+
+                    // Read the mxl field from the misa register (see RISC-V Privileged Spec, 3.1.1)
+                    let misa_value = Misa(self.read_csr(0x301)?);
+                    let xlen = u32::pow(2, misa_value.mxl() + 4);
+
+                    let trigger_type = tdata_val >> (xlen - 4);
+
+                    if trigger_type == 0 {
+                        break;
+                    }
+
+                    tracing::info!(
+                        "Discovered trigger with index {} and type {}",
+                        tselect_index,
+                        trigger_type,
+                    );
+                }
+                Err(other) => return Err(other),
+            }
+
+            tselect_index += 1;
+        }
+
+        tracing::debug!("Target supports {} breakpoints.", tselect_index);
+
+        Ok(tselect_index)
+    }
 }
 
 impl<'probe> CoreInterface for Riscv32<'probe> {
@@ -299,74 +368,14 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn available_breakpoint_units(&mut self) -> Result<u32, crate::Error> {
-        // TODO: This should probably only be done once, when initialising
-
-        tracing::debug!("Determining number of HW breakpoints supported");
-
-        let tselect = 0x7a0;
-        let tdata1 = 0x7a1;
-        let tinfo = 0x7a4;
-
-        let mut tselect_index = 0;
-
-        // These steps follow the debug specification 0.13, section 5.1 Enumeration
-        loop {
-            tracing::debug!("Trying tselect={}", tselect_index);
-            if let Err(e) = self.write_csr(tselect, tselect_index) {
-                match e {
-                    RiscvError::AbstractCommand(AbstractCommandErrorKind::Exception) => break,
-                    other_error => return Err(other_error.into()),
-                }
+        match self.state.hw_breakpoints {
+            Some(bp) => Ok(bp),
+            None => {
+                let bp = self.determine_number_of_hardware_breakpoints()?;
+                self.state.hw_breakpoints = Some(bp);
+                Ok(bp)
             }
-
-            let readback = self.read_csr(tselect)?;
-
-            if readback != tselect_index {
-                break;
-            }
-
-            match self.read_csr(tinfo) {
-                Ok(tinfo_val) => {
-                    if tinfo_val & 0xffff == 1 {
-                        // Trigger doesn't exist, break the loop
-                        break;
-                    } else {
-                        tracing::info!(
-                            "Discovered trigger with index {} and type {}",
-                            tselect_index,
-                            tinfo_val & 0xffff
-                        );
-                    }
-                }
-                Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::Exception)) => {
-                    // An exception means we have to read tdata1 to discover the type
-                    let tdata_val = self.read_csr(tdata1)?;
-
-                    // Read the mxl field from the misa register (see RISC-V Privileged Spec, 3.1.1)
-                    let misa_value = Misa(self.read_csr(0x301)?);
-                    let xlen = u32::pow(2, misa_value.mxl() + 4);
-
-                    let trigger_type = tdata_val >> (xlen - 4);
-
-                    if trigger_type == 0 {
-                        break;
-                    }
-
-                    tracing::info!(
-                        "Discovered trigger with index {} and type {}",
-                        tselect_index,
-                        trigger_type,
-                    );
-                }
-                Err(other) => return Err(other.into()),
-            }
-
-            tselect_index += 1;
         }
-
-        tracing::debug!("Target supports {} breakpoints.", tselect_index);
-
-        Ok(tselect_index)
     }
 
     /// See docs on the [`CoreInterface::hw_breakpoints`] trait
@@ -703,6 +712,8 @@ pub struct RiscVState {
     /// A flag to remember whether we want to use hw_breakpoints during stepping of the core.
     hw_breakpoints_enabled: bool,
 
+    hw_breakpoints: Option<u32>,
+
     /// The semihosting command that was decoded at the current program counter
     semihosting_command: Option<SemihostingCommand>,
 }
@@ -711,6 +722,7 @@ impl RiscVState {
     pub(crate) fn new() -> Self {
         Self {
             hw_breakpoints_enabled: false,
+            hw_breakpoints: None,
             semihosting_command: None,
         }
     }
