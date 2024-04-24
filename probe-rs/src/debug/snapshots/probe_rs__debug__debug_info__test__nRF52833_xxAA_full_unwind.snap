@@ -4,10 +4,10 @@ expression: stack_frames
 ---
 - function_name: test_deep_stack
   source_location:
-    line: 343
+    line: 344
     column:
       Column: 13
-    file: common_testing_code.rs
+    file: lib.rs
     directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
   registers:
     - core_register:
@@ -31,7 +31,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 1
       value:
-        U32: 16
+        U32: 4
     - core_register:
         id: 2
         roles:
@@ -41,7 +41,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 2
       value:
-        U32: 1
+        U32: 4294967295
     - core_register:
         id: 3
         roles:
@@ -51,7 +51,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 3
       value:
-        U32: 536872960
+        U32: 26569
     - core_register:
         id: 4
         roles:
@@ -60,7 +60,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 4
       value:
-        U32: 536871016
+        U32: 536886200
     - core_register:
         id: 5
         roles:
@@ -69,7 +69,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 5
       value:
-        U32: 536871016
+        U32: 536886232
     - core_register:
         id: 6
         roles:
@@ -78,7 +78,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 6
       value:
-        U32: 536886612
+        U32: 4294967293
     - core_register:
         id: 7
         roles:
@@ -88,7 +88,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 7
       value:
-        U32: 536883272
+        U32: 536883464
     - core_register:
         id: 8
         roles:
@@ -106,7 +106,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 9
       value:
-        U32: 4294967295
+        U32: 4294967294
     - core_register:
         id: 10
         roles:
@@ -115,7 +115,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 10
       value:
-        U32: 4294967295
+        U32: 2097151999
     - core_register:
         id: 11
         roles:
@@ -124,7 +124,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 11
       value:
-        U32: 4294967295
+        U32: 7
     - core_register:
         id: 12
         roles:
@@ -133,7 +133,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 12
       value:
-        U32: 536871449
+        U32: 536871460
     - core_register:
         id: 13
         roles:
@@ -143,7 +143,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 13
       value:
-        U32: 536883152
+        U32: 536883328
     - core_register:
         id: 14
         roles:
@@ -153,7 +153,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 14
       value:
-        U32: 268455793
+        U32: 2149
     - core_register:
         id: 15
         roles:
@@ -163,7 +163,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 15
       value:
-        U32: 268468490
+        U32: 6140
     - core_register:
         id: 17
         roles:
@@ -173,7 +173,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 16
       value:
-        U32: 536883152
+        U32: 536883328
     - core_register:
         id: 18
         roles:
@@ -183,7 +183,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 17
       value:
-        U32: 4294967292
+        U32: 0
     - core_register:
         id: 16
         roles:
@@ -203,10 +203,10 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 19
       value:
-        U32: 0
+        U32: 67108864
   pc:
-    U32: 268468490
-  frame_base: 536883272
+    U32: 6140
+  frame_base: 536883464
   is_inlined: false
   local_variables:
     Child Variables:
@@ -224,13 +224,13 @@ expression: stack_frames
           type_name:
             Base: usize
           value: "6"
-  canonical_frame_address: 536883280
+  canonical_frame_address: 536883472
 - function_name: test_deep_stack
   source_location:
-    line: 337
+    line: 338
     column:
       Column: 9
-    file: common_testing_code.rs
+    file: lib.rs
     directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
   registers:
     - core_register:
@@ -279,7 +279,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 4
       value:
-        U32: 536871016
+        U32: 536886200
     - core_register:
         id: 5
         roles:
@@ -288,7 +288,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 5
       value:
-        U32: 536871016
+        U32: 536886232
     - core_register:
         id: 6
         roles:
@@ -297,7 +297,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 6
       value:
-        U32: 536886612
+        U32: 4294967293
     - core_register:
         id: 7
         roles:
@@ -307,7 +307,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 7
       value:
-        U32: 536883400
+        U32: 536883608
     - core_register:
         id: 8
         roles:
@@ -333,7 +333,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 10
       value:
-        U32: 4294967295
+        U32: 2097151999
     - core_register:
         id: 11
         roles:
@@ -342,7 +342,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 11
       value:
-        U32: 4294967295
+        U32: 7
     - core_register:
         id: 12
         roles:
@@ -351,7 +351,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 12
       value:
-        U32: 536871449
+        U32: 536871460
     - core_register:
         id: 13
         roles:
@@ -361,7 +361,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 13
       value:
-        U32: 536883280
+        U32: 536883472
     - core_register:
         id: 14
         roles:
@@ -371,7 +371,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 14
       value:
-        U32: 268468511
+        U32: 6151
     - core_register:
         id: 15
         roles:
@@ -381,7 +381,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 15
       value:
-        U32: 268468510
+        U32: 6150
     - core_register:
         id: 17
         roles:
@@ -420,8 +420,8 @@ expression: stack_frames
       dwarf_id: 19
       value: ~
   pc:
-    U32: 268468510
-  frame_base: 536883400
+    U32: 6150
+  frame_base: 536883608
   is_inlined: false
   local_variables:
     Child Variables:
@@ -439,13 +439,13 @@ expression: stack_frames
           type_name:
             Base: usize
           value: "5"
-  canonical_frame_address: 536883408
+  canonical_frame_address: 536883616
 - function_name: test_deep_stack
   source_location:
-    line: 337
+    line: 338
     column:
       Column: 9
-    file: common_testing_code.rs
+    file: lib.rs
     directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
   registers:
     - core_register:
@@ -494,7 +494,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 4
       value:
-        U32: 536871016
+        U32: 536886200
     - core_register:
         id: 5
         roles:
@@ -503,7 +503,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 5
       value:
-        U32: 536871016
+        U32: 536886232
     - core_register:
         id: 6
         roles:
@@ -512,7 +512,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 6
       value:
-        U32: 536886612
+        U32: 4294967293
     - core_register:
         id: 7
         roles:
@@ -522,7 +522,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 7
       value:
-        U32: 536883528
+        U32: 536883752
     - core_register:
         id: 8
         roles:
@@ -548,7 +548,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 10
       value:
-        U32: 4294967295
+        U32: 2097151999
     - core_register:
         id: 11
         roles:
@@ -557,7 +557,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 11
       value:
-        U32: 4294967295
+        U32: 7
     - core_register:
         id: 12
         roles:
@@ -566,7 +566,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 12
       value:
-        U32: 536871449
+        U32: 536871460
     - core_register:
         id: 13
         roles:
@@ -576,7 +576,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 13
       value:
-        U32: 536883408
+        U32: 536883616
     - core_register:
         id: 14
         roles:
@@ -586,7 +586,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 14
       value:
-        U32: 268468511
+        U32: 6151
     - core_register:
         id: 15
         roles:
@@ -596,7 +596,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 15
       value:
-        U32: 268468510
+        U32: 6150
     - core_register:
         id: 17
         roles:
@@ -635,8 +635,8 @@ expression: stack_frames
       dwarf_id: 19
       value: ~
   pc:
-    U32: 268468510
-  frame_base: 536883528
+    U32: 6150
+  frame_base: 536883752
   is_inlined: false
   local_variables:
     Child Variables:
@@ -654,13 +654,13 @@ expression: stack_frames
           type_name:
             Base: usize
           value: "4"
-  canonical_frame_address: 536883536
+  canonical_frame_address: 536883760
 - function_name: test_deep_stack
   source_location:
-    line: 337
+    line: 338
     column:
       Column: 9
-    file: common_testing_code.rs
+    file: lib.rs
     directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
   registers:
     - core_register:
@@ -709,7 +709,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 4
       value:
-        U32: 536871016
+        U32: 536886200
     - core_register:
         id: 5
         roles:
@@ -718,7 +718,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 5
       value:
-        U32: 536871016
+        U32: 536886232
     - core_register:
         id: 6
         roles:
@@ -727,7 +727,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 6
       value:
-        U32: 536886612
+        U32: 4294967293
     - core_register:
         id: 7
         roles:
@@ -737,7 +737,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 7
       value:
-        U32: 536883656
+        U32: 536883896
     - core_register:
         id: 8
         roles:
@@ -763,7 +763,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 10
       value:
-        U32: 4294967295
+        U32: 2097151999
     - core_register:
         id: 11
         roles:
@@ -772,7 +772,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 11
       value:
-        U32: 4294967295
+        U32: 7
     - core_register:
         id: 12
         roles:
@@ -781,7 +781,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 12
       value:
-        U32: 536871449
+        U32: 536871460
     - core_register:
         id: 13
         roles:
@@ -791,7 +791,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 13
       value:
-        U32: 536883536
+        U32: 536883760
     - core_register:
         id: 14
         roles:
@@ -801,7 +801,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 14
       value:
-        U32: 268468511
+        U32: 6151
     - core_register:
         id: 15
         roles:
@@ -811,7 +811,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 15
       value:
-        U32: 268468510
+        U32: 6150
     - core_register:
         id: 17
         roles:
@@ -850,8 +850,8 @@ expression: stack_frames
       dwarf_id: 19
       value: ~
   pc:
-    U32: 268468510
-  frame_base: 536883656
+    U32: 6150
+  frame_base: 536883896
   is_inlined: false
   local_variables:
     Child Variables:
@@ -869,13 +869,13 @@ expression: stack_frames
           type_name:
             Base: usize
           value: "3"
-  canonical_frame_address: 536883664
+  canonical_frame_address: 536883904
 - function_name: test_deep_stack
   source_location:
-    line: 337
+    line: 338
     column:
       Column: 9
-    file: common_testing_code.rs
+    file: lib.rs
     directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
   registers:
     - core_register:
@@ -924,7 +924,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 4
       value:
-        U32: 536871016
+        U32: 536886200
     - core_register:
         id: 5
         roles:
@@ -933,7 +933,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 5
       value:
-        U32: 536871016
+        U32: 536886232
     - core_register:
         id: 6
         roles:
@@ -942,7 +942,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 6
       value:
-        U32: 536886612
+        U32: 4294967293
     - core_register:
         id: 7
         roles:
@@ -952,7 +952,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 7
       value:
-        U32: 536883784
+        U32: 536884040
     - core_register:
         id: 8
         roles:
@@ -978,7 +978,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 10
       value:
-        U32: 4294967295
+        U32: 2097151999
     - core_register:
         id: 11
         roles:
@@ -987,7 +987,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 11
       value:
-        U32: 4294967295
+        U32: 7
     - core_register:
         id: 12
         roles:
@@ -996,7 +996,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 12
       value:
-        U32: 536871449
+        U32: 536871460
     - core_register:
         id: 13
         roles:
@@ -1006,7 +1006,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 13
       value:
-        U32: 536883664
+        U32: 536883904
     - core_register:
         id: 14
         roles:
@@ -1016,7 +1016,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 14
       value:
-        U32: 268468511
+        U32: 6151
     - core_register:
         id: 15
         roles:
@@ -1026,7 +1026,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 15
       value:
-        U32: 268468510
+        U32: 6150
     - core_register:
         id: 17
         roles:
@@ -1065,8 +1065,8 @@ expression: stack_frames
       dwarf_id: 19
       value: ~
   pc:
-    U32: 268468510
-  frame_base: 536883784
+    U32: 6150
+  frame_base: 536884040
   is_inlined: false
   local_variables:
     Child Variables:
@@ -1084,13 +1084,13 @@ expression: stack_frames
           type_name:
             Base: usize
           value: "2"
-  canonical_frame_address: 536883792
+  canonical_frame_address: 536884048
 - function_name: test_deep_stack
   source_location:
-    line: 337
+    line: 338
     column:
       Column: 9
-    file: common_testing_code.rs
+    file: lib.rs
     directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
   registers:
     - core_register:
@@ -1139,7 +1139,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 4
       value:
-        U32: 536871016
+        U32: 536886200
     - core_register:
         id: 5
         roles:
@@ -1148,7 +1148,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 5
       value:
-        U32: 536871016
+        U32: 536886232
     - core_register:
         id: 6
         roles:
@@ -1157,7 +1157,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 6
       value:
-        U32: 536886612
+        U32: 4294967293
     - core_register:
         id: 7
         roles:
@@ -1167,7 +1167,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 7
       value:
-        U32: 536883912
+        U32: 536884184
     - core_register:
         id: 8
         roles:
@@ -1193,7 +1193,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 10
       value:
-        U32: 4294967295
+        U32: 2097151999
     - core_register:
         id: 11
         roles:
@@ -1202,7 +1202,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 11
       value:
-        U32: 4294967295
+        U32: 7
     - core_register:
         id: 12
         roles:
@@ -1211,7 +1211,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 12
       value:
-        U32: 536871449
+        U32: 536871460
     - core_register:
         id: 13
         roles:
@@ -1221,7 +1221,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 13
       value:
-        U32: 536883792
+        U32: 536884048
     - core_register:
         id: 14
         roles:
@@ -1231,7 +1231,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 14
       value:
-        U32: 268468511
+        U32: 6151
     - core_register:
         id: 15
         roles:
@@ -1241,7 +1241,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 15
       value:
-        U32: 268468510
+        U32: 6150
     - core_register:
         id: 17
         roles:
@@ -1280,8 +1280,8 @@ expression: stack_frames
       dwarf_id: 19
       value: ~
   pc:
-    U32: 268468510
-  frame_base: 536883912
+    U32: 6150
+  frame_base: 536884184
   is_inlined: false
   local_variables:
     Child Variables:
@@ -1299,13 +1299,13 @@ expression: stack_frames
           type_name:
             Base: usize
           value: "1"
-  canonical_frame_address: 536883920
+  canonical_frame_address: 536884192
 - function_name: setup_data_types
   source_location:
-    line: 324
+    line: 325
     column:
       Column: 5
-    file: common_testing_code.rs
+    file: lib.rs
     directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
   registers:
     - core_register:
@@ -1354,7 +1354,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 4
       value:
-        U32: 536871016
+        U32: 536886200
     - core_register:
         id: 5
         roles:
@@ -1363,7 +1363,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 5
       value:
-        U32: 536871016
+        U32: 536886232
     - core_register:
         id: 6
         roles:
@@ -1372,7 +1372,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 6
       value:
-        U32: 536886612
+        U32: 4294967293
     - core_register:
         id: 7
         roles:
@@ -1382,7 +1382,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 7
       value:
-        U32: 536886968
+        U32: 536887128
     - core_register:
         id: 8
         roles:
@@ -1408,7 +1408,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 10
       value:
-        U32: 4294967295
+        U32: 2097151999
     - core_register:
         id: 11
         roles:
@@ -1417,7 +1417,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 11
       value:
-        U32: 4294967295
+        U32: 7
     - core_register:
         id: 12
         roles:
@@ -1426,7 +1426,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 12
       value:
-        U32: 536871449
+        U32: 536871460
     - core_register:
         id: 13
         roles:
@@ -1436,7 +1436,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 13
       value:
-        U32: 536883920
+        U32: 536884192
     - core_register:
         id: 14
         roles:
@@ -1446,7 +1446,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 14
       value:
-        U32: 268468271
+        U32: 5991
     - core_register:
         id: 15
         roles:
@@ -1456,7 +1456,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 15
       value:
-        U32: 268468270
+        U32: 5990
     - core_register:
         id: 17
         roles:
@@ -1495,14 +1495,14 @@ expression: stack_frames
       dwarf_id: 19
       value: ~
   pc:
-    U32: 268468270
-  frame_base: 536886968
+    U32: 5990
+  frame_base: 536887128
   is_inlined: false
   local_variables:
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tint8_minus_twenty_three: i8 = -23,\n\tlocal_reference_to_global_const: &str = This global `const` value will only show up in the debugger in the variables where it is referenced,\n\tlocal_reference_to_global_static: &str = A 'global' static variable,\n\tlocal_reference_to_global_static_struct: &common_testing_code::ComplexEnum = &common_testing_code::ComplexEnum @ 0x20003CBC,\n\tghosted_variable: usize = 0,\n\tghosted_variable: &str = New value and type for a different name,\n\tint8_twenty_six: i8 = 26,\n\tint128: i128 = -196710231994021419720322,\n\tu_int128: u128 = 340282366920938266753142613410348491134,\n\tfloat64: f64 = 1.7608695652173911,\n\tfloat64_ptr: &f64 = &f64 @ 0x20003CD4,\n\temoji: char = 💩,\n\temoji_ptr: &char = &char @ 0x20003CD8,\n\ttrue_bool: bool = true,\n\tany_old_string_slice: &str = How long is a piece of String.,\n\tfunction_result: Result<(), &str> = Result<(), &str> @ 0x20003CDC,\n\tglobal_types: (bool, isize, char, i8, i16, i32, i64, usize, u8, u16, u32, u64, f32, f64) = (bool, isize, char, i8, i16, i32, i64, usize, u8, u16, u32, u64, f32, f64) @ 0x20003450,\n\tthree_d_usize_array: Matrix<i32, 2, 3, 4> = Matrix<i32, 2, 3, 4> @ 0x2000348C,\n\tthree_d_string_array: Matrix<&str, 2, 3, 6> = Matrix<&str, 2, 3, 6> @ 0x2000360C,\n\tthree: SimpleEnum = SimpleEnum::Two,\n\tsimple_enum_pointer: &common_testing_code::SimpleEnum = &common_testing_code::SimpleEnum @ 0x20003A90,\n\tthree_level_recursive_struct: RecursiveStruct = RecursiveStruct @ 0x20003A94,\n\tfirst_case_of_struct_variants: ComplexEnum = ComplexEnum @ 0x20003AB8,\n\tsecond_case_of_struct_variants: ComplexEnum = ComplexEnum @ 0x20003AE8,\n\tstruct_with_one_variant: Option<common_testing_code::Univariant> = Option<common_testing_code::Univariant> @ 0x20003B08,\n\tstuct_with_one_variant_pointer: &core::option::Option<common_testing_code::Univariant> = &core::option::Option<common_testing_code::Univariant> @ 0x20003CE4,\n\tlong_lived: ComplexStruct = ComplexStruct @ 0x20003B70,\n\tshort_lived: ComplexStruct = ComplexStruct @ 0x20003B80,\n\ta1: Struct<i32> = Struct<i32> @ 0x20003CE8,\n\ta2: i64 = 1,\n\ta3: i64 = 2,\n\ta4: i64 = 3,\n\ta5: (i32, i64) = (i32, i64) @ 0x20003D10,\n\ta6: Enum<i32> = Enum<i32> @ 0x20003BC0,\n\ta7: Enum<i32> = Enum<i32> @ 0x20003BE0,\n\t[i32; 10] = [\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55\n\t],\n\tmy_array_ptr: &[i32; 10] = &[i32; 10] @ 0x20003D24,\n\t[i8; 10] = [\n\t\t1,\n\t\t2,\n\t\t3,\n\t\t4,\n\t\t5,\n\t\t6,\n\t\t7,\n\t\t8,\n\t\t9,\n\t\t0\n\t],\n\theapless_vec: Vec<i8, 10> = Vec<i8, 10> @ 0x20003C38,\n\tloop_counter: Wrapping<u8> = Wrapping<u8> @ 0x20003C48,\n\trtt_channels: Channels = Channels @ 0x20003C4C}"
+      value: "<unknown> {\n\tint8_minus_twenty_three: i8 = -23,\n\tlocal_reference_to_global_const: &str = This global `const` value will only show up in the debugger in the variables where it is referenced,\n\tlocal_reference_to_global_static: &str = A 'global' static variable,\n\tlocal_reference_to_global_static_struct: *const probe_rs_debugger_test::ComplexEnum = *const probe_rs_debugger_test::ComplexEnum @ 0x20003D64,\n\tghosted_variable: usize = 0,\n\tghosted_variable: &str = New value and type for a different name,\n\tint8_twenty_six: i8 = 26,\n\tint128: i128 = -196710231994021419720322,\n\tu_int128: u128 = 340282366920938266753142613410348491134,\n\tfloat64: f64 = 1.7608695652173911,\n\tfloat64_ptr: &f64 = &f64 @ 0x20003D7C,\n\temoji: char = 💩,\n\temoji_ptr: &char = &char @ 0x20003D80,\n\ttrue_bool: bool = true,\n\tany_old_string_slice: &str = How long is a piece of String.,\n\tfunction_result: Result<(), &str> = Result<(), &str> @ 0x20003D84,\n\tglobal_types: (bool, isize, char, i8, i16, i32, i64, usize, u8, u16, u32, u64, f32, f64) = (bool, isize, char, i8, i16, i32, i64, usize, u8, u16, u32, u64, f32, f64) @ 0x200034E8,\n\tthree_d_usize_array: Matrix<i32, 2, 3, 4> = Matrix<i32, 2, 3, 4> @ 0x20003524,\n\tthree_d_string_array: Matrix<&str, 2, 3, 6> = Matrix<&str, 2, 3, 6> @ 0x200036A4,\n\tthree: SimpleEnum = SimpleEnum::Two,\n\tsimple_enum_pointer: &probe_rs_debugger_test::SimpleEnum = &probe_rs_debugger_test::SimpleEnum @ 0x20003B28,\n\tthree_level_recursive_struct: RecursiveStruct = RecursiveStruct @ 0x20003B2C,\n\tfirst_case_of_struct_variants: ComplexEnum = ComplexEnum @ 0x20003B50,\n\tsecond_case_of_struct_variants: ComplexEnum = ComplexEnum @ 0x20003B80,\n\tstruct_with_one_variant: Option<probe_rs_debugger_test::Univariant> = Option<probe_rs_debugger_test::Univariant> @ 0x20003BA0,\n\tstuct_with_one_variant_pointer: &core::option::Option<probe_rs_debugger_test::Univariant> = &core::option::Option<probe_rs_debugger_test::Univariant> @ 0x20003D8C,\n\tlong_lived: ComplexStruct = ComplexStruct @ 0x20003C08,\n\tshort_lived: ComplexStruct = ComplexStruct @ 0x20003C18,\n\ta1: Struct<i32> = Struct<i32> @ 0x20003D90,\n\ta2: i64 = 1,\n\ta3: i64 = 2,\n\ta4: i64 = 3,\n\ta5: (i32, i64) = (i32, i64) @ 0x20003DB8,\n\ta6: Enum<i32> = Enum<i32> @ 0x20003C58,\n\ta7: Enum<i32> = Enum<i32> @ 0x20003C78,\n\t[i32; 10] = [\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55\n\t],\n\tmy_array_ptr: &[i32; 10] = &[i32; 10] @ 0x20003DC8,\n\t[i8; 10] = [\n\t\t1,\n\t\t2,\n\t\t3,\n\t\t4,\n\t\t5,\n\t\t6,\n\t\t7,\n\t\t8,\n\t\t9,\n\t\t0\n\t],\n\theapless_vec: Vec<i8, 10> = Vec<i8, 10> @ 0x20003CD0,\n\tloop_counter: Wrapping<u8> = Wrapping<u8> @ 0x20003CE3,\n\trtt_channels: Channels = Channels @ 0x20003CE4}"
       children:
         - name:
             Named: int8_minus_twenty_three
@@ -1519,7 +1519,7 @@ expression: stack_frames
                 Named: data_ptr
               type_name:
                 Pointer: u8
-              value: "*raw u8 @ 0x20003400"
+              value: "*raw u8 @ 0x20003498"
               children:
                 - name:
                     Named: "*data_ptr"
@@ -1541,7 +1541,7 @@ expression: stack_frames
                 Named: data_ptr
               type_name:
                 Pointer: u8
-              value: "*raw u8 @ 0x20003CB4"
+              value: "*raw u8 @ 0x20003D5C"
               children:
                 - name:
                     Named: "*data_ptr"
@@ -1556,8 +1556,8 @@ expression: stack_frames
         - name:
             Named: local_reference_to_global_static_struct
           type_name:
-            Pointer: "&common_testing_code::ComplexEnum"
-          value: "&common_testing_code::ComplexEnum @ 0x20003CBC"
+            Pointer: "*const probe_rs_debugger_test::ComplexEnum"
+          value: "*const probe_rs_debugger_test::ComplexEnum @ 0x20003D64"
           children:
             - name:
                 Named: "*local_reference_to_global_static_struct"
@@ -1612,7 +1612,7 @@ expression: stack_frames
                 Named: data_ptr
               type_name:
                 Pointer: u8
-              value: "*raw u8 @ 0x2000340C"
+              value: "*raw u8 @ 0x200034A4"
               children:
                 - name:
                     Named: "*data_ptr"
@@ -1648,7 +1648,7 @@ expression: stack_frames
             Named: float64_ptr
           type_name:
             Pointer: "&f64"
-          value: "&f64 @ 0x20003CD4"
+          value: "&f64 @ 0x20003D7C"
           children:
             - name:
                 Named: "*float64_ptr"
@@ -1664,7 +1664,7 @@ expression: stack_frames
             Named: emoji_ptr
           type_name:
             Pointer: "&char"
-          value: "&char @ 0x20003CD8"
+          value: "&char @ 0x20003D80"
           children:
             - name:
                 Named: "*emoji_ptr"
@@ -1686,7 +1686,7 @@ expression: stack_frames
                 Named: data_ptr
               type_name:
                 Pointer: u8
-              value: "*raw u8 @ 0x20003430"
+              value: "*raw u8 @ 0x200034C8"
               children:
                 - name:
                     Named: "*data_ptr"
@@ -1702,13 +1702,13 @@ expression: stack_frames
             Named: function_result
           type_name:
             Struct: "Result<(), &str>"
-          value: "Result<(), &str> @ 0x20003CDC"
+          value: "Result<(), &str> @ 0x20003D84"
           children:
             - name:
                 Named: Err
               type_name:
                 Struct: Err
-              value: Err @ 0x20003CDC
+              value: Err @ 0x20003D84
               children:
                 - name:
                     Named: __0
@@ -1720,7 +1720,7 @@ expression: stack_frames
                         Named: data_ptr
                       type_name:
                         Pointer: u8
-                      value: "*raw u8 @ 0x20003CDC"
+                      value: "*raw u8 @ 0x20003D84"
                       children:
                         - name:
                             Named: "*data_ptr"
@@ -1736,7 +1736,7 @@ expression: stack_frames
             Named: global_types
           type_name:
             Struct: "(bool, isize, char, i8, i16, i32, i64, usize, u8, u16, u32, u64, f32, f64)"
-          value: "(bool, isize, char, i8, i16, i32, i64, usize, u8, u16, u32, u64, f32, f64) @ 0x20003450"
+          value: "(bool, isize, char, i8, i16, i32, i64, usize, u8, u16, u32, u64, f32, f64) @ 0x200034E8"
           children:
             - name:
                 Named: __0
@@ -1812,7 +1812,7 @@ expression: stack_frames
             Named: three_d_usize_array
           type_name:
             Struct: "Matrix<i32, 2, 3, 4>"
-          value: "Matrix<i32, 2, 3, 4> @ 0x2000348C"
+          value: "Matrix<i32, 2, 3, 4> @ 0x20003524"
           children:
             - name:
                 Named: raw
@@ -2073,7 +2073,7 @@ expression: stack_frames
             Named: three_d_string_array
           type_name:
             Struct: "Matrix<&str, 2, 3, 6>"
-          value: "Matrix<&str, 2, 3, 6> @ 0x2000360C"
+          value: "Matrix<&str, 2, 3, 6> @ 0x200036A4"
           children:
             - name:
                 Named: raw
@@ -2121,7 +2121,7 @@ expression: stack_frames
                                 Named: data_ptr
                               type_name:
                                 Pointer: u8
-                              value: "*raw u8 @ 0x2000360C"
+                              value: "*raw u8 @ 0x200036A4"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2143,7 +2143,7 @@ expression: stack_frames
                                 Named: data_ptr
                               type_name:
                                 Pointer: u8
-                              value: "*raw u8 @ 0x20003614"
+                              value: "*raw u8 @ 0x200036AC"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2165,7 +2165,7 @@ expression: stack_frames
                                 Named: data_ptr
                               type_name:
                                 Pointer: u8
-                              value: "*raw u8 @ 0x2000361C"
+                              value: "*raw u8 @ 0x200036B4"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2196,7 +2196,7 @@ expression: stack_frames
                                 Named: data_ptr
                               type_name:
                                 Pointer: u8
-                              value: "*raw u8 @ 0x20003624"
+                              value: "*raw u8 @ 0x200036BC"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2218,7 +2218,7 @@ expression: stack_frames
                                 Named: data_ptr
                               type_name:
                                 Pointer: u8
-                              value: "*raw u8 @ 0x2000362C"
+                              value: "*raw u8 @ 0x200036C4"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2240,7 +2240,7 @@ expression: stack_frames
                                 Named: data_ptr
                               type_name:
                                 Pointer: u8
-                              value: "*raw u8 @ 0x20003634"
+                              value: "*raw u8 @ 0x200036CC"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2283,7 +2283,7 @@ expression: stack_frames
                                 Named: data_ptr
                               type_name:
                                 Pointer: u8
-                              value: "*raw u8 @ 0x2000363C"
+                              value: "*raw u8 @ 0x200036D4"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2305,7 +2305,7 @@ expression: stack_frames
                                 Named: data_ptr
                               type_name:
                                 Pointer: u8
-                              value: "*raw u8 @ 0x20003644"
+                              value: "*raw u8 @ 0x200036DC"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2327,7 +2327,7 @@ expression: stack_frames
                                 Named: data_ptr
                               type_name:
                                 Pointer: u8
-                              value: "*raw u8 @ 0x2000364C"
+                              value: "*raw u8 @ 0x200036E4"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2358,7 +2358,7 @@ expression: stack_frames
                                 Named: data_ptr
                               type_name:
                                 Pointer: u8
-                              value: "*raw u8 @ 0x20003654"
+                              value: "*raw u8 @ 0x200036EC"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2380,7 +2380,7 @@ expression: stack_frames
                                 Named: data_ptr
                               type_name:
                                 Pointer: u8
-                              value: "*raw u8 @ 0x2000365C"
+                              value: "*raw u8 @ 0x200036F4"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2402,7 +2402,7 @@ expression: stack_frames
                                 Named: data_ptr
                               type_name:
                                 Pointer: u8
-                              value: "*raw u8 @ 0x20003664"
+                              value: "*raw u8 @ 0x200036FC"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2445,7 +2445,7 @@ expression: stack_frames
                                 Named: data_ptr
                               type_name:
                                 Pointer: u8
-                              value: "*raw u8 @ 0x2000366C"
+                              value: "*raw u8 @ 0x20003704"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2467,7 +2467,7 @@ expression: stack_frames
                                 Named: data_ptr
                               type_name:
                                 Pointer: u8
-                              value: "*raw u8 @ 0x20003674"
+                              value: "*raw u8 @ 0x2000370C"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2489,7 +2489,7 @@ expression: stack_frames
                                 Named: data_ptr
                               type_name:
                                 Pointer: u8
-                              value: "*raw u8 @ 0x2000367C"
+                              value: "*raw u8 @ 0x20003714"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2520,7 +2520,7 @@ expression: stack_frames
                                 Named: data_ptr
                               type_name:
                                 Pointer: u8
-                              value: "*raw u8 @ 0x20003684"
+                              value: "*raw u8 @ 0x2000371C"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2542,7 +2542,7 @@ expression: stack_frames
                                 Named: data_ptr
                               type_name:
                                 Pointer: u8
-                              value: "*raw u8 @ 0x2000368C"
+                              value: "*raw u8 @ 0x20003724"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2564,7 +2564,7 @@ expression: stack_frames
                                 Named: data_ptr
                               type_name:
                                 Pointer: u8
-                              value: "*raw u8 @ 0x20003694"
+                              value: "*raw u8 @ 0x2000372C"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2607,7 +2607,7 @@ expression: stack_frames
                                 Named: data_ptr
                               type_name:
                                 Pointer: u8
-                              value: "*raw u8 @ 0x2000369C"
+                              value: "*raw u8 @ 0x20003734"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2629,7 +2629,7 @@ expression: stack_frames
                                 Named: data_ptr
                               type_name:
                                 Pointer: u8
-                              value: "*raw u8 @ 0x200036A4"
+                              value: "*raw u8 @ 0x2000373C"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2651,7 +2651,7 @@ expression: stack_frames
                                 Named: data_ptr
                               type_name:
                                 Pointer: u8
-                              value: "*raw u8 @ 0x200036AC"
+                              value: "*raw u8 @ 0x20003744"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2682,7 +2682,7 @@ expression: stack_frames
                                 Named: data_ptr
                               type_name:
                                 Pointer: u8
-                              value: "*raw u8 @ 0x200036B4"
+                              value: "*raw u8 @ 0x2000374C"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2704,7 +2704,7 @@ expression: stack_frames
                                 Named: data_ptr
                               type_name:
                                 Pointer: u8
-                              value: "*raw u8 @ 0x200036BC"
+                              value: "*raw u8 @ 0x20003754"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2726,7 +2726,7 @@ expression: stack_frames
                                 Named: data_ptr
                               type_name:
                                 Pointer: u8
-                              value: "*raw u8 @ 0x200036C4"
+                              value: "*raw u8 @ 0x2000375C"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2769,7 +2769,7 @@ expression: stack_frames
                                 Named: data_ptr
                               type_name:
                                 Pointer: u8
-                              value: "*raw u8 @ 0x200036CC"
+                              value: "*raw u8 @ 0x20003764"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2791,7 +2791,7 @@ expression: stack_frames
                                 Named: data_ptr
                               type_name:
                                 Pointer: u8
-                              value: "*raw u8 @ 0x200036D4"
+                              value: "*raw u8 @ 0x2000376C"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2813,7 +2813,7 @@ expression: stack_frames
                                 Named: data_ptr
                               type_name:
                                 Pointer: u8
-                              value: "*raw u8 @ 0x200036DC"
+                              value: "*raw u8 @ 0x20003774"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2844,7 +2844,7 @@ expression: stack_frames
                                 Named: data_ptr
                               type_name:
                                 Pointer: u8
-                              value: "*raw u8 @ 0x200036E4"
+                              value: "*raw u8 @ 0x2000377C"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2866,7 +2866,7 @@ expression: stack_frames
                                 Named: data_ptr
                               type_name:
                                 Pointer: u8
-                              value: "*raw u8 @ 0x200036EC"
+                              value: "*raw u8 @ 0x20003784"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2888,7 +2888,7 @@ expression: stack_frames
                                 Named: data_ptr
                               type_name:
                                 Pointer: u8
-                              value: "*raw u8 @ 0x200036F4"
+                              value: "*raw u8 @ 0x2000378C"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2931,7 +2931,7 @@ expression: stack_frames
                                 Named: data_ptr
                               type_name:
                                 Pointer: u8
-                              value: "*raw u8 @ 0x200036FC"
+                              value: "*raw u8 @ 0x20003794"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2953,7 +2953,7 @@ expression: stack_frames
                                 Named: data_ptr
                               type_name:
                                 Pointer: u8
-                              value: "*raw u8 @ 0x20003704"
+                              value: "*raw u8 @ 0x2000379C"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2975,7 +2975,7 @@ expression: stack_frames
                                 Named: data_ptr
                               type_name:
                                 Pointer: u8
-                              value: "*raw u8 @ 0x2000370C"
+                              value: "*raw u8 @ 0x200037A4"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -3006,7 +3006,7 @@ expression: stack_frames
                                 Named: data_ptr
                               type_name:
                                 Pointer: u8
-                              value: "*raw u8 @ 0x20003714"
+                              value: "*raw u8 @ 0x200037AC"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -3028,7 +3028,7 @@ expression: stack_frames
                                 Named: data_ptr
                               type_name:
                                 Pointer: u8
-                              value: "*raw u8 @ 0x2000371C"
+                              value: "*raw u8 @ 0x200037B4"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -3050,7 +3050,7 @@ expression: stack_frames
                                 Named: data_ptr
                               type_name:
                                 Pointer: u8
-                              value: "*raw u8 @ 0x20003724"
+                              value: "*raw u8 @ 0x200037BC"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -3070,8 +3070,8 @@ expression: stack_frames
         - name:
             Named: simple_enum_pointer
           type_name:
-            Pointer: "&common_testing_code::SimpleEnum"
-          value: "&common_testing_code::SimpleEnum @ 0x20003A90"
+            Pointer: "&probe_rs_debugger_test::SimpleEnum"
+          value: "&probe_rs_debugger_test::SimpleEnum @ 0x20003B28"
           children:
             - name:
                 Named: "*simple_enum_pointer"
@@ -3082,7 +3082,7 @@ expression: stack_frames
             Named: three_level_recursive_struct
           type_name:
             Struct: RecursiveStruct
-          value: RecursiveStruct @ 0x20003A94
+          value: RecursiveStruct @ 0x20003B2C
           children:
             - name:
                 Named: depth
@@ -3092,26 +3092,26 @@ expression: stack_frames
             - name:
                 Named: next_self
               type_name:
-                Struct: "Option<&mut common_testing_code::RecursiveStruct>"
-              value: "Option<&mut common_testing_code::RecursiveStruct> @ 0x20003A98"
+                Struct: "Option<&mut probe_rs_debugger_test::RecursiveStruct>"
+              value: "Option<&mut probe_rs_debugger_test::RecursiveStruct> @ 0x20003B30"
               children:
                 - name:
                     Named: Some
                   type_name:
                     Struct: Some
-                  value: Some @ 0x20003A98
+                  value: Some @ 0x20003B30
                   children:
                     - name:
                         Named: __0
                       type_name:
-                        Pointer: "&mut common_testing_code::RecursiveStruct"
-                      value: "&mut common_testing_code::RecursiveStruct @ 0x20003A98"
+                        Pointer: "&mut probe_rs_debugger_test::RecursiveStruct"
+                      value: "&mut probe_rs_debugger_test::RecursiveStruct @ 0x20003B30"
                       children:
                         - name:
                             Named: "*__0"
                           type_name:
                             Struct: RecursiveStruct
-                          value: RecursiveStruct @ 0x20003AA0
+                          value: RecursiveStruct @ 0x20003B38
                           children:
                             - name:
                                 Named: depth
@@ -3121,26 +3121,26 @@ expression: stack_frames
                             - name:
                                 Named: next_self
                               type_name:
-                                Struct: "Option<&mut common_testing_code::RecursiveStruct>"
-                              value: "Option<&mut common_testing_code::RecursiveStruct> @ 0x20003AA4"
+                                Struct: "Option<&mut probe_rs_debugger_test::RecursiveStruct>"
+                              value: "Option<&mut probe_rs_debugger_test::RecursiveStruct> @ 0x20003B3C"
                               children:
                                 - name:
                                     Named: Some
                                   type_name:
                                     Struct: Some
-                                  value: Some @ 0x20003AA4
+                                  value: Some @ 0x20003B3C
                                   children:
                                     - name:
                                         Named: __0
                                       type_name:
-                                        Pointer: "&mut common_testing_code::RecursiveStruct"
-                                      value: "&mut common_testing_code::RecursiveStruct @ 0x20003AA4"
+                                        Pointer: "&mut probe_rs_debugger_test::RecursiveStruct"
+                                      value: "&mut probe_rs_debugger_test::RecursiveStruct @ 0x20003B3C"
                                       children:
                                         - name:
                                             Named: "*__0"
                                           type_name:
                                             Struct: RecursiveStruct
-                                          value: RecursiveStruct @ 0x20003AAC
+                                          value: RecursiveStruct @ 0x20003B44
                                           children:
                                             - name:
                                                 Named: depth
@@ -3150,25 +3150,25 @@ expression: stack_frames
                                             - name:
                                                 Named: next_self
                                               type_name:
-                                                Struct: "Option<&mut common_testing_code::RecursiveStruct>"
-                                              value: "Option<&mut common_testing_code::RecursiveStruct> @ 0x20003AB0"
+                                                Struct: "Option<&mut probe_rs_debugger_test::RecursiveStruct>"
+                                              value: "Option<&mut probe_rs_debugger_test::RecursiveStruct> @ 0x20003B48"
                                               children:
                                                 - name:
                                                     Named: None
                                                   type_name:
                                                     Struct: None
-                                                  value: None @ 0x20003AB0
+                                                  value: None @ 0x20003B48
         - name:
             Named: first_case_of_struct_variants
           type_name:
             Struct: ComplexEnum
-          value: ComplexEnum @ 0x20003AB8
+          value: ComplexEnum @ 0x20003B50
           children:
             - name:
                 Named: Case1
               type_name:
                 Struct: Case1
-              value: Case1 @ 0x20003AB8
+              value: Case1 @ 0x20003B50
               children:
                 - name:
                     Named: __0
@@ -3179,7 +3179,7 @@ expression: stack_frames
                     Named: __1
                   type_name:
                     Struct: ComplexStruct
-                  value: ComplexStruct @ 0x20003AC8
+                  value: ComplexStruct @ 0x20003B60
                   children:
                     - name:
                         Named: x
@@ -3200,13 +3200,13 @@ expression: stack_frames
             Named: second_case_of_struct_variants
           type_name:
             Struct: ComplexEnum
-          value: ComplexEnum @ 0x20003AE8
+          value: ComplexEnum @ 0x20003B80
           children:
             - name:
                 Named: Case2
               type_name:
                 Struct: Case2
-              value: Case2 @ 0x20003AE8
+              value: Case2 @ 0x20003B80
               children:
                 - name:
                     Named: __0
@@ -3226,32 +3226,32 @@ expression: stack_frames
         - name:
             Named: struct_with_one_variant
           type_name:
-            Struct: "Option<common_testing_code::Univariant>"
-          value: "Option<common_testing_code::Univariant> @ 0x20003B08"
+            Struct: "Option<probe_rs_debugger_test::Univariant>"
+          value: "Option<probe_rs_debugger_test::Univariant> @ 0x20003BA0"
           children:
             - name:
                 Named: Some
               type_name:
                 Struct: Some
-              value: Some @ 0x20003B08
+              value: Some @ 0x20003BA0
               children:
                 - name:
                     Named: __0
                   type_name:
                     Struct: Univariant
-                  value: Univariant @ 0x20003B10
+                  value: Univariant @ 0x20003BA8
                   children:
                     - name:
                         Named: TupleOfComplexStruct
                       type_name:
                         Struct: TupleOfComplexStruct
-                      value: TupleOfComplexStruct @ 0x20003B10
+                      value: TupleOfComplexStruct @ 0x20003BA8
                       children:
                         - name:
                             Named: __0
                           type_name:
                             Struct: ComplexStruct
-                          value: ComplexStruct @ 0x20003B10
+                          value: ComplexStruct @ 0x20003BA8
                           children:
                             - name:
                                 Named: x
@@ -3272,7 +3272,7 @@ expression: stack_frames
                             Named: __1
                           type_name:
                             Struct: ComplexStruct
-                          value: ComplexStruct @ 0x20003B20
+                          value: ComplexStruct @ 0x20003BB8
                           children:
                             - name:
                                 Named: x
@@ -3292,38 +3292,38 @@ expression: stack_frames
         - name:
             Named: stuct_with_one_variant_pointer
           type_name:
-            Pointer: "&core::option::Option<common_testing_code::Univariant>"
-          value: "&core::option::Option<common_testing_code::Univariant> @ 0x20003CE4"
+            Pointer: "&core::option::Option<probe_rs_debugger_test::Univariant>"
+          value: "&core::option::Option<probe_rs_debugger_test::Univariant> @ 0x20003D8C"
           children:
             - name:
                 Named: "*stuct_with_one_variant_pointer"
               type_name:
-                Struct: "Option<common_testing_code::Univariant>"
-              value: "Option<common_testing_code::Univariant> @ 0x20003B08"
+                Struct: "Option<probe_rs_debugger_test::Univariant>"
+              value: "Option<probe_rs_debugger_test::Univariant> @ 0x20003BA0"
               children:
                 - name:
                     Named: Some
                   type_name:
                     Struct: Some
-                  value: Some @ 0x20003B08
+                  value: Some @ 0x20003BA0
                   children:
                     - name:
                         Named: __0
                       type_name:
                         Struct: Univariant
-                      value: Univariant @ 0x20003B10
+                      value: Univariant @ 0x20003BA8
                       children:
                         - name:
                             Named: TupleOfComplexStruct
                           type_name:
                             Struct: TupleOfComplexStruct
-                          value: TupleOfComplexStruct @ 0x20003B10
+                          value: TupleOfComplexStruct @ 0x20003BA8
                           children:
                             - name:
                                 Named: __0
                               type_name:
                                 Struct: ComplexStruct
-                              value: ComplexStruct @ 0x20003B10
+                              value: ComplexStruct @ 0x20003BA8
                               children:
                                 - name:
                                     Named: x
@@ -3344,7 +3344,7 @@ expression: stack_frames
                                 Named: __1
                               type_name:
                                 Struct: ComplexStruct
-                              value: ComplexStruct @ 0x20003B20
+                              value: ComplexStruct @ 0x20003BB8
                               children:
                                 - name:
                                     Named: x
@@ -3365,7 +3365,7 @@ expression: stack_frames
             Named: long_lived
           type_name:
             Struct: ComplexStruct
-          value: ComplexStruct @ 0x20003B70
+          value: ComplexStruct @ 0x20003C08
           children:
             - name:
                 Named: x
@@ -3386,7 +3386,7 @@ expression: stack_frames
             Named: short_lived
           type_name:
             Struct: ComplexStruct
-          value: ComplexStruct @ 0x20003B80
+          value: ComplexStruct @ 0x20003C18
           children:
             - name:
                 Named: x
@@ -3407,7 +3407,7 @@ expression: stack_frames
             Named: a1
           type_name:
             Struct: Struct<i32>
-          value: Struct<i32> @ 0x20003CE8
+          value: Struct<i32> @ 0x20003D90
           children:
             - name:
                 Named: b
@@ -3438,7 +3438,7 @@ expression: stack_frames
             Named: a5
           type_name:
             Struct: "(i32, i64)"
-          value: "(i32, i64) @ 0x20003D10"
+          value: "(i32, i64) @ 0x20003DB8"
           children:
             - name:
                 Named: __0
@@ -3454,13 +3454,13 @@ expression: stack_frames
             Named: a6
           type_name:
             Struct: Enum<i32>
-          value: Enum<i32> @ 0x20003BC0
+          value: Enum<i32> @ 0x20003C58
           children:
             - name:
                 Named: Variant2
               type_name:
                 Struct: Variant2
-              value: Variant2 @ 0x20003BC0
+              value: Variant2 @ 0x20003C58
               children:
                 - name:
                     Named: __0
@@ -3476,13 +3476,13 @@ expression: stack_frames
             Named: a7
           type_name:
             Struct: Enum<i32>
-          value: Enum<i32> @ 0x20003BE0
+          value: Enum<i32> @ 0x20003C78
           children:
             - name:
                 Named: Variant1
               type_name:
                 Struct: Variant1
-              value: Variant1 @ 0x20003BE0
+              value: Variant1 @ 0x20003C78
               children:
                 - name:
                     Named: __0
@@ -3557,7 +3557,7 @@ expression: stack_frames
             Named: my_array_ptr
           type_name:
             Pointer: "&[i32; 10]"
-          value: "&[i32; 10] @ 0x20003D24"
+          value: "&[i32; 10] @ 0x20003DC8"
           children:
             - name:
                 Named: "*my_array_ptr"
@@ -3681,7 +3681,7 @@ expression: stack_frames
             Named: heapless_vec
           type_name:
             Struct: "Vec<i8, 10>"
-          value: "Vec<i8, 10> @ 0x20003C38"
+          value: "Vec<i8, 10> @ 0x20003CD0"
           children:
             - name:
                 Named: len
@@ -3695,13 +3695,13 @@ expression: stack_frames
                   item_type_name:
                     Base: MaybeUninit<i8>
                   count: 10
-              value: "[MaybeUninit<i8>; 10] = [\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C3C\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C3D\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C3E\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C3F\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C40\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C41\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C42\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C43\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C44\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C45\n\t}]"
+              value: "[MaybeUninit<i8>; 10] = [\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003CD4\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003CD5\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003CD6\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003CD7\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003CD8\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003CD9\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003CDA\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003CDB\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003CDC\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003CDD\n\t}]"
               children:
                 - name:
                     Named: __0
                   type_name:
                     Base: MaybeUninit<i8>
-                  value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C3C}"
+                  value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003CD4}"
                   children:
                     - name:
                         Named: uninit
@@ -3712,7 +3712,7 @@ expression: stack_frames
                         Named: value
                       type_name:
                         Struct: ManuallyDrop<i8>
-                      value: ManuallyDrop<i8> @ 0x20003C3C
+                      value: ManuallyDrop<i8> @ 0x20003CD4
                       children:
                         - name:
                             Named: value
@@ -3723,7 +3723,7 @@ expression: stack_frames
                     Named: __1
                   type_name:
                     Base: MaybeUninit<i8>
-                  value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C3D}"
+                  value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003CD5}"
                   children:
                     - name:
                         Named: uninit
@@ -3734,7 +3734,7 @@ expression: stack_frames
                         Named: value
                       type_name:
                         Struct: ManuallyDrop<i8>
-                      value: ManuallyDrop<i8> @ 0x20003C3D
+                      value: ManuallyDrop<i8> @ 0x20003CD5
                       children:
                         - name:
                             Named: value
@@ -3745,7 +3745,7 @@ expression: stack_frames
                     Named: __2
                   type_name:
                     Base: MaybeUninit<i8>
-                  value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C3E}"
+                  value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003CD6}"
                   children:
                     - name:
                         Named: uninit
@@ -3756,7 +3756,7 @@ expression: stack_frames
                         Named: value
                       type_name:
                         Struct: ManuallyDrop<i8>
-                      value: ManuallyDrop<i8> @ 0x20003C3E
+                      value: ManuallyDrop<i8> @ 0x20003CD6
                       children:
                         - name:
                             Named: value
@@ -3767,7 +3767,7 @@ expression: stack_frames
                     Named: __3
                   type_name:
                     Base: MaybeUninit<i8>
-                  value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C3F}"
+                  value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003CD7}"
                   children:
                     - name:
                         Named: uninit
@@ -3778,7 +3778,7 @@ expression: stack_frames
                         Named: value
                       type_name:
                         Struct: ManuallyDrop<i8>
-                      value: ManuallyDrop<i8> @ 0x20003C3F
+                      value: ManuallyDrop<i8> @ 0x20003CD7
                       children:
                         - name:
                             Named: value
@@ -3789,7 +3789,7 @@ expression: stack_frames
                     Named: __4
                   type_name:
                     Base: MaybeUninit<i8>
-                  value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C40}"
+                  value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003CD8}"
                   children:
                     - name:
                         Named: uninit
@@ -3800,7 +3800,7 @@ expression: stack_frames
                         Named: value
                       type_name:
                         Struct: ManuallyDrop<i8>
-                      value: ManuallyDrop<i8> @ 0x20003C40
+                      value: ManuallyDrop<i8> @ 0x20003CD8
                       children:
                         - name:
                             Named: value
@@ -3811,7 +3811,7 @@ expression: stack_frames
                     Named: __5
                   type_name:
                     Base: MaybeUninit<i8>
-                  value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C41}"
+                  value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003CD9}"
                   children:
                     - name:
                         Named: uninit
@@ -3822,7 +3822,7 @@ expression: stack_frames
                         Named: value
                       type_name:
                         Struct: ManuallyDrop<i8>
-                      value: ManuallyDrop<i8> @ 0x20003C41
+                      value: ManuallyDrop<i8> @ 0x20003CD9
                       children:
                         - name:
                             Named: value
@@ -3833,7 +3833,7 @@ expression: stack_frames
                     Named: __6
                   type_name:
                     Base: MaybeUninit<i8>
-                  value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C42}"
+                  value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003CDA}"
                   children:
                     - name:
                         Named: uninit
@@ -3844,7 +3844,7 @@ expression: stack_frames
                         Named: value
                       type_name:
                         Struct: ManuallyDrop<i8>
-                      value: ManuallyDrop<i8> @ 0x20003C42
+                      value: ManuallyDrop<i8> @ 0x20003CDA
                       children:
                         - name:
                             Named: value
@@ -3855,7 +3855,7 @@ expression: stack_frames
                     Named: __7
                   type_name:
                     Base: MaybeUninit<i8>
-                  value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C43}"
+                  value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003CDB}"
                   children:
                     - name:
                         Named: uninit
@@ -3866,7 +3866,7 @@ expression: stack_frames
                         Named: value
                       type_name:
                         Struct: ManuallyDrop<i8>
-                      value: ManuallyDrop<i8> @ 0x20003C43
+                      value: ManuallyDrop<i8> @ 0x20003CDB
                       children:
                         - name:
                             Named: value
@@ -3877,7 +3877,7 @@ expression: stack_frames
                     Named: __8
                   type_name:
                     Base: MaybeUninit<i8>
-                  value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C44}"
+                  value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003CDC}"
                   children:
                     - name:
                         Named: uninit
@@ -3888,7 +3888,7 @@ expression: stack_frames
                         Named: value
                       type_name:
                         Struct: ManuallyDrop<i8>
-                      value: ManuallyDrop<i8> @ 0x20003C44
+                      value: ManuallyDrop<i8> @ 0x20003CDC
                       children:
                         - name:
                             Named: value
@@ -3899,7 +3899,7 @@ expression: stack_frames
                     Named: __9
                   type_name:
                     Base: MaybeUninit<i8>
-                  value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C45}"
+                  value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003CDD}"
                   children:
                     - name:
                         Named: uninit
@@ -3910,7 +3910,7 @@ expression: stack_frames
                         Named: value
                       type_name:
                         Struct: ManuallyDrop<i8>
-                      value: ManuallyDrop<i8> @ 0x20003C45
+                      value: ManuallyDrop<i8> @ 0x20003CDD
                       children:
                         - name:
                             Named: value
@@ -3921,7 +3921,7 @@ expression: stack_frames
             Named: loop_counter
           type_name:
             Struct: Wrapping<u8>
-          value: Wrapping<u8> @ 0x20003C48
+          value: Wrapping<u8> @ 0x20003CE3
           children:
             - name:
                 Named: __0
@@ -3932,37 +3932,37 @@ expression: stack_frames
             Named: rtt_channels
           type_name:
             Struct: Channels
-          value: Channels @ 0x20003C4C
+          value: Channels @ 0x20003CE4
           children:
             - name:
                 Named: up
               type_name:
                 Struct: "(rtt_target::UpChannel, rtt_target::UpChannel)"
-              value: "(rtt_target::UpChannel, rtt_target::UpChannel) @ 0x20003C4C"
+              value: "(rtt_target::UpChannel, rtt_target::UpChannel) @ 0x20003CE4"
               children:
                 - name:
                     Named: __0
                   type_name:
                     Struct: UpChannel
-                  value: UpChannel @ 0x20003C4C
+                  value: UpChannel @ 0x20003CE4
                   children:
                     - name:
                         Named: __0
                       type_name:
                         Pointer: "*mut rtt_target::rtt::RttChannel"
-                      value: "*mut rtt_target::rtt::RttChannel @ 0x20003C4C"
+                      value: "*mut rtt_target::rtt::RttChannel @ 0x20003CE4"
                       children:
                         - name:
                             Named: "*__0"
                           type_name:
                             Struct: RttChannel
-                          value: RttChannel @ 0x20000094
+                          value: RttChannel @ 0x2000008C
                           children:
                             - name:
                                 Named: name
                               type_name:
                                 Pointer: "*const u8"
-                              value: "*const u8 @ 0x20000094"
+                              value: "*const u8 @ 0x2000008C"
                               children:
                                 - name:
                                     Named: "*name"
@@ -3973,7 +3973,7 @@ expression: stack_frames
                                 Named: buffer
                               type_name:
                                 Pointer: "*mut u8"
-                              value: "*mut u8 @ 0x20000098"
+                              value: "*mut u8 @ 0x20000090"
                               children:
                                 - name:
                                     Named: "*buffer"
@@ -3989,6 +3989,40 @@ expression: stack_frames
                                 Named: write
                               type_name:
                                 Struct: AtomicUsize
+                              value: AtomicUsize @ 0x20000098
+                              children:
+                                - name:
+                                    Named: v
+                                  type_name:
+                                    Struct: UnsafeCell<usize>
+                                  value: UnsafeCell<usize> @ 0x20000098
+                                  children:
+                                    - name:
+                                        Named: value
+                                      type_name:
+                                        Base: usize
+                                      value: "363"
+                            - name:
+                                Named: read
+                              type_name:
+                                Struct: AtomicUsize
+                              value: AtomicUsize @ 0x2000009C
+                              children:
+                                - name:
+                                    Named: v
+                                  type_name:
+                                    Struct: UnsafeCell<usize>
+                                  value: UnsafeCell<usize> @ 0x2000009C
+                                  children:
+                                    - name:
+                                        Named: value
+                                      type_name:
+                                        Base: usize
+                                      value: "363"
+                            - name:
+                                Named: flags
+                              type_name:
+                                Struct: AtomicUsize
                               value: AtomicUsize @ 0x200000A0
                               children:
                                 - name:
@@ -4001,64 +4035,30 @@ expression: stack_frames
                                         Named: value
                                       type_name:
                                         Base: usize
-                                      value: "363"
-                            - name:
-                                Named: read
-                              type_name:
-                                Struct: AtomicUsize
-                              value: AtomicUsize @ 0x200000A4
-                              children:
-                                - name:
-                                    Named: v
-                                  type_name:
-                                    Struct: UnsafeCell<usize>
-                                  value: UnsafeCell<usize> @ 0x200000A4
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: usize
-                                      value: "363"
-                            - name:
-                                Named: flags
-                              type_name:
-                                Struct: AtomicUsize
-                              value: AtomicUsize @ 0x200000A8
-                              children:
-                                - name:
-                                    Named: v
-                                  type_name:
-                                    Struct: UnsafeCell<usize>
-                                  value: UnsafeCell<usize> @ 0x200000A8
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: usize
                                       value: "1"
                 - name:
                     Named: __1
                   type_name:
                     Struct: UpChannel
-                  value: UpChannel @ 0x20003C50
+                  value: UpChannel @ 0x20003CE8
                   children:
                     - name:
                         Named: __0
                       type_name:
                         Pointer: "*mut rtt_target::rtt::RttChannel"
-                      value: "*mut rtt_target::rtt::RttChannel @ 0x20003C50"
+                      value: "*mut rtt_target::rtt::RttChannel @ 0x20003CE8"
                       children:
                         - name:
                             Named: "*__0"
                           type_name:
                             Struct: RttChannel
-                          value: RttChannel @ 0x200000AC
+                          value: RttChannel @ 0x200000A4
                           children:
                             - name:
                                 Named: name
                               type_name:
                                 Pointer: "*const u8"
-                              value: "*const u8 @ 0x200000AC"
+                              value: "*const u8 @ 0x200000A4"
                               children:
                                 - name:
                                     Named: "*name"
@@ -4069,7 +4069,7 @@ expression: stack_frames
                                 Named: buffer
                               type_name:
                                 Pointer: "*mut u8"
-                              value: "*mut u8 @ 0x200000B0"
+                              value: "*mut u8 @ 0x200000A8"
                               children:
                                 - name:
                                     Named: "*buffer"
@@ -4085,6 +4085,40 @@ expression: stack_frames
                                 Named: write
                               type_name:
                                 Struct: AtomicUsize
+                              value: AtomicUsize @ 0x200000B0
+                              children:
+                                - name:
+                                    Named: v
+                                  type_name:
+                                    Struct: UnsafeCell<usize>
+                                  value: UnsafeCell<usize> @ 0x200000B0
+                                  children:
+                                    - name:
+                                        Named: value
+                                      type_name:
+                                        Base: usize
+                                      value: "0"
+                            - name:
+                                Named: read
+                              type_name:
+                                Struct: AtomicUsize
+                              value: AtomicUsize @ 0x200000B4
+                              children:
+                                - name:
+                                    Named: v
+                                  type_name:
+                                    Struct: UnsafeCell<usize>
+                                  value: UnsafeCell<usize> @ 0x200000B4
+                                  children:
+                                    - name:
+                                        Named: value
+                                      type_name:
+                                        Base: usize
+                                      value: "0"
+                            - name:
+                                Named: flags
+                              type_name:
+                                Struct: AtomicUsize
                               value: AtomicUsize @ 0x200000B8
                               children:
                                 - name:
@@ -4097,49 +4131,15 @@ expression: stack_frames
                                         Named: value
                                       type_name:
                                         Base: usize
-                                      value: "0"
-                            - name:
-                                Named: read
-                              type_name:
-                                Struct: AtomicUsize
-                              value: AtomicUsize @ 0x200000BC
-                              children:
-                                - name:
-                                    Named: v
-                                  type_name:
-                                    Struct: UnsafeCell<usize>
-                                  value: UnsafeCell<usize> @ 0x200000BC
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: usize
-                                      value: "0"
-                            - name:
-                                Named: flags
-                              type_name:
-                                Struct: AtomicUsize
-                              value: AtomicUsize @ 0x200000C0
-                              children:
-                                - name:
-                                    Named: v
-                                  type_name:
-                                    Struct: UnsafeCell<usize>
-                                  value: UnsafeCell<usize> @ 0x200000C0
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: usize
                                       value: "1"
-  canonical_frame_address: 536886976
+  canonical_frame_address: 536887136
 - function_name: __cortex_m_rt_main
   source_location:
-    line: 37
+    line: 38
     column:
-      Column: 54
-    file: RP2040.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/thumbv6m-none-eabi
+      Column: 10
+    file: nRF52833_xxAA.rs
+    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
   registers:
     - core_register:
         id: 0
@@ -4196,7 +4196,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 5
       value:
-        U32: 537140993
+        U32: 0
     - core_register:
         id: 6
         roles:
@@ -4205,7 +4205,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 6
       value:
-        U32: 402653184
+        U32: 0
     - core_register:
         id: 7
         roles:
@@ -4224,7 +4224,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 8
       value:
-        U32: 4294967295
+        U32: 0
     - core_register:
         id: 9
         roles:
@@ -4232,7 +4232,8 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 9
-      value: ~
+      value:
+        U32: 0
     - core_register:
         id: 10
         roles:
@@ -4241,7 +4242,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 10
       value:
-        U32: 4294967295
+        U32: 0
     - core_register:
         id: 11
         roles:
@@ -4250,7 +4251,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 11
       value:
-        U32: 4294967295
+        U32: 0
     - core_register:
         id: 12
         roles:
@@ -4259,7 +4260,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 12
       value:
-        U32: 536871449
+        U32: 536871460
     - core_register:
         id: 13
         roles:
@@ -4269,7 +4270,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 13
       value:
-        U32: 536886976
+        U32: 536887136
     - core_register:
         id: 14
         roles:
@@ -4279,7 +4280,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 14
       value:
-        U32: 268436769
+        U32: 767
     - core_register:
         id: 15
         roles:
@@ -4289,7 +4290,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 15
       value:
-        U32: 268436768
+        U32: 766
     - core_register:
         id: 17
         roles:
@@ -4328,22 +4329,480 @@ expression: stack_frames
       dwarf_id: 19
       value: ~
   pc:
-    U32: 268436768
+    U32: 766
   frame_base: 536887280
   is_inlined: false
   local_variables:
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown>"
+      value: "<unknown> {\n\tpac: Peripherals = Peripherals @ 0x20003F74,\n\tcore: Peripherals = Peripherals @ 0x20003F75,\n\tclocks: Clocks<nrf_hal_common::clocks::ExternalOscillator, nrf_hal_common::clocks::Internal, nrf_hal_common::clocks::LfOscStopped> = Clocks<nrf_hal_common::clocks::ExternalOscillator, nrf_hal_common::clocks::Internal, nrf_hal_common::clocks::LfOscStopped> @ 0x20003F76}"
+      children:
+        - name:
+            Named: pac
+          type_name:
+            Struct: Peripherals
+          value: Peripherals @ 0x20003F74
+          children:
+            - name:
+                Named: FICR
+              type_name:
+                Struct: FICR
+              value: FICR @ 0x20003F74
+            - name:
+                Named: UICR
+              type_name:
+                Struct: UICR
+              value: UICR @ 0x20003F74
+            - name:
+                Named: CLOCK
+              type_name:
+                Struct: CLOCK
+              value: CLOCK @ 0x20003F74
+            - name:
+                Named: POWER
+              type_name:
+                Struct: POWER
+              value: POWER @ 0x20003F74
+            - name:
+                Named: P0
+              type_name:
+                Struct: P0
+              value: P0 @ 0x20003F74
+            - name:
+                Named: P1
+              type_name:
+                Struct: P1
+              value: P1 @ 0x20003F74
+            - name:
+                Named: RADIO
+              type_name:
+                Struct: RADIO
+              value: RADIO @ 0x20003F74
+            - name:
+                Named: UART0
+              type_name:
+                Struct: UART0
+              value: UART0 @ 0x20003F74
+            - name:
+                Named: UARTE0
+              type_name:
+                Struct: UARTE0
+              value: UARTE0 @ 0x20003F74
+            - name:
+                Named: SPI0
+              type_name:
+                Struct: SPI0
+              value: SPI0 @ 0x20003F74
+            - name:
+                Named: SPIM0
+              type_name:
+                Struct: SPIM0
+              value: SPIM0 @ 0x20003F74
+            - name:
+                Named: SPIS0
+              type_name:
+                Struct: SPIS0
+              value: SPIS0 @ 0x20003F74
+            - name:
+                Named: TWI0
+              type_name:
+                Struct: TWI0
+              value: TWI0 @ 0x20003F74
+            - name:
+                Named: TWIM0
+              type_name:
+                Struct: TWIM0
+              value: TWIM0 @ 0x20003F74
+            - name:
+                Named: TWIS0
+              type_name:
+                Struct: TWIS0
+              value: TWIS0 @ 0x20003F74
+            - name:
+                Named: SPI1
+              type_name:
+                Struct: SPI1
+              value: SPI1 @ 0x20003F74
+            - name:
+                Named: SPIM1
+              type_name:
+                Struct: SPIM1
+              value: SPIM1 @ 0x20003F74
+            - name:
+                Named: SPIS1
+              type_name:
+                Struct: SPIS1
+              value: SPIS1 @ 0x20003F74
+            - name:
+                Named: TWI1
+              type_name:
+                Struct: TWI1
+              value: TWI1 @ 0x20003F74
+            - name:
+                Named: TWIM1
+              type_name:
+                Struct: TWIM1
+              value: TWIM1 @ 0x20003F74
+            - name:
+                Named: TWIS1
+              type_name:
+                Struct: TWIS1
+              value: TWIS1 @ 0x20003F74
+            - name:
+                Named: NFCT
+              type_name:
+                Struct: NFCT
+              value: NFCT @ 0x20003F74
+            - name:
+                Named: GPIOTE
+              type_name:
+                Struct: GPIOTE
+              value: GPIOTE @ 0x20003F74
+            - name:
+                Named: SAADC
+              type_name:
+                Struct: SAADC
+              value: SAADC @ 0x20003F74
+            - name:
+                Named: TIMER0
+              type_name:
+                Struct: TIMER0
+              value: TIMER0 @ 0x20003F74
+            - name:
+                Named: TIMER1
+              type_name:
+                Struct: TIMER1
+              value: TIMER1 @ 0x20003F74
+            - name:
+                Named: TIMER2
+              type_name:
+                Struct: TIMER2
+              value: TIMER2 @ 0x20003F74
+            - name:
+                Named: RTC0
+              type_name:
+                Struct: RTC0
+              value: RTC0 @ 0x20003F74
+            - name:
+                Named: TEMP
+              type_name:
+                Struct: TEMP
+              value: TEMP @ 0x20003F74
+            - name:
+                Named: RNG
+              type_name:
+                Struct: RNG
+              value: RNG @ 0x20003F74
+            - name:
+                Named: ECB
+              type_name:
+                Struct: ECB
+              value: ECB @ 0x20003F74
+            - name:
+                Named: AAR
+              type_name:
+                Struct: AAR
+              value: AAR @ 0x20003F74
+            - name:
+                Named: CCM
+              type_name:
+                Struct: CCM
+              value: CCM @ 0x20003F74
+            - name:
+                Named: WDT
+              type_name:
+                Struct: WDT
+              value: WDT @ 0x20003F74
+            - name:
+                Named: RTC1
+              type_name:
+                Struct: RTC1
+              value: RTC1 @ 0x20003F74
+            - name:
+                Named: QDEC
+              type_name:
+                Struct: QDEC
+              value: QDEC @ 0x20003F74
+            - name:
+                Named: COMP
+              type_name:
+                Struct: COMP
+              value: COMP @ 0x20003F74
+            - name:
+                Named: LPCOMP
+              type_name:
+                Struct: LPCOMP
+              value: LPCOMP @ 0x20003F74
+            - name:
+                Named: EGU0
+              type_name:
+                Struct: EGU0
+              value: EGU0 @ 0x20003F74
+            - name:
+                Named: SWI0
+              type_name:
+                Struct: SWI0
+              value: SWI0 @ 0x20003F74
+            - name:
+                Named: EGU1
+              type_name:
+                Struct: EGU1
+              value: EGU1 @ 0x20003F74
+            - name:
+                Named: SWI1
+              type_name:
+                Struct: SWI1
+              value: SWI1 @ 0x20003F74
+            - name:
+                Named: EGU2
+              type_name:
+                Struct: EGU2
+              value: EGU2 @ 0x20003F74
+            - name:
+                Named: SWI2
+              type_name:
+                Struct: SWI2
+              value: SWI2 @ 0x20003F74
+            - name:
+                Named: EGU3
+              type_name:
+                Struct: EGU3
+              value: EGU3 @ 0x20003F74
+            - name:
+                Named: SWI3
+              type_name:
+                Struct: SWI3
+              value: SWI3 @ 0x20003F74
+            - name:
+                Named: EGU4
+              type_name:
+                Struct: EGU4
+              value: EGU4 @ 0x20003F74
+            - name:
+                Named: SWI4
+              type_name:
+                Struct: SWI4
+              value: SWI4 @ 0x20003F74
+            - name:
+                Named: EGU5
+              type_name:
+                Struct: EGU5
+              value: EGU5 @ 0x20003F74
+            - name:
+                Named: SWI5
+              type_name:
+                Struct: SWI5
+              value: SWI5 @ 0x20003F74
+            - name:
+                Named: TIMER3
+              type_name:
+                Struct: TIMER3
+              value: TIMER3 @ 0x20003F74
+            - name:
+                Named: TIMER4
+              type_name:
+                Struct: TIMER4
+              value: TIMER4 @ 0x20003F74
+            - name:
+                Named: PWM0
+              type_name:
+                Struct: PWM0
+              value: PWM0 @ 0x20003F74
+            - name:
+                Named: PDM
+              type_name:
+                Struct: PDM
+              value: PDM @ 0x20003F74
+            - name:
+                Named: ACL
+              type_name:
+                Struct: ACL
+              value: ACL @ 0x20003F74
+            - name:
+                Named: NVMC
+              type_name:
+                Struct: NVMC
+              value: NVMC @ 0x20003F74
+            - name:
+                Named: PPI
+              type_name:
+                Struct: PPI
+              value: PPI @ 0x20003F74
+            - name:
+                Named: MWU
+              type_name:
+                Struct: MWU
+              value: MWU @ 0x20003F74
+            - name:
+                Named: PWM1
+              type_name:
+                Struct: PWM1
+              value: PWM1 @ 0x20003F74
+            - name:
+                Named: PWM2
+              type_name:
+                Struct: PWM2
+              value: PWM2 @ 0x20003F74
+            - name:
+                Named: SPI2
+              type_name:
+                Struct: SPI2
+              value: SPI2 @ 0x20003F74
+            - name:
+                Named: SPIM2
+              type_name:
+                Struct: SPIM2
+              value: SPIM2 @ 0x20003F74
+            - name:
+                Named: SPIS2
+              type_name:
+                Struct: SPIS2
+              value: SPIS2 @ 0x20003F74
+            - name:
+                Named: RTC2
+              type_name:
+                Struct: RTC2
+              value: RTC2 @ 0x20003F74
+            - name:
+                Named: I2S
+              type_name:
+                Struct: I2S
+              value: I2S @ 0x20003F74
+            - name:
+                Named: USBD
+              type_name:
+                Struct: USBD
+              value: USBD @ 0x20003F74
+            - name:
+                Named: UARTE1
+              type_name:
+                Struct: UARTE1
+              value: UARTE1 @ 0x20003F74
+            - name:
+                Named: PWM3
+              type_name:
+                Struct: PWM3
+              value: PWM3 @ 0x20003F74
+            - name:
+                Named: SPIM3
+              type_name:
+                Struct: SPIM3
+              value: SPIM3 @ 0x20003F74
+        - name:
+            Named: core
+          type_name:
+            Struct: Peripherals
+          value: Peripherals @ 0x20003F75
+          children:
+            - name:
+                Named: CBP
+              type_name:
+                Struct: CBP
+              value: CBP @ 0x20003F75
+            - name:
+                Named: CPUID
+              type_name:
+                Struct: CPUID
+              value: CPUID @ 0x20003F75
+            - name:
+                Named: DCB
+              type_name:
+                Struct: DCB
+              value: DCB @ 0x20003F75
+            - name:
+                Named: DWT
+              type_name:
+                Struct: DWT
+              value: DWT @ 0x20003F75
+            - name:
+                Named: FPB
+              type_name:
+                Struct: FPB
+              value: FPB @ 0x20003F75
+            - name:
+                Named: FPU
+              type_name:
+                Struct: FPU
+              value: FPU @ 0x20003F75
+            - name:
+                Named: ICB
+              type_name:
+                Struct: ICB
+              value: ICB @ 0x20003F75
+            - name:
+                Named: ITM
+              type_name:
+                Struct: ITM
+              value: ITM @ 0x20003F75
+            - name:
+                Named: MPU
+              type_name:
+                Struct: MPU
+              value: MPU @ 0x20003F75
+            - name:
+                Named: NVIC
+              type_name:
+                Struct: NVIC
+              value: NVIC @ 0x20003F75
+            - name:
+                Named: SAU
+              type_name:
+                Struct: SAU
+              value: SAU @ 0x20003F75
+            - name:
+                Named: SCB
+              type_name:
+                Struct: SCB
+              value: SCB @ 0x20003F75
+            - name:
+                Named: SYST
+              type_name:
+                Struct: SYST
+              value: SYST @ 0x20003F75
+            - name:
+                Named: TPIU
+              type_name:
+                Struct: TPIU
+              value: TPIU @ 0x20003F75
+            - name:
+                Named: _priv
+              type_name:
+                Base: ()
+              value: ()
+        - name:
+            Named: clocks
+          type_name:
+            Struct: "Clocks<nrf_hal_common::clocks::ExternalOscillator, nrf_hal_common::clocks::Internal, nrf_hal_common::clocks::LfOscStopped>"
+          value: "Clocks<nrf_hal_common::clocks::ExternalOscillator, nrf_hal_common::clocks::Internal, nrf_hal_common::clocks::LfOscStopped> @ 0x20003F76"
+          children:
+            - name:
+                Named: hfclk
+              type_name:
+                Struct: ExternalOscillator
+              value: ExternalOscillator @ 0x20003F76
+            - name:
+                Named: lfclk
+              type_name:
+                Struct: Internal
+              value: Internal @ 0x20003F76
+            - name:
+                Named: lfstat
+              type_name:
+                Struct: LfOscStopped
+              value: LfOscStopped @ 0x20003F76
+            - name:
+                Named: periph
+              type_name:
+                Struct: CLOCK
+              value: CLOCK @ 0x20003F76
   canonical_frame_address: 536887288
-- function_name: __cortex_m_rt_main_trampoline
+- function_name: __cortex_m_rt_main
   source_location:
-    line: 34
-    column:
-      Column: 1
-    file: RP2040.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/thumbv6m-none-eabi
+    line: 19
+    column: LeftEdge
+    file: nRF52833_xxAA.rs
+    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
   registers:
     - core_register:
         id: 0
@@ -4400,7 +4859,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 5
       value:
-        U32: 537140993
+        U32: 0
     - core_register:
         id: 6
         roles:
@@ -4409,7 +4868,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 6
       value:
-        U32: 402653184
+        U32: 0
     - core_register:
         id: 7
         roles:
@@ -4428,7 +4887,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 8
       value:
-        U32: 4294967295
+        U32: 0
     - core_register:
         id: 9
         roles:
@@ -4445,7 +4904,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 10
       value:
-        U32: 4294967295
+        U32: 0
     - core_register:
         id: 11
         roles:
@@ -4454,7 +4913,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 11
       value:
-        U32: 4294967295
+        U32: 0
     - core_register:
         id: 12
         roles:
@@ -4463,7 +4922,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 12
       value:
-        U32: 536871449
+        U32: 536871460
     - core_register:
         id: 13
         roles:
@@ -4483,7 +4942,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 14
       value:
-        U32: 268436741
+        U32: 689
     - core_register:
         id: 15
         roles:
@@ -4493,7 +4952,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 15
       value:
-        U32: 268436740
+        U32: 688
     - core_register:
         id: 17
         roles:
@@ -4532,7 +4991,7 @@ expression: stack_frames
       dwarf_id: 19
       value: ~
   pc:
-    U32: 268436740
+    U32: 688
   frame_base: 536887288
   is_inlined: false
   local_variables:
@@ -4540,199 +4999,4 @@ expression: stack_frames
       name: LocalScopeRoot
       type_name: Unknown
       value: "<unknown>"
-  canonical_frame_address: 536887296
-- function_name: "<unknown function @ 0x100001e6>"
-  source_location: ~
-  registers:
-    - core_register:
-        id: 0
-        roles:
-          - Core: R0
-          - Argument: a1
-          - Return: r1
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 0
-      value: ~
-    - core_register:
-        id: 1
-        roles:
-          - Core: R1
-          - Argument: a2
-          - Return: r2
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 1
-      value: ~
-    - core_register:
-        id: 2
-        roles:
-          - Core: R2
-          - Argument: a3
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 2
-      value: ~
-    - core_register:
-        id: 3
-        roles:
-          - Core: R3
-          - Argument: a4
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 3
-      value: ~
-    - core_register:
-        id: 4
-        roles:
-          - Core: R4
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 4
-      value:
-        U32: 0
-    - core_register:
-        id: 5
-        roles:
-          - Core: R5
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 5
-      value:
-        U32: 537140993
-    - core_register:
-        id: 6
-        roles:
-          - Core: R6
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 6
-      value:
-        U32: 402653184
-    - core_register:
-        id: 7
-        roles:
-          - Core: R7
-          - FramePointer
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 7
-      value:
-        U32: 0
-    - core_register:
-        id: 8
-        roles:
-          - Core: R8
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 8
-      value:
-        U32: 4294967295
-    - core_register:
-        id: 9
-        roles:
-          - Core: R9
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 9
-      value: ~
-    - core_register:
-        id: 10
-        roles:
-          - Core: R10
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 10
-      value:
-        U32: 4294967295
-    - core_register:
-        id: 11
-        roles:
-          - Core: R11
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 11
-      value:
-        U32: 4294967295
-    - core_register:
-        id: 12
-        roles:
-          - Core: R12
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 12
-      value:
-        U32: 536871449
-    - core_register:
-        id: 13
-        roles:
-          - Core: R13
-          - StackPointer
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 13
-      value:
-        U32: 536887296
-    - core_register:
-        id: 14
-        roles:
-          - Core: R14
-          - ReturnAddress
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 14
-      value:
-        U32: 268435943
-    - core_register:
-        id: 15
-        roles:
-          - Core: R15
-          - ProgramCounter
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 15
-      value:
-        U32: 268435942
-    - core_register:
-        id: 17
-        roles:
-          - Core: MSP
-          - MainStackPointer
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 16
-      value: ~
-    - core_register:
-        id: 18
-        roles:
-          - Core: PSP
-          - ProcessStackPointer
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 17
-      value: ~
-    - core_register:
-        id: 16
-        roles:
-          - Core: XPSR
-          - ProcessorStatus
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 18
-      value:
-        U32: 1627389952
-    - core_register:
-        id: 20
-        roles:
-          - Core: EXTRA
-          - Other: EXTRA
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 19
-      value: ~
-  pc:
-    U32: 268435942
-  frame_base: ~
-  is_inlined: false
-  local_variables: ~
-  canonical_frame_address: ~
+  canonical_frame_address: 536887288

@@ -575,15 +575,6 @@ impl DebugInfo {
                     tracing::trace!(
                         "UNWIND: No exception context found. Stack unwind will continue."
                     );
-                    // Check LR values to determine if we can continue unwinding.
-                    if unwind_registers
-                        .get_return_address()
-                        .map(|lr| lr.is_zero() || lr.is_max_value())
-                        .unwrap_or(true)
-                    {
-                        tracing::trace!("UNWIND: Stack unwind complete - Reached the 'Reset' value of the LR register.");
-                        break;
-                    }
                     None
                 }
                 Err(e) => {
@@ -664,6 +655,16 @@ impl DebugInfo {
                 stack_frames.push(exception_frame);
                 // We have everything we need to unwind the next frame in the stack.
                 continue 'unwind;
+            } else {
+                // Check LR values to determine if we can continue unwinding.
+                if unwind_registers
+                    .get_return_address()
+                    .map(|lr| lr.is_zero() || lr.is_max_value())
+                    .unwrap_or(true)
+                {
+                    tracing::trace!("UNWIND: Stack unwind complete - Reached the 'Reset' value of the LR register.");
+                    break;
+                }
             };
 
             // PART 2: Setup the registers for the next iteration (a.k.a. unwind previous frame, a.k.a. "callee", in the call stack).
@@ -705,6 +706,18 @@ impl DebugInfo {
                                     first_frame.function_name =
                                         format!("{} : ERROR : {error}", first_frame.function_name);
                                 };
+                                break 'unwind;
+                            }
+                            if calling_pc
+                                .value
+                                .map(|calling_pc_value| {
+                                    calling_pc_value.eq(&frame_pc_register_value)
+                                })
+                                .unwrap_or(false)
+                            {
+                                // Typically if we have to infer the PC value, it might happen that we are in
+                                // a function that has no debug info, and the code is in a tight loop (typical of exception handlers).
+                                // In such cases, we will not be able to unwind the stack beyond this frame.
                                 break 'unwind;
                             }
                         }
@@ -1865,19 +1878,27 @@ mod test {
         insta::assert_snapshot!(printed_backtrace);
     }
 
-    #[test_case("RP2040"; "Armv6-m using RP2040")]
-    #[test_case("nRF52833_xxAA"; "Armv7-m using nRF52833_xxAA")]
+    #[test_case("RP2040_full_unwind"; "full_unwind Armv6-m using RP2040")]
+    #[test_case("RP2040_svcall"; "svcall Armv6-m using RP2040")]
+    #[test_case("RP2040_systick"; "systick Armv6-m using RP2040")]
+    #[test_case("nRF52833_xxAA_full_unwind"; "full_unwind Armv7-m using nRF52833_xxAA")]
+    #[test_case("nRF52833_xxAA_svcall"; "svcall Armv7-m using nRF52833_xxAA")]
+    #[test_case("nRF52833_xxAA_systick"; "systick Armv7-m using nRF52833_xxAA")]
+    #[test_case("nRF52833_xxAA_hardfault_from_usagefault"; "hardfault_from_usagefault Armv7-m using nRF52833_xxAA")]
+    #[test_case("nRF52833_xxAA_hardfault_from_busfault"; "hardfault_from_busfault Armv7-m using nRF52833_xxAA")]
+    #[test_case("nRF52833_xxAA_hardfault_in_systick"; "hardfault_in_systick Armv7-m using nRF52833_xxAA")]
     #[test_case("atsamd51p19a"; "Armv7-em from C source code")]
     //TODO:  #[test_case("esp32c3"; "RISC-V32E using esp32c3")]
-    fn full_unwind(chip_name: &str) {
+    fn full_unwind(test_name: &str) {
         // TODO: Add RISC-V tests.
 
         let debug_info =
-            load_test_elf_as_debug_info(format!("debug-unwind-tests/{chip_name}.elf").as_str());
+            load_test_elf_as_debug_info(format!("debug-unwind-tests/{test_name}.elf").as_str());
         let mut adapter = CoreDump::load(&get_path_for_test_files(
-            format!("debug-unwind-tests/{chip_name}.coredump").as_str(),
+            format!("debug-unwind-tests/{test_name}.coredump").as_str(),
         ))
         .unwrap();
+        let snapshot_name = format!("{test_name}");
 
         let initial_registers = adapter.debug_registers();
         let exception_handler = exception_handler_for_core(adapter.core_type());
@@ -1891,8 +1912,6 @@ mod test {
                 Some(instruction_set),
             )
             .unwrap();
-
-        let snapshot_name = format!("{chip_name}__full_unwind");
 
         // Expand and validate the static and local variables for each stack frame.
         for frame in stack_frames.iter_mut() {
@@ -1937,7 +1956,7 @@ mod test {
 
         let initial_registers = adapter.debug_registers();
 
-        let snapshot_name = format!("{chip_name}__static_variables");
+        let snapshot_name = format!("{chip_name}_static_variables");
 
         let mut static_variables = debug_info.create_static_scope_cache();
 
