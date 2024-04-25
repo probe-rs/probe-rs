@@ -308,7 +308,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
                 // We may have been halted by either an EBREAK or a C.EBREAK instruction.
                 // We need to read back the instruction to determine how many bytes we need to skip.
                 let instruction = self.read_word_32(debug_pc.try_into().unwrap())?;
-                if instruction & 0x3 == 0x10 {
+                if instruction & 0x3 != 0x3 {
                     // Compressed instruction.
                     debug_pc.increment_address(2)?;
                 } else {
