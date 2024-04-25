@@ -42,8 +42,8 @@ use std::{fmt::Display, str, time::Duration};
 /// Progress ID used for progress reporting when the debug adapter protocol is used.
 type ProgressId = i64;
 
-/// A Debug Adapter Protocol "Debug Adapter"
-/// https://microsoft.github.io/debug-adapter-protocol/overview
+/// A Debug Adapter Protocol "Debug Adapter",
+/// see <https://microsoft.github.io/debug-adapter-protocol/overview>
 pub struct DebugAdapter<P: ProtocolAdapter> {
     pub(crate) halt_after_reset: bool,
     /// NOTE: VSCode sends a 'threads' request when it receives the response from the `ConfigurationDone` request, irrespective of target state.

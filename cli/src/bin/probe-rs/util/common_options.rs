@@ -147,7 +147,7 @@ impl LoadedProbeOptions {
     /// Add targets contained in file given by --chip-description-path
     /// to probe-rs registry.
     ///
-    /// Note: should be called before [FlashOptions::early_exit] and any other functions in [ProbeOptions].
+    /// Note: should be called before any functions in [ProbeOptions].
     fn maybe_load_chip_desc(&self) -> Result<(), OperationError> {
         if let Some(ref cdp) = self.0.chip_description_path {
             let file = File::open(Path::new(cdp)).map_err(|error| {

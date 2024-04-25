@@ -6,8 +6,6 @@ use std::path::{Path, PathBuf};
 use probe_rs_target::ChipFamily;
 
 fn main() {
-    #[cfg(feature = "cli")]
-    generate_bin_versions();
     println!("cargo:rerun-if-changed=build.rs");
 
     // Only rerun build.rs if something inside targets/ or `PROBE_RS_TARGETS_DIR`
@@ -82,13 +80,4 @@ fn visit_dirs(dir: &Path, targets: &mut Vec<PathBuf>) -> io::Result<()> {
         }
     }
     Ok(())
-}
-
-#[cfg(feature = "cli")]
-fn generate_bin_versions() {
-    const CARGO_VERSION: &str = env!("CARGO_PKG_VERSION");
-    const GIT_VERSION: &str = git_version::git_version!(fallback = "crates.io");
-
-    println!("cargo:rustc-env=PROBE_RS_VERSION={CARGO_VERSION}");
-    println!("cargo:rustc-env=PROBE_RS_LONG_VERSION={CARGO_VERSION} (git commit: {GIT_VERSION})");
 }

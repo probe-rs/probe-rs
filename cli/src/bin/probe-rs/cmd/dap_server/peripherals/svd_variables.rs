@@ -68,7 +68,7 @@ impl SvdCache {
     }
 }
 
-/// Create a [`probe_rs::debug::SvdVariableCache`] from a Device that was parsed from a CMSIS-SVD file.
+/// Create a [`SvdVariableCache`] from a Device that was parsed from a CMSIS-SVD file.
 #[tracing::instrument(skip_all)]
 pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
     peripheral_device: svd_parser::svd::Device,

@@ -1309,7 +1309,8 @@ mod test {
     fn test_launch_and_terminate() {
         let manifest_dir = PathBuf::from(std::env!("CARGO_MANIFEST_DIR"));
 
-        let debug_info = manifest_dir.join("tests/debug-unwind-tests/nRF52833_xxAA.elf");
+        let debug_info =
+            manifest_dir.join("../probe-rs/tests/debug-unwind-tests/nRF52833_xxAA.elf");
 
         let mut protocol_adapter = MockProtocolAdapter::new();
 
@@ -1525,7 +1526,8 @@ mod test {
         protocol_adapter.expect_output_event("initial info message\n");
 
         let manifest_dir = PathBuf::from(std::env!("CARGO_MANIFEST_DIR"));
-        let debug_info = manifest_dir.join("tests/debug-unwind-tests/nRF52833_xxAA.elf");
+        let debug_info =
+            manifest_dir.join("../probe-rs/tests/debug-unwind-tests/nRF52833_xxAA.elf");
 
         let attach_args = SessionConfig {
             chip: Some("nrf52833_xxaa".to_owned()),
@@ -1597,7 +1599,8 @@ mod test {
         protocol_adapter.expect_output_event("initial info message\n");
 
         let manifest_dir = PathBuf::from(std::env!("CARGO_MANIFEST_DIR"));
-        let debug_info = manifest_dir.join("tests/debug-unwind-tests/nRF52833_xxAA.elf");
+        let debug_info =
+            manifest_dir.join("../probe-rs/tests/debug-unwind-tests/nRF52833_xxAA.elf");
 
         let attach_args = SessionConfig {
             chip: Some("nrf52833_xxaa".to_owned()),
@@ -1658,7 +1661,8 @@ mod test {
     #[test]
     fn launch_and_threads() {
         let manifest_dir = PathBuf::from(std::env!("CARGO_MANIFEST_DIR"));
-        let debug_info = manifest_dir.join("tests/debug-unwind-tests/nRF52833_xxAA.elf");
+        let debug_info =
+            manifest_dir.join("../probe-rs/tests/debug-unwind-tests/nRF52833_xxAA.elf");
         let chip_name = "nRF52833_xxAA";
 
         let mut protocol_adapter = MockProtocolAdapter::new();
