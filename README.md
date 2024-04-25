@@ -57,15 +57,6 @@ curl --proto '=https' --tlsv1.2 -LsSf https://github.com/probe-rs/probe-rs/relea
 irm https://github.com/probe-rs/probe-rs/releases/latest/download/probe-rs-installer.ps1 | iex
 ```
 
-#### Using cargo-binstall
-
-
-```bash
-cargo binstall probe-rs
-```
-
-See <https://github.com/cargo-bins/cargo-binstall> for more information.
-
 #### From source
 
 The tools can also be installed from source. After installing the necessary [prerequisites](#building), the latest released version can be installed using `cargo install`:

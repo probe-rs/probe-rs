@@ -4,7 +4,7 @@ pub(crate) mod configuration;
 pub(crate) mod core_data;
 /// The debugger support for rtt.
 pub(crate) mod debug_rtt;
-/// Implements the part of the debug server that processes incoming requests from the [`crate::debug_adapter::dap::adapter::DebugAdapter`]
+/// Implements the part of the debug server that processes incoming requests from the [`DebugAdapter`](crate::cmd::dap_server::debug_adapter::dap::adapter::DebugAdapter).
 pub(crate) mod debugger;
 /// The data structures needed to keep track of a session status in the debugger.
 pub(crate) mod session_data;
