@@ -514,8 +514,9 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         // Match address
         instruction_breakpoint.set_select(false);
 
-        self.write_csr(tdata1, instruction_breakpoint.0)?;
+        self.write_csr(tdata1, 0)?;
         self.write_csr(tdata2, addr)?;
+        self.write_csr(tdata1, instruction_breakpoint.0)?;
 
         Ok(())
     }
