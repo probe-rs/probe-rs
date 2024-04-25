@@ -2873,7 +2873,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "probe-rs-cli"
+name = "probe-rs-target"
+version = "0.23.0"
+dependencies = [
+ "base64 0.22.0",
+ "jep106",
+ "serde",
+]
+
+[[package]]
+name = "probe-rs-tools"
 version = "0.23.0"
 dependencies = [
  "addr2line 0.22.0",
@@ -2930,15 +2939,6 @@ dependencies = [
  "tracing-appender",
  "tracing-subscriber",
  "typed-path",
-]
-
-[[package]]
-name = "probe-rs-target"
-version = "0.23.0"
-dependencies = [
- "base64 0.22.0",
- "jep106",
- "serde",
 ]
 
 [[package]]

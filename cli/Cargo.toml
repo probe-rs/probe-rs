@@ -1,5 +1,5 @@
 [package]
-name = "probe-rs-cli"
+name = "probe-rs-tools"
 version.workspace = true
 edition.workspace = true
 documentation.workspace = true
