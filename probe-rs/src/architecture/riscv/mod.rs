@@ -46,6 +46,11 @@ impl<'state> Riscv32<'state> {
         state: &'state mut RiscvCoreState,
         sequence: Arc<dyn RiscvDebugSequence>,
     ) -> Result<Self, RiscvError> {
+        // TODO: right now it is possible to trigger a system reset without touching the core
+        // state. To avoid ending up in an inconsistent state, we reset the core state more
+        // eagerly than necessary.
+        state.reset_caches();
+
         Ok(Self {
             interface,
             state,
@@ -400,6 +405,8 @@ impl<'state> CoreInterface for Riscv32<'state> {
     fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
         self.sequence
             .reset_system_and_halt(&mut self.interface, timeout)?;
+
+        self.state.reset_caches();
 
         let pc = self.read_core_reg(RegisterId(0x7b1))?;
 
@@ -789,6 +796,12 @@ impl RiscvCoreState {
             pc_written: false,
             semihosting_command: None,
         }
+    }
+
+    fn reset_caches(&mut self) {
+        self.hw_breakpoints = None;
+        self.hw_breakpoints_enabled = None;
+        self.semihosting_command = None;
     }
 }
 
