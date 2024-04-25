@@ -289,19 +289,25 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 
     fn step(&mut self) -> Result<CoreInformation, crate::Error> {
         let halt_reason = self.status()?;
-        let flashing_done = self.state.hw_breakpoints_enabled;
         if matches!(
             halt_reason,
             CoreStatus::Halted(HaltReason::Breakpoint(
                 BreakpointCause::Software | BreakpointCause::Semihosting(_)
             ))
-        ) && flashing_done
-        {
-            // If we are halted on a software breakpoint AND we have passed the flashing operation, we can skip the single step and manually advance the dpc.
+        ) {
+            // If we are halted on a software breakpoint, we can skip the single step and manually advance the dpc.
             let mut debug_pc = self.read_core_reg(RegisterId(0x7b1))?;
             // Advance the dpc by the size of the EBREAK (ebreak or c.ebreak) instruction.
             if matches!(self.instruction_set()?, InstructionSet::RV32C) {
-                debug_pc.increment_address(2)?;
+                // We may have been halted by either an EBREAK or a C.EBREAK instruction.
+                // We need to read back the instruction to determine how many bytes we need to skip.
+                let instruction = self.read_word_32(debug_pc.try_into().unwrap())?;
+                if instruction & 0x3 == 0x10 {
+                    // Compressed instruction.
+                    debug_pc.increment_address(2)?;
+                } else {
+                    debug_pc.increment_address(4)?;
+                }
             } else {
                 debug_pc.increment_address(4)?;
             }
