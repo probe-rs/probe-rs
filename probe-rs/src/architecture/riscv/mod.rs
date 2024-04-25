@@ -443,7 +443,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
             let mut tdata_value = Mcontrol(self.read_csr(tdata1)?);
 
             // Only modify the trigger if it is for an execution debug action in all modes(probe-rs enabled it) or no modes (we previously disabled it).
-            if tdata_value.type_() == 0b10
+            if tdata_value.type_() == 2
                 && tdata_value.action() == 1
                 && tdata_value.match_() == 0
                 && tdata_value.execute()
@@ -499,6 +499,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         instruction_breakpoint.set_action(1);
 
         // Match exactly the value in tdata2
+        instruction_breakpoint.set_type(2);
         instruction_breakpoint.set_match(0);
 
         instruction_breakpoint.set_m(true);
