@@ -477,7 +477,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         let tdata1 = 0x7a1;
         let tdata2 = 0x7a2;
 
-        tracing::debug!("Setting breakpoint {}", bp_unit_index);
+        tracing::info!("Setting breakpoint {}", bp_unit_index);
 
         self.write_csr(tselect, bp_unit_index as u32)?;
 
@@ -523,6 +523,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 
     fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), crate::Error> {
         // this can be called w/o halting the core via Session::new - temporarily halt if not halted
+        tracing::info!("Clearing breakpoint {}", unit_index);
 
         let was_running = !self.core_halted()?;
         if was_running {
