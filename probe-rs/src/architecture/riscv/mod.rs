@@ -205,7 +205,9 @@ impl<'probe> Riscv32<'probe> {
 
 impl<'probe> CoreInterface for Riscv32<'probe> {
     fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), crate::Error> {
-        Ok(self.interface.wait_for_core_halted(timeout)?)
+        self.interface.wait_for_core_halted(timeout)?;
+        self.state.pc_written = false;
+        Ok(())
     }
 
     fn core_halted(&mut self) -> Result<bool, crate::Error> {
@@ -227,6 +229,8 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
             let reason = match dcsr.cause() {
                 // An ebreak instruction was hit
                 1 => {
+                    // The chip initiated this halt, therefore we need to update pc_written state
+                    self.state.pc_written = false;
                     if let Some(cmd) = self.check_for_semihosting()? {
                         HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd))
                     } else {
@@ -262,8 +266,10 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn run(&mut self) -> Result<(), Error> {
-        // Before we run, we always perform a single instruction step, to account for possible breakpoints that might get us stuck on the current instruction.
-        self.step()?;
+        if !self.state.pc_written {
+            // Before we run, we always perform a single instruction step, to account for possible breakpoints that might get us stuck on the current instruction.
+            self.step()?;
+        }
 
         // resume the core.
         self.resume_core()?;
@@ -355,6 +361,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
             self.enable_breakpoints(true)?;
         }
 
+        self.state.pc_written = false;
         Ok(CoreInformation { pc: pc.try_into()? })
     }
 
@@ -370,6 +377,11 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         value: RegisterValue,
     ) -> Result<(), crate::Error> {
         let value: u32 = value.try_into()?;
+
+        if address == self.program_counter().id {
+            self.state.pc_written = true;
+        }
+
         self.write_csr(address.0, value).map_err(|e| e.into())
     }
 
@@ -719,6 +731,10 @@ pub struct RiscVState {
 
     hw_breakpoints: Option<u32>,
 
+    /// Whether the PC was written since we last halted. Used to avoid incrementing the PC on
+    /// resume.
+    pc_written: bool,
+
     /// The semihosting command that was decoded at the current program counter
     semihosting_command: Option<SemihostingCommand>,
 }
@@ -728,6 +744,7 @@ impl RiscVState {
         Self {
             hw_breakpoints_enabled: false,
             hw_breakpoints: None,
+            pc_written: false,
             semihosting_command: None,
         }
     }
