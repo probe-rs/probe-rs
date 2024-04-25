@@ -18,7 +18,7 @@ members = [
     "smoke-tester",
     "xtask",
     "target-gen",
-    "cli",
+    "probe-rs-tools",
 ]
 exclude = ["probe-rs/tests/gpio-hal-blinky"]
 
