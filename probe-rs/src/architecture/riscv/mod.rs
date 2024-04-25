@@ -468,10 +468,6 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     fn set_hw_breakpoint(&mut self, bp_unit_index: usize, addr: u64) -> Result<(), crate::Error> {
         let addr = valid_32bit_address(addr)?;
 
-        if !self.hw_breakpoints_enabled() {
-            self.enable_breakpoints(true)?;
-        }
-
         // select requested trigger
         let tselect = 0x7a0;
         let tdata1 = 0x7a1;
