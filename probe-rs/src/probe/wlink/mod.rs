@@ -3,7 +3,6 @@
 //! The protocol is mostly undocumented, and is changing between firmware versions.
 //! For more details see: <https://github.com/ch32-rs/wlink>
 
-use crate::architecture::riscv::dtm::jtag_dtm::JtagDtm;
 use core::fmt;
 use std::time::Duration;
 
@@ -13,10 +12,12 @@ use probe_rs_target::ScanChainElement;
 use self::{commands::Speed, usb_interface::WchLinkUsbDevice};
 use super::JTAGAccess;
 use crate::{
-    architecture::riscv::communication_interface::{RiscvCommunicationInterface, RiscvError},
+    architecture::riscv::{
+        communication_interface::RiscvInterfaceBuilder, dtm::jtag_dtm::JtagDtmBuilder,
+    },
     probe::{
-        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, JtagChainItem,
-        ProbeCreationError, ProbeFactory, WireProtocol,
+        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
+        ProbeFactory, WireProtocol,
     },
 };
 
@@ -308,7 +309,7 @@ impl DebugProbe for WchLink {
 
         self.chip_family = resp.chip_family;
 
-        tracing::info!("attached riscvchip {:?}", self.chip_family);
+        tracing::info!("attached riscv chip {:?}", self.chip_family);
 
         self.chip_id = resp.chip_id;
 
@@ -366,14 +367,10 @@ impl DebugProbe for WchLink {
         true
     }
 
-    fn try_get_riscv_interface(
-        self: Box<Self>,
-    ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, RiscvError)> {
-        let jtag_dtm = match JtagDtm::new(self) {
-            Ok(jtag_dtm) => Box::new(jtag_dtm),
-            Err((access, err)) => return Err((access.into_probe(), err)),
-        };
-        RiscvCommunicationInterface::new(jtag_dtm).map_err(|(probe, err)| (probe.into_probe(), err))
+    fn try_get_riscv_interface_builder<'probe>(
+        &'probe mut self,
+    ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, DebugProbeError> {
+        Ok(Box::new(JtagDtmBuilder::new(self)))
     }
 
     fn set_scan_chain(
@@ -382,12 +379,16 @@ impl DebugProbe for WchLink {
     ) -> Result<(), DebugProbeError> {
         Ok(())
     }
+
+    fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
+        Ok(&[])
+    }
 }
 
 /// Wrap WCH-Link's USB based DMI access as a fake JTAGAccess
 impl JTAGAccess for WchLink {
-    fn scan_chain(&mut self) -> Result<Vec<JtagChainItem>, DebugProbeError> {
-        Ok(vec![])
+    fn scan_chain(&mut self) -> Result<(), DebugProbeError> {
+        Ok(())
     }
 
     fn tap_reset(&mut self) -> Result<(), DebugProbeError> {

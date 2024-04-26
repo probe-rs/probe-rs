@@ -6,10 +6,11 @@ use std::{
 };
 
 use crate::{
-    architecture::xtensa::arch::{
-        instruction::Instruction, CpuRegister, Register, SpecialRegister,
+    architecture::xtensa::{
+        arch::{instruction::Instruction, CpuRegister, Register, SpecialRegister},
+        xdm::XdmState,
     },
-    probe::{DebugProbeError, DeferredResultIndex, JTAGAccess, Probe},
+    probe::{DebugProbeError, DeferredResultIndex, JTAGAccess},
     BreakpointCause, Error as ProbeRsError, HaltReason, MemoryInterface,
 };
 
@@ -58,7 +59,7 @@ impl From<XtensaError> for ProbeRsError {
 
 #[derive(Clone, Copy)]
 #[allow(unused)]
-pub(super) enum DebugLevel {
+enum DebugLevel {
     L2 = 2,
     L3 = 3,
     L4 = 4,
@@ -91,49 +92,68 @@ impl DebugLevel {
     }
 }
 
-struct XtensaCommunicationInterfaceState {
-    /// Pairs of (register, deferred value). The value is optional where None means "being restored"
+/// Xtensa interface state.
+// FIXME: This struct is a weird mix between core state, debug module state and core configuration.
+pub(super) struct XtensaInterfaceState {
+    /// Pairs of (register, read handle). The value is optional where None means "being restored"
     saved_registers: HashMap<Register, Option<DeferredResultIndex>>,
 
+    /// Whether the core is halted.
+    // This roughly relates to Core Debug States (true = Running, false = [Stopped, Stepping])
     is_halted: bool,
-}
 
-/// An interface that implements controls for Xtensa cores.
-pub struct XtensaCommunicationInterface {
-    /// The Xtensa debug module
-    pub(super) xdm: Xdm,
-    state: XtensaCommunicationInterfaceState,
-
+    /// The number of hardware breakpoints the target supports. CPU-specific configuration value.
     hw_breakpoint_num: u32,
+
+    /// The interrupt level at which debug exceptions are generated. CPU-specific configuration value.
     debug_level: DebugLevel,
 }
 
-impl XtensaCommunicationInterface {
-    /// Create the Xtensa communication interface using the underlying probe driver
-    pub fn new(probe: Box<dyn JTAGAccess>) -> Result<Self, (Box<dyn JTAGAccess>, DebugProbeError)> {
-        let xdm = Xdm::new(probe).map_err(|(probe, e)| (probe, e.into()))?;
+impl Default for XtensaInterfaceState {
+    fn default() -> Self {
+        Self {
+            saved_registers: Default::default(),
+            is_halted: Default::default(),
 
-        let mut s = Self {
-            xdm,
-            state: XtensaCommunicationInterfaceState {
-                saved_registers: Default::default(),
-                is_halted: false,
-            },
-            // TODO chip-specific configuration
+            // FIXME: these are per-chip configuration parameters
             hw_breakpoint_num: 2,
             debug_level: DebugLevel::L6,
-        };
-
-        match s.init() {
-            Ok(()) => Ok(s),
-
-            Err(e) => Err((s.xdm.free(), e.into())),
         }
     }
+}
 
-    /// Destruct the interface and return the stored probe driver.
-    pub fn close(self) -> Probe {
-        Probe::from_attached_probe(self.xdm.probe.into_probe())
+/// Debug module and transport state.
+#[derive(Default)]
+pub struct XtensaDebugInterfaceState {
+    interface_state: XtensaInterfaceState,
+    xdm_state: XdmState,
+}
+
+/// The higher level of the XDM functionality.
+// TODO: this includes core state and CPU configuration that don't exactly belong
+// here but one layer up.
+pub struct XtensaCommunicationInterface<'probe> {
+    /// The Xtensa debug module
+    pub(super) xdm: Xdm<'probe>,
+    state: &'probe mut XtensaInterfaceState,
+}
+
+impl<'probe> XtensaCommunicationInterface<'probe> {
+    /// Create the Xtensa communication interface using the underlying probe driver
+    pub fn new(
+        probe: &'probe mut dyn JTAGAccess,
+        state: &'probe mut XtensaDebugInterfaceState,
+    ) -> Self {
+        let XtensaDebugInterfaceState {
+            interface_state,
+            xdm_state,
+        } = state;
+        let xdm = Xdm::new(probe, xdm_state);
+
+        Self {
+            xdm,
+            state: interface_state,
+        }
     }
 
     /// Read the targets IDCODE.
@@ -141,8 +161,12 @@ impl XtensaCommunicationInterface {
         Ok(self.xdm.read_idcode()?)
     }
 
-    fn init(&mut self) -> Result<(), XtensaError> {
-        // TODO any initialization that needs to be done
+    /// Enter debug mode.
+    pub fn enter_debug_mode(&mut self) -> Result<(), XtensaError> {
+        self.xdm.enter_debug_mode()?;
+
+        self.state.is_halted = self.xdm.status()?.stopped();
+
         Ok(())
     }
 
@@ -150,7 +174,7 @@ impl XtensaCommunicationInterface {
     ///
     /// On the Xtensa architecture this is the `NIBREAK` configuration parameter.
     pub fn available_breakpoint_units(&self) -> u32 {
-        self.hw_breakpoint_num
+        self.state.hw_breakpoint_num
     }
 
     /// Halts the core.
@@ -194,7 +218,7 @@ impl XtensaCommunicationInterface {
 
     /// Steps the core by one instruction.
     pub fn step(&mut self) -> Result<(), XtensaError> {
-        self.schedule_write_register(ICountLevel(self.debug_level as u32))?;
+        self.schedule_write_register(ICountLevel(self.state.debug_level as u32))?;
 
         // An exception is generated at the beginning of an instruction that would overflow ICOUNT.
         self.schedule_write_register(ICount(-2_i32 as u32))?;
@@ -203,7 +227,7 @@ impl XtensaCommunicationInterface {
         self.wait_for_core_halted(Duration::from_millis(100))?;
 
         // Avoid stopping again
-        self.schedule_write_register(ICountLevel(self.debug_level as u32 + 1))?;
+        self.schedule_write_register(ICountLevel(self.state.debug_level as u32 + 1))?;
 
         Ok(())
     }
@@ -314,8 +338,8 @@ impl XtensaCommunicationInterface {
         match register.into() {
             Register::Cpu(register) => Ok(self.schedule_read_cpu_register(register)),
             Register::Special(register) => self.schedule_read_special_register(register),
-            Register::CurrentPc => self.schedule_read_special_register(self.debug_level.pc()),
-            Register::CurrentPs => self.schedule_read_special_register(self.debug_level.ps()),
+            Register::CurrentPc => self.schedule_read_special_register(self.state.debug_level.pc()),
+            Register::CurrentPs => self.schedule_read_special_register(self.state.debug_level.ps()),
         }
     }
 
@@ -338,10 +362,10 @@ impl XtensaCommunicationInterface {
             Register::Cpu(register) => self.schedule_write_cpu_register(register, value),
             Register::Special(register) => self.schedule_write_special_register(register, value),
             Register::CurrentPc => {
-                self.schedule_write_special_register(self.debug_level.pc(), value)
+                self.schedule_write_special_register(self.state.debug_level.pc(), value)
             }
             Register::CurrentPs => {
-                self.schedule_write_special_register(self.debug_level.ps(), value)
+                self.schedule_write_special_register(self.state.debug_level.ps(), value)
             }
         }
     }
@@ -700,7 +724,7 @@ fn as_bytes_mut<T: DataType>(data: &mut [T]) -> &mut [u8] {
     }
 }
 
-impl MemoryInterface for XtensaCommunicationInterface {
+impl<'probe> MemoryInterface for XtensaCommunicationInterface<'probe> {
     fn read(&mut self, address: u64, dst: &mut [u8]) -> Result<(), crate::Error> {
         self.read_memory(address, dst)?;
 

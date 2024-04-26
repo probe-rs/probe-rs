@@ -5,11 +5,11 @@
 //! specification v0.13.2 .
 
 use crate::architecture::riscv::dtm::dtm_access::DtmAccess;
-use crate::probe::{DebugProbe, Probe};
 use crate::{
     architecture::riscv::*, memory_mapped_bitfield_register, probe::DeferredResultIndex,
     Error as ProbeRsError,
 };
+use std::any::Any;
 use std::collections::HashMap;
 
 /// Some error occurred when working with the RISC-V core.
@@ -91,7 +91,7 @@ pub enum AbstractCommandErrorKind {
     /// registers was read or written. This status is only
     /// written if `cmderr` contains 0.
     Busy = 1,
-    /// The requested command is not supported, reg
+    /// The requested command is not supported
     NotSupported = 2,
     /// An exception occurred while executing the command (e.g. while executing the Program Buffer).
     Exception = 3,
@@ -121,7 +121,7 @@ impl AbstractCommandErrorKind {
             5 => Bus,
             6 => _Reserved,
             7 => Other,
-            _ => panic!("cmderr is a 3 bit value, values higher than 7 should not occur."),
+            _ => unreachable!("cmderr is a 3 bit value, values higher than 7 should not occur."),
         }
     }
 }
@@ -173,33 +173,20 @@ impl CoreRegisterAbstractCmdSupport {
     }
 }
 
-#[derive(Debug)]
+/// Save stack of a scratch register.
+// TODO: we probably only need an Option, we don't seem to use scratch registers is nested situations.
+#[derive(Debug, Default)]
 struct ScratchState {
-    stack: Vec<(bool, u32)>,
-    should_save: bool,
-}
-
-impl Default for ScratchState {
-    fn default() -> Self {
-        Self {
-            stack: vec![],
-            should_save: true,
-        }
-    }
+    stack: Vec<u32>,
 }
 
 impl ScratchState {
     fn push(&mut self, value: u32) {
-        self.stack.push((self.should_save, value));
-        self.should_save = false;
+        self.stack.push(value);
     }
 
     fn pop(&mut self) -> Option<u32> {
-        let (should_save, value) = self.stack.pop()?;
-
-        self.should_save = should_save;
-
-        Some(value)
+        self.stack.pop()
     }
 }
 
@@ -222,8 +209,10 @@ pub struct RiscvCommunicationInterfaceState {
     /// Number of data registers for abstract commands
     data_register_count: u8,
 
+    /// Number of scratch registers
     nscratch: u8,
 
+    /// Whether the target supports autoexecuting the program buffer
     supports_autoexec: bool,
 
     /// Pointer to the configuration string
@@ -235,14 +224,27 @@ pub struct RiscvCommunicationInterfaceState {
     /// Number of harts
     num_harts: u32,
 
+    /// Describes, which memory access method should be used for a given access width
     memory_access_info: HashMap<RiscvBusAccess, MemoryAccessMethod>,
 
     /// describes, if the given register can be read / written with an
     /// abstract command
     abstract_cmd_register_info: HashMap<RegisterId, CoreRegisterAbstractCmdSupport>,
 
+    /// First scratch register's state
     s0: ScratchState,
+
+    /// Second scratch register's state
     s1: ScratchState,
+
+    /// Bitfield of enabled harts
+    enabled_harts: u32,
+
+    /// The index of the last selected hart
+    last_selected_hart: u32,
+
+    /// Store the value of the `hasresethaltreq` bit of the `dmcstatus` register.
+    hasresethaltreq: Option<bool>,
 }
 
 /// Timeout for RISC-V operations.
@@ -286,6 +288,9 @@ impl RiscvCommunicationInterfaceState {
 
             s0: ScratchState::default(),
             s1: ScratchState::default(),
+            enabled_harts: 0,
+            last_selected_hart: 0,
+            hasresethaltreq: None,
         }
     }
 
@@ -305,47 +310,64 @@ impl Default for RiscvCommunicationInterfaceState {
     }
 }
 
-/// A interface that implements controls for RISC-V cores.
-#[derive(Debug)]
-pub struct RiscvCommunicationInterface {
-    /// The Debug Transport Module (DTM) is used to
-    /// communicate with the Debug Module on the target chip.
-    dtm: Box<dyn DtmAccess>,
-    state: RiscvCommunicationInterfaceState,
-    enabled_harts: u32,
-    last_selected_hart: u32,
-
-    /// Store the value of the `hasresethaltreq` bit of the `dmcstatus` register.
-    hasresethaltreq: Option<bool>,
+/// The combined state of a RISC-V debug module and its transport interface.
+pub struct RiscvDebugInterfaceState {
+    pub(super) interface_state: RiscvCommunicationInterfaceState,
+    pub(super) dtm_state: Box<dyn Any + Send>,
 }
 
-impl RiscvCommunicationInterface {
-    /// Creates a new RISC-V communication interface with a given probe driver.
-    pub fn new(dtm_access: Box<dyn DtmAccess>) -> Result<Self, (Box<dyn DtmAccess>, RiscvError)> {
-        let state = RiscvCommunicationInterfaceState::new();
-
-        let mut s = Self {
-            dtm: dtm_access,
-            state,
-            enabled_harts: 0,
-            last_selected_hart: 0,
-            hasresethaltreq: None,
-        };
-
-        if let Err(err) = s.enter_debug_mode() {
-            return Err((s.dtm, err));
+impl RiscvDebugInterfaceState {
+    pub(super) fn new(dtm_state: Box<dyn Any + Send>) -> Self {
+        Self {
+            interface_state: RiscvCommunicationInterfaceState::new(),
+            dtm_state,
         }
+    }
+}
 
-        Ok(s)
+/// A single-use factory for creating RISC-V communication interfaces and their states.
+pub trait RiscvInterfaceBuilder<'probe> {
+    /// Creates a new RISC-V communication interface state object.
+    ///
+    /// The state object needs to be stored separately from the communication interface
+    /// and can be used to restore the state of the interface at a later time.
+    fn create_state(&self) -> RiscvDebugInterfaceState;
+
+    /// Consumes the factory and creates a communication interface
+    /// object initialised with the given state.
+    fn attach<'state>(
+        self: Box<Self>,
+        state: &'state mut RiscvDebugInterfaceState,
+    ) -> Result<RiscvCommunicationInterface<'state>, DebugProbeError>
+    where
+        'probe: 'state;
+}
+
+/// A interface that implements controls for RISC-V cores.
+#[derive(Debug)]
+pub struct RiscvCommunicationInterface<'state> {
+    /// The Debug Transport Module (DTM) is used to
+    /// communicate with the Debug Module on the target chip.
+    dtm: Box<dyn DtmAccess + 'state>,
+    state: &'state mut RiscvCommunicationInterfaceState,
+}
+
+impl<'state> RiscvCommunicationInterface<'state> {
+    /// Creates a new RISC-V communication interface with a given probe driver.
+    pub fn new(
+        dtm: Box<dyn DtmAccess + 'state>,
+        state: &'state mut RiscvCommunicationInterfaceState,
+    ) -> Self {
+        Self { dtm, state }
     }
 
     /// Select current hart
     pub fn select_hart(&mut self, hart: u32) -> Result<(), RiscvError> {
-        if self.enabled_harts & (1 << hart) == 0 {
+        if self.state.enabled_harts & (1 << hart) == 0 {
             return Err(RiscvError::HartUnavailable);
         }
 
-        if self.last_selected_hart == hart {
+        if self.state.last_selected_hart == hart {
             return Ok(());
         }
 
@@ -353,13 +375,13 @@ impl RiscvCommunicationInterface {
         control.set_dmactive(true);
         control.set_hartsel(hart);
         self.write_dm_register(control)?;
-        self.last_selected_hart = hart;
+        self.state.last_selected_hart = hart;
         Ok(())
     }
 
     /// Check if the given hart is enabled
     pub fn hart_enabled(&self, hart: u32) -> bool {
-        self.enabled_harts & (1 << hart) != 0
+        self.state.enabled_harts & (1 << hart) != 0
     }
 
     /// Assert the target reset
@@ -375,12 +397,6 @@ impl RiscvCommunicationInterface {
     /// Read the targets idcode used as hint for chip detection
     pub fn read_idcode(&mut self) -> Result<Option<u32>, DebugProbeError> {
         self.dtm.read_idcode()
-    }
-
-    /// Mark S0 to be saved on the next `save_s0` call.
-    #[allow(unused)]
-    fn should_save_s0(&mut self, should_save: bool) {
-        self.state.s0.should_save = should_save;
     }
 
     fn save_s0(&mut self) -> Result<bool, RiscvError> {
@@ -399,12 +415,6 @@ impl RiscvCommunicationInterface {
         }
 
         Ok(())
-    }
-
-    /// Mark S0 to be saved on the next `save_s0` call.
-    #[allow(unused)]
-    fn should_save_s1(&mut self, should_save: bool) {
-        self.state.s1.should_save = should_save;
     }
 
     fn save_s1(&mut self) -> Result<bool, RiscvError> {
@@ -489,7 +499,7 @@ impl RiscvCommunicationInterface {
 
         // Hart 0 exists on every chip
         let mut num_harts = 1;
-        self.enabled_harts = 1;
+        self.state.enabled_harts = 1;
 
         // Check if anynonexistent is avaliable.
         // Some chips that have only one hart do not implement anynonexistent and allnonexistent.
@@ -519,7 +529,7 @@ impl RiscvCommunicationInterface {
                 }
 
                 if !status.allunavail() {
-                    self.enabled_harts |= 1 << num_harts;
+                    self.state.enabled_harts |= 1 << num_harts;
                 }
 
                 num_harts += 1;
@@ -1453,16 +1463,6 @@ impl RiscvCommunicationInterface {
         Ok(())
     }
 
-    /// Destruct the interface and return the stored probe driver.
-    pub fn close(self) -> Probe {
-        self.dtm.close()
-    }
-
-    /// Destruct the interface and return boxed DebugProbe
-    pub fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
-        self.dtm.into_probe()
-    }
-
     pub(crate) fn execute(&mut self) -> Result<(), RiscvError> {
         self.dtm.execute()
     }
@@ -1542,12 +1542,12 @@ impl RiscvCommunicationInterface {
     /// Returns a cached value if available, otherwise queries the
     /// `hasresethaltreq` bit in the `dmstatus` register.
     pub(crate) fn supports_reset_halt_req(&mut self) -> Result<bool, RiscvError> {
-        if let Some(has_reset_halt_req) = self.hasresethaltreq {
+        if let Some(has_reset_halt_req) = self.state.hasresethaltreq {
             Ok(has_reset_halt_req)
         } else {
             let dmstatus: Dmstatus = self.read_dm_register()?;
 
-            self.hasresethaltreq = Some(dmstatus.hasresethaltreq());
+            self.state.hasresethaltreq = Some(dmstatus.hasresethaltreq());
 
             Ok(dmstatus.hasresethaltreq())
         }
@@ -1860,7 +1860,7 @@ impl RiscvValue for u128 {
     }
 }
 
-impl MemoryInterface for RiscvCommunicationInterface {
+impl MemoryInterface for RiscvCommunicationInterface<'_> {
     fn supports_native_64bit_access(&mut self) -> bool {
         false
     }

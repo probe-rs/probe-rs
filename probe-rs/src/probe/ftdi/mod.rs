@@ -5,8 +5,10 @@ use crate::{
             communication_interface::{DapProbe, UninitializedArmProbe},
             ArmCommunicationInterface,
         },
-        riscv::communication_interface::{RiscvCommunicationInterface, RiscvError},
-        xtensa::communication_interface::XtensaCommunicationInterface,
+        riscv::{communication_interface::RiscvInterfaceBuilder, dtm::jtag_dtm::JtagDtmBuilder},
+        xtensa::communication_interface::{
+            XtensaCommunicationInterface, XtensaDebugInterfaceState,
+        },
     },
     probe::{
         arm_debug_interface::{ProbeStatistics, RawProtocolIo, SwdSettings},
@@ -27,7 +29,6 @@ use std::{
 mod command_compacter;
 mod ftdaye;
 
-use crate::architecture::riscv::dtm::jtag_dtm::JtagDtm;
 use command_compacter::Command;
 use ftdaye::{error::FtdiError, ChipType};
 
@@ -321,6 +322,14 @@ impl DebugProbe for FtdiProbe {
         Ok(())
     }
 
+    fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
+        if let Some(ref scan_chain) = self.jtag_state.expected_scan_chain {
+            Ok(scan_chain)
+        } else {
+            Ok(&[])
+        }
+    }
+
     fn attach(&mut self) -> Result<(), DebugProbeError> {
         tracing::debug!("Attaching...");
 
@@ -328,14 +337,12 @@ impl DebugProbe for FtdiProbe {
             .attach()
             .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
 
-        let chain = self.scan_chain()?;
-        tracing::info!("Found {} TAPs on reset scan", chain.len());
+        self.scan_chain()?;
+        self.select_target(0)
+    }
 
-        if chain.len() > 1 {
-            tracing::info!("More than one TAP detected, defaulting to tap0");
-        }
-
-        self.select_target(&chain, 0)
+    fn select_jtag_tap(&mut self, index: usize) -> Result<(), DebugProbeError> {
+        self.select_target(index)
     }
 
     fn detach(&mut self) -> Result<(), crate::Error> {
@@ -375,17 +382,10 @@ impl DebugProbe for FtdiProbe {
         Some(WireProtocol::Jtag)
     }
 
-    fn try_get_riscv_interface(
-        self: Box<Self>,
-    ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, RiscvError)> {
-        let jtag_dtm = match JtagDtm::new(self) {
-            Ok(jtag_dtm) => Box::new(jtag_dtm),
-            Err((access, err)) => return Err((access.into_probe(), err)),
-        };
-        match RiscvCommunicationInterface::new(jtag_dtm) {
-            Ok(interface) => Ok(interface),
-            Err((probe, err)) => Err((probe.into_probe(), err)),
-        }
+    fn try_get_riscv_interface_builder<'probe>(
+        &'probe mut self,
+    ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, DebugProbeError> {
+        Ok(Box::new(JtagDtmBuilder::new(self)))
     }
 
     fn has_riscv_interface(&self) -> bool {
@@ -409,13 +409,11 @@ impl DebugProbe for FtdiProbe {
         true
     }
 
-    fn try_get_xtensa_interface(
-        self: Box<Self>,
-    ) -> Result<XtensaCommunicationInterface, (Box<dyn DebugProbe>, DebugProbeError)> {
-        match XtensaCommunicationInterface::new(self) {
-            Ok(interface) => Ok(interface),
-            Err((probe, err)) => Err((probe.into_probe(), err)),
-        }
+    fn try_get_xtensa_interface<'probe>(
+        &'probe mut self,
+        state: &'probe mut XtensaDebugInterfaceState,
+    ) -> Result<XtensaCommunicationInterface<'probe>, DebugProbeError> {
+        Ok(XtensaCommunicationInterface::new(self, state))
     }
 
     fn has_xtensa_interface(&self) -> bool {

@@ -14,7 +14,9 @@ use probe_rs::{
             ApAddress, ApInformation, ArmProbeInterface, DpAddress, MemoryApInformation, Register,
         },
         riscv::communication_interface::RiscvCommunicationInterface,
-        xtensa::communication_interface::XtensaCommunicationInterface,
+        xtensa::communication_interface::{
+            XtensaCommunicationInterface, XtensaDebugInterfaceState,
+        },
     },
     probe::{list::Lister, Probe, WireProtocol},
     MemoryMappedRegister,
@@ -159,50 +161,52 @@ fn try_show_info(
     // If the current protocol we want to use is SWD, we have avoid this.
     if probe.has_riscv_interface() && protocol == WireProtocol::Jtag {
         tracing::debug!("Trying to show RISC-V chip information");
-        match probe.try_into_riscv_interface() {
-            Ok(mut interface) => {
-                if let Err(e) = show_riscv_info(&mut interface) {
-                    println!("Error showing RISC-V chip information: {:?}", anyhow!(e));
-                }
-
-                probe = interface.close();
+        match probe.try_get_riscv_interface_builder() {
+            Ok(factory) => {
+                let mut state = factory.create_state();
+                match factory.attach(&mut state) {
+                    Ok(mut interface) => {
+                        if let Err(e) = show_riscv_info(&mut interface) {
+                            println!("Error showing RISC-V chip information: {:?}", anyhow!(e));
+                        }
+                    }
+                    Err(e) => println!(
+                        "Error while attaching to RISC-V interface: {:?}",
+                        anyhow!(e)
+                    ),
+                };
             }
-            Err((interface_probe, e)) => {
-                println!("Error while reading RISC-V info: {:?}", anyhow!(e));
-                probe = interface_probe;
-            }
+            Err(e) => println!("Error while reading RISC-V info: {:?}", anyhow!(e)),
         }
     } else if protocol == WireProtocol::Swd {
         println!(
-                "Debugging RISC-V targets over SWD is not supported. For these targets, JTAG is the only supported protocol. RISC-V specific information cannot be printed."
-            );
+            "Debugging RISC-V targets over SWD is not supported. For these targets, JTAG is the only supported protocol. RISC-V specific information cannot be printed."
+        );
     } else {
         println!(
-                "Unable to debug RISC-V targets using the current probe. RISC-V specific information cannot be printed."
-            );
+            "Unable to debug RISC-V targets using the current probe. RISC-V specific information cannot be printed."
+        );
     }
 
     // This check is a bit weird, but `try_into_xtensa_interface` will try to switch the protocol to JTAG.
     // If the current protocol we want to use is SWD, we have avoid this.
     if probe.has_xtensa_interface() && protocol == WireProtocol::Jtag {
         tracing::debug!("Trying to show Xtensa chip information");
-        match probe.try_into_xtensa_interface() {
+        let mut state = XtensaDebugInterfaceState::default();
+        match probe.try_get_xtensa_interface(&mut state) {
             Ok(mut interface) => {
                 if let Err(e) = show_xtensa_info(&mut interface) {
                     println!("Error showing Xtensa chip information: {:?}", anyhow!(e));
                 }
-
-                probe = interface.close();
             }
-            Err((interface_probe, e)) => {
+            Err(e) => {
                 println!("Error showing Xtensa chip information: {:?}", anyhow!(e));
-                probe = interface_probe;
             }
         }
     } else if protocol == WireProtocol::Swd {
         println!(
-                "Debugging Xtensa targets over SWD is not supported. For these targets, JTAG is the only supported protocol. Xtensa specific information cannot be printed."
-            );
+            "Debugging Xtensa targets over SWD is not supported. For these targets, JTAG is the only supported protocol. Xtensa specific information cannot be printed."
+        );
     } else {
         println!(
             "Unable to debug Xtensa targets using the current probe. Xtensa specific information cannot be printed."

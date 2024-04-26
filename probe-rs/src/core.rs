@@ -922,6 +922,15 @@ pub enum ResolvedCoreOptions {
         options: XtensaCoreAccessOptions,
     },
 }
+impl ResolvedCoreOptions {
+    fn interface_idx(&self) -> usize {
+        match self {
+            Self::Arm { .. } => 0, // TODO
+            Self::Riscv { options, .. } => options.jtag_tap.unwrap_or(0),
+            Self::Xtensa { options, .. } => options.jtag_tap.unwrap_or(0),
+        }
+    }
+}
 
 impl std::fmt::Debug for ResolvedCoreOptions {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

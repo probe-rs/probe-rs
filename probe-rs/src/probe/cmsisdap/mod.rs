@@ -755,6 +755,22 @@ impl DebugProbe for CmsisDap {
         Ok(())
     }
 
+    /// Returns the JTAG scan chain
+    fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
+        match self.active_protocol() {
+            Some(WireProtocol::Jtag) => {
+                if let Some(ref chain) = self.scan_chain {
+                    Ok(chain.as_slice())
+                } else {
+                    Ok(&[])
+                }
+            }
+            _ => Err(DebugProbeError::InterfaceNotAvailable {
+                interface_name: "JTAG",
+            }),
+        }
+    }
+
     /// Enters debug mode.
     #[tracing::instrument(skip(self))]
     fn attach(&mut self) -> Result<(), DebugProbeError> {

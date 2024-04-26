@@ -165,6 +165,21 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
         Ok(())
     }
 
+    fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
+        match self.active_protocol() {
+            Some(WireProtocol::Jtag) => {
+                if let Some(ref scan_chain) = self.scan_chain {
+                    Ok(scan_chain)
+                } else {
+                    Ok(&[])
+                }
+            }
+            _ => Err(DebugProbeError::InterfaceNotAvailable {
+                interface_name: "JTAG",
+            }),
+        }
+    }
+
     #[tracing::instrument(skip(self))]
     fn attach(&mut self) -> Result<(), DebugProbeError> {
         self.enter_idle()?;
