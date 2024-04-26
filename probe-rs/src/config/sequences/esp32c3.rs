@@ -72,7 +72,7 @@ impl RiscvDebugSequence for ESP32C3 {
         interface: &mut RiscvCommunicationInterface,
         timeout: Duration,
     ) -> Result<(), crate::Error> {
-        interface.reset_hart_and_halt(timeout)?;
+        interface.halt(timeout)?;
 
         // Reset all peripherals except for the RTC block.
 

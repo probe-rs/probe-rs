@@ -161,7 +161,7 @@ impl<'session> Flasher<'session> {
         let cpu_info = core
             .halt(Duration::from_millis(100))
             .map_err(FlashError::Core)?;
-        tracing::debug!("PC = 0x{:08x}", cpu_info.pc);
+        tracing::debug!("PC = {:010x}", cpu_info.pc);
         tracing::debug!("Reset and halt");
         core.reset_and_halt(Duration::from_millis(500))
             .map_err(FlashError::Core)?;
@@ -169,7 +169,7 @@ impl<'session> Flasher<'session> {
         // TODO: Possible special preparation of the target such as enabling faster clocks for the flash e.g.
 
         // Load flash algorithm code into target RAM.
-        tracing::debug!("Downloading algorithm code to {:#08x}", algo.load_address);
+        tracing::debug!("Downloading algorithm code to {:#010x}", algo.load_address);
 
         core.write_32(algo.load_address, algo.instructions.as_slice())
             .map_err(FlashError::Core)?;
@@ -182,11 +182,11 @@ impl<'session> Flasher<'session> {
         {
             if original != read_back {
                 tracing::error!(
-                    "Failed to verify flash algorithm. Data mismatch at address {:#08x}",
+                    "Failed to verify flash algorithm. Data mismatch at address {:#010x}",
                     algo.load_address + (4 * offset) as u64
                 );
-                tracing::error!("Original instruction: {:#08x}", original);
-                tracing::error!("Readback instruction: {:#08x}", read_back);
+                tracing::error!("Original instruction: {:#010x}", original);
+                tracing::error!("Readback instruction: {:#010x}", read_back);
 
                 tracing::error!("Original: {:x?}", &algo.instructions);
                 tracing::error!("Readback: {:x?}", &data);
@@ -544,7 +544,7 @@ impl Debug for Registers {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{:08x}({:?}, {:?}, {:?}, {:?}",
+            "{:#010x} ({:?}, {:?}, {:?}, {:?})",
             self.pc, self.r0, self.r1, self.r2, self.r3
         )
     }
@@ -645,7 +645,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
     }
 
     fn call_function(&mut self, registers: &Registers, init: bool) -> Result<(), FlashError> {
-        tracing::debug!("Calling routine {:?}, init={})", &registers, init);
+        tracing::debug!("Calling routine {:?}, init={})", registers, init);
 
         let algo = &self.flash_algorithm;
         let regs: &'static CoreRegisters = self.core.registers();
@@ -692,7 +692,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
                     let value: u32 = self.core.read_core_reg(description)?;
 
                     tracing::debug!(
-                        "content of {} {:#x}: 0x{:08x} should be: 0x{:08x}",
+                        "content of {} {:#x}: {:#010x} should be: {:#010x}",
                         description.name(),
                         description.id.0,
                         value,
@@ -841,27 +841,22 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
     }
 
     pub(super) fn erase_sector(&mut self, address: u64) -> Result<(), FlashError> {
-        tracing::info!("Erasing sector at address 0x{:08x}", address);
+        tracing::info!("Erasing sector at address {:#010x}", address);
         let t1 = Instant::now();
 
-        let result = self
-            .call_function_and_wait(
-                &Registers {
-                    pc: into_reg(self.flash_algorithm.pc_erase_sector)?,
-                    r0: Some(into_reg(address)?),
-                    r1: None,
-                    r2: None,
-                    r3: None,
-                },
-                false,
-                Duration::from_millis(
-                    self.flash_algorithm.flash_properties.erase_sector_timeout as u64,
-                ),
-            )
-            .map_err(|error| FlashError::EraseFailed {
-                sector_address: address,
-                source: Box::new(error),
-            })?;
+        let result = self.call_function_and_wait(
+            &Registers {
+                pc: into_reg(self.flash_algorithm.pc_erase_sector)?,
+                r0: Some(into_reg(address)?),
+                r1: None,
+                r2: None,
+                r3: None,
+            },
+            false,
+            Duration::from_millis(
+                self.flash_algorithm.flash_properties.erase_sector_timeout as u64,
+            ),
+        )?;
         tracing::info!(
             "Done erasing sector. Result is {}. This took {:?}",
             result,
@@ -883,7 +878,7 @@ impl<'p> ActiveFlasher<'p, Program> {
     /// Transfers the buffer bytes to RAM.
     fn load_data(&mut self, address: u64, bytes: &[u8]) -> Result<(), FlashError> {
         tracing::debug!(
-            "Loading {} bytes of data into RAM at address {:#08x}\n",
+            "Loading {} bytes of data into RAM at address {:#010x}\n",
             bytes.len(),
             address
         );
