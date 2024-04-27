@@ -32,26 +32,19 @@ pub(crate) mod dtm;
 pub mod sequences;
 
 /// An interface to operate a RISC-V core.
-pub struct Riscv32<'probe> {
-    interface: &'probe mut RiscvCommunicationInterface,
-    state: &'probe mut RiscVState,
+pub struct Riscv32<'state> {
+    interface: RiscvCommunicationInterface<'state>,
+    state: &'state mut RiscvCoreState,
     sequence: Arc<dyn RiscvDebugSequence>,
 }
 
-impl<'probe> Riscv32<'probe> {
+impl<'state> Riscv32<'state> {
     /// Create a new RISC-V interface for a particular hart.
     pub fn new(
-        hart: u32,
-        interface: &'probe mut RiscvCommunicationInterface,
-        state: &'probe mut RiscVState,
+        interface: RiscvCommunicationInterface<'state>,
+        state: &'state mut RiscvCoreState,
         sequence: Arc<dyn RiscvDebugSequence>,
     ) -> Result<Self, RiscvError> {
-        if !interface.hart_enabled(hart) {
-            return Err(RiscvError::HartUnavailable);
-        }
-
-        interface.select_hart(hart)?;
-
         Ok(Self {
             interface,
             state,
@@ -203,7 +196,7 @@ impl<'probe> Riscv32<'probe> {
     }
 }
 
-impl<'probe> CoreInterface for Riscv32<'probe> {
+impl<'state> CoreInterface for Riscv32<'state> {
     fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), crate::Error> {
         self.interface.wait_for_core_halted(timeout)?;
         self.state.pc_written = false;
@@ -286,7 +279,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 
     fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
         self.sequence
-            .reset_system_and_halt(self.interface, timeout)?;
+            .reset_system_and_halt(&mut self.interface, timeout)?;
 
         let pc = self.read_core_reg(RegisterId(0x7b1))?;
 
@@ -626,12 +619,12 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn reset_catch_set(&mut self) -> Result<(), Error> {
-        self.sequence.reset_catch_set(self.interface)?;
+        self.sequence.reset_catch_set(&mut self.interface)?;
         Ok(())
     }
 
     fn reset_catch_clear(&mut self) -> Result<(), Error> {
-        self.sequence.reset_catch_clear(self.interface)?;
+        self.sequence.reset_catch_clear(&mut self.interface)?;
         Ok(())
     }
 
@@ -641,7 +634,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 }
 
-impl<'probe> MemoryInterface for Riscv32<'probe> {
+impl MemoryInterface for Riscv32<'_> {
     fn supports_native_64bit_access(&mut self) -> bool {
         self.interface.supports_native_64bit_access()
     }
@@ -725,7 +718,7 @@ impl<'probe> MemoryInterface for Riscv32<'probe> {
 
 #[derive(Debug)]
 /// Flags used to control the [`SpecificCoreState`](crate::core::SpecificCoreState) for RiscV architecture
-pub struct RiscVState {
+pub struct RiscvCoreState {
     /// A flag to remember whether we want to use hw_breakpoints during stepping of the core.
     hw_breakpoints_enabled: bool,
 
@@ -739,7 +732,7 @@ pub struct RiscVState {
     semihosting_command: Option<SemihostingCommand>,
 }
 
-impl RiscVState {
+impl RiscvCoreState {
     pub(crate) fn new() -> Self {
         Self {
             hw_breakpoints_enabled: false,

@@ -6,7 +6,10 @@ use crate::{
     architecture::{
         riscv::communication_interface::RiscvCommunicationInterface,
         xtensa::{
-            arch::{instruction::Instruction, CpuRegister, Register},
+            arch::{
+                instruction::{into_binary, Instruction},
+                CpuRegister, Register,
+            },
             communication_interface::XtensaCommunicationInterface,
             sequences::XtensaDebugSequence,
         },
@@ -130,10 +133,11 @@ fn attach_flash_xtensa(
     // We're very intrusive here but the flashing process should reset the MCU again anyway
     sequence.reset_system_and_halt(interface, Duration::from_millis(500))?;
 
-    let mut instructions = vec![];
-    Instruction::CallX8(CpuRegister::A4).encode_into_vec(&mut instructions);
-    // Set a breakpoint at the end of the code
-    Instruction::Break(0, 0).encode_into_vec(&mut instructions);
+    let instructions = into_binary([
+        Instruction::CallX8(CpuRegister::A4),
+        // Set a breakpoint at the end of the code
+        Instruction::Break(0, 0),
+    ]);
 
     // Download code
     interface.write_8(load_addr as u64, &instructions)?;
