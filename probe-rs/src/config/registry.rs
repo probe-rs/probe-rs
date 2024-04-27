@@ -91,7 +91,6 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
             variants: vec![Chip {
                 name: "riscv".to_owned(),
                 part: None,
-                svd: None,
                 cores: vec![Core {
                     name: "core".to_owned(),
                     core_type: CoreType::Riscv,
@@ -105,6 +104,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
                 rtt_scan_ranges: None,
                 jtag: None,
                 default_binary_format: Some(BinaryFormat::Raw),
+                svd: None,
             }],
             flash_algorithms: vec![],
             source: TargetDescriptionSource::Generic,

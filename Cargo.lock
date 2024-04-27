@@ -2878,8 +2878,12 @@ name = "probe-rs-target"
 version = "0.23.0"
 dependencies = [
  "base64 0.22.0",
+ "insta",
  "jep106",
  "serde",
+ "serde_yaml",
+ "thiserror",
+ "url",
 ]
 
 [[package]]
@@ -4619,6 +4623,7 @@ dependencies = [
  "form_urlencoded",
  "idna 0.5.0",
  "percent-encoding",
+ "serde",
 ]
 
 [[package]]

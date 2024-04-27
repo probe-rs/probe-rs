@@ -1,0 +1,10 @@
+---
+source: probe-rs-target/src/chip_family.rs
+assertion_line: 428
+expression: merged
+---
+c: 67
+b:
+  b: 66
+  a: 65
+

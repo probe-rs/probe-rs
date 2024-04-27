@@ -91,6 +91,7 @@ parking_lot = { version = "0.12.1", optional = true }
 bincode = "1"
 probe-rs-target = { workspace = true }
 serde_yaml = "0.9"
+anyhow = "1"
 
 
 [dev-dependencies]
