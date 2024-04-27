@@ -1,11 +1,14 @@
 //! Sequences for cc13xx_cc26xx devices
 use std::sync::Arc;
+use std::time::Duration;
 
+use crate::architecture::arm::armv7m::{Demcr, Dhcsr};
 use crate::architecture::arm::communication_interface::DapProbe;
 use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
 use crate::architecture::arm::sequences::{ArmDebugSequence, ArmDebugSequenceError};
 use crate::architecture::arm::{ArmError, DpAddress};
 use crate::probe::{DebugProbeError, WireProtocol};
+use crate::MemoryMappedRegister;
 
 /// Marker struct indicating initialization sequencing for cc13xx_cc26xx family parts.
 #[derive(Debug)]
@@ -306,24 +309,46 @@ impl CC13xxCC26xx {
 impl ArmDebugSequence for CC13xxCC26xx {
     fn reset_system(
         &self,
-        interface: &mut dyn ArmProbe,
-        _core_type: crate::CoreType,
-        _debug_base: Option<u64>,
+        probe: &mut dyn ArmProbe,
+        core_type: probe_rs_target::CoreType,
+        debug_base: Option<u64>,
     ) -> Result<(), ArmError> {
-        interface.flush()?;
+        // Check if the previous code requested a halt before reset
+        let demcr = Demcr(probe.read_word_32(Demcr::get_mmio_address())?);
+
         // Do a full system reset (emulated PIN reset)
         // CPU reset alone is not possible since AIRCR.SYSRESETREQ will be
         // converted to system reset on these devices.
         //
         // The below code writes to the following bit
         // AON_PMCTL.RESETCTL.SYSRESET=1
-        interface.write_word_32(0x4009_0028, 0x8000_0000).ok();
+        probe.write_word_32(0x4009_0028, 0x8000_0000).ok();
 
         // Since the system went down, including the debug, we should flush any pending operations
-        interface.flush().ok();
+        probe.flush().ok();
 
-        // This indicates to the caller that a reattach is required
-        Err(ArmError::ReAttachRequired)
+        // Wait for the system to reset
+        std::thread::sleep(Duration::from_millis(1));
+
+        // Re-initializing the core(s) is on us.
+        let ap = probe.ap();
+        let interface = probe.get_arm_communication_interface()?;
+        interface.reinitialize()?;
+
+        assert!(debug_base.is_none());
+        self.debug_core_start(interface, ap, core_type, None, None)?;
+
+        if demcr.vc_corereset() {
+            // TODO! Find a way to call the armv7m::halt function instead
+            let mut value = Dhcsr(0);
+            value.set_c_halt(true);
+            value.set_c_debugen(true);
+            value.enable_write();
+
+            probe.write_word_32(Dhcsr::get_mmio_address(), value.into())?;
+        }
+
+        Ok(())
     }
 
     fn debug_port_setup(
