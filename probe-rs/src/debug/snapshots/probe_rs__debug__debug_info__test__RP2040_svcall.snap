@@ -630,7 +630,7 @@ expression: stack_frames
       type_name: Unknown
       value: "<unknown>"
   canonical_frame_address: 536886928
-- function_name: Supervisor call.
+- function_name: SVC
   source_location: ~
   registers:
     - core_register:

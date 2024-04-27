@@ -11,7 +11,7 @@ Frame:
   column: Some(Column(1))
  frame_base:      Some(2001ffc8)
 Frame:
- function:        Supervisor call.
+ function:        SVC
  source_location:
 None
  frame_base:      None

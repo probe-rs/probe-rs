@@ -1494,7 +1494,7 @@ mod test {
         assert_eq!(first_frame.registers, expected_regs);
 
         let next_frame = &frames[1];
-        assert_eq!(next_frame.function_name, "Supervisor call.");
+        assert_eq!(next_frame.function_name, "SVC");
         assert_eq!(next_frame.pc, RegisterValue::U32(0x00000180));
 
         // Expected stack frame(s):

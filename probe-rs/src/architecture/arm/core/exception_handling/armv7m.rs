@@ -85,7 +85,7 @@ impl Cfsr {
             // Not a UsageFault.
             return Ok(None);
         };
-        Ok(Some(format!("UsageFault ({source})")))
+        Ok(Some(format!("UsageFault <Cause: {source}>")))
     }
 
     /// Additional information about a Bus Fault, or Ok(None) if the fault was not a Bus Fault.
@@ -112,11 +112,11 @@ impl Cfsr {
 
         Ok(Some(if self.bf_address_register_valid() {
             format!(
-                "BusFault ({source}) at location: {:#010x}",
+                "BusFault <Cause: {source} at location: {:#010x}>",
                 memory.read_word_32(Bfar::get_mmio_address())?
             )
         } else {
-            format!("BusFault ({source})")
+            format!("BusFault <Cause: {source}>")
         }))
     }
 
@@ -142,11 +142,11 @@ impl Cfsr {
 
         Ok(Some(if self.mm_address_register_valid() {
             format!(
-                "MemManage Fault({source}) at location: {:#010x}",
+                "MemManage Fault <Cause: {source}> at location: {:#010x}>",
                 memory.read_word_32(Mmfar::get_mmio_address())?
             )
         } else {
-            format!("MemManage Fault({source})")
+            format!("MemManage Fault <Cause: {source}>")
         }))
     }
 }
@@ -223,31 +223,31 @@ impl ExceptionReason {
         memory: &mut dyn MemoryInterface,
     ) -> Result<String, Error> {
         match self {
-            ExceptionReason::ThreadMode => Ok("No active exception.".to_string()),
-            ExceptionReason::Reset => Ok("Reset.".to_string()),
-            ExceptionReason::NonMaskableInterrupt => Ok("Non maskable interrupt.".to_string()),
+            ExceptionReason::ThreadMode => Ok("<No active exception>".to_string()),
+            ExceptionReason::Reset => Ok("Reset".to_string()),
+            ExceptionReason::NonMaskableInterrupt => Ok("NMI".to_string()),
             ExceptionReason::HardFault => {
                 let hfsr = Hfsr(memory.read_word_32(Hfsr::get_mmio_address())?);
                 let description = if hfsr.debug_event() {
-                    "Debug fault.".to_string()
+                    "Debug fault".to_string()
                 } else if hfsr.escalation_forced() {
-                    let description = "Escalated ";
+                    let description = "Escalated";
                     let cfsr = Cfsr(memory.read_word_32(Cfsr::get_mmio_address())?);
                     if let Some(source) = cfsr.usage_fault_description()? {
-                        format!("{description}{source}")
+                        format!("{description} {source}")
                     } else if let Some(source) = cfsr.bus_fault_description(memory)? {
-                        format!("{description}{source}")
+                        format!("{description} {source}")
                     } else if let Some(source) = cfsr.memory_management_fault_description(memory)? {
-                        format!("{description}{source}")
+                        format!("{description} {source}")
                     } else {
-                        format!("{description}from an unknown source")
+                        format!("{description} from an unknown source")
                     }
                 } else if hfsr.vector_table_read_fault() {
                     "Vector table read fault".to_string()
                 } else {
                     "Undeterminable".to_string()
                 };
-                Ok(format!("HardFault. Cause: {description}."))
+                Ok(format!("HardFault <Cause: {description}>"))
             }
             ExceptionReason::MemoryManagementFault => {
                 if let Some(source) = Cfsr(memory.read_word_32(Cfsr::get_mmio_address())?)
@@ -255,7 +255,7 @@ impl ExceptionReason {
                 {
                     Ok(source)
                 } else {
-                    Ok("UsageFault. Cause: Unknown.".to_string())
+                    Ok("MemManage Fault <Cause: Unknown>".to_string())
                 }
             }
             ExceptionReason::BusFault => {
@@ -264,7 +264,7 @@ impl ExceptionReason {
                 {
                     Ok(source)
                 } else {
-                    Ok("BusFault. Cause: Unknown.".to_string())
+                    Ok("BusFault <Cause: Unknown>".to_string())
                 }
             }
             ExceptionReason::UsageFault => {
@@ -273,16 +273,16 @@ impl ExceptionReason {
                 {
                     Ok(source)
                 } else {
-                    Ok("MemManage Fault. Cause: Unknown.".to_string())
+                    Ok("UsageFault <Cause: Unknown>".to_string())
                 }
             }
-            ExceptionReason::SVCall => Ok("Supervisor call.".to_string()),
-            ExceptionReason::DebugMonitor => Ok("Synchronous Debug monitor fault.".to_string()),
-            ExceptionReason::PendSV => Ok("Pending Supervisor call.".to_string()),
-            ExceptionReason::SysTick => Ok("Systick.".to_string()),
-            ExceptionReason::ExternalInterrupt(exti) => Ok(format!("External interrupt #{exti}.")),
+            ExceptionReason::SVCall => Ok("SVC".to_string()),
+            ExceptionReason::DebugMonitor => Ok("DebugMonitor".to_string()),
+            ExceptionReason::PendSV => Ok("PendSV".to_string()),
+            ExceptionReason::SysTick => Ok("SysTick".to_string()),
+            ExceptionReason::ExternalInterrupt(exti) => Ok(format!("External interrupt #{exti}")),
             ExceptionReason::Reserved => {
-                Ok("Reserved by the ISA, and not usable by software.".to_string())
+                Ok("<Reserved by the ISA, and not usable by software>".to_string())
             }
         }
     }

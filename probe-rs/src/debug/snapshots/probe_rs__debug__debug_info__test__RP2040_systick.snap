@@ -630,7 +630,7 @@ expression: stack_frames
       type_name: Unknown
       value: "<unknown>"
   canonical_frame_address: 536886888
-- function_name: Systick.
+- function_name: SysTick
   source_location: ~
   registers:
     - core_register:

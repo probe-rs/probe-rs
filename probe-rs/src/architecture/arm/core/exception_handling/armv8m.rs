@@ -307,9 +307,9 @@ impl ExceptionReason {
     /// HFSR, CFSR, and SFSR registers.
     fn expanded_description(&self, memory: &mut dyn MemoryInterface) -> Result<String, Error> {
         match self {
-            ExceptionReason::ThreadMode => Ok("No active exception.".to_string()),
-            ExceptionReason::Reset => Ok("Reset.".to_string()),
-            ExceptionReason::NonMaskableInterrupt => Ok("Non maskable interrupt.".to_string()),
+            ExceptionReason::ThreadMode => Ok("<No active exception>".to_string()),
+            ExceptionReason::Reset => Ok("Reset".to_string()),
+            ExceptionReason::NonMaskableInterrupt => Ok("NMI".to_string()),
             ExceptionReason::HardFault => {
                 let hfsr = Hfsr(memory.read_word_32(Hfsr::get_mmio_address())?);
                 let description = if hfsr.debug_event() {
@@ -331,7 +331,7 @@ impl ExceptionReason {
                 } else {
                     "Undeterminable".to_string()
                 };
-                Ok(format!("HardFault. Cause: {description}."))
+                Ok(format!("HardFault <Cause: {description}>"))
             }
             ExceptionReason::MemoryManagementFault => {
                 if let Some(source) = Cfsr(memory.read_word_32(Cfsr::get_mmio_address())?)
@@ -339,7 +339,7 @@ impl ExceptionReason {
                 {
                     Ok(source)
                 } else {
-                    Ok("UsageFault. Cause: Unknown.".to_string())
+                    Ok("MemManage Fault <Cause: Unknown>".to_string())
                 }
             }
             ExceptionReason::BusFault => {
@@ -348,7 +348,7 @@ impl ExceptionReason {
                 {
                     Ok(source)
                 } else {
-                    Ok("BusFault. Cause: Unknown.".to_string())
+                    Ok("BusFault <Cause: Unknown>".to_string())
                 }
             }
             ExceptionReason::UsageFault => {
@@ -357,7 +357,7 @@ impl ExceptionReason {
                 {
                     Ok(source)
                 } else {
-                    Ok("MemManage Fault. Cause: Unknown.".to_string())
+                    Ok("UsageFault <Cause: Unknown>".to_string())
                 }
             }
             ExceptionReason::SecureFault => {
@@ -366,16 +366,16 @@ impl ExceptionReason {
                 {
                     Ok(source)
                 } else {
-                    Ok("SecureFault. Cause: Unknown.".to_string())
+                    Ok("SecureFault <Cause: Unknown>".to_string())
                 }
             }
-            ExceptionReason::SVCall => Ok("Supervisor call.".to_string()),
-            ExceptionReason::DebugMonitor => Ok("Synchronous Debug monitor fault.".to_string()),
-            ExceptionReason::PendSV => Ok("Pending Supervisor call.".to_string()),
-            ExceptionReason::SysTick => Ok("Systick.".to_string()),
-            ExceptionReason::ExternalInterrupt(exti) => Ok(format!("External interrupt #{exti}.")),
+            ExceptionReason::SVCall => Ok("SVC".to_string()),
+            ExceptionReason::DebugMonitor => Ok("DebugMonitor".to_string()),
+            ExceptionReason::PendSV => Ok("PendSV".to_string()),
+            ExceptionReason::SysTick => Ok("SysTick".to_string()),
+            ExceptionReason::ExternalInterrupt(exti) => Ok(format!("External interrupt #{exti}")),
             ExceptionReason::Reserved => {
-                Ok("Reserved by the ISA, and not usable by software.".to_string())
+                Ok("<Reserved by the ISA, and not usable by software>".to_string())
             }
         }
     }
