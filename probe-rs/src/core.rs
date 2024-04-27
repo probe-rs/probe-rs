@@ -272,7 +272,7 @@ pub struct ExceptionInfo {
     pub raw_exception: u32,
     /// A human readable explanation for the exception.
     pub description: String,
-    /// A populated [`StackFrame`] for to represent the stack data in the exception handler.
+    /// A populated [`StackFrame`] to represent the stack data in the exception handler.
     pub handler_frame: StackFrame,
 }
 
