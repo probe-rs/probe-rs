@@ -578,8 +578,20 @@ impl DebugInfo {
                     None
                 }
                 Err(e) => {
-                    tracing::warn!("UNWIND: Error while checking for exception context. The stack trace will not include the calling frames. : {e}");
-                    None
+                    let message = format!("UNWIND: Error while checking for exception context. The stack trace will not include the calling frames. : {e}");
+                    tracing::warn!("{message}");
+                    stack_frames.push(StackFrame {
+                        id: get_object_reference(),
+                        function_name: message,
+                        source_location: None,
+                        registers: unwind_registers.clone(),
+                        pc: frame_pc_register_value,
+                        frame_base: None,
+                        is_inlined: false,
+                        local_variables: None,
+                        canonical_frame_address: None,
+                    });
+                    break 'unwind;
                 }
             };
 
