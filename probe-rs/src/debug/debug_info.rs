@@ -1951,8 +1951,8 @@ mod test {
         insta::assert_yaml_snapshot!(snapshot_name, stack_frames);
     }
 
-    #[test_case("RP2040"; "Armv6-m using RP2040")]
-    #[test_case("nRF52833_xxAA"; "Armv7-m using nRF52833_xxAA")]
+    #[test_case("RP2040_full_unwind"; "Armv6-m using RP2040")]
+    #[test_case("nRF52833_xxAA_full_unwind"; "Armv7-m using nRF52833_xxAA")]
     #[test_case("atsamd51p19a"; "Armv7-em from C source code")]
     //TODO:  #[test_case("esp32c3"; "RISC-V32E using esp32c3")]
     fn static_variables(chip_name: &str) {
