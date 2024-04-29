@@ -380,6 +380,7 @@ fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
     let mut need_ap_read = false;
     let mut buffered_write = false;
     let mut write_response_pending = false;
+    let wire_protocol = probe.active_protocol().unwrap();
 
     for transfer in transfers.iter() {
         // Check if we need to insert an additional read from the RDBUFF register
@@ -450,7 +451,7 @@ fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
         // handled by perform_jtag_transfers
         result_indices.push(OriginalTransfer {
             index: num_transfers,
-            response_in_next: probe.active_protocol().unwrap() == WireProtocol::Swd
+            response_in_next: wire_protocol == WireProtocol::Swd
                 && (need_ap_read || write_response_pending),
         });
 
@@ -482,7 +483,7 @@ fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
 
     probe.probe_statistics().record_transfers(num_transfers);
 
-    match probe.active_protocol().unwrap() {
+    match wire_protocol {
         WireProtocol::Swd => perform_swd_transfers(probe, &mut final_transfers[..])?,
         WireProtocol::Jtag => perform_jtag_transfers(probe, &mut final_transfers[..])?,
     }
