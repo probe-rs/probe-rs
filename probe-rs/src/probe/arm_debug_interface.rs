@@ -375,8 +375,6 @@ fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
     }
     let mut result_indices = Vec::with_capacity(transfers.len());
 
-    let mut num_transfers = 0;
-
     let wire_protocol = probe.active_protocol().unwrap();
 
     // TODO: zip 2 iters?
@@ -397,7 +395,7 @@ fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
         // SWD only, with JTAG we always get responses in a predictable fashion so it's
         // handled by perform_jtag_transfers
         result_indices.push(OriginalTransfer {
-            index: num_transfers,
+            index: final_transfers.len(),
             response_in_next: wire_protocol == WireProtocol::Swd
                 && (need_ap_read || write_response_pending),
         });
@@ -413,8 +411,6 @@ fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
         };
         final_transfers.push(transfer_to_push);
 
-        num_transfers += 1;
-
         let Some(next) = transfers.get(i + 1) else {
             // Last transfer
             if write_response_pending {
@@ -425,7 +421,6 @@ fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
             if need_ap_read || write_response_pending {
                 final_transfers.push(DapTransfer::read(PortType::DebugPort, RdBuff::ADDRESS));
 
-                num_transfers += 1;
                 probe.probe_statistics().record_extra_transfer();
             }
 
@@ -438,7 +433,6 @@ fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
         // Check if we need to insert an additional read from the RDBUFF register
         if need_ap_read && !next.is_ap_read() {
             final_transfers.push(DapTransfer::read(PortType::DebugPort, RdBuff::ADDRESS));
-            num_transfers += 1;
 
             // This is an extra transfer, which doesn't have a reponse on it's own.
             probe.probe_statistics().record_extra_transfer();
@@ -465,14 +459,13 @@ fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
                 // is not empty.
                 final_transfers.push(DapTransfer::read(PortType::DebugPort, RdBuff::ADDRESS));
 
-                num_transfers += 1;
-
                 // This is an extra transfer, which doesn't have a reponse on it's own.
                 probe.probe_statistics().record_extra_transfer();
             }
         }
     }
 
+    let num_transfers = final_transfers.len();
     tracing::debug!(
         "Performing {} transfers ({} additional transfers)",
         num_transfers,
