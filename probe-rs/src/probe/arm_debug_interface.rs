@@ -377,7 +377,6 @@ fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
 
     let wire_protocol = probe.active_protocol().unwrap();
 
-    // TODO: zip 2 iters?
     for (i, transfer) in transfers.iter().enumerate() {
         // The response for an AP read is returned in the next response
         let need_ap_read = transfer.is_ap_read();
@@ -400,7 +399,7 @@ fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
                 && (need_ap_read || write_response_pending),
         });
 
-        let mut transfer_to_push = if transfer.is_write() {
+        let transfer_to_push = if transfer.is_write() {
             tracing::trace!("Adding {} idle cycles after transfer!", idle_cycles);
 
             let mut transfer = transfer.clone();
@@ -411,6 +410,7 @@ fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
         };
         final_transfers.push(transfer_to_push);
 
+        // Now process the extra transfers needed
         let Some(next) = transfers.get(i + 1) else {
             // Last transfer
             if write_response_pending {
@@ -419,8 +419,8 @@ fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
             }
 
             if need_ap_read || write_response_pending {
+                // This is an extra transfer, which doesn't have a reponse on it's own.
                 final_transfers.push(DapTransfer::read(PortType::DebugPort, RdBuff::ADDRESS));
-
                 probe.probe_statistics().record_extra_transfer();
             }
 
@@ -432,9 +432,8 @@ fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
 
         // Check if we need to insert an additional read from the RDBUFF register
         if need_ap_read && !next.is_ap_read() {
-            final_transfers.push(DapTransfer::read(PortType::DebugPort, RdBuff::ADDRESS));
-
             // This is an extra transfer, which doesn't have a reponse on it's own.
+            final_transfers.push(DapTransfer::read(PortType::DebugPort, RdBuff::ADDRESS));
             probe.probe_statistics().record_extra_transfer();
         } else if buffered_write {
             // Check if we need an additional instruction to avoid loosing buffered writes.
@@ -457,9 +456,9 @@ fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
 
                 // Add a read from RDBUFF, this access will stalled by the DebugPort if the write buffer
                 // is not empty.
-                final_transfers.push(DapTransfer::read(PortType::DebugPort, RdBuff::ADDRESS));
 
                 // This is an extra transfer, which doesn't have a reponse on it's own.
+                final_transfers.push(DapTransfer::read(PortType::DebugPort, RdBuff::ADDRESS));
                 probe.probe_statistics().record_extra_transfer();
             }
         }
