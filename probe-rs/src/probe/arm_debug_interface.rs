@@ -377,41 +377,89 @@ fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
 
     let mut num_transfers = 0;
 
-    let mut need_ap_read = false;
-    let mut buffered_write = false;
-    let mut write_response_pending = false;
     let wire_protocol = probe.active_protocol().unwrap();
 
-    for transfer in transfers.iter() {
+    // TODO: zip 2 iters?
+    for (i, transfer) in transfers.iter().enumerate() {
+        // The response for an AP read is returned in the next response
+        let need_ap_read = transfer.is_ap_read();
+
+        // Writes to the AP can be buffered
+        //
+        // TODO: Can DP writes be buffered as well?
+        let buffered_write = transfer.is_ap_write();
+
+        // For all writes, except writes to the DP ABORT register, we need to perform another register to ensure that
+        // we know if the write succeeded.
+        let write_response_pending = transfer.is_write() && !transfer.is_abort();
+
+        // Track whether the response is returned in the next transfer.
+        // SWD only, with JTAG we always get responses in a predictable fashion so it's
+        // handled by perform_jtag_transfers
+        result_indices.push(OriginalTransfer {
+            index: num_transfers,
+            response_in_next: wire_protocol == WireProtocol::Swd
+                && (need_ap_read || write_response_pending),
+        });
+
+        let mut transfer_to_push = if transfer.is_write() {
+            tracing::trace!("Adding {} idle cycles after transfer!", idle_cycles);
+
+            let mut transfer = transfer.clone();
+            transfer.idle_cycles_after = idle_cycles;
+            transfer
+        } else {
+            transfer.clone()
+        };
+        final_transfers.push(transfer_to_push);
+
+        num_transfers += 1;
+
+        let Some(next) = transfers.get(i + 1) else {
+            // Last transfer
+            if write_response_pending {
+                final_transfers.last_mut().unwrap().idle_cycles_after +=
+                    probe.swd_settings().idle_cycles_before_write_verify;
+            }
+
+            if need_ap_read || write_response_pending {
+                final_transfers.push(DapTransfer::read(PortType::DebugPort, RdBuff::ADDRESS));
+
+                num_transfers += 1;
+                probe.probe_statistics().record_extra_transfer();
+            }
+
+            // Add idle cycles at the end, to ensure transfer is performed
+            final_transfers.last_mut().unwrap().idle_cycles_after +=
+                probe.swd_settings().idle_cycles_after_transfer;
+            break;
+        };
+
         // Check if we need to insert an additional read from the RDBUFF register
-        if !transfer.is_ap_read() && need_ap_read {
+        if need_ap_read && !next.is_ap_read() {
             final_transfers.push(DapTransfer::read(PortType::DebugPort, RdBuff::ADDRESS));
             num_transfers += 1;
 
             // This is an extra transfer, which doesn't have a reponse on it's own.
             probe.probe_statistics().record_extra_transfer();
-        }
-
-        if buffered_write {
+        } else if buffered_write {
             // Check if we need an additional instruction to avoid loosing buffered writes.
 
-            let abort_write = transfer.port == PortType::DebugPort
-                && transfer.address == Abort::ADDRESS
-                && transfer.direction == TransferDirection::Write;
+            let abort_write = next.port == PortType::DebugPort
+                && next.address == Abort::ADDRESS
+                && next.direction == TransferDirection::Write;
 
-            let dpidr_read = transfer.port == PortType::DebugPort
-                && transfer.address == DPIDR::ADDRESS
-                && transfer.direction == TransferDirection::Read;
+            let dpidr_read = next.port == PortType::DebugPort
+                && next.address == DPIDR::ADDRESS
+                && next.direction == TransferDirection::Read;
 
-            let ctrl_stat_read = transfer.port == PortType::DebugPort
-                && transfer.address == Ctrl::ADDRESS
-                && transfer.direction == TransferDirection::Read;
+            let ctrl_stat_read = next.port == PortType::DebugPort
+                && next.address == Ctrl::ADDRESS
+                && next.direction == TransferDirection::Read;
 
             if abort_write || dpidr_read || ctrl_stat_read {
-                if let Some(transfer) = final_transfers.last_mut() {
-                    transfer.idle_cycles_after +=
-                        probe.swd_settings().idle_cycles_before_write_verify;
-                }
+                final_transfers.last_mut().unwrap().idle_cycles_after +=
+                    probe.swd_settings().idle_cycles_before_write_verify;
 
                 // Add a read from RDBUFF, this access will stalled by the DebugPort if the write buffer
                 // is not empty.
@@ -423,57 +471,7 @@ fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
                 probe.probe_statistics().record_extra_transfer();
             }
         }
-
-        final_transfers.push(if transfer.is_write() {
-            tracing::trace!("Adding {} idle cycles after transfer!", idle_cycles);
-
-            let mut transfer = transfer.clone();
-            transfer.idle_cycles_after = idle_cycles;
-            transfer
-        } else {
-            transfer.clone()
-        });
-
-        // The response for an AP read is returned in the next response
-        need_ap_read = transfer.is_ap_read();
-
-        // Writes to the AP can be buffered
-        //
-        // TODO: Can DP writes be buffered as well?
-        buffered_write = transfer.port == PortType::AccessPort && transfer.is_write();
-
-        // For all writes, except writes to the DP ABORT register, we need to perform another register to ensure that
-        // we know if the write succeeded.
-        write_response_pending = transfer.is_write() && !transfer.is_abort();
-
-        // Track whether the response is returned in the next transfer.
-        // SWD only, with JTAG we always get responses in a predictable fashion so it's
-        // handled by perform_jtag_transfers
-        result_indices.push(OriginalTransfer {
-            index: num_transfers,
-            response_in_next: wire_protocol == WireProtocol::Swd
-                && (need_ap_read || write_response_pending),
-        });
-
-        num_transfers += 1;
     }
-
-    if need_ap_read || write_response_pending {
-        if write_response_pending {
-            if let Some(transfer) = final_transfers.last_mut() {
-                transfer.idle_cycles_after += probe.swd_settings().idle_cycles_before_write_verify;
-            }
-        }
-
-        final_transfers.push(DapTransfer::read(PortType::DebugPort, RdBuff::ADDRESS));
-
-        num_transfers += 1;
-        probe.probe_statistics().record_extra_transfer();
-    }
-
-    // Add idle cycles at the end, to ensure transfer is performed
-    final_transfers.last_mut().unwrap().idle_cycles_after +=
-        probe.swd_settings().idle_cycles_after_transfer;
 
     tracing::debug!(
         "Performing {} transfers ({} additional transfers)",
@@ -560,6 +558,10 @@ impl DapTransfer {
 
     fn is_ap_read(&self) -> bool {
         self.port == PortType::AccessPort && self.direction == TransferDirection::Read
+    }
+
+    fn is_ap_write(&self) -> bool {
+        self.port == PortType::AccessPort && self.direction == TransferDirection::Write
     }
 
     fn is_write(&self) -> bool {
