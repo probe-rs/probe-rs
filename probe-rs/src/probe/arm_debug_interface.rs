@@ -423,7 +423,15 @@ fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
             }
         }
 
-        final_transfers.push(transfer.clone());
+        final_transfers.push(if transfer.is_write() {
+            tracing::trace!("Adding {} idle cycles after transfer!", idle_cycles);
+
+            let mut transfer = transfer.clone();
+            transfer.idle_cycles_after = idle_cycles;
+            transfer
+        } else {
+            transfer.clone()
+        });
 
         // The response for an AP read is returned in the next response
         need_ap_read = transfer.is_ap_read();
@@ -445,12 +453,6 @@ fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
             response_in_next: probe.active_protocol().unwrap() == WireProtocol::Swd
                 && (need_ap_read || write_response_pending),
         });
-
-        if transfer.is_write() {
-            tracing::trace!("Adding {} idle cycles after transfer!", idle_cycles);
-
-            final_transfers.last_mut().unwrap().idle_cycles_after = idle_cycles;
-        }
 
         num_transfers += 1;
     }
