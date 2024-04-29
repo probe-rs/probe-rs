@@ -1014,7 +1014,12 @@ impl RawDapAccess for CmsisDap {
     }
 
     fn configure_jtag(&mut self, skip_scan: bool) -> Result<(), DebugProbeError> {
-        let ir_lengths = if !skip_scan {
+        let ir_lengths = if skip_scan {
+            self.scan_chain
+                .as_ref()
+                .map(|chain| chain.iter().filter_map(|s| s.ir_len).collect::<Vec<u8>>())
+                .unwrap_or_default()
+        } else {
             let chain = self.jtag_scan(
                 self.scan_chain
                     .as_ref()
@@ -1028,11 +1033,6 @@ impl RawDapAccess for CmsisDap {
                     .as_deref(),
             )?;
             chain.iter().map(|item| item.irlen as u8).collect()
-        } else {
-            self.scan_chain
-                .as_ref()
-                .map(|chain| chain.iter().filter_map(|s| s.ir_len).collect::<Vec<u8>>())
-                .unwrap_or_default()
         };
         tracing::info!("Configuring JTAG with ir lengths: {:?}", ir_lengths);
         self.send_jtag_configure(JtagConfigureRequest::new(ir_lengths)?)?;
