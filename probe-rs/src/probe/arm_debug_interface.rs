@@ -431,8 +431,7 @@ fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
         // Writes to the AP can be buffered
         //
         // TODO: Can DP writes be buffered as well?
-        buffered_write =
-            transfer.port == PortType::AccessPort && transfer.direction == TransferDirection::Write;
+        buffered_write = transfer.port == PortType::AccessPort && transfer.is_write();
 
         // For all writes, except writes to the DP ABORT register, we need to perform another register to ensure that
         // we know if the write succeeded.
