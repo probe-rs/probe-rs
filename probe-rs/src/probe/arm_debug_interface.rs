@@ -470,10 +470,8 @@ fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
     }
 
     // Add idle cycles at the end, to ensure transfer is performed
-    if probe.swd_settings().idle_cycles_after_transfer > 0 {
-        final_transfers.last_mut().unwrap().idle_cycles_after +=
-            probe.swd_settings().idle_cycles_after_transfer;
-    }
+    final_transfers.last_mut().unwrap().idle_cycles_after +=
+        probe.swd_settings().idle_cycles_after_transfer;
 
     tracing::debug!(
         "Performing {} transfers ({} additional transfers)",
