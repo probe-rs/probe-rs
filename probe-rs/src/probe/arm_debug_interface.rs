@@ -552,7 +552,8 @@ fn perform_raw_transfers_retry<P: DebugProbe + RawProtocolIo + JTAGAccess>(
         abort
     })?;
 
-    Err(ArmError::Timeout)
+    // Need to return Ok here, the caller will handle errors in transfer status.
+    Ok(())
 }
 
 fn clear_overrun<P: DebugProbe + RawProtocolIo + JTAGAccess>(
