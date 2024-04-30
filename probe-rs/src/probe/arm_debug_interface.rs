@@ -716,9 +716,7 @@ impl DapTransfer {
         // These requests must not issue a WRITE response. This means we need to
         // add an additional read from the RDBUFF register to stall the request until
         // the write buffer is empty.
-        let abort_write = self.port == PortType::DebugPort
-            && self.address == Abort::ADDRESS
-            && self.direction == TransferDirection::Write;
+        let abort_write = self.is_abort();
 
         let dpidr_read = self.port == PortType::DebugPort
             && self.address == DPIDR::ADDRESS
@@ -1003,18 +1001,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                         // We did not handle a WAIT state properly
 
                         // Because we use overrun detection, we now have to clear the overrun error
-                        let mut abort = Abort(0);
-
-                        // Clear sticky error flags
-                        abort.set_orunerrclr(ctrl.sticky_orun());
-                        abort.set_stkerrclr(ctrl.sticky_err());
-
-                        RawDapAccess::raw_write_register(
-                            self,
-                            PortType::DebugPort,
-                            Abort::ADDRESS,
-                            abort.into(),
-                        )?;
+                        clear_overrun(self)?;
                     }
                 } else {
                     tracing::warn!("Error reading CTRL/STAT register. This should not happen...");
@@ -1099,18 +1086,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                     // We did not handle a WAIT state properly
 
                     // Because we use overrun detection, we now have to clear the overrun error
-                    let mut abort = Abort(0);
-
-                    // Clear sticky error flags
-                    abort.set_orunerrclr(ctrl.sticky_orun());
-                    abort.set_stkerrclr(ctrl.sticky_err());
-
-                    RawDapAccess::raw_write_register(
-                        self,
-                        PortType::DebugPort,
-                        Abort::ADDRESS,
-                        abort.into(),
-                    )?;
+                    clear_overrun(self)?;
                 }
 
                 Err(DapError::FaultResponse.into())
