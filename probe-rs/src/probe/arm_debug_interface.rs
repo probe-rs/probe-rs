@@ -513,14 +513,6 @@ fn perform_raw_transfers_retry<P: DebugProbe + RawProtocolIo + JTAGAccess>(
         let chunk = &mut transfers[successful_transfers..];
         assert!(!chunk.is_empty());
 
-        // Set idle cycles
-        for transfer in &mut chunk[..] {
-            if transfer.is_write() {
-                // TODO this doesn't quite match the old behavior, is that OK?
-                transfer.idle_cycles_after = transfer.idle_cycles_after.max(idle_cycles);
-            }
-        }
-
         perform_raw_transfers(probe, chunk)?;
 
         for result in chunk.iter() {
@@ -537,6 +529,15 @@ fn perform_raw_transfers_retry<P: DebugProbe + RawProtocolIo + JTAGAccess>(
                         probe.swd_settings().max_retry_idle_cycles_after_wait,
                         idle_cycles * 2,
                     );
+
+                    // Set idle cycles
+                    for transfer in &mut chunk[successful_transfers..] {
+                        if transfer.is_write() {
+                            // TODO this doesn't quite match the old behavior, is that OK?
+                            transfer.idle_cycles_after =
+                                transfer.idle_cycles_after.max(idle_cycles);
+                        }
+                    }
 
                     continue 'transfer;
                 }
@@ -558,7 +559,11 @@ fn clear_overrun<P: DebugProbe + RawProtocolIo + JTAGAccess>(
     // Build ABORT transfer.
     let mut abort = Abort(0);
     abort.set_orunerrclr(true);
-    let transfer = DapTransfer::write(PortType::DebugPort, Abort::ADDRESS, abort.into());
+    let mut transfer = DapTransfer::write(PortType::DebugPort, Abort::ADDRESS, abort.into());
+
+    let idle_cycles = std::cmp::max(1, probe.swd_settings().num_idle_cycles_between_writes);
+    transfer.idle_cycles_after = idle_cycles;
+
     let mut transfers = [transfer];
 
     // Do it
