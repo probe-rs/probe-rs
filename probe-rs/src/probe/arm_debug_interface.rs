@@ -475,42 +475,25 @@ fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
                 transfer: DapTransfer::read(PortType::DebugPort, RdBuff::ADDRESS),
             });
             probe.probe_statistics().record_extra_transfer();
-        } else if buffered_write {
-            // Check if we need an additional instruction to avoid loosing buffered writes.
+        } else if buffered_write && next.must_not_stall() {
+            // We need an additional instruction to avoid loosing buffered writes.
 
-            // These requests must not issue a WRITE response. This means we need to
-            // add an additional read from the RDBUFF register to stall the request until
-            // the write buffer is empty.
-            let abort_write = next.port == PortType::DebugPort
-                && next.address == Abort::ADDRESS
-                && next.direction == TransferDirection::Write;
+            final_transfers
+                .last_mut()
+                .unwrap()
+                .transfer
+                .idle_cycles_after += probe.swd_settings().idle_cycles_before_write_verify;
 
-            let dpidr_read = next.port == PortType::DebugPort
-                && next.address == DPIDR::ADDRESS
-                && next.direction == TransferDirection::Read;
+            // Add a read from RDBUFF, this access will be stalled by the DebugPort if the write
+            // buffer is not empty.
 
-            let ctrl_stat_read = next.port == PortType::DebugPort
-                && next.address == Ctrl::ADDRESS
-                && next.direction == TransferDirection::Read;
-
-            if abort_write || dpidr_read || ctrl_stat_read {
-                final_transfers
-                    .last_mut()
-                    .unwrap()
-                    .transfer
-                    .idle_cycles_after += probe.swd_settings().idle_cycles_before_write_verify;
-
-                // Add a read from RDBUFF, this access will be stalled by the DebugPort if the write
-                // buffer is not empty.
-
-                // This is an extra transfer, which doesn't have a reponse on it's own.
-                final_transfers.last_mut().unwrap().response_in_next = true;
-                final_transfers.push(ExpandedTransfer {
-                    response_in_next: false,
-                    transfer: DapTransfer::read(PortType::DebugPort, RdBuff::ADDRESS),
-                });
-                probe.probe_statistics().record_extra_transfer();
-            }
+            // This is an extra transfer, which doesn't have a reponse on it's own.
+            final_transfers.last_mut().unwrap().response_in_next = true;
+            final_transfers.push(ExpandedTransfer {
+                response_in_next: false,
+                transfer: DapTransfer::read(PortType::DebugPort, RdBuff::ADDRESS),
+            });
+            probe.probe_statistics().record_extra_transfer();
         }
     }
 
@@ -736,6 +719,25 @@ impl DapTransfer {
 
     fn swd_response_length(&self) -> usize {
         self.direction.swd_response_length() + self.idle_cycles_after
+    }
+
+    fn must_not_stall(&self) -> bool {
+        // These requests must not issue a WRITE response. This means we need to
+        // add an additional read from the RDBUFF register to stall the request until
+        // the write buffer is empty.
+        let abort_write = self.port == PortType::DebugPort
+            && self.address == Abort::ADDRESS
+            && self.direction == TransferDirection::Write;
+
+        let dpidr_read = self.port == PortType::DebugPort
+            && self.address == DPIDR::ADDRESS
+            && self.direction == TransferDirection::Read;
+
+        let ctrl_stat_read = self.port == PortType::DebugPort
+            && self.address == Ctrl::ADDRESS
+            && self.direction == TransferDirection::Read;
+
+        abort_write || dpidr_read || ctrl_stat_read
     }
 }
 
