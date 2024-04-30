@@ -766,47 +766,40 @@ fn parse_swd_response(response: &[bool], direction: TransferDirection) -> Result
     // the acknowledge comes directly after.
     let ack_offset = 2 + 8;
 
-    // Get the ack.
-    let ack = &response[ack_offset..ack_offset + 3];
+    let (_request_bits, response) = response.split_at(ack_offset);
+    let (ack, value_bits) = response.split_at(3);
 
     // When all bits are high, this means we didn't get any response from the
     // target, which indicates a protocol error.
     match (ack[0], ack[1], ack[2]) {
-        (true, true, true) => return Err(DapError::NoAcknowledge),
-        (_, true, _) => return Err(DapError::WaitResponse),
-        (_, _, true) => return Err(DapError::FaultResponse),
-        _ => (),
-    }
-
-    if ack[0] {
+        (true, true, true) => Err(DapError::NoAcknowledge),
+        (_, true, _) => Err(DapError::WaitResponse),
+        (_, _, true) => Err(DapError::FaultResponse),
         // Extract value, if it is a read
-
-        if let TransferDirection::Read = direction {
-            let read_value_offset = ack_offset + 3;
-            let register_val = response[read_value_offset..][..32].iter().copied();
-            let parity_bit = response[read_value_offset + 32];
+        (true, _, _) if direction == TransferDirection::Read => {
+            let parity_bit = value_bits[32];
 
             // Take the data bits and convert them into a 32bit int.
-            let value = bits_to_byte(register_val);
+            let value = bits_to_byte(value_bits.iter().copied());
 
             // Make sure the parity is correct.
-            if (value.count_ones() % 2 == 1) == parity_bit {
+            if value.count_ones() % 2 == parity_bit as u32 {
                 tracing::trace!("DAP read {}.", value);
                 Ok(value)
             } else {
                 Err(DapError::IncorrectParity)
             }
-        } else {
-            // Write, don't parse response
-            Ok(0)
         }
-    } else {
-        // Invalid response
-        tracing::debug!(
-            "Unexpected response from target, does not conform to SWD specfication (ack={:?})",
-            ack
-        );
-        Err(DapError::SwdProtocol)
+        // Write, don't parse response
+        (true, _, _) => Ok(0),
+        _ => {
+            // Invalid response
+            tracing::debug!(
+                "Unexpected response from target, does not conform to SWD specfication (ack={:?})",
+                ack
+            );
+            Err(DapError::SwdProtocol)
+        }
     }
 }
 
