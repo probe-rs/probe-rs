@@ -6,7 +6,7 @@
 
 use crate::{
     architecture::arm::{
-        dp::{Abort, Ctrl, RdBuff, DPIDR},
+        dp::{Abort, Ctrl, DpRegister, RdBuff, DPIDR},
         ArmError, DapError, PortType, RawDapAccess, Register,
     },
     probe::{common::bits_to_byte, DebugProbe, DebugProbeError, JTAGAccess, WireProtocol},
@@ -525,15 +525,14 @@ fn perform_raw_transfers_retry<P: DebugProbe + RawProtocolIo + JTAGAccess>(
 
                     clear_overrun(probe)?;
 
+                    // Increase idle cycles of the failed write transfer and the rest of the chunk
                     idle_cycles = std::cmp::min(
                         probe.swd_settings().max_retry_idle_cycles_after_wait,
                         idle_cycles * 2,
                     );
 
-                    // Set idle cycles
                     for transfer in &mut chunk[successful_transfers..] {
                         if transfer.is_write() {
-                            // TODO this doesn't quite match the old behavior, is that OK?
                             transfer.idle_cycles_after =
                                 transfer.idle_cycles_after.max(idle_cycles);
                         }
@@ -546,20 +545,37 @@ fn perform_raw_transfers_retry<P: DebugProbe + RawProtocolIo + JTAGAccess>(
         }
 
         if successful_transfers == transfers.len() {
-            break;
+            return Ok(());
         }
     }
 
-    Ok(())
+    // Timeout, abort transactions
+    write_dp_register(probe, {
+        let mut abort = Abort(0);
+        abort.set_dapabort(true);
+        abort
+    })?;
+
+    Err(ArmError::Timeout)
 }
 
 fn clear_overrun<P: DebugProbe + RawProtocolIo + JTAGAccess>(
     probe: &mut P,
 ) -> Result<(), ArmError> {
     // Build ABORT transfer.
-    let mut abort = Abort(0);
-    abort.set_orunerrclr(true);
-    let mut transfer = DapTransfer::write(PortType::DebugPort, Abort::ADDRESS, abort.into());
+    write_dp_register(probe, {
+        let mut abort = Abort(0);
+        abort.set_orunerrclr(true);
+        abort.set_stkerrclr(true);
+        abort
+    })
+}
+
+fn write_dp_register<P: DebugProbe + RawProtocolIo + JTAGAccess, R: DpRegister>(
+    probe: &mut P,
+    register: R,
+) -> Result<(), ArmError> {
+    let mut transfer = DapTransfer::write(PortType::DebugPort, R::ADDRESS, register.into());
 
     let idle_cycles = std::cmp::max(1, probe.swd_settings().num_idle_cycles_between_writes);
     transfer.idle_cycles_after = idle_cycles;
