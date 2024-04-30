@@ -2490,6 +2490,20 @@ variants:
           is_boot_memory: true
           cores:
             - main
+      - !Nvm
+          range:
+            start: 0x08080000
+            end: 0x08081800
+          is_boot_memory: false
+          cores:
+            - main
+      - !Nvm
+          range:
+            start: 0x1FF80000
+            end: 0x1FF80020
+          is_boot_memory: false
+          cores:
+            - main
     flash_algorithms:
       - stm32l0xx_192
       - stm32l07_8x_eeprom
@@ -2515,6 +2529,20 @@ variants:
             start: 0x8000000
             end: 0x8030000
           is_boot_memory: true
+          cores:
+            - main
+      - !Nvm
+          range:
+            start: 0x08080000
+            end: 0x08081800
+          is_boot_memory: false
+          cores:
+            - main
+      - !Nvm
+          range:
+            start: 0x1FF80000
+            end: 0x1FF80020
+          is_boot_memory: false
           cores:
             - main
     flash_algorithms:
@@ -4408,7 +4436,7 @@ flash_algorithms:
     flash_properties:
       address_range:
         start: 0x1ff80000
-        end: 0x1ff80014
+        end: 0x1ff80020
       page_size: 0xc
       erased_byte_value: 0xff
       program_page_timeout: 0xbb8
