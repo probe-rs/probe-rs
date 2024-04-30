@@ -319,32 +319,46 @@ fn perform_swd_transfers<P: RawProtocolIo>(
 
     let result = probe.swd_io(io_sequence.direction_bits(), io_sequence.io_bits())?;
 
-    let mut read_index = 0;
+    let mut result_bits = &result[..];
 
     for (i, transfer) in transfers.iter_mut().enumerate() {
-        let response_direction = transfer.direction;
-        let additional_idle_cycles_after = transfer.idle_cycles_after;
-
-        let response = parse_swd_response(&result[read_index..], response_direction);
+        // There are two idle bits and eight request bits, the response comes directly after.
+        let response_offset = 2 + 8;
+        let response = parse_swd_response(&result_bits[response_offset..]);
 
         probe.probe_statistics().report_swd_response(&response);
 
-        tracing::debug!("Transfer result {}: {:x?}", i, response);
-
         transfer.status = match response {
-            Ok(val) => {
-                if transfer.direction == TransferDirection::Read {
-                    transfer.value = val;
-                }
+            Ok(response_bits) if transfer.direction == TransferDirection::Read => {
+                // Parity-check and extract the response
+                let parity_bit = response_bits[32] as u32;
 
-                TransferStatus::Ok
+                // Take the data bits and convert them into a 32bit int.
+                let value = bits_to_byte(response_bits.iter().copied());
+
+                // Make sure the parity is correct.
+                if value.count_ones() % 2 == parity_bit {
+                    tracing::trace!("DAP read {}.", value);
+                    transfer.value = value;
+                    TransferStatus::Ok
+                } else {
+                    TransferStatus::Failed(DapError::IncorrectParity)
+                }
             }
+
+            Ok(_) => TransferStatus::Ok,
+
             Err(e) => TransferStatus::Failed(e),
         };
 
-        read_index += response_length(response_direction);
+        tracing::debug!(
+            "Transfer result {}: {:?} {:x?}",
+            i,
+            transfer.status,
+            transfer.value
+        );
 
-        read_index += additional_idle_cycles_after;
+        result_bits = &result_bits[transfer.swd_response_length()..];
     }
 
     Ok(())
@@ -646,12 +660,25 @@ impl DapTransfer {
             && self.address == RdBuff::ADDRESS
             && self.direction == TransferDirection::Read
     }
+
+    fn swd_response_length(&self) -> usize {
+        self.direction.swd_response_length() + self.idle_cycles_after
+    }
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 enum TransferDirection {
     Read,
     Write,
+}
+
+impl TransferDirection {
+    const fn swd_response_length(self) -> usize {
+        match self {
+            TransferDirection::Read => 8 + 2 + 3 + 32 + 1 + 2,
+            TransferDirection::Write => 8 + 2 + 3 + 2 + 32 + 1,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -819,14 +846,7 @@ fn build_swd_transfer(port: PortType, direction: TransferType, address: u8) -> I
     sequence
 }
 
-fn response_length(direction: TransferDirection) -> usize {
-    match direction {
-        TransferDirection::Read => 2 + 8 + 3 + 32 + 1 + 2,
-        TransferDirection::Write => 2 + 8 + 3 + 2 + 32 + 1,
-    }
-}
-
-fn parse_swd_response(response: &[bool], direction: TransferDirection) -> Result<u32, DapError> {
+fn parse_swd_response(resp: &[bool]) -> Result<&[bool], DapError> {
     // We need to discard the output bits that correspond to the part of the request
     // in which the probe is driving SWDIO. Additionally, there is a phase shift that
     // happens when ownership of the SWDIO line is transfered to the device.
@@ -837,41 +857,19 @@ fn parse_swd_response(response: &[bool], direction: TransferDirection) -> Result
     // which is why we don't discard the turnaround bit. It actually contains the
     // first ack bit.
 
-    // There are two idle bits and eight request bits,
-    // the acknowledge comes directly after.
-    let ack_offset = 2 + 8;
-
-    let (_request_bits, response) = response.split_at(ack_offset);
-    let (ack, value_bits) = response.split_at(3);
-
     // When all bits are high, this means we didn't get any response from the
     // target, which indicates a protocol error.
-    match (ack[0], ack[1], ack[2]) {
+    match (resp[0], resp[1], resp[2]) {
         (true, true, true) => Err(DapError::NoAcknowledge),
         (_, true, _) => Err(DapError::WaitResponse),
         (_, _, true) => Err(DapError::FaultResponse),
-        // Extract value, if it is a read
-        (true, _, _) if direction == TransferDirection::Read => {
-            let parity_bit = value_bits[32];
-
-            // Take the data bits and convert them into a 32bit int.
-            let value = bits_to_byte(value_bits.iter().copied());
-
-            // Make sure the parity is correct.
-            if value.count_ones() % 2 == parity_bit as u32 {
-                tracing::trace!("DAP read {}.", value);
-                Ok(value)
-            } else {
-                Err(DapError::IncorrectParity)
-            }
-        }
-        // Write, don't parse response
-        (true, _, _) => Ok(0),
+        // Successful transfer
+        (true, _, _) => Ok(&resp[3..]),
         _ => {
             // Invalid response
             tracing::debug!(
                 "Unexpected response from target, does not conform to SWD specfication (ack={:?})",
-                ack
+                resp
             );
             Err(DapError::SwdProtocol)
         }
