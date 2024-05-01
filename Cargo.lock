@@ -303,9 +303,9 @@ checksum = "9d297deb1925b89f2ccc13d7635fa0714f12c87adce1c75356b39ca9b7178567"
 
 [[package]]
 name = "base64"
-version = "0.22.0"
+version = "0.22.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9475866fec1451be56a3c2400fd081ff546538961565ccb5b7142cbd22bc7a51"
+checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 
 [[package]]
 name = "base64ct"
@@ -1227,7 +1227,7 @@ version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "37f8412607744257a0acefddb040ba675ffa66530889e318ded82ad61125c024"
 dependencies = [
- "base64 0.22.0",
+ "base64 0.22.1",
  "bytemuck",
  "esp-idf-part",
  "flate2",
@@ -1563,9 +1563,9 @@ dependencies = [
 
 [[package]]
 name = "goblin"
-version = "0.8.0"
+version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb07a4ffed2093b118a525b1d8f5204ae274faed5604537caf7135d0f18d9887"
+checksum = "1b363a30c165f666402fe6a3024d3bec7ebc898f96a4a23bd1c99f8dbf3f4f47"
 dependencies = [
  "log",
  "plain",
@@ -2522,9 +2522,9 @@ checksum = "830b246a0e5f20af87141b25c173cd1b609bd7779a4617d6ec582abaf90870f3"
 
 [[package]]
 name = "nusb"
-version = "0.1.8"
+version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dccb3bb9c89ba9393f2f723da29221a39a3310c3950fbe5896eec05daa82753e"
+checksum = "66354494bb95f979c053fd988dfeb7c9f1cc8c91544139bce2b3d1765be9571a"
 dependencies = [
  "atomic-waker",
  "core-foundation",
@@ -2542,15 +2542,6 @@ name = "object"
 version = "0.32.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a6a622008b6e321afc04970976f62ee297fdbaa6f95318ca343e3eebb9648441"
-dependencies = [
- "memchr",
-]
-
-[[package]]
-name = "object"
-version = "0.34.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d7090bae93f8585aad99e595b7073c5de9ba89fbd6b4e9f0cdd7a10177273ac8"
 dependencies = [
  "memchr",
 ]
@@ -2604,9 +2595,9 @@ checksum = "bb813b8af86854136c6922af0598d719255ecb2179515e6e7730d468f05c9cae"
 
 [[package]]
 name = "parking_lot"
-version = "0.12.1"
+version = "0.12.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3742b2c103b9f06bc9fff0a37ff4912935851bee6d36f3c02bcc755bcfec228f"
+checksum = "7e4af0ca4f6caed20e900d564c242b8e5d4903fdacf31d3daf527b66fe6f42fb"
 dependencies = [
  "lock_api",
  "parking_lot_core",
@@ -2877,7 +2868,7 @@ dependencies = [
 name = "probe-rs-target"
 version = "0.23.0"
 dependencies = [
- "base64 0.22.0",
+ "base64 0.22.1",
  "jep106",
  "serde",
 ]
@@ -2889,7 +2880,7 @@ dependencies = [
  "addr2line 0.22.0",
  "ansi-parser",
  "anyhow",
- "base64 0.22.0",
+ "base64 0.22.1",
  "byte-unit",
  "bytesize",
  "capstone",
@@ -2904,7 +2895,7 @@ dependencies = [
  "docsplay",
  "dunce",
  "figment",
- "gimli 0.28.1",
+ "gimli 0.29.0",
  "git-version",
  "goblin",
  "indicatif",
@@ -2914,7 +2905,7 @@ dependencies = [
  "jep106",
  "libtest-mimic",
  "num-traits",
- "object 0.34.0",
+ "object 0.35.0",
  "once_cell",
  "parking_lot",
  "parse_int",
@@ -3239,7 +3230,7 @@ version = "0.12.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "566cafdd92868e0939d3fb961bd0dc25fcfaaed179291093b3d43e6b3150ea10"
 dependencies = [
- "base64 0.22.0",
+ "base64 0.22.1",
  "bytes",
  "futures-core",
  "futures-util",
@@ -3454,7 +3445,7 @@ version = "2.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "29993a25686778eb88d4189742cd713c9bce943bc54251a33509dc63cbacf73d"
 dependencies = [
- "base64 0.22.0",
+ "base64 0.22.1",
  "rustls-pki-types",
 ]
 
