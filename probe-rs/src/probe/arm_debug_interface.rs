@@ -932,11 +932,11 @@ pub trait RawProtocolIo {
 
 impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for Probe {
     fn raw_read_register(&mut self, port: PortType, address: u8) -> Result<u32, ArmError> {
-        let mut transfers = [DapTransfer::read(port, address)];
-        perform_transfers(self, &mut transfers)?;
+        let mut transfer = DapTransfer::read(port, address);
+        perform_transfers(self, std::slice::from_mut(&mut transfer))?;
 
-        match transfers[0].status {
-            TransferStatus::Ok => Ok(transfers[0].value),
+        match transfer.status {
+            TransferStatus::Ok => Ok(transfer.value),
             TransferStatus::Pending => {
                 panic!("Unexpected transfer state after reading register. This is a bug!");
             }
@@ -991,9 +991,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
 
         for (i, result) in transfers.iter().enumerate() {
             match result.status {
-                TransferStatus::Ok => {
-                    values[i] = result.value;
-                }
+                TransferStatus::Ok => values[i] = result.value,
                 TransferStatus::Failed(err) => {
                     tracing::warn!(
                         "Error in access {}/{} of block access: {:?}",
@@ -1019,11 +1017,11 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
         address: u8,
         value: u32,
     ) -> Result<(), ArmError> {
-        let mut transfers = [DapTransfer::write(port, address, value)];
+        let mut transfer = DapTransfer::write(port, address, value);
 
-        perform_transfers(self, &mut transfers)?;
+        perform_transfers(self, std::slice::from_mut(&mut transfer))?;
 
-        match transfers[0].status {
+        match transfer.status {
             TransferStatus::Ok => Ok(()),
             TransferStatus::Pending => {
                 panic!("Unexpected transfer state after writing register. This is a bug!");
