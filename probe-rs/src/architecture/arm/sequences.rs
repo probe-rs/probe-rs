@@ -597,7 +597,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
 
             let start = Instant::now();
             let mut timeout = true;
-            while start.elapsed() < Duration::from_micros(100_0000) {
+            while start.elapsed() < Duration::from_micros(1_000_000) {
                 let ctrl = interface.read_dp_register::<Ctrl>(dp)?;
                 if ctrl.csyspwrupack() && ctrl.cdbgpwrupack() {
                     timeout = false;
