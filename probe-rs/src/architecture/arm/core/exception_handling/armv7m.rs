@@ -112,7 +112,7 @@ impl Cfsr {
 
         Ok(Some(if self.bf_address_register_valid() {
             format!(
-                "BusFault <Cause: {source} at location: {:#010x}>",
+                "BusFault <Cause: {source}> at location: {:#010x}",
                 memory.read_word_32(Bfar::get_mmio_address())?
             )
         } else {
