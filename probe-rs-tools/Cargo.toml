@@ -20,7 +20,7 @@ default-run = "probe-rs"
 anyhow = { workspace = true }
 base64 = "0.22"
 docsplay = { workspace = true }
-gimli = { version = "0.28", default-features = false, features = [
+gimli = { version = "0.29", default-features = false, features = [
     "endian-reader",
     "read",
     "std",
@@ -28,7 +28,7 @@ gimli = { version = "0.28", default-features = false, features = [
 jep106 = "0.2"
 once_cell = "1"
 num-traits = "0.2"
-object = { version = "0.34", default-features = false, features = [
+object = { version = "0.35", default-features = false, features = [
     "elf",
     "read_core",
     "std",
@@ -68,7 +68,7 @@ rand = { version = "0.8" }
 rustyline = { version = "14" }
 sanitize-filename = { version = "0.5" }
 schemafy = { version = "0.6" }
-serde_json = { version = "1.0.115" }
+serde_json = { version = "1.0.116" }
 signal-hook = "0.3"
 svd-parser = { version = "0.14", features = ["expand"] }
 termtree = { version = "0.4" }
@@ -90,8 +90,8 @@ ansi-parser = "0.9.0"
 probe-rs = { version = "0.23.0", path = "../probe-rs", features = [
     "gdb-server",
 ] }
-parking_lot = "0.12.1"
-cargo-config2 = "0.1.24"
+parking_lot = "0.12.2"
+cargo-config2 = "0.1.26"
 clap_complete = "4.5.2"
 regex = "1.10.4"
 

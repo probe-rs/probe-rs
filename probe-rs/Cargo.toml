@@ -58,7 +58,7 @@ object = { version = "0.35", default-features = false, features = [
     "std",
 ] }
 paste = "1"
-nusb = { version = "0.1.8" }
+nusb = { version = "0.1.9" }
 futures-lite = "2"
 async-io = "2"
 scroll = "0.12"
@@ -85,7 +85,7 @@ probe-rs-target = { workspace = true }
 # gdb server
 gdbstub = { version = "0.7", optional = true }
 itertools = { version = "0.12", optional = true }
-parking_lot = { version = "0.12.1", optional = true }
+parking_lot = { version = "0.12.2", optional = true }
 
 [build-dependencies]
 bincode = "1"
