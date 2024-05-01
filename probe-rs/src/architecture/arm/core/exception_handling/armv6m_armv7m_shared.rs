@@ -219,7 +219,7 @@ pub(crate) fn raw_exception(
             .get_register_value_by_role(&crate::core::RegisterRole::ReturnAddress)?
             == 0xFFFF_FFFF
     {
-        // Although the exception number is 0, for the purposes of unwind, this treated as a reset exception.
+        // Although the exception number is 0, for the purposes of unwind, this is treated as a reset exception.
         // Based on the sections, "The special-purpose program status registers, xPSR"
         // and "Reset Behaviour" in the ARMv7-m Architecture Reference Manual,
         // - "On reset, the processor is in Thread mode and ...
