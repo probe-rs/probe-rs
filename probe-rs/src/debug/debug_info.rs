@@ -541,11 +541,7 @@ impl DebugInfo {
         // Unwind [StackFrame]'s for as long as we can unwind a valid PC value.
         'unwind: while let Some(frame_pc_register_value) =
             unwind_registers.get_program_counter().and_then(|pc| {
-                if pc.is_zero() | pc.is_max_value() {
-                    None
-                } else {
-                    pc.value
-                }
+                (pc.is_zero() | pc.is_max_value()).and_then(|| pc.value)
             })
         {
             // PART 0: The first step is to determine the exception context for the current PC.
