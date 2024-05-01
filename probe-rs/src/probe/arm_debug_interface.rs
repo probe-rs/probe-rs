@@ -92,9 +92,6 @@ pub struct ProbeStatistics {
 
     /// Number of SWD FAULT responses encountered.
     num_faults: usize,
-
-    /// Number of line resets executed.
-    num_line_resets: usize,
 }
 
 impl ProbeStatistics {
@@ -117,10 +114,6 @@ impl ProbeStatistics {
             // Other errors are not counted right now.
             _ => (),
         }
-    }
-
-    pub fn report_line_reset(&mut self) {
-        self.num_line_resets += 1;
     }
 }
 
