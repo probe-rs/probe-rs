@@ -75,7 +75,7 @@ impl ExceptionReason {
     ) -> Result<bool, Error> {
         let is_precise = match self {
             ExceptionReason::HardFault => {
-                // This should be true for syncrhonous exceptions, and false otherwise.
+                // This should be true for synchronous exceptions, and false otherwise.
                 // TODO: Figure out how to differentiate that on ARMv6-M.
                 true
             }
