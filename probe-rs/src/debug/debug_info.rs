@@ -551,7 +551,7 @@ impl DebugInfo {
             // PART 0: The first step is to determine the exception context for the current PC.
             // - If we are at an exception hanlder frame:
             //   - Create a "handler" stackframe that can be inserted into the stack_frames list,
-            //     in stead of "unknown function @ address";
+            //     instead of "unknown function @ address";
             //   - Overwrite the unwind registers with the exception context.
             // - If for some reason we cannot determine the exception context, we silently continue with the rest of the unwind.
             // At worst, the unwind will be able to unwind the stack to the frame of the most recent exception handler.
