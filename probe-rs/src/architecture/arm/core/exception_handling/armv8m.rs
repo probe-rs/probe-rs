@@ -1,8 +1,8 @@
 use crate::{
     core::{ExceptionInfo, ExceptionInterface},
-    debug::DebugRegisters,
+    debug::{get_object_reference, DebugInfo, DebugRegisters, StackFrame},
     memory::MemoryInterface,
-    memory_mapped_bitfield_register, Error, MemoryMappedRegister, RegisterValue,
+    memory_mapped_bitfield_register, Error, MemoryMappedRegister, RegisterRole, RegisterValue,
 };
 use bitfield::bitfield;
 
@@ -307,9 +307,9 @@ impl ExceptionReason {
     /// HFSR, CFSR, and SFSR registers.
     fn expanded_description(&self, memory: &mut dyn MemoryInterface) -> Result<String, Error> {
         match self {
-            ExceptionReason::ThreadMode => Ok("No active exception.".to_string()),
-            ExceptionReason::Reset => Ok("Reset handler.".to_string()),
-            ExceptionReason::NonMaskableInterrupt => Ok("Non maskable interrupt.".to_string()),
+            ExceptionReason::ThreadMode => Ok("<No active exception>".to_string()),
+            ExceptionReason::Reset => Ok("Reset".to_string()),
+            ExceptionReason::NonMaskableInterrupt => Ok("NMI".to_string()),
             ExceptionReason::HardFault => {
                 let hfsr = Hfsr(memory.read_word_32(Hfsr::get_mmio_address())?);
                 let description = if hfsr.debug_event() {
@@ -331,7 +331,7 @@ impl ExceptionReason {
                 } else {
                     "Undeterminable".to_string()
                 };
-                Ok(format!("HardFault handler. Cause: {description}."))
+                Ok(format!("HardFault <Cause: {description}>"))
             }
             ExceptionReason::MemoryManagementFault => {
                 if let Some(source) = Cfsr(memory.read_word_32(Cfsr::get_mmio_address())?)
@@ -339,7 +339,7 @@ impl ExceptionReason {
                 {
                     Ok(source)
                 } else {
-                    Ok("UsageFault handler. Cause: Unknown.".to_string())
+                    Ok("MemManage Fault <Cause: Unknown>".to_string())
                 }
             }
             ExceptionReason::BusFault => {
@@ -348,7 +348,7 @@ impl ExceptionReason {
                 {
                     Ok(source)
                 } else {
-                    Ok("BusFault handler. Cause: Unknown.".to_string())
+                    Ok("BusFault <Cause: Unknown>".to_string())
                 }
             }
             ExceptionReason::UsageFault => {
@@ -357,7 +357,7 @@ impl ExceptionReason {
                 {
                     Ok(source)
                 } else {
-                    Ok("MemManage Fault handler. Cause: Unknown.".to_string())
+                    Ok("UsageFault <Cause: Unknown>".to_string())
                 }
             }
             ExceptionReason::SecureFault => {
@@ -366,16 +366,16 @@ impl ExceptionReason {
                 {
                     Ok(source)
                 } else {
-                    Ok("SecureFault handler. Cause: Unknown.".to_string())
+                    Ok("SecureFault <Cause: Unknown>".to_string())
                 }
             }
-            ExceptionReason::SVCall => Ok("Supervisor call.".to_string()),
-            ExceptionReason::DebugMonitor => Ok("Synchronous Debug monitor fault.".to_string()),
-            ExceptionReason::PendSV => Ok("Pending Supervisor call.".to_string()),
-            ExceptionReason::SysTick => Ok("Systick handler.".to_string()),
-            ExceptionReason::ExternalInterrupt(exti) => Ok(format!("External interrupt #{exti}.")),
+            ExceptionReason::SVCall => Ok("SVC".to_string()),
+            ExceptionReason::DebugMonitor => Ok("DebugMonitor".to_string()),
+            ExceptionReason::PendSV => Ok("PendSV".to_string()),
+            ExceptionReason::SysTick => Ok("SysTick".to_string()),
+            ExceptionReason::ExternalInterrupt(exti) => Ok(format!("External interrupt #{exti}")),
             ExceptionReason::Reserved => {
-                Ok("Reserved by the ISA, and not usable by software.".to_string())
+                Ok("<Reserved by the ISA, and not usable by software>".to_string())
             }
         }
     }
@@ -387,6 +387,7 @@ impl ExceptionInterface for ArmV8MExceptionHandler {
         &self,
         memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &crate::debug::DebugRegisters,
+        _raw_exception: u32,
     ) -> Result<crate::debug::DebugRegisters, crate::Error> {
         let mut calling_stack_registers = vec![0u32; EXCEPTION_STACK_REGISTERS.len()];
         let stack_frame_return_address: u32 = get_stack_frame_return_address(stackframe_registers)?;
@@ -434,11 +435,10 @@ impl ExceptionInterface for ArmV8MExceptionHandler {
         Ok(calling_frame_registers)
     }
 
-    fn exception_description(
+    fn raw_exception(
         &self,
-        memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &crate::debug::DebugRegisters,
-    ) -> Result<String, crate::Error> {
+    ) -> Result<u32, Error> {
         // Load the provided xPSR register as a bitfield.
         let exception_number = Xpsr(
             stackframe_registers
@@ -447,25 +447,54 @@ impl ExceptionInterface for ArmV8MExceptionHandler {
         )
         .exception_number();
 
-        Ok(format!(
-            "{:?}",
-            ExceptionReason::from(exception_number).expanded_description(memory_interface)?
-        ))
+        Ok(exception_number)
+    }
+
+    fn exception_description(
+        &self,
+        raw_exception: u32,
+        memory_interface: &mut dyn MemoryInterface,
+    ) -> Result<String, crate::Error> {
+        ExceptionReason::from(raw_exception).expanded_description(memory_interface)
     }
 
     fn exception_details(
         &self,
         memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &DebugRegisters,
+        _debug_info: &DebugInfo,
     ) -> Result<Option<ExceptionInfo>, Error> {
         let stack_frame_return_address: u32 = get_stack_frame_return_address(stackframe_registers)?;
         if ExcReturn(stack_frame_return_address).is_exception_flag() == 0xFF {
             // This is an exception frame.
 
+            let raw_exception = self.raw_exception(stackframe_registers)?;
+            let description = self.exception_description(raw_exception, memory_interface)?;
+            let registers = self.calling_frame_registers(
+                memory_interface,
+                stackframe_registers,
+                raw_exception,
+            )?;
+
+            let exception_frame_pc =
+                registers.get_register_value_by_role(&RegisterRole::ProgramCounter)?;
+
+            let handler_frame = StackFrame {
+                id: get_object_reference(),
+                function_name: description.clone(),
+                source_location: None,
+                registers,
+                pc: RegisterValue::U32(exception_frame_pc as u32),
+                frame_base: None,
+                is_inlined: false,
+                local_variables: None,
+                canonical_frame_address: None,
+            };
+
             Ok(Some(ExceptionInfo {
-                description: self.exception_description(memory_interface, stackframe_registers)?,
-                calling_frame_registers: self
-                    .calling_frame_registers(memory_interface, stackframe_registers)?,
+                raw_exception,
+                description,
+                handler_frame,
             }))
         } else {
             // This is a normal function return.

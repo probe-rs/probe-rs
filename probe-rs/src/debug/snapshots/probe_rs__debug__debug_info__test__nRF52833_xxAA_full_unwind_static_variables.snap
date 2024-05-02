@@ -5,23 +5,12 @@ expression: static_variables
 Child Variables:
   name: StaticScopeRoot
   type_name: Unknown
-  value: "<unknown> {\n\t<&u16 as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<&nrf_hal_common::pwm::Seq as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<void::Void as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<&usize as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<[u8; 16] as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<[u8; 8] as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<u8 as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<&[u8; 8] as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<&nrf52833_pac::comp::extrefsel::EXTREFSEL_A as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<usb_device::UsbDirection as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<usb_device::control::RequestType as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<usb_device::control::Recipient as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<u8 as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<u16 as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<&u16 as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<&u8 as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<&usb_device::control::Request as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<u128 as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<&u128 as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<&i128 as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<&fixed::from_str::BitExp as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<&usize as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<fixed::debug_hex::Discard as core::fmt::Write>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<usize as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<bool as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<&core::option::Option<usize> as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<core::str::error::Utf8Error as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<*const u8 as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<usize as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<&core::marker::PhantomData<&[u8]> as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<fixed::bytes::Bytes as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<&usize as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<fixed::bytes::DigitsUnds as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<&u128 as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<core::num::nonzero::NonZeroU32 as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<&u8 as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<bool as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<fixed::bytes::DigitsExp as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<&core::option::Option<fixed::from_str::BitExp> as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<&fixed::from_str::ParseErrorKind as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<cortex_m_rt::{impl#1}::fmt::Hex as core::fmt::Debug>::{vtable}: <cortex_m_rt::{impl#1}::fmt::Hex as core::fmt::Debug>::{vtable_type} = <cortex_m_rt::{impl#1}::fmt::Hex as core::fmt::Debug>::{vtable_type} @ 0x00005048,\n\t<&cortex_m::peripheral::scb::Exception as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<&u8 as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<&u32 as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<&u8 as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<&&mut [u8] as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<&&[u8] as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<&u16 as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<&u32 as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<&embedded_hal::can::id::StandardId as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<&embedded_hal::can::id::ExtendedId as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<i64 as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<i32 as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<&i16 as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<rtt_target::TerminalWriter as core::fmt::Write>::{vtable}: <rtt_target::TerminalWriter as core::fmt::Write>::{vtable_type} = <rtt_target::TerminalWriter as core::fmt::Write>::{vtable_type} @ 0x00005914,\n\t<rtt_target::rtt::RttWriter as core::fmt::Write>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<&core::marker::PhantomData<&()> as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<&bool as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >}"
+  value: "<unknown> {\n\t<void::Void as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<usize as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<&core::option::Option<u8> as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<fixed::debug_hex::Discard as core::fmt::Write>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<core::str::error::Utf8Error as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<&u8 as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<cortex_m_rt::{impl#1}::fmt::Hex as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<&(dyn core::any::Any + core::marker::Send) as core::fmt::Debug>::{vtable}: <&(dyn core::any::Any + core::marker::Send) as core::fmt::Debug>::{vtable_type} = <&(dyn core::any::Any + core::marker::Send) as core::fmt::Debug>::{vtable_type} @ 0x000069D0,\n\t<core::option::Option<&core::fmt::Arguments> as core::fmt::Debug>::{vtable}: <core::option::Option<&core::fmt::Arguments> as core::fmt::Debug>::{vtable_type} = <core::option::Option<&core::fmt::Arguments> as core::fmt::Debug>::{vtable_type} @ 0x000069E8,\n\t<&core::panic::location::Location as core::fmt::Debug>::{vtable}: <&core::panic::location::Location as core::fmt::Debug>::{vtable_type} = <&core::panic::location::Location as core::fmt::Debug>::{vtable_type} @ 0x000069F8,\n\t<bool as core::fmt::Debug>::{vtable}: <bool as core::fmt::Debug>::{vtable_type} = <bool as core::fmt::Debug>::{vtable_type} @ 0x00006A14,\n\t<&bool as core::fmt::Debug>::{vtable}: <&bool as core::fmt::Debug>::{vtable_type} = <&bool as core::fmt::Debug>::{vtable_type} @ 0x00006A38,\n\t<&&core::fmt::Arguments as core::fmt::Debug>::{vtable}: <&&core::fmt::Arguments as core::fmt::Debug>::{vtable_type} = <&&core::fmt::Arguments as core::fmt::Debug>::{vtable_type} @ 0x00006A48,\n\t<&str as core::fmt::Debug>::{vtable}: <&str as core::fmt::Debug>::{vtable_type} = <&str as core::fmt::Debug>::{vtable_type} @ 0x00006A58,\n\t<u32 as core::fmt::Debug>::{vtable}: <u32 as core::fmt::Debug>::{vtable_type} = <u32 as core::fmt::Debug>::{vtable_type} @ 0x00006A68,\n\t<&u32 as core::fmt::Debug>::{vtable}: <&u32 as core::fmt::Debug>::{vtable_type} = <&u32 as core::fmt::Debug>::{vtable_type} @ 0x00006A7C,\n\t<rtt_target::rtt::RttWriter as core::fmt::Write>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<rtt_target::TerminalWriter as core::fmt::Write>::{vtable}: <rtt_target::TerminalWriter as core::fmt::Write>::{vtable_type} = <rtt_target::TerminalWriter as core::fmt::Write>::{vtable_type} @ 0x00007210}"
   children:
     - name:
-        Namespace: nRF52833_xxAA
-      type_name: Namespace
-      value: ""
-      children:
-        - name:
-            Namespace: __cortex_m_rt_SysTick_trampoline
-          type_name: Namespace
-          value: ""
-          children:
-            - name:
-                Named: COUNT
-              type_name:
-                Base: u32
-              value: "0"
+        Named: "<void::Void as core::fmt::Debug>::{vtable}"
+      type_name: Unknown
+      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
     - name:
         Namespace: nrf_hal_common
       type_name: Namespace
@@ -49,87 +38,15 @@ Child Variables:
               type_name: Unknown
               value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
     - name:
-        Named: "<&u16 as core::fmt::Debug>::{vtable}"
+        Named: "<usize as core::fmt::Debug>::{vtable}"
       type_name: Unknown
       value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
     - name:
-        Named: "<&nrf_hal_common::pwm::Seq as core::fmt::Debug>::{vtable}"
+        Named: "<&core::option::Option<u8> as core::fmt::Debug>::{vtable}"
       type_name: Unknown
       value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
     - name:
-        Named: "<void::Void as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<&usize as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<[u8; 16] as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<[u8; 8] as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<u8 as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<&[u8; 8] as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<&nrf52833_pac::comp::extrefsel::EXTREFSEL_A as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<usb_device::UsbDirection as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<usb_device::control::RequestType as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<usb_device::control::Recipient as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<u8 as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<u16 as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<&u16 as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<&u8 as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<&usb_device::control::Request as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<u128 as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<&u128 as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<&i128 as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<&fixed::from_str::BitExp as core::fmt::Debug>::{vtable}"
+        Named: "<fixed::debug_hex::Discard as core::fmt::Write>::{vtable}"
       type_name: Unknown
       value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
     - name:
@@ -151,79 +68,11 @@ Child Variables:
               type_name: Unknown
               value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
     - name:
-        Named: "<&usize as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<fixed::debug_hex::Discard as core::fmt::Write>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<usize as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<bool as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<&core::option::Option<usize> as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
         Named: "<core::str::error::Utf8Error as core::fmt::Debug>::{vtable}"
       type_name: Unknown
       value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
     - name:
-        Named: "<*const u8 as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<usize as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<&core::marker::PhantomData<&[u8]> as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<fixed::bytes::Bytes as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<&usize as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<fixed::bytes::DigitsUnds as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<&u128 as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<core::num::nonzero::NonZeroU32 as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
         Named: "<&u8 as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<bool as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<fixed::bytes::DigitsExp as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<&core::option::Option<fixed::from_str::BitExp> as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<&fixed::from_str::ParseErrorKind as core::fmt::Debug>::{vtable}"
       type_name: Unknown
       value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
     - name:
@@ -238,13 +87,13 @@ Child Variables:
               item_type_name:
                 Base: Vector
               count: 48
-          value: "[Vector; 48] = [\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000040,\n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x40 of size 0x4)) >\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000044,\n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x44 of size 0x4)) >\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000048,\n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x48 of size 0x4)) >\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000004C,\n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x4c of size 0x4)) >\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000050,\n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x50 of size 0x4)) >\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000054,\n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x54 of size 0x4)) >\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000058,\n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x58 of size 0x4)) >\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000005C,\n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x5c of size 0x4)) >\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000060,\n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x60 of size 0x4)) >\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000064,\n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x64 of size 0x4)) >\n\t},\n\t... and 38 more]"
+          value: "[Vector; 48] = [\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000040,\n\t\t_reserved: u32 = 1633\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000044,\n\t\t_reserved: u32 = 1633\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000048,\n\t\t_reserved: u32 = 1633\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000004C,\n\t\t_reserved: u32 = 1633\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000050,\n\t\t_reserved: u32 = 1633\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000054,\n\t\t_reserved: u32 = 1633\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000058,\n\t\t_reserved: u32 = 1633\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000005C,\n\t\t_reserved: u32 = 1633\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000060,\n\t\t_reserved: u32 = 1633\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000064,\n\t\t_reserved: u32 = 1633\n\t},\n\t... and 38 more]"
           children:
             - name:
                 Named: __0
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000040,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x40 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000040,\n\t_reserved: u32 = 1633}"
               children:
                 - name:
                     Named: _handler
@@ -260,12 +109,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0x40 of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __1
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000044,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x44 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000044,\n\t_reserved: u32 = 1633}"
               children:
                 - name:
                     Named: _handler
@@ -281,12 +130,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0x44 of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __2
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000048,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x48 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000048,\n\t_reserved: u32 = 1633}"
               children:
                 - name:
                     Named: _handler
@@ -302,12 +151,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0x48 of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __3
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000004C,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x4c of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000004C,\n\t_reserved: u32 = 1633}"
               children:
                 - name:
                     Named: _handler
@@ -323,12 +172,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0x4c of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __4
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000050,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x50 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000050,\n\t_reserved: u32 = 1633}"
               children:
                 - name:
                     Named: _handler
@@ -344,12 +193,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0x50 of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __5
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000054,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x54 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000054,\n\t_reserved: u32 = 1633}"
               children:
                 - name:
                     Named: _handler
@@ -365,12 +214,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0x54 of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __6
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000058,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x58 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000058,\n\t_reserved: u32 = 1633}"
               children:
                 - name:
                     Named: _handler
@@ -386,12 +235,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0x58 of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __7
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000005C,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x5c of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000005C,\n\t_reserved: u32 = 1633}"
               children:
                 - name:
                     Named: _handler
@@ -407,12 +256,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0x5c of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __8
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000060,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x60 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000060,\n\t_reserved: u32 = 1633}"
               children:
                 - name:
                     Named: _handler
@@ -428,12 +277,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0x60 of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __9
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000064,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x64 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000064,\n\t_reserved: u32 = 1633}"
               children:
                 - name:
                     Named: _handler
@@ -449,12 +298,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0x64 of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __10
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000068,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x68 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000068,\n\t_reserved: u32 = 1633}"
               children:
                 - name:
                     Named: _handler
@@ -470,12 +319,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0x68 of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __11
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000006C,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x6c of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000006C,\n\t_reserved: u32 = 1633}"
               children:
                 - name:
                     Named: _handler
@@ -491,12 +340,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0x6c of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __12
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000070,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x70 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000070,\n\t_reserved: u32 = 1633}"
               children:
                 - name:
                     Named: _handler
@@ -512,12 +361,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0x70 of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __13
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000074,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x74 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000074,\n\t_reserved: u32 = 1633}"
               children:
                 - name:
                     Named: _handler
@@ -533,12 +382,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0x74 of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __14
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000078,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x78 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000078,\n\t_reserved: u32 = 1633}"
               children:
                 - name:
                     Named: _handler
@@ -554,12 +403,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0x78 of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __15
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000007C,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x7c of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000007C,\n\t_reserved: u32 = 1633}"
               children:
                 - name:
                     Named: _handler
@@ -575,12 +424,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0x7c of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __16
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000080,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x80 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000080,\n\t_reserved: u32 = 1633}"
               children:
                 - name:
                     Named: _handler
@@ -596,12 +445,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0x80 of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __17
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000084,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x84 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000084,\n\t_reserved: u32 = 1633}"
               children:
                 - name:
                     Named: _handler
@@ -617,12 +466,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0x84 of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __18
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000088,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x88 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000088,\n\t_reserved: u32 = 1633}"
               children:
                 - name:
                     Named: _handler
@@ -638,12 +487,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0x88 of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __19
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000008C,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x8c of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000008C,\n\t_reserved: u32 = 1633}"
               children:
                 - name:
                     Named: _handler
@@ -659,12 +508,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0x8c of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __20
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000090,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x90 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000090,\n\t_reserved: u32 = 1633}"
               children:
                 - name:
                     Named: _handler
@@ -680,12 +529,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0x90 of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __21
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000094,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x94 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000094,\n\t_reserved: u32 = 1633}"
               children:
                 - name:
                     Named: _handler
@@ -701,12 +550,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0x94 of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __22
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000098,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x98 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000098,\n\t_reserved: u32 = 1633}"
               children:
                 - name:
                     Named: _handler
@@ -722,12 +571,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0x98 of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __23
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000009C,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x9c of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000009C,\n\t_reserved: u32 = 1633}"
               children:
                 - name:
                     Named: _handler
@@ -743,12 +592,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0x9c of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __24
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000A0,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xa0 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000A0,\n\t_reserved: u32 = 1633}"
               children:
                 - name:
                     Named: _handler
@@ -764,12 +613,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0xa0 of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __25
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000A4,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xa4 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000A4,\n\t_reserved: u32 = 1633}"
               children:
                 - name:
                     Named: _handler
@@ -785,12 +634,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0xa4 of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __26
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000A8,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xa8 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000A8,\n\t_reserved: u32 = 1633}"
               children:
                 - name:
                     Named: _handler
@@ -806,12 +655,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0xa8 of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __27
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000AC,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xac of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000AC,\n\t_reserved: u32 = 1633}"
               children:
                 - name:
                     Named: _handler
@@ -827,12 +676,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0xac of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __28
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000B0,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xb0 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000B0,\n\t_reserved: u32 = 1633}"
               children:
                 - name:
                     Named: _handler
@@ -848,12 +697,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0xb0 of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __29
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000B4,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xb4 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000B4,\n\t_reserved: u32 = 1633}"
               children:
                 - name:
                     Named: _handler
@@ -869,12 +718,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0xb4 of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __30
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000B8,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xb8 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000B8,\n\t_reserved: u32 = 0}"
               children:
                 - name:
                     Named: _handler
@@ -890,12 +739,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0xb8 of size 0x4)) >"
+                  value: "0"
             - name:
                 Named: __31
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000BC,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xbc of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000BC,\n\t_reserved: u32 = 0}"
               children:
                 - name:
                     Named: _handler
@@ -911,12 +760,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0xbc of size 0x4)) >"
+                  value: "0"
             - name:
                 Named: __32
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000C0,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xc0 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000C0,\n\t_reserved: u32 = 1633}"
               children:
                 - name:
                     Named: _handler
@@ -932,12 +781,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0xc0 of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __33
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000C4,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xc4 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000C4,\n\t_reserved: u32 = 1633}"
               children:
                 - name:
                     Named: _handler
@@ -953,12 +802,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0xc4 of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __34
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000C8,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xc8 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000C8,\n\t_reserved: u32 = 1633}"
               children:
                 - name:
                     Named: _handler
@@ -974,12 +823,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0xc8 of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __35
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000CC,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xcc of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000CC,\n\t_reserved: u32 = 1633}"
               children:
                 - name:
                     Named: _handler
@@ -995,12 +844,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0xcc of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __36
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000D0,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xd0 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000D0,\n\t_reserved: u32 = 1633}"
               children:
                 - name:
                     Named: _handler
@@ -1016,12 +865,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0xd0 of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __37
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000D4,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xd4 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000D4,\n\t_reserved: u32 = 1633}"
               children:
                 - name:
                     Named: _handler
@@ -1037,12 +886,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0xd4 of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __38
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000D8,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xd8 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000D8,\n\t_reserved: u32 = 1633}"
               children:
                 - name:
                     Named: _handler
@@ -1058,12 +907,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0xd8 of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __39
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000DC,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xdc of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000DC,\n\t_reserved: u32 = 1633}"
               children:
                 - name:
                     Named: _handler
@@ -1079,12 +928,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0xdc of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __40
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000E0,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xe0 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000E0,\n\t_reserved: u32 = 1633}"
               children:
                 - name:
                     Named: _handler
@@ -1100,12 +949,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0xe0 of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __41
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000E4,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xe4 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000E4,\n\t_reserved: u32 = 0}"
               children:
                 - name:
                     Named: _handler
@@ -1121,12 +970,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0xe4 of size 0x4)) >"
+                  value: "0"
             - name:
                 Named: __42
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000E8,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xe8 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000E8,\n\t_reserved: u32 = 0}"
               children:
                 - name:
                     Named: _handler
@@ -1142,12 +991,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0xe8 of size 0x4)) >"
+                  value: "0"
             - name:
                 Named: __43
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000EC,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xec of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000EC,\n\t_reserved: u32 = 0}"
               children:
                 - name:
                     Named: _handler
@@ -1163,12 +1012,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0xec of size 0x4)) >"
+                  value: "0"
             - name:
                 Named: __44
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000F0,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xf0 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000F0,\n\t_reserved: u32 = 0}"
               children:
                 - name:
                     Named: _handler
@@ -1184,12 +1033,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0xf0 of size 0x4)) >"
+                  value: "0"
             - name:
                 Named: __45
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000F4,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xf4 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000F4,\n\t_reserved: u32 = 1633}"
               children:
                 - name:
                     Named: _handler
@@ -1205,12 +1054,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0xf4 of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __46
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000F8,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xf8 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000F8,\n\t_reserved: u32 = 0}"
               children:
                 - name:
                     Named: _handler
@@ -1226,12 +1075,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0xf8 of size 0x4)) >"
+                  value: "0"
             - name:
                 Named: __47
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000FC,\n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xfc of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000FC,\n\t_reserved: u32 = 1633}"
               children:
                 - name:
                     Named: _handler
@@ -1247,12 +1096,12 @@ Child Variables:
                     Named: _reserved
                   type_name:
                     Base: u32
-                  value: "< Probe(Other(The coredump does not include the memory for address 0xfc of size 0x4)) >"
+                  value: "1633"
         - name:
             Named: DEVICE_PERIPHERALS
           type_name:
             Base: bool
-          value: "false"
+          value: "true"
     - name:
         Namespace: cortex_m_rt
       type_name: Namespace
@@ -1280,13 +1129,13 @@ Child Variables:
               item_type_name:
                 Base: Vector
               count: 14
-          value: "[Vector; 14] = [\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000008,\n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x8 of size 0x4)) >\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000000C,\n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0xc of size 0x4)) >\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000010,\n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x10 of size 0x4)) >\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000014,\n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x14 of size 0x4)) >\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000018,\n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x18 of size 0x4)) >\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000001C,\n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x1c of size 0x4)) >\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000020,\n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x20 of size 0x4)) >\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000024,\n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x24 of size 0x4)) >\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000028,\n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x28 of size 0x4)) >\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000002C,\n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x2c of size 0x4)) >\n\t},\n\t... and 4 more]"
+          value: "[Vector; 14] = [\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000008,\n\t\treserved: usize = 1633\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000000C,\n\t\treserved: usize = 24781\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000010,\n\t\treserved: usize = 1633\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000014,\n\t\treserved: usize = 1633\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000018,\n\t\treserved: usize = 1633\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000001C,\n\t\treserved: usize = 0\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000020,\n\t\treserved: usize = 0\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000024,\n\t\treserved: usize = 0\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000028,\n\t\treserved: usize = 0\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000002C,\n\t\treserved: usize = 965\n\t},\n\t... and 4 more]"
           children:
             - name:
                 Named: __0
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000008,\n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x8 of size 0x4)) >}"
+              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000008,\n\treserved: usize = 1633}"
               children:
                 - name:
                     Named: handler
@@ -1302,12 +1151,12 @@ Child Variables:
                     Named: reserved
                   type_name:
                     Base: usize
-                  value: "< Probe(Other(The coredump does not include the memory for address 0x8 of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __1
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000000C,\n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0xc of size 0x4)) >}"
+              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000000C,\n\treserved: usize = 24781}"
               children:
                 - name:
                     Named: handler
@@ -1323,12 +1172,12 @@ Child Variables:
                     Named: reserved
                   type_name:
                     Base: usize
-                  value: "< Probe(Other(The coredump does not include the memory for address 0xc of size 0x4)) >"
+                  value: "24781"
             - name:
                 Named: __2
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000010,\n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x10 of size 0x4)) >}"
+              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000010,\n\treserved: usize = 1633}"
               children:
                 - name:
                     Named: handler
@@ -1344,12 +1193,12 @@ Child Variables:
                     Named: reserved
                   type_name:
                     Base: usize
-                  value: "< Probe(Other(The coredump does not include the memory for address 0x10 of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __3
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000014,\n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x14 of size 0x4)) >}"
+              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000014,\n\treserved: usize = 1633}"
               children:
                 - name:
                     Named: handler
@@ -1365,12 +1214,12 @@ Child Variables:
                     Named: reserved
                   type_name:
                     Base: usize
-                  value: "< Probe(Other(The coredump does not include the memory for address 0x14 of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __4
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000018,\n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x18 of size 0x4)) >}"
+              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000018,\n\treserved: usize = 1633}"
               children:
                 - name:
                     Named: handler
@@ -1386,12 +1235,12 @@ Child Variables:
                     Named: reserved
                   type_name:
                     Base: usize
-                  value: "< Probe(Other(The coredump does not include the memory for address 0x18 of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __5
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000001C,\n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x1c of size 0x4)) >}"
+              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000001C,\n\treserved: usize = 0}"
               children:
                 - name:
                     Named: handler
@@ -1407,12 +1256,12 @@ Child Variables:
                     Named: reserved
                   type_name:
                     Base: usize
-                  value: "< Probe(Other(The coredump does not include the memory for address 0x1c of size 0x4)) >"
+                  value: "0"
             - name:
                 Named: __6
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000020,\n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x20 of size 0x4)) >}"
+              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000020,\n\treserved: usize = 0}"
               children:
                 - name:
                     Named: handler
@@ -1428,12 +1277,12 @@ Child Variables:
                     Named: reserved
                   type_name:
                     Base: usize
-                  value: "< Probe(Other(The coredump does not include the memory for address 0x20 of size 0x4)) >"
+                  value: "0"
             - name:
                 Named: __7
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000024,\n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x24 of size 0x4)) >}"
+              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000024,\n\treserved: usize = 0}"
               children:
                 - name:
                     Named: handler
@@ -1449,12 +1298,12 @@ Child Variables:
                     Named: reserved
                   type_name:
                     Base: usize
-                  value: "< Probe(Other(The coredump does not include the memory for address 0x24 of size 0x4)) >"
+                  value: "0"
             - name:
                 Named: __8
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000028,\n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x28 of size 0x4)) >}"
+              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000028,\n\treserved: usize = 0}"
               children:
                 - name:
                     Named: handler
@@ -1470,12 +1319,12 @@ Child Variables:
                     Named: reserved
                   type_name:
                     Base: usize
-                  value: "< Probe(Other(The coredump does not include the memory for address 0x28 of size 0x4)) >"
+                  value: "0"
             - name:
                 Named: __9
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000002C,\n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x2c of size 0x4)) >}"
+              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000002C,\n\treserved: usize = 965}"
               children:
                 - name:
                     Named: handler
@@ -1491,12 +1340,12 @@ Child Variables:
                     Named: reserved
                   type_name:
                     Base: usize
-                  value: "< Probe(Other(The coredump does not include the memory for address 0x2c of size 0x4)) >"
+                  value: "965"
             - name:
                 Named: __10
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000030,\n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x30 of size 0x4)) >}"
+              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000030,\n\treserved: usize = 1633}"
               children:
                 - name:
                     Named: handler
@@ -1512,12 +1361,12 @@ Child Variables:
                     Named: reserved
                   type_name:
                     Base: usize
-                  value: "< Probe(Other(The coredump does not include the memory for address 0x30 of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __11
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000034,\n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x34 of size 0x4)) >}"
+              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000034,\n\treserved: usize = 0}"
               children:
                 - name:
                     Named: handler
@@ -1533,12 +1382,12 @@ Child Variables:
                     Named: reserved
                   type_name:
                     Base: usize
-                  value: "< Probe(Other(The coredump does not include the memory for address 0x34 of size 0x4)) >"
+                  value: "0"
             - name:
                 Named: __12
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000038,\n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x38 of size 0x4)) >}"
+              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000038,\n\treserved: usize = 1633}"
               children:
                 - name:
                     Named: handler
@@ -1554,12 +1403,12 @@ Child Variables:
                     Named: reserved
                   type_name:
                     Base: usize
-                  value: "< Probe(Other(The coredump does not include the memory for address 0x38 of size 0x4)) >"
+                  value: "1633"
             - name:
                 Named: __13
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000003C,\n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x3c of size 0x4)) >}"
+              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000003C,\n\treserved: usize = 947}"
               children:
                 - name:
                     Named: handler
@@ -1575,33 +1424,11 @@ Child Variables:
                     Named: reserved
                   type_name:
                     Base: usize
-                  value: "< Probe(Other(The coredump does not include the memory for address 0x3c of size 0x4)) >"
+                  value: "947"
     - name:
         Named: "<cortex_m_rt::{impl#1}::fmt::Hex as core::fmt::Debug>::{vtable}"
-      type_name:
-        Struct: "<cortex_m_rt::{impl#1}::fmt::Hex as core::fmt::Debug>::{vtable_type}"
-      value: "<cortex_m_rt::{impl#1}::fmt::Hex as core::fmt::Debug>::{vtable_type} @ 0x00005048"
-      children:
-        - name:
-            Named: drop_in_place
-          type_name:
-            Pointer: "*const ()"
-          value: "*const () @ 0x00005048"
-        - name:
-            Named: size
-          type_name:
-            Base: usize
-          value: "4"
-        - name:
-            Named: align
-          type_name:
-            Base: usize
-          value: "4"
-        - name:
-            Named: __method3
-          type_name:
-            Pointer: "*const ()"
-          value: "*const () @ 0x00005054"
+      type_name: Unknown
+      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
     - name:
         Namespace: cortex_m
       type_name: Namespace
@@ -1620,49 +1447,9 @@ Child Variables:
                 Named: TAKEN
               type_name:
                 Base: bool
-              value: "false"
+              value: "true"
     - name:
-        Named: "<&cortex_m::peripheral::scb::Exception as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<&u8 as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<&u32 as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<&u8 as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<&&mut [u8] as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<&&[u8] as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<&u16 as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<&u32 as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<&embedded_hal::can::id::StandardId as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<&embedded_hal::can::id::ExtendedId as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Namespace: common_testing_code
+        Namespace: probe_rs_debugger_test
       type_name: Namespace
       value: ""
       children:
@@ -1826,8 +1613,8 @@ Child Variables:
             - name:
                 Named: CONTROL_BLOCK
               type_name:
-                Base: "MaybeUninit<common_testing_code::setup_data_types::RttControlBlock>"
-              value: "MaybeUninit<common_testing_code::setup_data_types::RttControlBlock> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<common_testing_code::setup_data_types::RttControlBlock> = ManuallyDrop<common_testing_code::setup_data_types::RttControlBlock> @ 0x20000078}"
+                Base: "MaybeUninit<probe_rs_debugger_test::setup_data_types::RttControlBlock>"
+              value: "MaybeUninit<probe_rs_debugger_test::setup_data_types::RttControlBlock> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<probe_rs_debugger_test::setup_data_types::RttControlBlock> = ManuallyDrop<probe_rs_debugger_test::setup_data_types::RttControlBlock> @ 0x20000074}"
               children:
                 - name:
                     Named: uninit
@@ -1837,20 +1624,20 @@ Child Variables:
                 - name:
                     Named: value
                   type_name:
-                    Struct: "ManuallyDrop<common_testing_code::setup_data_types::RttControlBlock>"
-                  value: "ManuallyDrop<common_testing_code::setup_data_types::RttControlBlock> @ 0x20000078"
+                    Struct: "ManuallyDrop<probe_rs_debugger_test::setup_data_types::RttControlBlock>"
+                  value: "ManuallyDrop<probe_rs_debugger_test::setup_data_types::RttControlBlock> @ 0x20000074"
                   children:
                     - name:
                         Named: value
                       type_name:
                         Struct: RttControlBlock
-                      value: RttControlBlock @ 0x20000078
+                      value: RttControlBlock @ 0x20000074
                       children:
                         - name:
                             Named: header
                           type_name:
                             Struct: RttHeader
-                          value: RttHeader @ 0x20000078
+                          value: RttHeader @ 0x20000074
                           children:
                             - name:
                                 Named: id
@@ -1958,19 +1745,19 @@ Child Variables:
                               item_type_name:
                                 Struct: RttChannel
                               count: 2
-                          value: "[RttChannel; 2] = [\n\tRttChannel @ 0x20000090,\n\tRttChannel @ 0x200000A8]"
+                          value: "[RttChannel; 2] = [\n\tRttChannel @ 0x2000008C,\n\tRttChannel @ 0x200000A4]"
                           children:
                             - name:
                                 Named: __0
                               type_name:
                                 Struct: RttChannel
-                              value: RttChannel @ 0x20000090
+                              value: RttChannel @ 0x2000008C
                               children:
                                 - name:
                                     Named: name
                                   type_name:
                                     Pointer: "*const u8"
-                                  value: "*const u8 @ 0x20000090"
+                                  value: "*const u8 @ 0x2000008C"
                                   children:
                                     - name:
                                         Named: "*name"
@@ -1981,7 +1768,7 @@ Child Variables:
                                     Named: buffer
                                   type_name:
                                     Pointer: "*mut u8"
-                                  value: "*mut u8 @ 0x20000094"
+                                  value: "*mut u8 @ 0x20000090"
                                   children:
                                     - name:
                                         Named: "*buffer"
@@ -1995,6 +1782,23 @@ Child Variables:
                                   value: "1024"
                                 - name:
                                     Named: write
+                                  type_name:
+                                    Struct: AtomicUsize
+                                  value: AtomicUsize @ 0x20000098
+                                  children:
+                                    - name:
+                                        Named: v
+                                      type_name:
+                                        Struct: UnsafeCell<usize>
+                                      value: UnsafeCell<usize> @ 0x20000098
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Base: usize
+                                          value: "363"
+                                - name:
+                                    Named: read
                                   type_name:
                                     Struct: AtomicUsize
                                   value: AtomicUsize @ 0x2000009C
@@ -2011,7 +1815,7 @@ Child Variables:
                                             Base: usize
                                           value: "363"
                                 - name:
-                                    Named: read
+                                    Named: flags
                                   type_name:
                                     Struct: AtomicUsize
                                   value: AtomicUsize @ 0x200000A0
@@ -2026,35 +1830,18 @@ Child Variables:
                                             Named: value
                                           type_name:
                                             Base: usize
-                                          value: "363"
-                                - name:
-                                    Named: flags
-                                  type_name:
-                                    Struct: AtomicUsize
-                                  value: AtomicUsize @ 0x200000A4
-                                  children:
-                                    - name:
-                                        Named: v
-                                      type_name:
-                                        Struct: UnsafeCell<usize>
-                                      value: UnsafeCell<usize> @ 0x200000A4
-                                      children:
-                                        - name:
-                                            Named: value
-                                          type_name:
-                                            Base: usize
                                           value: "1"
                             - name:
                                 Named: __1
                               type_name:
                                 Struct: RttChannel
-                              value: RttChannel @ 0x200000A8
+                              value: RttChannel @ 0x200000A4
                               children:
                                 - name:
                                     Named: name
                                   type_name:
                                     Pointer: "*const u8"
-                                  value: "*const u8 @ 0x200000A8"
+                                  value: "*const u8 @ 0x200000A4"
                                   children:
                                     - name:
                                         Named: "*name"
@@ -2065,7 +1852,7 @@ Child Variables:
                                     Named: buffer
                                   type_name:
                                     Pointer: "*mut u8"
-                                  value: "*mut u8 @ 0x200000AC"
+                                  value: "*mut u8 @ 0x200000A8"
                                   children:
                                     - name:
                                         Named: "*buffer"
@@ -2079,6 +1866,23 @@ Child Variables:
                                   value: "1024"
                                 - name:
                                     Named: write
+                                  type_name:
+                                    Struct: AtomicUsize
+                                  value: AtomicUsize @ 0x200000B0
+                                  children:
+                                    - name:
+                                        Named: v
+                                      type_name:
+                                        Struct: UnsafeCell<usize>
+                                      value: UnsafeCell<usize> @ 0x200000B0
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Base: usize
+                                          value: "0"
+                                - name:
+                                    Named: read
                                   type_name:
                                     Struct: AtomicUsize
                                   value: AtomicUsize @ 0x200000B4
@@ -2095,7 +1899,7 @@ Child Variables:
                                             Base: usize
                                           value: "0"
                                 - name:
-                                    Named: read
+                                    Named: flags
                                   type_name:
                                     Struct: AtomicUsize
                                   value: AtomicUsize @ 0x200000B8
@@ -2105,23 +1909,6 @@ Child Variables:
                                       type_name:
                                         Struct: UnsafeCell<usize>
                                       value: UnsafeCell<usize> @ 0x200000B8
-                                      children:
-                                        - name:
-                                            Named: value
-                                          type_name:
-                                            Base: usize
-                                          value: "0"
-                                - name:
-                                    Named: flags
-                                  type_name:
-                                    Struct: AtomicUsize
-                                  value: AtomicUsize @ 0x200000BC
-                                  children:
-                                    - name:
-                                        Named: v
-                                      type_name:
-                                        Struct: UnsafeCell<usize>
-                                      value: UnsafeCell<usize> @ 0x200000BC
                                       children:
                                         - name:
                                             Named: value
@@ -2140,7 +1927,7 @@ Child Variables:
                 Named: _RTT_CHANNEL_BUFFER
               type_name:
                 Base: "MaybeUninit<[u8; 1024]>"
-              value: "MaybeUninit<[u8; 1024]> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<[u8; 1024]> = ManuallyDrop<[u8; 1024]> @ 0x200000C0}"
+              value: "MaybeUninit<[u8; 1024]> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<[u8; 1024]> = ManuallyDrop<[u8; 1024]> @ 0x200000BC}"
               children:
                 - name:
                     Named: uninit
@@ -2151,7 +1938,7 @@ Child Variables:
                     Named: value
                   type_name:
                     Struct: "ManuallyDrop<[u8; 1024]>"
-                  value: "ManuallyDrop<[u8; 1024]> @ 0x200000C0"
+                  value: "ManuallyDrop<[u8; 1024]> @ 0x200000BC"
                   children:
                     - name:
                         Named: value
@@ -2419,7 +2206,7 @@ Child Variables:
                 Named: _RTT_CHANNEL_BUFFER
               type_name:
                 Base: "MaybeUninit<[u8; 1024]>"
-              value: "MaybeUninit<[u8; 1024]> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<[u8; 1024]> = ManuallyDrop<[u8; 1024]> @ 0x200004C0}"
+              value: "MaybeUninit<[u8; 1024]> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<[u8; 1024]> = ManuallyDrop<[u8; 1024]> @ 0x200004BC}"
               children:
                 - name:
                     Named: uninit
@@ -2430,7 +2217,7 @@ Child Variables:
                     Named: value
                   type_name:
                     Struct: "ManuallyDrop<[u8; 1024]>"
-                  value: "ManuallyDrop<[u8; 1024]> @ 0x200004C0"
+                  value: "ManuallyDrop<[u8; 1024]> @ 0x200004BC"
                   children:
                     - name:
                         Named: value
@@ -2695,33 +2482,21 @@ Child Variables:
                           type_name: Unknown
                           value: "... and 974 more"
     - name:
-        Named: "<i64 as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<i32 as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<&i16 as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<rtt_target::TerminalWriter as core::fmt::Write>::{vtable}"
+        Named: "<&(dyn core::any::Any + core::marker::Send) as core::fmt::Debug>::{vtable}"
       type_name:
-        Struct: "<rtt_target::TerminalWriter as core::fmt::Write>::{vtable_type}"
-      value: "<rtt_target::TerminalWriter as core::fmt::Write>::{vtable_type} @ 0x00005914"
+        Struct: "<&(dyn core::any::Any + core::marker::Send) as core::fmt::Debug>::{vtable_type}"
+      value: "<&(dyn core::any::Any + core::marker::Send) as core::fmt::Debug>::{vtable_type} @ 0x000069D0"
       children:
         - name:
             Named: drop_in_place
           type_name:
             Pointer: "*const ()"
-          value: "*const () @ 0x00005914"
+          value: "*const () @ 0x000069D0"
         - name:
             Named: size
           type_name:
             Base: usize
-          value: "24"
+          value: "8"
         - name:
             Named: align
           type_name:
@@ -2731,17 +2506,219 @@ Child Variables:
             Named: __method3
           type_name:
             Pointer: "*const ()"
-          value: "*const () @ 0x00005920"
+          value: "*const () @ 0x000069DC"
+    - name:
+        Named: "<core::option::Option<&core::fmt::Arguments> as core::fmt::Debug>::{vtable}"
+      type_name:
+        Struct: "<core::option::Option<&core::fmt::Arguments> as core::fmt::Debug>::{vtable_type}"
+      value: "<core::option::Option<&core::fmt::Arguments> as core::fmt::Debug>::{vtable_type} @ 0x000069E8"
+      children:
         - name:
-            Named: __method4
+            Named: drop_in_place
           type_name:
             Pointer: "*const ()"
-          value: "*const () @ 0x00005924"
+          value: "*const () @ 0x000069E8"
         - name:
-            Named: __method5
+            Named: size
+          type_name:
+            Base: usize
+          value: "4"
+        - name:
+            Named: align
+          type_name:
+            Base: usize
+          value: "4"
+        - name:
+            Named: __method3
           type_name:
             Pointer: "*const ()"
-          value: "*const () @ 0x00005928"
+          value: "*const () @ 0x000069F4"
+    - name:
+        Named: "<&core::panic::location::Location as core::fmt::Debug>::{vtable}"
+      type_name:
+        Struct: "<&core::panic::location::Location as core::fmt::Debug>::{vtable_type}"
+      value: "<&core::panic::location::Location as core::fmt::Debug>::{vtable_type} @ 0x000069F8"
+      children:
+        - name:
+            Named: drop_in_place
+          type_name:
+            Pointer: "*const ()"
+          value: "*const () @ 0x000069F8"
+        - name:
+            Named: size
+          type_name:
+            Base: usize
+          value: "4"
+        - name:
+            Named: align
+          type_name:
+            Base: usize
+          value: "4"
+        - name:
+            Named: __method3
+          type_name:
+            Pointer: "*const ()"
+          value: "*const () @ 0x00006A04"
+    - name:
+        Named: "<bool as core::fmt::Debug>::{vtable}"
+      type_name:
+        Struct: "<bool as core::fmt::Debug>::{vtable_type}"
+      value: "<bool as core::fmt::Debug>::{vtable_type} @ 0x00006A14"
+      children:
+        - name:
+            Named: drop_in_place
+          type_name:
+            Pointer: "*const ()"
+          value: "*const () @ 0x00006A14"
+        - name:
+            Named: size
+          type_name:
+            Base: usize
+          value: "1"
+        - name:
+            Named: align
+          type_name:
+            Base: usize
+          value: "1"
+        - name:
+            Named: __method3
+          type_name:
+            Pointer: "*const ()"
+          value: "*const () @ 0x00006A20"
+    - name:
+        Named: "<&bool as core::fmt::Debug>::{vtable}"
+      type_name:
+        Struct: "<&bool as core::fmt::Debug>::{vtable_type}"
+      value: "<&bool as core::fmt::Debug>::{vtable_type} @ 0x00006A38"
+      children:
+        - name:
+            Named: drop_in_place
+          type_name:
+            Pointer: "*const ()"
+          value: "*const () @ 0x00006A38"
+        - name:
+            Named: size
+          type_name:
+            Base: usize
+          value: "4"
+        - name:
+            Named: align
+          type_name:
+            Base: usize
+          value: "4"
+        - name:
+            Named: __method3
+          type_name:
+            Pointer: "*const ()"
+          value: "*const () @ 0x00006A44"
+    - name:
+        Named: "<&&core::fmt::Arguments as core::fmt::Debug>::{vtable}"
+      type_name:
+        Struct: "<&&core::fmt::Arguments as core::fmt::Debug>::{vtable_type}"
+      value: "<&&core::fmt::Arguments as core::fmt::Debug>::{vtable_type} @ 0x00006A48"
+      children:
+        - name:
+            Named: drop_in_place
+          type_name:
+            Pointer: "*const ()"
+          value: "*const () @ 0x00006A48"
+        - name:
+            Named: size
+          type_name:
+            Base: usize
+          value: "4"
+        - name:
+            Named: align
+          type_name:
+            Base: usize
+          value: "4"
+        - name:
+            Named: __method3
+          type_name:
+            Pointer: "*const ()"
+          value: "*const () @ 0x00006A54"
+    - name:
+        Named: "<&str as core::fmt::Debug>::{vtable}"
+      type_name:
+        Struct: "<&str as core::fmt::Debug>::{vtable_type}"
+      value: "<&str as core::fmt::Debug>::{vtable_type} @ 0x00006A58"
+      children:
+        - name:
+            Named: drop_in_place
+          type_name:
+            Pointer: "*const ()"
+          value: "*const () @ 0x00006A58"
+        - name:
+            Named: size
+          type_name:
+            Base: usize
+          value: "8"
+        - name:
+            Named: align
+          type_name:
+            Base: usize
+          value: "4"
+        - name:
+            Named: __method3
+          type_name:
+            Pointer: "*const ()"
+          value: "*const () @ 0x00006A64"
+    - name:
+        Named: "<u32 as core::fmt::Debug>::{vtable}"
+      type_name:
+        Struct: "<u32 as core::fmt::Debug>::{vtable_type}"
+      value: "<u32 as core::fmt::Debug>::{vtable_type} @ 0x00006A68"
+      children:
+        - name:
+            Named: drop_in_place
+          type_name:
+            Pointer: "*const ()"
+          value: "*const () @ 0x00006A68"
+        - name:
+            Named: size
+          type_name:
+            Base: usize
+          value: "4"
+        - name:
+            Named: align
+          type_name:
+            Base: usize
+          value: "4"
+        - name:
+            Named: __method3
+          type_name:
+            Pointer: "*const ()"
+          value: "*const () @ 0x00006A74"
+    - name:
+        Named: "<&u32 as core::fmt::Debug>::{vtable}"
+      type_name:
+        Struct: "<&u32 as core::fmt::Debug>::{vtable_type}"
+      value: "<&u32 as core::fmt::Debug>::{vtable_type} @ 0x00006A7C"
+      children:
+        - name:
+            Named: drop_in_place
+          type_name:
+            Pointer: "*const ()"
+          value: "*const () @ 0x00006A7C"
+        - name:
+            Named: size
+          type_name:
+            Base: usize
+          value: "4"
+        - name:
+            Named: align
+          type_name:
+            Base: usize
+          value: "4"
+        - name:
+            Named: __method3
+          type_name:
+            Pointer: "*const ()"
+          value: "*const () @ 0x00006A88"
+    - name:
+        Named: "<rtt_target::rtt::RttWriter as core::fmt::Write>::{vtable}"
+      type_name: Unknown
+      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
     - name:
         Namespace: rtt_target
       type_name: Namespace
@@ -2756,31 +2733,31 @@ Child Variables:
                 Named: PRINT_TERMINAL
               type_name:
                 Struct: "Mutex<core::cell::RefCell<core::option::Option<rtt_target::TerminalChannel>>>"
-              value: "Mutex<core::cell::RefCell<core::option::Option<rtt_target::TerminalChannel>>> @ 0x200008C0"
+              value: "Mutex<core::cell::RefCell<core::option::Option<rtt_target::TerminalChannel>>> @ 0x200008BC"
               children:
                 - name:
                     Named: inner
                   type_name:
                     Struct: "UnsafeCell<core::cell::RefCell<core::option::Option<rtt_target::TerminalChannel>>>"
-                  value: "UnsafeCell<core::cell::RefCell<core::option::Option<rtt_target::TerminalChannel>>> @ 0x200008C0"
+                  value: "UnsafeCell<core::cell::RefCell<core::option::Option<rtt_target::TerminalChannel>>> @ 0x200008BC"
                   children:
                     - name:
                         Named: value
                       type_name:
                         Struct: "RefCell<core::option::Option<rtt_target::TerminalChannel>>"
-                      value: "RefCell<core::option::Option<rtt_target::TerminalChannel>> @ 0x200008C0"
+                      value: "RefCell<core::option::Option<rtt_target::TerminalChannel>> @ 0x200008BC"
                       children:
                         - name:
                             Named: borrow
                           type_name:
                             Struct: Cell<isize>
-                          value: Cell<isize> @ 0x200008C0
+                          value: Cell<isize> @ 0x200008BC
                           children:
                             - name:
                                 Named: value
                               type_name:
                                 Struct: UnsafeCell<isize>
-                              value: UnsafeCell<isize> @ 0x200008C0
+                              value: UnsafeCell<isize> @ 0x200008BC
                               children:
                                 - name:
                                     Named: value
@@ -2791,46 +2768,69 @@ Child Variables:
                             Named: value
                           type_name:
                             Struct: "UnsafeCell<core::option::Option<rtt_target::TerminalChannel>>"
-                          value: "UnsafeCell<core::option::Option<rtt_target::TerminalChannel>> @ 0x200008C4"
+                          value: "UnsafeCell<core::option::Option<rtt_target::TerminalChannel>> @ 0x200008C0"
                           children:
                             - name:
                                 Named: value
                               type_name:
                                 Struct: "Option<rtt_target::TerminalChannel>"
-                              value: "Option<rtt_target::TerminalChannel> @ 0x200008C4"
+                              value: "Option<rtt_target::TerminalChannel> @ 0x200008C0"
                               children:
                                 - name:
                                     Named: Some
                                   type_name:
                                     Struct: Some
-                                  value: Some @ 0x200008C4
+                                  value: Some @ 0x200008C0
                                   children:
                                     - name:
                                         Named: __0
                                       type_name:
                                         Struct: TerminalChannel
-                                      value: TerminalChannel @ 0x200008C8
+                                      value: TerminalChannel @ 0x200008C4
                                       children:
                                         - name:
                                             Named: channel
                                           type_name:
                                             Struct: UpChannel
-                                          value: UpChannel @ 0x200008C8
+                                          value: UpChannel @ 0x200008C4
                                         - name:
                                             Named: current
                                           type_name:
                                             Base: u8
                                           value: "0"
     - name:
-        Named: "<rtt_target::rtt::RttWriter as core::fmt::Write>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<&core::marker::PhantomData<&()> as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name:
-        Named: "<&bool as core::fmt::Debug>::{vtable}"
-      type_name: Unknown
-      value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-
+        Named: "<rtt_target::TerminalWriter as core::fmt::Write>::{vtable}"
+      type_name:
+        Struct: "<rtt_target::TerminalWriter as core::fmt::Write>::{vtable_type}"
+      value: "<rtt_target::TerminalWriter as core::fmt::Write>::{vtable_type} @ 0x00007210"
+      children:
+        - name:
+            Named: drop_in_place
+          type_name:
+            Pointer: "*const ()"
+          value: "*const () @ 0x00007210"
+        - name:
+            Named: size
+          type_name:
+            Base: usize
+          value: "24"
+        - name:
+            Named: align
+          type_name:
+            Base: usize
+          value: "4"
+        - name:
+            Named: __method3
+          type_name:
+            Pointer: "*const ()"
+          value: "*const () @ 0x0000721C"
+        - name:
+            Named: __method4
+          type_name:
+            Pointer: "*const ()"
+          value: "*const () @ 0x00007220"
+        - name:
+            Named: __method5
+          type_name:
+            Pointer: "*const ()"
+          value: "*const () @ 0x00007224"

@@ -1017,6 +1017,15 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         let arguments: StackTraceArguments = get_arguments(self, request)?;
 
+        // If the core is halted, and we have no available strackframes, we can get out of here early.
+        if target_core.core_data.stack_frames.is_empty() {
+            let body = StackTraceResponseBody {
+                stack_frames: Vec::new(),
+                total_frames: Some(0),
+            };
+            return self.send_response(request, Ok(Some(body)));
+        }
+
         // The DAP spec says that the `levels` is optional if `None` or `Some(0)`, then all available frames should be returned.
         let mut levels = arguments.levels.unwrap_or(0);
         // The DAP spec says that the `startFrame` is optional and should be 0 if not specified.

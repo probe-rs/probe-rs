@@ -4,7 +4,7 @@ use crate::{
         xtensa::sequences::XtensaDebugSequence,
     },
     config::DebugSequence,
-    debug::DebugRegisters,
+    debug::{DebugInfo, DebugRegisters, StackFrame},
     error::Error,
     CoreType, InstructionSet, MemoryInterface, Target,
 };
@@ -265,12 +265,15 @@ impl<'probe> MemoryInterface for Core<'probe> {
 /// A struct containing key information about an exception.
 /// The exception details are architecture specific, and the abstraction is handled in the
 /// architecture specific implementations of [`crate::core::ExceptionInterface`].
-#[derive(Debug, PartialEq)]
+#[derive(PartialEq)]
 pub struct ExceptionInfo {
+    /// The exception number.
+    /// This is architecture specific and can be used to decode the architecture specific exception reason.
+    pub raw_exception: u32,
     /// A human readable explanation for the exception.
     pub description: String,
-    /// The stackframe registers, and their values, for the frame that triggered the exception.
-    pub calling_frame_registers: DebugRegisters,
+    /// A populated [`StackFrame`] to represent the stack data in the exception handler.
+    pub handler_frame: StackFrame,
 }
 
 /// A generic interface to identify and decode exceptions during unwind processing.
@@ -285,6 +288,7 @@ pub trait ExceptionInterface {
         &self,
         memory: &mut dyn MemoryInterface,
         stackframe_registers: &DebugRegisters,
+        debug_info: &DebugInfo,
     ) -> Result<Option<ExceptionInfo>, Error>;
 
     /// Using the `stackframe_registers` for a "called frame", retrieve updated register values for the "calling frame".
@@ -292,14 +296,21 @@ pub trait ExceptionInterface {
         &self,
         memory: &mut dyn MemoryInterface,
         stackframe_registers: &crate::debug::DebugRegisters,
+        raw_exception: u32,
     ) -> Result<crate::debug::DebugRegisters, crate::Error>;
+
+    /// Retrieve the architecture specific exception number.
+    fn raw_exception(
+        &self,
+        stackframe_registers: &crate::debug::DebugRegisters,
+    ) -> Result<u32, crate::Error>;
 
     /// Convert the architecture specific exception number into a human readable description.
     /// Where possible, the implementation may read additional registers from the core, to provide additional context.
     fn exception_description(
         &self,
+        raw_exception: u32,
         memory: &mut dyn MemoryInterface,
-        stackframe_registers: &crate::debug::DebugRegisters,
     ) -> Result<String, crate::Error>;
 }
 
@@ -311,25 +322,36 @@ impl ExceptionInterface for UnimplementedExceptionHandler {
         &self,
         _memory: &mut dyn MemoryInterface,
         _stackframe_registers: &DebugRegisters,
+        _debug_info: &DebugInfo,
     ) -> Result<Option<ExceptionInfo>, Error> {
         // For architectures where the exception handling has not been implemented in probe-rs,
-        // this will result in maintaining the current `unwind` behavior, i.e. unwinding will stop
-        // when the first frame is reached that was called from an exception handler.
-        Err(Error::NotImplemented("unwinding of exception frames"))
+        // this will result in maintaining the current `unwind` behavior, i.e. unwinding will include up
+        // to the first frame that was called from an exception handler.
+        Ok(None)
     }
 
     fn calling_frame_registers(
         &self,
         _memory: &mut dyn MemoryInterface,
         _stackframe_registers: &crate::debug::DebugRegisters,
+        _raw_exception: u32,
     ) -> Result<crate::debug::DebugRegisters, crate::Error> {
         Err(Error::NotImplemented("calling frame registers"))
     }
 
+    fn raw_exception(
+        &self,
+        _stackframe_registers: &crate::debug::DebugRegisters,
+    ) -> Result<u32, crate::Error> {
+        Err(Error::NotImplemented(
+            "Not implemented for this architecture.",
+        ))
+    }
+
     fn exception_description(
         &self,
+        _raw_exception: u32,
         _memory: &mut dyn MemoryInterface,
-        _stackframe_registers: &crate::debug::DebugRegisters,
     ) -> Result<String, crate::Error> {
         Err(Error::NotImplemented("exception description"))
     }
@@ -338,12 +360,12 @@ impl ExceptionInterface for UnimplementedExceptionHandler {
 /// Creates a new exception interface for the [`CoreType`] at hand.
 pub fn exception_handler_for_core(core_type: CoreType) -> Box<dyn ExceptionInterface> {
     match core_type {
-        CoreType::Armv6m => {
-            Box::new(crate::architecture::arm::core::exception_handling::ArmV6MExceptionHandler {})
-        }
-        CoreType::Armv7m | CoreType::Armv7em => {
-            Box::new(crate::architecture::arm::core::exception_handling::ArmV7MExceptionHandler {})
-        }
+        CoreType::Armv6m => Box::new(
+            crate::architecture::arm::core::exception_handling::armv6m::ArmV6MExceptionHandler {},
+        ),
+        CoreType::Armv7m | CoreType::Armv7em => Box::new(
+            crate::architecture::arm::core::exception_handling::armv7m::ArmV7MExceptionHandler {},
+        ),
         CoreType::Armv8m => Box::new(
             crate::architecture::arm::core::exception_handling::armv8m::ArmV8MExceptionHandler,
         ),

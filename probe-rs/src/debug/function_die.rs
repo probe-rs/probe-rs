@@ -224,7 +224,7 @@ impl<'abbrev, 'unit> FunctionDie<'abbrev, 'unit> {
     pub fn frame_base(
         &self,
         debug_info: &super::DebugInfo,
-        memory: &mut impl MemoryInterface,
+        memory: &mut dyn MemoryInterface,
         frame_info: StackFrameInfo,
     ) -> Result<Option<u64>, DebugError> {
         match self.unit_info.extract_location(

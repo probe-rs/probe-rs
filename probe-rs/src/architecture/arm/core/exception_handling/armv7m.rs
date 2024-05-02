@@ -1,10 +1,9 @@
+use super::armv6m_armv7m_shared::{self};
 use crate::{
     core::{ExceptionInfo, ExceptionInterface},
-    debug::DebugRegisters,
+    debug::{DebugInfo, DebugRegisters},
     memory_mapped_bitfield_register, Error, MemoryInterface, MemoryMappedRegister,
 };
-
-use super::armv6m_armv7m_shared::{calling_frame_registers, exception_details, Xpsr};
 
 memory_mapped_bitfield_register! {
     /// HFSR - HardFault Status Register
@@ -21,6 +20,8 @@ memory_mapped_bitfield_register! {
     pub struct Cfsr(u32);
     0xE000ED28, "CFSR",
     impl From;
+    /// Aggregate view of the UsageFault bits.
+    usage_fault, _: 25,16;
     /// When SDIV or UDIV instruction is used with a divisor of 0, this fault occurs if DIV_0_TRP is enabled in the CCR.
     uf_div_by_zero, _: 25;
     /// Multi-word accesses always fault if not word aligned. Software can configure unaligned word and halfword accesses to fault, by enabling UNALIGN_TRP in the CCR.
@@ -33,6 +34,8 @@ memory_mapped_bitfield_register! {
     uf_invalid_state, _: 17;
     /// The processor has attempted to execute an undefined instruction. This might be an undefined instruction associated with an enabled coprocessor.
     uf_undefined_instruction, _: 16;
+    /// Aggregate view of the BusFault bits.
+    bus_fault, _: 15,8;
     /// BFAR has valid contents.
     bf_address_register_valid, _: 15;
     /// A bus fault occurred during FP lazy state preservation.
@@ -47,6 +50,8 @@ memory_mapped_bitfield_register! {
     bf_precise_data_access_error, _: 9;
     ///  A bus fault on an instruction prefetch has occurred. The fault is signalled only if the instruction is issued.
     bf_instruction_prefetch, _: 8;
+    /// Aggregate view of the MemManage Fault bits.
+    mem_manage_fault, _: 7,0;
     ///  MMAR has valid contents.
     mm_address_register_valid, _: 7;
     /// A MemManage fault occurred during FP lazy state preservation.
@@ -80,7 +85,7 @@ impl Cfsr {
             // Not a UsageFault.
             return Ok(None);
         };
-        Ok(Some(format!("UsageFault ({source})")))
+        Ok(Some(format!("UsageFault <Cause: {source}>")))
     }
 
     /// Additional information about a Bus Fault, or Ok(None) if the fault was not a Bus Fault.
@@ -107,11 +112,11 @@ impl Cfsr {
 
         Ok(Some(if self.bf_address_register_valid() {
             format!(
-                "BusFault ({source}) at location: {:#010x}",
+                "BusFault <Cause: {source} at location: {:#010x}>",
                 memory.read_word_32(Bfar::get_mmio_address())?
             )
         } else {
-            format!("BusFault ({source})")
+            format!("BusFault <Cause: {source}>")
         }))
     }
 
@@ -137,11 +142,11 @@ impl Cfsr {
 
         Ok(Some(if self.mm_address_register_valid() {
             format!(
-                "MemManage Fault({source}) at location: {:#010x}",
+                "MemManage Fault <Cause: {source} at location: {:#010x}>",
                 memory.read_word_32(Mmfar::get_mmio_address())?
             )
         } else {
-            format!("MemManage Fault({source})")
+            format!("MemManage Fault <Cause: {source}>")
         }))
     }
 }
@@ -218,31 +223,31 @@ impl ExceptionReason {
         memory: &mut dyn MemoryInterface,
     ) -> Result<String, Error> {
         match self {
-            ExceptionReason::ThreadMode => Ok("No active exception.".to_string()),
-            ExceptionReason::Reset => Ok("Reset handler.".to_string()),
-            ExceptionReason::NonMaskableInterrupt => Ok("Non maskable interrupt.".to_string()),
+            ExceptionReason::ThreadMode => Ok("<No active exception>".to_string()),
+            ExceptionReason::Reset => Ok("Reset".to_string()),
+            ExceptionReason::NonMaskableInterrupt => Ok("NMI".to_string()),
             ExceptionReason::HardFault => {
                 let hfsr = Hfsr(memory.read_word_32(Hfsr::get_mmio_address())?);
                 let description = if hfsr.debug_event() {
-                    "Synchronous debug fault.".to_string()
+                    "Debug fault".to_string()
                 } else if hfsr.escalation_forced() {
-                    let description = "Escalated ";
+                    let description = "Escalated";
                     let cfsr = Cfsr(memory.read_word_32(Cfsr::get_mmio_address())?);
                     if let Some(source) = cfsr.usage_fault_description()? {
-                        format!("{description}{source}")
+                        format!("{description} {source}")
                     } else if let Some(source) = cfsr.bus_fault_description(memory)? {
-                        format!("{description}{source}")
+                        format!("{description} {source}")
                     } else if let Some(source) = cfsr.memory_management_fault_description(memory)? {
-                        format!("{description}{source}")
+                        format!("{description} {source}")
                     } else {
-                        format!("{description}from an unknown source")
+                        format!("{description} from an unknown source")
                     }
                 } else if hfsr.vector_table_read_fault() {
                     "Vector table read fault".to_string()
                 } else {
                     "Undeterminable".to_string()
                 };
-                Ok(format!("HardFault handler. Cause: {description}."))
+                Ok(format!("HardFault <Cause: {description}>"))
             }
             ExceptionReason::MemoryManagementFault => {
                 if let Some(source) = Cfsr(memory.read_word_32(Cfsr::get_mmio_address())?)
@@ -250,7 +255,7 @@ impl ExceptionReason {
                 {
                     Ok(source)
                 } else {
-                    Ok("UsageFault handler. Cause: Unknown.".to_string())
+                    Ok("MemManage Fault <Cause: Unknown>".to_string())
                 }
             }
             ExceptionReason::BusFault => {
@@ -259,7 +264,7 @@ impl ExceptionReason {
                 {
                     Ok(source)
                 } else {
-                    Ok("BusFault handler. Cause: Unknown.".to_string())
+                    Ok("BusFault <Cause: Unknown>".to_string())
                 }
             }
             ExceptionReason::UsageFault => {
@@ -268,54 +273,102 @@ impl ExceptionReason {
                 {
                     Ok(source)
                 } else {
-                    Ok("MemManage Fault handler. Cause: Unknown.".to_string())
+                    Ok("UsageFault <Cause: Unknown>".to_string())
                 }
             }
-            ExceptionReason::SVCall => Ok("Supervisor call.".to_string()),
-            ExceptionReason::DebugMonitor => Ok("Synchronous Debug monitor fault.".to_string()),
-            ExceptionReason::PendSV => Ok("Pending Supervisor call.".to_string()),
-            ExceptionReason::SysTick => Ok("Systick handler.".to_string()),
-            ExceptionReason::ExternalInterrupt(exti) => Ok(format!("External interrupt #{exti}.")),
+            ExceptionReason::SVCall => Ok("SVC".to_string()),
+            ExceptionReason::DebugMonitor => Ok("DebugMonitor".to_string()),
+            ExceptionReason::PendSV => Ok("PendSV".to_string()),
+            ExceptionReason::SysTick => Ok("SysTick".to_string()),
+            ExceptionReason::ExternalInterrupt(exti) => Ok(format!("External interrupt #{exti}")),
             ExceptionReason::Reserved => {
-                Ok("Reserved by the ISA, and not usable by software.".to_string())
+                Ok("<Reserved by the ISA, and not usable by software>".to_string())
             }
         }
     }
+
+    /// Determines how the exception return address should be offset when unwinding the stack.
+    /// See Armv7-M Architecture Reference Manual, Section B1.5.6.
+    pub(crate) fn is_precise_fault(&self, memory: &mut dyn MemoryInterface) -> Result<bool, Error> {
+        let is_precise = match self {
+            ExceptionReason::HardFault
+            | ExceptionReason::BusFault
+            | ExceptionReason::MemoryManagementFault
+            | ExceptionReason::UsageFault => {
+                // Same logic for direct and escalated faults.
+                let cfsr = Cfsr(memory.read_word_32(Cfsr::get_mmio_address())?);
+                cfsr.bf_precise_data_access_error()
+                    || cfsr.bf_instruction_prefetch()
+                    || cfsr.mem_manage_fault() > 0
+                    || cfsr.usage_fault() > 0
+            }
+            ExceptionReason::DebugMonitor => {
+                // This should be true for syncrhonous exceptions, and false otherwise.
+                // TODO: Identify if this debug event was triggered by a vector catch and decode the corresponding FSR. Not a priority for unwinding purposes.
+                true
+            }
+            _ => false,
+        };
+        Ok(is_precise)
+    }
 }
 
-impl<'probe> ExceptionInterface for crate::architecture::arm::core::armv7m::Armv7m<'probe> {
-    fn calling_frame_registers(
-        &self,
-        memory_interface: &mut dyn MemoryInterface,
-        stackframe_registers: &crate::debug::DebugRegisters,
-    ) -> Result<crate::debug::DebugRegisters, crate::Error> {
-        calling_frame_registers(memory_interface, stackframe_registers)
-    }
+/// Exception handling for cores based on the ARMv7-M and ARMv7-EM architectures.
+pub struct ArmV7MExceptionHandler {}
 
-    fn exception_description(
-        &self,
-        memory_interface: &mut dyn MemoryInterface,
-        stackframe_registers: &crate::debug::DebugRegisters,
-    ) -> Result<String, crate::Error> {
-        // Load the provided xPSR register as a bitfield.
-        let exception_number = Xpsr(
-            stackframe_registers
-                .get_register_value_by_role(&crate::core::RegisterRole::ProcessorStatus)?
-                as u32,
-        )
-        .exception_number();
-
-        Ok(format!(
-            "{:?}",
-            ExceptionReason::from(exception_number).expanded_description(memory_interface)?
-        ))
-    }
-
+impl ExceptionInterface for ArmV7MExceptionHandler {
     fn exception_details(
         &self,
         memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &DebugRegisters,
+        debug_info: &DebugInfo,
     ) -> Result<Option<ExceptionInfo>, Error> {
-        exception_details(self, memory_interface, stackframe_registers)
+        armv6m_armv7m_shared::exception_details(
+            self,
+            memory_interface,
+            stackframe_registers,
+            debug_info,
+        )
+    }
+
+    fn calling_frame_registers(
+        &self,
+        memory_interface: &mut dyn MemoryInterface,
+        stackframe_registers: &crate::debug::DebugRegisters,
+        raw_exception: u32,
+    ) -> Result<crate::debug::DebugRegisters, crate::Error> {
+        let mut updated_registers = stackframe_registers.clone();
+
+        // Identify the correct location for the exception context. This is different between Armv6-M and Armv7-M.
+        let exception_reason = ExceptionReason::from(raw_exception);
+        if exception_reason.is_precise_fault(memory_interface)? {
+            let exception_context_address =
+                updated_registers.get_register_mut_by_role(&crate::RegisterRole::StackPointer)?;
+            if let Some(sp_value) = exception_context_address.value.as_mut() {
+                sp_value.increment_address(0x8)?;
+            }
+        }
+
+        updated_registers = armv6m_armv7m_shared::calling_frame_registers(
+            memory_interface,
+            &updated_registers,
+            raw_exception,
+        )?;
+        Ok(updated_registers)
+    }
+
+    fn raw_exception(
+        &self,
+        stackframe_registers: &crate::debug::DebugRegisters,
+    ) -> Result<u32, Error> {
+        armv6m_armv7m_shared::raw_exception(stackframe_registers)
+    }
+
+    fn exception_description(
+        &self,
+        raw_exception: u32,
+        memory_interface: &mut dyn MemoryInterface,
+    ) -> Result<String, crate::Error> {
+        ExceptionReason::from(raw_exception).expanded_description(memory_interface)
     }
 }
