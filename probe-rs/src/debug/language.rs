@@ -16,8 +16,8 @@ pub mod rust;
 mod parsing;
 mod value;
 
-pub fn from_dwarf(dwarf_language: DwLang) -> Box<dyn ProgrammingLanguage> {
-    match dwarf_language {
+pub fn from_dwarf(language: DwLang) -> Box<dyn ProgrammingLanguage> {
+    match language {
         // Handle all C-like languages the same now.
         // We may have to split it later if this is not good enough.
         gimli::DW_LANG_C
