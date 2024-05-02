@@ -173,7 +173,20 @@ impl ArmDebugState for Uninitialized {}
 impl ArmDebugState for Initialized {
     fn disconnect(&mut self, probe: &mut dyn DapProbe) {
         let stop_span = tracing::debug_span!("debug_port_stop").entered();
-        self.sequence.debug_port_stop(probe).ok();
+
+        // Stop the current DP, which may not be one of the known ones (i.e. RP2040 rescue DP).
+        self.sequence.debug_port_stop(probe, self.current_dp).ok();
+
+        // Stop all intentionally-connected DPs.
+        for dp in self.dps.keys() {
+            // Try to select the debug port we want to shut down.
+            if self.sequence.debug_port_connect(probe, *dp).is_ok() {
+                self.sequence.debug_port_stop(probe, *dp).ok();
+            } else {
+                tracing::warn!("Failed to stop DP {:x?}", dp);
+            }
+        }
+        probe.raw_flush().ok();
         drop(stop_span);
     }
 }
@@ -562,10 +575,6 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
             switched_dp = true;
 
             self.probe_mut().raw_flush()?;
-
-            let stop_span = tracing::debug_span!("debug_port_stop").entered();
-            sequence.debug_port_stop(&mut *self.probe_mut())?;
-            drop(stop_span);
 
             // Try to switch to the new DP.
             if let Err(e) = sequence.debug_port_connect(&mut *self.probe_mut(), dp) {
