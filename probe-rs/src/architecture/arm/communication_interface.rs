@@ -179,6 +179,7 @@ impl ArmDebugState for Initialized {
 
         // Stop all intentionally-connected DPs.
         for dp in self.dps.keys() {
+            // Try to select the debug port we want to shut down.
             if self.sequence.debug_port_connect(probe, *dp).is_ok() {
                 self.sequence.debug_port_stop(probe, *dp).ok();
             } else {
