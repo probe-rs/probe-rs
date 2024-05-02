@@ -226,7 +226,11 @@ pub(crate) fn raw_exception(
             == 0xFFFF_FFFF
     {
         // Although the exception number is 0, for the purposes of unwind, this is treated as a reset exception.
-        // Based on the sections, "The special-purpose program status registers, xPSR"
+        // This is because of the timing when the processor resets the exception number from 1 to 0, versus
+        // when the LR register (EXC_RETURN) is set to 0xFFFFFFFF.
+        // The processor timing biases towards exception return behavior, while we are
+        // only interested in capturing the exception frame information for unwind purposes.
+        // For more information, see the section, "The special-purpose program status registers, xPSR"
         // and "Reset Behaviour" in the ARMv7-m Architecture Reference Manual,
         // - "On reset, the processor is in Thread mode and ...
         //   - ... the Exception Number field of the IPSR is cleared to 0. As a result, the value 1, the exception number for reset,
