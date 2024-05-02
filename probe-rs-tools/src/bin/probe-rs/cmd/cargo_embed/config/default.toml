@@ -23,6 +23,10 @@ restore_unwritten_bytes = false
 # flash_layout_output_path = "out.svg"
 # Triggers a full chip erase instead of a page by page erase.
 do_chip_erase = false
+# Whether to disable double buffering
+disable_double_buffering = false
+# Whether to verify flash contents after downloading
+verify = false
 
 [default.reset]
 # Whether or not the target should be reset.

@@ -242,10 +242,10 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
 
         let download_options = BinaryDownloadOptions {
             disable_progressbars: opt.disable_progressbars,
-            disable_double_buffering: false,
+            disable_double_buffering: config.flashing.disable_double_buffering,
             restore_unwritten: config.flashing.restore_unwritten_bytes,
             flash_layout_output_path: None,
-            verify: false,
+            verify: config.flashing.verify,
         };
         let format_options = FormatOptions::default();
         let loader = build_loader(&mut session, path, format_options, image_instr_set)?;
