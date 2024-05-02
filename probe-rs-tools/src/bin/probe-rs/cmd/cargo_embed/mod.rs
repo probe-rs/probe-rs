@@ -62,7 +62,7 @@ struct CliOptions {
     cargo_options: CargoOptions,
 }
 
-pub fn main(args: Vec<OsString>, offset: UtcOffset) {
+pub fn main(args: &[OsString], offset: UtcOffset) {
     match main_try(args, offset) {
         Ok(_) => (),
         Err(e) => {
@@ -98,15 +98,9 @@ pub fn main(args: Vec<OsString>, offset: UtcOffset) {
     }
 }
 
-fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
-    // When called by Cargo, the first argument after the binary name will be `embed`.
-    // If that's the case, remove it.
-    if args.get(1).and_then(|t| t.to_str()) == Some("embed") {
-        args.remove(1);
-    }
-
+fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
     // Parse the commandline options.
-    let opt = CliOptions::parse_from(&args);
+    let opt = CliOptions::parse_from(args);
 
     // Change the work dir if the user asked to do so.
     if let Some(ref work_dir) = opt.work_dir {
@@ -131,14 +125,6 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
         let file = File::open(Path::new(cdp))?;
         probe_rs::config::add_target_from_yaml(file)
             .with_context(|| format!("failed to load the chip description from {cdp}"))?;
-    }
-
-    // Remove executable name from the arguments list.
-    args.remove(0);
-
-    if let Some(index) = args.iter().position(|x| x == config_name) {
-        // We remove the argument we found.
-        args.remove(index);
     }
 
     let cargo_options = opt.cargo_options.to_cargo_options();

@@ -3,8 +3,13 @@ use std::os::unix::process::CommandExt;
 use std::process::{exit, Command};
 
 fn main() {
-    let mut args: Vec<_> = std::env::args_os().skip(1).collect();
-    args.insert(0, "cargo-flash".into());
+    let mut args: Vec<_> = std::env::args_os().collect();
+    // No matter what the binary is called, we need to pass `cargo-flash` to `probe-rs`.
+    args[0] = "cargo-flash".into();
+    // Also, skip the very first argument if it's `flash`, because it was inserted by cargo.
+    if args.get(1).filter(|s| *s == "flash").is_some() {
+        args.remove(1);
+    }
     let mut cmd = Command::new("probe-rs");
     cmd.args(&args);
 
