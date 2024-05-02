@@ -46,11 +46,6 @@ pub struct Probe {
 #[serde(deny_unknown_fields)]
 pub struct Flashing {
     pub enabled: bool,
-    #[deprecated(
-        since = "0.9.0",
-        note = "The 'halt_afterwards' key has moved to the 'reset' section"
-    )]
-    pub halt_afterwards: bool,
     pub restore_unwritten_bytes: bool,
     pub flash_layout_output_path: Option<String>,
     pub do_chip_erase: bool,

@@ -13,9 +13,6 @@ protocol = "Swd"
 [default.flashing]
 # Whether or not the target should be flashed.
 enabled = true
-# Whether or not the target should be halted after reset.
-# DEPRECATED, moved to reset section
-halt_afterwards = false
 # Whether or not bytes erased but not rewritten with data from the ELF
 # should be restored with their contents before erasing.
 restore_unwritten_bytes = false

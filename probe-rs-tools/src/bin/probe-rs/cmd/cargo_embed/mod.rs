@@ -263,14 +263,7 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
     if config.reset.enabled {
         let mut core = session.core(core_id)?;
         let halt_timeout = Duration::from_millis(500);
-        #[allow(deprecated)] // Remove in 0.10
-        if config.flashing.halt_afterwards {
-            logging::eprintln(format!(
-                "     {} The 'flashing.halt_afterwards' option in the config has moved to the 'reset' section",
-                "Warning".yellow().bold()
-            ));
-            core.reset_and_halt(halt_timeout)?;
-        } else if config.reset.halt_afterwards {
+        if config.reset.halt_afterwards {
             core.reset_and_halt(halt_timeout)?;
         } else {
             core.reset()?;
