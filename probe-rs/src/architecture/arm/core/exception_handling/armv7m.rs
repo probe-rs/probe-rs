@@ -142,7 +142,7 @@ impl Cfsr {
 
         Ok(Some(if self.mm_address_register_valid() {
             format!(
-                "MemManage Fault <Cause: {source}> at location: {:#010x}>",
+                "MemManage Fault <Cause: {source} at location: {:#010x}>",
                 memory.read_word_32(Mmfar::get_mmio_address())?
             )
         } else {
