@@ -11,7 +11,7 @@ use crate::{
         Dmcontrol,
     },
     config::sequences::esp::EspFlashSizeDetector,
-    MemoryInterface,
+    MemoryInterface, Session,
 };
 
 /// The debug sequence implementation for the ESP32C6.
@@ -61,11 +61,8 @@ impl RiscvDebugSequence for ESP32C6 {
         Ok(())
     }
 
-    fn detect_flash_size(
-        &self,
-        interface: &mut RiscvCommunicationInterface,
-    ) -> Result<Option<usize>, crate::Error> {
-        self.inner.detect_flash_size_riscv(interface)
+    fn detect_flash_size(&self, session: &mut Session) -> Result<Option<usize>, crate::Error> {
+        self.inner.detect_flash_size(session)
     }
 
     fn reset_system_and_halt(
