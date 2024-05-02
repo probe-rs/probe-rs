@@ -73,15 +73,14 @@ impl ExceptionReason {
         &self,
         _memory: &mut dyn MemoryInterface,
     ) -> Result<bool, Error> {
-        let is_precise = match self {
+        Ok(match self {
             ExceptionReason::HardFault => {
                 // This should be true for synchronous exceptions, and false otherwise.
                 // TODO: Figure out how to differentiate that on ARMv6-M.
                 true
             }
             _ => false,
-        };
-        Ok(is_precise)
+        })
     }
 }
 

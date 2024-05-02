@@ -359,6 +359,10 @@ impl DebugInfo {
             // No function found at the given address.
             return Ok(frames);
         };
+        if functions.is_empty() {
+            // No function found at the given address.
+            return Ok(frames);
+        }
 
         // Determining the frame base may need the CFA (Canonical Frame Address) to be calculated first.
         let cfa = get_unwind_info(unwind_context, &self.frame_section, address)
