@@ -589,7 +589,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         let powered_down = !(ctrl.csyspwrupack() && ctrl.cdbgpwrupack());
 
         if powered_down {
-            tracing::debug!("Debug port is powered down, powering up");
+            tracing::info!("Debug port {dp:x?} is powered down, powering up");
             let mut ctrl = Ctrl(0);
             ctrl.set_cdbgpwrupreq(true);
             ctrl.set_csyspwrupreq(true);
@@ -817,14 +817,25 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     ///
     /// [ARM SVD Debug Description]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/debug_description.html#debugPortStop
     #[doc(alias = "DebugPortStop")]
-    fn debug_port_stop(&self, interface: &mut dyn DapProbe) -> Result<(), ArmError> {
+    fn debug_port_stop(&self, interface: &mut dyn DapProbe, dp: DpAddress) -> Result<(), ArmError> {
+        tracing::info!("Powering down debug port {dp:x?}");
         // Select Bank 0
         interface.raw_write_register(PortType::DebugPort, Select::ADDRESS, 0)?;
 
         // De-assert debug power request
         interface.raw_write_register(PortType::DebugPort, Ctrl::ADDRESS, 0)?;
 
-        Ok(())
+        // Wait for the power domains to go away
+        let start = Instant::now();
+        while start.elapsed() < Duration::from_micros(1_000_000) {
+            let ctrl = interface.raw_read_register(PortType::DebugPort, Ctrl::ADDRESS)?;
+            let ctrl = Ctrl(ctrl);
+            if !(ctrl.csyspwrupack() || ctrl.cdbgpwrupack()) {
+                return Ok(());
+            }
+        }
+
+        Err(ArmError::Timeout)
     }
 
     /// Perform a SWD line reset or enter the JTAG Run-Test-Idle state, and then try to connect to a debug port.
