@@ -518,7 +518,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
                     interface.jtag_sequence(1, false, 0x01)?;
 
                     // Configure JTAG IR lengths in probe
-                    interface.configure_jtag()?;
+                    interface.configure_jtag(false)?;
                 }
                 Some(WireProtocol::Swd) => {
                     if has_dormant {
