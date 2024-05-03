@@ -18,11 +18,9 @@ use crate::architecture::arm::{
     communication_interface::{DapProbe, UninitializedArmProbe},
     PortType, SwoAccess,
 };
-use crate::architecture::riscv::communication_interface::{
-    RiscvCommunicationInterface, RiscvError,
-};
+use crate::architecture::riscv::communication_interface::{RiscvError, RiscvInterfaceBuilder};
 use crate::architecture::xtensa::communication_interface::{
-    XtensaCommunicationInterface, XtensaError,
+    XtensaCommunicationInterface, XtensaDebugInterfaceState, XtensaError,
 };
 use crate::config::RegistryError;
 use crate::config::TargetSelector;
@@ -388,6 +386,16 @@ impl Probe {
         }
     }
 
+    /// Returns the JTAG scan chain
+    pub fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
+        self.inner.scan_chain()
+    }
+
+    /// Selects the JTAG TAP to be used for communication.
+    pub fn select_jtag_tap(&mut self, index: usize) -> Result<(), DebugProbeError> {
+        self.inner.select_jtag_tap(index)
+    }
+
     /// Get the currently used maximum speed for the debug protocol in kHz.
     ///
     /// Not all probes report which speed is used, meaning this value is not
@@ -407,16 +415,18 @@ impl Probe {
     /// can be used to communicate with chips using the Xtensa
     /// architecture.
     ///
+    /// The user is responsible for creating and managing the [`XtensaDebugInterfaceState`] state
+    /// object.
+    ///
     /// If an error occurs while trying to connect, the probe is returned.
-    pub fn try_into_xtensa_interface(
-        self,
-    ) -> Result<XtensaCommunicationInterface, (Self, DebugProbeError)> {
+    pub fn try_get_xtensa_interface<'probe>(
+        &'probe mut self,
+        state: &'probe mut XtensaDebugInterfaceState,
+    ) -> Result<XtensaCommunicationInterface<'probe>, DebugProbeError> {
         if !self.attached {
-            Err((self, DebugProbeError::NotAttached))
+            Err(DebugProbeError::NotAttached)
         } else {
-            self.inner
-                .try_get_xtensa_interface()
-                .map_err(|(probe, err)| (Probe::from_attached_probe(probe), err))
+            Ok(self.inner.try_get_xtensa_interface(state)?)
         }
     }
 
@@ -442,26 +452,25 @@ impl Probe {
         }
     }
 
-    /// Check if the probe has an interface to
-    /// debug RISC-V chips.
+    /// Check if the probe has an interface to debug RISC-V chips.
     pub fn has_riscv_interface(&self) -> bool {
         self.inner.has_riscv_interface()
     }
 
-    /// Try to get a [`RiscvCommunicationInterface`], which can
-    /// can be used to communicate with chips using the RISC-V
-    /// architecture.
+    /// Try to get a [`RiscvInterfaceBuilder`] object, which can be used to set up a communication
+    /// interface with chips using the RISC-V architecture.
+    ///
+    /// The returned object can be used to create the interface state, which is required to
+    /// attach to the RISC-V target. The user is responsible for managing this state object.
     ///
     /// If an error occurs while trying to connect, the probe is returned.
-    pub fn try_into_riscv_interface(
-        self,
-    ) -> Result<RiscvCommunicationInterface, (Self, RiscvError)> {
+    pub fn try_get_riscv_interface_builder<'probe>(
+        &'probe mut self,
+    ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, DebugProbeError> {
         if !self.attached {
-            Err((self, DebugProbeError::NotAttached.into()))
+            Err(DebugProbeError::NotAttached)
         } else {
-            self.inner
-                .try_get_riscv_interface()
-                .map_err(|(probe, err)| (Probe::from_attached_probe(probe), err))
+            self.inner.try_get_riscv_interface_builder()
         }
     }
 
@@ -559,10 +568,24 @@ pub trait DebugProbe: Send + fmt::Debug {
     ///
     fn set_scan_chain(&mut self, scan_chain: Vec<ScanChainElement>) -> Result<(), DebugProbeError>;
 
+    /// Returns the JTAG scan chain
+    fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError>;
+
     /// Attach to the chip.
     ///
     /// This should run all the necessary protocol init routines.
     fn attach(&mut self) -> Result<(), DebugProbeError>;
+
+    /// Selects the JTAG TAP to be used for communication.
+    fn select_jtag_tap(&mut self, index: usize) -> Result<(), DebugProbeError> {
+        if index != 0 {
+            return Err(DebugProbeError::NotImplemented {
+                function_name: "select_jtag_tap",
+            });
+        }
+
+        Ok(())
+    }
 
     /// Detach from the chip.
     ///
@@ -607,18 +630,17 @@ pub trait DebugProbe: Send + fmt::Debug {
         ))
     }
 
-    /// Get the dedicated interface to debug RISC-V chips. Ensure that the
-    /// probe actually supports this by calling [DebugProbe::has_riscv_interface] first.
-    fn try_get_riscv_interface(
-        self: Box<Self>,
-    ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, RiscvError)> {
-        Err((
-            self.into_probe(),
-            DebugProbeError::InterfaceNotAvailable {
-                interface_name: "RISC-V",
-            }
-            .into(),
-        ))
+    /// Try to get a [`RiscvInterfaceBuilder`] object, which can be used to set up a communication
+    /// interface with chips using the RISC-V architecture.
+    ///
+    /// Ensure that the probe actually supports this by calling
+    /// [DebugProbe::has_riscv_interface] first.
+    fn try_get_riscv_interface_builder<'probe>(
+        &'probe mut self,
+    ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, DebugProbeError> {
+        Err(DebugProbeError::InterfaceNotAvailable {
+            interface_name: "RISC-V",
+        })
     }
 
     /// Check if the probe offers an interface to debug RISC-V chips.
@@ -628,15 +650,13 @@ pub trait DebugProbe: Send + fmt::Debug {
 
     /// Get the dedicated interface to debug Xtensa chips. Ensure that the
     /// probe actually supports this by calling [DebugProbe::has_xtensa_interface] first.
-    fn try_get_xtensa_interface(
-        self: Box<Self>,
-    ) -> Result<XtensaCommunicationInterface, (Box<dyn DebugProbe>, DebugProbeError)> {
-        Err((
-            self.into_probe(),
-            DebugProbeError::InterfaceNotAvailable {
-                interface_name: "Xtensa",
-            },
-        ))
+    fn try_get_xtensa_interface<'probe>(
+        &'probe mut self,
+        _state: &'probe mut XtensaDebugInterfaceState,
+    ) -> Result<XtensaCommunicationInterface<'probe>, DebugProbeError> {
+        Err(DebugProbeError::InterfaceNotAvailable {
+            interface_name: "Xtensa",
+        })
     }
 
     /// Check if the probe offers an interface to debug Xtensa chips.
@@ -890,11 +910,13 @@ impl fmt::Display for DebugProbeSelector {
 /// This trait should be implemented by all probes which offer low-level access to
 /// the JTAG protocol, i.e. direction control over the bytes sent and received.
 pub trait JTAGAccess: DebugProbe {
-    /// Returns `IDCODE` and `IR` length information about the devices on the JTAG chain.
+    /// Scans `IDCODE` and `IR` length information about the devices on the JTAG chain.
     ///
     /// If configured, this will use the data from [`DebugProbe::set_scan_chain`]. Otherwise, it
     /// will try to measure and extract `IR` lengths by driving the JTAG interface.
-    fn scan_chain(&mut self) -> Result<Vec<JtagChainItem>, DebugProbeError>;
+    ///
+    /// The measured scan chain will be stored in the probe's internal state.
+    fn scan_chain(&mut self) -> Result<(), DebugProbeError>;
 
     /// Executes a TAP reset.
     fn tap_reset(&mut self) -> Result<(), DebugProbeError>;

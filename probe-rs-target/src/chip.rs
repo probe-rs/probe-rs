@@ -154,8 +154,14 @@ pub struct ArmCoreAccessOptions {
 pub struct RiscvCoreAccessOptions {
     /// The hart id
     pub hart_id: Option<u32>,
+
+    /// The JTAG TAP index of the core's debug module
+    pub jtag_tap: Option<usize>,
 }
 
 /// The data required to access an Xtensa core
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct XtensaCoreAccessOptions {}
+pub struct XtensaCoreAccessOptions {
+    /// The JTAG TAP index of the core's debug module
+    pub jtag_tap: Option<usize>,
+}

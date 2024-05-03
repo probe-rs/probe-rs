@@ -32,26 +32,19 @@ pub(crate) mod dtm;
 pub mod sequences;
 
 /// An interface to operate a RISC-V core.
-pub struct Riscv32<'probe> {
-    interface: &'probe mut RiscvCommunicationInterface,
-    state: &'probe mut RiscVState,
+pub struct Riscv32<'state> {
+    interface: RiscvCommunicationInterface<'state>,
+    state: &'state mut RiscvCoreState,
     sequence: Arc<dyn RiscvDebugSequence>,
 }
 
-impl<'probe> Riscv32<'probe> {
+impl<'state> Riscv32<'state> {
     /// Create a new RISC-V interface for a particular hart.
     pub fn new(
-        hart: u32,
-        interface: &'probe mut RiscvCommunicationInterface,
-        state: &'probe mut RiscVState,
+        interface: RiscvCommunicationInterface<'state>,
+        state: &'state mut RiscvCoreState,
         sequence: Arc<dyn RiscvDebugSequence>,
     ) -> Result<Self, RiscvError> {
-        if !interface.hart_enabled(hart) {
-            return Err(RiscvError::HartUnavailable);
-        }
-
-        interface.select_hart(hart)?;
-
         Ok(Self {
             interface,
             state,
@@ -132,11 +125,82 @@ impl<'probe> Riscv32<'probe> {
             Ok(None)
         }
     }
+
+    fn determine_number_of_hardware_breakpoints(&mut self) -> Result<u32, RiscvError> {
+        tracing::debug!("Determining number of HW breakpoints supported");
+
+        let tselect = 0x7a0;
+        let tdata1 = 0x7a1;
+        let tinfo = 0x7a4;
+
+        let mut tselect_index = 0;
+
+        // These steps follow the debug specification 0.13, section 5.1 Enumeration
+        loop {
+            tracing::debug!("Trying tselect={}", tselect_index);
+            if let Err(e) = self.write_csr(tselect, tselect_index) {
+                match e {
+                    RiscvError::AbstractCommand(AbstractCommandErrorKind::Exception) => break,
+                    other_error => return Err(other_error),
+                }
+            }
+
+            let readback = self.read_csr(tselect)?;
+
+            if readback != tselect_index {
+                break;
+            }
+
+            match self.read_csr(tinfo) {
+                Ok(tinfo_val) => {
+                    if tinfo_val & 0xffff == 1 {
+                        // Trigger doesn't exist, break the loop
+                        break;
+                    } else {
+                        tracing::info!(
+                            "Discovered trigger with index {} and type {}",
+                            tselect_index,
+                            tinfo_val & 0xffff
+                        );
+                    }
+                }
+                Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::Exception)) => {
+                    // An exception means we have to read tdata1 to discover the type
+                    let tdata_val = self.read_csr(tdata1)?;
+
+                    // Read the mxl field from the misa register (see RISC-V Privileged Spec, 3.1.1)
+                    let misa_value = Misa(self.read_csr(0x301)?);
+                    let xlen = u32::pow(2, misa_value.mxl() + 4);
+
+                    let trigger_type = tdata_val >> (xlen - 4);
+
+                    if trigger_type == 0 {
+                        break;
+                    }
+
+                    tracing::info!(
+                        "Discovered trigger with index {} and type {}",
+                        tselect_index,
+                        trigger_type,
+                    );
+                }
+                Err(other) => return Err(other),
+            }
+
+            tselect_index += 1;
+        }
+
+        tracing::debug!("Target supports {} breakpoints.", tselect_index);
+
+        Ok(tselect_index)
+    }
 }
 
-impl<'probe> CoreInterface for Riscv32<'probe> {
+impl<'state> CoreInterface for Riscv32<'state> {
     fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), crate::Error> {
-        Ok(self.interface.wait_for_core_halted(timeout)?)
+        self.interface.wait_for_core_halted(timeout)?;
+        self.state.pc_written = false;
+        Ok(())
     }
 
     fn core_halted(&mut self) -> Result<bool, crate::Error> {
@@ -158,6 +222,8 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
             let reason = match dcsr.cause() {
                 // An ebreak instruction was hit
                 1 => {
+                    // The chip initiated this halt, therefore we need to update pc_written state
+                    self.state.pc_written = false;
                     if let Some(cmd) = self.check_for_semihosting()? {
                         HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd))
                     } else {
@@ -193,8 +259,10 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn run(&mut self) -> Result<(), Error> {
-        // Before we run, we always perform a single instruction step, to account for possible breakpoints that might get us stuck on the current instruction.
-        self.step()?;
+        if !self.state.pc_written {
+            // Before we run, we always perform a single instruction step, to account for possible breakpoints that might get us stuck on the current instruction.
+            self.step()?;
+        }
 
         // resume the core.
         self.resume_core()?;
@@ -211,7 +279,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 
     fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
         self.sequence
-            .reset_system_and_halt(self.interface, timeout)?;
+            .reset_system_and_halt(&mut self.interface, timeout)?;
 
         let pc = self.read_core_reg(RegisterId(0x7b1))?;
 
@@ -220,19 +288,25 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 
     fn step(&mut self) -> Result<CoreInformation, crate::Error> {
         let halt_reason = self.status()?;
-        let flashing_done = self.state.hw_breakpoints_enabled;
         if matches!(
             halt_reason,
             CoreStatus::Halted(HaltReason::Breakpoint(
                 BreakpointCause::Software | BreakpointCause::Semihosting(_)
             ))
-        ) && flashing_done
-        {
-            // If we are halted on a software breakpoint AND we have passed the flashing operation, we can skip the single step and manually advance the dpc.
+        ) {
+            // If we are halted on a software breakpoint, we can skip the single step and manually advance the dpc.
             let mut debug_pc = self.read_core_reg(RegisterId(0x7b1))?;
             // Advance the dpc by the size of the EBREAK (ebreak or c.ebreak) instruction.
             if matches!(self.instruction_set()?, InstructionSet::RV32C) {
-                debug_pc.increment_address(2)?;
+                // We may have been halted by either an EBREAK or a C.EBREAK instruction.
+                // We need to read back the instruction to determine how many bytes we need to skip.
+                let instruction = self.read_word_32(debug_pc.try_into().unwrap())?;
+                if instruction & 0x3 != 0x3 {
+                    // Compressed instruction.
+                    debug_pc.increment_address(2)?;
+                } else {
+                    debug_pc.increment_address(4)?;
+                }
             } else {
                 debug_pc.increment_address(4)?;
             }
@@ -280,6 +354,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
             self.enable_breakpoints(true)?;
         }
 
+        self.state.pc_written = false;
         Ok(CoreInformation { pc: pc.try_into()? })
     }
 
@@ -295,78 +370,23 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         value: RegisterValue,
     ) -> Result<(), crate::Error> {
         let value: u32 = value.try_into()?;
+
+        if address == self.program_counter().id {
+            self.state.pc_written = true;
+        }
+
         self.write_csr(address.0, value).map_err(|e| e.into())
     }
 
     fn available_breakpoint_units(&mut self) -> Result<u32, crate::Error> {
-        // TODO: This should probably only be done once, when initialising
-
-        tracing::debug!("Determining number of HW breakpoints supported");
-
-        let tselect = 0x7a0;
-        let tdata1 = 0x7a1;
-        let tinfo = 0x7a4;
-
-        let mut tselect_index = 0;
-
-        // These steps follow the debug specification 0.13, section 5.1 Enumeration
-        loop {
-            tracing::debug!("Trying tselect={}", tselect_index);
-            if let Err(e) = self.write_csr(tselect, tselect_index) {
-                match e {
-                    RiscvError::AbstractCommand(AbstractCommandErrorKind::Exception) => break,
-                    other_error => return Err(other_error.into()),
-                }
+        match self.state.hw_breakpoints {
+            Some(bp) => Ok(bp),
+            None => {
+                let bp = self.determine_number_of_hardware_breakpoints()?;
+                self.state.hw_breakpoints = Some(bp);
+                Ok(bp)
             }
-
-            let readback = self.read_csr(tselect)?;
-
-            if readback != tselect_index {
-                break;
-            }
-
-            match self.read_csr(tinfo) {
-                Ok(tinfo_val) => {
-                    if tinfo_val & 0xffff == 1 {
-                        // Trigger doesn't exist, break the loop
-                        break;
-                    } else {
-                        tracing::info!(
-                            "Discovered trigger with index {} and type {}",
-                            tselect_index,
-                            tinfo_val & 0xffff
-                        );
-                    }
-                }
-                Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::Exception)) => {
-                    // An exception means we have to read tdata1 to discover the type
-                    let tdata_val = self.read_csr(tdata1)?;
-
-                    // Read the mxl field from the misa register (see RISC-V Privileged Spec, 3.1.1)
-                    let misa_value = Misa(self.read_csr(0x301)?);
-                    let xlen = u32::pow(2, misa_value.mxl() + 4);
-
-                    let trigger_type = tdata_val >> (xlen - 4);
-
-                    if trigger_type == 0 {
-                        break;
-                    }
-
-                    tracing::info!(
-                        "Discovered trigger with index {} and type {}",
-                        tselect_index,
-                        trigger_type,
-                    );
-                }
-                Err(other) => return Err(other.into()),
-            }
-
-            tselect_index += 1;
         }
-
-        tracing::debug!("Target supports {} breakpoints.", tselect_index);
-
-        Ok(tselect_index)
     }
 
     /// See docs on the [`CoreInterface::hw_breakpoints`] trait
@@ -434,7 +454,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
             let mut tdata_value = Mcontrol(self.read_csr(tdata1)?);
 
             // Only modify the trigger if it is for an execution debug action in all modes(probe-rs enabled it) or no modes (we previously disabled it).
-            if tdata_value.type_() == 0b10
+            if tdata_value.type_() == 2
                 && tdata_value.action() == 1
                 && tdata_value.match_() == 0
                 && tdata_value.execute()
@@ -459,16 +479,12 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     fn set_hw_breakpoint(&mut self, bp_unit_index: usize, addr: u64) -> Result<(), crate::Error> {
         let addr = valid_32bit_address(addr)?;
 
-        if !self.hw_breakpoints_enabled() {
-            self.enable_breakpoints(true)?;
-        }
-
         // select requested trigger
         let tselect = 0x7a0;
         let tdata1 = 0x7a1;
         let tdata2 = 0x7a2;
 
-        tracing::debug!("Setting breakpoint {}", bp_unit_index);
+        tracing::info!("Setting breakpoint {}", bp_unit_index);
 
         self.write_csr(tselect, bp_unit_index as u32)?;
 
@@ -490,6 +506,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         instruction_breakpoint.set_action(1);
 
         // Match exactly the value in tdata2
+        instruction_breakpoint.set_type(2);
         instruction_breakpoint.set_match(0);
 
         instruction_breakpoint.set_m(true);
@@ -504,14 +521,16 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         // Match address
         instruction_breakpoint.set_select(false);
 
-        self.write_csr(tdata1, instruction_breakpoint.0)?;
+        self.write_csr(tdata1, 0)?;
         self.write_csr(tdata2, addr)?;
+        self.write_csr(tdata1, instruction_breakpoint.0)?;
 
         Ok(())
     }
 
     fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), crate::Error> {
         // this can be called w/o halting the core via Session::new - temporarily halt if not halted
+        tracing::info!("Clearing breakpoint {}", unit_index);
 
         let was_running = !self.core_halted()?;
         if was_running {
@@ -600,12 +619,12 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn reset_catch_set(&mut self) -> Result<(), Error> {
-        self.sequence.reset_catch_set(self.interface)?;
+        self.sequence.reset_catch_set(&mut self.interface)?;
         Ok(())
     }
 
     fn reset_catch_clear(&mut self) -> Result<(), Error> {
-        self.sequence.reset_catch_clear(self.interface)?;
+        self.sequence.reset_catch_clear(&mut self.interface)?;
         Ok(())
     }
 
@@ -615,7 +634,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 }
 
-impl<'probe> MemoryInterface for Riscv32<'probe> {
+impl MemoryInterface for Riscv32<'_> {
     fn supports_native_64bit_access(&mut self) -> bool {
         self.interface.supports_native_64bit_access()
     }
@@ -699,18 +718,26 @@ impl<'probe> MemoryInterface for Riscv32<'probe> {
 
 #[derive(Debug)]
 /// Flags used to control the [`SpecificCoreState`](crate::core::SpecificCoreState) for RiscV architecture
-pub struct RiscVState {
+pub struct RiscvCoreState {
     /// A flag to remember whether we want to use hw_breakpoints during stepping of the core.
     hw_breakpoints_enabled: bool,
+
+    hw_breakpoints: Option<u32>,
+
+    /// Whether the PC was written since we last halted. Used to avoid incrementing the PC on
+    /// resume.
+    pc_written: bool,
 
     /// The semihosting command that was decoded at the current program counter
     semihosting_command: Option<SemihostingCommand>,
 }
 
-impl RiscVState {
+impl RiscvCoreState {
     pub(crate) fn new() -> Self {
         Self {
             hw_breakpoints_enabled: false,
+            hw_breakpoints: None,
+            pc_written: false,
             semihosting_command: None,
         }
     }

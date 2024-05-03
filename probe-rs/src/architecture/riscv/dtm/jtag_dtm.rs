@@ -6,19 +6,17 @@ use crate::architecture::riscv::dtm::dtm_access::DtmAccess;
 use bitfield::bitfield;
 use std::time::{Duration, Instant};
 
-use crate::architecture::riscv::communication_interface::RiscvError;
+use crate::architecture::riscv::communication_interface::{
+    RiscvCommunicationInterface, RiscvDebugInterfaceState, RiscvError, RiscvInterfaceBuilder,
+};
+use crate::probe::DebugProbeError;
 use crate::probe::{
     CommandResult, DeferredResultIndex, DeferredResultSet, JTAGAccess, JtagCommandQueue,
     JtagWriteCommand,
 };
-use crate::probe::{DebugProbe, DebugProbeError, Probe};
 
-/// Access to the Debug Transport Module (DTM),
-/// which is used to communicate with the RISC-V debug module.
-#[derive(Debug)]
-pub struct JtagDtm {
-    pub probe: Box<dyn JTAGAccess>,
-
+#[derive(Debug, Default)]
+struct DtmState {
     queued_commands: JtagCommandQueue,
     jtag_results: DeferredResultSet,
 
@@ -26,42 +24,46 @@ pub struct JtagDtm {
     abits: u32,
 }
 
-impl JtagDtm {
-    pub fn new(mut probe: Box<dyn JTAGAccess>) -> Result<Self, (Box<dyn JTAGAccess>, RiscvError)> {
-        let dtmcs_raw = match probe.read_register(DTMCS_ADDRESS, DTMCS_WIDTH) {
-            Ok(value) => value,
-            Err(e) => return Err((probe, e.into())),
-        };
+pub struct JtagDtmBuilder<'f>(&'f mut dyn JTAGAccess);
 
-        let raw_dtmcs = u32::from_le_bytes((&dtmcs_raw[..]).try_into().unwrap());
+impl<'f> JtagDtmBuilder<'f> {
+    pub fn new(probe: &'f mut dyn JTAGAccess) -> Self {
+        Self(probe)
+    }
+}
 
-        if raw_dtmcs == 0 {
-            return Err((probe, RiscvError::NoRiscvTarget));
-        }
+impl<'probe> RiscvInterfaceBuilder<'probe> for JtagDtmBuilder<'probe> {
+    fn create_state(&self) -> RiscvDebugInterfaceState {
+        RiscvDebugInterfaceState::new(Box::<DtmState>::default())
+    }
 
-        let dtmcs = Dtmcs(raw_dtmcs);
+    fn attach<'state>(
+        self: Box<Self>,
+        state: &'state mut RiscvDebugInterfaceState,
+    ) -> Result<RiscvCommunicationInterface<'state>, DebugProbeError>
+    where
+        'probe: 'state,
+    {
+        let dtm_state = state.dtm_state.downcast_mut::<DtmState>().unwrap();
 
-        tracing::debug!("{:?}", dtmcs);
+        Ok(RiscvCommunicationInterface::new(
+            Box::new(JtagDtm::new(self.0, dtm_state)),
+            &mut state.interface_state,
+        ))
+    }
+}
 
-        let abits = dtmcs.abits();
-        let idle_cycles = dtmcs.idle();
+/// Access to the Debug Transport Module (DTM),
+/// which is used to communicate with the RISC-V debug module.
+#[derive(Debug)]
+pub struct JtagDtm<'probe> {
+    pub probe: &'probe mut dyn JTAGAccess,
+    state: &'probe mut DtmState,
+}
 
-        if dtmcs.version() != 1 {
-            return Err((
-                probe,
-                RiscvError::UnsupportedDebugTransportModuleVersion(dtmcs.version() as u8),
-            ));
-        }
-
-        // Setup the number of idle cycles between JTAG accesses
-        probe.set_idle_cycles(idle_cycles as u8);
-
-        Ok(Self {
-            probe,
-            abits,
-            queued_commands: JtagCommandQueue::new(),
-            jtag_results: DeferredResultSet::new(),
-        })
+impl<'probe> JtagDtm<'probe> {
+    fn new(probe: &'probe mut dyn JTAGAccess, state: &'probe mut DtmState) -> Self {
+        Self { probe, state }
     }
 
     fn transform_dmi_result(response_bytes: Vec<u8>) -> Result<u32, DmiOperationStatus> {
@@ -91,7 +93,7 @@ impl JtagDtm {
     ) -> Result<Result<u32, DmiOperationStatus>, DebugProbeError> {
         let bytes = op.to_byte_batch();
 
-        let bit_size = self.abits + DMI_ADDRESS_BIT_OFFSET;
+        let bit_size = self.state.abits + DMI_ADDRESS_BIT_OFFSET;
 
         self.probe
             .write_register(DMI_ADDRESS, &bytes, bit_size)
@@ -104,9 +106,9 @@ impl JtagDtm {
     ) -> Result<DeferredResultIndex, RiscvError> {
         let bytes = op.to_byte_batch();
 
-        let bit_size = self.abits + DMI_ADDRESS_BIT_OFFSET;
+        let bit_size = self.state.abits + DMI_ADDRESS_BIT_OFFSET;
 
-        Ok(self.queued_commands.schedule(JtagWriteCommand {
+        Ok(self.state.queued_commands.schedule(JtagWriteCommand {
             address: DMI_ADDRESS,
             data: bytes.to_vec(),
             transform: |_, result| {
@@ -146,9 +148,34 @@ impl JtagDtm {
     }
 }
 
-impl DtmAccess for JtagDtm {
-    fn init(&mut self) -> Result<(), DebugProbeError> {
+impl DtmAccess for JtagDtm<'_> {
+    fn init(&mut self) -> Result<(), RiscvError> {
         self.probe.tap_reset()?;
+        let dtmcs_raw = self.probe.read_register(DTMCS_ADDRESS, DTMCS_WIDTH)?;
+
+        let raw_dtmcs = u32::from_le_bytes((&dtmcs_raw[..]).try_into().unwrap());
+
+        if raw_dtmcs == 0 {
+            return Err(RiscvError::NoRiscvTarget);
+        }
+
+        let dtmcs = Dtmcs(raw_dtmcs);
+
+        tracing::debug!("{:?}", dtmcs);
+
+        let abits = dtmcs.abits();
+        let idle_cycles = dtmcs.idle();
+
+        if dtmcs.version() != 1 {
+            return Err(RiscvError::UnsupportedDebugTransportModuleVersion(
+                dtmcs.version() as u8,
+            ));
+        }
+
+        // Setup the number of idle cycles between JTAG accesses
+        self.probe.set_idle_cycles(idle_cycles as u8);
+        self.state.abits = abits;
+
         Ok(())
     }
 
@@ -179,33 +206,26 @@ impl DtmAccess for JtagDtm {
         &mut self,
         index: DeferredResultIndex,
     ) -> Result<CommandResult, RiscvError> {
-        match self.jtag_results.take(index) {
+        match self.state.jtag_results.take(index) {
             Ok(result) => Ok(result),
             Err(index) => {
                 self.execute()?;
                 // We can lose data if `execute` fails.
-                self.jtag_results
+                self.state
+                    .jtag_results
                     .take(index)
                     .map_err(|_| RiscvError::BatchedResultNotAvailable)
             }
         }
     }
 
-    fn close(self: Box<Self>) -> Probe {
-        Probe::from_attached_probe(self.probe.into_probe())
-    }
-
-    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
-        self.probe.into_probe()
-    }
-
     fn execute(&mut self) -> Result<(), RiscvError> {
-        let mut cmds = std::mem::take(&mut self.queued_commands);
+        let mut cmds = std::mem::take(&mut self.state.queued_commands);
 
         while !cmds.is_empty() {
             match self.probe.write_register_batch(&cmds) {
                 Ok(r) => {
-                    self.jtag_results.merge_from(r);
+                    self.state.jtag_results.merge_from(r);
                     return Ok(());
                 }
                 Err(e) => match e.error {
@@ -216,7 +236,7 @@ impl DtmAccess for JtagDtm {
 
                                 // queue up the remaining commands when we retry
                                 cmds.consume(e.results.len());
-                                self.jtag_results.merge_from(e.results);
+                                self.state.jtag_results.merge_from(e.results);
 
                                 self.probe.set_idle_cycles(self.probe.idle_cycles() + 1);
                             }

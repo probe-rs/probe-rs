@@ -346,7 +346,7 @@ impl FlashAlgorithm {
                 return Err(FlashError::InvalidFlashAlgorithmStackSize);
             }
         };
-        tracing::debug!("The flash algorithm will be configured with {stack_size} bytes of stack");
+        tracing::info!("The flash algorithm will be configured with {stack_size} bytes of stack");
 
         // We have the stack size, let's lay out the data block(s)
         // Determine the bounds of the data region.
@@ -375,7 +375,7 @@ impl FlashAlgorithm {
             // ... or the top of the region if data is in a different region.
             ram_region.range.end
         };
-        tracing::debug!("Stack top: {:#010X?}", stack_top_addr);
+        tracing::info!("Stack top: {:#010X}", stack_top_addr);
 
         // Data buffer 1
         let first_buffer_start = data_range.start;

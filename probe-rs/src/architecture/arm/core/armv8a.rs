@@ -625,6 +625,21 @@ impl<'probe> Armv8a<'probe> {
         result
     }
 
+    fn with_memory_access_mode<F, R>(&mut self, f: F) -> Result<R, Error>
+    where
+        F: FnOnce(&mut Self) -> Result<R, Error>,
+    {
+        // enable memory access(MA) mode
+        self.set_memory_access_mode(true)?;
+
+        let result = f(self);
+
+        // disable memory access(MA) mode
+        self.set_memory_access_mode(false)?;
+
+        result
+    }
+
     fn read_cpu_memory_aarch32_32(&mut self, address: u64) -> Result<u32, Error> {
         let address = valid_32bit_address(address)?;
 
@@ -644,6 +659,34 @@ impl<'probe> Armv8a<'probe> {
             // Move from r1 to transfer buffer - MCR p14, 0, r1, c0, c5, 0
             let instruction = build_mcr(14, 0, 1, 0, 5, 0);
             armv8a.execute_instruction_with_result_32(instruction)
+        })
+    }
+
+    fn read_cpu_memory_aarch64_bytes(
+        &mut self,
+        address: u64,
+        data: &mut [u8],
+    ) -> Result<(), Error> {
+        self.with_core_halted(|armv8a| {
+            // Save x0, x1
+            armv8a.prepare_for_clobber(0)?;
+            armv8a.prepare_for_clobber(1)?;
+
+            // Load x0 with the address to read from
+            armv8a.set_reg_value(0, address)?;
+
+            for d in data {
+                // Read data to w1 - LDRB w1, [x0], #1
+                let instruction = aarch64::build_ldrb(1, 0, 1);
+
+                armv8a.execute_instruction(instruction)?;
+
+                // MSR DBGDTRTX_EL0, X1
+                let instruction = aarch64::build_msr(2, 3, 0, 5, 0, 1);
+                *d = armv8a.execute_instruction_with_result_32(instruction)? as u8;
+            }
+
+            Ok(())
         })
     }
 
@@ -706,6 +749,27 @@ impl<'probe> Armv8a<'probe> {
         })
     }
 
+    fn write_cpu_memory_aarch64_bytes(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
+        self.with_core_halted(|armv8a| {
+            // Save r0, r1
+            armv8a.prepare_for_clobber(0)?;
+            armv8a.prepare_for_clobber(1)?;
+
+            // Load x0 with the address to write to
+            armv8a.set_reg_value(0, address)?;
+
+            for d in data {
+                armv8a.set_reg_value(1, u64::from(*d))?;
+
+                // Write data to memory - STRB w1, [r0], #1
+                let instruction = aarch64::build_strb(1, 0, 4);
+
+                armv8a.execute_instruction(instruction)?;
+            }
+            Ok(())
+        })
+    }
+
     fn write_cpu_memory_aarch64_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
         self.with_core_halted(|armv8a| {
             // Save x0, x1
@@ -740,6 +804,218 @@ impl<'probe> Armv8a<'probe> {
             armv8a.execute_instruction(instruction)?;
             Ok(())
         })
+    }
+
+    fn set_memory_access_mode(&mut self, enable_ma_mode: bool) -> Result<(), Error> {
+        let address = Edscr::get_mmio_address_from_base(self.base_address)?;
+        let mut edscr: Edscr = Edscr(self.memory.read_word_32(address)?);
+        edscr.set_ma(enable_ma_mode);
+        self.memory.write_word_32(address, edscr.into())?;
+
+        Ok(())
+    }
+
+    fn write_cpu_memory_aarch64_fast(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
+        self.with_core_halted(|armv8a| {
+            let (prefix, aligned, suffix) = armv8a.aligned_to_32(address, data);
+            let mut address = address;
+
+            // write unaligned part
+            if !prefix.is_empty() {
+                armv8a.write_cpu_memory_aarch64_bytes(address, prefix)?;
+                address += u64::try_from(prefix.len()).unwrap();
+            }
+
+            // write aligned part
+            armv8a.write_cpu_memory_aarch64_fast_inner(address, aligned)?;
+            address += u64::try_from(aligned.len()).unwrap();
+
+            // write unaligned part
+            if !suffix.is_empty() {
+                armv8a.write_cpu_memory_aarch64_bytes(address, suffix)?;
+            }
+            Ok(())
+        })
+    }
+
+    /// Fast data download method
+    /// ref. ARM DDI 0487D.a, K9-7312, Figure K9-1 Fast data download in AArch64 state
+    fn write_cpu_memory_aarch64_fast_inner(
+        &mut self,
+        address: u64,
+        data: &[u8],
+    ) -> Result<(), Error> {
+        // assume only call from write_cpu_memory_aarch64_fast
+        if data.is_empty() {
+            return Ok(());
+        }
+        if data.len() % 4 != 0 || address % 4 != 0 {
+            return Err(Error::MemoryNotAligned {
+                address,
+                alignment: 4,
+            });
+        }
+
+        // Save x0
+        self.prepare_for_clobber(0)?;
+
+        // Load r0 with the address to write to
+        self.set_reg_value(0, address)?;
+
+        self.with_memory_access_mode(|armv8a| {
+            for d in data.chunks(4) {
+                let word = u32::from_le_bytes([d[0], d[1], d[2], d[3]]);
+                // memory write loop
+                let dbgdtr_rx_address = Dbgdtrrx::get_mmio_address_from_base(armv8a.base_address)?;
+                armv8a.memory.write_word_32(dbgdtr_rx_address, word)?;
+            }
+            Ok(())
+        })?;
+
+        // error check
+        let edscr_address = Edscr::get_mmio_address_from_base(self.base_address)?;
+        if Edscr(self.memory.read_word_32(edscr_address)?).err() {
+            // under-run or abort
+
+            // clear error flag
+            let edrcr_address = Edrcr::get_mmio_address_from_base(self.base_address)?;
+            let mut edrcr = Edrcr(0);
+            edrcr.set_cse(true);
+            self.memory.write_word_32(edrcr_address, edrcr.into())?;
+
+            return Err(Error::Arm(ArmError::Armv8a(Armv8aError::DataAbort)));
+        }
+
+        Ok(())
+    }
+
+    fn aligned_to_32_split_offset(&self, address: u64, data: &[u8]) -> (usize, usize) {
+        // rounding up
+        let word_aligned_address = (address + 3) & (!0x03u64);
+        let unaligned_prefix_size = usize::try_from(word_aligned_address - address).unwrap();
+        let unaligned_suffix_size =
+            usize::try_from((address + u64::try_from(data.len()).unwrap()) % 4).unwrap();
+        let word_aligned_size = data.len() - (unaligned_prefix_size + unaligned_suffix_size);
+
+        (unaligned_prefix_size, word_aligned_size)
+    }
+
+    fn aligned_to_32_mut<'a>(
+        &self,
+        address: u64,
+        data: &'a mut [u8],
+    ) -> (&'a mut [u8], &'a mut [u8], &'a mut [u8]) {
+        // take out 32-bit aligned part
+        let (unaligned_prefix_size, word_aligned_size) =
+            self.aligned_to_32_split_offset(address, data);
+
+        // take out 32-bit aligned part
+        let (prefix, rest) = data.split_at_mut(unaligned_prefix_size);
+        let (aligned, suffix) = rest.split_at_mut(word_aligned_size);
+        (prefix, aligned, suffix)
+    }
+
+    fn aligned_to_32<'a>(&self, address: u64, data: &'a [u8]) -> (&'a [u8], &'a [u8], &'a [u8]) {
+        // take out 32-bit aligned part
+        let (unaligned_prefix_size, word_aligned_size) =
+            self.aligned_to_32_split_offset(address, data);
+
+        // take out 32-bit aligned part
+        let (prefix, rest) = data.split_at(unaligned_prefix_size);
+        let (aligned, suffix) = rest.split_at(word_aligned_size);
+        (prefix, aligned, suffix)
+    }
+
+    fn read_cpu_memory_aarch64_fast(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
+        self.with_core_halted(|armv8a| {
+            let (prefix, aligned, suffix) = armv8a.aligned_to_32_mut(address, data);
+            let mut address = address;
+
+            // read unaligned part
+            if !prefix.is_empty() {
+                armv8a.read_cpu_memory_aarch64_bytes(address, prefix)?;
+                address += u64::try_from(prefix.len()).unwrap();
+            }
+
+            // read aligned part
+            armv8a.read_cpu_memory_aarch64_fast_inner(address, aligned)?;
+            address += u64::try_from(aligned.len()).unwrap();
+
+            // read unaligned part
+            if !suffix.is_empty() {
+                armv8a.read_cpu_memory_aarch64_bytes(address, suffix)?;
+            }
+
+            Ok(())
+        })
+    }
+
+    /// Fast data download method
+    /// ref. ARM DDI 0487D.a, K9-7313, Figure K9-2 Fast data upload in AArch64 state
+    fn read_cpu_memory_aarch64_fast_inner(
+        &mut self,
+        address: u64,
+        data: &mut [u8],
+    ) -> Result<(), Error> {
+        // assume only call from read_cpu_memory_aarch64_fast
+        if data.is_empty() {
+            return Ok(());
+        }
+        if data.len() % 4 != 0 || address % 4 != 0 {
+            return Err(Error::MemoryNotAligned {
+                address,
+                alignment: 4,
+            });
+        }
+
+        // Save x0
+        self.prepare_for_clobber(0)?;
+
+        // Load x0 with the address to read from
+        self.set_reg_value(0, address)?;
+
+        // set "MSR DBGDTR_EL0, X0" opcode to EDITR
+        let msr_instruction = aarch64::build_msr(2, 3, 0, 4, 0, 0);
+        let editr_address = Editr::get_mmio_address_from_base(self.base_address)?;
+        self.memory.write_word_32(editr_address, msr_instruction)?;
+
+        // wait for TXfull == 1
+        let edscr_address = Edscr::get_mmio_address_from_base(self.base_address)?;
+        while !{ Edscr(self.memory.read_word_32(edscr_address)?) }.txfull() {}
+
+        let dbgdtr_tx_address = Dbgdtrtx::get_mmio_address_from_base(self.base_address)?;
+        let (data, last) = data.split_at_mut(data.len() - std::mem::size_of::<u32>());
+
+        self.with_memory_access_mode(|armv8a| {
+            // discard firtst 32bit
+            let _ = armv8a.memory.read_word_32(dbgdtr_tx_address)?;
+            for d in data.chunks_mut(4) {
+                // memory read loop
+                let tmp = armv8a.memory.read_word_32(dbgdtr_tx_address)?.to_le_bytes();
+                d.copy_from_slice(&tmp);
+            }
+
+            Ok(())
+        })?;
+
+        // read last 32bit
+        let l = self.memory.read_word_32(dbgdtr_tx_address)?.to_le_bytes();
+        last.copy_from_slice(&l);
+
+        // error check
+        let address = Edscr::get_mmio_address_from_base(self.base_address)?;
+        let edscr = Edscr(self.memory.read_word_32(address)?);
+        if edscr.err() {
+            // clear error flag
+            let edrcr_address = Edrcr::get_mmio_address_from_base(self.base_address)?;
+            let mut edrcr = Edrcr(0);
+            edrcr.set_cse(true);
+            self.memory.write_word_32(edrcr_address, edrcr.into())?;
+
+            Err(Error::Arm(ArmError::Armv8a(Armv8aError::DataAbort)))
+        } else {
+            Ok(())
+        }
     }
 
     fn set_core_status(&mut self, new_status: CoreStatus) {
@@ -1239,32 +1515,51 @@ impl<'probe> MemoryInterface for Armv8a<'probe> {
     }
 
     fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), Error> {
-        for (i, word) in data.iter_mut().enumerate() {
-            *word = self.read_word_64(address + ((i as u64) * 8))?;
+        if self.state.is_64_bit {
+            let (_prefix, data, _suffix) = unsafe { data.align_to_mut::<u8>() };
+            self.read_cpu_memory_aarch64_fast(address, data)?;
+        } else {
+            for (i, word) in data.iter_mut().enumerate() {
+                *word = self.read_word_64(address + ((i as u64) * 8))?;
+            }
         }
 
         Ok(())
     }
 
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
-        for (i, word) in data.iter_mut().enumerate() {
-            *word = self.read_word_32(address + ((i as u64) * 4))?;
+        if self.state.is_64_bit {
+            let (_prefix, data, _suffix) = unsafe { data.align_to_mut::<u8>() };
+            self.read_cpu_memory_aarch64_fast(address, data)?;
+        } else {
+            for (i, word) in data.iter_mut().enumerate() {
+                *word = self.read_word_32(address + ((i as u64) * 4))?;
+            }
         }
 
         Ok(())
     }
 
     fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), Error> {
-        for (i, word) in data.iter_mut().enumerate() {
-            *word = self.read_word_16(address + ((i as u64) * 2))?;
+        if self.state.is_64_bit {
+            let (_prefix, data, _suffix) = unsafe { data.align_to_mut::<u8>() };
+            self.read_cpu_memory_aarch64_fast(address, data)?;
+        } else {
+            for (i, word) in data.iter_mut().enumerate() {
+                *word = self.read_word_16(address + ((i as u64) * 2))?;
+            }
         }
 
         Ok(())
     }
 
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
-        for (i, byte) in data.iter_mut().enumerate() {
-            *byte = self.read_word_8(address + (i as u64))?;
+        if self.state.is_64_bit {
+            self.read_cpu_memory_aarch64_fast(address, data)?;
+        } else {
+            for (i, byte) in data.iter_mut().enumerate() {
+                *byte = self.read_word_8(address + (i as u64))?;
+            }
         }
 
         Ok(())
@@ -1319,32 +1614,52 @@ impl<'probe> MemoryInterface for Armv8a<'probe> {
     }
 
     fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), Error> {
-        for (i, word) in data.iter().enumerate() {
-            self.write_word_64(address + ((i as u64) * 8), *word)?;
+        if self.state.is_64_bit {
+            let (_prefix, data, _suffix) = unsafe { data.align_to::<u8>() };
+            self.write_cpu_memory_aarch64_fast(address, data)?;
+        } else {
+            for (i, word) in data.iter().enumerate() {
+                self.write_word_64(address + ((i as u64) * 8), *word)?;
+            }
         }
 
         Ok(())
     }
 
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
-        for (i, word) in data.iter().enumerate() {
-            self.write_word_32(address + ((i as u64) * 4), *word)?;
+        if self.state.is_64_bit {
+            let (_prefix, data, _suffix) = unsafe { data.align_to::<u8>() };
+            self.write_cpu_memory_aarch64_fast(address, data)?;
+        } else {
+            for (i, word) in data.iter().enumerate() {
+                self.write_word_32(address + ((i as u64) * 4), *word)?;
+            }
         }
 
         Ok(())
     }
 
     fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), Error> {
-        for (i, word) in data.iter().enumerate() {
-            self.write_word_16(address + ((i as u64) * 2), *word)?;
+        if self.state.is_64_bit {
+            let (_prefix, data, _suffix) = unsafe { data.align_to::<u8>() };
+            self.write_cpu_memory_aarch64_fast(address, data)?;
+        } else {
+            for (i, word) in data.iter().enumerate() {
+                self.write_word_16(address + ((i as u64) * 2), *word)?;
+            }
         }
 
         Ok(())
     }
 
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
-        for (i, byte) in data.iter().enumerate() {
-            self.write_word_8(address + (i as u64), *byte)?;
+        if self.state.is_64_bit {
+            self.write_cpu_memory_aarch64_fast(address, data)?;
+        } else {
+            for (i, byte) in data.iter().enumerate() {
+                tracing::info!("writing {:?} bytes", i);
+                self.write_word_8(address + (i as u64), *byte)?;
+            }
         }
 
         Ok(())

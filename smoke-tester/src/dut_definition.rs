@@ -1,4 +1,4 @@
-//! # DUT Defintions
+//! # DUT Definitions
 //!
 //! This module handles the definition of the different devices under test (DUTs),
 //! which are used by the tester.

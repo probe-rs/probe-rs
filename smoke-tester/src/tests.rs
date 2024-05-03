@@ -234,10 +234,14 @@ pub fn test_flashing(tracker: &TestTracker, session: &mut Session) -> Result<(),
         probe_rs_target::BinaryFormat::Idf => Format::Idf(Default::default()),
         probe_rs_target::BinaryFormat::Raw => Default::default(),
     };
-    download_file_with_options(session, test_binary, format, options)
-        .map_err(|err| TestFailure::Error(Box::new(err)))?;
+
+    let result = download_file_with_options(session, test_binary, format, options);
 
     println!();
+
+    if let Err(err) = result {
+        return Err(TestFailure::Error(Box::new(err)));
+    }
 
     println_test_status!(
         tracker,

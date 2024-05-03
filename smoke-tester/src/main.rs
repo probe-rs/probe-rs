@@ -59,6 +59,13 @@ impl SingleTestReport {
     fn has_fatal_error(&self) -> bool {
         matches!(self.result, Err(TestFailure::Fatal(_)))
     }
+
+    fn failed(&self) -> bool {
+        matches!(
+            self.result,
+            Err(TestFailure::Error(_) | TestFailure::Fatal(_))
+        )
+    }
 }
 
 #[derive(Debug, Subcommand)]
@@ -126,6 +133,8 @@ fn run_test(definitions: &[DutDefinition], markdown_summary: Option<PathBuf>) ->
         // We don't care about existing flash contents
         let permissions = Permissions::default().allow_erase_all();
 
+        let mut fail_counter = 0;
+
         let mut session = probe
             .attach(definition.chip.clone(), permissions)
             .into_diagnostic()
@@ -150,6 +159,10 @@ fn run_test(definitions: &[DutDefinition], markdown_summary: Option<PathBuf>) ->
                 if result.has_fatal_error() {
                     return Err(miette::miette!("Test failed with fatal error"));
                 }
+
+                if result.failed() {
+                    fail_counter += 1;
+                }
             }
 
             // Ensure core is not running anymore.
@@ -166,6 +179,10 @@ fn run_test(definitions: &[DutDefinition], markdown_summary: Option<PathBuf>) ->
             if result.has_fatal_error() {
                 return Err(miette::miette!("Test failed with fatal error"));
             }
+
+            if result.failed() {
+                fail_counter += 1;
+            }
         }
 
         drop(session);
@@ -180,7 +197,11 @@ fn run_test(definitions: &[DutDefinition], markdown_summary: Option<PathBuf>) ->
                 .into_diagnostic()?;
         }
 
-        Ok(())
+        match fail_counter {
+            0 => Ok(()),
+            1 => Err(miette::miette!("1 test failed")),
+            count => Err(miette::miette!("{count} tests failed")),
+        }
     });
 
     println!();
@@ -352,7 +373,7 @@ impl<'dut> TestTracker<'dut> {
         let mut tests_ok = true;
 
         for definition in self.dut_definitions {
-            print_dut_status!(self, blue, "Starting Test",);
+            print_dut_status!(self, blue, "Starting Test");
 
             if let DefinitionSource::File(path) = &definition.source {
                 print!(" - {}", path.display());
@@ -368,7 +389,7 @@ impl<'dut> TestTracker<'dut> {
                         name: definition.chip.name.clone(),
                         succesful: true,
                     });
-                    println_dut_status!(self, green, "Tests Passed",);
+                    println_dut_status!(self, green, "Tests Passed");
                 }
                 Ok(Err(e)) => {
                     tests_ok = false;
@@ -383,7 +404,7 @@ impl<'dut> TestTracker<'dut> {
                         println_dut_status!(self, red, " caused by:    {}", source);
                     }
 
-                    println_dut_status!(self, red, "Tests Failed",);
+                    println_dut_status!(self, red, "Tests Failed");
                 }
                 Err(_join_err) => {
                     tests_ok = false;
@@ -400,9 +421,9 @@ impl<'dut> TestTracker<'dut> {
         }
 
         if tests_ok {
-            println_status!(self, green, "All DUTs passed.",);
+            println_status!(self, green, "All DUTs passed.");
         } else {
-            println_status!(self, red, "Some DUTs failed some tests.",);
+            println_status!(self, red, "Some DUTs failed some tests.");
         }
 
         report

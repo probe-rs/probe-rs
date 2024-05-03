@@ -239,7 +239,7 @@ pub enum RegisterValue {
 }
 
 impl RegisterValue {
-    /// A helper function to increment an address by a fixed number of bytes.
+    /// Safely increment an address by a fixed number of bytes.
     pub fn increment_address(&mut self, bytes: usize) -> Result<(), Error> {
         match self {
             RegisterValue::U32(value) => {
@@ -281,7 +281,49 @@ impl RegisterValue {
         }
     }
 
-    /// A helper function to determine if the contained register value is equal to the maximum value that can be stored in that datatype.
+    /// Safely decrement an address by a fixed number of bytes.
+    pub fn decrement_address(&mut self, bytes: usize) -> Result<(), Error> {
+        match self {
+            RegisterValue::U32(value) => {
+                if let Some(reg_val) = value.checked_sub(bytes as u32) {
+                    *value = reg_val;
+                    Ok(())
+                } else {
+                    Err(Error::Other(anyhow!(
+                        "Overflow error: Attempting to subtract {} bytes to Register value {}",
+                        bytes,
+                        self
+                    )))
+                }
+            }
+            RegisterValue::U64(value) => {
+                if let Some(reg_val) = value.checked_sub(bytes as u64) {
+                    *value = reg_val;
+                    Ok(())
+                } else {
+                    Err(Error::Other(anyhow!(
+                        "Overflow error: Attempting to subtract {} bytes to Register value {}",
+                        bytes,
+                        self
+                    )))
+                }
+            }
+            RegisterValue::U128(value) => {
+                if let Some(reg_val) = value.checked_sub(bytes as u128) {
+                    *value = reg_val;
+                    Ok(())
+                } else {
+                    Err(Error::Other(anyhow!(
+                        "Overflow error: Attempting to subtract {} bytes to Register value {}",
+                        bytes,
+                        self
+                    )))
+                }
+            }
+        }
+    }
+
+    /// Determine if the contained register value is equal to the maximum value that can be stored in that datatype.
     pub fn is_max_value(&self) -> bool {
         match self {
             RegisterValue::U32(register_value) => *register_value == u32::MAX,
@@ -290,7 +332,7 @@ impl RegisterValue {
         }
     }
 
-    /// A helper function to determine if the contained register value is zero.
+    /// Determine if the contained register value is zero.
     pub fn is_zero(&self) -> bool {
         matches!(
             self,
