@@ -2257,3 +2257,14 @@ memory_mapped_bitfield_register! { pub struct Confstrptr0(u32); 0x19, "confstrpt
 memory_mapped_bitfield_register! { pub struct Confstrptr1(u32); 0x1a, "confstrptr1", impl From; }
 memory_mapped_bitfield_register! { pub struct Confstrptr2(u32); 0x1b, "confstrptr2", impl From; }
 memory_mapped_bitfield_register! { pub struct Confstrptr3(u32); 0x1c, "confstrptr3", impl From; }
+
+// TODO: do we want typed registers for these?
+pub(super) struct Csr;
+
+impl Csr {
+    // CSR register addresses
+    pub const TSELECT: u16 = 0x7b0;
+    pub const TDATA1: u16 = 0x7b1;
+    pub const TDATA2: u16 = 0x7b2;
+    pub const TINFO: u16 = 0x7b4;
+}

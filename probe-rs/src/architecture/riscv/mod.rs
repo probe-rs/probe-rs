@@ -3,7 +3,7 @@
 #![allow(clippy::inconsistent_digit_grouping)]
 
 use crate::{
-    architecture::riscv::sequences::RiscvDebugSequence,
+    architecture::riscv::{communication_interface::Csr, sequences::RiscvDebugSequence},
     core::{
         Architecture, BreakpointCause, CoreInformation, CoreRegisters, CoreStatus, RegisterId,
         RegisterValue,
@@ -127,29 +127,25 @@ impl<'state> Riscv32<'state> {
     fn determine_number_of_hardware_breakpoints(&mut self) -> Result<u32, RiscvError> {
         tracing::debug!("Determining number of HW breakpoints supported");
 
-        let tselect = 0x7a0;
-        let tdata1 = 0x7a1;
-        let tinfo = 0x7a4;
-
         let mut tselect_index = 0;
 
         // These steps follow the debug specification 0.13, section 5.1 Enumeration
         loop {
             tracing::debug!("Trying tselect={}", tselect_index);
-            if let Err(e) = self.write_csr(tselect, tselect_index) {
+            if let Err(e) = self.write_csr(Csr::TSELECT, tselect_index) {
                 match e {
                     RiscvError::AbstractCommand(AbstractCommandErrorKind::Exception) => break,
                     other_error => return Err(other_error),
                 }
             }
 
-            let readback = self.read_csr(tselect)?;
+            let readback = self.read_csr(Csr::TSELECT)?;
 
             if readback != tselect_index {
                 break;
             }
 
-            match self.read_csr(tinfo) {
+            match self.read_csr(Csr::TINFO) {
                 Ok(tinfo_val) => {
                     if tinfo_val & 0xffff == 1 {
                         // Trigger doesn't exist, break the loop
@@ -164,7 +160,7 @@ impl<'state> Riscv32<'state> {
                 }
                 Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::Exception)) => {
                     // An exception means we have to read tdata1 to discover the type
-                    let tdata_val = self.read_csr(tdata1)?;
+                    let tdata_val = self.read_csr(Csr::TDATA1)?;
 
                     // Read the mxl field from the misa register (see RISC-V Privileged Spec, 3.1.1)
                     let misa_value = Misa(self.read_csr(0x301)?);
@@ -202,19 +198,15 @@ impl<'state> Riscv32<'state> {
         }
         let bp_count = self.determine_number_of_hardware_breakpoints()?;
 
-        let tselect = 0x7a0;
-        let tdata1 = 0x7a1;
-        let tdata2 = 0x7a2;
-
         // Load the initial data from the trigger units
         let mut breakpoints = vec![];
         let num_hw_breakpoints = bp_count as usize;
         for bp_unit_index in 0..num_hw_breakpoints {
             // Select the trigger.
-            self.write_csr(tselect, bp_unit_index as u32)?;
+            self.write_csr(Csr::TSELECT, bp_unit_index as u32)?;
 
             // Read the trigger "configuration" data.
-            let tdata_value = Mcontrol(self.read_csr(tdata1)?);
+            let tdata_value = Mcontrol(self.read_csr(Csr::TDATA1)?);
 
             tracing::debug!("Breakpoint {}: {:?}", bp_unit_index, tdata_value);
 
@@ -228,7 +220,7 @@ impl<'state> Riscv32<'state> {
                 && trigger_any_mode_active
                 && tdata_value.execute()
             {
-                let breakpoint = self.read_csr(tdata2)?;
+                let breakpoint = self.read_csr(Csr::TDATA2)?;
                 breakpoints.push(Trigger::AddressMatch(breakpoint));
             } else {
                 breakpoints.push(Trigger::None);
@@ -260,32 +252,24 @@ impl<'state> Riscv32<'state> {
     }
 
     fn disable_trigger_on_target(&mut self, tsel: u32) -> Result<(), RiscvError> {
-        let tselect = 0x7a0;
-        let tdata1 = 0x7a1;
-        let tdata2 = 0x7a2;
-
         tracing::debug!("Clearing breakpoint {}", tsel);
 
-        self.write_csr(tselect, tsel)?;
-        self.write_csr(tdata1, 0)?;
-        self.write_csr(tdata2, 0)?;
+        self.write_csr(Csr::TSELECT, tsel)?;
+        self.write_csr(Csr::TDATA1, 0)?;
+        self.write_csr(Csr::TDATA2, 0)?;
 
         Ok(())
     }
 
     fn enable_address_match_on_target(&mut self, tsel: u32, addr: u32) -> Result<(), RiscvError> {
         // select requested trigger
-        let tselect = 0x7a0;
-        let tdata1 = 0x7a1;
-        let tdata2 = 0x7a2;
-
         tracing::debug!("Setting breakpoint {}", tsel);
 
-        self.write_csr(tselect, tsel)?;
+        self.write_csr(Csr::TSELECT, tsel)?;
 
         // verify the trigger has the correct type
 
-        let tdata_value = Mcontrol(self.read_csr(tdata1)?);
+        let tdata_value = Mcontrol(self.read_csr(Csr::TDATA1)?);
 
         // This should not happen
         let trigger_type = tdata_value.type_();
@@ -316,8 +300,8 @@ impl<'state> Riscv32<'state> {
         // Match address
         instruction_breakpoint.set_select(false);
 
-        self.write_csr(tdata1, instruction_breakpoint.0)?;
-        self.write_csr(tdata2, addr)?;
+        self.write_csr(Csr::TDATA1, instruction_breakpoint.0)?;
+        self.write_csr(Csr::TDATA2, addr)?;
 
         Ok(())
     }
@@ -636,7 +620,7 @@ impl<'state> CoreInterface for Riscv32<'state> {
     }
 
     fn instruction_set(&mut self) -> Result<InstructionSet, Error> {
-        let misa_value = Misa(self.read_csr(0x301)?);
+        let misa_value = Misa(self.read_csr(Misa::get_mmio_address() as u16)?);
 
         // Check if the Bit at position 2 (signifies letter C, for compressed) is set.
         if misa_value.extensions() & (1 << 2) != 0 {
