@@ -13,9 +13,6 @@ protocol = "Swd"
 [default.flashing]
 # Whether or not the target should be flashed.
 enabled = true
-# Whether or not the target should be halted after reset.
-# DEPRECATED, moved to reset section
-halt_afterwards = false
 # Whether or not bytes erased but not rewritten with data from the ELF
 # should be restored with their contents before erasing.
 restore_unwritten_bytes = false
@@ -23,6 +20,10 @@ restore_unwritten_bytes = false
 # flash_layout_output_path = "out.svg"
 # Triggers a full chip erase instead of a page by page erase.
 do_chip_erase = false
+# Whether to disable double buffering
+disable_double_buffering = false
+# Whether to verify flash contents after downloading
+verify = false
 
 [default.reset]
 # Whether or not the target should be reset.
