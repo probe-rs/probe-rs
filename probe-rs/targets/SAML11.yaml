@@ -1,0 +1,162 @@
+name: SAML11
+manufacturer:
+  id: 41
+  cc: 0
+variants:
+- name: ATSAML11x14
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x0
+      end: 0x4000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Nvm
+    name: Data Flash
+    range:
+      start: 0x400000
+      end: 0x400800
+    cores:
+    - main
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  flash_algorithms:
+  - atsaml11x14
+- name: ATSAML11x15
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x0
+      end: 0x8000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Nvm
+    name: Data Flash
+    range:
+      start: 0x400000
+      end: 0x400800
+    cores:
+    - main
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  flash_algorithms:
+  - atsaml11x15
+- name: ATSAML11x16
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Nvm
+    name: Data Flash
+    range:
+      start: 0x400000
+      end: 0x400800
+    cores:
+    - main
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  flash_algorithms:
+  - atsaml11x16
+flash_algorithms:
+- name: atsaml11x14
+  description: ''
+  default: true
+  instructions: gLUAr0DyIBDA8gAAASEBcFIeAyoW0ooHk2tbBwTUQPIiA8DyAQMTYETyBALE8gASQPIeA8DyBAMTYD4jE3QBcAAggL0A8Fj4QPIgEcDyAAEIeAEoAtEAIAhwcEcBIHBHQPIgEcDyAAEJeAEpEdFE8gABxPIAEQqLUgf81chhSvICUAiACItAB/zVCX0+IAhAcEcBIHBH8LUDr0DyIBPA8gADG3gBKyXRRPIAA8TyABMci2QH/NWMCBHQAyShQ0lCFHhVeC0CLBmVeC0E1ng2BnUZLBkEYAkdEh0AKfDR2GFK8gRQGIAYi0AH/NUZfT4gCEDwvQEg8L2AtQCvAN7+3gDU1NQ=
+  pc_init: 0x1
+  pc_uninit: 0x49
+  pc_program_page: 0x97
+  pc_erase_sector: 0x61
+  data_section_offset: 0x124
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x4000
+    page_size: 0x100
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 2000
+    sectors:
+    - size: 0x100
+      address: 0x0
+- name: atsaml11x15
+  description: ''
+  default: true
+  instructions: gLUAr0DyIBDA8gAAASEBcFIeAyoW0ooHk2tbBwTUQPIiA8DyAQMTYETyBALE8gASQPIeA8DyBAMTYD4jE3QBcAAggL0A8Fj4QPIgEcDyAAEIeAEoAtEAIAhwcEcBIHBHQPIgEcDyAAEJeAEpEdFE8gABxPIAEQqLUgf81chhSvICUAiACItAB/zVCX0+IAhAcEcBIHBH8LUDr0DyIBPA8gADG3gBKyXRRPIAA8TyABMci2QH/NWMCBHQAyShQ0lCFHhVeC0CLBmVeC0E1ng2BnUZLBkEYAkdEh0AKfDR2GFK8gRQGIAYi0AH/NUZfT4gCEDwvQEg8L2AtQCvAN7+3gDU1NQ=
+  pc_init: 0x1
+  pc_uninit: 0x49
+  pc_program_page: 0x97
+  pc_erase_sector: 0x61
+  data_section_offset: 0x124
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x4000
+    page_size: 0x100
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 2000
+    sectors:
+    - size: 0x100
+      address: 0x0
+- name: atsaml11x16
+  description: ''
+  default: true
+  instructions: gLUAr0DyIBDA8gAAASEBcFIeAyoW0ooHk2tbBwTUQPIiA8DyAQMTYETyBALE8gASQPIeA8DyBAMTYD4jE3QBcAAggL0A8Fj4QPIgEcDyAAEIeAEoAtEAIAhwcEcBIHBHQPIgEcDyAAEJeAEpEdFE8gABxPIAEQqLUgf81chhSvICUAiACItAB/zVCX0+IAhAcEcBIHBH8LUDr0DyIBPA8gADG3gBKyXRRPIAA8TyABMci2QH/NWMCBHQAyShQ0lCFHhVeC0CLBmVeC0E1ng2BnUZLBkEYAkdEh0AKfDR2GFK8gRQGIAYi0AH/NUZfT4gCEDwvQEg8L2AtQCvAN7+3gDU1NQ=
+  pc_init: 0x1
+  pc_uninit: 0x49
+  pc_program_page: 0x97
+  pc_erase_sector: 0x61
+  data_section_offset: 0x124
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x4000
+    page_size: 0x100
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 2000
+    sectors:
+    - size: 0x100
+      address: 0x0
