@@ -7,12 +7,14 @@ use itertools::Itertools;
 use num_traits::Zero;
 use std::ops::Range;
 
-/// Define the role that a variable plays in a Variant relationship. See section '5.7.10 Variant Entries' of the DWARF 5 specification
+/// Define the role that a variable plays in a Variant relationship. See section '5.7.10 Variant
+/// Entries' of the DWARF 5 specification
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
 pub enum VariantRole {
     /// A (parent) Variable that can have any number of Variant's as its value
     VariantPart(u64),
-    /// A (child) Variable that defines one of many possible types to hold the current value of a VariantPart.
+    /// A (child) Variable that defines one of many possible types to hold the current value of a
+    /// VariantPart.
     Variant(u64),
     /// This variable doesn't play a role in a Variant relationship
     #[default]
@@ -21,7 +23,8 @@ pub enum VariantRole {
 
 /// A [Variable] will have either a valid value, or some reason why a value could not be constructed.
 /// - If we encounter expected errors, they will be displayed to the user as defined below.
-/// - If we encounter unexpected errors, they will be treated as proper errors and will propagated to the calling process as an `Err()`
+/// - If we encounter unexpected errors, they will be treated as proper errors and will propagated
+///   to the calling process as an `Err()`
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub enum VariableValue {
     /// A valid value of this variable
@@ -33,7 +36,8 @@ pub enum VariableValue {
     Error(String),
     /// The value has not been set. This could be because ...
     /// - It is too early in the process to have discovered its value, or ...
-    /// - The variable cannot have a stored value, e.g. a `struct`. In this case, please use `Variable::get_value` to infer a human readable value from the value of the struct's fields.
+    /// - The variable cannot have a stored value, e.g. a `struct`. In this case, please use
+    ///   `Variable::get_value` to infer a human readable value from the value of the struct's fields.
     #[default]
     Empty,
 }
@@ -102,36 +106,58 @@ impl std::fmt::Display for VariableName {
     }
 }
 
-/// Encode the nature of the Debug Information Entry in a way that we can resolve child nodes of a [Variable]
-/// The rules for 'lazy loading'/deferred recursion of [Variable] children are described under each of the enum values.
+/// Encode the nature of the Debug Information Entry in a way that we can resolve child nodes of a
+/// [Variable].
+///
+/// The rules for 'lazy loading'/deferred recursion of [Variable] children are described under each
+/// of the enum values.
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub enum VariableNodeType {
-    /// Use the `header_offset` and `type_offset` as direct references for recursing the variable children. With the current implementation, the `type_offset` will point to a DIE with a tag of `DW_TAG_structure_type`.
-    /// - Rule: For structured variables, we WILL NOT automatically expand their children, but we have enough information to expand it on demand. Except if they fall into one of the special cases handled by [VariableNodeType::RecurseToBaseType]
+    /// Use the `header_offset` and `type_offset` as direct references for recursing the variable
+    /// children. With the current implementation, the `type_offset` will point to a DIE with a tag
+    /// of `DW_TAG_structure_type`.
+    /// - Rule: For structured variables, we WILL NOT automatically expand their children, but we
+    ///         have enough information to expand it on demand. Except if they fall into one of the
+    ///         special cases handled by [VariableNodeType::RecurseToBaseType]
     TypeOffset(DebugInfoOffset, UnitOffset),
-    /// Use the `header_offset` and `entries_offset` as direct references for recursing the variable children.
-    /// - Rule: All top level variables in a [StackFrame] are automatically deferred, i.e [VariableName::LocalScopeRoot], [VariableName::RegistersRoot].
+    /// Use the `header_offset` and `entries_offset` as direct references for recursing the variable
+    /// children.
+    /// - Rule: All top level variables in a [StackFrame] are automatically deferred, i.e
+    /// [VariableName::LocalScopeRoot], [VariableName::RegistersRoot].
     DirectLookup(DebugInfoOffset, UnitOffset),
-    /// Look up information from all compilation units. This is used to resolve static variables, so when [`VariableName::StaticScopeRoot`] is used.
+    /// Look up information from all compilation units. This is used to resolve static variables, so
+    /// when [`VariableName::StaticScopeRoot`] is used.
     UnitsLookup,
     /// Sometimes it doesn't make sense to recurse the children of a specific node type
     /// - Rule: Pointers to `unit` datatypes WILL NOT BE resolved, because it doesn't make sense.
-    /// - Rule: Once we determine that a variable can not be recursed further, we update the variable_node_type to indicate that no further recursion is possible/required. This can be because the variable is a 'base' data type, or because there was some kind of error in processing the current node, so we don't want to incur cascading errors.
+    /// - Rule: Once we determine that a variable can not be recursed further, we update the
+    ///         variable_node_type to indicate that no further recursion is possible/required. This
+    ///         can be because the variable is a 'base' data type, or because there was some kind of
+    ///         error in processing the current node, so we don't want to incur cascading errors.
     /// TODO: Find code instances where we use magic values (e.g. u32::MAX) and replace with DoNotRecurse logic if appropriate.
     DoNotRecurse,
-    /// Unless otherwise specified, always recurse the children of every node until we get to the base data type.
-    /// - Rule: (Default) Unless it is prevented by any of the other rules, we always recurse the children of these variables.
-    /// - Rule: Certain structured variables (e.g. `&str`, `Some`, `Ok`, `Err`, etc.) are set to [VariableNodeType::RecurseToBaseType] to improve the debugger UX.
-    /// - Rule: Pointers to `const` variables WILL ALWAYS BE recursed, because they provide essential information, for example about the length of strings, or the size of arrays.
-    /// - Rule: Enumerated types WILL ALWAYS BE recursed, because we only ever want to see the 'active' child as the value.
-    /// - Rule: For now, Array types WILL ALWAYS BE recursed. TODO: Evaluate if it is beneficial to defer these.
-    /// - Rule: For now, Union types WILL ALWAYS BE recursed. TODO: Evaluate if it is beneficial to defer these.
+    /// Unless otherwise specified, always recurse the children of every node until we get to the
+    /// base data type.
+    /// - Rule: (Default) Unless it is prevented by any of the other rules, we always recurse the
+    ///         children of these variables.
+    /// - Rule: Certain structured variables (e.g. `&str`, `Some`, `Ok`, `Err`, etc.) are set to
+    ///         [VariableNodeType::RecurseToBaseType] to improve the debugger UX.
+    /// - Rule: Pointers to `const` variables WILL ALWAYS BE recursed, because they provide
+    ///         essential information, for example about the length of strings, or the size of
+    ///         arrays.
+    /// - Rule: Enumerated types WILL ALWAYS BE recursed, because we only ever want to see the
+    ///         'active' child as the value.
+    /// - Rule: For now, Array types WILL ALWAYS BE recursed. TODO: Evaluate if it is beneficial to
+    ///         defer these.
+    /// - Rule: For now, Union types WILL ALWAYS BE recursed. TODO: Evaluate if it is beneficial to
+    ///         defer these.
     #[default]
     RecurseToBaseType,
 }
 
 impl VariableNodeType {
-    /// Will return `true` if the `variable_node_type` value implies that the variable will be 'lazy' resolved.
+    /// Will return `true` if the `variable_node_type` value implies that the variable will be
+    /// 'lazy' resolved.
     pub fn is_deferred(&self) -> bool {
         match self {
             VariableNodeType::TypeOffset(_, _)
@@ -237,7 +263,8 @@ pub enum Modifier {
     Typedef(String),
 }
 
-/// The variants of VariableType allows us to streamline the conditional logic that requires specific handling depending on the nature of the variable.
+/// The variants of VariableType allows us to streamline the conditional logic that requires
+/// specific handling depending on the nature of the variable.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize)]
 pub enum VariableType {
     /// A variable with a Rust base datatype.
@@ -248,9 +275,11 @@ pub enum VariableType {
     Struct(String),
     /// A Rust enum.
     Enum(String),
-    /// Namespace refers to the path that qualifies a variable. e.g. "std::string" is the namespace for the struct "String"
+    /// Namespace refers to the path that qualifies a variable. e.g. "std::string" is the namespace
+    /// for the struct "String"
     Namespace,
-    /// A Pointer is a variable that contains a reference to another variable, and the type of the referenced variable may not be known until the reference has been resolved.
+    /// A Pointer is a variable that contains a reference to another variable, and the type of the
+    /// referenced variable may not be known until the reference has been resolved.
     Pointer(Option<String>),
     /// A Rust array.
     Array {
@@ -264,7 +293,8 @@ pub enum VariableType {
     /// When we are unable to determine the name of a variable.
     #[default]
     Unknown,
-    /// For infrequently used categories of variables that does not fall into any of the other `VariableType` variants.
+    /// For infrequently used categories of variables that does not fall into any of the other
+    /// `VariableType` variants.
     Other(String),
 }
 
@@ -430,7 +460,9 @@ impl std::fmt::Display for VariableLocation {
 /// unless it is updated through one of the available methods on `VariableCache`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Variable {
-    /// Every variable must have a unique key value assigned to it. The value will be zero until it is stored in VariableCache, at which time its value will be set to the same as the VariableCache::variable_cache_key
+    /// Every variable must have a unique key value assigned to it.
+    /// The value will be zero until it is stored in VariableCache, at which time its value will be
+    /// set to the same as the VariableCache::variable_cache_key
     pub(super) variable_key: ObjectRef,
     /// Every variable must have a unique parent assigned to it when stored in the VariableCache.
     pub parent_key: ObjectRef,
@@ -445,21 +477,25 @@ pub struct Variable {
 
     /// The name of the type of this variable.
     pub type_name: VariableType,
-    /// For 'lazy loading' of certain variable types we have to determine if the variable recursion should be deferred, and if so, how to resolve it when the request for further recursion happens.
+    /// For 'lazy loading' of certain variable types we have to determine if the variable recursion
+    /// should be deferred, and if so, how to resolve it when the request for further recursion
+    /// happens.
     /// See [VariableNodeType] for more information.
     pub variable_node_type: VariableNodeType,
     /// The starting location/address in memory where this Variable's value is stored.
     pub memory_location: VariableLocation,
     /// The size of this variable in bytes.
     pub byte_size: Option<u64>,
-    /// If this is a subrange (array, vector, etc.), is the ordinal position of this variable in that range
+    /// If this is a subrange (array, vector, etc.), is the ordinal position of this variable in
+    /// that range
     pub member_index: Option<i64>,
     /// The role of this variable.
     pub role: VariantRole,
 }
 
 impl Variable {
-    /// In most cases, Variables will be initialized with their ELF references so that we resolve their data types and values on demand.
+    /// In most cases, Variables will be initialized with their ELF references so that we resolve
+    /// their data types and values on demand.
     pub fn new(unit_info: Option<&UnitInfo>) -> Variable {
         Variable {
             language: unit_info
@@ -501,30 +537,32 @@ impl Variable {
             // Concatenate the error messages ...
             self.value = VariableValue::Error(format!("{} : {}", self.value, new_value));
 
-            // If the value is invalid, then make sure we don't propagate invalid memory location values.
+            // If the value is invalid, then make sure we don't propagate invalid memory location
+            // values.
             self.memory_location = VariableLocation::Unavailable;
         }
     }
 
-    /// Convert the [String] value into the appropriate memory format and update the target memory with the new value.
-    /// Currently this only works for base data types. There is no provision in the MS DAP API to catch
-    /// this client side, so we can only respond with a 'gentle' error message if the user attempts unsupported data types.
+    /// Convert the [String] value into the appropriate memory format and update the target memory
+    /// with the new value.
+    /// Currently this only works for base data types. There is no provision in the MS DAP API to
+    /// catch this client side, so we can only respond with a 'gentle' error message if the user
+    /// attempts unsupported data types.
     pub fn update_value(
         &self,
         memory: &mut impl MemoryInterface,
         variable_cache: &mut VariableCache,
         new_value: String,
     ) -> Result<(), DebugError> {
-        if !self.is_valid()
-                // Need a valid type
-            || self.type_name == VariableType::Unknown
-                // Need a valid memory location
-                || !self.memory_location.valid()
-        {
+        let valid_value = self.is_valid();
+        let valid_type = self.type_name != VariableType::Unknown;
+        let valid_memory = self.memory_location.valid();
+        if !valid_value || !valid_type || !valid_memory {
             // Insufficient data available.
             Err(anyhow!(
                 "Cannot update variable: {:?}, with supplied information (value={:?}, type={:?}, memory location={:#010x?}).",
-                self.name, self.value, self.type_name, self.memory_location).into())
+                self.name, self.value, self.type_name, self.memory_location
+            ).into())
         } else {
             // We have everything we need to update the variable value.
             language::from_dwarf(self.language)
@@ -542,12 +580,13 @@ impl Variable {
         }
     }
 
-    /// Implementing get_value(), because Variable.value has to be private (a requirement of updating the value without overriding earlier values ... see set_value()).
+    /// Implementing get_value(), because Variable.value has to be private (a requirement of
+    /// updating the value without overriding earlier values ... see set_value()).
     pub fn get_value(&self, variable_cache: &VariableCache) -> String {
         // Allow for chained `if let` without complaining
         if !self.value.is_empty() {
-            // The `value` for this `Variable` is non empty because ...
-            // - It is base data type for which a value was determined based on the core runtime, or ...
+            // The `value` for this `Variable` is non empty because either
+            // - It is base data type for which a value was determined based on the core runtime
             // - We encountered an error somewhere, so report it to the user
             format!("{}", self.value)
         } else if matches!(
@@ -557,18 +596,22 @@ impl Variable {
             // Namespaces do not have values
             String::new()
         } else {
-            // We need to construct a 'human readable' value using `fmt::Display` to represent the values of complex types and pointers.
+            // We need to construct a 'human readable' value using `fmt::Display` to represent the
+            // values of complex types and pointers.
             if variable_cache.has_children(self) {
                 self.formatted_variable_value(variable_cache, 0, false)
                     .unwrap_or_default()
             } else if self.type_name == VariableType::Unknown || !self.memory_location.valid() {
                 if self.variable_node_type.is_deferred() {
-                    // When we will do a lazy-load of variable children, and they have not yet been requested by the user, just display the type_name as the value
+                    // When we will do a lazy-load of variable children, and they have not yet been
+                    // requested by the user, just display the type_name as the value
                     self.type_name
                         .display_name(language::from_dwarf(self.language).as_ref())
                 } else {
-                    // This condition should only be true for intermediate nodes from DWARF. These should not show up in the final `VariableCache`
-                    // If a user sees this error, then there is a logic problem in the stack unwind
+                    // This condition should only be true for intermediate nodes
+                    // from DWARF. These should not show up in the final
+                    // `VariableCache`. If a user sees this error, then there is
+                    // a logic problem in the stack unwind
                     "Error: This is a bug! Attempted to evaluate a Variable with no type or no memory location".to_string()
                 }
             } else if matches!(self.type_name, VariableType::Struct(ref name) if name == "None") {
@@ -596,21 +639,26 @@ impl Variable {
             return;
         }
 
-        if !self.value.is_empty()
-        // The value was set explicitly, so just leave it as is, or it was an error, so don't attempt anything else
-        || !self.memory_location.valid()
+        if !self.value.is_empty() {
+            return;
+        }
+
+        // The value was set explicitly, so just leave it as is, or it was an error, so don't attempt
+        // anything else
+        if !self.memory_location.valid() {
+            return;
+        }
+
         // This may just be that we are early on in the process of `Variable` evaluation
-        || matches!(self.type_name.inner(), VariableType::Unknown)
-        // This may just be that we are early on in the process of `Variable` evaluation
-        {
-            // Quick exit if we don't really need to do much more.
+        if matches!(self.type_name.inner(), VariableType::Unknown) {
             return;
         }
 
         if self.variable_node_type.is_deferred()
             || matches!(self.type_name, VariableType::Pointer(_))
         {
-            // And we have not previously assigned the value, then assign the type and address as the value
+            // And we have not previously assigned the value, then assign the type and address as
+            // the value.
             self.value = VariableValue::Valid(format!(
                 "{} @ {}",
                 self.type_name
@@ -661,8 +709,8 @@ impl Variable {
         let type_name = self.type_name();
 
         if !self.value.is_empty() {
-            // This is the end of the recursion where we already have a scalar value for a variable
-            // and we can just move it up.
+            // This is the end of the recursion where we already have a scalar
+            // value for a variable and we can just move it up.
             let line_start = line_indent_string(indentation);
             return Some(if show_name {
                 format!("{line_start}{}: {} = {}", self.name, type_name, self.value)
@@ -678,8 +726,7 @@ impl Variable {
             return None;
         }
 
-        // Infer a human readable value using the available children of this
-        // variable.
+        // Infer a human readable value using the available children of this variable.
         let children = &mut variable_cache.get_children(self.variable_key);
         let first_child = children.clone().next();
 
@@ -695,9 +742,8 @@ impl Variable {
                 format_struct_value(variable_cache, indentation, children, &type_name)
             }
             _ if first_child.is_none() => {
-                // This is a struct with no children, so just print the type
-                // name. This is for example the None value of an Option or
-                // the empty type ().
+                // This is a struct with no children, so just print the type name.
+                // This is for example the None value of an Option or the empty type ().
                 type_name
             }
             _ if matches!(
