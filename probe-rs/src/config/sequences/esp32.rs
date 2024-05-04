@@ -9,7 +9,7 @@ use crate::{
         communication_interface::XtensaCommunicationInterface, sequences::XtensaDebugSequence,
     },
     config::sequences::esp::EspFlashSizeDetector,
-    MemoryInterface,
+    MemoryInterface, Session,
 };
 
 /// The debug sequence implementation for the ESP32.
@@ -65,10 +65,7 @@ impl XtensaDebugSequence for ESP32 {
         Ok(())
     }
 
-    fn detect_flash_size(
-        &self,
-        interface: &mut XtensaCommunicationInterface,
-    ) -> Result<Option<usize>, crate::Error> {
-        self.inner.detect_flash_size_esp32(interface, self)
+    fn detect_flash_size(&self, session: &mut Session) -> Result<Option<usize>, crate::Error> {
+        self.inner.detect_flash_size_esp32(session)
     }
 }
