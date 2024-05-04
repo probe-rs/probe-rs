@@ -878,10 +878,10 @@ fn parse_swd_response(resp: &[bool], direction: TransferDirection) -> Result<u32
     // target, which indicates a protocol error.
     match (ack[0], ack[1], ack[2]) {
         (true, true, true) => Err(DapError::NoAcknowledge),
-        (_, true, _) => Err(DapError::WaitResponse),
-        (_, _, true) => Err(DapError::FaultResponse),
+        (false, true, false) => Err(DapError::WaitResponse),
+        (false, false, true) => Err(DapError::FaultResponse),
         // Successful transfer
-        (true, _, _) if direction == TransferDirection::Read => {
+        (true, false, false) if direction == TransferDirection::Read => {
             // Take the data bits and convert them into a 32bit int.
             let value = bits_to_byte(response.iter().copied());
 
@@ -893,7 +893,7 @@ fn parse_swd_response(resp: &[bool], direction: TransferDirection) -> Result<u32
                 Err(DapError::IncorrectParity)
             }
         }
-        (true, _, _) => Ok(0), // Write; there are no data bits in the mandatory data phase.
+        (true, false, false) => Ok(0), // Write; there are no data bits in the mandatory data phase.
         _ => {
             // Invalid response
             tracing::debug!(
