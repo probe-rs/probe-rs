@@ -582,7 +582,7 @@ impl Variable {
 
     /// Implementing get_value(), because Variable.value has to be private (a requirement of
     /// updating the value without overriding earlier values ... see set_value()).
-    pub fn get_value(&self, variable_cache: &VariableCache) -> String {
+    pub fn to_string(&self, variable_cache: &VariableCache) -> String {
         // Allow for chained `if let` without complaining
         if !self.value.is_empty() {
             // The `value` for this `Variable` is non empty because either
@@ -778,10 +778,11 @@ impl Variable {
         };
 
         self.byte_size.map(|byte_size| {
-            byte_size
-                .is_zero()
-                .then(|| address..address + 4)
-                .unwrap_or_else(|| address..(address + byte_size))
+            if byte_size.is_zero() {
+                address..address + 4
+            } else {
+                address..(address + byte_size)
+            }
         })
     }
 }
@@ -804,7 +805,7 @@ fn format_pointer_value(
         "Unable to resolve referenced variable value".to_string()
     };
 
-    format!("{line_start}{value}",)
+    format!("{line_start}{value}")
 }
 
 /// Format any array like value.
@@ -821,15 +822,25 @@ fn format_array_value<'a>(
     // Limit arrays to 10 elements
     const ARRAY_MAX_LENGTH: usize = 10;
 
+    // If we at least ARRAY_MAX_LENGTH + 2 items in the iterator, cap at ARRAY_MAX_LENGTH.
+    // If we have less, cap at the actual number of items.
+    // This helps us to never write "and 1 more" with the reasoning that the space used for this
+    // text, can be used for printing that one item.
+    let count = children.clone().count();
+    let take = if count > ARRAY_MAX_LENGTH + 1 {
+        ARRAY_MAX_LENGTH
+    } else {
+        count
+    };
+
     let children_values = children
         .by_ref()
-        .take(ARRAY_MAX_LENGTH)
+        .take(take)
         .filter_map(|child| child.formatted_variable_value(variable_cache, indentation + 1, false))
         .join(",");
 
-    let remaining = children.count();
-    let remainder = if remaining > 0 {
-        format!(",\n{line_start}\t... and {} more", remaining)
+    let remainder = if count > ARRAY_MAX_LENGTH + 1 {
+        format!(",\n{line_start}\t... and {} more", count - take)
     } else {
         String::new()
     };

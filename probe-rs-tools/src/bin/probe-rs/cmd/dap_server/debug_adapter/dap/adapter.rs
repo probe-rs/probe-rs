@@ -486,7 +486,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             response_body.memory_reference =
                                 Some(variable.memory_location.to_string());
                             response_body.named_variables = Some(named_child_variables_cnt);
-                            response_body.result = variable.get_value(variable_cache);
+                            response_body.result = variable.to_string(variable_cache);
                             response_body.type_ = Some(variable.type_name());
                             response_body.variables_reference = variables_reference.into();
                         } else {
@@ -1514,7 +1514,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         named_variables: Some(named_child_variables_cnt),
                         presentation_hint: None,
                         type_: Some(variable.type_name()),
-                        value: variable.get_value(variable_cache),
+                        value: variable.to_string(variable_cache),
                         variables_reference: variables_reference.into(),
                     }
                 })

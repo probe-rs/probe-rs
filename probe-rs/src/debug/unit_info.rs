@@ -312,7 +312,7 @@ impl UnitInfo {
 
                             let variant_part = if discriminant_variable.is_valid() {
                                 discriminant_variable
-                                    .get_value(cache)
+                                    .to_string(cache)
                                     .parse()
                                     .unwrap_or(u64::MAX)
                             } else {
@@ -1033,7 +1033,8 @@ impl UnitInfo {
                     // The default behaviour is to defer the processing of child types.
                     child_variable.variable_node_type =
                         VariableNodeType::TypeOffset(self.debug_info_offset()?, node.offset());
-                    // In some cases, it really simplifies the UX if we can auto resolve the children and derive a value that is visible at first glance to the user.
+                    // In some cases, it really simplifies the UX if we can auto resolve the
+                    // children and derive a value that is visible at first glance to the user.
                     if self.language.auto_resolve_children(&type_name) {
                         let temp_node_type = std::mem::replace(
                             &mut child_variable.variable_node_type,
@@ -1092,7 +1093,7 @@ impl UnitInfo {
                         let mut enumerator_values = cache.get_children(child_variable.variable_key);
 
                         let is_this_value = |enumerator_variable: &&Variable| {
-                            enumerator_variable.get_value(cache) == this_enum_const_value
+                            enumerator_variable.to_string(cache) == this_enum_const_value
                         };
 
                         let enumumerator_value = match enumerator_values.find(is_this_value) {
