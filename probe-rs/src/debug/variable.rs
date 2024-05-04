@@ -639,18 +639,14 @@ impl Variable {
             return;
         }
 
-        if !self.value.is_empty() {
-            return;
-        }
-
+        let empty = self.value.is_empty();
         // The value was set explicitly, so just leave it as is, or it was an error, so don't attempt
         // anything else
-        if !self.memory_location.valid() {
-            return;
-        }
-
+        let valid = self.memory_location.valid();
         // This may just be that we are early on in the process of `Variable` evaluation
-        if matches!(self.type_name.inner(), VariableType::Unknown) {
+        let unknown = self.type_name.inner() == &VariableType::Unknown;
+
+        if !empty || !valid || unknown {
             return;
         }
 
@@ -680,6 +676,7 @@ impl Variable {
 
     /// The variable is considered to be an 'indexed' variable if the name starts with two
     /// underscores followed by a number. e.g. "__1".
+    // TODO: Consider replacing this logic with `std::str::pattern::Pattern` when that API stabilizes
     pub fn is_indexed(&self) -> bool {
         match &self.name {
             VariableName::Named(name) => {
@@ -691,6 +688,11 @@ impl Variable {
             // Other kind of variables are never indexed
             _ => false,
         }
+    }
+
+    /// Returns `true` if the variable has a name, `false` otherwise.
+    pub fn is_named(&self) -> bool {
+        matches!(&self.name, VariableName::Named(_))
     }
 
     /// `true` if the Variable has a valid value, or an empty value.
@@ -896,11 +898,10 @@ fn format_default_value<'a>(
     let line_start = line_indent_string(indentation);
 
     // Find the first child of the structure if it exists.
-    let child = children
-        .clone()
-        .find(|c| matches!(&c.name, VariableName::Named(_)));
+    let child = children.clone().find(|v| v.is_named());
 
-    // If we do not have children, exit early with an empty string.
+    // If we do not have children, exit early because we cannot print more specifics (children)
+    // of this variable type. We instead print the empty type symbol.
     let Some(child) = child else {
         return "()".to_string();
     };
@@ -942,6 +943,7 @@ fn format_children_values<'a>(
 }
 
 /// Genarate a string that indents the line exactly the right amount.
+/// Includes a newline at the start if the indentation is bigger than 0.
 fn line_indent_string(indentation: usize) -> String {
     let line_feed = if indentation == 0 { "" } else { "\n" };
     format!("{line_feed}{:\t<indentation$}", "")
