@@ -13,6 +13,7 @@ use probe_rs::{
 use probe_rs_target::{
     ArmCoreAccessOptions, CoreAccessOptions, RiscvCoreAccessOptions, XtensaCoreAccessOptions,
 };
+use std::collections::HashMap;
 use std::{
     fs::{self},
     io::Read,
@@ -151,6 +152,7 @@ where
             name: device_name,
             part: None,
             svd: None,
+            documentation: HashMap::new(),
             cores,
             memory_map,
             flash_algorithms: flash_algorithm_names,

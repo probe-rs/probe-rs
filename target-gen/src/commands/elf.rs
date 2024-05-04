@@ -5,6 +5,7 @@ use probe_rs_target::{
     RamRegion, TargetDescriptionSource::BuiltIn,
 };
 use std::{
+    collections::HashMap,
     fs::{File, OpenOptions},
     io::{BufRead, Write},
     path::Path,
@@ -89,6 +90,7 @@ pub fn cmd_elf(
                 }],
                 part: None,
                 svd: None,
+                documentation: HashMap::new(),
                 name: "<chip name>".to_owned(),
                 memory_map: vec![
                     MemoryRegion::Nvm(NvmRegion {
