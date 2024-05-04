@@ -88,7 +88,7 @@ pub(crate) fn get_local_variable(
             response_body.result = format!(
                 "{} : {} ",
                 variable.name,
-                variable.get_value(variable_cache)
+                variable.to_string(variable_cache)
             );
             response_body.type_ = Some(variable.type_name());
             response_body.variables_reference = variable.variable_key().into();
@@ -98,7 +98,7 @@ pub(crate) fn get_local_variable(
                 variable.name,
                 variable.type_name(),
                 variable.memory_location,
-                variable.get_value(variable_cache)
+                variable.to_string(variable_cache)
             ));
         }
     }

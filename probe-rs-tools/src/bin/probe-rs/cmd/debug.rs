@@ -791,7 +791,7 @@ impl DebugCli {
                                 "{}: {} = {}",
                                 child.name,
                                 child.type_name(),
-                                child.get_value(local_variable_cache)
+                                child.to_string(local_variable_cache)
                             );
                         }
                     }

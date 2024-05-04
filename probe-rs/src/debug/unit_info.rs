@@ -313,7 +313,7 @@ impl UnitInfo {
 
                             let variant_part = if discriminant_variable.is_valid() {
                                 discriminant_variable
-                                    .get_value(cache)
+                                    .to_string(cache)
                                     .parse()
                                     .unwrap_or(u64::MAX)
                             } else {
@@ -1018,9 +1018,9 @@ impl UnitInfo {
                 }
             }
             gimli::DW_TAG_structure_type => {
-                child_variable.type_name = VariableType::Struct(
-                    type_name.unwrap_or_else(|| "<unnamed struct>".to_string()),
-                );
+                let type_name = type_name.unwrap_or_else(|| "<unnamed struct>".to_string());
+                child_variable.type_name = VariableType::Struct(type_name.clone());
+
                 self.process_memory_location(
                     debug_info,
                     node,
@@ -1031,29 +1031,28 @@ impl UnitInfo {
                 )?;
 
                 if child_variable.memory_location != VariableLocation::Unavailable {
-                    if let VariableType::Struct(name) = &child_variable.type_name {
-                        // The default behaviour is to defer the processing of child types.
-                        child_variable.variable_node_type =
-                            VariableNodeType::TypeOffset(self.debug_info_offset()?, node.offset());
-                        // In some cases, it really simplifies the UX if we can auto resolve the children and derive a value that is visible at first glance to the user.
-                        if self.language.auto_resolve_children(name) {
-                            let temp_node_type = std::mem::replace(
-                                &mut child_variable.variable_node_type,
-                                VariableNodeType::RecurseToBaseType,
-                            );
+                    // The default behaviour is to defer the processing of child types.
+                    child_variable.variable_node_type =
+                        VariableNodeType::TypeOffset(self.debug_info_offset()?, node.offset());
+                    // In some cases, it really simplifies the UX if we can auto resolve the
+                    // children and derive a value that is visible at first glance to the user.
+                    if self.language.auto_resolve_children(&type_name) {
+                        let temp_node_type = std::mem::replace(
+                            &mut child_variable.variable_node_type,
+                            VariableNodeType::RecurseToBaseType,
+                        );
 
-                            let mut tree = self.unit.entries_tree(Some(node.offset()))?;
+                        let mut tree = self.unit.entries_tree(Some(node.offset()))?;
 
-                            self.process_tree(
-                                debug_info,
-                                tree.root()?,
-                                child_variable,
-                                memory,
-                                cache,
-                                frame_info,
-                            )?;
-                            child_variable.variable_node_type = temp_node_type;
-                        }
+                        self.process_tree(
+                            debug_info,
+                            tree.root()?,
+                            child_variable,
+                            memory,
+                            cache,
+                            frame_info,
+                        )?;
+                        child_variable.variable_node_type = temp_node_type;
                     }
                 } else {
                     // If something is already broken, then do nothing ...
@@ -1095,7 +1094,7 @@ impl UnitInfo {
                         let mut enumerator_values = cache.get_children(child_variable.variable_key);
 
                         let is_this_value = |enumerator_variable: &&Variable| {
-                            enumerator_variable.get_value(cache) == this_enum_const_value
+                            enumerator_variable.to_string(cache) == this_enum_const_value
                         };
 
                         let enumumerator_value = match enumerator_values.find(is_this_value) {
