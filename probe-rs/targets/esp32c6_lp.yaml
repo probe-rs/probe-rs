@@ -4,7 +4,6 @@ manufacturer:
   id: 0x12
 variants:
   - name: esp32c6_lp
-    part: null
     scan_chain:
       - name: main
         ir_len: 5
@@ -41,5 +40,3 @@ variants:
           end: 0x50004000
         cores:
           - lp
-    flash_algorithms: []
-flash_algorithms: []

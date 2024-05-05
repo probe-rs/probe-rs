@@ -1,10 +1,8 @@
 ---
 name: CC13xx CC26xx Series
-manufacturer: ~
 variants:
 ##################### cc13x2_cc26x2 ############################################
 - name: CC2642R
-  part: ~
   cores:
   - name: main
     type: armv7em
@@ -12,8 +10,6 @@ variants:
       !Arm
         ap: 0
         psel: 0
-        debug_base: ~
-        cti_base: ~
   jtag:
     scan_chain:
       - name: core0
@@ -22,7 +18,6 @@ variants:
         ir_len: 6
   memory_map:
   - !Ram
-      name: ~
       range:
         start: 0x20000000
         end: 0x20014000
@@ -30,7 +25,6 @@ variants:
       cores:
       - main
   - !Nvm
-      name: ~
       range:
         start: 0
         end: 0x58000
@@ -40,7 +34,6 @@ variants:
   flash_algorithms:
   - cc13x2-cc26x2-flash
 - name: CC2652R
-  part: ~
   cores:
   - name: main
     type: armv7em
@@ -48,8 +41,6 @@ variants:
       !Arm
         ap: 0
         psel: 0
-        debug_base: ~
-        cti_base: ~
   jtag:
     scan_chain:
       - name: core0
@@ -58,7 +49,6 @@ variants:
         ir_len: 6
   memory_map:
   - !Ram
-      name: ~
       range:
         start: 0x20000000
         end: 0x20014000
@@ -66,7 +56,6 @@ variants:
       cores:
       - main
   - !Nvm
-      name: ~
       range:
         start: 0
         end: 0x58000
@@ -76,7 +65,6 @@ variants:
   flash_algorithms:
   - cc13x2-cc26x2-flash
 - name: CC2652RB
-  part: ~
   cores:
   - name: main
     type: armv7em
@@ -84,8 +72,6 @@ variants:
       !Arm
         ap: 0
         psel: 0
-        debug_base: ~
-        cti_base: ~
   jtag:
     scan_chain:
       - name: core0
@@ -94,7 +80,6 @@ variants:
         ir_len: 6
   memory_map:
   - !Ram
-      name: ~
       range:
         start: 0x20000000
         end: 0x20014000
@@ -102,7 +87,6 @@ variants:
       cores:
       - main
   - !Nvm
-      name: ~
       range:
         start: 0
         end: 0x58000
@@ -112,7 +96,6 @@ variants:
   flash_algorithms:
   - cc13x2-cc26x2-flash
 - name: CC2652P
-  part: ~
   cores:
   - name: main
     type: armv7em
@@ -120,8 +103,6 @@ variants:
       !Arm
         ap: 0
         psel: 0
-        debug_base: ~
-        cti_base: ~
   jtag:
     scan_chain:
       - name: core0
@@ -130,7 +111,6 @@ variants:
         ir_len: 6
   memory_map:
   - !Ram
-      name: ~
       range:
         start: 0x20000000
         end: 0x20014000
@@ -138,7 +118,6 @@ variants:
       cores:
       - main
   - !Nvm
-      name: ~
       range:
         start: 0
         end: 0x58000
@@ -148,7 +127,6 @@ variants:
   flash_algorithms:
   - cc13x2-cc26x2-flash
 - name: CC1312R
-  part: ~
   cores:
   - name: main
     type: armv7em
@@ -156,8 +134,6 @@ variants:
       !Arm
         ap: 0
         psel: 0
-        debug_base: ~
-        cti_base: ~
   jtag:
     scan_chain:
       - name: core0
@@ -166,7 +142,6 @@ variants:
         ir_len: 6
   memory_map:
   - !Ram
-      name: ~
       range:
         start: 0x20000000
         end: 0x20014000
@@ -174,7 +149,6 @@ variants:
       cores:
       - main
   - !Nvm
-      name: ~
       range:
         start: 0
         end: 0x58000
@@ -184,7 +158,6 @@ variants:
   flash_algorithms:
   - cc13x2-cc26x2-flash
 - name: CC1352R
-  part: ~
   cores:
   - name: main
     type: armv7em
@@ -192,8 +165,6 @@ variants:
       !Arm
         ap: 0
         psel: 0
-        debug_base: ~
-        cti_base: ~
   jtag:
     scan_chain:
       - name: core0
@@ -202,7 +173,6 @@ variants:
         ir_len: 6
   memory_map:
   - !Ram
-      name: ~
       range:
         start: 0x20000000
         end: 0x20014000
@@ -210,7 +180,6 @@ variants:
       cores:
       - main
   - !Nvm
-      name: ~
       range:
         start: 0
         end: 0x58000
@@ -220,7 +189,6 @@ variants:
   flash_algorithms:
   - cc13x2-cc26x2-flash
 - name: CC1352P
-  part: ~
   cores:
   - name: main
     type: armv7em
@@ -228,8 +196,6 @@ variants:
       !Arm
         ap: 0
         psel: 0
-        debug_base: ~
-        cti_base: ~
   jtag:
     scan_chain:
       - name: core0
@@ -238,7 +204,6 @@ variants:
         ir_len: 6
   memory_map:
   - !Ram
-      name: ~
       range:
         start: 0x20000000
         end: 0x20014000
@@ -246,7 +211,6 @@ variants:
       cores:
       - main
   - !Nvm
-      name: ~
       range:
         start: 0
         end: 0x58000
