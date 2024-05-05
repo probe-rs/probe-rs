@@ -70,7 +70,7 @@ where
     Ok(algo)
 }
 
-pub(crate) fn handle_package<T>(
+pub(crate) fn extract_families<T>(
     pdsc: Package,
     mut kind: Kind<T>,
     families: &mut Vec<ChipFamily>,
@@ -240,7 +240,7 @@ pub(crate) fn visit_dirs(path: &Path, families: &mut Vec<ChipFamily>) -> Result<
         } else if entry_path.extension() == Some(OsStr::new("pdsc")) {
             log::info!("Found .pdsc file: {}", path.display());
 
-            handle_package::<std::fs::File>(
+            extract_families::<std::fs::File>(
                 Package::from_path(&entry_path)?,
                 Kind::Directory(path),
                 families,
@@ -279,7 +279,7 @@ pub(crate) fn visit_file(path: &Path, families: &mut Vec<ChipFamily>) -> Result<
 
     drop(pdsc_file);
 
-    handle_package(package, Kind::Archive(&mut archive), families, false)
+    extract_families(package, Kind::Archive(&mut archive), families, false)
 }
 
 pub(crate) async fn visit_arm_files(
@@ -397,7 +397,7 @@ pub(crate) async fn visit_arm_file(
 
     let mut families = vec![];
 
-    match handle_package(
+    match extract_families(
         package,
         Kind::Archive(&mut archive),
         &mut families,
