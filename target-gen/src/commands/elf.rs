@@ -6,8 +6,9 @@ use probe_rs_target::{
 };
 use std::{
     collections::HashMap,
+    fmt::Write,
     fs::{File, OpenOptions},
-    io::{BufRead, Write},
+    io::{BufRead, Write as _},
     path::Path,
 };
 
@@ -21,10 +22,10 @@ pub fn cmd_elf(
     update: bool,
     name: Option<String>,
 ) -> Result<()> {
-    let elf_file =
-        File::open(file).with_context(|| format!("Failed to open ELF file {}", file.display()))?;
+    let elf_file = std::fs::read(file)
+        .with_context(|| format!("Failed to open ELF file {}", file.display()))?;
 
-    let mut algorithm = extract_flash_algo(elf_file, file, true, fixed_load_address)?;
+    let mut algorithm = extract_flash_algo(&elf_file, file, true, fixed_load_address)?;
 
     if let Some(name) = name {
         algorithm.name = name;
@@ -65,8 +66,8 @@ pub fn cmd_elf(
             },
         }
 
-        let target_description = File::create(target_description_file)?;
-        serialize_to_yaml_file(&family, &target_description)?;
+        let output_yaml = serialize_to_yaml_string(&family)?;
+        std::fs::write(target_description_file, output_yaml)?;
     } else {
         // Create a complete target specification, with place holder values
         let algorithm_name = algorithm.name.clone();
@@ -116,10 +117,11 @@ pub fn cmd_elf(
             source: BuiltIn,
         };
 
+        let output_yaml = serialize_to_yaml_string(&chip_family)?;
         match output {
             Some(output) => {
                 // Ensure we don't overwrite an existing file
-                let file = OpenOptions::new()
+                let mut file = OpenOptions::new()
                     .write(true)
                     .create_new(true)
                     .open(output)
@@ -127,9 +129,10 @@ pub fn cmd_elf(
                         "Failed to create target file '{}'.",
                         output.display()
                     ))?;
-                serialize_to_yaml_file(&chip_family, &file)?;
+
+                file.write_all(output_yaml.as_bytes())?;
             }
-            None => println!("{}", serde_yaml::to_string(&chip_family)?),
+            None => println!("{output_yaml}"),
         }
     }
 
@@ -140,27 +143,31 @@ pub fn cmd_elf(
 /// - If `Option<T>` is `None`, it is serialized as `null` ... we want to omit it.
 /// - If `Vec<T>` is empty, it is serialized as `[]` ... we want to omit it.
 /// - `serde_yaml` serializes hex formatted integers as single quoted strings, e.g. '0x1234' ... we need to remove the single quotes so that it round-trips properly.
-pub fn serialize_to_yaml_file(family: &ChipFamily, file: &File) -> Result<(), anyhow::Error> {
+pub fn serialize_to_yaml_string(family: &ChipFamily) -> Result<String> {
     let yaml_string = serde_yaml::to_string(&family)?;
     let mut reader = std::io::BufReader::new(yaml_string.as_bytes());
     let mut reader_line = String::new();
-    let mut writer = std::io::BufWriter::new(file);
+
+    let mut yaml_string = String::new();
     while reader.read_line(&mut reader_line)? > 0 {
         if reader_line.ends_with(": null\n")
             || reader_line.ends_with(": []\n")
             || reader_line.ends_with(": false\n")
         {
             // Skip the line
-        } else if (reader_line.contains("'0x") || reader_line.contains("'0X"))
+            continue;
+        }
+
+        if (reader_line.contains("'0x") || reader_line.contains("'0X"))
             && reader_line.ends_with("'\n")
         {
             // Remove the single quotes
             reader_line = reader_line.replace('\'', "");
-            writer.write_all(reader_line.as_bytes())?;
-        } else {
-            writer.write_all(reader_line.as_bytes())?;
         }
+
+        yaml_string.write_str(&reader_line)?;
         reader_line.clear();
     }
-    Ok(())
+
+    Ok(yaml_string)
 }
