@@ -146,19 +146,19 @@ where
             })
             .collect::<Vec<_>>();
 
-        let flash_algorithm_names: Vec<_> = variant_flash_algorithms
+        let flash_algorithm_names = variant_flash_algorithms
             .iter()
             .map(|fa| fa.name.to_string())
-            .collect();
+            .collect::<Vec<_>>();
 
         // Sometimes the algos are referenced twice, for example in the multicore H7s
         // Deduplicate while keeping order.
-        let flash_algorithm_names: Vec<_> = flash_algorithm_names
+        let flash_algorithm_names = flash_algorithm_names
             .iter()
             .enumerate()
             .filter(|(i, s)| !flash_algorithm_names[..*i].contains(s))
             .map(|(_, s)| s.clone())
-            .collect();
+            .collect::<Vec<_>>();
 
         let cores = device
             .processors
