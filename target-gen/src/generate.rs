@@ -14,6 +14,7 @@ use probe_rs_target::{
     ArmCoreAccessOptions, CoreAccessOptions, RiscvCoreAccessOptions, XtensaCoreAccessOptions,
 };
 use std::collections::HashMap;
+use std::ffi::OsStr;
 use std::{fs, io::Read, path::Path};
 
 pub(crate) enum Kind<'a, T>
@@ -223,9 +224,7 @@ fn core_to_probe_core(value: &Core) -> Result<CoreType, Error> {
         Core::CortexM85 => CoreType::Armv8m,
         Core::CortexM7 => CoreType::Armv7em,
         Core::StarMC1 => CoreType::Armv8m,
-        c => {
-            bail!("Core '{:?}' is not yet supported for target generation.", c);
-        }
+        c => bail!("Core '{c:?}' is not yet supported for target generation."),
     })
 }
 
@@ -238,21 +237,19 @@ pub(crate) fn visit_dirs(path: &Path, families: &mut Vec<ChipFamily>) -> Result<
 
         if entry_path.is_dir() {
             visit_dirs(&entry_path, families)?;
-        } else if let Some(extension) = entry_path.extension() {
-            if extension == "pdsc" {
-                log::info!("Found .pdsc file: {}", path.display());
+        } else if entry_path.extension() == Some(OsStr::new("pdsc")) {
+            log::info!("Found .pdsc file: {}", path.display());
 
-                handle_package::<std::fs::File>(
-                    Package::from_path(&entry.path())?,
-                    Kind::Directory(path),
-                    families,
-                    false,
-                )
-                .context(format!(
-                    "Failed to process .pdsc file {}.",
-                    entry.path().display()
-                ))?;
-            }
+            handle_package::<std::fs::File>(
+                Package::from_path(&entry_path)?,
+                Kind::Directory(path),
+                families,
+                false,
+            )
+            .context(format!(
+                "Failed to process .pdsc file {}.",
+                entry_path.display()
+            ))?;
         }
     }
 
@@ -297,10 +294,12 @@ pub(crate) async fn visit_arm_files(
             let only_supported_familes = if let Some(ref filter) = filter {
                 // If we are filtering for specific filter patterns, then skip all the ones we don't want.
                 if !pack.name.contains(filter) {
+                    log::debug!("Ignoring filtered {} ...", pack.name);
                     return None;
-                } else {
-                    log::info!("Found matching chip family: {}", pack.name);
                 }
+
+                log::info!("Found matching chip family: {}", pack.name);
+
                 // If we are filtering for specific filter patterns, then do not restrict these to the list of supported families.
                 false
             } else {
@@ -312,7 +311,7 @@ pub(crate) async fn visit_arm_files(
                 log::info!("Working PACK {}/{} ...", i, packs.pdsc_index.len());
                 Some(visit_arm_file(pack, only_supported_familes))
             } else {
-                log::warn!("Pack {} is deprecated. Skipping ...", pack.name);
+                log::warn!("Ignoring deprecated {} ...", pack.name);
                 None
             }
         }))
@@ -336,19 +335,19 @@ pub(crate) async fn visit_arm_file(
         version = pack.version
     );
 
-    log::info!("Downloading {}", url);
+    log::info!("Downloading {url}");
 
     let response = match reqwest::get(&url).await {
         Ok(response) => response,
         Err(error) => {
-            log::error!("Failed to download pack '{}': {}", url, error);
+            log::error!("Failed to download pack '{url}': {error}");
             return vec![];
         }
     };
     let bytes = match response.bytes().await {
         Ok(bytes) => bytes,
         Err(error) => {
-            log::error!("Failed to get bytes from pack '{}': {}", url, error);
+            log::error!("Failed to get bytes from pack '{url}': {error}");
             return vec![];
         }
     };
@@ -358,7 +357,7 @@ pub(crate) async fn visit_arm_file(
     let mut archive = match zip::ZipArchive::new(zip) {
         Ok(archive) => archive,
         Err(error) => {
-            log::error!("Failed to open pack '{}': {}", url, error);
+            log::error!("Failed to open pack '{url}': {error}");
             return vec![];
         }
     };
@@ -366,33 +365,27 @@ pub(crate) async fn visit_arm_file(
     let mut pdsc_file = match find_pdsc_in_archive(&mut archive) {
         Ok(Some(file)) => file,
         Ok(None) => {
-            log::error!("Failed to find .pdsc file in archive {}", &url);
+            log::error!("Failed to find .pdsc file in archive {url}");
             return vec![];
         }
-        Err(e) => {
-            log::error!("Error handling archive {}: {}", url, e);
+        Err(error) => {
+            log::error!("Error handling archive {url}: {error}");
             return vec![];
         }
     };
 
     let mut pdsc = String::new();
-
-    match pdsc_file.read_to_string(&mut pdsc) {
-        Ok(_) => {}
-        Err(_) => {
-            log::error!("Failed to read .pdsc file {}", &url);
-            return vec![];
-        }
+    if let Err(error) = pdsc_file.read_to_string(&mut pdsc) {
+        log::error!("Failed to read .pdsc file '{url}': {error}");
+        return vec![];
     };
 
     let package = match Package::from_string(&pdsc) {
         Ok(package) => package,
-        Err(e) => {
+        Err(error) => {
             log::error!(
-                "Failed to parse pdsc file '{}' in CMSIS Pack {}: {}",
+                "Failed to parse pdsc file '{}' in CMSIS Pack {url}: {error}",
                 pdsc_file.name(),
-                &url,
-                e
             );
             return vec![];
         }
@@ -410,10 +403,8 @@ pub(crate) async fn visit_arm_file(
         &mut families,
         only_supported_familes,
     ) {
-        Ok(_) => {
-            log::info!("Handled package {}", pdsc_name);
-        }
-        Err(err) => log::error!("Something went wrong while handling pack {}: {}", url, err),
+        Ok(_) => log::info!("Processed package {pdsc_name}"),
+        Err(error) => log::error!("Something went wrong while handling pack {url}: {error}"),
     };
 
     families
@@ -436,14 +427,12 @@ where
             )
         })?;
 
-        if let Some(extension) = outpath.extension() {
-            if extension == "pdsc" {
-                // We cannot return the file directly here,
-                // because this leads to lifetime problems.
+        if outpath.extension() == Some(OsStr::new("pdsc")) {
+            // We cannot return the file directly here,
+            // because this leads to lifetime problems.
 
-                index = Some(i);
-                break;
-            }
+            index = Some(i);
+            break;
         }
     }
 
@@ -517,7 +506,7 @@ pub(crate) fn get_mem_map(device: &Device, cores: &[probe_rs_target::Core]) -> V
 
     // Convert DeviceMemory's to MemoryRegion's, and assign cores to shared reqions.
     let mut mem_map = vec![];
-    for region in &device_memories {
+    for region in device_memories {
         if is_multi_core && region.p_name.is_none() {
             log::warn!("Device {}, memory region {} has no processor name, but this is required for a multicore device. Assigning memory to all cores!", device.name, region.name);
         }
@@ -531,13 +520,13 @@ pub(crate) fn get_mem_map(device: &Device, cores: &[probe_rs_target::Core]) -> V
         match region.memory_type {
             MemoryType::Ram => {
                 if let Some(MemoryRegion::Ram(existing_region)) = mem_map.iter_mut().find(|existing_region| {
-                        matches!(existing_region, MemoryRegion::Ram(ram_region) if ram_region.name == Some(region.name.clone()))
+                        matches!(existing_region, MemoryRegion::Ram(ram_region) if ram_region.name.as_deref() == Some(&region.name))
                     })
                 {
                     existing_region.cores.extend_from_slice(&cores);
                 } else {
                     mem_map.push(MemoryRegion::Ram(RamRegion {
-                        name: Some(region.name.clone()),
+                        name: Some(region.name),
                         range: region.memory_start..region.memory_end,
                         is_boot_memory: region.is_boot_memory,
                         cores,
@@ -546,13 +535,13 @@ pub(crate) fn get_mem_map(device: &Device, cores: &[probe_rs_target::Core]) -> V
             },
             MemoryType::Nvm => {
                 if let Some(MemoryRegion::Nvm(existing_region)) = mem_map.iter_mut().find(|existing_region| {
-                        matches!(existing_region, MemoryRegion::Nvm(nvm_region) if nvm_region.name == Some(region.name.clone()))
+                        matches!(existing_region, MemoryRegion::Nvm(nvm_region) if nvm_region.name.as_deref() == Some(&region.name))
                     })
                 {
                     existing_region.cores.extend_from_slice(&cores);
                 } else {
                     mem_map.push(MemoryRegion::Nvm(NvmRegion {
-                        name: Some(region.name.clone()),
+                        name: Some(region.name),
                         range: region.memory_start..region.memory_end,
                         is_boot_memory: region.is_boot_memory,
                         cores,
@@ -562,13 +551,13 @@ pub(crate) fn get_mem_map(device: &Device, cores: &[probe_rs_target::Core]) -> V
             },
             MemoryType::Generic => {
                 if let Some(MemoryRegion::Generic(existing_region)) = mem_map.iter_mut().find(|existing_region| {
-                        matches!(existing_region, MemoryRegion::Generic(generic_region) if generic_region.name == Some(region.name.clone()))
+                        matches!(existing_region, MemoryRegion::Generic(generic_region) if generic_region.name.as_deref() == Some(&region.name))
                     })
                 {
                     existing_region.cores.extend_from_slice(&cores);
                 } else {
                     mem_map.push(MemoryRegion::Generic(GenericRegion {
-                        name: Some(region.name.clone()),
+                        name: Some(region.name),
                         range: region.memory_start..region.memory_end,
                         cores,
                     }));
