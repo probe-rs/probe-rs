@@ -67,13 +67,13 @@ pub fn extract_flash_algo(
 
     let elf = goblin::elf::Elf::parse(buffer)?;
 
-    let flash_device = extract_flash_device(&elf, &buffer).context(format!(
+    let flash_device = extract_flash_device(&elf, buffer).context(format!(
         "Failed to extract flash information from ELF file '{}'.",
         file_name.display()
     ))?;
 
     // Extract binary blob.
-    let algorithm_binary = crate::algorithm_binary::AlgorithmBinary::new(&elf, &buffer)?;
+    let algorithm_binary = crate::algorithm_binary::AlgorithmBinary::new(&elf, buffer)?;
     algo.instructions = algorithm_binary.blob();
 
     let code_section_offset = algorithm_binary.code_section.start;
