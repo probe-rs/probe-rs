@@ -12,6 +12,9 @@ pub(crate) fn read_elf_bin_data<'a>(
     address: u32,
     size: u32,
 ) -> Option<&'a [u8]> {
+    let range_to_read = address..address + size;
+    log::debug!("Trying to read {} bytes from {:#010x}.", size, address);
+
     // Iterate all segments.
     for ph in &elf.program_headers {
         let segment_address = ph.p_paddr as u32;
@@ -20,21 +23,15 @@ pub(crate) fn read_elf_bin_data<'a>(
         log::debug!("Segment address: {:#010x}", segment_address);
         log::debug!("Segment size:    {} bytes", segment_size);
 
-        // If the requested data is above the current segment, skip the segment.
-        if address > segment_address + segment_size {
+        let segment = segment_address..segment_address + segment_size;
+        // If the requested data is not fully inside of the current segment, skip the segment.
+        if !segment.contains(&range_to_read.start) || !segment.contains(&range_to_read.end) {
+            log::debug!("Skipping segment.");
             continue;
         }
 
-        // If the requested data is below the current segment, skip the segment.
-        if address + size <= segment_address {
-            continue;
-        }
-
-        // If the requested data chunk is fully contained in the segment, extract and return the data segment.
-        if address >= segment_address && address + size <= segment_address + segment_size {
-            let start = ph.p_offset as u32 + address - segment_address;
-            return Some(&buffer[start as usize..][..size as usize]);
-        }
+        let start = ph.p_offset as u32 + address - segment_address;
+        return Some(&buffer[start as usize..][..size as usize]);
     }
 
     None
