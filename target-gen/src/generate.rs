@@ -28,6 +28,24 @@ where
     Directory(&'a Path),
 }
 
+impl<'a, T> Kind<'a, T>
+where
+    T: std::io::Seek + std::io::Read,
+{
+    /// Read binary data from the given path.
+    fn read_bytes(&mut self, path: &Path) -> Result<Vec<u8>> {
+        let buffer = match self {
+            Kind::Archive(archive) => {
+                let reader = archive.by_name(&path.to_string_lossy())?;
+                reader.bytes().collect::<std::io::Result<Vec<u8>>>()?
+            }
+            Kind::Directory(dir) => std::fs::read(dir.join(path))?,
+        };
+
+        Ok(buffer)
+    }
+}
+
 pub(crate) fn handle_package<T>(
     pdsc: Package,
     mut kind: Kind<T>,
@@ -82,20 +100,13 @@ where
             .algorithms
             .iter()
             .map(|flash_algorithm| {
-                let mut algo = match &mut kind {
-                    Kind::Archive(archive) => crate::parser::extract_flash_algo(
-                        archive.by_name(&flash_algorithm.file_name.as_path().to_string_lossy())?,
-                        &flash_algorithm.file_name,
-                        flash_algorithm.default,
-                        false, // Algorithms from CMSIS-Pack files are position independent
-                    ),
-                    Kind::Directory(path) => crate::parser::extract_flash_algo(
-                        std::fs::File::open(path.join(&flash_algorithm.file_name))?,
-                        &flash_algorithm.file_name,
-                        flash_algorithm.default,
-                        false, // Algorithms from CMSIS-Pack files are position independent
-                    ),
-                }?;
+                let algo_bytes = kind.read_bytes(&flash_algorithm.file_name)?;
+                let mut algo = crate::parser::extract_flash_algo(
+                    &algo_bytes,
+                    &flash_algorithm.file_name,
+                    flash_algorithm.default,
+                    false, // Algorithms from CMSIS-Pack files are position independent
+                )?;
 
                 // If the algo specifies `RAMstart` and/or `RAMsize` fields, then use them.
                 // - See https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/pdsc_family_pg.html#element_algorithm for more information.
