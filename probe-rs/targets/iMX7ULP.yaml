@@ -26,5 +26,3 @@ variants:
           is_boot_memory: false
           cores:
             - core0
-    flash_algorithms: []
-flash_algorithms: []

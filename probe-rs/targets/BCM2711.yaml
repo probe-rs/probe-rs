@@ -48,5 +48,3 @@ variants:
             - core1
             - core2
             - core3
-    flash_algorithms: []
-flash_algorithms: []

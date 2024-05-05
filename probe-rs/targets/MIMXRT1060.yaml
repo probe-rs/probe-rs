@@ -5,7 +5,6 @@ manufacturer:
   id: 0x15
 variants:
   - name: MIMXRT1060
-    part: ~
     cores:
       - name: main
         type: armv7em
