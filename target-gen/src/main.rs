@@ -198,23 +198,7 @@ fn cmd_pack(input: &Path, out_dir: &Path) -> Result<()> {
         );
     }
 
-    let mut generated_files = Vec::with_capacity(families.len());
-
-    for family in &families {
-        let path = out_dir.join(family.name.clone().replace(' ', "_") + ".yaml");
-
-        let yaml = serialize_to_yaml_string(family)?;
-        std::fs::write(&path, yaml)
-            .context(format!("Failed to create file '{}'.", path.display()))?;
-
-        generated_files.push(path);
-    }
-
-    println!("Generated {} target definition(s):", generated_files.len());
-
-    for file in generated_files {
-        println!("\t{}", file.display());
-    }
+    save_files(out_dir, &families)?;
 
     Ok(())
 }
@@ -250,9 +234,15 @@ async fn cmd_arm(out_dir: Option<PathBuf>, chip_family: Option<String>, list: bo
 
     generate::visit_arm_files(&mut families, chip_family).await?;
 
+    save_files(&out_dir, &families)?;
+
+    Ok(())
+}
+
+fn save_files(out_dir: &Path, families: &[ChipFamily]) -> Result<()> {
     let mut generated_files = Vec::with_capacity(families.len());
 
-    for family in &families {
+    for family in families {
         let path = out_dir.join(family.name.clone().replace(' ', "_") + ".yaml");
 
         let yaml = serialize_to_yaml_string(family)?;
