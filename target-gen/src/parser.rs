@@ -113,8 +113,7 @@ pub fn extract_flash_algo(
         algo.load_address = Some(algorithm_binary.code_section.load_address as u64);
     }
 
-    algo.description = flash_device.name;
-
+    algo.description = flash_device.name.clone();
     algo.name = file_name
         .file_stem()
         .and_then(|f| f.to_str())
@@ -122,30 +121,33 @@ pub fn extract_flash_algo(
         .to_lowercase();
     algo.default = default;
     algo.data_section_offset = algorithm_binary.data_section.start as u64;
-
-    let sectors = flash_device
-        .sectors
-        .iter()
-        .map(|si| SectorDescription {
-            address: si.address.into(),
-            size: si.size.into(),
-        })
-        .collect();
-
-    let properties = FlashProperties {
-        address_range: flash_device.start_address as u64
-            ..(flash_device.start_address as u64 + flash_device.device_size as u64),
-
-        page_size: flash_device.page_size,
-        erased_byte_value: flash_device.erased_default_value,
-
-        program_page_timeout: flash_device.program_page_timeout,
-        erase_sector_timeout: flash_device.erase_sector_timeout,
-
-        sectors,
-    };
-
-    algo.flash_properties = properties;
+    algo.flash_properties = FlashProperties::from(flash_device);
 
     Ok(algo)
+}
+
+impl From<FlashDevice> for FlashProperties {
+    fn from(device: FlashDevice) -> Self {
+        let sectors = device
+            .sectors
+            .iter()
+            .map(|si| SectorDescription {
+                address: si.address.into(),
+                size: si.size.into(),
+            })
+            .collect();
+
+        FlashProperties {
+            address_range: device.start_address as u64
+                ..(device.start_address as u64 + device.device_size as u64),
+
+            page_size: device.page_size,
+            erased_byte_value: device.erased_default_value,
+
+            program_page_timeout: device.program_page_timeout,
+            erase_sector_timeout: device.erase_sector_timeout,
+
+            sectors,
+        }
+    }
 }
