@@ -1,5 +1,5 @@
 use anyhow::{anyhow, bail, Context, Error, Result};
-use cmsis_pack::pdsc::{Core, Device, Package, Processor};
+use cmsis_pack::pdsc::{Algorithm, Core, Device, Package, Processor};
 use cmsis_pack::{pack_index::PdscRef, utils::FromElem};
 use futures::StreamExt;
 use probe_rs::{
@@ -14,11 +14,7 @@ use probe_rs_target::{
     ArmCoreAccessOptions, CoreAccessOptions, RiscvCoreAccessOptions, XtensaCoreAccessOptions,
 };
 use std::collections::HashMap;
-use std::{
-    fs::{self},
-    io::Read,
-    path::Path,
-};
+use std::{fs, io::Read, path::Path};
 
 pub(crate) enum Kind<'a, T>
 where
@@ -44,6 +40,33 @@ where
 
         Ok(buffer)
     }
+}
+
+fn process_flash_algo<T>(
+    flash_algorithm: &Algorithm,
+    kind: &mut Kind<T>,
+) -> Result<RawFlashAlgorithm>
+where
+    T: std::io::Seek + std::io::Read,
+{
+    let algo_bytes = kind.read_bytes(&flash_algorithm.file_name)?;
+    let mut algo = crate::parser::extract_flash_algo(
+        &algo_bytes,
+        &flash_algorithm.file_name,
+        flash_algorithm.default,
+        false, // Algorithms from CMSIS-Pack files are position independent
+    )?;
+
+    // If the algo specifies `RAMstart` and/or `RAMsize` fields, then use them.
+    // - See https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/pdsc_family_pg.html#element_algorithm for more information.
+    algo.load_address = flash_algorithm
+        .ram_start
+        .map(|ram_start| ram_start + FlashAlgorithm::get_max_algorithm_header_size());
+
+    // This algo will still be added to the specific chip algos by name.
+    // We just need to deduplicate the entire flash algorithm and reference to it by name at other places.
+
+    Ok(algo)
 }
 
 pub(crate) fn handle_package<T>(
@@ -99,42 +122,27 @@ where
         let variant_flash_algorithms = device
             .algorithms
             .iter()
-            .map(|flash_algorithm| {
-                let algo_bytes = kind.read_bytes(&flash_algorithm.file_name)?;
-                let mut algo = crate::parser::extract_flash_algo(
-                    &algo_bytes,
-                    &flash_algorithm.file_name,
-                    flash_algorithm.default,
-                    false, // Algorithms from CMSIS-Pack files are position independent
-                )?;
+            .filter_map(|flash_algorithm| {
+                match process_flash_algo(flash_algorithm, &mut kind) {
+                    Ok(algo) => {
+                        // We add this algo directly to the algos of the family if it's not already added.
+                        // Make sure we never add an algo twice to save file size.
+                        if !family.flash_algorithms.contains(&algo) {
+                            family.flash_algorithms.push(algo.clone());
+                        }
 
-                // If the algo specifies `RAMstart` and/or `RAMsize` fields, then use them.
-                // - See https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/pdsc_family_pg.html#element_algorithm for more information.
-                algo.load_address = flash_algorithm
-                    .ram_start
-                    .map(|ram_start| ram_start + FlashAlgorithm::get_max_algorithm_header_size());
-
-                // We add this algo directly to the algos of the family if it's not already added.
-                // Make sure we never add an algo twice to save file size.
-                if !family.flash_algorithms.contains(&algo) {
-                    family.flash_algorithms.push(algo.clone());
-                }
-
-                // This algo will still be added to the specific chip algos by name.
-                // We just need to deduplicate the entire flash algorithm and reference to it by name at other places.
-
-                Ok(algo)
-            })
-            .filter_map(
-                |flash_algorithm: Result<RawFlashAlgorithm>| match flash_algorithm {
-                    Ok(flash_algorithm) => Some(flash_algorithm),
-                    Err(error) => {
-                        log::warn!("Failed to parse flash algorithm.");
-                        log::warn!("Reason: {:?}", error);
+                        Some(algo)
+                    }
+                    Err(e) => {
+                        log::warn!(
+                            "Failed to process flash algorithm {}.",
+                            flash_algorithm.file_name.display()
+                        );
+                        log::warn!("Reason: {:?}", e);
                         None
                     }
-                },
-            )
+                }
+            })
             .collect::<Vec<_>>();
 
         let flash_algorithm_names: Vec<_> = variant_flash_algorithms
