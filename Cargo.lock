@@ -2871,6 +2871,7 @@ dependencies = [
  "base64 0.22.1",
  "jep106",
  "serde",
+ "url",
 ]
 
 [[package]]
@@ -4610,6 +4611,7 @@ dependencies = [
  "form_urlencoded",
  "idna 0.5.0",
  "percent-encoding",
+ "serde",
 ]
 
 [[package]]
