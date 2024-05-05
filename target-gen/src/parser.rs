@@ -1,6 +1,7 @@
 use crate::flash_device::FlashDevice;
 use anyhow::{anyhow, Context, Result};
 use probe_rs::config::{FlashProperties, RawFlashAlgorithm, SectorDescription};
+use probe_rs_target::MemoryRange;
 
 /// Extract a chunk of data from an ELF binary.
 ///
@@ -12,25 +13,28 @@ pub(crate) fn read_elf_bin_data<'a>(
     address: u32,
     size: u32,
 ) -> Option<&'a [u8]> {
-    let range_to_read = address..address + size;
     log::debug!("Trying to read {} bytes from {:#010x}.", size, address);
+
+    let start = address as u64;
+    let end = (address + size) as u64;
+    let range_to_read = start..end;
 
     // Iterate all segments.
     for ph in &elf.program_headers {
-        let segment_address = ph.p_paddr as u32;
-        let segment_size = ph.p_memsz.min(ph.p_filesz) as u32;
+        let segment_address = ph.p_paddr;
+        let segment_size = ph.p_memsz.min(ph.p_filesz);
 
         log::debug!("Segment address: {:#010x}", segment_address);
         log::debug!("Segment size:    {} bytes", segment_size);
 
         let segment = segment_address..segment_address + segment_size;
         // If the requested data is not fully inside of the current segment, skip the segment.
-        if !segment.contains(&range_to_read.start) || !segment.contains(&range_to_read.end) {
+        if !segment.contains_range(&range_to_read) {
             log::debug!("Skipping segment.");
             continue;
         }
 
-        let start = ph.p_offset as u32 + address - segment_address;
+        let start = ph.p_offset as u32 + address - segment_address as u32;
         return Some(&buffer[start as usize..][..size as usize]);
     }
 
