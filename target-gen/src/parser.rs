@@ -45,7 +45,7 @@ fn extract_flash_device(elf: &goblin::elf::Elf, buffer: &[u8]) -> Result<FlashDe
     for sym in elf.syms.iter() {
         let name = &elf.strtab[sym.st_name];
 
-        if let "FlashDevice" = name {
+        if name == "FlashDevice" {
             // This struct contains information about the FLM file structure.
             let address = sym.st_value as u32;
             return FlashDevice::new(elf, buffer, address);
