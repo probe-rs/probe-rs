@@ -2893,7 +2893,6 @@ dependencies = [
  "bitfield",
  "bitflags 2.5.0",
  "bitvec",
- "byteorder",
  "clap",
  "clap_complete",
  "docsplay",

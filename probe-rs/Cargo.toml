@@ -71,7 +71,6 @@ uf2-decode = "0.2"
 rmp-serde = "1"
 typed-path = "0.8"
 bitflags = "2"
-byteorder = "1"
 espflash = { version = "3", default-features = false }
 dunce = { version = "1" }
 parse_int = "0.6"
