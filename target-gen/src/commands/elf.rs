@@ -155,6 +155,7 @@ pub fn serialize_to_yaml_string(family: &ChipFamily) -> Result<String> {
             || reader_line.ends_with(": false\n")
         {
             // Skip the line
+            reader_line.clear();
             continue;
         }
 
