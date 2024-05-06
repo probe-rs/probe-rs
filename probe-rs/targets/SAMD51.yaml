@@ -1,4 +1,7 @@
 name: SAMD51
+manufacturer:
+  id: 41
+  cc: 0
 generated_from_pack: false # true but with manual edits
 pack_file_release: 1.2.139
 variants:
