@@ -152,9 +152,11 @@ pub fn serialize_to_yaml_string(family: &ChipFamily) -> Result<String> {
     while reader.read_line(&mut reader_line)? > 0 {
         if reader_line.ends_with(": null\n")
             || reader_line.ends_with(": []\n")
+            || reader_line.ends_with(": {}\n")
             || reader_line.ends_with(": false\n")
         {
             // Skip the line
+            reader_line.clear();
             continue;
         }
 
@@ -170,4 +172,37 @@ pub fn serialize_to_yaml_string(family: &ChipFamily) -> Result<String> {
     }
 
     Ok(yaml_string)
+}
+
+#[cfg(test)]
+mod test {
+    use probe_rs_target::TargetDescriptionSource;
+
+    use super::*;
+
+    #[test]
+    fn test_serialize_to_yaml_string_cuts_off_unnecessary_defaults() {
+        let family = ChipFamily {
+            name: "Test Family".to_owned(),
+            manufacturer: None,
+            generated_from_pack: false,
+            pack_file_release: None,
+            variants: vec![Chip::generic_arm("Test Chip", CoreType::Armv8m)],
+            flash_algorithms: vec![],
+            source: TargetDescriptionSource::BuiltIn,
+        };
+        let yaml_string = serialize_to_yaml_string(&family).unwrap();
+        let expectation = "name: Test Family
+variants:
+- name: Test Chip
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  default_binary_format: raw
+";
+        assert_eq!(yaml_string, expectation);
+    }
 }
