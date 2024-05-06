@@ -183,6 +183,7 @@ impl Target {
             || chip.name.starts_with("ATSAMDA")
             || chip.name.starts_with("ATSAMD5")
             || chip.name.starts_with("ATSAME5")
+            || chip.name.starts_with("ATSAML1")
         {
             DebugSequence::Arm(AtSAM::create())
         } else if chip.name.starts_with("XMC4") {
