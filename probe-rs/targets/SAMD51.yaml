@@ -1,5 +1,5 @@
 name: SAMD51
-generated_from_pack: true
+generated_from_pack: false # true but with manual edits
 pack_file_release: 1.2.139
 variants:
 - name: ATSAMD51G18A
@@ -26,24 +26,18 @@ variants:
     cores:
     - main
   - !Generic
-    name: IRAM2
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Generic
-    name: IRAM3
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Generic
-    name: IRAM4
+    name: Backup SRAM
     range:
       start: 0x47000000
       end: 0x47002000
+    cores:
+    - main
+  - !Nvm
+    name: NVM user row
+    range:
+      start: 0x00804000
+      end: 0x00804200
+    is_boot_memory: false
     cores:
     - main
   flash_algorithms:
@@ -72,24 +66,18 @@ variants:
     cores:
     - main
   - !Generic
-    name: IRAM2
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Generic
-    name: IRAM3
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Generic
-    name: IRAM4
+    name: Backup SRAM
     range:
       start: 0x47000000
       end: 0x47002000
+    cores:
+    - main
+  - !Nvm
+    name: NVM user row
+    range:
+      start: 0x00804000
+      end: 0x00804200
+    is_boot_memory: false
     cores:
     - main
   flash_algorithms:
@@ -118,24 +106,18 @@ variants:
     cores:
     - main
   - !Generic
-    name: IRAM2
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Generic
-    name: IRAM3
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Generic
-    name: IRAM4
+    name: Backup SRAM
     range:
       start: 0x47000000
       end: 0x47002000
+    cores:
+    - main
+  - !Nvm
+    name: NVM user row
+    range:
+      start: 0x00804000
+      end: 0x00804200
+    is_boot_memory: false
     cores:
     - main
   flash_algorithms:
@@ -164,24 +146,18 @@ variants:
     cores:
     - main
   - !Generic
-    name: IRAM2
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Generic
-    name: IRAM3
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Generic
-    name: IRAM4
+    name: Backup SRAM
     range:
       start: 0x47000000
       end: 0x47002000
+    cores:
+    - main
+  - !Nvm
+    name: NVM user row
+    range:
+      start: 0x00804000
+      end: 0x00804200
+    is_boot_memory: false
     cores:
     - main
   flash_algorithms:
@@ -210,24 +186,18 @@ variants:
     cores:
     - main
   - !Generic
-    name: IRAM2
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Generic
-    name: IRAM3
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Generic
-    name: IRAM4
+    name: Backup SRAM
     range:
       start: 0x47000000
       end: 0x47002000
+    cores:
+    - main
+  - !Nvm
+    name: NVM user row
+    range:
+      start: 0x00804000
+      end: 0x00804200
+    is_boot_memory: false
     cores:
     - main
   flash_algorithms:
@@ -256,24 +226,18 @@ variants:
     cores:
     - main
   - !Generic
-    name: IRAM2
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Generic
-    name: IRAM3
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Generic
-    name: IRAM4
+    name: Backup SRAM
     range:
       start: 0x47000000
       end: 0x47002000
+    cores:
+    - main
+  - !Nvm
+    name: NVM user row
+    range:
+      start: 0x00804000
+      end: 0x00804200
+    is_boot_memory: false
     cores:
     - main
   flash_algorithms:
@@ -302,24 +266,18 @@ variants:
     cores:
     - main
   - !Generic
-    name: IRAM2
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Generic
-    name: IRAM3
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Generic
-    name: IRAM4
+    name: Backup SRAM
     range:
       start: 0x47000000
       end: 0x47002000
+    cores:
+    - main
+  - !Nvm
+    name: NVM user row
+    range:
+      start: 0x00804000
+      end: 0x00804200
+    is_boot_memory: false
     cores:
     - main
   flash_algorithms:
@@ -348,24 +306,18 @@ variants:
     cores:
     - main
   - !Generic
-    name: IRAM2
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Generic
-    name: IRAM3
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Generic
-    name: IRAM4
+    name: Backup SRAM
     range:
       start: 0x47000000
       end: 0x47002000
+    cores:
+    - main
+  - !Nvm
+    name: NVM user row
+    range:
+      start: 0x00804000
+      end: 0x00804200
+    is_boot_memory: false
     cores:
     - main
   flash_algorithms:
@@ -394,24 +346,18 @@ variants:
     cores:
     - main
   - !Generic
-    name: IRAM2
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Generic
-    name: IRAM3
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Generic
-    name: IRAM4
+    name: Backup SRAM
     range:
       start: 0x47000000
       end: 0x47002000
+    cores:
+    - main
+  - !Nvm
+    name: NVM user row
+    range:
+      start: 0x00804000
+      end: 0x00804200
+    is_boot_memory: false
     cores:
     - main
   flash_algorithms:
