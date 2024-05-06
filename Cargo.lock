@@ -1204,17 +1204,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "enum-primitive-derive"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba7795da175654fe16979af73f81f26a8ea27638d8d9823d317016888a63dc4c"
-dependencies = [
- "num-traits",
- "quote",
- "syn 2.0.60",
-]
-
-[[package]]
 name = "env_logger"
 version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2909,7 +2898,6 @@ dependencies = [
  "clap_complete",
  "docsplay",
  "dunce",
- "enum-primitive-derive",
  "espflash",
  "futures-lite",
  "gdbstub",
@@ -2922,7 +2910,6 @@ dependencies = [
  "itm",
  "jep106",
  "miniz_oxide",
- "num-traits",
  "nusb",
  "object 0.35.0",
  "once_cell",

@@ -2,8 +2,6 @@ use super::adi_v5_memory_interface::ArmProbe;
 use super::AccessPortError;
 use crate::architecture::arm::ArmError;
 use crate::architecture::arm::{ap::MemoryAp, communication_interface::ArmProbeInterface};
-use enum_primitive_derive::Primitive;
-use num_traits::cast::FromPrimitive;
 
 /// An error to report any errors that are romtable discovery specific.
 #[derive(thiserror::Error, Debug)]
@@ -308,8 +306,7 @@ impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
             }
         }
 
-        FromPrimitive::from_u32((cidr[1] >> 4) & 0x0F)
-            .ok_or(RomTableError::CSComponentIdentification)
+        RawComponent::from_u8((cidr[1] >> 4) & 0x0F).ok_or(RomTableError::CSComponentIdentification)
     }
 
     /// Reads the peripheral ID from a component information table.
@@ -383,7 +380,7 @@ impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
 /// Meant for internal parsing usage only.
 ///
 /// Described in table D1-2 in the ADIv5.2 spec.
-#[derive(Clone, Primitive, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 enum RawComponent {
     GenericVerificationComponent = 0,
     RomTable = 1,
@@ -391,6 +388,21 @@ enum RawComponent {
     PeripheralTestBlock = 0xB,
     GenericIPComponent = 0xE,
     CoreLinkOrPrimeCellOrSystemComponent = 0xF,
+}
+
+impl RawComponent {
+    /// Tries to convert a u8 to a `RawComponent`.
+    fn from_u8(value: u32) -> Option<Self> {
+        match value {
+            0 => Some(RawComponent::GenericVerificationComponent),
+            1 => Some(RawComponent::RomTable),
+            9 => Some(RawComponent::CoreSightComponent),
+            0xB => Some(RawComponent::PeripheralTestBlock),
+            0xE => Some(RawComponent::GenericIPComponent),
+            0xF => Some(RawComponent::CoreLinkOrPrimeCellOrSystemComponent),
+            _ => None,
+        }
+    }
 }
 
 /// This enum describes a CoreSight component.

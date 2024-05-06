@@ -38,7 +38,6 @@ bitfield = "0.15"
 bitvec = "1"
 clap_complete = "4.5.2"
 docsplay = { workspace = true }
-enum-primitive-derive = "0.3"
 gimli = { version = "0.29", default-features = false, features = [
     "endian-reader",
     "read",
@@ -52,7 +51,6 @@ itertools = "0.12.1"
 jep106 = "0.2"
 once_cell = "1"
 miniz_oxide = "0.7"
-num-traits = "0.2"
 object = { version = "0.35", default-features = false, features = [
     "elf",
     "read_core",

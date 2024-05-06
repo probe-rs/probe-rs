@@ -4,7 +4,6 @@ use super::*;
 use anyhow::anyhow;
 use gimli::{DebugInfoOffset, DwLang, UnitOffset};
 use itertools::Itertools;
-use num_traits::Zero;
 use std::ops::Range;
 
 /// Define the role that a variable plays in a Variant relationship. See section '5.7.10 Variant
@@ -780,7 +779,7 @@ impl Variable {
         };
 
         self.byte_size.map(|byte_size| {
-            if byte_size.is_zero() {
+            if byte_size == 0 {
                 address..address + 4
             } else {
                 address..(address + byte_size)

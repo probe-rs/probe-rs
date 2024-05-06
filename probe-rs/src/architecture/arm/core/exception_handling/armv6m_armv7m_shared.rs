@@ -9,7 +9,6 @@ use crate::{
     Error, MemoryInterface, RegisterValue,
 };
 use bitfield::bitfield;
-use num_traits::Zero;
 use probe_rs_target::InstructionSet;
 
 /// Registers which are stored on the stack when an exception occurs.
@@ -51,7 +50,7 @@ bitfield! {
     pub return_to_thread, _: 3;
     /// If true, return to PSP, else MSP. We can ignore this, because the processor banks the correct value in the SP register.
     pub use_process_stack, _: 2;
-    /// When `is_excetion_flag` is 0xF, then the last two bits are always 0b01
+    /// When `is_exception_flag` is 0xF, then the last two bits are always 0b01
     pub always_0b01, _: 1,0;
 }
 
@@ -181,7 +180,7 @@ pub(crate) fn exception_details(
         // // Now we can update the registers with the new stack pointer.
         let sp = handler_frame
             .registers
-            .get_register_mut_by_role(&crate::core::RegisterRole::StackPointer)?;
+            .get_register_mut_by_role(&RegisterRole::StackPointer)?;
         if let Some(sp_value) = sp.value.as_mut() {
             sp_value.increment_address(frame_size)?;
         }
@@ -215,14 +214,11 @@ pub(crate) fn raw_exception(
 ) -> Result<u32, Error> {
     // Load the provided xPSR register as a bitfield.
     let mut exception_number = Xpsr(
-        stackframe_registers
-            .get_register_value_by_role(&crate::core::RegisterRole::ProcessorStatus)?
-            as u32,
+        stackframe_registers.get_register_value_by_role(&RegisterRole::ProcessorStatus)? as u32,
     )
     .exception_number();
-    if exception_number.is_zero()
-        && stackframe_registers
-            .get_register_value_by_role(&crate::core::RegisterRole::ReturnAddress)?
+    if exception_number == 0
+        && stackframe_registers.get_register_value_by_role(&RegisterRole::ReturnAddress)?
             == 0xFFFF_FFFF
     {
         // Although the exception number is 0, for the purposes of unwind, this is treated as a reset exception.
@@ -251,9 +247,8 @@ pub(crate) fn calling_frame_registers(
     stackframe_registers: &crate::debug::DebugRegisters,
     _raw_exception: u32,
 ) -> Result<crate::debug::DebugRegisters, crate::Error> {
-    let exception_context_address: u32 = stackframe_registers
-        .get_register_value_by_role(&crate::core::RegisterRole::StackPointer)?
-        as u32;
+    let exception_context_address: u32 =
+        stackframe_registers.get_register_value_by_role(&RegisterRole::StackPointer)? as u32;
 
     // Get the values of the registers pushed onto the stack.
     let mut calling_stack_registers = vec![0u32; EXCEPTION_STACK_REGISTERS.len()];
