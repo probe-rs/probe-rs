@@ -36,7 +36,6 @@ anyhow = { workspace = true }
 bincode = "1.3"
 bitfield = "0.15"
 bitvec = "1"
-clap_complete = "4.5.2"
 docsplay = { workspace = true }
 gimli = { version = "0.29", default-features = false, features = [
     "endian-reader",

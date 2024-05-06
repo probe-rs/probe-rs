@@ -622,15 +622,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fd16c4719339c4530435d38e511904438d07cce7950afa3718a84ac36c10e89e"
 
 [[package]]
-name = "chrono"
-version = "0.4.38"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a21f936df1771bf62b77f047b726c4625ff2e8aa607c01ec06e5a05bd8463401"
-dependencies = [
- "num-traits",
-]
-
-[[package]]
 name = "cipher"
 version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2894,7 +2885,6 @@ dependencies = [
  "bitflags 2.5.0",
  "bitvec",
  "clap",
- "clap_complete",
  "docsplay",
  "dunce",
  "espflash",
@@ -5110,9 +5100,7 @@ name = "xtask"
 version = "0.23.0"
 dependencies = [
  "anyhow",
- "chrono",
  "clap",
- "regex",
  "serde",
  "serde_json",
  "xshell",
