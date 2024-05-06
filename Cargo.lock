@@ -622,15 +622,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fd16c4719339c4530435d38e511904438d07cce7950afa3718a84ac36c10e89e"
 
 [[package]]
-name = "chrono"
-version = "0.4.38"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a21f936df1771bf62b77f047b726c4625ff2e8aa607c01ec06e5a05bd8463401"
-dependencies = [
- "num-traits",
-]
-
-[[package]]
 name = "cipher"
 version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1199,17 +1190,6 @@ checksum = "5ffccbb6966c05b32ef8fbac435df276c4ae4d3dc55a8cd0eb9745e6c12f546a"
 dependencies = [
  "heck 0.4.1",
  "proc-macro2",
- "quote",
- "syn 2.0.60",
-]
-
-[[package]]
-name = "enum-primitive-derive"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba7795da175654fe16979af73f81f26a8ea27638d8d9823d317016888a63dc4c"
-dependencies = [
- "num-traits",
  "quote",
  "syn 2.0.60",
 ]
@@ -2904,12 +2884,9 @@ dependencies = [
  "bitfield",
  "bitflags 2.5.0",
  "bitvec",
- "byteorder",
  "clap",
- "clap_complete",
  "docsplay",
  "dunce",
- "enum-primitive-derive",
  "espflash",
  "futures-lite",
  "gdbstub",
@@ -2922,7 +2899,6 @@ dependencies = [
  "itm",
  "jep106",
  "miniz_oxide",
- "num-traits",
  "nusb",
  "object 0.35.0",
  "once_cell",
@@ -5124,9 +5100,7 @@ name = "xtask"
 version = "0.23.0"
 dependencies = [
  "anyhow",
- "chrono",
  "clap",
- "regex",
  "serde",
  "serde_json",
  "xshell",

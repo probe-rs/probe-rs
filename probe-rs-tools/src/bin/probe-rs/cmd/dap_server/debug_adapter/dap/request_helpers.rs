@@ -9,7 +9,6 @@ use capstone::{
     arch::arm::ArchMode as armArchMode, arch::arm64::ArchMode as aarch64ArchMode,
     arch::riscv::ArchMode as riscvArchMode, prelude::*, Endian,
 };
-use num_traits::Zero;
 use probe_rs::{
     debug::{ColumnType, ObjectRef, SourceLocation},
     CoreType, InstructionSet, MemoryInterface,
@@ -121,7 +120,7 @@ pub(crate) fn disassemble_target_memory(
 
         match cs.disasm_all(&code_buffer, instruction_pointer) {
             Ok(instructions) => {
-                if num_traits::Zero::is_zero(&instructions.len()) {
+                if instructions.len() == 0 {
                     // The capstone library sometimes returns an empty result set, instead of an Err. Catch it here or else we risk an infinte loop looking for a valid instruction.
                     return Err(DebuggerError::Other(anyhow::anyhow!(
                         "Disassembly encountered unsupported instructions at memory reference {:#010x?}",
@@ -202,8 +201,8 @@ pub(crate) fn disassemble_target_memory(
     }
     // Because we need to read on a 32-bit boundary, there are cases when the requested start address
     // is not the first line.
-    if instruction_offset.is_zero()
-        && byte_offset.is_zero()
+    if instruction_offset == 0
+        && byte_offset == 0
         && assembly_lines
             .first()
             .and_then(|first| {

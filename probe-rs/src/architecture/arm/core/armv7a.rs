@@ -26,7 +26,6 @@ use crate::{
     InstructionSet, MemoryInterface,
 };
 use anyhow::Result;
-use num_traits::Zero;
 use std::{
     mem::size_of,
     sync::Arc,
@@ -110,8 +109,7 @@ impl<'probe> Armv7a<'probe> {
     }
 
     fn read_fp_reg_count(&mut self) -> Result<(), Error> {
-        if self.state.fp_reg_count.is_zero()
-            && matches!(self.state.current_state, CoreStatus::Halted(_))
+        if self.state.fp_reg_count == 0 && matches!(self.state.current_state, CoreStatus::Halted(_))
         {
             self.prepare_r0_for_clobber()?;
 
@@ -772,7 +770,7 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
     }
 
     fn fpu_support(&mut self) -> Result<bool, crate::error::Error> {
-        Ok(!self.state.fp_reg_count.is_zero())
+        Ok(self.state.fp_reg_count != 0)
     }
 
     fn floating_point_register_count(&mut self) -> Result<usize, crate::error::Error> {

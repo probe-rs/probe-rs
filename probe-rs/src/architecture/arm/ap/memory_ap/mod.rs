@@ -4,8 +4,6 @@ pub(crate) mod mock;
 
 use super::{AccessPort, ApAccess, ApRegister, GenericAp, Register};
 use crate::architecture::arm::{communication_interface::RegisterParseError, ApAddress, ArmError};
-use enum_primitive_derive::Primitive;
-use num_traits::{FromPrimitive, ToPrimitive};
 
 define_ap!(
     /// Memory AP
@@ -49,7 +47,7 @@ impl From<GenericAp> for MemoryAp {
 /// This can be configured with the CSW command.
 ///
 /// ALL MCUs support `U32`. All other transfer sizes are optionally implemented.
-#[derive(Debug, Primitive, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum DataSize {
     /// 1 byte transfers are supported.
     U8 = 0b000,
@@ -67,6 +65,19 @@ pub enum DataSize {
 }
 
 impl DataSize {
+    /// Create a new `DataSize` from a u8.
+    pub fn from_u8(value: u8) -> Option<Self> {
+        match value {
+            0b000 => Some(DataSize::U8),
+            0b001 => Some(DataSize::U16),
+            0b010 => Some(DataSize::U32),
+            0b011 => Some(DataSize::U64),
+            0b100 => Some(DataSize::U128),
+            0b101 => Some(DataSize::U256),
+            _ => None,
+        }
+    }
+
     /// Create a new `DataSize` from a number of bytes.
     /// Defaults to 4 bytes if the given number of bytes is not available. See [`DataSize`] for available data sizes.
     pub fn from_bytes(bytes: u8) -> Self {
@@ -94,7 +105,7 @@ impl DataSize {
 /// This will effectively save half the bandwidth!
 ///
 /// Can be configured in the CSW.
-#[derive(Debug, Primitive, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum AddressIncrement {
     /// No increments are happening after the DRW access. TAR always stays the same.
     /// Always supported.
@@ -108,8 +119,20 @@ pub enum AddressIncrement {
     Packed = 0b10,
 }
 
+impl AddressIncrement {
+    /// Create a new `AddressIncrement` from a u8.
+    pub fn from_u8(value: u8) -> Option<Self> {
+        match value {
+            0b00 => Some(AddressIncrement::Off),
+            0b01 => Some(AddressIncrement::Single),
+            0b10 => Some(AddressIncrement::Packed),
+            _ => None,
+        }
+    }
+}
+
 /// The format of the BASE register (see C2.6.1).
-#[derive(Debug, PartialEq, Eq, Primitive, Clone, Copy, Default)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Default)]
 pub enum BaseaddrFormat {
     /// The legacy format of very old cores. Very little cores use this.
     #[default]
@@ -118,7 +141,8 @@ pub enum BaseaddrFormat {
     ADIv5 = 1,
 }
 
-#[derive(Debug, Primitive, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[allow(dead_code)] // Present is not used yet.
 pub enum DebugEntryState {
     #[default]
     NotPresent = 0,
@@ -329,8 +353,7 @@ define_ap_register!(
     | (u32::from(value.DeviceEn   ) <<  6)
     | (u32::from(value.AddrInc as u8) <<  4)
     //  value._RES1
-    // unwrap() is safe!
-    | value.SIZE.to_u32().unwrap()
+    | (value.SIZE as u32)
 );
 
 impl CSW {
