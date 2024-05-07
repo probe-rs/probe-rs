@@ -22,7 +22,7 @@ pub enum JlinkError {
     /// advertised as optional *capability* bits. This error occurs when the capability bit for an
     /// operation isn't set when that operation is attempted.
     ///
-    /// Capabilities can be read by calling [`JayLink::capabilities`], which returns a
+    /// Capabilities can be read by calling [`JLink::capabilities`], which returns a
     /// [`Capabilities`] bitflags struct.
     MissingCapability(Capability),
 

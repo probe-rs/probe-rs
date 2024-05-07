@@ -37,7 +37,7 @@ macro_rules! println_dut_status {
 #[macro_export]
 macro_rules! println_test_status {
     ($tracker:expr, $color:ident,$($arg:tt)*) => ({
-        let prefix = format!("[{}/{}]({}) - Test [{}/{}]", $tracker.current_dut(), $tracker.num_duts(), $tracker.current_dut_name(), $tracker.current_test(), $tracker.num_tests()).$color();
+        let prefix = format!("[{}/{}]({}) - Test [{}]", $tracker.current_dut(), $tracker.num_duts(), $tracker.current_dut_name(), $tracker.current_test()).$color();
         print!("{} - ", prefix);
         println!($($arg)*);
     })

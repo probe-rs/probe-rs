@@ -1,7 +1,5 @@
 #![allow(unused)]
 
-use enum_primitive_derive::Primitive;
-
 pub mod commands {
     // Common commands.
     pub const GET_VERSION: u8 = 0xf1;

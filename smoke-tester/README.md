@@ -22,8 +22,7 @@ chip = "nrf51822_xxAB"
 
 probe_selector = "0d28:0204:9900360150494e4500492002000000600000000097969901"
 
-# Optional binary (ELF format), used to test flashing.
-# The path is relative to the .toml file.
+# Optional binary (ELF format), used to test flashing. Needs to be specified as an absolute path.
 flash_test_binary = "gpio_hal_blinky"
 ```
 

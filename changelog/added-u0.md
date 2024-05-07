@@ -1,0 +1,1 @@
+Added support for STM32U0 devices

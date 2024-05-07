@@ -379,6 +379,7 @@ pub(crate) struct JtagDriverState {
     // The maximum IR address
     pub max_ir_address: u32,
     pub expected_scan_chain: Option<Vec<ScanChainElement>>,
+    pub scan_chain: Vec<JtagChainItem>,
     pub chain_params: ChainParams,
     /// Idle cycles necessary between consecutive
     /// accesses to the DMI register
@@ -392,6 +393,7 @@ impl Default for JtagDriverState {
             current_ir_reg: 1,
             max_ir_address: 0x0F,
             expected_scan_chain: None,
+            scan_chain: Vec::new(),
             chain_params: ChainParams::default(),
             jtag_idle_cycles: 0,
         }
@@ -446,12 +448,10 @@ pub(crate) trait RawJtagIo {
     }
 
     /// Configures the probe to address the given target.
-    fn select_target(
-        &mut self,
-        chain: &[JtagChainItem],
-        target: usize,
-    ) -> Result<(), DebugProbeError> {
-        let Some(params) = ChainParams::from_jtag_chain(chain, target) else {
+    fn select_target(&mut self, target: usize) -> Result<(), DebugProbeError> {
+        let state = self.state_mut();
+
+        let Some(params) = ChainParams::from_jtag_chain(&state.scan_chain, target) else {
             return Err(DebugProbeError::TargetNotFound);
         };
 
@@ -496,7 +496,11 @@ fn shift_ir(
 
     // Check the bit length, enough data has to be available
     if data.len() * 8 < len || len == 0 {
-        return Err(DebugProbeError::Other(anyhow!("Invalid data length")));
+        return Err(DebugProbeError::Other(anyhow!(
+            "Invalid data length. IR bits: {}, expected: {}",
+            data.len(),
+            len
+        )));
     }
 
     // BYPASS commands before and after shifting out data where required
@@ -546,7 +550,11 @@ fn shift_dr(
 
     // Check the bit length, enough data has to be available
     if data.len() * 8 < register_bits || register_bits == 0 {
-        return Err(DebugProbeError::Other(anyhow!("Invalid data length")));
+        return Err(DebugProbeError::Other(anyhow!(
+            "Invalid data length. DR bits: {}, expected: {}",
+            data.len(),
+            register_bits
+        )));
     }
 
     // Last bit of data is shifted out when we exit the SHIFT-DR State
@@ -622,7 +630,7 @@ fn prepare_write_register(
 }
 
 impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
-    fn scan_chain(&mut self) -> Result<Vec<JtagChainItem>, DebugProbeError> {
+    fn scan_chain(&mut self) -> Result<(), DebugProbeError> {
         const MAX_CHAIN: usize = 8;
 
         self.reset_jtag_state_machine()?;
@@ -687,13 +695,22 @@ impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
         )
         .map_err(|e| DebugProbeError::Other(e.into()))?;
 
+        tracing::info!("Found {} TAPs on reset scan", idcodes.len());
         tracing::debug!("Detected IR lens: {:?}", ir_lens);
 
-        Ok(idcodes
+        let chain = idcodes
             .into_iter()
             .zip(ir_lens)
             .map(|(idcode, irlen)| JtagChainItem { irlen, idcode })
-            .collect())
+            .collect::<Vec<_>>();
+
+        self.state_mut().scan_chain = chain;
+
+        Ok(())
+    }
+
+    fn tap_reset(&mut self) -> Result<(), DebugProbeError> {
+        self.reset_jtag_state_machine()
     }
 
     fn set_idle_cycles(&mut self, idle_cycles: u8) {
@@ -747,7 +764,7 @@ impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
             )
             .map_err(|e| BatchExecutionError::new(e.into(), DeferredResultSet::new()))?;
 
-            bits.push((idx, write.transform, op));
+            bits.push((idx, write, op));
         }
 
         tracing::debug!("Sending to chip...");
@@ -760,13 +777,13 @@ impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
         let mut responses = DeferredResultSet::with_capacity(bits.len());
 
         let mut bitstream = bitstream.as_bitslice();
-        for (idx, transform, bits) in bits.into_iter() {
+        for (idx, command, bits) in bits.into_iter() {
             if idx.should_capture() {
                 // TODO: this back-and-forth between BitVec and Vec is probably unnecessary
                 let mut reg_bits = bitstream[..bits].to_bitvec();
                 reg_bits.force_align();
                 let response = reg_bits.into_vec();
-                match transform(response) {
+                match (command.transform)(command, response) {
                     Ok(response) => responses.push(idx, response),
                     Err(e) => return Err(BatchExecutionError::new(e, responses)),
                 }

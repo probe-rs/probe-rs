@@ -181,18 +181,14 @@ impl FlashLoader {
             XtalFrequency::_40Mhz
         };
 
-        let flash_size_result = session.halted_access(|sess| {
+        let flash_size_result = session.halted_access(|session| {
             // Figure out flash size from the memory map. We need a different bootloader for each size.
-            Ok(match sess.target().debug_sequence.clone() {
-                DebugSequence::Riscv(sequence) => {
-                    sequence.detect_flash_size(sess.get_riscv_interface()?)
-                }
-                DebugSequence::Xtensa(sequence) => {
-                    sequence.detect_flash_size(sess.get_xtensa_interface()?)
-                }
+            match session.target().debug_sequence.clone() {
+                DebugSequence::Riscv(sequence) => sequence.detect_flash_size(session),
+                DebugSequence::Xtensa(sequence) => sequence.detect_flash_size(session),
                 DebugSequence::Arm(_) => panic!("There are no ARM ESP targets."),
-            })
-        })?;
+            }
+        });
 
         let flash_size = match flash_size_result.map_err(FileDownloadError::FlashSizeDetection)? {
             Some(0x40000) => Some(espflash::flasher::FlashSize::_256Kb),

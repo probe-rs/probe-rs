@@ -1,4 +1,4 @@
 [alias]
 xtask = "run --package xtask --"
-probe-rs = "run --package probe-rs --features cli --bin probe-rs --"
+probe-rs = "run --package probe-rs-tools --bin probe-rs --"
 smoke-tester = "run --package smoke_tester --"

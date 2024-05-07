@@ -174,6 +174,7 @@ pub struct ChipFamily {
     /// This vector holds all the variants of the family.
     pub variants: Vec<Chip>,
     /// This vector holds all available algorithms.
+    #[serde(default)]
     pub flash_algorithms: Vec<RawFlashAlgorithm>,
     #[serde(skip, default = "default_source")]
     /// Source of the target description, used for diagnostics

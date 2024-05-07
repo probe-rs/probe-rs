@@ -37,7 +37,6 @@ flash_algorithms:
     pc_uninit: 0x232
     pc_program_page: 0x10c
     pc_erase_sector: 0x0
-    pc_erase_all: null
     data_section_offset: 0x238
     flash_properties:
       address_range:

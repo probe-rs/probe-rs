@@ -17,8 +17,8 @@ license.workspace = true
 [dependencies]
 probe-rs = { path = "../probe-rs", version = "0.23.0", default-features = false }
 probe-rs-target = { path = "../probe-rs-target", version = "0.23.0", default-features = false }
-cmsis-pack = { version = "0.6.3" }
-goblin = { version = "0.8.0", default-features = false, features = [
+cmsis-pack = { version = "0.7.0" }
+goblin = { version = "0.8.2", default-features = false, features = [
     "elf32",
     "elf64",
     "endian_fd",
@@ -28,11 +28,14 @@ goblin = { version = "0.8.0", default-features = false, features = [
 scroll = "0.12.0"
 serde_yaml = "^0.9.34"
 log = "0.4.21"
-zip = "0.6.6"
+zip = "1.0.0"
 clap = { version = "4.5", features = ["derive"] }
 colored = "2"
-anyhow = "1.0.81"
-reqwest = { version = "0.12.3", features = ["json", "rustls-tls"], default-features = false }
+anyhow = "1.0.82"
+reqwest = { version = "0.12.4", features = [
+    "json",
+    "rustls-tls",
+], default-features = false }
 futures = "0.3.30"
 tokio = { version = "1.37.0", features = ["macros", "rt", "rt-multi-thread"] }
 tracing-subscriber = { version = "0.3.18", features = [
@@ -46,4 +49,3 @@ parse_int = { version = "0.6.0" }
 assert_cmd = "2.0.14"
 predicates = "3.1.0"
 assert_fs = "1.1.1"
-

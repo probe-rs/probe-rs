@@ -76,7 +76,7 @@ jobs:
 
       - name: "Install thumbv7m-none-eabi target for tests"
         run: rustup target add thumbv7m-none-eabi
-      
+
       - name: Cache Dependencies
         uses: Swatinem/rust-cache@v2.7.3
 
@@ -133,6 +133,6 @@ jobs:
         uses: Swatinem/rust-cache@v2.7.3
 
       - name: Run cargo doc
-        run: cargo doc --all-features --locked
+        run: cargo doc -p probe-rs --no-deps --all-features --locked
         env:
           RUSTDOCFLAGS: '-D warnings'

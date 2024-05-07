@@ -1,14 +1,15 @@
 //! All the interface bits for Xtensa.
 
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 use probe_rs_target::{Architecture, CoreType, InstructionSet};
 
 use crate::{
     architecture::xtensa::{
         arch::{instruction::Instruction, Register, SpecialRegister},
-        communication_interface::{DebugCause, IBreakEn},
+        communication_interface::{DebugCause, IBreakEn, XtensaCommunicationInterface},
         registers::{FP, PC, RA, SP, XTENSA_CORE_REGSISTERS},
+        sequences::XtensaDebugSequence,
     },
     core::{
         registers::{CoreRegisters, RegisterId, RegisterValue},
@@ -19,8 +20,6 @@ use crate::{
     SemihostingCommand,
 };
 
-use self::communication_interface::XtensaCommunicationInterface;
-
 pub(crate) mod arch;
 mod xdm;
 
@@ -29,10 +28,14 @@ pub(crate) mod registers;
 pub(crate) mod sequences;
 
 #[derive(Debug)]
-/// Flags used to control the [`SpecificCoreState`](crate::core::SpecificCoreState) for Xtensa
-/// architecture.
-pub struct XtensaState {
+/// Xtensa core state.
+pub struct XtensaCoreState {
+    /// Whether hardware breakpoints are enabled.
     breakpoints_enabled: bool,
+
+    /// Whether each hardware breakpoint is set.
+    // 2 is the architectural upper limit. The actual count is stored in
+    // [`communication_interface::XtensaInterfaceState`]
     breakpoint_set: [bool; 2],
 
     /// Whether the PC was written since we last halted. Used to avoid incrementing the PC on
@@ -43,7 +46,7 @@ pub struct XtensaState {
     semihosting_command: Option<SemihostingCommand>,
 }
 
-impl XtensaState {
+impl XtensaCoreState {
     /// Creates a new [`XtensaState`].
     pub(crate) fn new() -> Self {
         Self {
@@ -54,6 +57,7 @@ impl XtensaState {
         }
     }
 
+    /// Creates a bitmask of the currently set breakpoints.
     fn breakpoint_mask(&self) -> u32 {
         self.breakpoint_set
             .iter()
@@ -62,22 +66,28 @@ impl XtensaState {
     }
 }
 
-/// An interface to operate Xtensa cores.
+/// An interface to operate an Xtensa core.
 pub struct Xtensa<'probe> {
-    interface: &'probe mut XtensaCommunicationInterface,
-    state: &'probe mut XtensaState,
+    interface: XtensaCommunicationInterface<'probe>,
+    state: &'probe mut XtensaCoreState,
+    sequence: Arc<dyn XtensaDebugSequence>,
 }
 
 impl<'probe> Xtensa<'probe> {
     const IBREAKA_REGS: [SpecialRegister; 2] =
         [SpecialRegister::IBreakA0, SpecialRegister::IBreakA1];
 
-    /// Create a new Xtensa interface.
+    /// Create a new Xtensa interface for a particular core.
     pub fn new(
-        interface: &'probe mut XtensaCommunicationInterface,
-        state: &'probe mut XtensaState,
+        interface: XtensaCommunicationInterface<'probe>,
+        state: &'probe mut XtensaCoreState,
+        sequence: Arc<dyn XtensaDebugSequence>,
     ) -> Self {
-        Self { interface, state }
+        Self {
+            interface,
+            state,
+            sequence,
+        }
     }
 
     fn core_info(&mut self) -> Result<CoreInformation, Error> {
@@ -127,8 +137,7 @@ impl<'probe> Xtensa<'probe> {
             actual_instructions[2],
         );
 
-        let mut expected_instruction = vec![];
-        Instruction::Break(1, 14).encode_into_vec(&mut expected_instruction);
+        let expected_instruction = Instruction::Break(1, 14).to_bytes();
 
         tracing::debug!(
             "Expected instructions={0:#08x} {1:#08x} {2:#08x}",
@@ -293,12 +302,16 @@ impl<'probe> CoreInterface for Xtensa<'probe> {
 
     fn reset(&mut self) -> Result<(), Error> {
         self.state.semihosting_command = None;
-        Ok(self.interface.reset()?)
+        self.sequence
+            .reset_system_and_halt(&mut self.interface, Duration::from_millis(500))?;
+
+        self.run()
     }
 
     fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
         self.state.semihosting_command = None;
-        self.interface.reset_and_halt(timeout)?;
+        self.sequence
+            .reset_system_and_halt(&mut self.interface, timeout)?;
 
         self.core_info()
     }
@@ -443,17 +456,18 @@ impl<'probe> CoreInterface for Xtensa<'probe> {
     }
 
     fn reset_catch_set(&mut self) -> Result<(), Error> {
-        self.interface.xdm.halt_on_reset(true);
-        Ok(())
+        Err(Error::NotImplemented("reset_catch_set"))
     }
 
     fn reset_catch_clear(&mut self) -> Result<(), Error> {
-        self.interface.xdm.halt_on_reset(false);
-        Ok(())
+        Err(Error::NotImplemented("reset_catch_clear"))
     }
 
     fn debug_core_stop(&mut self) -> Result<(), Error> {
-        self.interface.leave_ocd_mode()?;
+        self.interface.restore_registers()?;
+        self.interface.resume()?;
+        self.interface.xdm.leave_ocd_mode()?;
+        tracing::info!("Left OCD mode");
         Ok(())
     }
 }
