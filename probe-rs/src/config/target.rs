@@ -1,6 +1,7 @@
 use super::{
     sequences::{
         atsam::AtSAM,
+        atsam_l1x::AtSAML1x,
         cc13xx_cc26xx::CC13xxCC26xx,
         efm32xg2::EFM32xG2,
         esp32::ESP32,
@@ -183,9 +184,10 @@ impl Target {
             || chip.name.starts_with("ATSAMDA")
             || chip.name.starts_with("ATSAMD5")
             || chip.name.starts_with("ATSAME5")
-            || chip.name.starts_with("ATSAML1")
         {
             DebugSequence::Arm(AtSAM::create())
+        } else if chip.name.starts_with("ATSAML1") {
+            DebugSequence::Arm(AtSAML1x::create())
         } else if chip.name.starts_with("XMC4") {
             DebugSequence::Arm(XMC4000::create())
         } else if chip.name.starts_with("CC13") || chip.name.starts_with("CC26") {
