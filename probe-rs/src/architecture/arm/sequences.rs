@@ -377,7 +377,7 @@ fn cortex_m_reset_system(interface: &mut dyn ArmProbe) -> Result<(), ArmError> {
 
     let start = Instant::now();
 
-    while start.elapsed() < Duration::from_micros(50_0000) {
+    while start.elapsed() < Duration::from_micros(500_000) {
         let dhcsr = match interface.read_word_32(Dhcsr::get_mmio_address()) {
             Ok(val) => Dhcsr(val),
             // Some combinations of debug probe and target (in
