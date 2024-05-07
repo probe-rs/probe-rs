@@ -19,7 +19,7 @@ variants:
     is_boot_memory: true
     cores:
     - main
-  - !Nvm
+  - !Generic
     name: Data Flash
     range:
       start: 0x400000
@@ -51,7 +51,7 @@ variants:
     is_boot_memory: true
     cores:
     - main
-  - !Nvm
+  - !Generic
     name: Data Flash
     range:
       start: 0x400000
@@ -83,7 +83,7 @@ variants:
     is_boot_memory: true
     cores:
     - main
-  - !Nvm
+  - !Generic
     name: Data Flash
     range:
       start: 0x400000
