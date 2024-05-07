@@ -776,7 +776,7 @@ impl Session {
     }
 }
 
-// This test ensures that [Session] is fully [Send] + [Sync].
+// This test ensures that [Session] is fully [Send].
 static_assertions::assert_impl_all!(Session: Send);
 
 // TODO tiwalun: Enable again, after rework of Session::new is done.
