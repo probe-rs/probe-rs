@@ -4,15 +4,12 @@ manufacturer:
   id: 0x15
 variants:
 - name: MIMXRT1170
-  part: null
   cores:
   - name: cm7
     type: armv7em
     core_access_options: !Arm
       ap: 0
       psel: 0
-      debug_base: null
-      cti_base: null
   memory_map:
   - !Ram
     # OCRAM1, OCRAM2, and the ECC extensions for each region.

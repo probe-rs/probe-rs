@@ -1,20 +1,14 @@
 use std::time::Duration;
 
-use probe_rs_target::{Chip, MemoryRegion};
+use probe_rs_target::{Architecture, Chip, MemoryRegion};
 
 use crate::{
-    architecture::{
-        riscv::communication_interface::RiscvCommunicationInterface,
-        xtensa::{
-            arch::{
-                instruction::{into_binary, Instruction},
-                CpuRegister, Register,
-            },
-            communication_interface::XtensaCommunicationInterface,
-            sequences::XtensaDebugSequence,
-        },
+    architecture::xtensa::arch::{
+        instruction::{into_binary, Instruction},
+        CpuRegister, Register,
     },
-    MemoryInterface,
+    config::DebugSequence,
+    MemoryInterface, Session,
 };
 
 #[derive(Debug)]
@@ -43,51 +37,40 @@ impl EspFlashSizeDetector {
 
     pub fn detect_flash_size_esp32(
         &self,
-        interface: &mut XtensaCommunicationInterface,
-        sequence: &impl XtensaDebugSequence,
+        session: &mut Session,
     ) -> Result<Option<usize>, crate::Error> {
         tracing::info!("Detecting flash size");
         attach_flash_xtensa(
-            interface,
+            session,
             self.stack_pointer,
             self.load_address,
             self.attach_fn,
-            sequence,
         )?;
-        detect_flash_size_esp32(interface, self.spiflash_peripheral)
-    }
 
-    pub fn detect_flash_size_xtensa(
-        &self,
-        interface: &mut XtensaCommunicationInterface,
-        sequence: &impl XtensaDebugSequence,
-    ) -> Result<Option<usize>, crate::Error> {
-        tracing::info!("Detecting flash size");
-        attach_flash_xtensa(
-            interface,
-            self.stack_pointer,
-            self.load_address,
-            self.attach_fn,
-            sequence,
-        )?;
         tracing::info!("Flash attached");
-        detect_flash_size(interface, self.spiflash_peripheral)
+        detect_flash_size_esp32(session, self.spiflash_peripheral)
     }
 
-    pub fn detect_flash_size_riscv(
-        &self,
-        interface: &mut RiscvCommunicationInterface,
-    ) -> Result<Option<usize>, crate::Error> {
-        interface.halt(Duration::from_millis(100))?;
-
+    pub fn detect_flash_size(&self, session: &mut Session) -> Result<Option<usize>, crate::Error> {
         tracing::info!("Detecting flash size");
-        attach_flash_riscv(interface, self.stack_pointer, self.attach_fn)?;
-        detect_flash_size(interface, self.spiflash_peripheral)
+        if session.target().architecture() == Architecture::Xtensa {
+            attach_flash_xtensa(
+                session,
+                self.stack_pointer,
+                self.load_address,
+                self.attach_fn,
+            )?;
+        } else {
+            attach_flash_riscv(session, self.stack_pointer, self.attach_fn)?;
+        }
+
+        tracing::info!("Flash attached");
+        detect_flash_size(session, self.spiflash_peripheral)
     }
 }
 
 fn attach_flash_riscv(
-    interface: &mut RiscvCommunicationInterface,
+    session: &mut Session,
     stack_pointer: u32,
     attach_fn: u32,
 ) -> Result<(), crate::Error> {
@@ -96,6 +79,9 @@ fn attach_flash_riscv(
         communication_interface::{AccessRegisterCommand, RiscvBusAccess},
         registers::SP,
     };
+
+    let interface = &mut session.get_riscv_interface(0)?;
+    interface.halt(Duration::from_millis(100))?;
 
     // Set a valid-ish stack pointer
     interface.abstract_cmd_register_write(SP, stack_pointer)?;
@@ -124,12 +110,17 @@ fn attach_flash_riscv(
 }
 
 fn attach_flash_xtensa(
-    interface: &mut XtensaCommunicationInterface,
+    session: &mut Session,
     stack_pointer: u32,
     load_addr: u32,
     attach_fn: u32,
-    sequence: &impl XtensaDebugSequence,
 ) -> Result<(), crate::Error> {
+    // TODO: we shouldn't need to touch sequences here.
+    let DebugSequence::Xtensa(sequence) = session.target().debug_sequence.clone() else {
+        unreachable!()
+    };
+    let interface = &mut session.get_xtensa_interface(0)?;
+
     // We're very intrusive here but the flashing process should reset the MCU again anyway
     sequence.reset_system_and_halt(interface, Duration::from_millis(500))?;
 
@@ -257,13 +248,13 @@ fn execute_flash_command_generic(
 }
 
 fn detect_flash_size(
-    interface: &mut impl MemoryInterface,
+    session: &mut Session,
     spiflash_addr: u32,
 ) -> Result<Option<usize>, crate::Error> {
     const RDID: u8 = 0x9F;
 
     let value = execute_flash_command_generic(
-        interface,
+        &mut session.core(0)?,
         &SpiRegisters {
             base: spiflash_addr,
             cmd: 0x00,
@@ -283,13 +274,13 @@ fn detect_flash_size(
 }
 
 fn detect_flash_size_esp32(
-    interface: &mut impl MemoryInterface,
+    session: &mut Session,
     spiflash_addr: u32,
 ) -> Result<Option<usize>, crate::Error> {
     const RDID: u8 = 0x9F;
 
     let value = execute_flash_command_generic(
-        interface,
+        &mut session.core(0)?,
         &SpiRegisters {
             base: spiflash_addr,
             cmd: 0x00,

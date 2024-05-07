@@ -10,7 +10,6 @@ use super::error::JlinkError;
 use super::interface::Interface;
 
 use bitflags::bitflags;
-use byteorder::{LittleEndian, ReadBytesExt};
 
 use std::{cmp, ops::Deref};
 use tracing::warn;
@@ -146,12 +145,18 @@ impl JLink {
         // FIXME: What's the word after the length for?
         let mut buf = &buf[8..];
 
+        let base_freq_bytes = <[u8; 4]>::try_from(&buf[0..4]).unwrap();
+        let min_div_bytes = <[u8; 4]>::try_from(&buf[4..8]).unwrap();
+        let max_div_bytes = <[u8; 4]>::try_from(&buf[8..12]).unwrap();
+        let min_presc_bytes = <[u8; 4]>::try_from(&buf[12..16]).unwrap();
+        let max_presc_bytes = <[u8; 4]>::try_from(&buf[16..20]).unwrap();
+
         Ok(SwoSpeedInfo {
-            base_freq: buf.read_u32::<LittleEndian>().unwrap(),
-            min_div: buf.read_u32::<LittleEndian>().unwrap(),
-            max_div: buf.read_u32::<LittleEndian>().unwrap(),
-            min_presc: buf.read_u32::<LittleEndian>().unwrap(),
-            max_presc: buf.read_u32::<LittleEndian>().unwrap(),
+            base_freq: u32::from_le_bytes(base_freq_bytes),
+            min_div: u32::from_le_bytes(min_div_bytes),
+            max_div: u32::from_le_bytes(max_div_bytes),
+            min_presc: u32::from_le_bytes(min_presc_bytes),
+            max_presc: u32::from_le_bytes(max_presc_bytes),
         })
     }
 

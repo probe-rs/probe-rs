@@ -1,9 +1,7 @@
-use num_traits::Num;
-
 use crate::debug::DebugError;
 
 /// Extension methods to simply parse a value into a number of bytes.
-pub trait ParseToBytes: Num {
+pub trait ParseToBytes {
     type Out;
 
     fn parse_to_bytes(s: &str) -> Result<Self::Out, DebugError>;
@@ -11,10 +9,7 @@ pub trait ParseToBytes: Num {
 
 macro_rules! impl_parse {
     ($t:ty, $bytes:expr) => {
-        impl ParseToBytes for $t
-        where
-            <$t as Num>::FromStrRadixErr: ::std::fmt::Debug,
-        {
+        impl ParseToBytes for $t {
             type Out = [u8; $bytes];
 
             fn parse_to_bytes(s: &str) -> Result<Self::Out, DebugError> {

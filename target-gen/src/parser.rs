@@ -1,6 +1,7 @@
 use crate::flash_device::FlashDevice;
 use anyhow::{anyhow, Context, Result};
 use probe_rs::config::{FlashProperties, RawFlashAlgorithm, SectorDescription};
+use probe_rs_target::MemoryRange;
 
 /// Extract a chunk of data from an ELF binary.
 ///
@@ -12,29 +13,29 @@ pub(crate) fn read_elf_bin_data<'a>(
     address: u32,
     size: u32,
 ) -> Option<&'a [u8]> {
+    log::debug!("Trying to read {} bytes from {:#010x}.", size, address);
+
+    let start = address as u64;
+    let end = (address + size) as u64;
+    let range_to_read = start..end;
+
     // Iterate all segments.
     for ph in &elf.program_headers {
-        let segment_address = ph.p_paddr as u32;
-        let segment_size = ph.p_memsz.min(ph.p_filesz) as u32;
+        let segment_address = ph.p_paddr;
+        let segment_size = ph.p_memsz.min(ph.p_filesz);
 
         log::debug!("Segment address: {:#010x}", segment_address);
         log::debug!("Segment size:    {} bytes", segment_size);
 
-        // If the requested data is above the current segment, skip the segment.
-        if address > segment_address + segment_size {
+        let segment = segment_address..segment_address + segment_size;
+        // If the requested data is not fully inside of the current segment, skip the segment.
+        if !segment.contains_range(&range_to_read) {
+            log::debug!("Skipping segment.");
             continue;
         }
 
-        // If the requested data is below the current segment, skip the segment.
-        if address + size <= segment_address {
-            continue;
-        }
-
-        // If the requested data chunk is fully contained in the segment, extract and return the data segment.
-        if address >= segment_address && address + size <= segment_address + segment_size {
-            let start = ph.p_offset as u32 + address - segment_address;
-            return Some(&buffer[start as usize..][..size as usize]);
-        }
+        let start = ph.p_offset as u32 + address - segment_address as u32;
+        return Some(&buffer[start as usize..][..size as usize]);
     }
 
     None
@@ -45,7 +46,7 @@ fn extract_flash_device(elf: &goblin::elf::Elf, buffer: &[u8]) -> Result<FlashDe
     for sym in elf.syms.iter() {
         let name = &elf.strtab[sym.st_name];
 
-        if let "FlashDevice" = name {
+        if name == "FlashDevice" {
             // This struct contains information about the FLM file structure.
             let address = sym.st_value as u32;
             return FlashDevice::new(elf, buffer, address);
@@ -58,25 +59,22 @@ fn extract_flash_device(elf: &goblin::elf::Elf, buffer: &[u8]) -> Result<FlashDe
 
 /// Extracts a position & memory independent flash algorithm blob from the provided ELF file.
 pub fn extract_flash_algo(
-    mut file: impl std::io::Read,
+    buffer: &[u8],
     file_name: &std::path::Path,
     default: bool,
     fixed_load_address: bool,
 ) -> Result<RawFlashAlgorithm> {
-    let mut buffer = vec![];
-    file.read_to_end(&mut buffer)?;
-
     let mut algo = RawFlashAlgorithm::default();
 
-    let elf = goblin::elf::Elf::parse(buffer.as_slice())?;
+    let elf = goblin::elf::Elf::parse(buffer)?;
 
-    let flash_device = extract_flash_device(&elf, &buffer).context(format!(
+    let flash_device = extract_flash_device(&elf, buffer).context(format!(
         "Failed to extract flash information from ELF file '{}'.",
         file_name.display()
     ))?;
 
     // Extract binary blob.
-    let algorithm_binary = crate::algorithm_binary::AlgorithmBinary::new(&elf, &buffer)?;
+    let algorithm_binary = crate::algorithm_binary::AlgorithmBinary::new(&elf, buffer)?;
     algo.instructions = algorithm_binary.blob();
 
     let code_section_offset = algorithm_binary.code_section.start;
@@ -116,8 +114,7 @@ pub fn extract_flash_algo(
         algo.load_address = Some(algorithm_binary.code_section.load_address as u64);
     }
 
-    algo.description = flash_device.name;
-
+    algo.description = flash_device.name.clone();
     algo.name = file_name
         .file_stem()
         .and_then(|f| f.to_str())
@@ -125,30 +122,33 @@ pub fn extract_flash_algo(
         .to_lowercase();
     algo.default = default;
     algo.data_section_offset = algorithm_binary.data_section.start as u64;
-
-    let sectors = flash_device
-        .sectors
-        .iter()
-        .map(|si| SectorDescription {
-            address: si.address.into(),
-            size: si.size.into(),
-        })
-        .collect();
-
-    let properties = FlashProperties {
-        address_range: flash_device.start_address as u64
-            ..(flash_device.start_address as u64 + flash_device.device_size as u64),
-
-        page_size: flash_device.page_size,
-        erased_byte_value: flash_device.erased_default_value,
-
-        program_page_timeout: flash_device.program_page_timeout,
-        erase_sector_timeout: flash_device.erase_sector_timeout,
-
-        sectors,
-    };
-
-    algo.flash_properties = properties;
+    algo.flash_properties = FlashProperties::from(flash_device);
 
     Ok(algo)
+}
+
+impl From<FlashDevice> for FlashProperties {
+    fn from(device: FlashDevice) -> Self {
+        let sectors = device
+            .sectors
+            .iter()
+            .map(|si| SectorDescription {
+                address: si.address.into(),
+                size: si.size.into(),
+            })
+            .collect();
+
+        FlashProperties {
+            address_range: device.start_address as u64
+                ..(device.start_address as u64 + device.device_size as u64),
+
+            page_size: device.page_size,
+            erased_byte_value: device.erased_default_value,
+
+            program_page_timeout: device.program_page_timeout,
+            erase_sector_timeout: device.erase_sector_timeout,
+
+            sectors,
+        }
+    }
 }

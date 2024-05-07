@@ -4135,7 +4135,6 @@ flash_algorithms:
     pc_uninit: 0x35
     pc_program_page: 0x47
     pc_erase_sector: 0x43
-    pc_erase_all: null
     data_section_offset: 0xd4
     flash_properties:
       address_range:
@@ -4490,7 +4489,6 @@ flash_algorithms:
     pc_uninit: 0x35
     pc_program_page: 0x47
     pc_erase_sector: 0x43
-    pc_erase_all: null
     data_section_offset: 0xd4
     flash_properties:
       address_range:

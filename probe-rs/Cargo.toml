@@ -21,7 +21,7 @@ exclude = ["tests/"]
 
 [features]
 default = ["builtin-targets"]
-gdb-server = ["dep:gdbstub", "dep:itertools", "dep:parking_lot"]
+gdb-server = ["dep:gdbstub", "dep:parking_lot"]
 
 
 # Enable all built in targets.
@@ -36,9 +36,7 @@ anyhow = { workspace = true }
 bincode = "1.3"
 bitfield = "0.15"
 bitvec = "1"
-clap_complete = "4.5.2"
 docsplay = { workspace = true }
-enum-primitive-derive = "0.3"
 gimli = { version = "0.29", default-features = false, features = [
     "endian-reader",
     "read",
@@ -48,10 +46,10 @@ hidapi = { version = "2", default-features = false, features = [
     "linux-native",
 ] }
 ihex = "3.0"
+itertools = "0.12.1"
 jep106 = "0.2"
 once_cell = "1"
 miniz_oxide = "0.7"
-num-traits = "0.2"
 object = { version = "0.35", default-features = false, features = [
     "elf",
     "read_core",
@@ -72,7 +70,6 @@ uf2-decode = "0.2"
 rmp-serde = "1"
 typed-path = "0.8"
 bitflags = "2"
-byteorder = "1"
 espflash = { version = "3", default-features = false }
 dunce = { version = "1" }
 parse_int = "0.6"
@@ -84,7 +81,6 @@ probe-rs-target = { workspace = true }
 
 # gdb server
 gdbstub = { version = "0.7", optional = true }
-itertools = { version = "0.12", optional = true }
 parking_lot = { version = "0.12.2", optional = true }
 
 [build-dependencies]

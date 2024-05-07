@@ -114,7 +114,6 @@ flash_algorithms:
     pc_uninit: 0x1f
     pc_program_page: 0x6f
     pc_erase_sector: 0x23
-    pc_erase_all: null
     data_section_offset: 0xbc
     flash_properties:
       address_range:

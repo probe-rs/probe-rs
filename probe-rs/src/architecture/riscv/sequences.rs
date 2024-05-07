@@ -2,6 +2,7 @@
 
 use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::architecture::riscv::Dmcontrol;
+use crate::Session;
 
 use super::communication_interface::RiscvCommunicationInterface;
 use std::fmt::Debug;
@@ -18,10 +19,7 @@ pub trait RiscvDebugSequence: Send + Sync + Debug {
     }
 
     /// Detects the flash size of the target.
-    fn detect_flash_size(
-        &self,
-        _interface: &mut RiscvCommunicationInterface,
-    ) -> Result<Option<usize>, crate::Error> {
+    fn detect_flash_size(&self, _session: &mut Session) -> Result<Option<usize>, crate::Error> {
         Ok(None)
     }
 

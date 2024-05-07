@@ -239,7 +239,6 @@ flash_algorithms:
     pc_uninit: 0x25
     pc_program_page: 0x51
     pc_erase_sector: 0x29
-    pc_erase_all: null
     data_section_offset: 0xa0
     flash_properties:
       address_range:
@@ -262,7 +261,6 @@ flash_algorithms:
     pc_uninit: 0x25
     pc_program_page: 0x51
     pc_erase_sector: 0x29
-    pc_erase_all: null
     data_section_offset: 0xa0
     flash_properties:
       address_range:
@@ -285,7 +283,6 @@ flash_algorithms:
     pc_uninit: 0x25
     pc_program_page: 0x51
     pc_erase_sector: 0x29
-    pc_erase_all: null
     data_section_offset: 0xa0
     flash_properties:
       address_range:

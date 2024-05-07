@@ -4,6 +4,7 @@ use super::{Chip, ChipFamily, ChipInfo, Core, Target, TargetDescriptionSource};
 use crate::config::CoreType;
 use once_cell::sync::Lazy;
 use probe_rs_target::{BinaryFormat, CoreAccessOptions, RiscvCoreAccessOptions};
+use std::collections::HashMap;
 use std::io::Read;
 use std::sync::{Arc, Mutex};
 
@@ -92,6 +93,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
                 name: "riscv".to_owned(),
                 part: None,
                 svd: None,
+                documentation: HashMap::new(),
                 cores: vec![Core {
                     name: "core".to_owned(),
                     core_type: CoreType::Riscv,
