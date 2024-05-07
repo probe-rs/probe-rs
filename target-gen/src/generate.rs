@@ -1,5 +1,5 @@
 use anyhow::{anyhow, bail, Context, Error, Result};
-use cmsis_pack::pdsc::{Algorithm, Core, Device, Package, Processor};
+use cmsis_pack::pdsc::{AccessPort, Algorithm, Core, Device, Package, Processor};
 use cmsis_pack::{pack_index::PdscRef, utils::FromElem};
 use futures::StreamExt;
 use probe_rs::{
@@ -196,7 +196,10 @@ fn create_core(processor: &Processor) -> Result<ProbeCore> {
         core_type,
         core_access_options: match core_type.architecture() {
             Architecture::Arm => CoreAccessOptions::Arm(ArmCoreAccessOptions {
-                ap: processor.ap,
+                ap: match processor.ap {
+                    AccessPort::Index(id) => id,
+                    AccessPort::Address(_) => todo!(),
+                },
                 psel: 0,
                 debug_base: None,
                 cti_base: None,
