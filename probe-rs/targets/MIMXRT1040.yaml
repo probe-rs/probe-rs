@@ -14,7 +14,7 @@ variants:
     name: OCRAM
     range:
       start: 0x20200000
-      end:   0x20240000
+      end:   0x20280000
     cores:
     - main
   - !Nvm
@@ -28,14 +28,14 @@ variants:
     name: ITCM
     range:
       start: 0x00000000
-      end:   0x00020000
+      end:   0x00080000
     cores:
     - main
   - !Ram
     name: DTCM
     range:
       start: 0x20000000
-      end:   0x20020000
+      end:   0x20080000
     cores:
     - main
   flash_algorithms:

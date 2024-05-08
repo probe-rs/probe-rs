@@ -11,10 +11,10 @@ variants:
       ap: !v1 0
   memory_map:
   - !Ram
-    name: OCRAM2
+    name: OCRAM
     range:
       start: 0x20200000
-      end: 0x202c0000
+      end:   0x20300000
     cores:
     - main
   - !Nvm
@@ -26,6 +26,20 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x00000000
+      end:   0x00080000
+    cores:
+    - main
+  - !Ram
+    name: DTCM
+    range:
+      start: 0x20000000
+      end:   0x20080000
+    cores:
+    - main
   flash_algorithms:
   - mimxrt1064_qspi_4kb_sec
 flash_algorithms:
