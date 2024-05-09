@@ -114,7 +114,7 @@ pub fn extract_flash_algo(
         algo.load_address = Some(algorithm_binary.code_section.load_address as u64);
     }
 
-    algo.description = flash_device.name.clone();
+    algo.description.clone_from(&flash_device.name);
     algo.name = file_name
         .file_stem()
         .and_then(|f| f.to_str())
