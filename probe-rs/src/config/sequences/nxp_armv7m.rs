@@ -58,6 +58,20 @@ impl MIMXRT10xx {
         }
         Ok(())
     }
+
+    /// Use the boot fuse configuration for FlexRAM.
+    ///
+    /// If the user changed the FlexRAM configuration in software, this will undo
+    /// that configuration, preferring the system's POR FlexRAM state.
+    fn use_boot_fuses_for_flexram(&self, probe: &mut dyn ArmProbe) -> Result<(), ArmError> {
+        const IOMUXC_GPR_GPR16: u64 = 0x400A_C040;
+        const FLEXRAM_BANK_CFG_SEL_MASK: u32 = 1 << 2;
+        let mut gpr16 = probe.read_word_32(IOMUXC_GPR_GPR16)?;
+        gpr16 &= !FLEXRAM_BANK_CFG_SEL_MASK;
+        probe.write_word_32(IOMUXC_GPR_GPR16, gpr16)?;
+        probe.flush()?;
+        Ok(())
+    }
 }
 
 impl ArmDebugSequence for MIMXRT10xx {
@@ -68,6 +82,10 @@ impl ArmDebugSequence for MIMXRT10xx {
         _: Option<u64>,
     ) -> Result<(), ArmError> {
         self.check_core_type(core_type)?;
+
+        // OK to perform before the reset, since the configuration
+        // persists beyond the reset.
+        self.use_boot_fuses_for_flexram(interface)?;
 
         let mut aircr = Aircr(0);
         aircr.vectkey();
@@ -321,6 +339,17 @@ impl MIMXRT11xx {
 
         Ok(Some(reset_handler))
     }
+
+    /// See documentation for [`MIMXRT10xx::use_boot_fuses_for_flexram`].
+    fn use_boot_fuses_for_flexram(&self, probe: &mut dyn ArmProbe) -> Result<(), ArmError> {
+        const IOMUXC_GPR_GPR16: u64 = 0x400E_4040;
+        const FLEXRAM_BANK_CFG_SEL_MASK: u32 = 1 << 2;
+        let mut gpr16 = probe.read_word_32(IOMUXC_GPR_GPR16)?;
+        gpr16 &= !FLEXRAM_BANK_CFG_SEL_MASK;
+        probe.write_word_32(IOMUXC_GPR_GPR16, gpr16)?;
+        probe.flush()?;
+        Ok(())
+    }
 }
 
 impl ArmDebugSequence for MIMXRT11xx {
@@ -349,6 +378,10 @@ impl ArmDebugSequence for MIMXRT11xx {
         core_type: probe_rs_target::CoreType,
         debug_base: Option<u64>,
     ) -> Result<(), ArmError> {
+        // OK to perform before the reset, since the configuration
+        // persists beyond the reset.
+        self.use_boot_fuses_for_flexram(probe)?;
+
         // Cache debug system state that may be lost across the reset.
         let debug_cache = DebugCache::from_target(probe)?;
 
