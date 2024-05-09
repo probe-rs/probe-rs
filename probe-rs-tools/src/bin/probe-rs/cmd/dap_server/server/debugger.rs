@@ -753,6 +753,8 @@ impl Debugger {
         ) {
             Ok(loader) => loader,
             Err(error) => {
+                // `download-options` need to be dropped, to free the `debug_adapter`,
+                // before we can use it to return the error to the user.
                 drop(download_options);
                 debug_adapter = match Rc::try_unwrap(rc_debug_adapter) {
                     Ok(debug_adapter) => debug_adapter.into_inner(),
