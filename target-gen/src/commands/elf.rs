@@ -59,8 +59,8 @@ pub fn cmd_elf(
                     algorithm.data_section_offset = algorithm.data_section_offset.saturating_sub(load_addr);
                 }
                 // core access cannot be determined, use the current value
-                algorithm.cores = current.cores.clone();
-                algorithm.description = current.description.clone();
+                algorithm.cores.clone_from(&current.cores);
+                algorithm.description.clone_from(&current.description);
 
                 family.flash_algorithms[index] = algorithm
             },
