@@ -66,12 +66,20 @@ pub fn debug(
                 let writer = socket;
 
                 let dap_adapter = DapAdapter::new(reader, writer);
-
                 let debug_adapter = DebugAdapter::new(dap_adapter);
 
+                // TODO: If we can find a way to not consume the `debug_adapter` here, we could
+                // clean up the error handling in the VSCode extension - to NOT rely on `stderr`.
                 match debugger.debug_session(debug_adapter, log_info_message, lister) {
                     Err(error) => {
-                        tracing::error!("probe-rs-debugger session ended: {}", error);
+                        // We no longer have a reference to the `debug_adapter`, so errors need
+                        // special handling to ensure they are displayed to the user.
+                        // By adding the keyword `ERROR`, we ensure the VSCode extension will
+                        // pick up the message from the stderr stream and display it to the user.
+                        // If we don't do this, the user will have no indication of why the session ended.
+                        log_to_console_and_tracing(&format!(
+                            "ERROR: probe-rs-debugger session ended: {error}"
+                        ));
                     }
                     Ok(()) => {
                         log_to_console_and_tracing(&format!("....Closing session from  :{addr}"));
