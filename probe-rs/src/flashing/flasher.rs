@@ -161,7 +161,7 @@ impl<'session> Flasher<'session> {
         let cpu_info = core
             .halt(Duration::from_millis(100))
             .map_err(FlashError::Core)?;
-        tracing::debug!("PC = {:010x}", cpu_info.pc);
+        tracing::debug!("PC = {:#010x}", cpu_info.pc);
         tracing::debug!("Reset and halt");
         core.reset_and_halt(Duration::from_millis(500))
             .map_err(FlashError::Core)?;
