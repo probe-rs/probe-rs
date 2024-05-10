@@ -23,6 +23,7 @@ struct RawDutDefinition {
     /// Selector for the debug probe to be used.
     /// See [probe_rs::probe::DebugProbeSelector].
     probe_selector: String,
+    probe_speed: Option<u32>,
 
     flash_test_binary: Option<String>,
 
@@ -58,6 +59,11 @@ pub struct DutDefinition {
     /// If multiple probes are found, an error is returned.
     pub probe_selector: Option<DebugProbeSelector>,
 
+    /// Probe speed in kHz.
+    ///
+    /// If not set, the default speed of the probe will be used.
+    pub probe_speed: Option<u32>,
+
     /// Path to a binary which can be used to test
     /// flashing for the DUT.
     pub flash_test_binary: Option<PathBuf>,
@@ -79,6 +85,7 @@ impl DutDefinition {
         Ok(DutDefinition {
             chip: target,
             probe_selector: Some(selector),
+            probe_speed: None,
             flash_test_binary: None,
             source: DefinitionSource::Cli,
             reset_connected: false,
@@ -91,6 +98,7 @@ impl DutDefinition {
         Ok(DutDefinition {
             chip: target,
             probe_selector: None,
+            probe_speed: None,
             flash_test_binary: None,
             source: DefinitionSource::Cli,
             reset_connected: false,
@@ -148,15 +156,11 @@ impl DutDefinition {
     pub fn open_probe(&self) -> Result<Probe> {
         let lister = Lister::new();
 
-        match &self.probe_selector {
-            Some(selector) => {
-                let probe = lister
-                    .open(selector)
-                    .into_diagnostic()
-                    .wrap_err_with(|| format!("Failed to open probe with selector {selector}"))?;
-
-                Ok(probe)
-            }
+        let mut probe = match &self.probe_selector {
+            Some(selector) => lister
+                .open(selector)
+                .into_diagnostic()
+                .wrap_err_with(|| format!("Failed to open probe with selector {selector}"))?,
             None => {
                 let probes = lister.list_all();
 
@@ -167,11 +171,15 @@ impl DutDefinition {
                     "Multiple probes detected. Specify which probe to use using the '--probe' argument."
                 );
 
-                let probe = probes[0].open().into_diagnostic()?;
-
-                Ok(probe)
+                probes[0].open().into_diagnostic()?
             }
+        };
+
+        if let Some(probe_speed) = self.probe_speed {
+            probe.set_speed(probe_speed).into_diagnostic()?;
         }
+
+        Ok(probe)
     }
 
     fn from_raw_definition(raw_definition: RawDutDefinition, source_file: &Path) -> Result<Self> {
@@ -185,6 +193,7 @@ impl DutDefinition {
 
         Ok(Self {
             chip: target,
+            probe_speed: raw_definition.probe_speed,
             probe_selector,
             flash_test_binary,
             source: DefinitionSource::File(source_file.to_owned()),

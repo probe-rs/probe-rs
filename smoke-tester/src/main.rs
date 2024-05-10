@@ -90,6 +90,9 @@ struct Opt {
     #[arg(long, global = true, value_name = "PROBE")]
     probe: Option<String>,
 
+    #[arg(long, global = true, value_name = "PROBE_SPEED")]
+    probe_speed: Option<u32>,
+
     #[arg(long, global = true, value_name = "FILE", conflicts_with_all = ["chip", "dut_definitions"])]
     single_dut: Option<PathBuf>,
 }
@@ -99,7 +102,7 @@ fn main() -> Result<ExitCode> {
 
     let opt = Opt::parse();
 
-    let definitions = if let Some(dut_definitions) = opt.dut_definitions.as_deref() {
+    let mut definitions = if let Some(dut_definitions) = opt.dut_definitions.as_deref() {
         let definitions = DutDefinition::collect(dut_definitions)?;
         println!("Found {} target definitions.", definitions.len());
         definitions
@@ -115,6 +118,12 @@ fn main() -> Result<ExitCode> {
             vec![DutDefinition::autodetect_probe(chip)?]
         }
     };
+
+    for definition in &mut definitions {
+        if let Some(probe_speed) = opt.probe_speed {
+            definition.probe_speed = Some(probe_speed);
+        }
+    }
 
     match opt.command {
         Command::Test { markdown_summary } => run_test(&definitions, markdown_summary),
