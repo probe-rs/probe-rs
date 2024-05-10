@@ -1,4 +1,8 @@
-//! Sequences for ATSAM L1x target families
+//! Sequences for ATSAML10/L11 target families
+//!
+//! ATSAML10/L11 devices are Cortex-M23 (ARMv8-M Baseline) based microcontrollers,
+//! using the ARM Debug Interface Architecture v5 Specification. L11 devices include
+//! the ARM TrustZone security technology.
 
 use crate::{
     architecture::arm::{
