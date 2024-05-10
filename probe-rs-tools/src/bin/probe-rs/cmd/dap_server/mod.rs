@@ -113,7 +113,7 @@ pub fn run(
 }
 
 /// Setup logging, according to the following rules.
-/// 1. If the RUST_LOG environment variable is set, use it as a `LevelFilter` to configure a subscriber that logs to a file in the system's application data directory.
+/// 1. If the RUST_LOG environment variable is set, use it as a `LevelFilter` to configure a subscriber that logs to the given file.
 /// 2. Irrespective of the RUST_LOG environment variable, configure a subscribe that will write with `LevelFilter::ERROR` to stderr, because these errors are picked up and reported to the user by the VSCode extension.
 ///
 /// Determining the local time for logging purposes can fail, so it needs to be given as a parameter here.
@@ -139,6 +139,7 @@ fn setup_logging(log_file: Option<&Path>) -> Result<String, anyhow::Error> {
                 .with_writer(log_file)
                 .with_filter(EnvFilter::from_default_env());
 
+            // The stderr subscriber will always log errors to stderr, so that the VSCode extension can monitor for them.
             tracing_subscriber::registry()
                 .with(stderr_subscriber)
                 .with(file_subscriber)
@@ -150,10 +151,14 @@ fn setup_logging(log_file: Option<&Path>) -> Result<String, anyhow::Error> {
             ))
         }
         None => {
+            // The stderr subscriber will always log errors to stderr, so that the VSCode extension can monitor for them.
             tracing_subscriber::registry()
                 .with(stderr_subscriber)
                 .init();
-            Ok("No logging data will be written because the RUST_LOG environment variable is not set.".to_string())
+            Ok(
+                "No logging data will be written because no `log-file` destination was specified."
+                    .to_string(),
+            )
         }
     }
 }
