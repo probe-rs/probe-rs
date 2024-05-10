@@ -209,6 +209,134 @@ impl DsuStatusB {
     pub const ADDRESS: u64 = 0x4100_2102;
 }
 
+/// Boot Communication Channel 0 Register, DSU - BCC0 (Debugger to device)
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct DsuBcc0(u32);
+
+impl From<u32> for DsuBcc0 {
+    fn from(value: u32) -> Self {
+        Self(value)
+    }
+}
+
+impl From<DsuBcc0> for u32 {
+    fn from(value: DsuBcc0) -> Self {
+        value.0
+    }
+}
+
+#[allow(dead_code)]
+impl DsuBcc0 {
+    /// The DSU BCC0 register address
+    pub const ADDRESS: u64 = 0x4100_2120;
+
+    /// Entering Interactive Mode
+    pub const CMD_INIT: Self = Self(0x44424755);
+    /// Exit Interactive Mode
+    pub const CMD_EXIT: Self = Self(0x444247AA);
+    /// System Reset Request
+    pub const CMD_RESET: Self = Self(0x44424752);
+    /// ChipErase_NS for SAM L11
+    pub const CMD_CE0: Self = Self(0x444247E0);
+    /// ChipErase_S for SAM L11
+    pub const CMD_CE1: Self = Self(0x444247E1);
+    /// ChipErase_ALL for SAM L11
+    pub const CMD_CE2: Self = Self(0x444247E2);
+    /// ChipErase for SAM L10
+    pub const CMD_CHIPERASE: Self = Self(0x444247E3);
+    /// NVM Memory Regions Integrity Checks
+    pub const CMD_CRC: Self = Self(0x444247C0);
+    ///  Random Session Key Generation for SAM L11
+    pub const CMD_DCEK: Self = Self(0x44424744);
+    /// NVM Rows Integrity Checks
+    pub const CMD_RAUX: Self = Self(0x4442474C);
+}
+
+/// Boot Communication Channel 1 Register, DSU - BCC1 (Device to debugger)
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct DsuBcc1(u32);
+
+impl From<u32> for DsuBcc1 {
+    fn from(value: u32) -> Self {
+        Self(value)
+    }
+}
+
+impl From<DsuBcc1> for u32 {
+    fn from(value: DsuBcc1) -> Self {
+        value.0
+    }
+}
+
+#[allow(dead_code)]
+impl DsuBcc1 {
+    /// The DSU BCC1 register address
+    pub const ADDRESS: u64 = 0x4100_2124;
+
+    /// No Error
+    pub const SIG_NO: Self = Self(0xEC000000);
+    /// Fresh from factory error
+    pub const SIG_SAN_FFF: Self = Self(0xEC000010);
+    /// UROW checksum error
+    pub const SIG_SAN_UROW: Self = Self(0xEC000011);
+    /// SECEN parameter error
+    pub const SIG_SAN_SECEN: Self = Self(0xEC000012);
+    /// BOCOR checksum error
+    pub const SIG_SAN_BOCOR: Self = Self(0xEC000013);
+    /// BOOTPROT parameter error
+    pub const SIG_SAN_BOOTPROT: Self = Self(0xEC000014);
+    /// No secure register parameter error
+    pub const SIG_SAN_NOSECREG: Self = Self(0xEC000015);
+    /// Debugger start communication command
+    pub const SIG_COMM: Self = Self(0xEC000020);
+    /// Debugger command success
+    pub const SIG_CMD_SUCCESS: Self = Self(0xEC000021);
+    /// Debugger command fail
+    pub const SIG_CMD_FAIL: Self = Self(0xEC000022);
+    /// Debugger bad key
+    pub const SIG_CMD_BADKEY: Self = Self(0xEC000023);
+    /// Valid command
+    pub const SIG_CMD_VALID: Self = Self(0xEC000024);
+    /// Invalid command
+    pub const SIG_CMD_INVALID: Self = Self(0xEC000025);
+    /// Valid argument
+    pub const SIG_ARG_VALID: Self = Self(0xEC000026);
+    /// Invalid argument
+    pub const SIG_ARG_INVALID: Self = Self(0xEC000027);
+    /// Chip erase error: CVM
+    pub const SIG_CE_CVM: Self = Self(0xEC000030);
+    /// Chip erase error: array erase fail
+    pub const SIG_CE_ARRAY_ERASEFAIL: Self = Self(0xEC000031);
+    /// Chip erase error: array NVME
+    pub const SIG_CE_ARRAY_NVME: Self = Self(0xEC000032);
+    /// Chip erase error: data erase fail
+    pub const SIG_CE_DATA_ERASEFAIL: Self = Self(0xEC000033);
+    /// Chip erase error: data NVME
+    pub const SIG_CE_DATA_NVME: Self = Self(0xEC000034);
+    /// Chip erase error: BOCOR, UROW
+    pub const SIG_CE_BCUR: Self = Self(0xEC000035);
+    /// Chip erase error: BC check
+    pub const SIG_CE_BC: Self = Self(0xEC000036);
+    /// BOOTOPT parameter error
+    pub const SIG_BOOT_OPT: Self = Self(0xEC000040);
+    /// Boot image digest verify fail
+    pub const SIG_BOOT_ERR: Self = Self(0xEC000041);
+    /// BOCOR hash error
+    pub const SIG_BOCOR_HASH: Self = Self(0xEC000042);
+    /// Bad CRC table
+    pub const SIG_CRC_BADTBL: Self = Self(0xEC000050);
+    /// PAC or IDAU cfg check failure
+    pub const SIG_SECEN0_ERR: Self = Self(0xEC000060);
+    /// PAC or IDAU cfg check failure
+    pub const SIG_SECEN1_ERR: Self = Self(0xEC000061);
+    /// Exit: BC or check error
+    pub const SIG_EXIT_ERR: Self = Self(0xEC000070);
+    /// Hardfault error
+    pub const SIG_HARDFAULT: Self = Self(0xEC0000F0);
+    /// Boot ROM ok to exit
+    pub const SIG_BOOTOK: Self = Self(0xEC000039);
+}
+
 /// A wrapper for different types that can perform SWD Commands (SWJ_Pins SWJ_Sequence)
 struct SwdSequenceShim<'a>(&'a mut dyn DapProbe);
 
@@ -304,6 +432,47 @@ impl AtSAML1x {
         Err(ArmError::Timeout)
     }
 
+    fn exit_boot_rom_to_app(&self, memory: &mut dyn ArmProbe) -> Result<(), ArmError> {
+        // Wait 5ms for the Boot ROM
+        std::thread::sleep(Duration::from_millis(5));
+
+        // Read STATUSB
+        let statusb = DsuStatusB::from(memory.read_word_8(DsuStatusB::ADDRESS)?);
+        tracing::info!("Debug Access Level: {}", statusb.dal());
+
+        if !statusb.dbgpres() {
+            tracing::warn!("Debugger not detected");
+            return Err(ArmError::Other(anyhow::anyhow!(
+                "Device does not detect debugger"
+            )));
+        }
+
+        // Read error code from BCC1
+        if statusb.bccd1() {
+            let bcc1 = DsuBcc1::from(memory.read_word_32(DsuBcc1::ADDRESS)?);
+            tracing::debug!("BCC1: {:#010x}", bcc1.0);
+            if bcc1 != DsuBcc1::SIG_BOOTOK {
+                tracing::warn!("Boot ROM error: {:#010x}", bcc1.0);
+            }
+        }
+
+        // Clear BREXT
+        let mut dsu_statusa = DsuStatusA(0);
+        dsu_statusa.set_brext(true);
+        memory.write_8(DsuStatusA::ADDRESS, &[dsu_statusa.0])?;
+
+        // Write CMD_EXIT command to BCC0
+        memory.write_word_32(DsuBcc0::ADDRESS, DsuBcc0::CMD_EXIT.0)?;
+
+        // Read SIG_BOOTOK from BCC1
+        let bcc1 = DsuBcc1::from(memory.read_word_32(DsuBcc1::ADDRESS)?);
+        if bcc1 != DsuBcc1::SIG_BOOTOK {
+            tracing::warn!("Boot ROM exit failed: {:#010x}", bcc1.0);
+        }
+
+        Ok(())
+    }
+
     /// Perform a normal hardware reset without triggering a Reset extension
     ///
     /// # Errors
@@ -368,7 +537,11 @@ impl ArmDebugSequence for AtSAML1x {
     ) -> Result<(), ArmError> {
         let mut core = interface.memory_interface(core_ap)?;
 
-        self.release_reset_extension(&mut *core)
+        self.release_reset_extension(&mut *core)?;
+
+        self.exit_boot_rom_to_app(&mut *core)?;
+
+        Ok(())
     }
 
     /// `reset_hardware_assert` for ATSAM devices
@@ -398,6 +571,10 @@ impl ArmDebugSequence for AtSAML1x {
             .into());
         }
 
-        self.release_reset_extension(memory)
+        self.release_reset_extension(memory)?;
+
+        self.exit_boot_rom_to_app(memory)?;
+
+        Ok(())
     }
 }
