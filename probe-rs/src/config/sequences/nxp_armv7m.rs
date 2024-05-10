@@ -84,7 +84,7 @@ impl ArmDebugSequence for MIMXRT10xx {
         std::thread::sleep(Duration::from_millis(100));
 
         let start = Instant::now();
-        while start.elapsed() < Duration::from_micros(50_0000) {
+        while start.elapsed() < Duration::from_millis(500) {
             let dhcsr = match interface.read_word_32(Dhcsr::get_mmio_address()) {
                 Ok(val) => Dhcsr(val),
                 Err(ArmError::AccessPort {
