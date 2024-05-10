@@ -100,7 +100,7 @@ pub struct RttConfig {
     pub enabled: bool,
 
     /// The default format string to use for decoding defmt logs.
-    #[serde(default, rename = "defmtLogFormat")]
+    #[serde(default, rename = "logFormat")]
     pub log_format: Option<String>,
 
     /// Configure data_format and show_timestamps for select channels
@@ -130,16 +130,16 @@ pub struct RttChannelConfig {
     pub mode: Option<ChannelMode>,
 
     #[serde(default = "default_show_timestamps")]
-    /// Control the inclusion of timestamps for DataFormat::String.
+    /// Controls the inclusion of timestamps for [`DataFormat::String`] and [`DataFormat::Defmt`].
     pub show_timestamps: bool,
 
     #[serde(default)]
-    /// Control the inclusion of source location information for DataFormat::Defmt.
+    /// Controls the inclusion of source location information for DataFormat::Defmt.
     pub show_location: bool,
 
     #[serde(default)]
-    /// Control the output format for DataFormat::Defmt.
-    pub defmt_log_format: Option<String>,
+    /// Controls the output format for DataFormat::Defmt.
+    pub log_format: Option<String>,
 }
 
 /// The User specified configuration for each active RTT Channel. The configuration is passed via a
@@ -374,7 +374,7 @@ impl RttActiveUpChannel {
                 // 2. Custom default format
                 // 3. Default with optional timestamp and location
                 let format = if let Some(format) = channel_config
-                    .defmt_log_format
+                    .log_format
                     .as_deref()
                     .or(rtt_config.log_format.as_deref())
                 {
@@ -388,7 +388,7 @@ impl RttActiveUpChannel {
                 ChannelDataFormat::Defmt {
                     formatter: Formatter::new(FormatterConfig {
                         format,
-                        is_timestamp_available: has_timestamp,
+                        is_timestamp_available: has_timestamp && channel_config.show_timestamps,
                     }),
                     cwd: std::env::current_dir().unwrap(),
                 }
