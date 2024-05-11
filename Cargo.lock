@@ -2703,6 +2703,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "probe-rs-mi"
+version = "0.1.0"
+dependencies = [
+ "semver",
+ "serde",
+]
+
+[[package]]
 name = "probe-rs-target"
 version = "0.23.0"
 dependencies = [
@@ -2750,6 +2758,7 @@ dependencies = [
  "parse_int",
  "pretty_assertions",
  "probe-rs",
+ "probe-rs-mi",
  "probe-rs-target",
  "rand",
  "ratatui",
@@ -2758,6 +2767,7 @@ dependencies = [
  "sanitize-filename",
  "schemafy",
  "scroll",
+ "semver",
  "serde",
  "serde_json",
  "signal-hook",
