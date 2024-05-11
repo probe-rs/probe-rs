@@ -6,8 +6,8 @@
 
 use crate::{
     architecture::arm::{
-        ap::MemoryAp,
-        armv8m::Dhcsr,
+        ap::{AccessPortError, MemoryAp},
+        armv8m::{Aircr, Dhcsr},
         communication_interface::{DapProbe, SwdSequence},
         memory::adi_v5_memory_interface::ArmProbe,
         sequences::{ArmDebugSequence, ArmDebugSequenceError},
@@ -19,7 +19,10 @@ use crate::{
 use bitfield::bitfield;
 use probe_rs_target::CoreType;
 use std::{
-    sync::Arc,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
     time::{Duration, Instant},
 };
 
@@ -363,12 +366,17 @@ impl<'a> SwdSequence for SwdSequenceShim<'a> {
 
 /// Marker struct indicating initialization sequencing for Atmel/Microchip ATSAM family parts.
 #[derive(Debug)]
-pub struct AtSAML1x {}
+pub struct AtSAML1x {
+    /// We don't have the Main extension, so no reset vector catch for us.
+    simulate_reset_catch: AtomicBool,
+}
 
 impl AtSAML1x {
     /// Create the sequencer for the ATSAM family of parts.
     pub fn create() -> Arc<Self> {
-        Arc::new(Self {})
+        Arc::new(Self {
+            simulate_reset_catch: AtomicBool::new(false),
+        })
     }
 
     /// Perform a hardware reset in a way that puts the core into CPU Reset Extension
@@ -410,6 +418,8 @@ impl AtSAML1x {
     /// # Errors
     /// Subject to probe communication errors
     pub fn release_reset_extension(&self, memory: &mut dyn ArmProbe) -> Result<(), ArmError> {
+        tracing::debug!("Releasing Reset Extension");
+
         // Enable debug mode if it is not already enabled
         let mut dhcsr = Dhcsr(0);
         dhcsr.enable_write();
@@ -527,6 +537,86 @@ impl AtSAML1x {
 }
 
 impl ArmDebugSequence for AtSAML1x {
+    fn reset_catch_set(
+        &self,
+        _: &mut dyn ArmProbe,
+        _: probe_rs_target::CoreType,
+        _: Option<u64>,
+    ) -> Result<(), ArmError> {
+        self.simulate_reset_catch.store(true, Ordering::Relaxed);
+        Ok(())
+    }
+
+    fn reset_catch_clear(
+        &self,
+        _: &mut dyn ArmProbe,
+        _: probe_rs_target::CoreType,
+        _: Option<u64>,
+    ) -> Result<(), ArmError> {
+        self.simulate_reset_catch.store(false, Ordering::Relaxed);
+        Ok(())
+    }
+
+    fn reset_system(
+        &self,
+        interface: &mut dyn ArmProbe,
+        _core_type: CoreType,
+        _debug_base: Option<u64>,
+    ) -> std::prelude::v1::Result<(), ArmError> {
+        let mut aircr = Aircr(0);
+        aircr.vectkey();
+        aircr.set_sysresetreq(true);
+
+        interface.write_word_32(Aircr::get_mmio_address(), aircr.into())?;
+
+        let start = Instant::now();
+
+        while start.elapsed() < Duration::from_millis(500) {
+            let dhcsr = match interface.read_word_32(Dhcsr::get_mmio_address()) {
+                Ok(val) => Dhcsr(val),
+                // Some combinations of debug probe and target (in
+                // particular, hs-probe and ATSAMD21) result in
+                // register read errors while the target is
+                // resetting.
+                Err(ArmError::AccessPort {
+                    source: AccessPortError::RegisterRead { .. },
+                    ..
+                }) => continue,
+                Err(err) => return Err(err),
+            };
+
+            // Wait until the S_RESET_ST bit is cleared on a read
+            if !dhcsr.s_reset_st() {
+                // Simulate the reset catch if it was enabled. We do this by parking the core through
+                // the Boot ROM, halting it, then exiting the Boot ROM.
+                if self.simulate_reset_catch.load(Ordering::Relaxed) {
+                    self.exit_boot_rom_to_app(interface)?;
+
+                    let mut dhcsr = Dhcsr(0);
+                    dhcsr.enable_write();
+                    dhcsr.set_c_debugen(true);
+                    dhcsr.set_c_halt(true);
+                    interface.write_word_32(Dhcsr::ADDRESS_OFFSET, dhcsr.0)?;
+
+                    // Wait for the core to halt
+                    let start = Instant::now();
+                    loop {
+                        let dhcsr = Dhcsr::from(interface.read_word_32(Dhcsr::ADDRESS_OFFSET)?);
+                        if dhcsr.s_halt() {
+                            break;
+                        }
+                        if start.elapsed() >= Duration::from_millis(100) {
+                            return Err(ArmError::Timeout);
+                        }
+                    }
+                }
+                return Ok(());
+            }
+        }
+
+        Err(ArmError::Timeout)
+    }
+
     fn debug_core_start(
         &self,
         interface: &mut dyn ArmProbeInterface,
