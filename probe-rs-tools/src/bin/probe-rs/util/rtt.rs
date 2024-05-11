@@ -138,16 +138,6 @@ pub struct RttChannelConfig {
     pub log_format: Option<String>,
 }
 
-/// The User specified configuration for each active RTT Channel. The configuration is passed via a
-/// DAP Client configuration (`launch.json`). If no configuration is specified, the defaults will be
-/// `DataFormat::String` and `show_timestamps=false`.
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct RttDownChannelConfig {
-    pub channel_number: Option<usize>,
-    pub operating_mode: Option<String>,
-}
-
 pub enum ChannelDataFormat {
     String {
         /// UTC offset used for creating timestamps, if enabled.
