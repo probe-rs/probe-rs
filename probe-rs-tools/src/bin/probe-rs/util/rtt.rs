@@ -99,10 +99,6 @@ pub struct RttConfig {
     #[serde(default, rename = "rttEnabled")]
     pub enabled: bool,
 
-    /// The default format string to use for decoding defmt logs.
-    #[serde(default, rename = "logFormat")]
-    pub log_format: Option<String>,
-
     /// Configure data_format and show_timestamps for select channels
     #[serde(default = "Vec::new", rename = "rttChannelFormats")]
     pub channels: Vec<RttChannelConfig>,
@@ -345,7 +341,6 @@ impl RttActiveUpChannel {
     pub fn new(
         core: &mut Core,
         up_channel: UpChannel,
-        rtt_config: &RttConfig,
         channel_config: &RttChannelConfig,
         timestamp_offset: UtcOffset,
         defmt_state: Option<&DefmtState>,
@@ -371,13 +366,8 @@ impl RttActiveUpChannel {
 
                 // Format options:
                 // 1. Custom format for the channel
-                // 2. Custom default format
-                // 3. Default with optional timestamp and location
-                let format = if let Some(format) = channel_config
-                    .log_format
-                    .as_deref()
-                    .or(rtt_config.log_format.as_deref())
-                {
+                // 2. Default with optional timestamp and location
+                let format = if let Some(format) = channel_config.log_format.as_deref() {
                     FormatterFormat::Custom(format)
                 } else {
                     FormatterFormat::Default {
@@ -566,7 +556,6 @@ impl RttActiveTarget {
                 RttActiveUpChannel::new(
                     core,
                     channel,
-                    rtt_config,
                     &channel_config,
                     timestamp_offset,
                     defmt_state.as_ref(),

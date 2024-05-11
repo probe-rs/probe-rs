@@ -315,7 +315,6 @@ fn run_rttui_app(
     // Transform channel configurations
     let mut rtt_config = RttConfig {
         enabled: true,
-        log_format: None,
         channels: vec![],
     };
 
