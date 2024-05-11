@@ -315,7 +315,6 @@ fn run_rttui_app(
     // Transform channel configurations
     let mut rtt_config = RttConfig {
         enabled: true,
-        log_format: None,
         channels: vec![],
     };
 
@@ -336,10 +335,10 @@ fn run_rttui_app(
             show_location: channel_config
                 .show_location
                 .unwrap_or(default_channel_config.show_location),
-            defmt_log_format: channel_config
-                .defmt_log_format
+            log_format: channel_config
+                .log_format
                 .clone()
-                .or_else(|| default_channel_config.defmt_log_format.clone()),
+                .or_else(|| default_channel_config.log_format.clone()),
             mode: channel_config.mode.or(default_channel_config.mode),
         };
         if rtt_channel_config.data_format == DataFormat::Defmt {
@@ -357,11 +356,7 @@ fn run_rttui_app(
             // Set up channel defaults, we don't read from it anyway.
             rtt_config.channels.push(RttChannelConfig {
                 channel_number: Some(channel_config.channel),
-                data_format: DataFormat::String,
-                show_timestamps: false,
-                show_location: false,
-                defmt_log_format: None,
-                mode: None,
+                ..Default::default()
             });
         }
     }

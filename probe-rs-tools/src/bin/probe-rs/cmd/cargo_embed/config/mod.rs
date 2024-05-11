@@ -87,11 +87,11 @@ pub struct UpChannelConfig {
     pub socket: Option<SocketAddr>,
     // TODO: it should be possible to move these into DataFormat
     #[serde(default)]
-    /// Control the inclusion of timestamps for DataFormat::String.
+    /// Controls the inclusion of timestamps for [`DataFormat::String`] and [`DataFormat::Defmt`].
     pub show_timestamps: Option<bool>,
     #[serde(default)]
-    /// Control the output format for DataFormat::Defmt.
-    pub defmt_log_format: Option<String>,
+    /// Controls the output format for DataFormat::Defmt.
+    pub log_format: Option<String>,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
