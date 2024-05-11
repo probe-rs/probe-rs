@@ -1,20 +1,5 @@
-pub struct CountingIter<'a, I>(I, &'a mut usize);
+//! Various utilities to be used in the probe-rs library.
+//!
+//! These utilities are not intended for external use.
 
-impl<I: Iterator> Iterator for CountingIter<'_, I> {
-    type Item = I::Item;
-    fn next(&mut self) -> Option<Self::Item> {
-        let item = self.0.next()?;
-        *self.1 += 1;
-        Some(item)
-    }
-}
-
-trait IterExt: Sized {
-    fn counting(self, counter: &mut usize) -> CountingIter<Self>;
-}
-
-impl<I: Iterator> IterExt for I {
-    fn counting(self, counter: &mut usize) -> CountingIter<Self> {
-        CountingIter(self, counter)
-    }
-}
+pub mod iterators;

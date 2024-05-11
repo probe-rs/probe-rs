@@ -451,6 +451,7 @@ impl VariableCache {
     }
 
     /// Traverse the `VariableCache` and return a Vec of all the memory ranges that are referenced by the variables.
+    ///
     /// This is used to determine which memory ranges to read from the target when creating a 'default' [`crate::CoreDump`].
     pub fn get_discrete_memory_ranges(&self) -> Vec<Range<u64>> {
         let mut memory_ranges: Vec<Range<u64>> = Vec::new();
@@ -468,8 +469,11 @@ impl VariableCache {
             // and the length of the string.
             if matches!(variable.type_name, VariableType::Struct(ref name) if name == "&str") {
                 let children: Vec<_> = self.get_children(variable.variable_key).collect();
-                if !children.is_empty() {
-                    let string_length = match children.iter().find(|child_variable| {
+                if children.is_empty() {
+                    continue;
+                }
+
+                let string_length = match children.iter().find(|child_variable| {
                         matches!(child_variable.name, VariableName::Named(ref name) if name == "length")
                     }) {
                         Some(string_length) => {
@@ -481,7 +485,7 @@ impl VariableCache {
                         }
                         None => 0_usize,
                     };
-                    let string_location = match children.iter().find(|child_variable| {
+                let string_location = match children.iter().find(|child_variable| {
                         matches!(child_variable.name, VariableName::Named(ref name ) if name == "data_ptr")
                     }) {
                         Some(location_value) => {
@@ -498,22 +502,21 @@ impl VariableCache {
                         }
                         None => 0_u64,
                     };
-                    if string_location == 0 || string_length == 0 {
-                        // We don't have enough information to read the string from memory.
-                        // I've never seen an instance of this, but it is theoretically possible.
-                        tracing::warn!(
-                            "Failed to find string location or length for variable: {:?}",
-                            variable
-                        );
-                    } else {
-                        let mut memory_range =
-                            string_location..(string_location + string_length as u64);
-                        // This memory might need to be read by 32-bit aligned words, so make sure
-                        // the range is aligned to 32 bits.
-                        memory_range.align_to_32_bits();
-                        if !memory_ranges.contains(&memory_range) {
-                            memory_ranges.push(memory_range);
-                        }
+                if string_location == 0 || string_length == 0 {
+                    // We don't have enough information to read the string from memory.
+                    // I've never seen an instance of this, but it is theoretically possible.
+                    tracing::warn!(
+                        "Failed to find string location or length for variable: {:?}",
+                        variable
+                    );
+                } else {
+                    let mut memory_range =
+                        string_location..(string_location + string_length as u64);
+                    // This memory might need to be read by 32-bit aligned words, so make sure
+                    // the range is aligned to 32 bits.
+                    memory_range.align_to_32_bits();
+                    if !memory_ranges.contains(&memory_range) {
+                        memory_ranges.push(memory_range);
                     }
                 }
             }
