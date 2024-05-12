@@ -380,9 +380,13 @@ fn coresight_component_tree(
         Component::Class1RomTable(id, table) => {
             let designer = id.peripheral_id().jep106().and_then(|j| j.get());
 
-            let root = match designer {
-                Some(designer) => format!("ROM Table (Class 1), Designer: {designer}"),
-                None => "ROM Table (Class 1)".to_string(),
+            let root = if let Some(part) = id.peripheral_id().determine_part() {
+                format!("{} (ROM Table, Class 1)", part.name())
+            } else {
+                match designer {
+                    Some(designer) => format!("ROM Table (Class 1), Designer: {designer}"),
+                    None => "ROM Table (Class 1)".to_string(),
+                }
             };
 
             let mut rom_table = Tree::new(root);
