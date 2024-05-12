@@ -318,7 +318,7 @@ impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
         let peripheral_id_address = self.base_address + 0xFD0;
 
         tracing::debug!(
-            "Reading debug id from address: {:08x}",
+            "Reading debug id from address: {:#010x}",
             peripheral_id_address
         );
 
@@ -730,7 +730,8 @@ impl PeripheralID {
             ("ARM Ltd", 0xD20, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M23 TPIU", PeripheralType::Tpiu)),
             ("ARM Ltd", 0xD20, 0x13, 0x0000) => Some(PartInfo::new("Cortex-M23 ETM", PeripheralType::Etm)),
             ("ARM Ltd", 0xD20, 0x00, 0x1A02) => Some(PartInfo::new("Cortex-M23 DWT", PeripheralType::Dwt)),
-            ("ARM Ltd", 0xD20, 0x00, 0x1A03) => Some(PartInfo::new("Cortex-M23 BPU", PeripheralType::Bpu)),
+            ("ARM Ltd", 0xD20, 0x00, 0x1A03) => Some(PartInfo::new("Cortex-M23 FBP", PeripheralType::Fbp)),
+            ("ARM Ltd", 0xD20, 0x14, 0x1A14) => Some(PartInfo::new("Cortex-M23 CTI", PeripheralType::Cti)),
             ("ARM Ltd", 0xD21, 0x00, 0x2A04) => Some(PartInfo::new("Cortex-M33 SCS", PeripheralType::Scs)),
             ("ARM Ltd", 0xD21, 0x43, 0x1A01) => Some(PartInfo::new("Cortex-M33 ITM", PeripheralType::Itm)),
             ("ARM Ltd", 0xD21, 0x00, 0x1A02) => Some(PartInfo::new("Cortex-M33 DWT", PeripheralType::Dwt)),

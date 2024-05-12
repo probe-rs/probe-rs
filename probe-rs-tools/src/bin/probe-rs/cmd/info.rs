@@ -377,8 +377,15 @@ fn coresight_component_tree(
 ) -> Result<Tree<String>> {
     let tree = match &component {
         Component::GenericVerificationComponent(_) => Tree::new("Generic".to_string()),
-        Component::Class1RomTable(_, table) => {
-            let mut rom_table = Tree::new("ROM Table (Class 1)".to_string());
+        Component::Class1RomTable(id, table) => {
+            let designer = id.peripheral_id().jep106().and_then(|j| j.get());
+
+            let root = match designer {
+                Some(designer) => format!("ROM Table (Class 1), Designer: {designer}"),
+                None => "ROM Table (Class 1)".to_string(),
+            };
+
+            let mut rom_table = Tree::new(root);
 
             for entry in table.entries() {
                 let component = entry.component().clone();
