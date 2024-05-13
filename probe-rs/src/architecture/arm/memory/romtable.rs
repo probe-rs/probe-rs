@@ -688,6 +688,11 @@ impl PeripheralID {
         self.dev_type
     }
 
+    /// The revision of the peripheral
+    pub fn revision(&self) -> u8 {
+        self.REVISION
+    }
+
     /// Uses the available data to match it against a table of known components.
     /// If the component is known, some info about it is returned.
     /// If it is not known, None is returned.
@@ -747,7 +752,7 @@ impl PeripheralID {
             ("ARM Ltd", 0xD21, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M33 TPIU", PeripheralType::Tpiu)),
             ("ARM Ltd", 0xD21, 0x14, 0x1A14) => Some(PartInfo::new("Cortex-M33 CTI", PeripheralType::Cti)),
             ("ARM Ltd", 0x9A3, 0x13, 0x0000) => Some(PartInfo::new("Cortex-M0 MTB", PeripheralType::Mtb)),
-            ("Atmel", 0xCD0, 1, 0) => Some(PartInfo::new("Atmel DSU", PeripheralType::Mtb)),
+            ("Atmel", 0xCD0, 1, 0) => Some(PartInfo::new("Atmel DSU", PeripheralType::Custom)),
             _ => None,
         }
     }

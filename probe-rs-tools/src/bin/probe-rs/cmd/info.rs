@@ -11,7 +11,7 @@ use probe_rs::{
             dp::{DebugPortId, DebugPortVersion, MinDpSupport, DLPIDR, DPIDR, TARGETID},
             memory::{
                 romtable::{PeripheralID, RomTable},
-                Component, CoresightComponent, PeripheralType,
+                Component, ComponentId, CoresightComponent, PeripheralType,
             },
             sequences::DefaultArmSequence,
             ApAddress, ApInformation, ArmProbeInterface, DpAddress, MemoryApInformation, Register,
@@ -394,7 +394,7 @@ fn coresight_component_tree(
             };
 
             let mut tree = Tree::new(root);
-            process_known_rom_tables(interface, table, access_port, &mut tree)?;
+            process_known_rom_tables(interface, id, table, access_port, &mut tree)?;
 
             for entry in table.entries() {
                 let component = entry.component().clone();
@@ -454,11 +454,123 @@ fn coresight_component_tree(
 
 fn process_known_rom_tables(
     interface: &mut dyn ArmProbeInterface,
-    table: &RomTable,
+    id: &ComponentId,
+    _table: &RomTable,
     access_port: MemoryAp,
     tree: &mut Tree<String>,
 ) -> Result<()> {
-    // TODO: Atmel CPU info
+    let peripheral_id = id.peripheral_id();
+    let Some(part_info) = peripheral_id.determine_part() else {
+        return Ok(());
+    };
+
+    if part_info.peripheral_type() == PeripheralType::Custom && part_info.name() == "Atmel DSU" {
+        // TODO: maybe this should be a debug sequence?
+        // Read and parse the DID register
+        let did = interface
+            .memory_interface(access_port)?
+            .read_word_32(0x41002118)?; // DSU DID in the mirrored range
+
+        let processor = (did >> 28) & 0x0f;
+        let family = (did >> 23) & 0x01f;
+        let series = (did >> 16) & 0x3f;
+        let revision = (did >> 8) & 0x0f;
+        let devsel = (did >> 0) & 0xff;
+
+        const SAM_L10: (u32, u32, u32) = (0x2, 0x1, 0x4);
+        const SAM_L21: (u32, u32, u32) = (0x1, 0x1, 0x1);
+        const SAM_D51: (u32, u32, u32) = (0x6, 0x0, 0x6);
+        const SAM_E51: (u32, u32, u32) = (0x6, 0x3, 0x1);
+        const SAM_E53: (u32, u32, u32) = (0x6, 0x3, 0x3);
+        const SAM_E54: (u32, u32, u32) = (0x6, 0x3, 0x4);
+
+        let series_str = match (processor, family, series) {
+            v if v == SAM_L10 => "SAM L10",
+            v if v == SAM_L21 => "SAM L21",
+            v if v == SAM_E51 => "SAM E51",
+            v if v == SAM_E53 => "SAM E53",
+            v if v == SAM_E54 => "SAM E54",
+            v if v == SAM_D51 => "SAM D51",
+            _ => "Unknown",
+        };
+        let devsel = match (processor, family, series) {
+            // SAM_L10 is incomplete because the datasheet doesn't detail the DID register
+            v if v == SAM_L10 => match devsel {
+                3 => "SAML10D16A",
+                _ => "Unknown",
+            },
+            v if v == SAM_L21 => match devsel {
+                0x00 => "SAML21J18A",
+                0x01 => "SAML21J17A",
+                0x02 => "SAML21J16A",
+                0x05 => "SAML21G18A",
+                0x06 => "SAML21G17A",
+                0x07 => "SAML21G16A",
+                0x0A => "SAML21E18A",
+                0x0B => "SAML21E17A",
+                0x0C => "SAML21E16A",
+                0x0D => "SAML21E15A",
+                0x0F => "SAML21J18B",
+                0x10 => "SAML21J17B",
+                0x11 => "SAML21J16B",
+                0x14 => "SAML21G18B",
+                0x15 => "SAML21G17B",
+                0x16 => "SAML21G16B",
+                0x19 => "SAML21E18B",
+                0x1A => "SAML21E17B",
+                0x1B => "SAML21E16B",
+                0x1C => "SAML21E15B",
+                _ => "Unknown",
+            },
+            v if v == SAM_D51 => match devsel {
+                0x00 => "SAMD51P20A",
+                0x01 => "SAMD51P19A",
+                0x02 => "SAMD51N20A",
+                0x03 => "SAMD51N19A",
+                0x04 => "SAMD51J20A",
+                0x05 => "SAMD51J19A",
+                0x06 => "SAMD51J18A",
+                0x07 => "SAMD51G19A",
+                0x08 => "SAMD51G18A",
+                _ => "Unknown",
+            },
+            v if v == SAM_E51 => match devsel {
+                0x00 => "SAME51N20A",
+                0x01 => "SAME51N19A",
+                0x02 => "SAME51J19A",
+                0x03 => "SAME51J18A",
+                0x04 => "SAME51J20A",
+                0x06 => "SAME51G18A",
+                _ => "Unknown",
+            },
+            v if v == SAM_E53 => match devsel {
+                0x02 => "SAME53N20A",
+                0x03 => "SAME53N19A",
+                0x04 => "SAME53J20A",
+                0x05 => "SAME53J19A",
+                0x06 => "SAME53J18A",
+                _ => "Unknown",
+            },
+            v if v == SAM_E54 => match devsel {
+                0x00 => "SAME54P20A",
+                0x01 => "SAME54P19A",
+                0x02 => "SAME54N20A",
+                0x03 => "SAME54N19A",
+                _ => "Unknown",
+            },
+            _ => "Unknown",
+        };
+        let mut cpu_tree = Tree::new(format!("Atmel {series_str}"));
+
+        if devsel == "Unknown" {
+            cpu_tree.push(format!("Device: {devsel} ({did:#010x})"));
+        } else {
+            cpu_tree.push(format!("Device: {devsel}"));
+        }
+        cpu_tree.push(format!("Revision: {revision}"));
+
+        tree.push(cpu_tree);
+    }
 
     Ok(())
 }
