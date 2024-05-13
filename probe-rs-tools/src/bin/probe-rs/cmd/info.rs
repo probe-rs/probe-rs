@@ -9,7 +9,10 @@ use probe_rs::{
             armv6m::Demcr,
             component::Scs,
             dp::{DebugPortId, DebugPortVersion, MinDpSupport, DLPIDR, DPIDR, TARGETID},
-            memory::{Component, CoresightComponent, PeripheralType},
+            memory::{
+                romtable::{PeripheralID, RomTable},
+                Component, CoresightComponent, PeripheralType,
+            },
             sequences::DefaultArmSequence,
             ApAddress, ApInformation, ArmProbeInterface, DpAddress, MemoryApInformation, Register,
         },
@@ -378,9 +381,10 @@ fn coresight_component_tree(
     let tree = match &component {
         Component::GenericVerificationComponent(_) => Tree::new("Generic".to_string()),
         Component::Class1RomTable(id, table) => {
-            let designer = id.peripheral_id().jep106().and_then(|j| j.get());
+            let peripheral_id = id.peripheral_id();
+            let designer = peripheral_id.jep106().and_then(|j| j.get());
 
-            let root = if let Some(part) = id.peripheral_id().determine_part() {
+            let root = if let Some(part) = peripheral_id.determine_part() {
                 format!("{} (ROM Table, Class 1)", part.name())
             } else {
                 match designer {
@@ -389,15 +393,16 @@ fn coresight_component_tree(
                 }
             };
 
-            let mut rom_table = Tree::new(root);
+            let mut tree = Tree::new(root);
+            process_known_rom_tables(interface, table, access_port, &mut tree)?;
 
             for entry in table.entries() {
                 let component = entry.component().clone();
 
-                rom_table.push(coresight_component_tree(interface, component, access_port)?);
+                tree.push(coresight_component_tree(interface, component, access_port)?);
             }
 
-            rom_table
+            tree
         }
         Component::CoresightComponent(id) => {
             let peripheral_id = id.peripheral_id();
@@ -417,7 +422,10 @@ fn coresight_component_tree(
                 )
             };
 
-            Tree::new(component_description)
+            let mut tree = Tree::new(component_description);
+            add_known_component_info(&mut tree, interface, peripheral_id, &component, access_port)?;
+
+            tree
         }
 
         Component::PeripheralTestBlock(_) => Tree::new("Peripheral test block".to_string()),
@@ -431,14 +439,7 @@ fn coresight_component_tree(
             };
 
             let mut tree = Tree::new(desc);
-
-            if peripheral_id.is_of_type(PeripheralType::Scs) {
-                let cc = &CoresightComponent::new(component, access_port);
-                let scs = &mut Scs::new(interface, cc);
-                let cpu_tree = cpu_info_tree(scs)?;
-
-                tree.push(cpu_tree);
-            }
+            add_known_component_info(&mut tree, interface, peripheral_id, &component, access_port)?;
 
             tree
         }
@@ -449,6 +450,39 @@ fn coresight_component_tree(
     };
 
     Ok(tree)
+}
+
+fn process_known_rom_tables(
+    interface: &mut dyn ArmProbeInterface,
+    table: &RomTable,
+    access_port: MemoryAp,
+    tree: &mut Tree<String>,
+) -> Result<()> {
+    // TODO: Atmel CPU info
+
+    Ok(())
+}
+
+fn add_known_component_info(
+    tree: &mut Tree<String>,
+    interface: &mut dyn ArmProbeInterface,
+    peripheral_id: &PeripheralID,
+    component: &Component,
+    access_port: MemoryAp,
+) -> Result<()> {
+    let Some(part) = peripheral_id.determine_part() else {
+        return Ok(());
+    };
+
+    if part.peripheral_type() == PeripheralType::Scs {
+        let cc = &CoresightComponent::new(component.clone(), access_port);
+        let scs = &mut Scs::new(interface, cc);
+        let cpu_tree = cpu_info_tree(scs)?;
+
+        tree.push(cpu_tree);
+    }
+
+    Ok(())
 }
 
 fn cpu_info_tree(scs: &mut Scs) -> Result<Tree<String>> {
@@ -465,7 +499,7 @@ fn cpu_info_tree(scs: &mut Scs) -> Result<Tree<String>> {
 
     tree.push(format!("IMPLEMENTER: {implementer}"));
     tree.push(format!("VARIANT: {}", cpuid.variant()));
-    tree.push(format!("PARTNO: {}", cpuid.partno()));
+    tree.push(format!("PARTNO: {}", cpuid.partno())); // TODO: Decode partno
     tree.push(format!("REVISION: {}", cpuid.revision()));
 
     Ok(tree)
