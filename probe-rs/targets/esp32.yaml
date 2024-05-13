@@ -3,7 +3,7 @@ manufacturer:
   cc: 0x0C
   id: 0x12
 variants:
-  - name: esp32-3.3v
+  - name: esp32
     scan_chain:
       - name: main
         ir_len: 5
