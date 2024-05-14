@@ -192,6 +192,51 @@ impl DsuStatusB {
     pub const ADDRESS: u64 = 0x4100_2102;
 }
 
+bitfield! {
+    /// Device Identification, DSU - DID
+    #[derive(Copy, Clone, PartialEq, Eq)]
+    pub struct DsuDid(u32);
+    impl Debug;
+
+    /// The value of this field defines the processor used on the device.
+    pub processor, _ : 31, 28;
+
+    /// The value of this field corresponds to the Product Family part of the ordering code.
+    pub family, _ : 27, 23;
+
+    ///  The value of this field corresponds to the Product Series part of the ordering code.
+    pub series, _ : 21, 16;
+
+    /// Identifies the die family.
+    pub die, _ : 15, 12;
+
+    /// Identifies the die revision number. 0x0=rev.A, 0x1=rev.B etc.
+    ///
+    /// Note: The device variant (last letter of the ordering number) is independent of the die
+    /// revision (DSU.DID.REVISION): The device variant denotes functional differences, whereas
+    /// the die revision marks evolution of the die.
+    pub revision, _ : 11, 8;
+
+    /// This bit field identifies a device within a product family and product series.
+    pub devsel, _ : 8, 0;
+}
+
+impl DsuDid {
+    /// The DSU DID register address
+    pub const ADDRESS: u64 = 0x4100_2118;
+}
+
+impl From<u32> for DsuDid {
+    fn from(value: u32) -> Self {
+        Self(value)
+    }
+}
+
+impl From<DsuDid> for u32 {
+    fn from(value: DsuDid) -> Self {
+        value.0
+    }
+}
 /// A wrapper for different types that can perform SWD Commands (SWJ_Pins SWJ_Sequence)
 struct SwdSequenceShim<'a>(&'a mut dyn DapProbe);
 
@@ -496,5 +541,134 @@ impl DebugEraseSequence for AtSAM {
         let mut memory = interface.memory_interface(mem_ap)?;
 
         AtSAM::erase_all(self, &mut *memory, &Permissions::new().allow_erase_all())
+    }
+}
+
+/// ATSAM device series
+#[derive(Clone, Copy, Debug, PartialEq, Eq, docsplay::Display)]
+pub enum AtsamDeviceSeries {
+    /// SAML10
+    SamL10,
+    /// SAML21
+    SamL21,
+    /// SAMD51
+    SamD51,
+    /// SAME51
+    SamE51,
+    /// SAME53
+    SamE53,
+    /// SAME54
+    SamE54,
+}
+
+impl TryFrom<DsuDid> for AtsamDeviceSeries {
+    type Error = ();
+
+    fn try_from(did: DsuDid) -> Result<Self, Self::Error> {
+        let series = match (did.processor(), did.family(), did.series()) {
+            (0x2, 0x1, 0x4) => AtsamDeviceSeries::SamL10,
+            (0x1, 0x1, 0x1) => AtsamDeviceSeries::SamL21,
+            (0x6, 0x0, 0x6) => AtsamDeviceSeries::SamD51,
+            (0x6, 0x3, 0x1) => AtsamDeviceSeries::SamE51,
+            (0x6, 0x3, 0x3) => AtsamDeviceSeries::SamE53,
+            (0x6, 0x3, 0x4) => AtsamDeviceSeries::SamE54,
+            _ => return Err(()),
+        };
+
+        Ok(series)
+    }
+}
+
+/// ATSAM device information
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct AtsamDevice {
+    /// Device series
+    pub series: AtsamDeviceSeries,
+
+    did: DsuDid,
+}
+
+impl TryFrom<DsuDid> for AtsamDevice {
+    type Error = ();
+
+    fn try_from(did: DsuDid) -> Result<Self, Self::Error> {
+        let series = AtsamDeviceSeries::try_from(did)?;
+        Ok(AtsamDevice { series, did })
+    }
+}
+
+impl AtsamDevice {
+    /// Returns the die revision number.
+    pub fn revision(&self) -> u32 {
+        self.did.revision()
+    }
+
+    /// Returns the device name.
+    pub fn name(&self) -> &'static str {
+        match self.series {
+            AtsamDeviceSeries::SamL10 => match self.did.devsel() {
+                3 => "SAML10D16A",
+                _ => "Unknown",
+            },
+            AtsamDeviceSeries::SamL21 => match self.did.devsel() {
+                0x00 => "SAML21J18A",
+                0x01 => "SAML21J17A",
+                0x02 => "SAML21J16A",
+                0x05 => "SAML21G18A",
+                0x06 => "SAML21G17A",
+                0x07 => "SAML21G16A",
+                0x0A => "SAML21E18A",
+                0x0B => "SAML21E17A",
+                0x0C => "SAML21E16A",
+                0x0D => "SAML21E15A",
+                0x0F => "SAML21J18B",
+                0x10 => "SAML21J17B",
+                0x11 => "SAML21J16B",
+                0x14 => "SAML21G18B",
+                0x15 => "SAML21G17B",
+                0x16 => "SAML21G16B",
+                0x19 => "SAML21E18B",
+                0x1A => "SAML21E17B",
+                0x1B => "SAML21E16B",
+                0x1C => "SAML21E15B",
+                _ => "Unknown",
+            },
+            AtsamDeviceSeries::SamD51 => match self.did.devsel() {
+                0x00 => "SAMD51P20A",
+                0x01 => "SAMD51P19A",
+                0x02 => "SAMD51N20A",
+                0x03 => "SAMD51N19A",
+                0x04 => "SAMD51J20A",
+                0x05 => "SAMD51J19A",
+                0x06 => "SAMD51J18A",
+                0x07 => "SAMD51G19A",
+                0x08 => "SAMD51G18A",
+                _ => "Unknown",
+            },
+            AtsamDeviceSeries::SamE51 => match self.did.devsel() {
+                0x00 => "SAME51N20A",
+                0x01 => "SAME51N19A",
+                0x02 => "SAME51J19A",
+                0x03 => "SAME51J18A",
+                0x04 => "SAME51J20A",
+                0x06 => "SAME51G18A",
+                _ => "Unknown",
+            },
+            AtsamDeviceSeries::SamE53 => match self.did.devsel() {
+                0x02 => "SAME53N20A",
+                0x03 => "SAME53N19A",
+                0x04 => "SAME53J20A",
+                0x05 => "SAME53J19A",
+                0x06 => "SAME53J18A",
+                _ => "Unknown",
+            },
+            AtsamDeviceSeries::SamE54 => match self.did.devsel() {
+                0x00 => "SAME54P20A",
+                0x01 => "SAME54P19A",
+                0x02 => "SAME54N20A",
+                0x03 => "SAME54N19A",
+                _ => "Unknown",
+            },
+        }
     }
 }
