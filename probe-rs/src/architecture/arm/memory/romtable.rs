@@ -673,6 +673,11 @@ impl PeripheralID {
         self.JEP106
     }
 
+    /// Returns the name of the designer if available.
+    pub fn designer(&self) -> Option<&'static str> {
+        self.JEP106.and_then(|jep106| jep106.get())
+    }
+
     /// Returns the PART of the peripheral ID register.
     pub fn part(&self) -> u16 {
         self.PART
@@ -698,12 +703,10 @@ impl PeripheralID {
     /// If it is not known, None is returned.
     #[rustfmt::skip]
     pub fn determine_part(&self) -> Option<PartInfo> {
-        let code = self.JEP106.and_then(|jep106| jep106.get()).unwrap_or("");
-
         // Source of the table: https://github.com/blacksphere/blackmagic/blob/master/src/target/adiv5.c#L189
         // Not all are present and this table could be expanded
         match (
-            code,
+            self.designer().unwrap_or(""),
             self.PART,
             self.dev_type,
             self.arch_id,

@@ -382,12 +382,11 @@ fn coresight_component_tree(
         Component::GenericVerificationComponent(_) => Tree::new("Generic".to_string()),
         Component::Class1RomTable(id, table) => {
             let peripheral_id = id.peripheral_id();
-            let designer = peripheral_id.jep106().and_then(|j| j.get());
 
             let root = if let Some(part) = peripheral_id.determine_part() {
                 format!("{} (ROM Table, Class 1)", part.name())
             } else {
-                match designer {
+                match peripheral_id.designer() {
                     Some(designer) => format!("ROM Table (Class 1), Designer: {designer}"),
                     None => "ROM Table (Class 1)".to_string(),
                 }
@@ -415,9 +414,7 @@ fn coresight_component_tree(
                     peripheral_id.part(),
                     peripheral_id.dev_type(),
                     peripheral_id.arch_id(),
-                    peripheral_id
-                        .jep106()
-                        .and_then(|j| j.get())
+                    peripheral_id.designer()
                         .unwrap_or("<unknown>"),
                 )
             };
