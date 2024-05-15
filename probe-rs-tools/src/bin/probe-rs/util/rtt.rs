@@ -325,6 +325,10 @@ pub struct RttActiveUpChannel {
     pub channel_name: String,
     pub data_format: ChannelDataFormat,
     rtt_buffer: RttBuffer,
+
+    /// If set, the original mode of the channel before we changed it. Upon exit we should do
+    /// our best to restore the original mode.
+    original_mode: Option<ChannelMode>,
 }
 
 impl RttActiveUpChannel {
@@ -386,6 +390,7 @@ impl RttActiveUpChannel {
                 )
             });
 
+        let mut original_mode = None;
         if let Some(mode) = channel_config.mode.or(
             // Try not to corrupt the byte stream if using defmt
             if matches!(data_format, ChannelDataFormat::Defmt { .. }) {
@@ -394,6 +399,7 @@ impl RttActiveUpChannel {
                 None
             },
         ) {
+            original_mode = Some(up_channel.mode(core)?);
             up_channel.set_mode(core, mode)?;
         }
 
@@ -402,6 +408,7 @@ impl RttActiveUpChannel {
             up_channel,
             channel_name,
             data_format,
+            original_mode,
         })
     }
 
@@ -447,6 +454,14 @@ impl RttActiveUpChannel {
 
         self.data_format
             .process(self.number(), buffer, defmt_state, collector)
+    }
+
+    /// Clean up temporary changes made to the channel.
+    pub fn clean_up(&mut self, core: &mut Core) -> Result<()> {
+        if let Some(mode) = self.original_mode.take() {
+            self.up_channel.set_mode(core, mode)?;
+        }
+        Ok(())
     }
 }
 
@@ -607,6 +622,14 @@ impl RttActiveTarget {
         let defmt_state = self.defmt_state.as_ref();
         for channel in self.active_up_channels.values_mut() {
             channel.poll_process_rtt_data(core, defmt_state, collector)?;
+        }
+        Ok(())
+    }
+
+    /// Clean up temporary changes made to the channels.
+    pub fn clean_up(&mut self, core: &mut Core) -> Result<()> {
+        for channel in self.active_up_channels.values_mut() {
+            channel.clean_up(core)?;
         }
         Ok(())
     }
