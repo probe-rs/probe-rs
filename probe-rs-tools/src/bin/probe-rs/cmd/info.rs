@@ -518,16 +518,9 @@ fn cpu_info_tree(scs: &mut Scs) -> Result<Tree<String>> {
 
     let cpuid = scs.cpuid()?;
 
-    let implementer = cpuid.implementer();
-    let implementer = if implementer == 0x41 {
-        "ARM Ltd".into()
-    } else {
-        implementer.to_string()
-    };
-
-    tree.push(format!("IMPLEMENTER: {implementer}"));
+    tree.push(format!("IMPLEMENTER: {}", cpuid.implementer_name()));
     tree.push(format!("VARIANT: {}", cpuid.variant()));
-    tree.push(format!("PARTNO: {}", cpuid.partno())); // TODO: Decode partno
+    tree.push(format!("PARTNO: {}", cpuid.part_name()));
     tree.push(format!("REVISION: {}", cpuid.revision()));
 
     Ok(tree)
