@@ -229,6 +229,7 @@ impl<'session> Flasher<'session> {
     pub(super) fn run_erase_all(&mut self) -> Result<(), FlashError> {
         self.progress.started_erasing();
         let result = if self.session.has_sequence_erase_all() {
+            tracing::debug!("Erase-all via sequence");
             fn run(flasher: &mut Flasher) -> Result<(), FlashError> {
                 flasher
                     .session
@@ -243,6 +244,7 @@ impl<'session> Flasher<'session> {
 
             run(self)
         } else {
+            tracing::debug!("Erase-all via flash algo");
             self.run_erase(|active| active.erase_all())
         };
 
@@ -422,18 +424,27 @@ impl<'session> Flasher<'session> {
 
         let mut t = Instant::now();
         let result = self.run_erase(|active| {
-            for sector in flash_encoder.sectors() {
-                active
-                    .erase_sector(sector.address())
-                    .map_err(|e| FlashError::EraseFailed {
-                        sector_address: sector.address(),
-                        source: Box::new(e),
-                    })?;
-                active.progress.sector_erased(sector.size(), t.elapsed());
+            if active.flash_algorithm.pc_erase_range.is_some() {
+                // Assumption here that sectors are ordered and contiguous
+                let first = flash_encoder.sectors().first().unwrap();
+                let last = flash_encoder.sectors().last().unwrap();
 
-                t = Instant::now();
+                active.erase_range(first.address(), last.address() + last.size())?;
+                Ok(())
+            } else {
+                for sector in flash_encoder.sectors() {
+                    active
+                        .erase_sector(sector.address())
+                        .map_err(|e| FlashError::EraseFailed {
+                            sector_address: sector.address(),
+                            source: Box::new(e),
+                        })?;
+                    active.progress.sector_erased(sector.size(), t.elapsed());
+
+                    t = Instant::now();
+                }
+                Ok(())
             }
-            Ok(())
         });
 
         if result.is_ok() {
@@ -804,9 +815,10 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
 
 impl<'probe> ActiveFlasher<'probe, Erase> {
     pub(super) fn erase_all(&mut self) -> Result<(), FlashError> {
-        tracing::debug!("Erasing entire chip.");
+        tracing::info!("Erasing entire chip.");
         let flasher = self;
         let algo = &flasher.flash_algorithm;
+        let t1 = Instant::now();
 
         if let Some(pc_erase_all) = algo.pc_erase_all {
             let result = flasher
@@ -824,7 +836,11 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
                 .map_err(|error| FlashError::ChipEraseFailed {
                     source: Box::new(error),
                 })?;
-
+            tracing::info!(
+                "Done erasing chip. Result is {}. This took {:?}",
+                result,
+                t1.elapsed()
+            );
             if result != 0 {
                 Err(FlashError::ChipEraseFailed {
                     source: Box::new(FlashError::RoutineCallFailed {
@@ -870,6 +886,59 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
             })
         } else {
             Ok(())
+        }
+    }
+
+    pub(super) fn erase_range(&mut self, start_addr: u64, end_addr: u64) -> Result<(), FlashError> {
+        tracing::info!(
+            "Erasing flash from address 0x{:08x} to 0x{:08x}",
+            start_addr,
+            end_addr,
+        );
+        let flasher = self;
+        let algo = &flasher.flash_algorithm;
+        let t1 = Instant::now();
+
+        // we're assuming that the first sector size is representative here.
+        // timeout might be too long/short if this doesn't hold true
+        let sector_sz = &algo.flash_properties.sectors.first().unwrap().size;
+        let len = end_addr - start_addr;
+        let qty_sectors: u64 = len / sector_sz;
+        let sector_erase_timeout: u64 = algo.flash_properties.erase_sector_timeout.into();
+
+        if let Some(pc_erase_range) = algo.pc_erase_range {
+            let result = flasher
+                .call_function_and_wait(
+                    &Registers {
+                        pc: into_reg(pc_erase_range)?,
+                        r0: Some(into_reg(start_addr)?),
+                        r1: Some(into_reg(end_addr)?),
+                        r2: None,
+                        r3: None,
+                    },
+                    false,
+                    Duration::from_millis(sector_erase_timeout * qty_sectors),
+                )
+                .map_err(|error| FlashError::ChipEraseFailed {
+                    source: Box::new(error),
+                })?;
+            tracing::info!(
+                "Done erasing sectors. Result is {}. This took {:?}",
+                result,
+                t1.elapsed()
+            );
+            if result != 0 {
+                Err(FlashError::ChipEraseFailed {
+                    source: Box::new(FlashError::RoutineCallFailed {
+                        name: "erase_sectors",
+                        error_code: result,
+                    }),
+                })
+            } else {
+                Ok(())
+            }
+        } else {
+            Err(FlashError::ChipEraseNotSupported)
         }
     }
 }
