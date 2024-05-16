@@ -72,4 +72,8 @@ impl UpChannel {
             &mut (&mut self.tcp_stream, &mut self.data),
         )
     }
+
+    pub(crate) fn clean_up(&mut self, core: &mut probe_rs::Core<'_>) -> anyhow::Result<()> {
+        self.rtt_channel.clean_up(core)
+    }
 }

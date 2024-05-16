@@ -426,7 +426,7 @@ fn run_rttui_app(
 
             if app.handle_event(&mut core) {
                 logging::println("Shutting down.");
-                return Ok(());
+                break;
             }
 
             app.poll_rtt(&mut core)?;
@@ -434,6 +434,12 @@ fn run_rttui_app(
 
         std::thread::sleep(Duration::from_millis(10));
     }
+
+    let mut session_handle = session.lock();
+    let mut core = session_handle.core(core_id)?;
+    app.clean_up(&mut core)?;
+
+    Ok(())
 }
 
 #[allow(clippy::too_many_arguments)]

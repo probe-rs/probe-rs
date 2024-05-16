@@ -39,7 +39,7 @@ pub struct App {
     defmt_state: Option<DefmtState>,
 
     down_channels: BTreeMap<usize, RttActiveDownChannel>,
-    up_channels: BTreeMap<usize, UpChannel>,
+    pub(crate) up_channels: BTreeMap<usize, UpChannel>,
 }
 
 impl App {
@@ -304,6 +304,14 @@ impl App {
 
     pub fn push_rtt(&mut self, core: &mut Core) {
         _ = self.tabs[self.current_tab].send_input(core, &mut self.down_channels);
+    }
+
+    pub(crate) fn clean_up(&mut self, core: &mut Core) -> Result<()> {
+        for (_, channel) in self.up_channels.iter_mut() {
+            channel.clean_up(core)?;
+        }
+
+        Ok(())
     }
 }
 

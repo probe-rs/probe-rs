@@ -281,6 +281,42 @@ impl RunLoop {
         )
         .context("Failed to attach to RTT")?;
 
+        let result = self.do_run_until(
+            core,
+            &mut rtta,
+            output_stream,
+            timeout,
+            start,
+            &mut predicate,
+        );
+
+        // Always clean up after RTT but don't overwrite the original result.
+        let cleanup_result = if let Some(mut rtta) = rtta {
+            rtta.clean_up(core)
+        } else {
+            Ok(())
+        };
+
+        if result.is_ok() {
+            // If the result is Ok, we return the potential error during cleanup.
+            cleanup_result?;
+        }
+
+        result
+    }
+
+    fn do_run_until<F, R>(
+        &self,
+        core: &mut Core,
+        rtta: &mut Option<rtt::RttActiveTarget>,
+        output_stream: OutputStream,
+        timeout: Option<Duration>,
+        start: Instant,
+        predicate: &mut F,
+    ) -> Result<ReturnReason<R>>
+    where
+        F: FnMut(HaltReason, &mut Core) -> Result<Option<R>>,
+    {
         let exit = Arc::new(AtomicBool::new(false));
         let sig_id = signal_hook::flag::register(signal::SIGINT, exit.clone())?;
 
@@ -319,7 +355,7 @@ impl RunLoop {
                 }
             }
 
-            let had_rtt_data = poll_rtt(&mut rtta, core, output_stream)?;
+            let had_rtt_data = poll_rtt(rtta, core, output_stream)?;
 
             if return_reason.is_none() {
                 if exit.load(Ordering::Relaxed) {
