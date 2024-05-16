@@ -377,7 +377,7 @@ fn cortex_m_reset_system(interface: &mut dyn ArmProbe) -> Result<(), ArmError> {
 
     let start = Instant::now();
 
-    while start.elapsed() < Duration::from_micros(50_0000) {
+    while start.elapsed() < Duration::from_millis(500) {
         let dhcsr = match interface.read_word_32(Dhcsr::get_mmio_address()) {
             Ok(val) => Dhcsr(val),
             // Some combinations of debug probe and target (in
@@ -597,7 +597,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
 
             let start = Instant::now();
             let mut timeout = true;
-            while start.elapsed() < Duration::from_micros(100_0000) {
+            while start.elapsed() < Duration::from_secs(1) {
                 let ctrl = interface.read_dp_register::<Ctrl>(dp)?;
                 if ctrl.csyspwrupack() && ctrl.cdbgpwrupack() {
                     timeout = false;
@@ -827,7 +827,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
 
         // Wait for the power domains to go away
         let start = Instant::now();
-        while start.elapsed() < Duration::from_micros(1_000_000) {
+        while start.elapsed() < Duration::from_secs(1) {
             let ctrl = interface.raw_read_register(PortType::DebugPort, Ctrl::ADDRESS)?;
             let ctrl = Ctrl(ctrl);
             if !(ctrl.csyspwrupack() || ctrl.cdbgpwrupack()) {
