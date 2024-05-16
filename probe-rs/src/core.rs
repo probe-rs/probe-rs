@@ -174,6 +174,11 @@ pub trait CoreInterface: MemoryInterface {
     fn disable_vector_catch(&mut self, _condition: VectorCatchCondition) -> Result<(), Error> {
         Err(Error::NotImplemented("vector catch"))
     }
+
+    /// Check if the integer size is 64-bit
+    fn is_64_bit(&self) -> bool {
+        false
+    }
 }
 
 impl<'probe> MemoryInterface for Core<'probe> {
@@ -803,6 +808,11 @@ impl<'probe> Core<'probe> {
             floating_point_register_count: Some(floating_point_register_count),
         })
     }
+
+    /// Check if the integer size is 64-bit
+    pub fn is_64_bit(&self) -> bool {
+        self.inner.is_64_bit()
+    }
 }
 
 impl<'probe> CoreInterface for Core<'probe> {
@@ -927,6 +937,10 @@ impl<'probe> CoreInterface for Core<'probe> {
 
     fn debug_core_stop(&mut self) -> Result<(), Error> {
         self.debug_core_stop()
+    }
+
+    fn is_64_bit(&self) -> bool {
+        self.is_64_bit()
     }
 }
 

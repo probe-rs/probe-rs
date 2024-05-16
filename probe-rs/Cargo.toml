@@ -73,6 +73,8 @@ bitflags = "2"
 espflash = { version = "3", default-features = false }
 dunce = { version = "1" }
 parse_int = "0.6"
+zerocopy = "0.7.32"
+zerocopy-derive = "0.7.32"
 
 # optional
 hexdump = { version = "0.1", optional = true }
