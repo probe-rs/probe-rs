@@ -783,6 +783,13 @@ impl DebugProbeInfo {
     pub fn is_probe_type<F: ProbeFactory>(&self) -> bool {
         self.probe_factory.type_id() == std::any::TypeId::of::<F>()
     }
+
+    /// Returns a human-readable string describing the probe type.
+    ///
+    /// The exact contents of the string are unstable, this is intended for human consumption only.
+    pub fn probe_type(&self) -> String {
+        format!("{}", self.probe_factory)
+    }
 }
 
 /// An error which can occur while parsing a [`DebugProbeSelector`].
