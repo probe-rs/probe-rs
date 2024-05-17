@@ -192,6 +192,51 @@ impl DsuStatusB {
     pub const ADDRESS: u64 = 0x4100_2102;
 }
 
+bitfield! {
+    /// Device Identification, DSU - DID
+    #[derive(Copy, Clone, PartialEq, Eq)]
+    pub struct DsuDid(u32);
+    impl Debug;
+
+    /// The value of this field defines the processor used on the device.
+    pub processor, _ : 31, 28;
+
+    /// The value of this field corresponds to the Product Family part of the ordering code.
+    pub family, _ : 27, 23;
+
+    ///  The value of this field corresponds to the Product Series part of the ordering code.
+    pub series, _ : 21, 16;
+
+    /// Identifies the die family.
+    pub die, _ : 15, 12;
+
+    /// Identifies the die revision number. 0x0=rev.A, 0x1=rev.B etc.
+    ///
+    /// Note: The device variant (last letter of the ordering number) is independent of the die
+    /// revision (DSU.DID.REVISION): The device variant denotes functional differences, whereas
+    /// the die revision marks evolution of the die.
+    pub revision, _ : 11, 8;
+
+    /// This bit field identifies a device within a product family and product series.
+    pub devsel, _ : 8, 0;
+}
+
+impl DsuDid {
+    /// The DSU DID register address
+    pub const ADDRESS: u64 = 0x4100_2118;
+}
+
+impl From<u32> for DsuDid {
+    fn from(value: u32) -> Self {
+        Self(value)
+    }
+}
+
+impl From<DsuDid> for u32 {
+    fn from(value: DsuDid) -> Self {
+        value.0
+    }
+}
 /// A wrapper for different types that can perform SWD Commands (SWJ_Pins SWJ_Sequence)
 struct SwdSequenceShim<'a>(&'a mut dyn DapProbe);
 
