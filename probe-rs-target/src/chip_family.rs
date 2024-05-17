@@ -1,5 +1,5 @@
 use crate::serialize::hex_jep106_option;
-use crate::CoreAccessOptions;
+use crate::{chip_detection::ChipDetectionMethod, CoreAccessOptions};
 
 use super::chip::Chip;
 use super::flash_algorithm::RawFlashAlgorithm;
@@ -183,6 +183,9 @@ pub struct ChipFamily {
     /// The JEP106 code of the manufacturer.
     #[serde(serialize_with = "hex_jep106_option")]
     pub manufacturer: Option<JEP106Code>,
+    /// The method(s) that may be able to identify targets in this family.
+    #[serde(default)]
+    pub chip_detection: Vec<ChipDetectionMethod>,
     /// The `target-gen` process will set this to `true`.
     /// Please change this to `false` if this file is modified from the generated, or is a manually created target description.
     #[serde(default)]

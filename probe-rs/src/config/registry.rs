@@ -41,6 +41,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
             manufacturer: None,
             generated_from_pack: false,
             pack_file_release: None,
+            chip_detection: vec![],
             variants: vec![
                 Chip::generic_arm("Cortex-M0", CoreType::Armv6m),
                 Chip::generic_arm("Cortex-M0+", CoreType::Armv6m),
@@ -55,6 +56,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
             manufacturer: None,
             generated_from_pack: false,
             pack_file_release: None,
+            chip_detection: vec![],
             variants: vec![Chip::generic_arm("Cortex-M3", CoreType::Armv7m)],
             flash_algorithms: vec![],
             source: TargetDescriptionSource::Generic,
@@ -64,6 +66,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
             manufacturer: None,
             generated_from_pack: false,
             pack_file_release: None,
+            chip_detection: vec![],
             variants: vec![
                 Chip::generic_arm("Cortex-M4", CoreType::Armv7em),
                 Chip::generic_arm("Cortex-M7", CoreType::Armv7em),
@@ -76,6 +79,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
             manufacturer: None,
             generated_from_pack: false,
             pack_file_release: None,
+            chip_detection: vec![],
             variants: vec![
                 Chip::generic_arm("Cortex-M23", CoreType::Armv8m),
                 Chip::generic_arm("Cortex-M33", CoreType::Armv8m),
@@ -90,6 +94,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
             manufacturer: None,
             pack_file_release: None,
             generated_from_pack: false,
+            chip_detection: vec![],
             variants: vec![Chip {
                 name: "riscv".to_owned(),
                 part: None,

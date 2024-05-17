@@ -2,6 +2,21 @@ name: SAMD51
 manufacturer:
   id: 0x1f
   cc: 0x0
+chip_detection:
+ - !Atsam
+    processor: 6
+    family: 0
+    series: 6
+    variants:
+      ATSAMD51P20A: 0x00
+      ATSAMD51P19A: 0x01
+      ATSAMD51N20A: 0x02
+      ATSAMD51N19A: 0x03
+      ATSAMD51J20A: 0x04
+      ATSAMD51J19A: 0x05
+      ATSAMD51J18A: 0x06
+      ATSAMD51G19A: 0x07
+      ATSAMD51G18A: 0x08
 variants:
 - name: ATSAMD51G18A
   cores:
