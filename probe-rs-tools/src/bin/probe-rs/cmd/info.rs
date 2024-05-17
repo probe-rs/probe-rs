@@ -394,7 +394,7 @@ fn coresight_component_tree(
             };
 
             let mut tree = Tree::new(root);
-            process_known_rom_tables(interface, id, table, access_port, &mut tree)?;
+            process_vendor_rom_tables(interface, id, table, access_port, &mut tree)?;
 
             for entry in table.entries() {
                 let component = entry.component().clone();
@@ -421,7 +421,7 @@ fn coresight_component_tree(
             };
 
             let mut tree = Tree::new(component_description);
-            add_known_component_info(&mut tree, interface, peripheral_id, &component, access_port)?;
+            process_component_entry(&mut tree, interface, peripheral_id, &component, access_port)?;
 
             tree
         }
@@ -437,7 +437,7 @@ fn coresight_component_tree(
             };
 
             let mut tree = Tree::new(desc);
-            add_known_component_info(&mut tree, interface, peripheral_id, &component, access_port)?;
+            process_component_entry(&mut tree, interface, peripheral_id, &component, access_port)?;
 
             tree
         }
@@ -450,7 +450,11 @@ fn coresight_component_tree(
     Ok(tree)
 }
 
-fn process_known_rom_tables(
+/// Processes information from/around manufacturer-specific ROM tables and adds them to the tree.
+///
+/// Some manufacturer-specific ROM tables contain more than just entries. This function tries
+/// to make sense of these tables.
+fn process_vendor_rom_tables(
     interface: &mut dyn ArmProbeInterface,
     id: &ComponentId,
     _table: &RomTable,
@@ -478,7 +482,8 @@ fn process_known_rom_tables(
     Ok(())
 }
 
-fn add_known_component_info(
+/// Processes ROM table entries and adds them to the tree.
+fn process_component_entry(
     tree: &mut Tree<String>,
     interface: &mut dyn ArmProbeInterface,
     peripheral_id: &PeripheralID,
