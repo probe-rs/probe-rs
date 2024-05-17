@@ -1,27 +1,4 @@
-use super::{
-    sequences::{
-        atsam::AtSAM,
-        cc13xx_cc26xx::CC13xxCC26xx,
-        efm32xg2::EFM32xG2,
-        esp32::ESP32,
-        esp32c2::ESP32C2,
-        esp32c3::ESP32C3,
-        esp32c6::ESP32C6,
-        esp32h2::ESP32H2,
-        esp32s2::ESP32S2,
-        esp32s3::ESP32S3,
-        infineon::XMC4000,
-        nrf52::Nrf52,
-        nrf53::Nrf5340,
-        nrf91::Nrf9160,
-        nxp_armv7m::{MIMXRT10xx, MIMXRT11xx},
-        nxp_armv8m::{LPC55Sxx, MIMXRT5xxS},
-        stm32_armv6::{Stm32Armv6, Stm32Armv6Family},
-        stm32_armv7::Stm32Armv7,
-        stm32h7::Stm32h7,
-    },
-    Core, MemoryRegion, RawFlashAlgorithm, RegistryError, TargetDescriptionSource,
-};
+use super::{Core, MemoryRegion, RawFlashAlgorithm, RegistryError, TargetDescriptionSource};
 use crate::architecture::{
     arm::{
         ap::MemoryAp,
@@ -32,6 +9,26 @@ use crate::architecture::{
     xtensa::sequences::{DefaultXtensaSequence, XtensaDebugSequence},
 };
 use crate::flashing::FlashLoader;
+use crate::vendor::{
+    espressif::sequences::{
+        esp32::ESP32, esp32c2::ESP32C2, esp32c3::ESP32C3, esp32c6::ESP32C6, esp32h2::ESP32H2,
+        esp32s2::ESP32S2, esp32s3::ESP32S3,
+    },
+    infineon::sequences::xmc4000::XMC4000,
+    microchip::sequences::atsam::AtSAM,
+    nordicsemi::sequences::{nrf52::Nrf52, nrf53::Nrf5340, nrf91::Nrf9160},
+    nxp::sequences::{
+        nxp_armv7m::{MIMXRT10xx, MIMXRT11xx},
+        nxp_armv8m::{LPC55Sxx, MIMXRT5xxS},
+    },
+    silabs::sequences::efm32xg2::EFM32xG2,
+    st::sequences::{
+        stm32_armv6::{Stm32Armv6, Stm32Armv6Family},
+        stm32_armv7::Stm32Armv7,
+        stm32h7::Stm32h7,
+    },
+    ti::sequences::cc13xx_cc26xx::CC13xxCC26xx,
+};
 use probe_rs_target::{Architecture, BinaryFormat, ChipFamily, Jtag, MemoryRange};
 use std::sync::Arc;
 

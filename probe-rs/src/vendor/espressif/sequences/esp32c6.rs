@@ -4,13 +4,13 @@ use std::{sync::Arc, time::Duration};
 
 use probe_rs_target::Chip;
 
+use super::esp::EspFlashSizeDetector;
 use crate::{
     architecture::riscv::{
         communication_interface::{RiscvCommunicationInterface, Sbaddress0, Sbcs, Sbdata0},
         sequences::RiscvDebugSequence,
         Dmcontrol,
     },
-    config::sequences::esp::EspFlashSizeDetector,
     MemoryInterface, Session,
 };
 
