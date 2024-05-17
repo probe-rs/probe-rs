@@ -463,7 +463,7 @@ fn process_known_rom_tables(
     };
 
     if part_info.peripheral_type() == PeripheralType::Custom && part_info.name() == "Atmel DSU" {
-        use atsam::{AtsamDevice, DsuDid};
+        use atsam::DsuDid;
 
         // Read and parse the DID register
         let did = DsuDid(
@@ -472,20 +472,7 @@ fn process_known_rom_tables(
                 .read_word_32(DsuDid::ADDRESS)?,
         );
 
-        if let Ok(device) = AtsamDevice::try_from(did) {
-            let mut cpu_tree = Tree::new(format!("Atmel {}", device.series));
-
-            let name = device.name();
-            if name == "Unknown" {
-                cpu_tree.push(format!("Device: {name} ({:#010x})", did.0));
-            } else {
-                cpu_tree.push(format!("Device: {name}"));
-            }
-            cpu_tree.push(format!("Revision: {}", device.revision()));
-            tree.push(cpu_tree);
-        } else {
-            tree.push(format!("Unknown Atmel device (DID = {:#010x}", did.0));
-        }
+        tree.push(format!("Atmel device (DID = {:#010x})", did.0));
     }
 
     Ok(())
