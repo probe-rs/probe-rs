@@ -12,9 +12,7 @@ license.workspace = true
 
 description = "A collection of on chip debugging tools to communicate with microchips."
 
-
 default-run = "probe-rs"
-
 
 [dependencies]
 anyhow = { workspace = true }
@@ -99,13 +97,14 @@ cargo-config2 = "0.1.26"
 clap_complete = "4.5.2"
 regex = "1.10.4"
 semver = "1"
+zip = "1.1.4"
+urlencoding = "2"
 
 [build-dependencies]
 git-version = { version = "0.3" }
 
 [dev-dependencies]
 pretty_assertions = "1.4.0"
-
 
 # Set the proper name for the homebrew formula
 [package.metadata.dist]

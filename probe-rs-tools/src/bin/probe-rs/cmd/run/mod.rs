@@ -6,7 +6,7 @@ use test_run_mode::*;
 use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::ops::Range;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -60,7 +60,7 @@ pub struct SharedOptions {
     If the binary uses `embedded-test` each test will be executed in turn. See `TEST OPTIONS` for more configuration options exclusive to this mode.\n\
     If the binary does not use `embedded-test` the binary will be flashed and run normally. See `RUN OPTIONS` for more configuration options exclusive to this mode."
     )]
-    pub(crate) path: String,
+    pub(crate) path: PathBuf,
 
     /// Always print the stacktrace on ctrl + c.
     #[clap(long)]
@@ -151,7 +151,7 @@ trait RunMode {
 
 fn detect_run_mode(cmd: &Cmd) -> Result<Box<dyn RunMode>, anyhow::Error> {
     let elf_contains_test = {
-        let mut file = match File::open(cmd.shared_options.path.as_str()) {
+        let mut file = match File::open(&cmd.shared_options.path) {
             Ok(file) => file,
             Err(e) => return Err(FileDownloadError::IO(e)).context("Failed to open binary file."),
         };
@@ -194,7 +194,7 @@ struct RunLoop {
     core_id: usize,
     memory_map: Vec<MemoryRegion>,
     rtt_scan_regions: Vec<Range<u64>>,
-    path: String,
+    path: PathBuf,
     timestamp_offset: UtcOffset,
     always_print_stacktrace: bool,
     no_location: bool,
