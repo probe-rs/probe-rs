@@ -3,13 +3,13 @@
 use super::{Chip, ChipFamily, ChipInfo, Core, Target, TargetDescriptionSource};
 use crate::config::CoreType;
 use once_cell::sync::Lazy;
+use parking_lot::Mutex;
 use probe_rs_target::{BinaryFormat, CoreAccessOptions, RiscvCoreAccessOptions};
 use std::collections::HashMap;
 use std::io::Read;
-use std::sync::{Arc, Mutex};
 
-static REGISTRY: Lazy<Arc<Mutex<Registry>>> =
-    Lazy::new(|| Arc::new(Mutex::new(Registry::from_builtin_families())));
+static REGISTRY: Lazy<Mutex<Registry>> =
+    Lazy::new(|| Mutex::new(Registry::from_builtin_families()));
 
 /// Error type for all errors which occur when working
 /// with the internal registry of targets.
@@ -336,17 +336,14 @@ impl Registry {
 
 /// Get a target from the internal registry based on its name.
 pub fn get_target_by_name(name: impl AsRef<str>) -> Result<Target, RegistryError> {
-    REGISTRY.lock().unwrap().get_target_by_name(name)
+    REGISTRY.lock().get_target_by_name(name)
 }
 
 /// Get a target & chip family from the internal registry based on its name.
 pub fn get_target_and_family_by_name(
     name: impl AsRef<str>,
 ) -> Result<(Target, ChipFamily), RegistryError> {
-    REGISTRY
-        .lock()
-        .unwrap()
-        .get_target_and_family_by_name(name.as_ref())
+    REGISTRY.lock().get_target_and_family_by_name(name.as_ref())
 }
 
 /// Get all target from the internal registry based on its family name.
@@ -355,18 +352,17 @@ pub fn get_targets_by_family_name(
 ) -> Result<Vec<String>, RegistryError> {
     REGISTRY
         .lock()
-        .unwrap()
         .get_targets_by_family_name(family_name.as_ref())
 }
 
 /// Returns targets from the internal registry that match the given name.
 pub fn search_chips(name: impl AsRef<str>) -> Result<Vec<String>, RegistryError> {
-    Ok(REGISTRY.lock().unwrap().search_chips(name.as_ref()))
+    Ok(REGISTRY.lock().search_chips(name.as_ref()))
 }
 
 /// Try to retrieve a target based on [ChipInfo] read from a target.
 pub(crate) fn get_target_by_chip_info(chip_info: ChipInfo) -> Result<Target, RegistryError> {
-    REGISTRY.lock().unwrap().get_target_by_chip_info(chip_info)
+    REGISTRY.lock().get_target_by_chip_info(chip_info)
 }
 
 /// Parse a target description and add the contained targets
@@ -396,13 +392,13 @@ pub fn add_target_from_yaml<R>(yaml_reader: R) -> Result<(), RegistryError>
 where
     R: Read,
 {
-    REGISTRY.lock().unwrap().add_target_from_yaml(yaml_reader)
+    REGISTRY.lock().add_target_from_yaml(yaml_reader)
 }
 
 /// Get a list of all families which are contained in the internal
 /// registry.
 pub fn families() -> Vec<ChipFamily> {
-    REGISTRY.lock().unwrap().families().clone()
+    REGISTRY.lock().families().clone()
 }
 
 /// See if `name` matches the start of `pattern`, treating any lower-case `x`
