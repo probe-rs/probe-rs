@@ -5,8 +5,17 @@ use std::ops::Deref;
 use once_cell::sync::Lazy;
 use parking_lot::{Mutex, MutexGuard};
 use probe_rs_target::Chip;
+use termtree::Tree;
 
-use crate::config::DebugSequence;
+use crate::{
+    architecture::arm::{
+        ap::MemoryAp,
+        memory::{romtable::RomTable, ComponentId},
+        ArmProbeInterface,
+    },
+    config::DebugSequence,
+    Error,
+};
 
 pub mod espressif;
 pub mod infineon;
@@ -21,6 +30,18 @@ pub mod ti;
 pub trait Vendor: Send + Sync + std::fmt::Display {
     /// Tries to create a debug sequence for the given chip.
     fn try_create_debug_sequence(&self, chip: &Chip) -> Option<DebugSequence>;
+
+    /// Tries to parse a custom ARM CoreSight ROM table.
+    fn parse_custom_rom_table(
+        &self,
+        _interface: &mut dyn ArmProbeInterface,
+        _id: &ComponentId,
+        _table: &RomTable,
+        _access_port: MemoryAp,
+        _tree: &mut Tree<String>,
+    ) -> Result<(), Error> {
+        Ok(())
+    }
 }
 
 static VENDORS: Lazy<Mutex<Vec<Box<dyn Vendor>>>> = Lazy::new(|| {
@@ -45,7 +66,7 @@ pub fn register_vendor(vendor: Box<dyn Vendor>) {
 }
 
 /// Returns a readable view of all known vendors.
-fn vendors<'a>() -> impl Deref<Target = [Box<dyn Vendor>]> + 'a {
+pub fn vendors<'a>() -> impl Deref<Target = [Box<dyn Vendor>]> + 'a {
     MutexGuard::map(VENDORS.lock(), |v| v.as_mut_slice())
 }
 

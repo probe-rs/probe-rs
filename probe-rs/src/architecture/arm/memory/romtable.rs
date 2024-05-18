@@ -755,7 +755,6 @@ impl PeripheralID {
             ("ARM Ltd", 0xD21, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M33 TPIU", PeripheralType::Tpiu)),
             ("ARM Ltd", 0xD21, 0x14, 0x1A14) => Some(PartInfo::new("Cortex-M33 CTI", PeripheralType::Cti)),
             ("ARM Ltd", 0x9A3, 0x13, 0x0000) => Some(PartInfo::new("Cortex-M0 MTB", PeripheralType::Mtb)),
-            ("Atmel", 0xCD0, 1, 0) => Some(PartInfo::new("Atmel DSU", PeripheralType::Custom)),
             _ => None,
         }
     }
