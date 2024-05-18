@@ -105,6 +105,7 @@ where
                 name: device.family.clone(),
                 manufacturer: None,
                 generated_from_pack: true,
+                chip_detection: vec![],
                 pack_file_release: pack_file_release.clone(),
                 variants: Vec::new(),
                 flash_algorithms: Vec::new(),

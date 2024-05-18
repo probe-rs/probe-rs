@@ -2,6 +2,12 @@ name: esp32c2
 manufacturer:
   id: 0x12
   cc: 0xc
+chip_detection:
+  - !Espressif
+    idcode: 0x0000cc25
+    variants:
+      - 0x6f51306f: esp32c2 # ECO0
+      - 0x7c41a06f: esp32c2 # ECO1
 variants:
 - name: esp32c2
   cores:

@@ -12,7 +12,7 @@
 //!
 
 mod chip;
-mod chip_detection;
+pub mod chip_detection;
 mod chip_family;
 mod flash_algorithm;
 mod flash_properties;

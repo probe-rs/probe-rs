@@ -2,6 +2,11 @@ name: esp32s3
 manufacturer:
   id: 0x12
   cc: 0xc
+chip_detection:
+  - !Espressif
+    idcode: 0x120034e5
+    variants:
+      - 9: esp32s3
 variants:
 - name: esp32s3
   cores:

@@ -2,6 +2,7 @@ name: esp32
 manufacturer:
   id: 0x12
   cc: 0xc
+# chip_detection deliberately missing to avoid misdetecting 1.8V variants
 variants:
 - name: esp32-3.3v
   cores:

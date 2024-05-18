@@ -1,9 +1,16 @@
 //! Espressif vendor support.
 
-use probe_rs_target::Chip;
+use probe_rs_target::{
+    chip_detection::{ChipDetectionMethod, EspressifDetection},
+    Chip,
+};
 
 use crate::{
-    config::DebugSequence,
+    architecture::{
+        riscv::communication_interface::RiscvCommunicationInterface,
+        xtensa::communication_interface::XtensaCommunicationInterface,
+    },
+    config::{registry, DebugSequence},
     vendor::{
         espressif::sequences::{
             esp32::ESP32, esp32c2::ESP32C2, esp32c3::ESP32C3, esp32c6::ESP32C6, esp32h2::ESP32H2,
@@ -11,9 +18,47 @@ use crate::{
         },
         Vendor,
     },
+    Error, MemoryInterface,
 };
 
 pub mod sequences;
+
+const MAGIC_VALUE_ADDRESS: u64 = 0x4000_1000;
+
+fn get_target_by_magic(info: &EspressifDetection, read_magic: u32) -> Option<String> {
+    for (magic, target) in info.variants.iter() {
+        if *magic == read_magic {
+            return Some(target.clone());
+        }
+    }
+    None
+}
+
+fn try_detect_espressif_chip(
+    probe: &mut impl MemoryInterface,
+    idcode: u32,
+) -> Result<Option<String>, Error> {
+    let families = registry::families_ref();
+    for family in families.into_iter() {
+        for info in family
+            .chip_detection
+            .iter()
+            .filter_map(ChipDetectionMethod::as_espressif)
+        {
+            if info.idcode != idcode {
+                continue;
+            }
+            let Ok(read_magic) = probe.read_word_32(MAGIC_VALUE_ADDRESS) else {
+                continue;
+            };
+            if let Some(target) = get_target_by_magic(info, read_magic) {
+                return Ok(Some(target));
+            }
+        }
+    }
+
+    Ok(None)
+}
 
 /// Espressif
 #[derive(docsplay::Display)]
@@ -40,5 +85,21 @@ impl Vendor for Espressif {
         };
 
         Some(sequence)
+    }
+
+    fn try_detect_riscv_chip(
+        &self,
+        probe: &mut RiscvCommunicationInterface,
+        idcode: u32,
+    ) -> Result<Option<String>, Error> {
+        try_detect_espressif_chip(probe, idcode)
+    }
+
+    fn try_detect_xtensa_chip(
+        &self,
+        probe: &mut XtensaCommunicationInterface,
+        idcode: u32,
+    ) -> Result<Option<String>, Error> {
+        try_detect_espressif_chip(probe, idcode)
     }
 }

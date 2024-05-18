@@ -140,6 +140,11 @@ fn try_detect_riscv_chip(mut probe: Probe) -> Result<(Probe, Option<Target>), Er
             let mut state = factory.create_state();
             let mut interface = factory.attach(&mut state)?;
 
+            if let Err(error) = interface.enter_debug_mode() {
+                tracing::debug!("Failed to enter RISC-V debug mode: {error}");
+                return Ok((probe, None));
+            }
+
             match interface.read_idcode() {
                 Ok(Some(idcode)) => {
                     tracing::debug!("ID code read over JTAG: {idcode:#x}");
@@ -156,6 +161,8 @@ fn try_detect_riscv_chip(mut probe: Probe) -> Result<(Probe, Option<Target>), Er
                 Ok(_) => tracing::debug!("No RISC-V ID code returned."),
                 Err(error) => tracing::debug!("Error during RISC-V chip detection: {error}"),
             }
+
+            // TODO: disable debug module
         }
 
         Err(DebugProbeError::InterfaceNotAvailable { .. }) => {
@@ -175,21 +182,30 @@ fn try_detect_xtensa_chip(mut probe: Probe) -> Result<(Probe, Option<Target>), E
 
     let mut state = XtensaDebugInterfaceState::default();
     match probe.try_get_xtensa_interface(&mut state) {
-        Ok(mut interface) => match interface.read_idcode() {
-            Ok(idcode) => {
-                tracing::debug!("ID code read over JTAG: {idcode:#x}");
-                let vendors = vendors();
-                for vendor in vendors.iter() {
-                    if let Some(target_name) =
-                        vendor.try_detect_xtensa_chip(&mut interface, idcode)?
-                    {
-                        found_target = Some(registry::get_target_by_name(&target_name)?);
-                        break;
+        Ok(mut interface) => {
+            if Err(error) = interface.enter_debug_mode() {
+                tracing::debug!("Failed to enter Xtensa debug mode: {error}");
+                return Ok((probe, None));
+            }
+
+            match interface.read_idcode() {
+                Ok(idcode) => {
+                    tracing::debug!("ID code read over JTAG: {idcode:#x}");
+                    let vendors = vendors();
+                    for vendor in vendors.iter() {
+                        if let Some(target_name) =
+                            vendor.try_detect_xtensa_chip(&mut interface, idcode)?
+                        {
+                            found_target = Some(registry::get_target_by_name(&target_name)?);
+                            break;
+                        }
                     }
                 }
+                Err(error) => tracing::debug!("Error during Xtensa chip detection: {error}"),
             }
-            Err(error) => tracing::debug!("Error during Xtensa chip detection: {error}"),
-        },
+
+            // TODO: disable debug module
+        }
 
         Err(DebugProbeError::InterfaceNotAvailable { .. }) => {
             tracing::debug!("No Xtensa interface available, skipping detection.");
@@ -217,8 +233,9 @@ pub(crate) fn auto_determine_target(mut probe: Probe) -> Result<(Probe, Option<T
         let (returned_probe, target) = architecture(probe)?;
 
         probe = returned_probe;
-        if target.is_some() {
-            found_target = target;
+        if let Some(target) = target {
+            tracing::info!("Found target: {}", target.name);
+            found_target = Some(target);
             break;
         }
     }
