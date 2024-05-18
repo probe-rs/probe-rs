@@ -829,14 +829,14 @@ fn get_target_from_selector(
             }
             probe.attach_to_unspecified()?;
 
-            let (returned_probe, found_chip) = crate::vendor::auto_determine_target(probe)?;
+            let (returned_probe, found_target) = crate::vendor::auto_determine_target(probe)?;
             probe = returned_probe;
 
             // Now we can deassert reset in case we asserted it before. This is always okay.
             probe.target_reset_deassert()?;
 
-            if let Some(chip) = found_chip {
-                crate::config::get_target_by_chip_info(chip)?
+            if let Some(target) = found_target {
+                target
             } else {
                 return Err(Error::ChipNotFound(RegistryError::ChipAutodetectFailed));
             }
