@@ -77,15 +77,13 @@ impl SessionConfig {
                         )));
                 }
             };
-            // Update the `svd_file` and validate that the file exists, or else return an error.
+            // Update the `svd_file` and validate that the file exists, or else warn the user and continue.
             target_core_config.svd_file =
                 match get_absolute_path(self.cwd.as_ref(), target_core_config.svd_file.as_ref()) {
                     Ok(svd_file) => {
                         if !svd_file.is_file() {
-                            return Err(DebuggerError::Other(anyhow!(
-                                "SVD file {} not found.",
-                                svd_file.display()
-                            )));
+                            tracing::warn!("SVD file {} not found.", svd_file.display());
+                            None
                         } else {
                             Some(svd_file)
                         }

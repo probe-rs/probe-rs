@@ -529,7 +529,7 @@ impl<'probe> Core<'probe> {
     }
 
     /// Returns the current status of the core.
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(level = "trace", skip(self))]
     pub fn status(&mut self) -> Result<CoreStatus, Error> {
         self.inner.status()
     }

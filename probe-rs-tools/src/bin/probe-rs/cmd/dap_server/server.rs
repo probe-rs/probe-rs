@@ -6,6 +6,8 @@ pub(crate) mod core_data;
 pub(crate) mod debug_rtt;
 /// Implements the part of the debug server that processes incoming requests from the [`DebugAdapter`](crate::cmd::dap_server::debug_adapter::dap::adapter::DebugAdapter).
 pub(crate) mod debugger;
+/// Manage the logging/tracing associated with the debugger.
+pub(crate) mod logger;
 /// The data structures needed to keep track of a session status in the debugger.
 pub(crate) mod session_data;
 /// This is where the primary processing for the debugger is driven from.

@@ -206,7 +206,7 @@ impl SessionData {
     ///   - The first time we have entered halted status, to ensure the buffers are drained. After that, for as long as we remain in halted state, we don't need to check RTT again.
     ///
     /// Return a Vec of [`CoreStatus`] (one entry per core) after this process has completed, as well as a boolean indicating whether we should consider a short delay before the next poll.
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "trace", skip_all)]
     pub(crate) fn poll_cores<P: ProtocolAdapter>(
         &mut self,
         session_config: &SessionConfig,

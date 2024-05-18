@@ -2762,6 +2762,7 @@ dependencies = [
  "serde_json",
  "signal-hook",
  "svd-parser",
+ "tempfile",
  "termtree",
  "textwrap",
  "thiserror",

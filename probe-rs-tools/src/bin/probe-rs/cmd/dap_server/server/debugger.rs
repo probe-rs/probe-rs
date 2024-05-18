@@ -1,5 +1,6 @@
 use super::{
     configuration::{self, ConsoleLog},
+    logger::DebugLogger,
     session_data::SessionData,
     startup::{get_file_timestamp, TargetSessionType},
 };
@@ -29,7 +30,7 @@ use probe_rs::{
 };
 use std::{
     cell::RefCell,
-    fs,
+    fs::{self},
     path::Path,
     rc::Rc,
     thread,
@@ -64,18 +65,32 @@ pub struct Debugger {
     timestamp_offset: UtcOffset,
 
     // TODO: Store somewhere else
-    // Timestamp of the flashed binary
+    /// Timestamp of the flashed binary
     binary_timestamp: Option<Duration>,
+
+    /// Used to capture the `tracing` messages that are generated during the DAP sessions,
+    /// to be ultimately forwarded to the DAP client's Debug Console, or failing that, stderr.
+    pub(crate) debug_logger: DebugLogger,
 }
 
 impl Debugger {
     /// Create a new debugger instance
-    pub fn new(timestamp_offset: UtcOffset) -> Self {
-        Self {
+    pub fn new(
+        timestamp_offset: UtcOffset,
+        log_file: Option<&Path>,
+    ) -> Result<Self, DebuggerError> {
+        let mut debugger = Self {
             config: configuration::SessionConfig::default(),
             timestamp_offset,
             binary_timestamp: None,
-        }
+            debug_logger: DebugLogger::new(log_file)?,
+        };
+
+        debugger
+            .debug_logger
+            .log_to_console("Starting probe-rs as a DAP Protocol server")?;
+
+        Ok(debugger)
     }
 
     /// The logic of this function is as follows:
@@ -90,9 +105,10 @@ impl Debugger {
         session_data: &mut SessionData,
         debug_adapter: &mut DebugAdapter<P>,
     ) -> Result<DebugSessionStatus, DebuggerError> {
+        self.debug_logger.flush_to_dap(debug_adapter)?;
         match debug_adapter.listen_for_request()? {
             None => {
-                let _poll_span = tracing::debug_span!("Polling for core status").entered();
+                let _poll_span = tracing::trace_span!("Polling for core status").entered();
                 if debug_adapter.all_cores_halted {
                     // Once all cores are halted, then we can skip polling the core for status, and just wait for the next DAP Client request.
                     tracing::trace!(
@@ -306,12 +322,8 @@ impl Debugger {
     pub(crate) fn debug_session<P: ProtocolAdapter + 'static>(
         &mut self,
         mut debug_adapter: DebugAdapter<P>,
-        log_info_message: &str,
         lister: &Lister,
     ) -> Result<(), DebuggerError> {
-        debug_adapter.log_to_console("Starting debug session...");
-        debug_adapter.log_to_console(log_info_message);
-
         // The DapClient startup process has a specific sequence.
         // Handle it here before starting a probe-rs session and looping through user generated requests.
         // Handling the initialize, and Attach/Launch requests here in this method,
@@ -321,10 +333,13 @@ impl Debugger {
         if self.handle_initialize(&mut debug_adapter).is_err() {
             // The request handler has already reported this error to the user.
             return Ok(());
+        } else {
+            self.debug_logger.flush_to_dap(&mut debug_adapter)?;
         }
 
         let launch_attach_request = loop {
             if let Some(request) = debug_adapter.listen_for_request()? {
+                self.debug_logger.flush_to_dap(&mut debug_adapter)?;
                 break request;
             }
         };
@@ -340,6 +355,7 @@ impl Debugger {
                     return Ok(());
                 }
             };
+        self.debug_logger.flush_to_dap(&mut debug_adapter)?;
 
         if debug_adapter
             .send_event::<Event>("initialized", None)
@@ -513,7 +529,7 @@ impl Debugger {
                     Ok(core_peripherals) => Some(core_peripherals),
                     Err(error) => {
                         // This is not a fatal error. We can continue the debug session without the SVD file.
-                        tracing::error!("{:?}", error);
+                        tracing::warn!("{:?}", error);
                         None
                     }
                 };
@@ -1290,14 +1306,12 @@ mod test {
 
         let debug_adapter = DebugAdapter::new(protocol_adapter);
 
-        let mut debugger = Debugger::new(UtcOffset::UTC);
+        let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
 
         let lister = Lister::with_lister(Box::new(TestLister::new()));
 
         // TODO: Check proper return value
-        debugger
-            .debug_session(debug_adapter, "Some message?", &lister)
-            .unwrap_err();
+        debugger.debug_session(debug_adapter, &lister).unwrap_err();
     }
 
     #[test]
@@ -1340,13 +1354,11 @@ mod test {
 
         let debug_adapter = DebugAdapter::new(protocol_adapter);
 
-        let mut debugger = Debugger::new(UtcOffset::UTC);
+        let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
 
         let lister = Lister::with_lister(Box::new(TestLister::new()));
 
-        debugger
-            .debug_session(debug_adapter, "initial info message", &lister)
-            .unwrap();
+        debugger.debug_session(debug_adapter, &lister).unwrap();
     }
 
     #[test]
@@ -1395,7 +1407,7 @@ mod test {
 
         let debug_adapter = DebugAdapter::new(protocol_adapter);
 
-        let mut debugger = Debugger::new(UtcOffset::UTC);
+        let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
 
         let lister = TestLister::new();
 
@@ -1421,9 +1433,7 @@ mod test {
 
         let lister = Lister::with_lister(Box::new(lister));
 
-        debugger
-            .debug_session(debug_adapter, "initial info message", &lister)
-            .unwrap();
+        debugger.debug_session(debug_adapter, &lister).unwrap();
     }
 
     #[test]
@@ -1471,7 +1481,7 @@ mod test {
 
         let debug_adapter = DebugAdapter::new(protocol_adapter);
 
-        let mut debugger = Debugger::new(UtcOffset::UTC);
+        let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
 
         let lister = TestLister::new();
 
@@ -1497,9 +1507,7 @@ mod test {
 
         let lister = Lister::with_lister(Box::new(lister));
 
-        debugger
-            .debug_session(debug_adapter, "initial info message", &lister)
-            .unwrap();
+        debugger.debug_session(debug_adapter, &lister).unwrap();
     }
 
     #[test]
@@ -1527,7 +1535,7 @@ mod test {
             .expect_output_event("Expected request 'launch' or 'attach', but received 'threads'\n");
 
         let debug_adapter = DebugAdapter::new(protocol_adapter);
-        let mut debugger = Debugger::new(UtcOffset::UTC);
+        let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
         let lister = TestLister::new();
         let probe_info = DebugProbeInfo::new(
             "Mock probe",
@@ -1551,9 +1559,7 @@ mod test {
 
         let lister = Lister::with_lister(Box::new(lister));
 
-        debugger
-            .debug_session(debug_adapter, "initial info message", &lister)
-            .unwrap();
+        debugger.debug_session(debug_adapter, &lister).unwrap();
     }
 
     #[test]
@@ -1600,7 +1606,7 @@ mod test {
             .and_succesful_response();
 
         let debug_adapter = DebugAdapter::new(protocol_adapter);
-        let mut debugger = Debugger::new(UtcOffset::UTC);
+        let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
         let lister = TestLister::new();
         let probe_info = DebugProbeInfo::new(
             "Mock probe",
@@ -1624,9 +1630,7 @@ mod test {
 
         let lister = Lister::with_lister(Box::new(lister));
 
-        debugger
-            .debug_session(debug_adapter, "initial info message", &lister)
-            .unwrap();
+        debugger.debug_session(debug_adapter, &lister).unwrap();
     }
 
     #[test]
@@ -1673,7 +1677,7 @@ mod test {
         protocol_adapter.expect_output_event("Please do not use any of the `flashing_enabled`, `reset_after_flashing`, halt_after_reset`, `full_chip_erase`, or `restore_unwritten_bytes` options when using `attach` request type.\n");
 
         let debug_adapter = DebugAdapter::new(protocol_adapter);
-        let mut debugger = Debugger::new(UtcOffset::UTC);
+        let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
         let lister = TestLister::new();
         let probe_info = DebugProbeInfo::new(
             "Mock probe",
@@ -1697,9 +1701,7 @@ mod test {
 
         let lister = Lister::with_lister(Box::new(lister));
 
-        debugger
-            .debug_session(debug_adapter, "initial info message", &lister)
-            .unwrap();
+        debugger.debug_session(debug_adapter, &lister).unwrap();
     }
 
     #[test]
@@ -1762,7 +1764,7 @@ mod test {
 
         let debug_adapter = DebugAdapter::new(protocol_adapter);
 
-        let mut debugger = Debugger::new(UtcOffset::UTC);
+        let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
 
         let lister = TestLister::new();
 
@@ -1788,8 +1790,6 @@ mod test {
 
         let lister = Lister::with_lister(Box::new(lister));
 
-        debugger
-            .debug_session(debug_adapter, "initial info message", &lister)
-            .unwrap();
+        debugger.debug_session(debug_adapter, &lister).unwrap();
     }
 }
