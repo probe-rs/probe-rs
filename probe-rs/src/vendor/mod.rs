@@ -8,7 +8,7 @@ use probe_rs_target::Chip;
 
 use crate::{
     architecture::{
-        arm::{sequences::DefaultArmSequence, DpAddress},
+        arm::{sequences::DefaultArmSequence, ArmChipInfo, ArmProbeInterface, DpAddress},
         riscv::communication_interface::RiscvCommunicationInterface,
         xtensa::communication_interface::{
             XtensaCommunicationInterface, XtensaDebugInterfaceState,
@@ -32,6 +32,15 @@ pub mod ti;
 pub trait Vendor: Send + Sync + std::fmt::Display {
     /// Tries to create a debug sequence for the given chip.
     fn try_create_debug_sequence(&self, chip: &Chip) -> Option<DebugSequence>;
+
+    /// Tries to identify an ARM chip. Returns `Some(target name)` on success.
+    fn try_detect_arm_chip(
+        &self,
+        _probe: &mut dyn ArmProbeInterface,
+        _chip_info: ArmChipInfo,
+    ) -> Result<Option<String>, Error> {
+        Ok(None)
+    }
 
     /// Tries to identify an RISC-V chip. Returns `Some(target name)` on success.
     fn try_detect_riscv_chip(
@@ -93,39 +102,58 @@ pub fn try_create_debug_sequence(chip: &Chip) -> Option<DebugSequence> {
 fn try_detect_arm_chip(mut probe: Probe) -> Result<(Probe, Option<Target>), Error> {
     let mut found_target = None;
 
-    // TODO: do not consume probe
-    match probe.try_into_arm_interface() {
-        Ok(interface) => {
-            // We have no information about the target, so we must assume it's using the default DP.
-            // We cannot automatically detect DPs if SWD multi-drop is used.
-            let dp_address = DpAddress::Default;
+    if !probe.has_arm_interface() {
+        // No ARM interface available.
+        tracing::debug!("No ARM interface available, skipping detection.");
+        return Ok((probe, None));
+    }
 
-            let mut interface = interface
-                .initialize(DefaultArmSequence::create(), dp_address)
-                .map_err(|(_probe, err)| err)?;
+    // We have no information about the target, so we must assume it's using the default DP.
+    // We cannot automatically detect DPs if SWD multi-drop is used.
+    // TODO: collect known DP addresses for known targets.
+    let dp_addresses = [DpAddress::Default];
 
-            let found_arm_chip = interface
-                .read_chip_info_from_rom_table(dp_address)
-                .unwrap_or_else(|error| {
-                    tracing::debug!("Error during ARM chip detection: {error}");
-                    None
-                });
+    for dp_addr in dp_addresses {
+        // TODO: do not consume probe
+        match probe.try_into_arm_interface() {
+            Ok(interface) => {
+                let mut interface = interface
+                    .initialize(DefaultArmSequence::create(), dp_address)
+                    .map_err(|(_probe, err)| err)?;
 
-            // TODO: we should probably read the ROM table and pass that to the vendor-specific fn
-            if let Some(found_chip) = found_arm_chip.map(ChipInfo::from) {
-                found_target = Some(crate::config::get_target_by_chip_info(found_chip)?);
+                let found_arm_chip = interface
+                    .read_chip_info_from_rom_table(dp_address)
+                    .unwrap_or_else(|error| {
+                        tracing::debug!("Error during ARM chip detection: {error}");
+                        None
+                    });
+
+                if let Some(found_chip) = found_arm_chip {
+                    let vendors = vendors();
+                    for vendor in vendors.iter() {
+                        if let Some(target_name) =
+                            vendor.try_detect_arm_chip(&mut interface, found_chip)?
+                        {
+                            found_target = Some(registry::get_target_by_name(&target_name)?);
+                            break;
+                        }
+                    }
+
+                    // No vendor-specific match, try to find a target by chip info.
+                    if found_target.is_none() {
+                        if let Some(found_chip) = found_arm_chip.map(ChipInfo::from) {
+                            found_target =
+                                Some(crate::config::get_target_by_chip_info(found_chip)?);
+                        }
+                    }
+                }
+
+                probe = interface.close();
             }
-
-            probe = interface.close();
-        }
-        Err((returned_probe, DebugProbeError::InterfaceNotAvailable { .. })) => {
-            // No ARM interface available.
-            tracing::debug!("No ARM interface available, skipping detection.");
-            probe = returned_probe;
-        }
-        Err((returned_probe, error)) => {
-            probe = returned_probe;
-            tracing::debug!("Error using ARM interface: {error}");
+            Err((returned_probe, error)) => {
+                probe = returned_probe;
+                tracing::debug!("Error using ARM interface: {error}");
+            }
         }
     }
 

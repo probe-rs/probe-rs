@@ -1,10 +1,15 @@
 //! Microchip vendor support.
 
-use probe_rs_target::Chip;
+use probe_rs_target::{chip_detection::ChipDetectionMethod, Chip};
 
 use crate::{
-    config::DebugSequence,
-    vendor::{microchip::sequences::atsam::AtSAM, Vendor},
+    architecture::arm::{ap::MemoryAp, ApAddress, ArmChipInfo, ArmProbeInterface},
+    config::{registry, DebugSequence},
+    vendor::{
+        microchip::sequences::atsam::{AtSAM, DsuDid},
+        Vendor,
+    },
+    Error,
 };
 
 pub mod sequences;
@@ -27,5 +32,47 @@ impl Vendor for Microchip {
         };
 
         Some(sequence)
+    }
+
+    fn try_detect_arm_chip(
+        &self,
+        interface: &mut dyn ArmProbeInterface,
+        chip_info: ArmChipInfo,
+    ) -> Result<Option<String>, Error> {
+        if chip_info.jep106().get() != Some("Atmel") || chip_info.part != 0xCD0 {
+            return Ok(None);
+        }
+
+        // FIXME: This is a bit shaky but good enough for now.
+        let access_port = MemoryAp::new(ApAddress::with_default_dp(0));
+        // This device has an Atmel DSU - Read and parse the DSU DID register
+        let did = DsuDid(
+            interface
+                .memory_interface(access_port)?
+                .read_word_32(DsuDid::ADDRESS)?,
+        );
+
+        let families = registry::families_ref();
+        for family in families.into_iter() {
+            for info in family
+                .chip_detection
+                .iter()
+                .filter_map(ChipDetectionMethod::as_atsam)
+            {
+                if info.processor != did.processor()
+                    || info.family != did.family()
+                    || info.series != did.series()
+                {
+                    continue;
+                }
+                for (devsel, variant) in info.variants.iter() {
+                    if *devsel == did.devsel() {
+                        return Ok(Some(variant.clone()));
+                    }
+                }
+            }
+        }
+
+        Ok(None)
     }
 }

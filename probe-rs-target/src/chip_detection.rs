@@ -46,8 +46,8 @@ pub struct AtsamDetection {
     /// DSU DID register, Series field
     pub series: u8,
 
-    /// Target => Devsel field value
-    pub variants: HashMap<String, u8>,
+    /// Devsel => Target field value
+    pub variants: HashMap<u8, String>,
 }
 
 /// Espressif chip detection information.
