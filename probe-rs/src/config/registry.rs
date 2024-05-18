@@ -3,10 +3,11 @@
 use super::{Chip, ChipFamily, ChipInfo, Core, Target, TargetDescriptionSource};
 use crate::config::CoreType;
 use once_cell::sync::Lazy;
-use parking_lot::Mutex;
+use parking_lot::{Mutex, MutexGuard};
 use probe_rs_target::{BinaryFormat, CoreAccessOptions, RiscvCoreAccessOptions};
 use std::collections::HashMap;
 use std::io::Read;
+use std::ops::Deref;
 
 static REGISTRY: Lazy<Mutex<Registry>> =
     Lazy::new(|| Mutex::new(Registry::from_builtin_families()));
@@ -141,10 +142,6 @@ impl Registry {
         // `validate_builtin` as well, to ensure we do not ship broken target definitions.
 
         Self { families }
-    }
-
-    fn families(&self) -> &Vec<ChipFamily> {
-        &self.families
     }
 
     fn get_target_by_name(&self, name: impl AsRef<str>) -> Result<Target, RegistryError> {
@@ -397,8 +394,17 @@ where
 
 /// Get a list of all families which are contained in the internal
 /// registry.
+///
+/// As opposed to `families()` this function does not clone the families, but using it is
+/// slightly more cumbersome.
+pub fn families_ref() -> impl Deref<Target = [ChipFamily]> {
+    MutexGuard::map(REGISTRY.lock(), |registry| registry.families.as_mut_slice())
+}
+
+/// Get a list of all families which are contained in the internal
+/// registry.
 pub fn families() -> Vec<ChipFamily> {
-    REGISTRY.lock().families().clone()
+    families_ref().to_vec()
 }
 
 /// See if `name` matches the start of `pattern`, treating any lower-case `x`
@@ -482,7 +488,7 @@ mod tests {
     fn validate_builtin() {
         let registry = Registry::from_builtin_families();
         registry
-            .families()
+            .families
             .iter()
             .map(|family| family.validate())
             .collect::<Result<Vec<_>, _>>()
