@@ -6,7 +6,15 @@ use once_cell::sync::Lazy;
 use parking_lot::{Mutex, MutexGuard};
 use probe_rs_target::Chip;
 
-use crate::config::DebugSequence;
+use crate::{
+    architecture::{
+        arm::{sequences::DefaultArmSequence, DpAddress},
+        xtensa::communication_interface::XtensaDebugInterfaceState,
+    },
+    config::{ChipInfo, DebugSequence},
+    probe::{DebugProbeError, Probe},
+    Error,
+};
 
 pub mod espressif;
 pub mod infineon;
@@ -59,4 +67,109 @@ pub fn try_create_debug_sequence(chip: &Chip) -> Option<DebugSequence> {
     }
 
     None
+}
+
+fn try_detect_arm_chip(mut probe: Probe) -> Result<(Probe, Option<ChipInfo>), Error> {
+    let mut found_chip = None;
+
+    // TODO: do not consume probe
+    match probe.try_into_arm_interface() {
+        Ok(interface) => {
+            // We have no information about the target, so we must assume it's using the default DP.
+            // We cannot automatically detect DPs if SWD multi-drop is used.
+            let dp_address = DpAddress::Default;
+
+            let mut interface = interface
+                .initialize(DefaultArmSequence::create(), dp_address)
+                .map_err(|(_probe, err)| err)?;
+
+            let found_arm_chip = interface
+                .read_chip_info_from_rom_table(dp_address)
+                .unwrap_or_else(|e| {
+                    tracing::info!("Error during auto-detection of ARM chips: {}", e);
+                    None
+                });
+
+            found_chip = found_arm_chip.map(ChipInfo::from);
+
+            probe = interface.close();
+        }
+        Err((returned_probe, DebugProbeError::InterfaceNotAvailable { .. })) => {
+            // No ARM interface available.
+            tracing::debug!("No ARM interface available, skipping detection.");
+            probe = returned_probe;
+        }
+        Err((returned_probe, err)) => {
+            probe = returned_probe;
+            tracing::debug!("Error using ARM interface: {}", err);
+        }
+    }
+
+    Ok((probe, found_chip))
+}
+
+fn try_detect_riscv_chip(mut probe: Probe) -> Result<(Probe, Option<ChipInfo>), Error> {
+    match probe.try_get_riscv_interface_builder() {
+        Ok(factory) => {
+            let mut state = factory.create_state();
+            let mut interface = factory.attach(&mut state)?;
+            let idcode = interface.read_idcode();
+
+            tracing::debug!("ID Code read over JTAG: {:x?}", idcode);
+        }
+
+        Err(DebugProbeError::InterfaceNotAvailable { .. }) => {
+            tracing::debug!("No RISC-V interface available, skipping detection.");
+        }
+
+        Err(err) => {
+            tracing::debug!("Error during autodetection of RISC-V chips: {}", err);
+        }
+    }
+
+    Ok((probe, None))
+}
+
+fn try_detect_xtensa_chip(mut probe: Probe) -> Result<(Probe, Option<ChipInfo>), Error> {
+    let mut state = XtensaDebugInterfaceState::default();
+    match probe.try_get_xtensa_interface(&mut state) {
+        Ok(mut interface) => {
+            let idcode = interface.read_idcode();
+
+            tracing::debug!("ID Code read over JTAG: {:x?}", idcode);
+        }
+
+        Err(DebugProbeError::InterfaceNotAvailable { .. }) => {
+            tracing::debug!("No Xtensa interface available, skipping detection.");
+        }
+
+        Err(err) => {
+            tracing::debug!("Error during autodetection of Xtensa chips: {}", err);
+        }
+    }
+
+    Ok((probe, None))
+}
+
+/// Tries to identify the chip using the given probe.
+pub(crate) fn auto_determine_target(mut probe: Probe) -> Result<(Probe, Option<ChipInfo>), Error> {
+    let mut found_chip = None;
+
+    const ARCHITECTURES: &[fn(Probe) -> Result<(Probe, Option<ChipInfo>), Error>] = &[
+        try_detect_arm_chip,
+        try_detect_riscv_chip,
+        try_detect_xtensa_chip,
+    ];
+
+    for method in ARCHITECTURES {
+        let (returned_probe, chip) = method(probe)?;
+
+        probe = returned_probe;
+        if chip.is_some() {
+            found_chip = chip;
+            break;
+        }
+    }
+
+    Ok((probe, found_chip))
 }
