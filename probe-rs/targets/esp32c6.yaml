@@ -6,7 +6,7 @@ chip_detection:
   - !Espressif
     idcode: 0x0000dc25
     variants:
-      - 0x2CE0806F: esp32c6
+      0x2CE0806F: esp32c6
 variants:
 - name: esp32c6
   cores:

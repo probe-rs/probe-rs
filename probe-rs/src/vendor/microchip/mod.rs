@@ -39,7 +39,7 @@ impl Vendor for Microchip {
         interface: &mut dyn ArmProbeInterface,
         chip_info: ArmChipInfo,
     ) -> Result<Option<String>, Error> {
-        if chip_info.jep106().get() != Some("Atmel") || chip_info.part != 0xCD0 {
+        if chip_info.manufacturer.get() != Some("Atmel") || chip_info.part != 0xCD0 {
             return Ok(None);
         }
 
@@ -53,20 +53,20 @@ impl Vendor for Microchip {
         );
 
         let families = registry::families_ref();
-        for family in families.into_iter() {
+        for family in families.iter() {
             for info in family
                 .chip_detection
                 .iter()
                 .filter_map(ChipDetectionMethod::as_atsam)
             {
-                if info.processor != did.processor()
-                    || info.family != did.family()
-                    || info.series != did.series()
+                if info.processor != did.processor() as u8
+                    || info.family != did.family() as u8
+                    || info.series != did.series() as u8
                 {
                     continue;
                 }
                 for (devsel, variant) in info.variants.iter() {
-                    if *devsel == did.devsel() {
+                    if *devsel == did.devsel() as u8 {
                         return Ok(Some(variant.clone()));
                     }
                 }

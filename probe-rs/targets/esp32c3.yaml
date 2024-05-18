@@ -6,10 +6,10 @@ chip_detection:
   - !Espressif
     idcode: 0x00005c25
     variants:
-      - 0x6921506f: esp32c3 # ECO1 + ECO2
-      - 0x1b31506f: esp32c3 # ECO3
-      - 0x4881606f: esp32c3 # ECO6
-      - 0x4361606f: esp32c3 # ECO7
+      0x6921506f: esp32c3 # ECO1 + ECO2
+      0x1b31506f: esp32c3 # ECO3
+      0x4881606f: esp32c3 # ECO6
+      0x4361606f: esp32c3 # ECO7
 variants:
 - name: esp32c3
   cores:

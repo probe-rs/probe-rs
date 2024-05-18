@@ -867,7 +867,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
 /// Information about the chip target we are currently attached to.
 /// This can be used for discovery, tho, for now it does not work optimally,
 /// as some manufacturers (e.g. ST Microelectronics) violate the spec and thus need special discovery procedures.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct ArmChipInfo {
     /// The JEP106 code of the manufacturer of this chip target.
     pub manufacturer: JEP106Code,

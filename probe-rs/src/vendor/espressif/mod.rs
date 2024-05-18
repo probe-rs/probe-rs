@@ -39,7 +39,7 @@ fn try_detect_espressif_chip(
     idcode: u32,
 ) -> Result<Option<String>, Error> {
     let families = registry::families_ref();
-    for family in families.into_iter() {
+    for family in families.iter() {
         for info in family
             .chip_detection
             .iter()

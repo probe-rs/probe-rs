@@ -218,7 +218,7 @@ bitfield! {
     pub revision, _ : 11, 8;
 
     /// This bit field identifies a device within a product family and product series.
-    pub devsel, _ : 8, 0;
+    pub devsel, _ : 7, 0;
 }
 
 impl DsuDid {

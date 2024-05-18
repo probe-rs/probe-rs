@@ -6,7 +6,7 @@ chip_detection:
   - !Espressif
     idcode: 0x00010c25
     variants:
-      - 0xD7B73E80: esp32h2
+      0xD7B73E80: esp32h2
 variants:
 - name: esp32h2
   cores:
