@@ -280,5 +280,7 @@ pub(crate) fn auto_determine_target(mut probe: Probe) -> Result<(Probe, Option<T
         }
     }
 
+    probe.detach()?;
+
     Ok((probe, found_target))
 }
