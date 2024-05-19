@@ -3,7 +3,7 @@
 use std::ops::Deref;
 
 use once_cell::sync::Lazy;
-use parking_lot::{Mutex, MutexGuard};
+use parking_lot::{RwLock, RwLockReadGuard};
 use probe_rs_target::Chip;
 
 use crate::{
@@ -61,7 +61,7 @@ pub trait Vendor: Send + Sync + std::fmt::Display {
     }
 }
 
-static VENDORS: Lazy<Mutex<Vec<Box<dyn Vendor>>>> = Lazy::new(|| {
+static VENDORS: Lazy<RwLock<Vec<Box<dyn Vendor>>>> = Lazy::new(|| {
     let vendors: Vec<Box<dyn Vendor>> = vec![
         Box::new(microchip::Microchip),
         Box::new(infineon::Infineon),
@@ -73,18 +73,18 @@ static VENDORS: Lazy<Mutex<Vec<Box<dyn Vendor>>>> = Lazy::new(|| {
         Box::new(st::St),
     ];
 
-    Mutex::new(vendors)
+    RwLock::new(vendors)
 });
 
 /// Registers a new vendor.
 pub fn register_vendor(vendor: Box<dyn Vendor>) {
     // Order matters. Prepend to allow users to override the default vendors.
-    VENDORS.lock().insert(0, vendor);
+    VENDORS.write().insert(0, vendor);
 }
 
 /// Returns a readable view of all known vendors.
 fn vendors<'a>() -> impl Deref<Target = [Box<dyn Vendor>]> + 'a {
-    MutexGuard::map(VENDORS.lock(), |v| v.as_mut_slice())
+    RwLockReadGuard::map(VENDORS.read_recursive(), |v| v.as_slice())
 }
 
 /// Tries to create a debug sequence for the given chip.
@@ -248,6 +248,7 @@ fn try_detect_xtensa_chip(probe: &mut Probe) -> Result<Option<Target>, Error> {
 
 /// Tries to identify the chip using the given probe.
 pub(crate) fn auto_determine_target(mut probe: Probe) -> Result<(Probe, Option<Target>), Error> {
+    tracing::info!("Auto-detecting target");
     let mut found_target = None;
 
     // Xtensa and RISC-V interfaces don't need moving the probe. For clarity, their
