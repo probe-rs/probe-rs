@@ -1570,7 +1570,7 @@ impl SwdSequence for StlinkArmDebug {
     fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), DebugProbeError> {
         // This is not supported for ST-Links, unfortunately.
         Err(DebugProbeError::CommandNotSupportedByProbe {
-            command_name: "swj_seqeuence",
+            command_name: "swj_sequence",
         })
     }
 
