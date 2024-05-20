@@ -431,6 +431,14 @@ impl Debugger {
             }
         };
 
+        if let Err(bad_config) = self
+            .config
+            .validate_configuration_option_compatibility(requested_target_session_type)
+        {
+            debug_adapter.send_response::<()>(launch_attach_request, Err(&bad_config))?;
+            return Err(bad_config);
+        }
+
         if requested_target_session_type == TargetSessionType::AttachRequest {
             // Since VSCode doesn't do field validation checks for relationships in launch.json request types, check it here.
             if self.config.flashing_config.flashing_enabled

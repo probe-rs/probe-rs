@@ -6,6 +6,8 @@ use probe_rs::probe::{DebugProbeSelector, WireProtocol};
 use serde::{Deserialize, Serialize};
 use std::{env::current_dir, path::PathBuf};
 
+use super::startup::TargetSessionType;
+
 /// Shared options for all session level configuration.
 #[derive(Clone, Serialize, Deserialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
@@ -51,6 +53,24 @@ pub struct SessionConfig {
 }
 
 impl SessionConfig {
+    /// Since VSCode doesn't do field validation checks for relationships in launch.json request types, check it here.
+    pub(crate) fn validate_configuration_option_compatibility(
+        &self,
+        requested_target_session_type: TargetSessionType,
+    ) -> Result<(), DebuggerError> {
+        // Disallow flashing if the `attach` request type is used.
+        if requested_target_session_type == TargetSessionType::AttachRequest
+            && (self.flashing_config.flashing_enabled
+                || self.flashing_config.halt_after_reset
+                || self.flashing_config.full_chip_erase
+                || self.flashing_config.restore_unwritten_bytes)
+        {
+            let message = "Please do not use any of the `flashing_enabled`, `reset_after_flashing`, halt_after_reset`, `full_chip_erase`, or `restore_unwritten_bytes` options when using `attach` request type.";
+            return Err(DebuggerError::Other(anyhow!(message)));
+        }
+        Ok(())
+    }
+
     /// Ensure all file names are correctly specified and that the files they point to are accessible.
     pub(crate) fn validate_config_files(&mut self) -> Result<(), DebuggerError> {
         // Update the `cwd`.
