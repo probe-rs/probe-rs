@@ -62,7 +62,7 @@ pub fn debug(
 
                 debugger
                     .debug_logger
-                    .log_to_console(&format!("Starting debug session from   :{addr}"))?;
+                    .log_to_console(&format!("Starting debug session from: {addr}"))?;
 
                 let reader = socket
                     .try_clone()

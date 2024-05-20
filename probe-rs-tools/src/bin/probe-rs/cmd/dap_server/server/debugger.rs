@@ -964,22 +964,6 @@ pub(crate) fn is_file_newer(
 mod test {
     #![allow(clippy::unwrap_used, clippy::panic)]
 
-    use core::panic;
-    use std::collections::{BTreeMap, HashMap, VecDeque};
-    use std::fmt::Display;
-    use std::path::PathBuf;
-
-    use probe_rs::architecture::arm::ApAddress;
-    use probe_rs::probe::{
-        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeFactory,
-    };
-    use probe_rs::{
-        integration::{FakeProbe, Operation},
-        probe::list::Lister,
-    };
-    use serde_json::json;
-    use time::UtcOffset;
-
     use crate::cmd::dap_server::{
         debug_adapter::{
             dap::{
@@ -995,6 +979,22 @@ mod test {
         server::configuration::{ConsoleLog, CoreConfig, FlashingConfig, SessionConfig},
         test::TestLister,
     };
+    use core::panic;
+    use probe_rs::{
+        architecture::arm::ApAddress,
+        integration::{FakeProbe, Operation},
+        probe::{
+            list::Lister, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
+            ProbeFactory,
+        },
+    };
+    use serde_json::json;
+    use std::{
+        collections::{BTreeMap, HashMap, VecDeque},
+        fmt::Display,
+        path::PathBuf,
+    };
+    use time::UtcOffset;
 
     #[derive(Debug)]
     struct MockProbeFactory;
@@ -1059,6 +1059,12 @@ mod test {
             supports_start_debugging_request: None,
             supports_variable_paging: None,
             supports_variable_type: None,
+        }
+    }
+
+    fn error_response_body(msg: &str) -> ErrorResponseBody {
+        ErrorResponseBody {
+            error: Some(error_message(msg)),
         }
     }
 
@@ -1301,8 +1307,9 @@ mod test {
             .and_succesful_response()
             .with_body(expected_capabilites());
 
-        protocol_adapter.expect_output_event("Starting debug session...\n");
-        protocol_adapter.expect_output_event("Some message?\n");
+        protocol_adapter.expect_output_event("probe-rs-debug: Log output for \"probe_rs=warn\" will be written to the Debug Console.\n");
+        protocol_adapter
+            .expect_output_event("probe-rs-debug: Starting probe-rs as a DAP Protocol server\n");
 
         let debug_adapter = DebugAdapter::new(protocol_adapter);
 
@@ -1324,33 +1331,22 @@ mod test {
             .and_succesful_response()
             .with_body(expected_capabilites());
 
-        protocol_adapter.expect_output_event("Starting debug session...\n");
-        protocol_adapter.expect_output_event("initial info message\n");
+        protocol_adapter.expect_output_event("probe-rs-debug: Log output for \"probe_rs=warn\" will be written to the Debug Console.\n");
+        protocol_adapter
+            .expect_output_event("probe-rs-debug: Starting probe-rs as a DAP Protocol server\n");
 
         let launch_args = SessionConfig::default();
 
         let args = serde_json::to_value(launch_args).unwrap();
 
+        let expected_error = "No connected probes were found.";
+        protocol_adapter.expect_output_event(&format!("{expected_error}\n"));
+
         protocol_adapter
             .add_request("launch")
             .with_arguments(args)
             .and_error_response()
-            .with_body(ErrorResponseBody {
-                error: Some(Message {
-                    format: "{response_message}".to_string(),
-                    id: 0,
-                    send_telemetry: Some(false),
-                    show_user: Some(true),
-                    url: Some("https://probe.rs/docs/tools/debugger/".to_string()),
-                    url_label: Some("Documentation".to_string()),
-                    variables: Some(BTreeMap::from([(
-                        "response_message".to_string(),
-                        "No connected probes were found.".to_string(),
-                    )])),
-                }),
-            });
-
-        protocol_adapter.expect_output_event("No connected probes were found.\n");
+            .with_body(error_response_body(expected_error));
 
         let debug_adapter = DebugAdapter::new(protocol_adapter);
 
@@ -1376,8 +1372,9 @@ mod test {
             .and_succesful_response()
             .with_body(expected_capabilites());
 
-        protocol_adapter.expect_output_event("Starting debug session...\n");
-        protocol_adapter.expect_output_event("initial info message\n");
+        protocol_adapter.expect_output_event("probe-rs-debug: Log output for \"probe_rs=warn\" will be written to the Debug Console.\n");
+        protocol_adapter
+            .expect_output_event("probe-rs-debug: Starting probe-rs as a DAP Protocol server\n");
 
         let launch_args = SessionConfig {
             chip: Some("nrf52833_xxaa".to_owned()),
@@ -1446,8 +1443,9 @@ mod test {
             .and_succesful_response()
             .with_body(expected_capabilites());
 
-        protocol_adapter.expect_output_event("Starting debug session...\n");
-        protocol_adapter.expect_output_event("initial info message\n");
+        protocol_adapter.expect_output_event("probe-rs-debug: Log output for \"probe_rs=warn\" will be written to the Debug Console.\n");
+        protocol_adapter
+            .expect_output_event("probe-rs-debug: Starting probe-rs as a DAP Protocol server\n");
 
         let launch_args = SessionConfig {
             chip: Some("nrf52833_xxaa".to_owned()),
@@ -1458,26 +1456,14 @@ mod test {
             ..SessionConfig::default()
         };
 
-        //protocol_adapter.expect_output_event("Please use the `program-binary` option to specify an executable for this target core. Other(Missing value for file.)\n");
+        let expected_error = "Please use the `program-binary` option to specify an executable for this target core. Other(Missing value for file.)";
+        protocol_adapter.expect_output_event(&format!("{expected_error}\n"));
+
         protocol_adapter
             .add_request("launch")
             .with_arguments(launch_args)
-            .and_error_response().with_body(ErrorResponseBody {
-                error: Some(Message {
-                    format: "{response_message}".to_string(),
-                    id: 0,
-                    send_telemetry: Some(false),
-                    show_user: Some(true),
-                    url: Some("https://probe.rs/docs/tools/debugger/".to_string()),
-                    url_label: Some("Documentation".to_string()),
-                    variables: Some(BTreeMap::from([(
-                        "response_message".to_string(),
-                        "Please use the `program-binary` option to specify an executable for this target core. Other(Missing value for file.)".to_string(),
-                    )])),
-                }),
-            });
-
-        protocol_adapter.expect_output_event("Please use the `program-binary` option to specify an executable for this target core. Other(Missing value for file.)\n");
+            .and_error_response()
+            .with_body(error_response_body(expected_error));
 
         let debug_adapter = DebugAdapter::new(protocol_adapter);
 
@@ -1520,19 +1506,17 @@ mod test {
             .and_succesful_response()
             .with_body(expected_capabilites());
 
-        protocol_adapter.expect_output_event("Starting debug session...\n");
-        protocol_adapter.expect_output_event("initial info message\n");
+        protocol_adapter.expect_output_event("probe-rs-debug: Log output for \"probe_rs=warn\" will be written to the Debug Console.\n");
+        protocol_adapter
+            .expect_output_event("probe-rs-debug: Starting probe-rs as a DAP Protocol server\n");
+
+        let expected_error = "Expected request 'launch' or 'attach', but received 'threads'";
+        protocol_adapter.expect_output_event(&format!("{expected_error}\n"));
 
         protocol_adapter
             .add_request("threads")
             .and_error_response()
-            .with_body(ErrorResponseBody {
-                error: Some(error_message(
-                    "Expected request 'launch' or 'attach', but received 'threads'",
-                )),
-            });
-        protocol_adapter
-            .expect_output_event("Expected request 'launch' or 'attach', but received 'threads'\n");
+            .with_body(error_response_body(expected_error));
 
         let debug_adapter = DebugAdapter::new(protocol_adapter);
         let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
@@ -1572,8 +1556,9 @@ mod test {
             .and_succesful_response()
             .with_body(expected_capabilites());
 
-        protocol_adapter.expect_output_event("Starting debug session...\n");
-        protocol_adapter.expect_output_event("initial info message\n");
+        protocol_adapter.expect_output_event("probe-rs-debug: Log output for \"probe_rs=warn\" will be written to the Debug Console.\n");
+        protocol_adapter
+            .expect_output_event("probe-rs-debug: Starting probe-rs as a DAP Protocol server\n");
 
         let manifest_dir = PathBuf::from(std::env!("CARGO_MANIFEST_DIR"));
         let debug_info =
@@ -1643,8 +1628,9 @@ mod test {
             .and_succesful_response()
             .with_body(expected_capabilites());
 
-        protocol_adapter.expect_output_event("Starting debug session...\n");
-        protocol_adapter.expect_output_event("initial info message\n");
+        protocol_adapter.expect_output_event("probe-rs-debug: Log output for \"probe_rs=warn\" will be written to the Debug Console.\n");
+        protocol_adapter
+            .expect_output_event("probe-rs-debug: Starting probe-rs as a DAP Protocol server\n");
 
         let manifest_dir = PathBuf::from(std::env!("CARGO_MANIFEST_DIR"));
         let debug_info =
@@ -1665,16 +1651,14 @@ mod test {
             ..SessionConfig::default()
         };
 
+        let expected_error = "Please do not use any of the `flashing_enabled`, `reset_after_flashing`, halt_after_reset`, `full_chip_erase`, or `restore_unwritten_bytes` options when using `attach` request type.";
+        protocol_adapter.expect_output_event(&format!("{expected_error}\n"));
+
         protocol_adapter
             .add_request("attach")
             .with_arguments(attach_args)
-            .and_error_response().with_body(ErrorResponseBody {
-                error: Some(error_message(
-                    "Please do not use any of the `flashing_enabled`, `reset_after_flashing`, halt_after_reset`, `full_chip_erase`, or `restore_unwritten_bytes` options when using `attach` request type.",
-                )),
-            });
-
-        protocol_adapter.expect_output_event("Please do not use any of the `flashing_enabled`, `reset_after_flashing`, halt_after_reset`, `full_chip_erase`, or `restore_unwritten_bytes` options when using `attach` request type.\n");
+            .and_error_response()
+            .with_body(error_response_body(expected_error));
 
         let debug_adapter = DebugAdapter::new(protocol_adapter);
         let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
@@ -1719,8 +1703,9 @@ mod test {
             .and_succesful_response()
             .with_body(expected_capabilites());
 
-        protocol_adapter.expect_output_event("Starting debug session...\n");
-        protocol_adapter.expect_output_event("initial info message\n");
+        protocol_adapter.expect_output_event("probe-rs-debug: Log output for \"probe_rs=warn\" will be written to the Debug Console.\n");
+        protocol_adapter
+            .expect_output_event("probe-rs-debug: Starting probe-rs as a DAP Protocol server\n");
 
         let launch_args = SessionConfig {
             chip: Some(chip_name.to_owned()),

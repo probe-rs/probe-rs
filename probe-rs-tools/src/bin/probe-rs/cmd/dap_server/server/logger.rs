@@ -10,7 +10,7 @@ use std::{
     sync::Mutex,
 };
 use tempfile::tempfile;
-use tracing::level_filters::LevelFilter;
+use tracing::{level_filters::LevelFilter, subscriber::DefaultGuard};
 use tracing_subscriber::{
     fmt::{format::FmtSpan, writer::BoxMakeWriter, MakeWriter},
     prelude::__tracing_subscriber_SubscriberExt,
@@ -26,6 +26,11 @@ pub(crate) struct DebugLogger {
     buffer_file: Option<Mutex<File>>,
     /// Keep track of where we are in the file, so that we don't re-read or overwrite data.
     seek_pointer: SeekFrom,
+    /// We need to hold onto the tracing `DefaultGuard` for the `lifetime of DebugLogger`.
+    /// Using the `DefaultGuard` will ensure that the tracing subscriber be dropped when the `DebugLogger`
+    /// is dropped at the end of the `Debugger` lifetime. If we don't set it up this way,
+    /// the tests will fail because a default subscriber is already set.
+    log_default_guard: Option<DefaultGuard>,
 }
 
 /// On the rare condition that the DebugLogger `buffer_file`` is locked while the DAP server is
@@ -63,8 +68,9 @@ impl DebugLogger {
         let mut debug_logger = Self {
             buffer_file,
             seek_pointer: SeekFrom::Start(0),
+            log_default_guard: None,
         };
-        debug_logger.setup_logging(log_file)?;
+        debug_logger.log_default_guard = Some(debug_logger.setup_logging(log_file)?);
 
         Ok(debug_logger)
     }
@@ -127,13 +133,16 @@ impl DebugLogger {
     /// 2. If no `log_file` destination is supplied, output will be written to the DAP client's Debug Console,
     /// 3. Irrespective of the RUST_LOG environment variable, configure a subscriber that will write with `LevelFilter::ERROR` to stderr,
     ///     because these errors are picked up and reported to the user by the VSCode extension, when no DAP session is available.
-    pub(crate) fn setup_logging(&mut self, log_file: Option<&Path>) -> Result<(), DebuggerError> {
+    pub(crate) fn setup_logging(
+        &mut self,
+        log_file: Option<&Path>,
+    ) -> Result<DefaultGuard, DebuggerError> {
         let environment_filter = if std::env::var("RUST_LOG").is_ok() {
             EnvFilter::from_default_env()
         } else {
             EnvFilter::new("probe_rs=warn")
         };
-        let destination = match log_file {
+        Ok(match log_file {
             Some(log_path) => {
                 let log_file = File::create(log_path)?;
                 let log_message = format!(
@@ -161,20 +170,22 @@ impl DebugLogger {
                     .with_filter(LevelFilter::ERROR);
 
                 // The stderr subscriber will always log errors to stderr, so that the VSCode extension can monitor for them.
-                tracing_subscriber::registry()
+                let log_default_guard = tracing_subscriber::registry()
                     .with(stderr_subscriber)
                     .with(file_subscriber)
-                    .init();
-                log_message
+                    .set_default();
+                // Tell the user where RUST_LOG messages are written.
+                self.log_to_console(&log_message)?;
+                log_default_guard
             }
             None => {
                 if let Some(max_level) = environment_filter.max_level_hint() {
                     if max_level == LevelFilter::TRACE {
                         return Err(DebuggerError::UserMessage(
-                            format!("{}{}",
-                            "Using the `TRACE` log level to stream data to the console may have adverse effects on performance. ",
-                            "Consider using a less verbose log level, or use one of the `logFile` or `logToDir` options."
-                        )));
+                                    format!("{}{}",
+                                    "Using the `TRACE` log level to stream data to the console may have adverse effects on performance. ",
+                                    "Consider using a less verbose log level, or use one of the `logFile` or `logToDir` options."
+                                )));
                     }
                 }
 
@@ -203,15 +214,14 @@ impl DebugLogger {
                         "Please use the `logFile` or `logToDir` options."
                     )));
                 };
-                tracing_subscriber::registry().with(buffer_layer).init();
-                log_message
+                let log_default_guard = tracing_subscriber::registry()
+                    .with(buffer_layer)
+                    .set_default();
+                // Tell the user where RUST_LOG messages are written.
+                self.log_to_console(&log_message)?;
+                log_default_guard
             }
-        };
-
-        // Tell the user where RUST_LOG messages are written.
-        self.log_to_console(&destination)?;
-
-        Ok(())
+        })
     }
 
     /// We can send messages directly to the console, irrespective of log levels, by writing to the `buffer_file`.

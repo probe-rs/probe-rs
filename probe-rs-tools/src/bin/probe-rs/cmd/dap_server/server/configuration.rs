@@ -73,7 +73,7 @@ impl SessionConfig {
                 }
                 Err(error) => {
                     return Err(DebuggerError::Other(anyhow!(
-                            "Please use the `program-binary` option to specify an executable for this target core. {:?}", error
+                            "Please use the `program-binary` option to specify an executable for this target core. {error:?}"
                         )));
                 }
             };
