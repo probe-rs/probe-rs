@@ -8,6 +8,7 @@ use std::{
     io::{stderr, BufRead, BufReader, LineWriter, SeekFrom, Write},
     ops::Deref,
     path::Path,
+    sync::Arc,
 };
 
 use tempfile::tempfile;
@@ -26,7 +27,7 @@ pub(crate) struct DebugLogger {
     /// and will be automatically removed by the OS when the last handle to it is closed.
     ///  - When the DAP server is running, the tracing messages are sent to the console.
     ///  - When the DAP server exits, the remaining messages in this buffer are sent to `stderr`.
-    buffer_file: Mutex<File>,
+    buffer_file: Arc<Mutex<File>>,
     /// Keep track of where we are in the file, so that we don't re-read or overwrite data.
     seek_pointer: SeekFrom,
     /// We need to hold onto the tracing `DefaultGuard` for the `lifetime of DebugLogger`.
@@ -45,8 +46,6 @@ impl MakeWriter<'_> for DebugLogger {
         // The API doesn't allow graceful exit, but we do not expect locking of the Mutex to fail.
         #[allow(clippy::expect_used)]
         self.locked_buffer_file()
-            // The debugger is a single threaded process, so we do not expect access conflicts during
-            // the 'append' operation when `tracing` writes to the buffer file.
             .try_clone()
             .expect("Failed to get access to the file used to buffer tracing output.")
     }
@@ -56,7 +55,7 @@ impl DebugLogger {
     /// Create a new DebugTraceFile instance
     pub(crate) fn new(log_file: Option<&Path>) -> Result<Self, DebuggerError> {
         let mut debug_logger = Self {
-            buffer_file: Mutex::new(tempfile()?),
+            buffer_file: Arc::new(Mutex::new(tempfile()?)),
             seek_pointer: SeekFrom::Start(0),
             log_default_guard: None,
         };
