@@ -2,14 +2,14 @@ use crate::cmd::dap_server::{
     debug_adapter::{dap::adapter::DebugAdapter, protocol::ProtocolAdapter},
     DebuggerError,
 };
-use anyhow::anyhow;
+use parking_lot::{Mutex, MutexGuard};
 use std::{
     fs::File,
     io::{stderr, BufRead, BufReader, LineWriter, SeekFrom, Write},
     ops::Deref,
     path::Path,
-    sync::{Mutex, MutexGuard},
 };
+
 use tempfile::tempfile;
 use tracing::{level_filters::LevelFilter, subscriber::DefaultGuard};
 use tracing_subscriber::{
@@ -43,9 +43,11 @@ impl MakeWriter<'_> for DebugLogger {
 
     fn make_writer(&self) -> Self::Writer {
         // The API doesn't allow graceful exit, but we do not expect locking of the Mutex to fail.
-        // If it does, we want to know about it.
         #[allow(clippy::expect_used)]
-        self.buffer_file_handle()
+        self.locked_buffer_file()
+            // The debugger is a single threaded process, so we do not expect access conflicts during
+            // the 'append' operation when `tracing` writes to the buffer file.
+            .try_clone()
             .expect("Failed to get access to the file used to buffer tracing output.")
     }
 }
@@ -64,20 +66,10 @@ impl DebugLogger {
     }
 
     /// Get a lock on the buffer file, so that we can update the file pointer when needed.
-    pub(crate) fn locked_buffer_file(&self) -> Result<MutexGuard<File>, DebuggerError> {
-        self.buffer_file.lock().map_err(|error| {
-            DebuggerError::Other(anyhow!(
-                "Failed to get a lock on the buffered log file. {error:?}"
-            ))
-        })
-    }
-
-    /// Try to clone the buffer file handle, so that it can be used by either
-    /// the DebugAdapter to send messages to the DAP client, or the `tracing` module to record log data.
-    pub(crate) fn buffer_file_handle(&self) -> Result<File, DebuggerError> {
-        self.locked_buffer_file()?.try_clone().map_err(|_| {
-            DebuggerError::Other(anyhow!("Failed to get access to the buffered log file."))
-        })
+    /// This is only used when we want to make sure we maintain the `DebugLogger::seek_pointer`
+    /// to ensure we keep track of the last data we sent to the DAP client.
+    fn locked_buffer_file(&self) -> MutexGuard<File> {
+        self.buffer_file.lock()
     }
 
     /// Flush the buffer to the DAP client's Debug Console
@@ -85,7 +77,7 @@ impl DebugLogger {
         &mut self,
         debug_adapter: &mut DebugAdapter<impl ProtocolAdapter>,
     ) -> Result<(), DebuggerError> {
-        let locked_log = self.locked_buffer_file()?;
+        let locked_log = self.locked_buffer_file();
         let read_from_log = locked_log.deref();
         let mut tracing_log_handle = BufReader::new(read_from_log.try_clone()?);
         std::io::Seek::seek(&mut tracing_log_handle, self.seek_pointer)?;
@@ -103,7 +95,7 @@ impl DebugLogger {
 
     /// Flush the buffer to the stderr
     pub(crate) fn flush(&mut self) -> Result<(), DebuggerError> {
-        let locked_log = self.locked_buffer_file()?;
+        let locked_log = self.locked_buffer_file();
         let read_from_log = locked_log.deref();
         let mut tracing_log_handle = BufReader::new(read_from_log.try_clone()?);
         std::io::Seek::seek(&mut tracing_log_handle, self.seek_pointer)?;
@@ -210,7 +202,7 @@ impl DebugLogger {
     /// We can send messages directly to the console, irrespective of log levels, by writing to the `buffer_file`.
     /// If no `buffer_file` is available, we write to `stderr`.
     pub(crate) fn log_to_console(&mut self, message: &str) -> Result<(), DebuggerError> {
-        let locked_log = self.locked_buffer_file()?;
+        let locked_log = self.locked_buffer_file();
         let read_from_log = locked_log.deref();
         let mut tracing_log_append_handle = read_from_log.try_clone()?;
         std::io::Seek::seek(&mut tracing_log_append_handle, std::io::SeekFrom::End(0))?;
