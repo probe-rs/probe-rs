@@ -487,7 +487,8 @@ impl Session {
     ///
     /// The idea behind this is: You need the smallest common denominator which you can share between threads. Since you sometimes need the [Core], sometimes the [Probe] or sometimes the [Target], the [Session] is the only common ground and the only handle you should actively store in your code.
     ///
-    #[tracing::instrument(skip(self), name = "attach_to_core")]
+    // By design, this is called frequently in a session, therefore we limit tracing level to "trace" to avoid spamming the logs.
+    #[tracing::instrument(level = "trace", skip(self), name = "attach_to_core")]
     pub fn core(&mut self, core_index: usize) -> Result<Core<'_>, Error> {
         let combined_state = self
             .cores

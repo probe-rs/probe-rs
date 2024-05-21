@@ -1,0 +1,1 @@
+If no `RUST_LOG` environment variable is set, the probe-rs DAP server will now use a default logging configuration of `probe_rs=warn`.
