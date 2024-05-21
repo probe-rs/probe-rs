@@ -84,7 +84,7 @@ impl DebugLogger {
         self.buffer_file.lock()
     }
 
-    fn _process_new_log_lines(
+    fn process_new_log_lines(
         &mut self,
         mut callback: impl FnMut(&str),
     ) -> Result<(), DebuggerError> {
@@ -108,14 +108,14 @@ impl DebugLogger {
         &mut self,
         debug_adapter: &mut DebugAdapter<impl ProtocolAdapter>,
     ) -> Result<(), DebuggerError> {
-        self._process_new_log_lines(|line| {
+        self.process_new_log_lines(|line| {
             debug_adapter.log_to_console(line);
         })
     }
 
     /// Flush the buffer to the stderr
     pub(crate) fn flush(&mut self) -> Result<(), DebuggerError> {
-        self._process_new_log_lines(|line| eprintln!("{}", line))
+        self.process_new_log_lines(|line| eprintln!("{}", line))
     }
 
     /// Setup logging, according to the following rules.

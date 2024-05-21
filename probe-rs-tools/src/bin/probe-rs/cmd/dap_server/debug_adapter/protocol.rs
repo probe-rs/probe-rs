@@ -71,7 +71,6 @@ where
     }
 
     fn log_to_console(&mut self, message: impl Into<String>) -> bool {
-        tracing::debug!("log_to_console");
         let event_body = match serde_json::to_value(OutputEventBody {
             output: format!("{}\n", message.into()),
             category: Some("console".to_owned()),
