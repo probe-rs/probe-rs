@@ -95,9 +95,9 @@ impl DebugLogger {
             String::from_utf8_lossy(&new_bytes).to_string()
         };
 
-        let mut buffer_lines = new.lines();
-        while let Some(next_line) = buffer_lines.next() {
-            callback(&next_line);
+        let buffer_lines = new.lines();
+        for next_line in buffer_lines {
+            callback(next_line);
         }
 
         Ok(())
