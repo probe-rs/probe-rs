@@ -14,7 +14,7 @@ use std::{
 use tempfile::tempfile;
 use tracing::{level_filters::LevelFilter, subscriber::DefaultGuard};
 use tracing_subscriber::{
-    fmt::{format::FmtSpan, writer::BoxMakeWriter, MakeWriter},
+    fmt::{format::FmtSpan, MakeWriter},
     prelude::__tracing_subscriber_SubscriberExt,
     util::SubscriberInitExt,
     EnvFilter, Layer,
@@ -37,17 +37,38 @@ pub(crate) struct DebugLogger {
     log_default_guard: Option<DefaultGuard>,
 }
 
+#[derive(Clone)]
+struct WriterWrapper(Arc<Mutex<File>>);
+
 /// Get a handle to the buffered log file, so that `tracing` can write to it.
 ///
-impl MakeWriter<'_> for DebugLogger {
-    type Writer = File;
+impl MakeWriter<'_> for WriterWrapper {
+    type Writer = Self;
 
     fn make_writer(&self) -> Self::Writer {
-        // The API doesn't allow graceful exit, but we do not expect locking of the Mutex to fail.
-        #[allow(clippy::expect_used)]
-        self.locked_buffer_file()
-            .try_clone()
-            .expect("Failed to get access to the file used to buffer tracing output.")
+        self.clone()
+    }
+}
+
+impl Write for WriterWrapper {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        let mut locked_log = self.0.lock();
+        locked_log.write(buf)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        let mut locked_log = self.0.lock();
+        locked_log.flush()
+    }
+
+    fn write_all(&mut self, buf: &[u8]) -> std::io::Result<()> {
+        let mut locked_log = self.0.lock();
+        locked_log.write_all(buf)
+    }
+
+    fn write_fmt(&mut self, fmt: std::fmt::Arguments<'_>) -> std::io::Result<()> {
+        let mut locked_log = self.0.lock();
+        locked_log.write_fmt(fmt)
     }
 }
 
@@ -185,7 +206,7 @@ impl DebugLogger {
                     .without_time()
                     .with_line_number(true)
                     .with_span_events(FmtSpan::FULL)
-                    .with_writer(BoxMakeWriter::new(self.make_writer()))
+                    .with_writer(WriterWrapper(self.buffer_file.clone()))
                     .with_filter(environment_filter);
 
                 let log_default_guard = tracing_subscriber::registry()
