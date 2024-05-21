@@ -66,7 +66,7 @@ impl Debug for Sequence<'_> {
                     included_addresses.end(),
                     if block.is_inlined { "Inlined " } else { "" },
                     self.program_unit
-                        .get_function_dies(self.debug_info, *included_addresses.start(), true)
+                        .get_function_dies(self.debug_info, *included_addresses.start())
                         .map(|function_dies| function_dies.last().cloned())
                         .ok()
                         .and_then(|function_die| function_die

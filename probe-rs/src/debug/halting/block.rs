@@ -53,7 +53,7 @@ impl Block {
         program_unit: &UnitInfo,
     ) -> Result<Self, DebugError> {
         let block_function = program_unit
-            .get_function_dies(debug_info, starting_address, true)
+            .get_function_dies(debug_info, starting_address)
             .map(|function_dies| function_dies.last().cloned())?;
         let mut block = Block {
             is_inlined: block_function
@@ -108,7 +108,7 @@ impl Block {
                     != next_instruction
                         .and_then(|ni| {
                             program_unit
-                                .get_function_dies(debug_info, ni.address, true)
+                                .get_function_dies(debug_info, ni.address)
                                 .map(|function_dies| function_dies.last().cloned())
                                 .ok()
                         })
