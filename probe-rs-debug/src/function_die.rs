@@ -111,13 +111,6 @@ impl<'a> FunctionDie<'a> {
         }))
     }
 
-    /// Test whether the given address is contained in the address ranges of this function.
-    /// Use this, instead of checking for values between `low_pc()` and `high_pc()`, because
-    /// the address ranges can be disjointed.
-    pub(crate) fn range_contains(&self, address: u64) -> bool {
-        self.ranges.iter().any(|range| range.contains(&address))
-    }
-
     /// Returns the lowest valid address for which this function DIE is valid.
     /// Please use `range_contains()` to check whether an address is contained in the range.
     pub(crate) fn low_pc(&self) -> Option<u64> {

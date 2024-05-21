@@ -99,7 +99,7 @@ impl Stepping {
             target_breakpoint.address
         );
 
-        run_to_address(target_breakpoint.address, core)
+        run_to_address(target_breakpoint.address, core, debug_info)
     }
 }
 
@@ -125,7 +125,7 @@ fn get_step_into_location(
             return VerifiedBreakpoint::for_address(debug_info, new_halt_location.address);
         }
 
-        if let ControlFlow::Break(debug_error) = validate_core_status_after_step(core) {
+        if let ControlFlow::Break(debug_error) = validate_core_status_after_step(core, debug_info) {
             return Err(debug_error);
         }
     }
@@ -230,10 +230,12 @@ fn get_step_out_location(
             };
 
             // Run to the last valid halt location in the current sequence.
-            run_to_address(last_sequence_haltpoint, core)?;
+            run_to_address(last_sequence_haltpoint, core, debug_info)?;
             // Now single-step until we find a valid halt location.
             while let Ok(step_result) = core.step() {
-                if let ControlFlow::Break(debug_error) = validate_core_status_after_step(core) {
+                if let ControlFlow::Break(debug_error) =
+                    validate_core_status_after_step(core, debug_info)
+                {
                     return Err(debug_error);
                 }
 
@@ -315,7 +317,7 @@ fn get_step_over_location(
     } else {
         // Now step the target until we hit one of the candidate haltpoints, or some eror occurs.
         let (_, next_line_address) =
-            step_to_next_line(&candidate_haltpoints, core, terminating_address)?;
+            step_to_next_line(&candidate_haltpoints, core, debug_info, terminating_address)?;
         VerifiedBreakpoint::for_address(debug_info, next_line_address)
     }
 }
@@ -344,6 +346,7 @@ fn get_return_address(core: &mut impl CoreInterface) -> Result<u64, DebugError> 
 fn run_to_address(
     target_address: u64,
     core: &mut impl CoreInterface,
+    debug_info: &DebugInfo,
 ) -> Result<(CoreStatus, u64), DebugError> {
     let mut program_counter = core
         .read_core_reg(core.program_counter().id())?
@@ -414,7 +417,7 @@ fn run_to_address(
         }
     } else {
         // If we don't have breakpoints to use, we have to rely on single stepping.
-        step_to_address(target_address, core)
+        step_to_address(target_address, core, debug_info)
     }
 }
 
@@ -427,6 +430,7 @@ fn run_to_address(
 fn step_to_address(
     target_address: u64,
     core: &mut impl CoreInterface,
+    debug_info: &DebugInfo,
 ) -> Result<(CoreStatus, u64), DebugError> {
     let mut program_counter = core
         .read_core_reg(core.program_counter().id())?
@@ -434,7 +438,7 @@ fn step_to_address(
     while target_address != program_counter {
         // Single step the core until we get to the target_address;
         program_counter = core.step()?.pc;
-        if let ControlFlow::Break(debug_error) = validate_core_status_after_step(core) {
+        if let ControlFlow::Break(debug_error) = validate_core_status_after_step(core, debug_info) {
             return Err(debug_error);
         }
     }
@@ -446,6 +450,7 @@ fn step_to_address(
 fn step_to_next_line(
     available_source_locations: &[Instruction],
     core: &mut impl CoreInterface,
+    debug_info: &DebugInfo,
     terminating_address: u64,
 ) -> Result<(CoreStatus, u64), DebugError> {
     let mut program_counter = core
@@ -461,7 +466,7 @@ fn step_to_next_line(
         }
         // Single step the core until we get to the target_address;
         program_counter = core.step()?.pc;
-        if let ControlFlow::Break(debug_error) = validate_core_status_after_step(core) {
+        if let ControlFlow::Break(debug_error) = validate_core_status_after_step(core, debug_info) {
             return Err(debug_error);
         }
     }
@@ -469,8 +474,11 @@ fn step_to_next_line(
 }
 
 /// After stepping, ensure that the core didn't halt for some other reason.
-fn validate_core_status_after_step(core: &mut impl CoreInterface) -> ControlFlow<DebugError, ()> {
-    if let Ok(Some(exception_info)) = check_for_exception(core) {
+fn validate_core_status_after_step(
+    core: &mut impl CoreInterface,
+    debug_info: &DebugInfo,
+) -> ControlFlow<DebugError, ()> {
+    if let Ok(Some(exception_info)) = check_for_exception(core, debug_info) {
         let message = format!(
             "Exception encountered while stepping to the next line: {:?}",
             exception_info.description
@@ -521,11 +529,12 @@ fn confirm_or_set_hw_breakpoint(
 
 /// Check if an exception is currently active on the core, and return the exception details if found.
 fn check_for_exception(
-    core: &mut (impl MemoryInterface + CoreInterface),
+    core: &mut impl CoreInterface,
+    debug_info: &DebugInfo,
 ) -> Result<Option<ExceptionInfo>, DebugError> {
     let debug_registers = DebugRegisters::from_core(core);
     let exception_interface = exception_handler_for_core(core.core_type());
-    match exception_interface.exception_details(core, &debug_registers)? {
+    match exception_interface.exception_details(core, &debug_registers, debug_info)? {
         Some(exception_info) => {
             tracing::trace!("Found exception context: {}", exception_info.description);
             Ok(Some(exception_info))
