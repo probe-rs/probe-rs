@@ -473,8 +473,6 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         // so this will have to be changed in the future.
         let has_dormant = matches!(dp, DpAddress::Multidrop(_));
 
-        let num_retries = 5;
-
         fn alert_sequence(interface: &mut dyn DapProbe) -> Result<(), ArmError> {
             tracing::trace!("Sending Selection Alert sequence");
 
@@ -492,8 +490,9 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
 
         // TODO: Use atomic block
 
-        let mut retry = 0;
-        loop {
+        let mut result = Ok(());
+        const NUM_RETRIES: usize = 5;
+        for _ in 0..NUM_RETRIES {
             // Ensure current debug interface is in reset state.
             swd_line_reset(interface, 0)?;
 
@@ -555,15 +554,14 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
             // End of atomic block.
 
             // SWD or JTAG should now be activated, so we can try and connect to the debug port.
-            break match self.debug_port_connect(interface, dp) {
-                Ok(()) => Ok(()),
-                Err(_) if retry < num_retries => {
-                    retry += 1;
-                    continue;
-                }
-                Err(err) => Err(err),
-            };
+            result = self.debug_port_connect(interface, dp);
+            if result.is_ok() {
+                // Successful connection, we can stop retrying.
+                break;
+            }
         }
+
+        result
     }
 
     /// Connect to the target debug port and power it up. This is based on the
