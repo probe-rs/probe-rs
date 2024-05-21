@@ -300,6 +300,26 @@ impl SessionData {
         }
         Ok((status_of_cores, suggest_delay_required))
     }
+
+    pub(crate) fn clean_up(&mut self, session_config: &SessionConfig) -> Result<(), DebuggerError> {
+        for core_config in session_config.core_configs.iter() {
+            if core_config.rtt_config.enabled {
+                let Ok(mut target_core) = self.attach_core(core_config.core_index) else {
+                    tracing::debug!(
+                        "Failed to attach to target core #{}. Cannot clean up.",
+                        core_config.core_index
+                    );
+                    continue;
+                };
+
+                if let Some(core_rtt) = &mut target_core.core_data.rtt_connection {
+                    core_rtt.clean_up(&mut target_core.core)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
 }
 
 fn debug_info_from_binary(core_configuration: &CoreConfig) -> anyhow::Result<DebugInfo> {

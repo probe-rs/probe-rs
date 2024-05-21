@@ -23,7 +23,7 @@
 //!
 
 mod chip_info;
-mod registry;
+pub(crate) mod registry;
 pub mod sequences;
 mod target;
 

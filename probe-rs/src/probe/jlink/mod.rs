@@ -1206,12 +1206,7 @@ fn list_jlink_devices() -> Vec<DebugProbeInfo> {
         .filter(is_jlink)
         .map(|info| {
             DebugProbeInfo::new(
-                format!(
-                    "J-Link{}",
-                    info.product_string()
-                        .map(|p| format!(" ({p})"))
-                        .unwrap_or_default()
-                ),
+                info.product_string().unwrap_or("J-Link").to_string(),
                 info.vendor_id(),
                 info.product_id(),
                 info.serial_number().map(|s| s.to_string()),

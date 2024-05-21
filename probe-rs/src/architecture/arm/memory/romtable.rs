@@ -1,26 +1,29 @@
+//! CoreSight ROM table parsing and handling.
+
 use super::adi_v5_memory_interface::ArmProbe;
 use super::AccessPortError;
 use crate::architecture::arm::ArmError;
 use crate::architecture::arm::{ap::MemoryAp, communication_interface::ArmProbeInterface};
 
 /// An error to report any errors that are romtable discovery specific.
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, docsplay::Display)]
 pub enum RomTableError {
-    #[error("Component is not a valid romtable")]
+    /// Component is not a valid romtable
     NotARomtable,
-    #[error("An error with the access port occurred during runtime")]
-    AccessPort(
-        #[from]
-        #[source]
-        AccessPortError,
-    ),
-    #[error("The CoreSight Component could not be identified")]
+
+    /// An error with the access port occurred during runtime
+    AccessPort(#[from] AccessPortError),
+
+    /// The CoreSight Component could not be identified
     CSComponentIdentification,
-    #[error("Could not access romtable")]
+
+    /// Could not access romtable
     Memory(#[source] Box<ArmError>),
-    #[error("The requested component '{0}' was not found")]
+
+    /// The requested component '{0}' was not found
     ComponentNotFound(PeripheralType),
-    #[error("There are no components to operate on")]
+
+    /// There are no components to operate on
     NoComponents,
 }
 
@@ -151,6 +154,7 @@ impl RomTable {
         Ok(RomTable { entries })
     }
 
+    /// Returns an iterator over all entries in the ROM table.
     pub fn entries(&self) -> impl Iterator<Item = &RomTableEntry> {
         self.entries.iter()
     }
@@ -228,6 +232,7 @@ pub struct RomTableEntry {
 }
 
 impl RomTableEntry {
+    /// Returns the component pointed to by this romtable entry.
     pub fn component(&self) -> &Component {
         &self.component.component
     }
@@ -318,7 +323,7 @@ impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
         let peripheral_id_address = self.base_address + 0xFD0;
 
         tracing::debug!(
-            "Reading debug id from address: {:08x}",
+            "Reading debug id from address: {:#010x}",
             peripheral_id_address
         );
 
@@ -554,7 +559,7 @@ pub struct CoresightComponentIter<'a> {
 }
 
 impl<'a> CoresightComponentIter<'a> {
-    pub fn new(components: Vec<&'a CoresightComponent>) -> Self {
+    pub(crate) fn new(components: Vec<&'a CoresightComponent>) -> Self {
         Self {
             components,
             current: 0,
@@ -668,17 +673,29 @@ impl PeripheralID {
         self.JEP106
     }
 
+    /// Returns the name of the designer if available.
+    pub fn designer(&self) -> Option<&'static str> {
+        self.JEP106.and_then(|jep106| jep106.get())
+    }
+
     /// Returns the PART of the peripheral ID register.
     pub fn part(&self) -> u16 {
         self.PART
     }
 
+    /// The arch_id of the peripheral
     pub fn arch_id(&self) -> u16 {
         self.arch_id
     }
 
+    /// The dev_type of the peripheral
     pub fn dev_type(&self) -> u8 {
         self.dev_type
+    }
+
+    /// The revision of the peripheral
+    pub fn revision(&self) -> u8 {
+        self.REVISION
     }
 
     /// Uses the available data to match it against a table of known components.
@@ -686,12 +703,10 @@ impl PeripheralID {
     /// If it is not known, None is returned.
     #[rustfmt::skip]
     pub fn determine_part(&self) -> Option<PartInfo> {
-        let code = self.JEP106.and_then(|jep106| jep106.get()).unwrap_or("");
-
         // Source of the table: https://github.com/blacksphere/blackmagic/blob/master/src/target/adiv5.c#L189
         // Not all are present and this table could be expanded
         match (
-            code,
+            self.designer().unwrap_or(""),
             self.PART,
             self.dev_type,
             self.arch_id,
@@ -730,7 +745,8 @@ impl PeripheralID {
             ("ARM Ltd", 0xD20, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M23 TPIU", PeripheralType::Tpiu)),
             ("ARM Ltd", 0xD20, 0x13, 0x0000) => Some(PartInfo::new("Cortex-M23 ETM", PeripheralType::Etm)),
             ("ARM Ltd", 0xD20, 0x00, 0x1A02) => Some(PartInfo::new("Cortex-M23 DWT", PeripheralType::Dwt)),
-            ("ARM Ltd", 0xD20, 0x00, 0x1A03) => Some(PartInfo::new("Cortex-M23 BPU", PeripheralType::Bpu)),
+            ("ARM Ltd", 0xD20, 0x00, 0x1A03) => Some(PartInfo::new("Cortex-M23 FBP", PeripheralType::Fbp)),
+            ("ARM Ltd", 0xD20, 0x14, 0x1A14) => Some(PartInfo::new("Cortex-M23 CTI", PeripheralType::Cti)),
             ("ARM Ltd", 0xD21, 0x00, 0x2A04) => Some(PartInfo::new("Cortex-M33 SCS", PeripheralType::Scs)),
             ("ARM Ltd", 0xD21, 0x43, 0x1A01) => Some(PartInfo::new("Cortex-M33 ITM", PeripheralType::Itm)),
             ("ARM Ltd", 0xD21, 0x00, 0x1A02) => Some(PartInfo::new("Cortex-M33 DWT", PeripheralType::Dwt)),
@@ -739,6 +755,7 @@ impl PeripheralID {
             ("ARM Ltd", 0xD21, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M33 TPIU", PeripheralType::Tpiu)),
             ("ARM Ltd", 0xD21, 0x14, 0x1A14) => Some(PartInfo::new("Cortex-M33 CTI", PeripheralType::Cti)),
             ("ARM Ltd", 0x9A3, 0x13, 0x0000) => Some(PartInfo::new("Cortex-M0 MTB", PeripheralType::Mtb)),
+            ("Atmel", 0xCD0, 1, 0) => Some(PartInfo::new("Atmel DSU", PeripheralType::Custom)),
             _ => None,
         }
     }
@@ -815,6 +832,8 @@ pub enum PeripheralType {
     Mtb,
     /// Cross Trigger Interface
     Cti,
+    /// Non-standard peripheral
+    Custom,
 }
 
 impl std::fmt::Display for PeripheralType {
@@ -836,6 +855,7 @@ impl std::fmt::Display for PeripheralType {
             PeripheralType::Tmc => write!(f, "Tmc (Trace Memory Controller)"),
             PeripheralType::Mtb => write!(f, "MTB (Micro Trace Buffer)"),
             PeripheralType::Cti => write!(f, "CTI (Cross Trigger Interface)"),
+            PeripheralType::Custom => write!(f, "(Non-standard peripheral)"),
         }
     }
 }

@@ -396,6 +396,7 @@ impl Debugger {
                     debug_adapter = self.restart(debug_adapter, &mut session_data, &request)?;
                 }
                 DebugSessionStatus::Terminate => {
+                    session_data.clean_up(&self.config)?;
                     return Ok(());
                 }
             };

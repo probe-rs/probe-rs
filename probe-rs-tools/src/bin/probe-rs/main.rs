@@ -82,6 +82,7 @@ enum Subcommand {
     Read(cmd::read::Cmd),
     Write(cmd::write::Cmd),
     Complete(cmd::complete::Cmd),
+    Mi(cmd::mi::Cmd),
 }
 
 /// Shared options for core selection, shared between commands
@@ -308,6 +309,7 @@ fn main() -> Result<()> {
         Subcommand::Read(cmd) => cmd.run(&lister),
         Subcommand::Write(cmd) => cmd.run(&lister),
         Subcommand::Complete(cmd) => cmd.run(&lister),
+        Subcommand::Mi(cmd) => cmd.run(),
     }
 }
 

@@ -446,8 +446,9 @@ impl Session {
         let mut resume_state = vec![];
         for (core, _) in self.list_cores() {
             let mut c = self.core(core)?;
-            tracing::info!("Core status: {:?}", c.status()?);
-            if !c.core_halted()? {
+            let status = c.status()?;
+            tracing::info!("Core status: {:?}", status);
+            if !status.is_halted() {
                 tracing::info!("Halting core...");
                 resume_state.push(core);
                 c.halt(Duration::from_millis(100))?;

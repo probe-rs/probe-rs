@@ -739,14 +739,12 @@ impl std::fmt::Display for DebugProbeInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
-            "{} (VID: {:04x}, PID: {:04x}, {}{})",
+            "{} -- {:04x}:{:04x}:{} ({})",
             self.identifier,
             self.vendor_id,
             self.product_id,
-            self.serial_number
-                .as_ref()
-                .map_or("".to_owned(), |v| format!("Serial: {v}, ")),
-            self.probe_factory
+            self.serial_number.as_deref().unwrap_or(""),
+            self.probe_factory,
         )
     }
 }
@@ -782,6 +780,13 @@ impl DebugProbeInfo {
     /// Returns whether this info was returned by a particular probe factory.
     pub fn is_probe_type<F: ProbeFactory>(&self) -> bool {
         self.probe_factory.type_id() == std::any::TypeId::of::<F>()
+    }
+
+    /// Returns a human-readable string describing the probe type.
+    ///
+    /// The exact contents of the string are unstable, this is intended for human consumption only.
+    pub fn probe_type(&self) -> String {
+        format!("{}", self.probe_factory)
     }
 }
 
