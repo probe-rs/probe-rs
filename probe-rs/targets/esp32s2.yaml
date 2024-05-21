@@ -20,6 +20,27 @@ variants:
           end: 0x4000000
         cores:
           - main
+      - !Nvm # External instruction bus
+        range:
+          start: 0x40080000
+          end: 0x40800000
+        is_alias: true
+        cores:
+          - main
+      - !Nvm # External Data Bus 1
+        range:
+          start: 0x3F000000
+          end: 0x3F400000
+        is_alias: true
+        cores:
+          - main
+      - !Nvm # External Data Bus 2
+        range:
+          start: 0x3F500000
+          end: 0x3FF80000
+        is_alias: true
+        cores:
+          - main
       - !Ram # SRAM0, Data bus
         range:
           start: 0x3FFB0000

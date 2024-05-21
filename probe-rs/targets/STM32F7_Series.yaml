@@ -4135,7 +4135,6 @@ flash_algorithms:
     pc_uninit: 0x35
     pc_program_page: 0x47
     pc_erase_sector: 0x43
-    pc_erase_all: null
     data_section_offset: 0xd4
     flash_properties:
       address_range:
@@ -4162,8 +4161,8 @@ flash_algorithms:
     data_section_offset: 0x174
     flash_properties:
       address_range:
-        start: 0x200000
-        end: 0x210000
+        start: 0x8000000
+        end: 0x8010000
       page_size: 0x400
       erased_byte_value: 0xff
       program_page_timeout: 0x64
@@ -4490,7 +4489,6 @@ flash_algorithms:
     pc_uninit: 0x35
     pc_program_page: 0x47
     pc_erase_sector: 0x43
-    pc_erase_all: null
     data_section_offset: 0xd4
     flash_properties:
       address_range:

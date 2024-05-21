@@ -18,11 +18,9 @@ use crate::architecture::arm::{
     communication_interface::{DapProbe, UninitializedArmProbe},
     PortType, SwoAccess,
 };
-use crate::architecture::riscv::communication_interface::{
-    RiscvCommunicationInterface, RiscvError,
-};
+use crate::architecture::riscv::communication_interface::{RiscvError, RiscvInterfaceBuilder};
 use crate::architecture::xtensa::communication_interface::{
-    XtensaCommunicationInterface, XtensaError,
+    XtensaCommunicationInterface, XtensaDebugInterfaceState, XtensaError,
 };
 use crate::config::RegistryError;
 use crate::config::TargetSelector;
@@ -90,7 +88,9 @@ pub enum BatchCommand {
 impl fmt::Display for BatchCommand {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            BatchCommand::Read(port, addr) => write!(f, "Read(port={port:?}, addr={addr})"),
+            BatchCommand::Read(port, addr) => {
+                write!(f, "Read(port={port:?}, addr={addr})")
+            }
             BatchCommand::Write(port, addr, data) => {
                 write!(f, "Write(port={port:?}, addr={addr}, data=0x{data:08x}")
             }
@@ -307,14 +307,20 @@ impl Probe {
         permissions: Permissions,
     ) -> Result<Session, Error> {
         // The session will de-assert reset after connecting to the debug interface.
-        Session::new(self, target.into(), AttachMethod::UnderReset, permissions).map_err(|e| {
-            if matches!(e, Error::Arm(ArmError::Timeout) | Error::Riscv(RiscvError::Timeout)| Error::Xtensa(XtensaError::Timeout)) {
-                Error::Other(
-                anyhow::anyhow!("Timeout while attaching to target under reset. This can happen if the target is not responding to the reset sequence. Ensure the chip's reset pin is connected, or try attaching without reset (`connectUnderReset = false` for DAP Clients, or remove `connect-under-reset` option from CLI options.)."))
-            } else {
-                e
-            }
-        })
+        Session::new(self, target.into(), AttachMethod::UnderReset, permissions).map_err(
+            |e| match e {
+                Error::Arm(ArmError::Timeout)
+                | Error::Riscv(RiscvError::Timeout)
+                | Error::Xtensa(XtensaError::Timeout) => Error::Other(anyhow::anyhow!(
+                    "Timeout while attaching to target under reset. \
+                    This can happen if the target is not responding to the reset sequence. \
+                    Ensure the chip's reset pin is connected, or try attaching without reset \
+                    (`connectUnderReset = false` for DAP Clients, or remove `connect-under-reset` \
+                        option from CLI options.)."
+                )),
+                e => e,
+            },
+        )
     }
 
     /// Selects the transport protocol to be used by the debug probe.
@@ -386,6 +392,16 @@ impl Probe {
         }
     }
 
+    /// Returns the JTAG scan chain
+    pub fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
+        self.inner.scan_chain()
+    }
+
+    /// Selects the JTAG TAP to be used for communication.
+    pub fn select_jtag_tap(&mut self, index: usize) -> Result<(), DebugProbeError> {
+        self.inner.select_jtag_tap(index)
+    }
+
     /// Get the currently used maximum speed for the debug protocol in kHz.
     ///
     /// Not all probes report which speed is used, meaning this value is not
@@ -405,16 +421,18 @@ impl Probe {
     /// can be used to communicate with chips using the Xtensa
     /// architecture.
     ///
+    /// The user is responsible for creating and managing the [`XtensaDebugInterfaceState`] state
+    /// object.
+    ///
     /// If an error occurs while trying to connect, the probe is returned.
-    pub fn try_into_xtensa_interface(
-        self,
-    ) -> Result<XtensaCommunicationInterface, (Self, DebugProbeError)> {
+    pub fn try_get_xtensa_interface<'probe>(
+        &'probe mut self,
+        state: &'probe mut XtensaDebugInterfaceState,
+    ) -> Result<XtensaCommunicationInterface<'probe>, DebugProbeError> {
         if !self.attached {
-            Err((self, DebugProbeError::NotAttached))
+            Err(DebugProbeError::NotAttached)
         } else {
-            self.inner
-                .try_get_xtensa_interface()
-                .map_err(|(probe, err)| (Probe::from_attached_probe(probe), err))
+            Ok(self.inner.try_get_xtensa_interface(state)?)
         }
     }
 
@@ -440,26 +458,25 @@ impl Probe {
         }
     }
 
-    /// Check if the probe has an interface to
-    /// debug RISC-V chips.
+    /// Check if the probe has an interface to debug RISC-V chips.
     pub fn has_riscv_interface(&self) -> bool {
         self.inner.has_riscv_interface()
     }
 
-    /// Try to get a [`RiscvCommunicationInterface`], which can
-    /// can be used to communicate with chips using the RISC-V
-    /// architecture.
+    /// Try to get a [`RiscvInterfaceBuilder`] object, which can be used to set up a communication
+    /// interface with chips using the RISC-V architecture.
+    ///
+    /// The returned object can be used to create the interface state, which is required to
+    /// attach to the RISC-V target. The user is responsible for managing this state object.
     ///
     /// If an error occurs while trying to connect, the probe is returned.
-    pub fn try_into_riscv_interface(
-        self,
-    ) -> Result<RiscvCommunicationInterface, (Self, RiscvError)> {
+    pub fn try_get_riscv_interface_builder<'probe>(
+        &'probe mut self,
+    ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, DebugProbeError> {
         if !self.attached {
-            Err((self, DebugProbeError::NotAttached.into()))
+            Err(DebugProbeError::NotAttached)
         } else {
-            self.inner
-                .try_get_riscv_interface()
-                .map_err(|(probe, err)| (Probe::from_attached_probe(probe), err))
+            self.inner.try_get_riscv_interface_builder()
         }
     }
 
@@ -489,6 +506,11 @@ impl Probe {
     /// This does not work on all probes.
     pub fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {
         self.inner.get_target_voltage()
+    }
+
+    /// Try to get a J-Link interface from the debug probe.
+    pub fn try_into_jlink(&mut self) -> Result<&mut jlink::JLink, DebugProbeError> {
+        self.inner.try_into_jlink()
     }
 }
 
@@ -552,10 +574,24 @@ pub trait DebugProbe: Send + fmt::Debug {
     ///
     fn set_scan_chain(&mut self, scan_chain: Vec<ScanChainElement>) -> Result<(), DebugProbeError>;
 
+    /// Returns the JTAG scan chain
+    fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError>;
+
     /// Attach to the chip.
     ///
     /// This should run all the necessary protocol init routines.
     fn attach(&mut self) -> Result<(), DebugProbeError>;
+
+    /// Selects the JTAG TAP to be used for communication.
+    fn select_jtag_tap(&mut self, index: usize) -> Result<(), DebugProbeError> {
+        if index != 0 {
+            return Err(DebugProbeError::NotImplemented {
+                function_name: "select_jtag_tap",
+            });
+        }
+
+        Ok(())
+    }
 
     /// Detach from the chip.
     ///
@@ -600,18 +636,17 @@ pub trait DebugProbe: Send + fmt::Debug {
         ))
     }
 
-    /// Get the dedicated interface to debug RISC-V chips. Ensure that the
-    /// probe actually supports this by calling [DebugProbe::has_riscv_interface] first.
-    fn try_get_riscv_interface(
-        self: Box<Self>,
-    ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, RiscvError)> {
-        Err((
-            self.into_probe(),
-            DebugProbeError::InterfaceNotAvailable {
-                interface_name: "RISC-V",
-            }
-            .into(),
-        ))
+    /// Try to get a [`RiscvInterfaceBuilder`] object, which can be used to set up a communication
+    /// interface with chips using the RISC-V architecture.
+    ///
+    /// Ensure that the probe actually supports this by calling
+    /// [DebugProbe::has_riscv_interface] first.
+    fn try_get_riscv_interface_builder<'probe>(
+        &'probe mut self,
+    ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, DebugProbeError> {
+        Err(DebugProbeError::InterfaceNotAvailable {
+            interface_name: "RISC-V",
+        })
     }
 
     /// Check if the probe offers an interface to debug RISC-V chips.
@@ -621,15 +656,13 @@ pub trait DebugProbe: Send + fmt::Debug {
 
     /// Get the dedicated interface to debug Xtensa chips. Ensure that the
     /// probe actually supports this by calling [DebugProbe::has_xtensa_interface] first.
-    fn try_get_xtensa_interface(
-        self: Box<Self>,
-    ) -> Result<XtensaCommunicationInterface, (Box<dyn DebugProbe>, DebugProbeError)> {
-        Err((
-            self.into_probe(),
-            DebugProbeError::InterfaceNotAvailable {
-                interface_name: "Xtensa",
-            },
-        ))
+    fn try_get_xtensa_interface<'probe>(
+        &'probe mut self,
+        _state: &'probe mut XtensaDebugInterfaceState,
+    ) -> Result<XtensaCommunicationInterface<'probe>, DebugProbeError> {
+        Err(DebugProbeError::InterfaceNotAvailable {
+            interface_name: "Xtensa",
+        })
     }
 
     /// Check if the probe offers an interface to debug Xtensa chips.
@@ -665,6 +698,13 @@ pub trait DebugProbe: Send + fmt::Debug {
     /// if the probe doesn’t support reading the target voltage.
     fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {
         Ok(None)
+    }
+
+    /// Try to get a J-Link interface from the debug probe.
+    fn try_into_jlink(&mut self) -> Result<&mut jlink::JLink, DebugProbeError> {
+        Err(DebugProbeError::Other(anyhow::anyhow!(
+            "This probe does not support J-Link functionality."
+        )))
     }
 }
 
@@ -705,14 +745,12 @@ impl std::fmt::Display for DebugProbeInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
-            "{} (VID: {:04x}, PID: {:04x}, {}{})",
+            "{} -- {:04x}:{:04x}:{} ({})",
             self.identifier,
             self.vendor_id,
             self.product_id,
-            self.serial_number
-                .as_ref()
-                .map_or("".to_owned(), |v| format!("Serial: {v}, ")),
-            self.probe_factory
+            self.serial_number.as_deref().unwrap_or(""),
+            self.probe_factory,
         )
     }
 }
@@ -748,6 +786,13 @@ impl DebugProbeInfo {
     /// Returns whether this info was returned by a particular probe factory.
     pub fn is_probe_type<F: ProbeFactory>(&self) -> bool {
         self.probe_factory.type_id() == std::any::TypeId::of::<F>()
+    }
+
+    /// Returns a human-readable string describing the probe type.
+    ///
+    /// The exact contents of the string are unstable, this is intended for human consumption only.
+    pub fn probe_type(&self) -> String {
+        format!("{}", self.probe_factory)
     }
 }
 
@@ -804,22 +849,20 @@ impl DebugProbeSelector {
 impl TryFrom<&str> for DebugProbeSelector {
     type Error = DebugProbeSelectorParseError;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        let split = value.split(':').collect::<Vec<_>>();
-        let mut selector = if split.len() > 1 {
-            DebugProbeSelector {
-                vendor_id: u16::from_str_radix(split[0], 16)?,
-                product_id: u16::from_str_radix(split[1], 16)?,
-                serial_number: None,
-            }
-        } else {
-            return Err(DebugProbeSelectorParseError::Format);
-        };
+        // Split into at most 3 parts: VID, PID, Serial.
+        // We limit the number of splits to allow for colons in the
+        // serial number (EspJtag uses MAC address)
+        let mut split = value.splitn(3, ':');
 
-        if split.len() == 3 {
-            selector.serial_number = Some(split[2].to_string());
-        }
+        let vendor_id = split.next().unwrap(); // First split is always successful
+        let product_id = split.next().ok_or(DebugProbeSelectorParseError::Format)?;
+        let serial_number = split.next().map(|s| s.to_string());
 
-        Ok(selector)
+        Ok(DebugProbeSelector {
+            vendor_id: u16::from_str_radix(vendor_id, 16)?,
+            product_id: u16::from_str_radix(product_id, 16)?,
+            serial_number,
+        })
     }
 }
 
@@ -878,11 +921,16 @@ impl fmt::Display for DebugProbeSelector {
 /// This trait should be implemented by all probes which offer low-level access to
 /// the JTAG protocol, i.e. direction control over the bytes sent and received.
 pub trait JTAGAccess: DebugProbe {
-    /// Returns `IDCODE` and `IR` length information about the devices on the JTAG chain.
+    /// Scans `IDCODE` and `IR` length information about the devices on the JTAG chain.
     ///
     /// If configured, this will use the data from [`DebugProbe::set_scan_chain`]. Otherwise, it
     /// will try to measure and extract `IR` lengths by driving the JTAG interface.
-    fn scan_chain(&mut self) -> Result<Vec<JtagChainItem>, DebugProbeError>;
+    ///
+    /// The measured scan chain will be stored in the probe's internal state.
+    fn scan_chain(&mut self) -> Result<(), DebugProbeError>;
+
+    /// Executes a TAP reset.
+    fn tap_reset(&mut self) -> Result<(), DebugProbeError>;
 
     /// Read a JTAG register.
     ///
@@ -926,7 +974,7 @@ pub trait JTAGAccess: DebugProbe {
             match self
                 .write_register(write.address, &write.data, write.len)
                 .map_err(crate::Error::Probe)
-                .and_then(|response| (write.transform)(response))
+                .and_then(|response| (write.transform)(write, response))
             {
                 Ok(res) => results.push(idx, res),
                 Err(e) => return Err(BatchExecutionError::new(e, results)),
@@ -950,7 +998,7 @@ pub struct JtagWriteCommand {
     pub len: u32,
 
     /// A function to transform the raw response into a [`CommandResult`]
-    pub transform: fn(Vec<u8>) -> Result<CommandResult, crate::Error>,
+    pub transform: fn(&JtagWriteCommand, Vec<u8>) -> Result<CommandResult, crate::Error>,
 }
 
 /// Represents a Jtag Tap within the chain.
@@ -1233,5 +1281,17 @@ mod test {
 
         assert!(probe_info.is_probe_type::<ftdi::FtdiProbeFactory>());
         assert!(!probe_info.is_probe_type::<espusbjtag::EspUsbJtagFactory>());
+    }
+
+    #[test]
+    fn test_parsing_many_colons() {
+        let selector: DebugProbeSelector = "303a:1001:DC:DA:0C:D3:FE:D8".try_into().unwrap();
+
+        assert_eq!(selector.vendor_id, 0x303a);
+        assert_eq!(selector.product_id, 0x1001);
+        assert_eq!(
+            selector.serial_number,
+            Some("DC:DA:0C:D3:FE:D8".to_string())
+        );
     }
 }

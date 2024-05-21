@@ -16,7 +16,7 @@ use std::{
 use tracing_subscriber::{filter::LevelFilter, EnvFilter};
 
 use crate::commands::{
-    elf::{cmd_elf, serialize_to_yaml_file},
+    elf::{cmd_elf, serialize_to_yaml_string},
     test::cmd_test,
 };
 
@@ -110,7 +110,8 @@ pub fn parse_u64(input: &str) -> Result<u64, ParseIntError> {
     parse_int::parse(input)
 }
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     tracing_subscriber::fmt()
         .compact()
         .with_env_filter(
@@ -143,7 +144,7 @@ fn main() -> Result<()> {
             output_dir,
             pack_filter: chip_family,
             list,
-        } => cmd_arm(output_dir, chip_family, list)?,
+        } => cmd_arm(output_dir, chip_family, list).await?,
         TargetGen::Test {
             target_artifact,
             template_path,
@@ -197,32 +198,16 @@ fn cmd_pack(input: &Path, out_dir: &Path) -> Result<()> {
         );
     }
 
-    let mut generated_files = Vec::with_capacity(families.len());
-
-    for family in &families {
-        let path = out_dir.join(family.name.clone().replace(' ', "_") + ".yaml");
-        let file = std::fs::File::create(&path)
-            .context(format!("Failed to create file '{}'.", path.display()))?;
-
-        serialize_to_yaml_file(family, &file)?;
-
-        generated_files.push(path);
-    }
-
-    println!("Generated {} target definition(s):", generated_files.len());
-
-    for file in generated_files {
-        println!("\t{}", file.display());
-    }
+    save_files(out_dir, &families)?;
 
     Ok(())
 }
 
 /// Handle the arm subcommand.
 /// Generated target descriptions will be placed in `out_dir`.
-fn cmd_arm(out_dir: Option<PathBuf>, chip_family: Option<String>, list: bool) -> Result<()> {
+async fn cmd_arm(out_dir: Option<PathBuf>, chip_family: Option<String>, list: bool) -> Result<()> {
     if list {
-        let mut packs = crate::fetch::get_vidx()?;
+        let mut packs = crate::fetch::get_vidx().await?;
         println!("Available ARM CMSIS Pack files:");
         packs.pdsc_index.sort_by(|a, b| a.name.cmp(&b.name));
         for pack in packs.pdsc_index.iter() {
@@ -247,15 +232,22 @@ fn cmd_arm(out_dir: Option<PathBuf>, chip_family: Option<String>, list: bool) ->
 
     let mut families = Vec::<ChipFamily>::new();
 
-    generate::visit_arm_files(&mut families, chip_family)?;
+    generate::visit_arm_files(&mut families, chip_family).await?;
 
+    save_files(&out_dir, &families)?;
+
+    Ok(())
+}
+
+fn save_files(out_dir: &Path, families: &[ChipFamily]) -> Result<()> {
     let mut generated_files = Vec::with_capacity(families.len());
 
-    for family in &families {
+    for family in families {
         let path = out_dir.join(family.name.clone().replace(' ', "_") + ".yaml");
-        let file = std::fs::File::create(&path)
+
+        let yaml = serialize_to_yaml_string(family)?;
+        std::fs::write(&path, yaml)
             .context(format!("Failed to create file '{}'.", path.display()))?;
-        serialize_to_yaml_file(family, &file)?;
 
         generated_files.push(path);
     }

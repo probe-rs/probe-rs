@@ -45,7 +45,7 @@ impl Serialize for VariableCache {
             VariableTreeNode {
                 name: &root_node.name,
                 type_name: &root_node.type_name,
-                value: root_node.get_value(variable_cache),
+                value: root_node.to_string(variable_cache),
                 children: recurse_variables(variable_cache, root_node.variable_key, None),
             }
         }
@@ -77,7 +77,7 @@ impl Serialize for VariableCache {
                 out.push(VariableTreeNode {
                     name: &child_variable.name,
                     type_name: &child_variable.type_name,
-                    value: child_variable.get_value(variable_cache),
+                    value: child_variable.to_string(variable_cache),
                     children: recurse_variables(
                         variable_cache,
                         child_variable.variable_key,
@@ -228,7 +228,7 @@ impl VariableCache {
             "VariableCache: Add Variable: key={:?}, parent={:?}, name={:?}",
             cache_variable.variable_key,
             cache_variable.parent_key,
-            &cache_variable.name
+            cache_variable.name
         );
 
         if let Some(old_variable) = self
@@ -245,10 +245,6 @@ impl VariableCache {
     ///
     /// This function does not update the value of the variable.
     pub fn update_variable(&mut self, cache_variable: &Variable) -> Result<(), Error> {
-        if cache_variable.variable_key == ObjectRef::Invalid {
-            return Err(anyhow!("Attempt to update an existing `Variable`:{:?} with a non-existent cache key: {:?}. Please report this as a bug.", cache_variable.name, cache_variable.variable_key).into());
-        }
-
         // Attempt to update an existing `Variable` in the cache
         tracing::trace!(
             "VariableCache: Update Variable, key={:?}, name={:?}",
@@ -478,7 +474,7 @@ impl VariableCache {
                     }) {
                         Some(string_length) => {
                             if string_length.is_valid() {
-                                string_length.get_value(self).parse().unwrap_or(0_usize)
+                                string_length.to_string(self).parse().unwrap_or(0_usize)
                             } else {
                                 0_usize
                             }
@@ -547,7 +543,7 @@ mod test {
             variable.variable_key,
             variable.name,
             variable.type_name,
-            variable.get_value(cache)
+            variable.to_string(cache)
         ));
 
         let children = cache.get_children(variable.variable_key);
@@ -575,7 +571,7 @@ mod test {
             VariableNodeType::UnitsLookup
         );
 
-        assert_eq!(cache_variable.get_value(&c), "<unknown>");
+        assert_eq!(cache_variable.to_string(&c), "<unknown>");
 
         assert_eq!(cache_variable.source_location, Default::default());
         assert_eq!(cache_variable.memory_location, VariableLocation::Unknown);

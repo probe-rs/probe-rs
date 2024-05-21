@@ -5,17 +5,23 @@ use crate::{
         self,
         arm::{
             ap::MemoryAp,
+            armv7m::Dhcsr,
+            communication_interface::{DapProbe, SwdSequence},
             memory::adi_v5_memory_interface::ArmProbe,
             sequences::{ArmDebugSequence, ArmDebugSequenceError, DebugEraseSequence},
-            ApAddress, ArmError, ArmProbeInterface, DpAddress,
+            ApAddress, ArmError, ArmProbeInterface, DpAddress, Pins,
         },
     },
     probe::DebugProbeError,
     session::MissingPermissions,
-    Permissions,
+    MemoryMappedRegister, Permissions,
 };
 use bitfield::bitfield;
-use std::sync::Arc;
+use probe_rs_target::CoreType;
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 use anyhow::Result;
 
@@ -186,18 +192,61 @@ impl DsuStatusB {
     pub const ADDRESS: u64 = 0x4100_2102;
 }
 
-/// A wrapper for different types that can perform SWD Commands (SWJ_Pins SWJ_Sequence)
-struct SwdSequenceShim<'a>(&'a mut dyn architecture::arm::communication_interface::DapProbe);
+bitfield! {
+    /// Device Identification, DSU - DID
+    #[derive(Copy, Clone, PartialEq, Eq)]
+    pub struct DsuDid(u32);
+    impl Debug;
 
-impl<'a> From<&'a mut dyn architecture::arm::communication_interface::DapProbe>
-    for SwdSequenceShim<'a>
-{
-    fn from(p: &'a mut dyn architecture::arm::communication_interface::DapProbe) -> Self {
+    /// The value of this field defines the processor used on the device.
+    pub processor, _ : 31, 28;
+
+    /// The value of this field corresponds to the Product Family part of the ordering code.
+    pub family, _ : 27, 23;
+
+    ///  The value of this field corresponds to the Product Series part of the ordering code.
+    pub series, _ : 21, 16;
+
+    /// Identifies the die family.
+    pub die, _ : 15, 12;
+
+    /// Identifies the die revision number. 0x0=rev.A, 0x1=rev.B etc.
+    ///
+    /// Note: The device variant (last letter of the ordering number) is independent of the die
+    /// revision (DSU.DID.REVISION): The device variant denotes functional differences, whereas
+    /// the die revision marks evolution of the die.
+    pub revision, _ : 11, 8;
+
+    /// This bit field identifies a device within a product family and product series.
+    pub devsel, _ : 8, 0;
+}
+
+impl DsuDid {
+    /// The DSU DID register address
+    pub const ADDRESS: u64 = 0x4100_2118;
+}
+
+impl From<u32> for DsuDid {
+    fn from(value: u32) -> Self {
+        Self(value)
+    }
+}
+
+impl From<DsuDid> for u32 {
+    fn from(value: DsuDid) -> Self {
+        value.0
+    }
+}
+/// A wrapper for different types that can perform SWD Commands (SWJ_Pins SWJ_Sequence)
+struct SwdSequenceShim<'a>(&'a mut dyn DapProbe);
+
+impl<'a> From<&'a mut dyn DapProbe> for SwdSequenceShim<'a> {
+    fn from(p: &'a mut dyn DapProbe) -> Self {
         Self(p)
     }
 }
 
-impl<'a> architecture::arm::communication_interface::SwdSequence for SwdSequenceShim<'a> {
+impl<'a> SwdSequence for SwdSequenceShim<'a> {
     fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
         self.0.swj_sequence(bit_len, bits)
     }
@@ -259,20 +308,24 @@ impl AtSAM {
         let mut dsu_ctrl = DsuCtrl(0);
         dsu_ctrl.set_ce(true);
         memory.write_word_8(DsuCtrl::ADDRESS, dsu_ctrl.0)?;
-        tracing::info!("Chip-Erase started..");
+        tracing::info!("Chip-Erase started...");
 
         // Wait for it to finish
-        let start = std::time::Instant::now();
-        while start.elapsed() < std::time::Duration::from_secs(8) {
+        let start = Instant::now();
+        while start.elapsed() < Duration::from_secs(8) {
             let current_dsu_statusa = DsuStatusA::from(memory.read_word_8(DsuStatusA::ADDRESS)?);
             if current_dsu_statusa.done() {
                 tracing::info!("Chip-Erase complete");
+                let interface = memory.get_arm_communication_interface()?;
+
                 // If the device was in Reset Extension when we started put it back into Reset Extension
-                if dsu_status_a.crstext() {
-                    self.reset_hardware_with_extension(memory.get_arm_communication_interface()?)?;
+                let result = if dsu_status_a.crstext() {
+                    self.reset_hardware_with_extension(interface)
                 } else {
-                    self.reset_hardware(memory.get_arm_communication_interface()?)?;
-                }
+                    self.reset_hardware(interface)
+                };
+
+                self.ensure_target_reset(result, interface)?;
 
                 // We need to reconnect to target to finalize the unlock.
                 // Signal ReAttachRequired so that the session will try to re-connect
@@ -280,7 +333,7 @@ impl AtSAM {
             } else if current_dsu_statusa.fail() {
                 return Err(ArmError::ChipEraseFailed);
             }
-            std::thread::sleep(std::time::Duration::from_millis(250));
+            std::thread::sleep(Duration::from_millis(250));
         }
 
         tracing::error!("Chip-Erase failed to complete within 8 seconds");
@@ -298,24 +351,23 @@ impl AtSAM {
     /// Subject to probe communication errors
     pub fn reset_hardware_with_extension(
         &self,
-        interface: &mut dyn architecture::arm::communication_interface::SwdSequence,
+        interface: &mut dyn SwdSequence,
     ) -> Result<(), ArmError> {
-        let mut pins = architecture::arm::Pins(0);
+        let mut pins = Pins(0);
         pins.set_nreset(true);
         pins.set_swdio_tms(true);
         pins.set_swclk_tck(true);
 
-        let mut pin_values = architecture::arm::Pins(0);
-
         // First set nReset, SWDIO and SWCLK to low.
-        let _ = interface.swj_pins(pin_values.0 as u32, pins.0 as u32, 0)?;
-        std::thread::sleep(std::time::Duration::from_millis(10));
+        let mut pin_values = Pins(0);
+        interface.swj_pins(pin_values.0 as u32, pins.0 as u32, 0)?;
+        std::thread::sleep(Duration::from_millis(10));
 
         // Next release nReset, but keep SWDIO and SWCLK low. This should put the device into
-        // reset extension ()
+        // reset extension.
         pin_values.set_nreset(true);
-        let _ = interface.swj_pins(pin_values.0 as u32, pins.0 as u32, 0)?;
-        std::thread::sleep(std::time::Duration::from_millis(20));
+        interface.swj_pins(pin_values.0 as u32, pins.0 as u32, 0)?;
+        std::thread::sleep(Duration::from_millis(20));
 
         Ok(())
     }
@@ -327,13 +379,19 @@ impl AtSAM {
     /// # Errors
     /// Subject to probe communication errors
     pub fn release_reset_extension(&self, memory: &mut dyn ArmProbe) -> Result<(), ArmError> {
+        // Enable debug mode if it is not already enabled
+        let mut dhcsr = Dhcsr(0);
+        dhcsr.enable_write();
+        dhcsr.set_c_debugen(true);
+        memory.write_word_32(Dhcsr::ADDRESS_OFFSET, dhcsr.0)?;
+
         // clear the reset extension bit
         let mut dsu_statusa = DsuStatusA(0);
         dsu_statusa.set_crstext(true);
         memory.write_8(DsuStatusA::ADDRESS, &[dsu_statusa.0])?;
 
-        let start = std::time::Instant::now();
-        while start.elapsed() < std::time::Duration::from_millis(100) {
+        let start = Instant::now();
+        while start.elapsed() < Duration::from_millis(100) {
             let current_dsu_statusa = DsuStatusA::from(memory.read_word_8(DsuStatusA::ADDRESS)?);
             if !current_dsu_statusa.crstext() {
                 return Ok(());
@@ -347,40 +405,78 @@ impl AtSAM {
     ///
     /// # Errors
     /// Subject to probe communication errors
-    pub fn reset_hardware(
-        &self,
-        interface: &mut dyn architecture::arm::communication_interface::SwdSequence,
-    ) -> Result<(), ArmError> {
-        let mut pins = architecture::arm::Pins(0);
+    pub fn reset_hardware(&self, interface: &mut dyn SwdSequence) -> Result<(), ArmError> {
+        let mut pins = Pins(0);
         pins.set_nreset(true);
         pins.set_swdio_tms(true);
         pins.set_swclk_tck(true);
 
         let mut pin_values = pins;
-        pin_values.set_nreset(false);
 
-        let _ = interface.swj_pins(pin_values.0 as u32, pins.0 as u32, 0)?;
-        std::thread::sleep(std::time::Duration::from_millis(10));
+        pin_values.set_nreset(false);
+        interface.swj_pins(pin_values.0 as u32, pins.0 as u32, 0)?;
+        std::thread::sleep(Duration::from_millis(10));
 
         pin_values.set_nreset(true);
-        let _ = interface.swj_pins(pin_values.0 as u32, pins.0 as u32, 0)?;
-        std::thread::sleep(std::time::Duration::from_millis(10));
+        interface.swj_pins(pin_values.0 as u32, pins.0 as u32, 0)?;
+        std::thread::sleep(Duration::from_millis(10));
 
         Ok(())
+    }
+
+    /// Some probes only support setting `nRESET` directly, but not the SWDIO/SWCLK pins. For those,
+    /// we can use this fallback method.
+    fn ensure_target_reset(
+        &self,
+        result: Result<(), ArmError>,
+        interface: &mut dyn SwdSequence,
+    ) -> Result<(), ArmError> {
+        // Fall back if the probe's swj_pins does not support the full set of pins
+        match result {
+            Err(ArmError::Probe(DebugProbeError::CommandNotSupportedByProbe {
+                command_name: "swj_pins",
+            })) => {
+                tracing::warn!("Using fallback reset method");
+
+                let mut pins = Pins(0);
+                pins.set_nreset(true);
+
+                interface.swj_pins(0, pins.0 as u32, 0)?;
+                std::thread::sleep(Duration::from_millis(10));
+
+                interface.swj_pins(pins.0 as u32, pins.0 as u32, 0)?;
+                std::thread::sleep(Duration::from_millis(10));
+
+                Ok(())
+            }
+            other => other,
+        }
     }
 }
 
 impl ArmDebugSequence for AtSAM {
+    fn debug_core_start(
+        &self,
+        interface: &mut dyn ArmProbeInterface,
+        core_ap: MemoryAp,
+        _core_type: CoreType,
+        _debug_base: Option<u64>,
+        _cti_base: Option<u64>,
+    ) -> Result<(), ArmError> {
+        let mut core = interface.memory_interface(core_ap)?;
+
+        self.release_reset_extension(&mut *core)
+    }
+
     /// `reset_hardware_assert` for ATSAM devices
     ///
     /// Instead of keeping `nReset` asserted, the device is instead put into CPU Reset Extension
     /// which will keep the CPU Core in reset until manually released by the debugger probe.
-    fn reset_hardware_assert(
-        &self,
-        interface: &mut dyn architecture::arm::communication_interface::DapProbe,
-    ) -> Result<(), ArmError> {
+    fn reset_hardware_assert(&self, interface: &mut dyn DapProbe) -> Result<(), ArmError> {
         let mut shim = SwdSequenceShim::from(interface);
-        self.reset_hardware_with_extension(&mut shim)
+        let result = self.reset_hardware_with_extension(&mut shim);
+
+        self.ensure_target_reset(result, &mut shim)
     }
 
     /// `reset_hardware_deassert` for ATSAM devices
@@ -388,11 +484,10 @@ impl ArmDebugSequence for AtSAM {
     /// Instead of de-asserting `nReset` here (this was already done during the CPU Reset Extension process),
     /// the device is released from Reset Extension.
     fn reset_hardware_deassert(&self, memory: &mut dyn ArmProbe) -> Result<(), ArmError> {
-        let mut pins = architecture::arm::Pins(0);
+        let mut pins = Pins(0);
         pins.set_nreset(true);
 
-        let current_pins =
-            architecture::arm::Pins(memory.swj_pins(pins.0 as u32, pins.0 as u32, 0)? as u8);
+        let current_pins = Pins(memory.swj_pins(pins.0 as u32, pins.0 as u32, 0)? as u8);
         if !current_pins.nreset() {
             return Err(ArmDebugSequenceError::SequenceSpecific(
                 "Expected nReset to already be de-asserted".into(),

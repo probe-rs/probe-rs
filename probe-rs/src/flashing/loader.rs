@@ -1,6 +1,9 @@
+use espflash::flasher::{FlashData, FlashSettings};
+use espflash::targets::XtalFrequency;
 use ihex::Record;
 use probe_rs_target::{
-    MemoryRange, MemoryRegion, NvmRegion, RawFlashAlgorithm, TargetDescriptionSource,
+    InstructionSet, MemoryRange, MemoryRegion, NvmRegion, RawFlashAlgorithm,
+    TargetDescriptionSource,
 };
 use std::collections::HashMap;
 use std::io::{Read, Seek, SeekFrom};
@@ -13,6 +16,7 @@ use super::{
     IdfOptions,
 };
 use crate::config::DebugSequence;
+use crate::flashing::Format;
 use crate::memory::MemoryInterface;
 use crate::session::Session;
 use crate::Target;
@@ -52,8 +56,7 @@ impl FlashLoader {
                 Some(MemoryRegion::Ram(region)) => address = region.range.end,
                 _ => {
                     return Err(FlashError::NoSuitableNvm {
-                        start: range.start,
-                        end: range.end,
+                        range,
                         description_source: self.source.clone(),
                     })
                 }
@@ -80,17 +83,47 @@ impl FlashLoader {
         memory_map: &[MemoryRegion],
         address: u64,
     ) -> Option<&MemoryRegion> {
-        for region in memory_map {
-            let r = match region {
-                MemoryRegion::Ram(r) => r.range.clone(),
-                MemoryRegion::Nvm(r) => r.range.clone(),
-                MemoryRegion::Generic(r) => r.range.clone(),
-            };
-            if r.contains(&address) {
-                return Some(region);
+        memory_map.iter().find(|region| region.contains(address))
+    }
+
+    /// Reads the image according to the file format and adds it to the loader.
+    pub fn load_image<T: Read + Seek>(
+        &mut self,
+        session: &mut Session,
+        file: &mut T,
+        format: Format,
+        image_instruction_set: Option<InstructionSet>,
+    ) -> Result<(), FileDownloadError> {
+        if let Some(instr_set) = image_instruction_set {
+            let mut target_archs = Vec::with_capacity(session.list_cores().len());
+
+            // Get a unique list of core architectures
+            for (core, _) in session.list_cores() {
+                if let Ok(set) = session.core(core).unwrap().instruction_set() {
+                    if !target_archs.contains(&set) {
+                        target_archs.push(set);
+                    }
+                }
+            }
+
+            // Is the image compatible with any of the cores?
+            if !target_archs
+                .iter()
+                .any(|target| target.is_compatible(instr_set))
+            {
+                return Err(FileDownloadError::IncompatibleImage {
+                    target: target_archs,
+                    image: instr_set,
+                });
             }
         }
-        None
+        match format {
+            Format::Bin(options) => self.load_bin_data(file, options),
+            Format::Elf => self.load_elf_data(file),
+            Format::Hex => self.load_hex_data(file),
+            Format::Idf(options) => self.load_idf_data(session, file, options),
+            Format::Uf2 => self.load_uf2_data(file),
+        }
     }
 
     /// Reads the data from the binary file and adds it to the loader without splitting it into flash instructions yet.
@@ -129,38 +162,35 @@ impl FlashLoader {
         file: &mut T,
         options: IdfOptions,
     ) -> Result<(), FileDownloadError> {
-        let target = session.target().clone();
+        let target = session.target();
         let target_name = target
             .name
             .split_once('-')
             .map(|(name, _)| name)
             .unwrap_or(target.name.as_str());
         let chip = espflash::targets::Chip::from_str(target_name)
-            .map_err(|_| FileDownloadError::IdfUnsupported(target.name.clone()))?
+            .map_err(|_| FileDownloadError::IdfUnsupported(target.name.to_string()))?
             .into_target();
 
-        let mut buf = Vec::new();
-        file.read_to_end(&mut buf)?;
-
-        let flash_size_result = session.halted_access(|sess| {
-            // Figure out flash size from the memory map. We need a different bootloader for each size.
-            Ok(match target.debug_sequence.clone() {
-                DebugSequence::Riscv(sequence) => {
-                    sequence.detect_flash_size(sess.get_riscv_interface()?)
-                }
-                DebugSequence::Xtensa(sequence) => {
-                    sequence.detect_flash_size(sess.get_xtensa_interface()?)
-                }
-                DebugSequence::Arm(_) => panic!("There are no ARM ESP targets."),
-            })
-        })?;
-
-        let flash_size = match flash_size_result {
-            Ok(size) => size,
-            Err(err) => return Err(FileDownloadError::FlashSizeDetection(err)),
+        // FIXME: Short-term hack until we can auto-detect the crystal frequency. ESP32 and ESP32-C2
+        // have 26MHz and 40MHz options, ESP32-H2 is 32MHz, the rest is 40MHz. We need to specify
+        // the frequency because different options require different bootloader images.
+        let xtal_frequency = if target_name.eq_ignore_ascii_case("esp32h2") {
+            XtalFrequency::_32Mhz
+        } else {
+            XtalFrequency::_40Mhz
         };
 
-        let flash_size = match flash_size {
+        let flash_size_result = session.halted_access(|session| {
+            // Figure out flash size from the memory map. We need a different bootloader for each size.
+            match session.target().debug_sequence.clone() {
+                DebugSequence::Riscv(sequence) => sequence.detect_flash_size(session),
+                DebugSequence::Xtensa(sequence) => sequence.detect_flash_size(session),
+                DebugSequence::Arm(_) => panic!("There are no ARM ESP targets."),
+            }
+        });
+
+        let flash_size = match flash_size_result.map_err(FileDownloadError::FlashSizeDetection)? {
             Some(0x40000) => Some(espflash::flasher::FlashSize::_256Kb),
             Some(0x80000) => Some(espflash::flasher::FlashSize::_512Kb),
             Some(0x100000) => Some(espflash::flasher::FlashSize::_1Mb),
@@ -175,20 +205,28 @@ impl FlashLoader {
             _ => None,
         };
 
+        let mut buf = Vec::new();
+        file.read_to_end(&mut buf)?;
         let firmware = espflash::elf::ElfFirmwareImage::try_from(&buf[..])?;
-        let image = chip.get_flash_image(
-            &firmware,
-            options.bootloader,
-            options.partition_table,
-            None,
-            None,
-            None,
-            flash_size,
-            None,
-        )?;
-        let parts: Vec<_> = image.flash_segments().collect();
 
-        for data in parts {
+        let flash_data = FlashData::new(
+            options.bootloader.as_deref(),
+            options.partition_table.as_deref(),
+            None,
+            None,
+            {
+                let mut settings = FlashSettings::default();
+
+                settings.size = flash_size;
+
+                settings
+            },
+            0,
+        )?;
+
+        let image = chip.get_flash_image(&firmware, flash_data, None, xtal_frequency)?;
+
+        for data in image.flash_segments() {
             self.add_data(data.addr.into(), &data.data)?;
         }
 
@@ -230,28 +268,24 @@ impl FlashLoader {
         let mut elf_buffer = Vec::new();
         file.read_to_end(&mut elf_buffer)?;
 
-        let mut extracted_data = Vec::new();
+        let extracted_data = extract_from_elf(&elf_buffer)?;
 
-        let num_sections = extract_from_elf(&mut extracted_data, &elf_buffer)?;
-
-        if num_sections == 0 {
+        if extracted_data.is_empty() {
             tracing::warn!("No loadable segments were found in the ELF file.");
             return Err(FileDownloadError::NoLoadableSegments);
         }
 
-        tracing::info!("Found {} loadable sections:", num_sections);
+        tracing::info!("Found {} loadable sections:", extracted_data.len());
 
         for section in &extracted_data {
-            let source = if section.section_names.is_empty() {
-                "Unknown".to_string()
-            } else if section.section_names.len() == 1 {
-                section.section_names[0].to_owned()
-            } else {
-                "Multiple sections".to_owned()
+            let source = match section.section_names.len() {
+                0 => "Unknown",
+                1 => section.section_names[0].as_str(),
+                _ => "Multiple sections",
             };
 
             tracing::info!(
-                "    {} at {:08X?} ({} byte{})",
+                "    {} at {:#010X} ({} byte{})",
                 source,
                 section.address,
                 section.data.len(),
@@ -303,7 +337,7 @@ impl FlashLoader {
         tracing::debug!("Contents of builder:");
         for (&address, data) in &self.builder.data {
             tracing::debug!(
-                "    data: {:08x}-{:08x} ({} bytes)",
+                "    data: {:#010X}..{:#010X} ({} bytes)",
                 address,
                 address + data.len() as u64,
                 data.len()
@@ -315,7 +349,7 @@ impl FlashLoader {
             let Range { start, end } = algorithm.flash_properties.address_range;
 
             tracing::debug!(
-                "    algo {}: {:08x}-{:08x} ({} bytes)",
+                "    algo {}: {:#010X}..{:#010X} ({} bytes)",
                 algorithm.name,
                 start,
                 end,
@@ -341,38 +375,43 @@ impl FlashLoader {
         // chip erase once per algorithm, not once per region. Otherwise subsequent chip erases will
         // erase previous regions' flashed contents.
         tracing::debug!("Regions:");
-        for region in &self.memory_map {
-            if let MemoryRegion::Nvm(region) = region {
-                tracing::debug!(
-                    "    region: {:08x}-{:08x} ({} bytes)",
-                    region.range.start,
-                    region.range.end,
-                    region.range.end - region.range.start
-                );
-
-                // If we have no data in this region, ignore it.
-                // This avoids uselessly initializing and deinitializing its flash algorithm.
-                if !self.builder.has_data_in_range(&region.range) {
-                    tracing::debug!("     -- empty, ignoring!");
-                    continue;
-                }
-
-                let algo = Self::get_flash_algorithm_for_region(region, session.target())?;
-
-                let entry = algos
-                    .entry((
-                        algo.name.clone(),
-                        region
-                            .cores
-                            .first()
-                            .ok_or_else(|| FlashError::NoNvmCoreAccess(region.clone()))?
-                            .clone(),
-                    ))
-                    .or_default();
-                entry.push(region.clone());
-
-                tracing::debug!("     -- using algorithm: {}", algo.name);
+        for region in self
+            .memory_map
+            .iter()
+            .filter_map(MemoryRegion::as_nvm_region)
+        {
+            if region.is_alias {
+                tracing::debug!("Skipping alias memory region {:#010X?}", region.range);
+                continue;
             }
+            tracing::debug!(
+                "    region: {:#010X?} ({} bytes)",
+                region.range,
+                region.range.end - region.range.start
+            );
+
+            // If we have no data in this region, ignore it.
+            // This avoids uselessly initializing and deinitializing its flash algorithm.
+            if !self.builder.has_data_in_range(&region.range) {
+                tracing::debug!("     -- empty, ignoring!");
+                continue;
+            }
+
+            let algo = Self::get_flash_algorithm_for_region(region, session.target())?;
+
+            let entry = algos
+                .entry((
+                    algo.name.clone(),
+                    region
+                        .cores
+                        .first()
+                        .ok_or_else(|| FlashError::NoNvmCoreAccess(region.clone()))?
+                        .clone(),
+                ))
+                .or_default();
+            entry.push(region.clone());
+
+            tracing::debug!("     -- using algorithm: {}", algo.name);
         }
 
         if options.dry_run {
@@ -425,9 +464,8 @@ impl FlashLoader {
 
             for region in regions {
                 tracing::debug!(
-                    "    programming region: {:08x}-{:08x} ({} bytes)",
-                    region.range.start,
-                    region.range.end,
+                    "    programming region: {:#010X?} ({} bytes)",
+                    region.range,
                     region.range.end - region.range.start
                 );
 
@@ -445,43 +483,44 @@ impl FlashLoader {
         tracing::debug!("committing RAM!");
 
         // Commit RAM last, because NVM flashing overwrites RAM
-        for region in &self.memory_map {
-            if let MemoryRegion::Ram(region) = region {
+        for region in self
+            .memory_map
+            .iter()
+            .filter_map(MemoryRegion::as_ram_region)
+        {
+            tracing::debug!(
+                "    region: {:#010X?} ({} bytes)",
+                region.range,
+                region.range.end - region.range.start
+            );
+
+            let region_core_index = session
+                .target()
+                .core_index_by_name(
+                    region
+                        .cores
+                        .first()
+                        .ok_or_else(|| FlashError::NoRamCoreAccess(region.clone()))?,
+                )
+                .unwrap();
+            // Attach to memory and core.
+            let mut core = session.core(region_core_index).map_err(FlashError::Core)?;
+
+            let mut some = false;
+            for (address, data) in self.builder.data_in_range(&region.range) {
+                some = true;
                 tracing::debug!(
-                    "    region: {:08x}-{:08x} ({} bytes)",
-                    region.range.start,
-                    region.range.end,
-                    region.range.end - region.range.start
+                    "     -- writing: {:#010X}..{:#010X} ({} bytes)",
+                    address,
+                    address + data.len() as u64,
+                    data.len()
                 );
+                // Write data to memory.
+                core.write_8(address, data).map_err(FlashError::Core)?;
+            }
 
-                let region_core_index = session
-                    .target()
-                    .core_index_by_name(
-                        region
-                            .cores
-                            .first()
-                            .ok_or_else(|| FlashError::NoRamCoreAccess(region.clone()))?,
-                    )
-                    .unwrap();
-                // Attach to memory and core.
-                let mut core = session.core(region_core_index).map_err(FlashError::Core)?;
-
-                let mut some = false;
-                for (address, data) in self.builder.data_in_range(&region.range) {
-                    some = true;
-                    tracing::debug!(
-                        "     -- writing: {:08x}-{:08x} ({} bytes)",
-                        address,
-                        address + data.len() as u64,
-                        data.len()
-                    );
-                    // Write data to memory.
-                    core.write_8(address, data).map_err(FlashError::Core)?;
-                }
-
-                if !some {
-                    tracing::debug!("     -- empty.")
-                }
+            if !some {
+                tracing::debug!("     -- empty.")
             }
         }
 
@@ -489,7 +528,7 @@ impl FlashLoader {
             tracing::debug!("Verifying!");
             for (&address, data) in &self.builder.data {
                 tracing::debug!(
-                    "    data: {:08x}-{:08x} ({} bytes)",
+                    "    data: {:#010X}..{:#010X} ({} bytes)",
                     address,
                     address + data.len() as u64,
                     data.len()
@@ -499,13 +538,7 @@ impl FlashLoader {
                     .target()
                     .get_memory_region_by_address(address)
                     .unwrap();
-                let core_name = match associated_region {
-                    MemoryRegion::Ram(r) => &r.cores,
-                    MemoryRegion::Generic(r) => &r.cores,
-                    MemoryRegion::Nvm(r) => &r.cores,
-                }
-                .first()
-                .unwrap();
+                let core_name = associated_region.cores().first().unwrap();
                 let core_index = session.target().core_index_by_name(core_name).unwrap();
                 let mut core = session.core(core_index).map_err(FlashError::Core)?;
 

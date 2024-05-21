@@ -38,8 +38,6 @@ jobs:
         # Only install on Ubuntu
         if: (matrix.os == 'ubuntu-latest') || (matrix.os == 'ubuntu-20.04')
 
-      - uses: ./.github/actions/setup
-
       - name: Cache Dependencies
         uses: Swatinem/rust-cache@v2.7.3
 
@@ -76,10 +74,9 @@ jobs:
         # Only install on Ubuntu
         if: matrix.os == 'ubuntu-latest'
 
-      - uses: ./.github/actions/setup
-        with:
-          targets: thumbv7m-none-eabi
-      
+      - name: "Install thumbv7m-none-eabi target for tests"
+        run: rustup target add thumbv7m-none-eabi
+
       - name: Cache Dependencies
         uses: Swatinem/rust-cache@v2.7.3
 
@@ -92,10 +89,6 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
-
-      - uses: ./.github/actions/setup
-        with:
-          components: rustfmt
 
       - name: Run cargo fmt
         run: cargo fmt --all -- --check
@@ -111,10 +104,6 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y libudev-dev
-
-      - uses: ./.github/actions/setup
-        with:
-          components: clippy
 
       - name: Cache Dependencies
         uses: Swatinem/rust-cache@v2.7.3
@@ -140,12 +129,10 @@ jobs:
           sudo apt update
           sudo apt install -y libudev-dev
 
-      - uses: ./.github/actions/setup
-
       - name: Cache Dependencies
         uses: Swatinem/rust-cache@v2.7.3
 
       - name: Run cargo doc
-        run: cargo doc --all-features --locked
+        run: cargo doc -p probe-rs --no-deps --all-features --locked
         env:
           RUSTDOCFLAGS: '-D warnings'

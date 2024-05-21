@@ -3,42 +3,34 @@
 use super::{Chip, ChipFamily, ChipInfo, Core, Target, TargetDescriptionSource};
 use crate::config::CoreType;
 use once_cell::sync::Lazy;
+use parking_lot::{RwLock, RwLockReadGuard};
 use probe_rs_target::{BinaryFormat, CoreAccessOptions, RiscvCoreAccessOptions};
+use std::collections::HashMap;
 use std::io::Read;
-use std::sync::{Arc, Mutex};
+use std::ops::Deref;
 
-static REGISTRY: Lazy<Arc<Mutex<Registry>>> =
-    Lazy::new(|| Arc::new(Mutex::new(Registry::from_builtin_families())));
+static REGISTRY: Lazy<RwLock<Registry>> =
+    Lazy::new(|| RwLock::new(Registry::from_builtin_families()));
 
 /// Error type for all errors which occur when working
 /// with the internal registry of targets.
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, thiserror::Error, docsplay::Display)]
 pub enum RegistryError {
-    /// The requested chip was not found in the registry.
-    #[error("The requested chip '{0}' was not found in the list of known targets.")]
+    /// The requested chip '{0}' was not found in the list of known targets.
     ChipNotFound(String),
-    /// Multiple chips found which match the given string, unable to return a single chip.
-    #[error("Found multiple chips matching '{0}', unable to select a single chip. ({1})")]
+    /// Found multiple chips matching '{0}', unable to select a single chip. ({1})
     ChipNotUnique(String, String),
-    /// When searching for a chip based on information read from the target,
-    /// no matching chip was found in the registry.
-    #[error("The connected chip could not automatically be determined.")]
+    /// The connected chip could not automatically be determined.
     ChipAutodetectFailed,
-    /// A core type contained in a target description is not supported
-    /// in probe-rs.
-    #[error("The core type '{0}' is not supported in probe-rs.")]
+    /// The core type '{0}' is not supported in probe-rs.
     UnknownCoreType(String),
-    /// An IO error which occurred when trying to read a target description file.
-    #[error("An IO error was encountered")]
+    /// An IO error occurred when trying to read a target description file.
     Io(#[from] std::io::Error),
     /// An error occurred while deserializing a YAML target description file.
-    #[error("Deserializing the yaml encountered an error")]
     Yaml(#[from] serde_yaml::Error),
-    /// An invalid [`ChipFamily`] was encountered.
-    #[error("Invalid chip family definition ({})", .0.name)]
+    /// Invalid chip family definition ({0.name}): {1}
     InvalidChipFamilyDefinition(Box<ChipFamily>, String),
-    /// One of the RTT scan ranges is not enclosed in exactly one RAM region.
-    #[error("Chip's RTT scan region {:#010x}..{:#010x} is not enclosed by any single RAM region.", .0.start, .0.end)]
+    /// Chip's RTT scan region {0:#010X?} is not enclosed by any single RAM region.
     InvalidRttScanRange(std::ops::Range<u64>),
 }
 
@@ -102,11 +94,13 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
                 name: "riscv".to_owned(),
                 part: None,
                 svd: None,
+                documentation: HashMap::new(),
                 cores: vec![Core {
                     name: "core".to_owned(),
                     core_type: CoreType::Riscv,
                     core_access_options: CoreAccessOptions::Riscv(RiscvCoreAccessOptions {
                         hart_id: None,
+                        jtag_tap: None,
                     }),
                 }],
                 memory_map: vec![],
@@ -128,27 +122,19 @@ struct Registry {
 }
 
 impl Registry {
-    #[cfg(feature = "builtin-targets")]
     fn from_builtin_families() -> Self {
-        const BUILTIN_TARGETS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/targets.bincode"));
+        #[cfg(feature = "builtin-targets")]
+        let mut families = {
+            const BUILTIN_TARGETS: &[u8] =
+                include_bytes!(concat!(env!("OUT_DIR"), "/targets.bincode"));
 
-        let mut families: Vec<ChipFamily> = match bincode::deserialize(BUILTIN_TARGETS) {
-            Ok(families) => families,
-            Err(err) => panic!("Failed to deserialize builtin targets. This is a bug : {err:?}"),
+            bincode::deserialize(BUILTIN_TARGETS)
+                .expect("Failed to deserialize builtin targets. This is a bug")
         };
 
-        add_generic_targets(&mut families);
-
-        // We skip validating the targets here as this is done at a later stage in `get_target`.
-        // Additionally, validation for existing targets is done in the tests `validate_generic_targets` and
-        // `validate_builtin` as well, to ensure we do not ship broken target definitions.
-
-        Self { families }
-    }
-
-    #[cfg(not(feature = "builtin-targets"))]
-    fn from_builtin_families() -> Self {
+        #[cfg(not(feature = "builtin-targets"))]
         let mut families = vec![];
+
         add_generic_targets(&mut families);
 
         // We skip validating the targets here as this is done at a later stage in `get_target`.
@@ -156,119 +142,113 @@ impl Registry {
         // `validate_builtin` as well, to ensure we do not ship broken target definitions.
 
         Self { families }
-    }
-
-    fn families(&self) -> &Vec<ChipFamily> {
-        &self.families
     }
 
     fn get_target_by_name(&self, name: impl AsRef<str>) -> Result<Target, RegistryError> {
-        let (target, _) = self.get_target_and_family_by_name(name)?;
+        let (target, _) = self.get_target_and_family_by_name(name.as_ref())?;
         Ok(target)
     }
 
     fn get_target_and_family_by_name(
         &self,
-        name: impl AsRef<str>,
+        name: &str,
     ) -> Result<(Target, ChipFamily), RegistryError> {
-        let name = name.as_ref();
-
         tracing::debug!("Searching registry for chip with name {}", name);
 
-        let (family, chip) = {
-            // Try get the corresponding chip.
-            let mut selected_family_and_chip = None;
-            let mut exact_matches = 0;
-            let mut partial_matches = Vec::new();
-            for family in &self.families {
-                for variant in family.variants.iter() {
-                    if match_name_prefix(&variant.name, name) {
-                        if variant.name.len() == name.len() {
-                            tracing::debug!("Exact match for chip name: {}", variant.name);
-                            exact_matches += 1;
-                        } else {
-                            tracing::debug!("Partial match for chip name: {}", &variant.name);
-                            partial_matches.push(variant.name.clone());
-                            if exact_matches > 0 {
-                                continue;
-                            }
-                        }
-                        selected_family_and_chip = Some((family, variant));
-                    }
-                }
-            }
-            if exact_matches == 0 && partial_matches.len() > 1 {
-                tracing::warn!(
-                    "Ignoring ambiguous matches for specified chip name {}",
-                    name,
-                );
-                let mut suggestions;
-                if partial_matches.len() <= 100 {
-                    suggestions = partial_matches.join(", ");
-                } else {
-                    // prevent too much text being printed if too many matches
-                    suggestions = partial_matches[0..100].join(", ");
-                    suggestions.push_str(&format!(" and {} more", partial_matches.len() - 100))
-                }
-                return Err(RegistryError::ChipNotUnique(name.to_owned(), suggestions));
-            }
-            let (family, chip) = selected_family_and_chip
-                .ok_or_else(|| RegistryError::ChipNotFound(name.to_owned()))?;
-            if exact_matches == 0 && partial_matches.len() == 1 {
-                tracing::warn!(
-                    "Found chip {} which matches given partial name {}. Consider specifying its full name.",
-                    chip.name,
-                    name,
-                );
-            }
-            if chip.name.to_ascii_lowercase() != name.to_ascii_lowercase() {
-                tracing::warn!(
-                    "Matching {} based on wildcard. Consider specifying the chip as {} instead.",
-                    name,
-                    chip.name,
-                );
-            }
-
-            // Try get the correspnding flash algorithm.
-            (family, chip)
-        };
-        let targ = self.get_target(family, chip)?;
-        Ok((targ, family.clone()))
-    }
-
-    fn get_targets_by_family_name(
-        &self,
-        family_name: impl AsRef<str>,
-    ) -> Result<Vec<String>, RegistryError> {
-        let name: &str = family_name.as_ref();
-
-        let family = {
-            let mut finded_family = None;
-            let mut exact_matches = 0;
-            for family in &self.families {
-                if match_name_prefix(&family.name, name) {
-                    if family.name.len() == name.len() {
-                        tracing::debug!("Exact match for family name: {}", family.name);
+        // Try get the corresponding chip.
+        let mut selected_family_and_chip = None;
+        let mut exact_matches = 0;
+        let mut partial_matches = Vec::new();
+        for family in self.families.iter() {
+            for variant in family.variants.iter() {
+                if match_name_prefix(&variant.name, name) {
+                    if variant.name.len() == name.len() {
+                        tracing::debug!("Exact match for chip name: {}", variant.name);
                         exact_matches += 1;
                     } else {
-                        tracing::debug!("Partial match for family name: {}", family.name);
+                        tracing::debug!("Partial match for chip name: {}", variant.name);
+                        partial_matches.push(variant.name.as_str());
+                        // Only select partial match if we don't have an exact match yet
                         if exact_matches > 0 {
                             continue;
                         }
                     }
-                    finded_family = Some(family);
+                    selected_family_and_chip = Some((family, variant));
                 }
             }
-            finded_family.ok_or_else(|| RegistryError::ChipNotFound(name.to_owned()))?
-        };
-
-        let mut all_family_targets = Vec::new();
-
-        for target in &family.variants {
-            all_family_targets.push(target.name.clone());
         }
 
-        Ok(all_family_targets)
+        let Some((family, chip)) = selected_family_and_chip else {
+            return Err(RegistryError::ChipNotFound(name.to_string()));
+        };
+
+        if exact_matches == 0 {
+            match partial_matches.len() {
+                0 => {}
+                1 => {
+                    tracing::warn!(
+                        "Found chip {} which matches given partial name {}. Consider specifying its full name.",
+                        chip.name,
+                        name,
+                    );
+                }
+                matches => {
+                    const MAX_PRINTED_MATCHES: usize = 100;
+                    tracing::warn!(
+                        "Ignoring {matches} ambiguous matches for specified chip name {name}"
+                    );
+
+                    let (print, overflow) =
+                        partial_matches.split_at(MAX_PRINTED_MATCHES.min(matches));
+
+                    let mut suggestions = print.join(", ");
+
+                    // Avoid "and 1 more" by printing the last item.
+                    match overflow.len() {
+                        0 => {}
+                        1 => suggestions.push_str(&format!(", {}", overflow[0])),
+                        _ => suggestions.push_str(&format!("and {} more", overflow.len())),
+                    }
+
+                    return Err(RegistryError::ChipNotUnique(name.to_string(), suggestions));
+                }
+            }
+        }
+
+        if !chip.name.eq_ignore_ascii_case(name) {
+            tracing::warn!(
+                "Matching {} based on wildcard. Consider specifying the chip as {} instead.",
+                name,
+                chip.name,
+            );
+        }
+
+        let targ = self.get_target(family, chip)?;
+        Ok((targ, family.clone()))
+    }
+
+    fn get_targets_by_family_name(&self, name: &str) -> Result<Vec<String>, RegistryError> {
+        let mut found_family = None;
+        let mut exact_matches = 0;
+        for family in self.families.iter() {
+            if match_name_prefix(&family.name, name) {
+                if family.name.len() == name.len() {
+                    tracing::debug!("Exact match for family name: {}", family.name);
+                    exact_matches += 1;
+                } else {
+                    tracing::debug!("Partial match for family name: {}", family.name);
+                    if exact_matches > 0 {
+                        continue;
+                    }
+                }
+                found_family = Some(family);
+            }
+        }
+        let Some(family) = found_family else {
+            return Err(RegistryError::ChipNotFound(name.to_string()));
+        };
+
+        Ok(family.variants.iter().map(|v| v.name.to_string()).collect())
     }
 
     fn search_chips(&self, name: &str) -> Vec<String> {
@@ -278,12 +258,8 @@ impl Registry {
 
         for family in &self.families {
             for variant in family.variants.iter() {
-                if variant
-                    .name
-                    .to_ascii_lowercase()
-                    .starts_with(&name.to_ascii_lowercase())
-                {
-                    targets.push(variant.name.to_string())
+                if match_name_prefix(name, &variant.name) {
+                    targets.push(variant.name.to_string());
                 }
             }
         }
@@ -292,42 +268,40 @@ impl Registry {
     }
 
     fn get_target_by_chip_info(&self, chip_info: ChipInfo) -> Result<Target, RegistryError> {
-        let (family, chip) = {
-            match chip_info {
-                ChipInfo::Arm(chip_info) => {
-                    // Try get the corresponding chip.
+        let (family, chip) = match chip_info {
+            ChipInfo::Arm(chip_info) => {
+                // Try get the corresponding chip.
 
-                    let families = self.families.iter().filter(|f| {
-                        f.manufacturer
-                            .map(|m| m == chip_info.manufacturer)
-                            .unwrap_or(false)
-                    });
+                let families = self.families.iter().filter(|f| {
+                    f.manufacturer
+                        .map(|m| m == chip_info.manufacturer)
+                        .unwrap_or(false)
+                });
 
-                    let mut identified_chips = Vec::new();
+                let mut identified_chips = Vec::new();
 
-                    for family in families {
-                        tracing::debug!("Checking family {}", family.name);
+                for family in families {
+                    tracing::debug!("Checking family {}", family.name);
 
-                        let chips = family
-                            .variants()
-                            .iter()
-                            .filter(|v| v.part.map(|p| p == chip_info.part).unwrap_or(false))
-                            .map(|c| (family, c));
+                    let chips = family
+                        .variants()
+                        .iter()
+                        .filter(|v| v.part.map(|p| p == chip_info.part).unwrap_or(false))
+                        .map(|c| (family, c));
 
-                        identified_chips.extend(chips)
-                    }
+                    identified_chips.extend(chips)
+                }
 
-                    if identified_chips.len() == 1 {
-                        identified_chips.pop().unwrap()
-                    } else {
-                        tracing::debug!(
+                if identified_chips.len() != 1 {
+                    tracing::debug!(
                         "Found {} matching chips for information {:?}, unable to determine chip",
                         identified_chips.len(),
                         chip_info
                     );
-                        return Err(RegistryError::ChipAutodetectFailed);
-                    }
+                    return Err(RegistryError::ChipAutodetectFailed);
                 }
+
+                identified_chips[0]
             }
         };
         self.get_target(family, chip)
@@ -348,13 +322,9 @@ impl Registry {
             .validate()
             .map_err(|e| RegistryError::InvalidChipFamilyDefinition(Box::new(family.clone()), e))?;
 
-        let index = self
-            .families
-            .iter()
-            .position(|old_family| old_family.name == family.name);
-        if let Some(index) = index {
-            self.families.remove(index);
-        }
+        self.families
+            .retain(|old_family| !old_family.name.eq_ignore_ascii_case(&family.name));
+
         self.families.push(family);
 
         Ok(())
@@ -363,14 +333,16 @@ impl Registry {
 
 /// Get a target from the internal registry based on its name.
 pub fn get_target_by_name(name: impl AsRef<str>) -> Result<Target, RegistryError> {
-    REGISTRY.lock().unwrap().get_target_by_name(name)
+    REGISTRY.read_recursive().get_target_by_name(name)
 }
 
 /// Get a target & chip family from the internal registry based on its name.
 pub fn get_target_and_family_by_name(
     name: impl AsRef<str>,
 ) -> Result<(Target, ChipFamily), RegistryError> {
-    REGISTRY.lock().unwrap().get_target_and_family_by_name(name)
+    REGISTRY
+        .read_recursive()
+        .get_target_and_family_by_name(name.as_ref())
 }
 
 /// Get all target from the internal registry based on its family name.
@@ -378,19 +350,18 @@ pub fn get_targets_by_family_name(
     family_name: impl AsRef<str>,
 ) -> Result<Vec<String>, RegistryError> {
     REGISTRY
-        .lock()
-        .unwrap()
-        .get_targets_by_family_name(family_name)
+        .read_recursive()
+        .get_targets_by_family_name(family_name.as_ref())
 }
 
-/// Get a target from the internal registry based on its name.
+/// Returns targets from the internal registry that match the given name.
 pub fn search_chips(name: impl AsRef<str>) -> Result<Vec<String>, RegistryError> {
-    Ok(REGISTRY.lock().unwrap().search_chips(name.as_ref()))
+    Ok(REGISTRY.read_recursive().search_chips(name.as_ref()))
 }
 
 /// Try to retrieve a target based on [ChipInfo] read from a target.
 pub(crate) fn get_target_by_chip_info(chip_info: ChipInfo) -> Result<Target, RegistryError> {
-    REGISTRY.lock().unwrap().get_target_by_chip_info(chip_info)
+    REGISTRY.read_recursive().get_target_by_chip_info(chip_info)
 }
 
 /// Parse a target description and add the contained targets
@@ -420,13 +391,24 @@ pub fn add_target_from_yaml<R>(yaml_reader: R) -> Result<(), RegistryError>
 where
     R: Read,
 {
-    REGISTRY.lock().unwrap().add_target_from_yaml(yaml_reader)
+    REGISTRY.write().add_target_from_yaml(yaml_reader)
 }
 
 /// Get a list of all families which are contained in the internal
 /// registry.
-pub fn families() -> Result<Vec<ChipFamily>, RegistryError> {
-    Ok(REGISTRY.lock().unwrap().families().clone())
+///
+/// As opposed to `families()` this function does not clone the families, but using it is
+/// slightly more cumbersome.
+pub fn families_ref() -> impl Deref<Target = [ChipFamily]> {
+    RwLockReadGuard::map(REGISTRY.read_recursive(), |registry| {
+        registry.families.as_slice()
+    })
+}
+
+/// Get a list of all families which are contained in the internal
+/// registry.
+pub fn families() -> Vec<ChipFamily> {
+    families_ref().to_vec()
 }
 
 /// See if `name` matches the start of `pattern`, treating any lower-case `x`
@@ -436,8 +418,8 @@ pub fn families() -> Result<Vec<ChipFamily>, RegistryError> {
 fn match_name_prefix(pattern: &str, name: &str) -> bool {
     // If `name` is shorter than `pattern` but all characters in `name` match,
     // the iterator will end early and the function returns true.
-    for (n, p) in name.to_ascii_lowercase().chars().zip(pattern.chars()) {
-        if p.to_ascii_lowercase() != n && p != 'x' {
+    for (n, p) in name.chars().zip(pattern.chars()) {
+        if !n.eq_ignore_ascii_case(&p) && p != 'x' {
             return false;
         }
     }
@@ -510,7 +492,7 @@ mod tests {
     fn validate_builtin() {
         let registry = Registry::from_builtin_families();
         registry
-            .families()
+            .families
             .iter()
             .map(|family| family.validate())
             .collect::<Result<Vec<_>, _>>()

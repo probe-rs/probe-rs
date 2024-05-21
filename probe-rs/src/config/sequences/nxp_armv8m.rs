@@ -46,7 +46,7 @@ fn debug_port_start(
 
         let mut timeout = true;
 
-        while start.elapsed() < Duration::from_micros(1_000_000) {
+        while start.elapsed() < Duration::from_secs(1) {
             let ctrl = interface.read_dp_register::<Ctrl>(dp)?;
 
             if ctrl.csyspwrupack() && ctrl.cdbgpwrupack() {
@@ -152,7 +152,7 @@ impl ArmDebugSequence for LPC55Sxx {
 
         let mut timeout = true;
 
-        while start.elapsed() < Duration::from_micros(100_000) {
+        while start.elapsed() < Duration::from_millis(100) {
             let value = interface.read_word_32(0x40034FE0)?;
 
             if (value & 0x4) == 0x4 {
@@ -246,7 +246,7 @@ impl ArmDebugSequence for LPC55Sxx {
 
         let mut timeout = true;
 
-        while start.elapsed() < Duration::from_micros(500_000) {
+        while start.elapsed() < Duration::from_millis(500) {
             if let Ok(v) = interface.read_word_32(Dhcsr::get_mmio_address()) {
                 let dhcsr = Dhcsr(v);
 
@@ -289,7 +289,7 @@ fn wait_for_stop_after_reset(memory: &mut dyn ArmProbe) -> Result<(), ArmError> 
 
     tracing::info!("Polling for reset");
 
-    while start.elapsed() < Duration::from_micros(500_000) {
+    while start.elapsed() < Duration::from_millis(500) {
         if let Ok(v) = memory.read_word_32(Dhcsr::get_mmio_address()) {
             let dhcsr = Dhcsr(v);
 
@@ -342,7 +342,7 @@ fn enable_debug_mailbox(
     interface.flush()?;
 
     // DAP_Delay(30000)
-    thread::sleep(Duration::from_micros(30_000));
+    thread::sleep(Duration::from_millis(30));
 
     let _ = interface.read_raw_ap_register(ap, 0)?;
 
@@ -351,7 +351,7 @@ fn enable_debug_mailbox(
     interface.flush()?;
 
     // DAP_Delay(30000)
-    thread::sleep(Duration::from_micros(30_000));
+    thread::sleep(Duration::from_millis(30));
 
     let _ = interface.read_raw_ap_register(ap, 8)?;
 
@@ -431,13 +431,13 @@ impl MIMXRT5xxS {
         // to regain debug control.
 
         // Give bootloader time to do what it needs to do
-        std::thread::sleep(Duration::from_micros(100_000));
+        std::thread::sleep(Duration::from_millis(100));
 
         let ap: MemoryAp = probe.ap();
         let dp = ap.ap_address().dp;
         let start = Instant::now();
         while !self.csw_debug_ready(probe.get_arm_communication_interface()?, ap)?
-            && start.elapsed() < Duration::from_micros(300_000)
+            && start.elapsed() < Duration::from_millis(300)
         {
             // Wait for either condition
         }
@@ -547,12 +547,12 @@ impl MIMXRT5xxS {
 
         // Active DebugMailbox
         interface.write_raw_ap_register(ap_addr, 0x0, 0x00000021)?;
-        std::thread::sleep(Duration::from_micros(30_000));
+        std::thread::sleep(Duration::from_millis(30));
         interface.read_raw_ap_register(ap_addr, 0x0)?;
 
         // Enter Debug Session
         interface.write_raw_ap_register(ap_addr, 0x4, 0x00000007)?;
-        std::thread::sleep(Duration::from_micros(30_000));
+        std::thread::sleep(Duration::from_millis(30));
         interface.read_raw_ap_register(ap_addr, 0x0)?;
 
         tracing::debug!("entered MIMXRT5xxS debug session");
@@ -591,7 +591,7 @@ impl ArmDebugSequence for MIMXRT5xxS {
             // Wait for Power-Up Request to be acknowledged
             let start = Instant::now();
             while (interface.read_raw_dp_register(dp, DP_CTRL_STAT)? & 0xA0000000) != 0xA0000000 {
-                if start.elapsed() >= Duration::from_micros(1_000_000) {
+                if start.elapsed() >= Duration::from_secs(1) {
                     return Err(ArmError::Timeout);
                 }
             }
@@ -688,7 +688,7 @@ impl ArmDebugSequence for MIMXRT5xxS {
             }
         } else {
             assert_n_reset()?;
-            thread::sleep(Duration::from_micros(100_000));
+            thread::sleep(Duration::from_millis(100));
         }
 
         Ok(())

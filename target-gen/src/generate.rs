@@ -1,5 +1,5 @@
 use anyhow::{anyhow, bail, Context, Error, Result};
-use cmsis_pack::pdsc::{Core, Device, Package, Processor};
+use cmsis_pack::pdsc::{AccessPort, Algorithm, Core, Device, Package, Processor};
 use cmsis_pack::{pack_index::PdscRef, utils::FromElem};
 use futures::StreamExt;
 use probe_rs::{
@@ -13,12 +13,9 @@ use probe_rs::{
 use probe_rs_target::{
     ArmCoreAccessOptions, CoreAccessOptions, RiscvCoreAccessOptions, XtensaCoreAccessOptions,
 };
-use std::{
-    fs::{self},
-    io::Read,
-    path::Path,
-};
-use tokio::runtime::Builder;
+use std::collections::HashMap;
+use std::ffi::OsStr;
+use std::{fs, io::Read, path::Path};
 
 pub(crate) enum Kind<'a, T>
 where
@@ -28,7 +25,52 @@ where
     Directory(&'a Path),
 }
 
-pub(crate) fn handle_package<T>(
+impl<'a, T> Kind<'a, T>
+where
+    T: std::io::Seek + std::io::Read,
+{
+    /// Read binary data from the given path.
+    fn read_bytes(&mut self, path: &Path) -> Result<Vec<u8>> {
+        let buffer = match self {
+            Kind::Archive(archive) => {
+                let reader = archive.by_name(&path.to_string_lossy())?;
+                reader.bytes().collect::<std::io::Result<Vec<u8>>>()?
+            }
+            Kind::Directory(dir) => std::fs::read(dir.join(path))?,
+        };
+
+        Ok(buffer)
+    }
+}
+
+fn process_flash_algo<T>(
+    flash_algorithm: &Algorithm,
+    kind: &mut Kind<T>,
+) -> Result<RawFlashAlgorithm>
+where
+    T: std::io::Seek + std::io::Read,
+{
+    let algo_bytes = kind.read_bytes(&flash_algorithm.file_name)?;
+    let mut algo = crate::parser::extract_flash_algo(
+        &algo_bytes,
+        &flash_algorithm.file_name,
+        flash_algorithm.default,
+        false, // Algorithms from CMSIS-Pack files are position independent
+    )?;
+
+    // If the algo specifies `RAMstart` and/or `RAMsize` fields, then use them.
+    // - See https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/pdsc_family_pg.html#element_algorithm for more information.
+    algo.load_address = flash_algorithm
+        .ram_start
+        .map(|ram_start| ram_start + FlashAlgorithm::get_max_algorithm_header_size());
+
+    // This algo will still be added to the specific chip algos by name.
+    // We just need to deduplicate the entire flash algorithm and reference to it by name at other places.
+
+    Ok(algo)
+}
+
+pub(crate) fn extract_families<T>(
     pdsc: Package,
     mut kind: Kind<T>,
     families: &mut Vec<ChipFamily>,
@@ -44,12 +86,7 @@ where
 
     for (device_name, device) in devices {
         // Only process this, if this belongs to a supported family.
-        let currently_supported_chip_families = probe_rs::config::families().map_err(|e| {
-            anyhow!(
-                "Currently supported chip families could not be read: {:?}",
-                e
-            )
-        })?;
+        let currently_supported_chip_families = probe_rs::config::families();
 
         if only_supported_familes
             && !currently_supported_chip_families
@@ -86,67 +123,42 @@ where
         let variant_flash_algorithms = device
             .algorithms
             .iter()
-            .map(|flash_algorithm| {
-                let mut algo = match &mut kind {
-                    Kind::Archive(archive) => crate::parser::extract_flash_algo(
-                        archive.by_name(&flash_algorithm.file_name.as_path().to_string_lossy())?,
-                        &flash_algorithm.file_name,
-                        flash_algorithm.default,
-                        false, // Algorithms from CMSIS-Pack files are position independent
-                    ),
-                    Kind::Directory(path) => crate::parser::extract_flash_algo(
-                        std::fs::File::open(path.join(&flash_algorithm.file_name))?,
-                        &flash_algorithm.file_name,
-                        flash_algorithm.default,
-                        false, // Algorithms from CMSIS-Pack files are position independent
-                    ),
-                }?;
+            .filter_map(|flash_algorithm| {
+                match process_flash_algo(flash_algorithm, &mut kind) {
+                    Ok(algo) => {
+                        // We add this algo directly to the algos of the family if it's not already added.
+                        // Make sure we never add an algo twice to save file size.
+                        if !family.flash_algorithms.contains(&algo) {
+                            family.flash_algorithms.push(algo.clone());
+                        }
 
-                // If the algo specifies `RAMstart` and/or `RAMsize` fields, then use them.
-                // - See https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/pdsc_family_pg.html#element_algorithm for more information.
-                algo.load_address = flash_algorithm.ram_start.map(|ram_start| ram_start + FlashAlgorithm::get_max_algorithm_header_size());
-                if let Some(stack_size) = flash_algorithm.ram_size {
-                     algo.stack_size = Some(stack_size.try_into().map_err(|data_conversion_error|
-                        anyhow!("Algorithm requires a stack size of  '{:?}' : {data_conversion_error:?}", flash_algorithm.ram_size)
-                    )?);
-                }
-
-                // We add this algo directly to the algos of the family if it's not already added.
-                // Make sure we never add an algo twice to save file size.
-                if !family.flash_algorithms.contains(&algo) {
-                    family.flash_algorithms.push(algo.clone());
-                }
-
-                // This algo will still be added to the specific chip algos by name.
-                // We just need to deduplicate the entire flash algorithm and reference to it by name at other places.
-
-                Ok(algo)
-            })
-            .filter_map(
-                |flash_algorithm: Result<RawFlashAlgorithm>| match flash_algorithm {
-                    Ok(flash_algorithm) => Some(flash_algorithm),
-                    Err(error) => {
-                        log::warn!("Failed to parse flash algorithm.");
-                        log::warn!("Reason: {:?}", error);
+                        Some(algo)
+                    }
+                    Err(e) => {
+                        log::warn!(
+                            "Failed to process flash algorithm {}.",
+                            flash_algorithm.file_name.display()
+                        );
+                        log::warn!("Reason: {:?}", e);
                         None
                     }
-                },
-            )
+                }
+            })
             .collect::<Vec<_>>();
 
-        let flash_algorithm_names: Vec<_> = variant_flash_algorithms
+        let flash_algorithm_names = variant_flash_algorithms
             .iter()
             .map(|fa| fa.name.to_string())
-            .collect();
+            .collect::<Vec<_>>();
 
         // Sometimes the algos are referenced twice, for example in the multicore H7s
         // Deduplicate while keeping order.
-        let flash_algorithm_names: Vec<_> = flash_algorithm_names
+        let flash_algorithm_names = flash_algorithm_names
             .iter()
             .enumerate()
             .filter(|(i, s)| !flash_algorithm_names[..*i].contains(s))
             .map(|(_, s)| s.clone())
-            .collect();
+            .collect::<Vec<_>>();
 
         let cores = device
             .processors
@@ -160,6 +172,7 @@ where
             name: device_name,
             part: None,
             svd: None,
+            documentation: HashMap::new(),
             cores,
             memory_map,
             flash_algorithms: flash_algorithm_names,
@@ -183,15 +196,21 @@ fn create_core(processor: &Processor) -> Result<ProbeCore> {
         core_type,
         core_access_options: match core_type.architecture() {
             Architecture::Arm => CoreAccessOptions::Arm(ArmCoreAccessOptions {
-                ap: processor.ap,
+                ap: match processor.ap {
+                    AccessPort::Index(id) => id,
+                    AccessPort::Address(_) => todo!(),
+                },
                 psel: 0,
                 debug_base: None,
                 cti_base: None,
             }),
-            Architecture::Riscv => {
-                CoreAccessOptions::Riscv(RiscvCoreAccessOptions { hart_id: None })
+            Architecture::Riscv => CoreAccessOptions::Riscv(RiscvCoreAccessOptions {
+                hart_id: None,
+                jtag_tap: None,
+            }),
+            Architecture::Xtensa => {
+                CoreAccessOptions::Xtensa(XtensaCoreAccessOptions { jtag_tap: None })
             }
-            Architecture::Xtensa => CoreAccessOptions::Xtensa(XtensaCoreAccessOptions {}),
         },
     })
 }
@@ -208,9 +227,7 @@ fn core_to_probe_core(value: &Core) -> Result<CoreType, Error> {
         Core::CortexM85 => CoreType::Armv8m,
         Core::CortexM7 => CoreType::Armv7em,
         Core::StarMC1 => CoreType::Armv8m,
-        c => {
-            bail!("Core '{:?}' is not yet supported for target generation.", c);
-        }
+        c => bail!("Core '{c:?}' is not yet supported for target generation."),
     })
 }
 
@@ -223,21 +240,19 @@ pub(crate) fn visit_dirs(path: &Path, families: &mut Vec<ChipFamily>) -> Result<
 
         if entry_path.is_dir() {
             visit_dirs(&entry_path, families)?;
-        } else if let Some(extension) = entry_path.extension() {
-            if extension == "pdsc" {
-                log::info!("Found .pdsc file: {}", path.display());
+        } else if entry_path.extension() == Some(OsStr::new("pdsc")) {
+            log::info!("Found .pdsc file: {}", path.display());
 
-                handle_package::<std::fs::File>(
-                    Package::from_path(&entry.path())?,
-                    Kind::Directory(path),
-                    families,
-                    false,
-                )
-                .context(format!(
-                    "Failed to process .pdsc file {}.",
-                    entry.path().display()
-                ))?;
-            }
+            extract_families::<std::fs::File>(
+                Package::from_path(&entry_path)?,
+                Kind::Directory(path),
+                families,
+                false,
+            )
+            .context(format!(
+                "Failed to process .pdsc file {}.",
+                entry_path.display()
+            ))?;
         }
     }
 
@@ -267,53 +282,48 @@ pub(crate) fn visit_file(path: &Path, families: &mut Vec<ChipFamily>) -> Result<
 
     drop(pdsc_file);
 
-    handle_package(package, Kind::Archive(&mut archive), families, false)
+    extract_families(package, Kind::Archive(&mut archive), families, false)
 }
 
-pub(crate) fn visit_arm_files(
+pub(crate) async fn visit_arm_files(
     families: &mut Vec<ChipFamily>,
     filter: Option<String>,
 ) -> Result<()> {
-    let packs = crate::fetch::get_vidx()?;
-
     //TODO: The multi-threaded logging makes it very difficult to track which errors/warnings belong where - needs some rework.
-    Builder::new_multi_thread()
-        .enable_all()
-        .build()
-        .unwrap()
-        .block_on(async move {
-            let mut stream = futures::stream::iter(packs.pdsc_index.iter().enumerate().filter_map(
-                |(i, pack)| {
-                    let only_supported_familes = if let Some(ref filter) = filter {
-                        // If we are filtering for specific filter patterns, then skip all the ones we don't want.
-                        if !pack.name.contains(filter) {
-                            return None;
-                        } else {
-                            log::info!("Found matching chip family: {}", pack.name);
-                        }
-                        // If we are filtering for specific filter patterns, then do not restrict these to the list of supported families.
-                        false
-                    } else {
-                        // If we are not filtering for specific filter patterns, then only include the supported families.
-                        true
-                    };
-                    if pack.deprecated.is_none() {
-                        // We only want to download the pack if it is not deprecated.
-                        log::info!("Working PACK {}/{} ...", i, packs.pdsc_index.len());
-                        Some(visit_arm_file(pack, only_supported_familes))
-                    } else {
-                        log::warn!("Pack {} is deprecated. Skipping ...", pack.name);
-                        None
-                    }
-                },
-            ))
-            .buffer_unordered(32);
-            while let Some(result) = stream.next().await {
-                families.extend(result);
-            }
+    let packs = crate::fetch::get_vidx().await?;
 
-            Ok(())
-        })
+    let mut stream =
+        futures::stream::iter(packs.pdsc_index.iter().enumerate().filter_map(|(i, pack)| {
+            let only_supported_familes = if let Some(ref filter) = filter {
+                // If we are filtering for specific filter patterns, then skip all the ones we don't want.
+                if !pack.name.contains(filter) {
+                    log::debug!("Ignoring filtered {} ...", pack.name);
+                    return None;
+                }
+
+                log::info!("Found matching chip family: {}", pack.name);
+
+                // If we are filtering for specific filter patterns, then do not restrict these to the list of supported families.
+                false
+            } else {
+                // If we are not filtering for specific filter patterns, then only include the supported families.
+                true
+            };
+            if pack.deprecated.is_none() {
+                // We only want to download the pack if it is not deprecated.
+                log::info!("Working PACK {}/{} ...", i, packs.pdsc_index.len());
+                Some(visit_arm_file(pack, only_supported_familes))
+            } else {
+                log::warn!("Ignoring deprecated {} ...", pack.name);
+                None
+            }
+        }))
+        .buffer_unordered(32);
+    while let Some(result) = stream.next().await {
+        families.extend(result);
+    }
+
+    Ok(())
 }
 
 pub(crate) async fn visit_arm_file(
@@ -328,19 +338,19 @@ pub(crate) async fn visit_arm_file(
         version = pack.version
     );
 
-    log::info!("Downloading {}", url);
+    log::info!("Downloading {url}");
 
     let response = match reqwest::get(&url).await {
         Ok(response) => response,
         Err(error) => {
-            log::error!("Failed to download pack '{}': {}", url, error);
+            log::error!("Failed to download pack '{url}': {error}");
             return vec![];
         }
     };
     let bytes = match response.bytes().await {
         Ok(bytes) => bytes,
         Err(error) => {
-            log::error!("Failed to get bytes from pack '{}': {}", url, error);
+            log::error!("Failed to get bytes from pack '{url}': {error}");
             return vec![];
         }
     };
@@ -350,7 +360,7 @@ pub(crate) async fn visit_arm_file(
     let mut archive = match zip::ZipArchive::new(zip) {
         Ok(archive) => archive,
         Err(error) => {
-            log::error!("Failed to open pack '{}': {}", url, error);
+            log::error!("Failed to open pack '{url}': {error}");
             return vec![];
         }
     };
@@ -358,33 +368,27 @@ pub(crate) async fn visit_arm_file(
     let mut pdsc_file = match find_pdsc_in_archive(&mut archive) {
         Ok(Some(file)) => file,
         Ok(None) => {
-            log::error!("Failed to find .pdsc file in archive {}", &url);
+            log::error!("Failed to find .pdsc file in archive {url}");
             return vec![];
         }
-        Err(e) => {
-            log::error!("Error handling archive {}: {}", url, e);
+        Err(error) => {
+            log::error!("Error handling archive {url}: {error}");
             return vec![];
         }
     };
 
     let mut pdsc = String::new();
-
-    match pdsc_file.read_to_string(&mut pdsc) {
-        Ok(_) => {}
-        Err(_) => {
-            log::error!("Failed to read .pdsc file {}", &url);
-            return vec![];
-        }
+    if let Err(error) = pdsc_file.read_to_string(&mut pdsc) {
+        log::error!("Failed to read .pdsc file '{url}': {error}");
+        return vec![];
     };
 
     let package = match Package::from_string(&pdsc) {
         Ok(package) => package,
-        Err(e) => {
+        Err(error) => {
             log::error!(
-                "Failed to parse pdsc file '{}' in CMSIS Pack {}: {}",
+                "Failed to parse pdsc file '{}' in CMSIS Pack {url}: {error}",
                 pdsc_file.name(),
-                &url,
-                e
             );
             return vec![];
         }
@@ -396,16 +400,14 @@ pub(crate) async fn visit_arm_file(
 
     let mut families = vec![];
 
-    match handle_package(
+    match extract_families(
         package,
         Kind::Archive(&mut archive),
         &mut families,
         only_supported_familes,
     ) {
-        Ok(_) => {
-            log::info!("Handled package {}", pdsc_name);
-        }
-        Err(err) => log::error!("Something went wrong while handling pack {}: {}", url, err),
+        Ok(_) => log::info!("Processed package {pdsc_name}"),
+        Err(error) => log::error!("Something went wrong while handling pack {url}: {error}"),
     };
 
     families
@@ -428,14 +430,12 @@ where
             )
         })?;
 
-        if let Some(extension) = outpath.extension() {
-            if extension == "pdsc" {
-                // We cannot return the file directly here,
-                // because this leads to lifetime problems.
+        if outpath.extension() == Some(OsStr::new("pdsc")) {
+            // We cannot return the file directly here,
+            // because this leads to lifetime problems.
 
-                index = Some(i);
-                break;
-            }
+            index = Some(i);
+            break;
         }
     }
 
@@ -509,7 +509,7 @@ pub(crate) fn get_mem_map(device: &Device, cores: &[probe_rs_target::Core]) -> V
 
     // Convert DeviceMemory's to MemoryRegion's, and assign cores to shared reqions.
     let mut mem_map = vec![];
-    for region in &device_memories {
+    for region in device_memories {
         if is_multi_core && region.p_name.is_none() {
             log::warn!("Device {}, memory region {} has no processor name, but this is required for a multicore device. Assigning memory to all cores!", device.name, region.name);
         }
@@ -523,45 +523,46 @@ pub(crate) fn get_mem_map(device: &Device, cores: &[probe_rs_target::Core]) -> V
         match region.memory_type {
             MemoryType::Ram => {
                 if let Some(MemoryRegion::Ram(existing_region)) = mem_map.iter_mut().find(|existing_region| {
-                        matches!(existing_region, MemoryRegion::Ram(ram_region) if ram_region.name == Some(region.name.clone()))
+                        matches!(existing_region, MemoryRegion::Ram(ram_region) if ram_region.name.as_deref() == Some(&region.name))
                     })
                 {
                     existing_region.cores.extend_from_slice(&cores);
                 } else {
                     mem_map.push(MemoryRegion::Ram(RamRegion {
-                    name: Some(region.name.clone()),
-                    range: region.memory_start..region.memory_end,
-                    is_boot_memory: region.is_boot_memory,
-                    cores,
+                        name: Some(region.name),
+                        range: region.memory_start..region.memory_end,
+                        is_boot_memory: region.is_boot_memory,
+                        cores,
                     }));
                 }
             },
             MemoryType::Nvm => {
                 if let Some(MemoryRegion::Nvm(existing_region)) = mem_map.iter_mut().find(|existing_region| {
-                        matches!(existing_region, MemoryRegion::Nvm(nvm_region) if nvm_region.name == Some(region.name.clone()))
+                        matches!(existing_region, MemoryRegion::Nvm(nvm_region) if nvm_region.name.as_deref() == Some(&region.name))
                     })
                 {
                     existing_region.cores.extend_from_slice(&cores);
                 } else {
                     mem_map.push(MemoryRegion::Nvm(NvmRegion {
-                    name: Some(region.name.clone()),
-                    range: region.memory_start..region.memory_end,
-                    is_boot_memory: region.is_boot_memory,
-                    cores,
+                        name: Some(region.name),
+                        range: region.memory_start..region.memory_end,
+                        is_boot_memory: region.is_boot_memory,
+                        cores,
+                        is_alias: false,
                     }));
                 }
             },
             MemoryType::Generic => {
                 if let Some(MemoryRegion::Generic(existing_region)) = mem_map.iter_mut().find(|existing_region| {
-                        matches!(existing_region, MemoryRegion::Generic(generic_region) if generic_region.name == Some(region.name.clone()))
+                        matches!(existing_region, MemoryRegion::Generic(generic_region) if generic_region.name.as_deref() == Some(&region.name))
                     })
                 {
                     existing_region.cores.extend_from_slice(&cores);
                 } else {
                     mem_map.push(MemoryRegion::Generic(GenericRegion {
-                    name: Some(region.name.clone()),
-                    range: region.memory_start..region.memory_end,
-                    cores,
+                        name: Some(region.name),
+                        range: region.memory_start..region.memory_end,
+                        cores,
                     }));
                 }
             },

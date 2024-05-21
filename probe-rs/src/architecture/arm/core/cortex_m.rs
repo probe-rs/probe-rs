@@ -5,7 +5,7 @@ use crate::{
     core::RegisterId,
     memory_mapped_bitfield_register,
     semihosting::decode_semihosting_syscall,
-    BreakpointCause, CoreInterface, Error, HaltReason, MemoryMappedRegister,
+    CoreInterface, Error, MemoryMappedRegister, SemihostingCommand,
 };
 use std::time::{Duration, Instant};
 
@@ -181,10 +181,9 @@ pub(crate) fn write_core_reg(
 ///
 /// Call this if you get some kind of breakpoint. Works on ARMv6-M, ARMv7-M and ARMv8-M.
 pub(crate) fn check_for_semihosting(
-    old_reason: HaltReason,
+    cached_command: Option<SemihostingCommand>,
     core: &mut dyn CoreInterface,
-) -> Result<HaltReason, Error> {
-    let mut reason = old_reason;
+) -> Result<Option<SemihostingCommand>, Error> {
     let pc: u32 = core.read_core_reg(core.program_counter().id)?.try_into()?;
 
     // The Arm Semihosting Specification, specificies that the instruction
@@ -207,15 +206,20 @@ pub(crate) fn check_for_semihosting(
 
     if TRAP_INSTRUCTION == actual_instruction {
         // BKPT 0xAB -> we are semihosting
-        let r0: u32 = core.read_core_reg(RegisterId(0))?.try_into()?;
-        let r1: u32 = core.read_core_reg(RegisterId(1))?.try_into()?;
-        tracing::info!("Semihosting found pc={pc:#x} r0={r0:#x} r1={r1:#x}");
 
-        reason = HaltReason::Breakpoint(BreakpointCause::Semihosting(decode_semihosting_syscall(
-            core, r0, r1,
-        )?));
+        Ok(Some(match cached_command {
+            None => {
+                // We only want to decode the semihosting command once, since answering it might change some of the registers
+                let r0: u32 = core.read_core_reg(RegisterId(0))?.try_into()?;
+                let r1: u32 = core.read_core_reg(RegisterId(1))?.try_into()?;
+                tracing::info!("Semihosting found pc={pc:#x} r0={r0:#x} r1={r1:#x}");
+                decode_semihosting_syscall(core, r0, r1)?
+            }
+            Some(cached_command) => cached_command,
+        }))
+    } else {
+        Ok(None)
     }
-    Ok(reason)
 }
 
 fn wait_for_core_register_transfer(

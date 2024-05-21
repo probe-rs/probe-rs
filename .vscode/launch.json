@@ -19,7 +19,7 @@
       "request": "launch",
       "name": "DAP-Server probe-rs", // Use this to test the dap server .
       "cargo": {
-        "args": ["build", "--bin=probe-rs", "--features=cli"],
+        "args": ["build", "--package", "probe-rs-tools"],
         "filter": {
           "name": "probe-rs",
           "kind": "bin"
@@ -30,63 +30,45 @@
       //     "RUST_LOG": "error",
       //     "DEFMT_LOG": "info"
       // },
-      "cwd": "${workspaceFolder}/probe-rs/src/bin/probe-rs/cmd/dap_server"
     },
     {
       "type": "lldb",
       "request": "launch",
       "name": "list supported chips",
       "cargo": {
-        "args": ["build", "--bin=probe-rs", "--features=cli"],
+        "args": ["build", "--package", "probe-rs-tools"],
         "filter": {
           "name": "probe-rs",
           "kind": "bin"
         }
       },
       "args": ["chip", "list"],
-      "cwd": "${workspaceFolder}/debugger"
     },
     {
       "type": "lldb",
       "request": "launch",
       "name": "list attached probes",
       "cargo": {
-        "args": ["build", "--bin=probe-rs", "--features=cli"],
+        "args": ["build", "--package", "probe-rs-tools"],
         "filter": {
           "name": "probe-rs",
           "kind": "bin"
         }
       },
       "args": ["list"],
-      "cwd": "${workspaceFolder}/debugger"
     },
     {
       "type": "lldb",
       "request": "launch",
       "name": "display help text",
       "cargo": {
-        "args": ["build", "--bin=probe-rs", "--features=cli"],
+        "args": ["build", "--package", "probe-rs-tools"],
         "filter": {
           "name": "probe-rs",
           "kind": "bin"
         }
       },
       "args": ["help"],
-      "cwd": "${workspaceFolder}/debugger"
-    },
-    {
-      "type": "lldb",
-      "request": "launch",
-      "name": "display dap-server debug subcommand help text",
-      "cargo": {
-        "args": ["build", "--bin=probe-rs", "--features=cli"],
-        "filter": {
-          "name": "probe-rs",
-          "kind": "bin"
-        }
-      },
-      "args": ["help", "dap-server", "debug"],
-      "cwd": "${workspaceFolder}/debugger"
     },
     {
       "type": "lldb",

@@ -41,7 +41,7 @@ fn parse_scan_region(
         .split("..")
         .map(|p| {
             if p.starts_with("0x") || p.starts_with("0X") {
-                u32::from_str_radix(&p[2..], 16)
+                u64::from_str_radix(&p[2..], 16)
             } else {
                 p.parse()
             }

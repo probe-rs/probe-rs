@@ -316,6 +316,15 @@ impl DebugProbe for FakeProbe {
         Ok(())
     }
 
+    fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
+        match &self.scan_chain {
+            Some(chain) => Ok(chain),
+            None => Err(DebugProbeError::Other(anyhow::anyhow!(
+                "No scan chain set for fake probe"
+            ))),
+        }
+    }
+
     fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
         self.speed = speed_khz;
 
@@ -453,14 +462,14 @@ impl UninitializedArmProbe for FakeArmInterface<Uninitialized> {
     fn initialize(
         self: Box<Self>,
         sequence: Arc<dyn ArmDebugSequence>,
-        _dp: DpAddress,
+        dp: DpAddress,
     ) -> Result<Box<dyn ArmProbeInterface>, (Box<dyn UninitializedArmProbe>, Error)> {
         // TODO: Do we need this?
         // sequence.debug_port_setup(&mut self.probe)?;
 
         let interface = FakeArmInterface::<Initialized> {
             probe: self.probe,
-            state: Initialized::new(sequence, false),
+            state: Initialized::new(sequence, dp, false),
         };
 
         Ok(Box::new(interface))
@@ -520,7 +529,7 @@ impl ArmProbeInterface for FakeArmInterface<Initialized> {
     }
 
     fn current_debug_port(&self) -> DpAddress {
-        self.state.current_dp.expect("A DpAddress is selected")
+        self.state.current_dp
     }
 }
 

@@ -1,6 +1,7 @@
 use super::{
     sequences::{
         atsam::AtSAM,
+        cc13xx_cc26xx::CC13xxCC26xx,
         efm32xg2::EFM32xG2,
         esp32::ESP32,
         esp32c2::ESP32C2,
@@ -85,7 +86,7 @@ impl Target {
     /// Create a new target for the given details.
     ///
     /// We suggest never using this function directly.
-    /// Use (crate::registry::Registry::get_target)[`Registry::get_target`] instead.
+    /// Use [`crate::config::registry::get_target_by_name`] instead.
     /// This will ensure that the used target is valid.
     ///
     /// The user has to make sure that all the cores have the same [`Architecture`].
@@ -186,6 +187,8 @@ impl Target {
             DebugSequence::Arm(AtSAM::create())
         } else if chip.name.starts_with("XMC4") {
             DebugSequence::Arm(XMC4000::create())
+        } else if chip.name.starts_with("CC13") || chip.name.starts_with("CC26") {
+            DebugSequence::Arm(CC13xxCC26xx::create())
         } else {
             // Default to the architecture of the first core, which is okay if
             // there is no mixed architectures.
@@ -198,34 +201,27 @@ impl Target {
 
         tracing::info!("Using sequence {:?}", debug_sequence);
 
+        let ram_regions = chip
+            .memory_map
+            .iter()
+            .filter_map(MemoryRegion::as_ram_region);
         let rtt_scan_regions = match &chip.rtt_scan_ranges {
             Some(ranges) => {
                 // The custom ranges must all be enclosed by exactly one of
                 // the defined RAM regions.
                 for rng in ranges {
-                    let region = chip.memory_map.iter().find(|region| {
-                        if let MemoryRegion::Ram(region) = region {
-                            region.range.contains_range(rng)
-                        } else {
-                            false
-                        }
-                    });
-                    if region.is_none() {
+                    if !ram_regions
+                        .clone()
+                        .any(|region| region.range.contains_range(rng))
+                    {
                         return Err(RegistryError::InvalidRttScanRange(rng.clone()));
                     }
                 }
                 ranges.clone()
             }
             None => {
-                // By default we use all of the RAM ranges from the
-                // memory map.
-                chip.memory_map
-                    .iter()
-                    .filter_map(|region| match region {
-                        MemoryRegion::Ram(region) => Some(region.range.clone()),
-                        _ => None,
-                    })
-                    .collect()
+                // By default we use all of the RAM ranges from the memory map.
+                ram_regions.map(|region| region.range.clone()).collect()
             }
         };
 
@@ -290,12 +286,9 @@ impl Target {
 
     /// Gets the first found [MemoryRegion] that contains the given address
     pub(crate) fn get_memory_region_by_address(&self, address: u64) -> Option<&MemoryRegion> {
-        self.memory_map.iter().find(|region| match region {
-            MemoryRegion::Ram(rr) if rr.range.contains(&address) => true,
-            MemoryRegion::Generic(gr) if gr.range.contains(&address) => true,
-            MemoryRegion::Nvm(nr) if nr.range.contains(&address) => true,
-            _ => false,
-        })
+        self.memory_map
+            .iter()
+            .find(|region| region.contains(address))
     }
 }
 

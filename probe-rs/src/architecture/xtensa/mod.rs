@@ -1,20 +1,24 @@
 //! All the interface bits for Xtensa.
 
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 use probe_rs_target::{Architecture, CoreType, InstructionSet};
 
 use crate::{
     architecture::xtensa::{
-        arch::{Register, SpecialRegister},
-        communication_interface::{DebugCause, IBreakEn},
+        arch::{instruction::Instruction, Register, SpecialRegister},
+        communication_interface::{DebugCause, IBreakEn, XtensaCommunicationInterface},
         registers::{FP, PC, RA, SP, XTENSA_CORE_REGSISTERS},
+        sequences::XtensaDebugSequence,
     },
-    core::registers::{CoreRegisters, RegisterId, RegisterValue},
-    CoreInformation, CoreInterface, CoreRegister, CoreStatus, Error, MemoryInterface,
+    core::{
+        registers::{CoreRegisters, RegisterId, RegisterValue},
+        BreakpointCause,
+    },
+    semihosting::decode_semihosting_syscall,
+    CoreInformation, CoreInterface, CoreRegister, CoreStatus, Error, HaltReason, MemoryInterface,
+    SemihostingCommand,
 };
-
-use self::communication_interface::XtensaCommunicationInterface;
 
 pub(crate) mod arch;
 mod xdm;
@@ -24,27 +28,36 @@ pub(crate) mod registers;
 pub(crate) mod sequences;
 
 #[derive(Debug)]
-/// Flags used to control the [`SpecificCoreState`](crate::core::SpecificCoreState) for Xtensa
-/// architecture.
-pub struct XtensaState {
+/// Xtensa core state.
+pub struct XtensaCoreState {
+    /// Whether hardware breakpoints are enabled.
     breakpoints_enabled: bool,
+
+    /// Whether each hardware breakpoint is set.
+    // 2 is the architectural upper limit. The actual count is stored in
+    // [`communication_interface::XtensaInterfaceState`]
     breakpoint_set: [bool; 2],
 
     /// Whether the PC was written since we last halted. Used to avoid incrementing the PC on
     /// resume.
     pc_written: bool,
+
+    /// The semihosting command that was decoded at the current program counter
+    semihosting_command: Option<SemihostingCommand>,
 }
 
-impl XtensaState {
+impl XtensaCoreState {
     /// Creates a new [`XtensaState`].
     pub(crate) fn new() -> Self {
         Self {
             breakpoints_enabled: false,
             breakpoint_set: [false; 2],
             pc_written: false,
+            semihosting_command: None,
         }
     }
 
+    /// Creates a bitmask of the currently set breakpoints.
     fn breakpoint_mask(&self) -> u32 {
         self.breakpoint_set
             .iter()
@@ -53,22 +66,28 @@ impl XtensaState {
     }
 }
 
-/// An interface to operate Xtensa cores.
+/// An interface to operate an Xtensa core.
 pub struct Xtensa<'probe> {
-    interface: &'probe mut XtensaCommunicationInterface,
-    state: &'probe mut XtensaState,
+    interface: XtensaCommunicationInterface<'probe>,
+    state: &'probe mut XtensaCoreState,
+    sequence: Arc<dyn XtensaDebugSequence>,
 }
 
 impl<'probe> Xtensa<'probe> {
     const IBREAKA_REGS: [SpecialRegister; 2] =
         [SpecialRegister::IBreakA0, SpecialRegister::IBreakA1];
 
-    /// Create a new Xtensa interface.
+    /// Create a new Xtensa interface for a particular core.
     pub fn new(
-        interface: &'probe mut XtensaCommunicationInterface,
-        state: &'probe mut XtensaState,
+        interface: XtensaCommunicationInterface<'probe>,
+        state: &'probe mut XtensaCoreState,
+        sequence: Arc<dyn XtensaDebugSequence>,
     ) -> Self {
-        Self { interface, state }
+        Self {
+            interface,
+            state,
+            sequence,
+        }
     }
 
     fn core_info(&mut self) -> Result<CoreInformation, Error> {
@@ -78,6 +97,7 @@ impl<'probe> Xtensa<'probe> {
     }
 
     fn skip_breakpoint_instruction(&mut self) -> Result<(), Error> {
+        self.state.semihosting_command = None;
         if !self.state.pc_written {
             let debug_cause = self.interface.read_register::<DebugCause>()?;
 
@@ -100,6 +120,49 @@ impl<'probe> Xtensa<'probe> {
         }
 
         Ok(())
+    }
+
+    /// Check if the current breakpoint is a semihosting call
+    // OpenOCD implementation: https://github.com/espressif/openocd-esp32/blob/93dd01511fd13d4a9fb322cd9b600c337becef9e/src/target/espressif/esp_xtensa_semihosting.c#L42-L103
+    fn check_for_semihosting(&mut self) -> Result<Option<SemihostingCommand>, Error> {
+        let pc: u32 = self.read_core_reg(self.program_counter().id)?.try_into()?;
+
+        let mut actual_instructions = [0u8; 3];
+        self.read_8((pc) as u64, &mut actual_instructions)?;
+
+        tracing::debug!(
+            "Semihosting check pc={pc:#x} instructions={0:#08x} {1:#08x} {2:#08x}",
+            actual_instructions[0],
+            actual_instructions[1],
+            actual_instructions[2],
+        );
+
+        let expected_instruction = Instruction::Break(1, 14).to_bytes();
+
+        tracing::debug!(
+            "Expected instructions={0:#08x} {1:#08x} {2:#08x}",
+            expected_instruction[0],
+            expected_instruction[1],
+            expected_instruction[2]
+        );
+
+        if actual_instructions[..3] == expected_instruction.as_slice()[..3] {
+            match self.state.semihosting_command {
+                None => {
+                    // We only want to decode the semihosting command once, since answering it might change some of the registers
+                    let a2: u32 = self.read_core_reg(RegisterId::from(2))?.try_into()?;
+                    let a3: u32 = self.read_core_reg(RegisterId::from(3))?.try_into()?;
+
+                    tracing::info!("Semihosting found pc={pc:#x} a2={a2:#x} a3={a3:#x}");
+                    let cmd = decode_semihosting_syscall(self, a2, a3)?;
+                    self.state.semihosting_command = Some(cmd);
+                    Ok(Some(cmd))
+                }
+                Some(command) => Ok(Some(command)),
+            }
+        } else {
+            Ok(None)
+        }
     }
 }
 
@@ -204,7 +267,20 @@ impl<'probe> CoreInterface for Xtensa<'probe> {
     fn status(&mut self) -> Result<CoreStatus, Error> {
         let status = if self.core_halted()? {
             let debug_cause = self.interface.read_register::<DebugCause>()?;
-            CoreStatus::Halted(debug_cause.halt_reason())
+            let reason =
+                if debug_cause.halt_reason() == HaltReason::Breakpoint(BreakpointCause::Software) {
+                    // The chip initiated this halt, therefore we need to update pc_written state
+                    self.state.pc_written = false;
+                    // Check if the breakpoint is a semihosting call
+                    if let Some(cmd) = self.check_for_semihosting()? {
+                        HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd))
+                    } else {
+                        debug_cause.halt_reason()
+                    }
+                } else {
+                    debug_cause.halt_reason()
+                };
+            CoreStatus::Halted(reason)
         } else {
             CoreStatus::Running
         };
@@ -225,11 +301,17 @@ impl<'probe> CoreInterface for Xtensa<'probe> {
     }
 
     fn reset(&mut self) -> Result<(), Error> {
-        Ok(self.interface.reset()?)
+        self.state.semihosting_command = None;
+        self.sequence
+            .reset_system_and_halt(&mut self.interface, Duration::from_millis(500))?;
+
+        self.run()
     }
 
     fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
-        self.interface.reset_and_halt(timeout)?;
+        self.state.semihosting_command = None;
+        self.sequence
+            .reset_system_and_halt(&mut self.interface, timeout)?;
 
         self.core_info()
     }
@@ -374,17 +456,18 @@ impl<'probe> CoreInterface for Xtensa<'probe> {
     }
 
     fn reset_catch_set(&mut self) -> Result<(), Error> {
-        self.interface.xdm.halt_on_reset(true);
-        Ok(())
+        Err(Error::NotImplemented("reset_catch_set"))
     }
 
     fn reset_catch_clear(&mut self) -> Result<(), Error> {
-        self.interface.xdm.halt_on_reset(false);
-        Ok(())
+        Err(Error::NotImplemented("reset_catch_clear"))
     }
 
     fn debug_core_stop(&mut self) -> Result<(), Error> {
-        self.interface.leave_ocd_mode()?;
+        self.interface.restore_registers()?;
+        self.interface.resume()?;
+        self.interface.xdm.leave_ocd_mode()?;
+        tracing::info!("Left OCD mode");
         Ok(())
     }
 }

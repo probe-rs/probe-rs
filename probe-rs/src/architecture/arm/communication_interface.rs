@@ -4,8 +4,8 @@ use super::{
         BASE, BASE2, CFG, CSW, IDR,
     },
     dp::{
-        Abort, Ctrl, DebugPortError, DebugPortVersion, DpAccess, Select, BASEPTR0, BASEPTR1, DPIDR,
-        DPIDR1,
+        Abort, Ctrl, DebugPortError, DebugPortId, DebugPortVersion, DpAccess, Select, BASEPTR0,
+        BASEPTR1, DPIDR, DPIDR1,
     },
     memory::{
         adi_v5_memory_interface::{ADIMemoryInterface, ArmProbe},
@@ -134,7 +134,9 @@ pub trait UninitializedArmProbe: SwdSequence + Debug {
     fn close(self: Box<Self>) -> Probe;
 }
 
-pub trait ArmDebugState {}
+pub trait ArmDebugState {
+    fn disconnect(&mut self, _probe: &mut dyn DapProbe) {}
+}
 
 #[derive(Debug)]
 pub struct Uninitialized {
@@ -145,16 +147,20 @@ pub struct Uninitialized {
 pub struct Initialized {
     /// Currently selected debug port. For targets without multidrop,
     /// this will always be the single, default debug port in the system.
-    pub(crate) current_dp: Option<DpAddress>,
+    pub(crate) current_dp: DpAddress,
     dps: HashMap<DpAddress, DpState>,
     use_overrun_detect: bool,
     sequence: Arc<dyn ArmDebugSequence>,
 }
 
 impl Initialized {
-    pub fn new(sequence: Arc<dyn ArmDebugSequence>, use_overrun_detect: bool) -> Self {
+    pub fn new(
+        sequence: Arc<dyn ArmDebugSequence>,
+        current_dp: DpAddress,
+        use_overrun_detect: bool,
+    ) -> Self {
         Self {
-            current_dp: None,
+            current_dp,
             dps: HashMap::new(),
             use_overrun_detect,
             sequence,
@@ -164,7 +170,26 @@ impl Initialized {
 
 impl ArmDebugState for Uninitialized {}
 
-impl ArmDebugState for Initialized {}
+impl ArmDebugState for Initialized {
+    fn disconnect(&mut self, probe: &mut dyn DapProbe) {
+        let stop_span = tracing::debug_span!("debug_port_stop").entered();
+
+        // Stop the current DP, which may not be one of the known ones (i.e. RP2040 rescue DP).
+        self.sequence.debug_port_stop(probe, self.current_dp).ok();
+
+        // Stop all intentionally-connected DPs.
+        for dp in self.dps.keys() {
+            // Try to select the debug port we want to shut down.
+            if self.sequence.debug_port_connect(probe, *dp).is_ok() {
+                self.sequence.debug_port_stop(probe, *dp).ok();
+            } else {
+                tracing::warn!("Failed to stop DP {:x?}", dp);
+            }
+        }
+        probe.raw_flush().ok();
+        drop(stop_span);
+    }
+}
 
 #[derive(Debug)]
 pub(crate) struct DpState {
@@ -328,8 +353,31 @@ pub struct MemoryApInformation {
 /// (E.g. CMSIS-DAP and J-Link support this, ST-Link does not)
 #[derive(Debug)]
 pub struct ArmCommunicationInterface<S: ArmDebugState> {
-    probe: Box<dyn DapProbe>,
+    probe: Option<Box<dyn DapProbe>>,
     state: S,
+}
+
+impl<S: ArmDebugState> Drop for ArmCommunicationInterface<S> {
+    fn drop(&mut self) {
+        if let Some(mut probe) = self.probe.take() {
+            self.state.disconnect(&mut *probe);
+        }
+    }
+}
+
+impl<S: ArmDebugState> ArmCommunicationInterface<S> {
+    fn probe_mut(&mut self) -> &mut dyn DapProbe {
+        // Unwrap: Probe is only taken when the struct is dropped
+        self.probe.as_deref_mut().expect("ArmCommunicationInterface is in an inconsistent state. This is a bug, please report it.")
+    }
+
+    fn close(mut self) -> Probe {
+        let mut probe = self.probe.take().expect("ArmCommunicationInterface is in an inconsistent state. This is a bug, please report it.");
+
+        self.state.disconnect(&mut *probe);
+
+        Probe::from_attached_probe(RawDapAccess::into_probe(probe))
+    }
 }
 
 /// Helper trait for probes which offer access to ARM DAP (Debug Access Port).
@@ -363,20 +411,18 @@ impl ArmProbeInterface for ArmCommunicationInterface<Initialized> {
         ArmCommunicationInterface::num_access_ports(self, dp)
     }
 
-    fn close(self: Box<Self>) -> Probe {
-        Probe::from_attached_probe(RawDapAccess::into_probe(self.probe))
+    fn current_debug_port(&self) -> DpAddress {
+        self.state.current_dp
     }
 
-    fn current_debug_port(&self) -> DpAddress {
-        self.state
-            .current_dp
-            .expect("A DpAddress is selected. This is a bug, please report it.")
+    fn close(self: Box<Self>) -> Probe {
+        ArmCommunicationInterface::close(*self)
     }
 }
 
 impl<S: ArmDebugState> SwdSequence for ArmCommunicationInterface<S> {
     fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
-        self.probe.swj_sequence(bit_len, bits)?;
+        self.probe_mut().swj_sequence(bit_len, bits)?;
 
         Ok(())
     }
@@ -387,7 +433,7 @@ impl<S: ArmDebugState> SwdSequence for ArmCommunicationInterface<S> {
         pin_select: u32,
         pin_wait: u32,
     ) -> Result<u32, DebugProbeError> {
-        self.probe.swj_pins(pin_out, pin_select, pin_wait)
+        self.probe_mut().swj_pins(pin_out, pin_select, pin_wait)
     }
 }
 
@@ -395,51 +441,106 @@ impl ArmCommunicationInterface<Uninitialized> {
     pub(crate) fn new(probe: Box<dyn DapProbe>, use_overrun_detect: bool) -> Self {
         let state = Uninitialized { use_overrun_detect };
 
-        Self { probe, state }
+        Self {
+            probe: Some(probe),
+            state,
+        }
     }
 }
 
 impl UninitializedArmProbe for ArmCommunicationInterface<Uninitialized> {
     fn initialize(
-        self: Box<Self>,
+        mut self: Box<Self>,
         sequence: Arc<dyn ArmDebugSequence>,
         dp: DpAddress,
     ) -> Result<Box<dyn ArmProbeInterface>, (Box<dyn UninitializedArmProbe>, ProbeRsError)> {
         let use_overrun_detect = self.state.use_overrun_detect;
-        let mut initialized_interface = ArmCommunicationInterface {
-            probe: self.probe,
-            state: Initialized::new(sequence, use_overrun_detect),
-        };
+        let probe = self.probe.take().expect("ArmCommunicationInterface is in an inconsistent state. This is a bug, please report it.");
 
-        match initialized_interface.select_dp(dp) {
-            Ok(_) => Ok(Box::new(initialized_interface) as Box<_>),
-            Err(err) => Err((
-                Box::new(ArmCommunicationInterface::new(
-                    initialized_interface.probe,
-                    use_overrun_detect,
-                )) as Box<_>,
+        match ArmCommunicationInterface::<Initialized>::try_setup(
+            probe,
+            sequence,
+            dp,
+            use_overrun_detect,
+        ) {
+            Ok(initialized) => Ok(Box::new(initialized)),
+            Err((probe, err)) => Err((
+                Box::new(ArmCommunicationInterface::new(probe, use_overrun_detect)),
                 ProbeRsError::Arm(err),
             )),
         }
     }
 
     fn close(self: Box<Self>) -> Probe {
-        Probe::from_attached_probe(RawDapAccess::into_probe(self.probe))
-    }
-}
-
-impl<S: ArmDebugState> ArmCommunicationInterface<S> {
-    fn _get_debug_port_version(&mut self) -> Result<DebugPortVersion, ArmError> {
-        let dpidr = DPIDR(self.probe.raw_read_register(PortType::DebugPort, 0)?);
-
-        Ok(DebugPortVersion::from(dpidr.version()))
+        ArmCommunicationInterface::close(*self)
     }
 }
 
 impl<'interface> ArmCommunicationInterface<Initialized> {
+    /// Set up and start the debug port with brand-new state.
+    fn try_setup(
+        mut probe: Box<dyn DapProbe>,
+        sequence: Arc<dyn ArmDebugSequence>,
+        dp: DpAddress,
+        use_overrun_detect: bool,
+    ) -> Result<Self, (Box<dyn DapProbe>, ArmError)> {
+        if let Err(err) = tracing::debug_span!("debug_port_setup")
+            .in_scope(|| sequence.debug_port_setup(&mut *probe, dp))
+        {
+            return Err((probe, err));
+        }
+
+        let mut initializing = Self {
+            probe: Some(probe),
+            state: Initialized::new(sequence, dp, use_overrun_detect),
+        };
+
+        if let Err(err) = initializing.select_dp(dp) {
+            return Err((initializing.probe.take().unwrap(), err));
+        }
+
+        Ok(initializing)
+    }
+
+    /// Reinitialize the communication interface (in place).
+    ///
+    /// Some chip-specific reset sequences may disable the debug port. `reinitialize` allows
+    /// a debug sequence to re-initialize the debug port, staying true to the `Initialized`
+    /// type state.
+    ///
+    /// If you're invoking this from a debug sequence, know that `reinitialize` will call back
+    /// onto you! Specifically, it will invoke some sequence of `debug_port_*` sequences with
+    /// varying internal state. If you're not prepared for this, you might recurse.
+    ///
+    /// `reinitialize` does handle `debug_core_start` to re-initialize any core's debugging.
+    /// If you're a chip-specific debug sequence, you're expected to handle this yourself.
+    pub(crate) fn reinitialize(&mut self) -> Result<(), ArmError> {
+        // Simulate the drop / close of the initialized communication interface.
+        let mut probe = self.probe.take().expect("ArmCommunicationInterface is in an inconsistent state. This is a bug, please report it.");
+        self.state.disconnect(&mut *probe);
+
+        match Self::try_setup(
+            probe,
+            self.state.sequence.clone(),
+            self.current_debug_port(),
+            self.state.use_overrun_detect,
+        ) {
+            Ok(reinitialized) => {
+                let _ = std::mem::replace(self, reinitialized);
+                // Dropping the original self. Since we've taken the probe, we've ensured
+                // that the drop effects don't happen again.
+                Ok(())
+            }
+            Err((probe, err)) => {
+                self.probe.replace(probe);
+                Err(err)
+            }
+        }
+    }
+
     /// Inform the probe of the [`CoreStatus`] of the chip attached to the probe.
     pub fn core_status_notification(&mut self, state: CoreStatus) {
-        self.probe.core_status_notification(state).ok();
+        self.probe_mut().core_status_notification(state).ok();
     }
 
     /// Tries to obtain a memory interface which can be used to read memory from ARM targets.
@@ -464,25 +565,26 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
     }
 
     fn select_dp(&mut self, dp: DpAddress) -> Result<&mut DpState, ArmError> {
-        if self
-            .state
-            .current_dp
-            .map(|current| current != dp)
-            .unwrap_or(true)
-        {
+        let mut switched_dp = false;
+
+        let sequence = self.state.sequence.clone();
+
+        if self.state.current_dp != dp {
             tracing::debug!("Selecting DP {:x?}", dp);
 
-            self.probe.raw_flush()?;
+            switched_dp = true;
+
+            self.probe_mut().raw_flush()?;
 
             // Try to switch to the new DP.
-            if let Err(e) = self.state.sequence.debug_port_connect(&mut *self.probe, dp) {
+            if let Err(e) = sequence.debug_port_connect(&mut *self.probe_mut(), dp) {
                 tracing::warn!("Failed to switch to DP {:x?}: {}", dp, e);
 
                 // Try the more involved debug_port_setup sequence, which also handles dormant mode.
-                self.state.sequence.debug_port_setup(&mut *self.probe, dp)?;
+                sequence.debug_port_setup(&mut *self.probe_mut(), dp)?;
             }
 
-            self.state.current_dp = Some(dp);
+            self.state.current_dp = dp;
         }
 
         // If we don't have  a state for this DP, this means that we haven't run the necessary init sequence yet.
@@ -506,8 +608,8 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
                 self.write_dp_register(dp, ctrl_reg)?;
             }
 
-            let idr = self.read_dp_register::<DPIDR>(dp)?;
-            if idr.version() == 3 {
+            let idr: DebugPortId = self.read_dp_register::<DPIDR>(dp)?.into();
+            if idr.version == DebugPortVersion::DPv3 {
                 let idr1: DPIDR1 = self.read_dp_register(dp)?;
                 let base_ptr0: BASEPTR0 = self.read_dp_register(dp)?;
                 let base_ptr1: BASEPTR1 = self.read_dp_register(dp)?;
@@ -541,6 +643,12 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
                 state.ap_information.push(ap_state);
             }
             drop(ap_span);
+        } else if switched_dp {
+            let sequence = self.state.sequence.clone();
+
+            let start_span = tracing::debug_span!("debug_port_start").entered();
+            sequence.debug_port_start(self, dp)?;
+            drop(start_span);
         }
 
         // note(unwrap): Entry gets inserted above
@@ -647,7 +755,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
 
 impl FlushableArmAccess for ArmCommunicationInterface<Initialized> {
     fn flush(&mut self) -> Result<(), ArmError> {
-        self.probe.raw_flush()
+        self.probe_mut().raw_flush()
     }
 
     fn get_arm_communication_interface(
@@ -659,21 +767,21 @@ impl FlushableArmAccess for ArmCommunicationInterface<Initialized> {
 
 impl SwoAccess for ArmCommunicationInterface<Initialized> {
     fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ArmError> {
-        match self.probe.get_swo_interface_mut() {
+        match self.probe_mut().get_swo_interface_mut() {
             Some(interface) => interface.enable_swo(config),
             None => Err(ArmError::ArchitectureRequired(&["ARMv7", "ARMv8"])),
         }
     }
 
     fn disable_swo(&mut self) -> Result<(), ArmError> {
-        match self.probe.get_swo_interface_mut() {
+        match self.probe_mut().get_swo_interface_mut() {
             Some(interface) => interface.disable_swo(),
             None => Err(ArmError::ArchitectureRequired(&["ARMv7", "ARMv8"])),
         }
     }
 
     fn read_swo_timeout(&mut self, timeout: Duration) -> Result<Vec<u8>, ArmError> {
-        match self.probe.get_swo_interface_mut() {
+        match self.probe_mut().get_swo_interface_mut() {
             Some(interface) => interface.read_swo_timeout(timeout),
             None => Err(ArmError::ArchitectureRequired(&["ARMv7", "ARMv8"])),
         }
@@ -683,7 +791,9 @@ impl SwoAccess for ArmCommunicationInterface<Initialized> {
 impl DapAccess for ArmCommunicationInterface<Initialized> {
     fn read_raw_dp_register(&mut self, dp: DpAddress, address: u8) -> Result<u32, ArmError> {
         self.select_dp_and_dp_bank(dp, address)?;
-        let result = self.probe.raw_read_register(PortType::DebugPort, address)?;
+        let result = self
+            .probe_mut()
+            .raw_read_register(PortType::DebugPort, address & 0xf)?;
         Ok(result)
     }
 
@@ -694,7 +804,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
         value: u32,
     ) -> Result<(), ArmError> {
         self.select_dp_and_dp_bank(dp, address)?;
-        self.probe
+        self.probe_mut()
             .raw_write_register(PortType::DebugPort, address, value)?;
         Ok(())
     }
@@ -707,8 +817,8 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
         self.select_ap_and_ap_bank(ap, address)?;
 
         let result = self
-            .probe
-            .raw_read_register(PortType::AccessPort, address)?;
+            .probe_mut()
+            .raw_read_register(PortType::AccessPort, address & 0xf)?;
 
         Ok(result)
     }
@@ -721,7 +831,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
     ) -> Result<(), ArmError> {
         self.select_ap_and_ap_bank(ap, address)?;
 
-        self.probe
+        self.probe_mut()
             .raw_read_block(PortType::AccessPort, address, values)?;
         Ok(())
     }
@@ -734,7 +844,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
     ) -> Result<(), ArmError> {
         self.select_ap_and_ap_bank(ap, address)?;
 
-        self.probe
+        self.probe_mut()
             .raw_write_register(PortType::AccessPort, address, value)?;
 
         Ok(())
@@ -748,7 +858,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
     ) -> Result<(), ArmError> {
         self.select_ap_and_ap_bank(ap, address)?;
 
-        self.probe
+        self.probe_mut()
             .raw_write_block(PortType::AccessPort, address, values)?;
         Ok(())
     }

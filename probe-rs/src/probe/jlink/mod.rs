@@ -29,25 +29,26 @@ use self::interface::{Interface, Interfaces};
 use self::speed::SpeedConfig;
 use self::swo::SwoMode;
 use crate::architecture::arm::{ArmError, Pins};
-use crate::architecture::riscv::communication_interface::RiscvError;
-use crate::architecture::riscv::dtm::jtag_dtm::JtagDtm;
-use crate::architecture::xtensa::communication_interface::XtensaCommunicationInterface;
+use crate::architecture::xtensa::communication_interface::{
+    XtensaCommunicationInterface, XtensaDebugInterfaceState,
+};
 use crate::probe::common::{JtagDriverState, RawJtagIo};
 use crate::probe::jlink::bits::IteratorExt;
 use crate::probe::usb_util::InterfaceExt;
 use crate::probe::JTAGAccess;
-use crate::probe::ProbeFactory;
 use crate::{
     architecture::{
         arm::{
-            communication_interface::DapProbe, communication_interface::UninitializedArmProbe,
-            swo::SwoConfig, ArmCommunicationInterface, SwoAccess,
+            communication_interface::{DapProbe, UninitializedArmProbe},
+            swo::SwoConfig,
+            ArmCommunicationInterface, SwoAccess,
         },
-        riscv::communication_interface::RiscvCommunicationInterface,
+        riscv::{communication_interface::RiscvInterfaceBuilder, dtm::jtag_dtm::JtagDtmBuilder},
     },
     probe::{
         arm_debug_interface::{ProbeStatistics, RawProtocolIo, SwdSettings},
-        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, WireProtocol,
+        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeFactory,
+        WireProtocol,
     },
 };
 
@@ -362,7 +363,7 @@ pub struct JLink {
 
 impl fmt::Debug for JLink {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("JayLink").finish()
+        f.debug_struct("JLink").finish()
     }
 }
 
@@ -537,7 +538,7 @@ impl JLink {
 
     /// Selects the interface to use for talking to the target MCU.
     ///
-    /// Switching interfaces will reset the configured transfer speed, so [`JayLink::set_speed`]
+    /// Switching interfaces will reset the configured transfer speed, so [`JLink::set_speed`]
     /// needs to be called *after* `select_interface`.
     ///
     /// This requires the probe to support [`Capability::SelectIf`].
@@ -775,6 +776,15 @@ impl JLink {
 
         Ok(BitIter::new(&buf[..num_bytes], dir_bit_count).collect())
     }
+
+    /// Enable/Disable the Target Power Supply of the probe.
+    ///
+    /// This is not available on all probes.
+    /// This is avialable on some J-Links
+    pub fn set_kickstart_power(&mut self, enable: bool) -> Result<(), JlinkError> {
+        self.require_capability(Capability::SetKsPower)?;
+        self.write_cmd(&[Command::SetKsPower as u8, if enable { 1 } else { 0 }])
+    }
 }
 
 impl DebugProbe for JLink {
@@ -883,14 +893,8 @@ impl DebugProbe for JLink {
                 tracing::debug!("Resetting JTAG chain using trst");
                 self.reset_trst()?;
 
-                let chain = self.scan_chain()?;
-                tracing::info!("Found {} TAPs on reset scan", chain.len());
-
-                if chain.len() > 1 {
-                    tracing::info!("More than one TAP detected, defaulting to tap0");
-                }
-
-                self.select_target(&chain, 0)?;
+                self.scan_chain()?;
+                self.select_target(0)?;
             }
             WireProtocol::Swd => {
                 // Attaching is handled in sequence
@@ -904,14 +908,32 @@ impl DebugProbe for JLink {
         Ok(())
     }
 
+    fn select_jtag_tap(&mut self, index: usize) -> Result<(), DebugProbeError> {
+        self.select_target(index)
+    }
+
+    fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
+        match self.active_protocol() {
+            Some(WireProtocol::Jtag) => {
+                if let Some(ref scan_chain) = self.jtag_state.expected_scan_chain {
+                    Ok(scan_chain)
+                } else {
+                    Ok(&[])
+                }
+            }
+            _ => Err(DebugProbeError::InterfaceNotAvailable {
+                interface_name: "JTAG",
+            }),
+        }
+    }
+
     fn detach(&mut self) -> Result<(), crate::Error> {
         Ok(())
     }
 
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
-        Err(DebugProbeError::NotImplemented {
-            function_name: "target_reset",
-        })
+        self.write_cmd(&[Command::ResetTarget as u8])?;
+        Ok(())
     }
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
@@ -924,29 +946,16 @@ impl DebugProbe for JLink {
         Ok(())
     }
 
-    fn try_get_riscv_interface(
-        mut self: Box<Self>,
-    ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, RiscvError)> {
+    fn try_get_riscv_interface_builder<'probe>(
+        &'probe mut self,
+    ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, DebugProbeError> {
         if self.supported_protocols.contains(&WireProtocol::Jtag) {
-            if let Err(e) = self.select_protocol(WireProtocol::Jtag) {
-                return Err((self, e.into()));
-            }
-            let jtag_dtm = match JtagDtm::new(self) {
-                Ok(jtag_dtm) => Box::new(jtag_dtm),
-                Err((access, err)) => return Err((access.into_probe(), err)),
-            };
-            match RiscvCommunicationInterface::new(jtag_dtm) {
-                Ok(interface) => Ok(interface),
-                Err((probe, err)) => Err((probe.into_probe(), err)),
-            }
+            self.select_protocol(WireProtocol::Jtag)?;
+            Ok(Box::new(JtagDtmBuilder::new(self)))
         } else {
-            Err((
-                self,
-                DebugProbeError::InterfaceNotAvailable {
-                    interface_name: "JTAG",
-                }
-                .into(),
-            ))
+            Err(DebugProbeError::InterfaceNotAvailable {
+                interface_name: "JTAG",
+            })
         }
     }
 
@@ -988,29 +997,26 @@ impl DebugProbe for JLink {
         Ok(Some((self.read_target_voltage()? as f32) / 1000f32))
     }
 
-    fn try_get_xtensa_interface(
-        mut self: Box<Self>,
-    ) -> Result<XtensaCommunicationInterface, (Box<dyn DebugProbe>, DebugProbeError)> {
+    fn try_get_xtensa_interface<'probe>(
+        &'probe mut self,
+        state: &'probe mut XtensaDebugInterfaceState,
+    ) -> Result<XtensaCommunicationInterface<'probe>, DebugProbeError> {
         if self.supported_protocols.contains(&WireProtocol::Jtag) {
-            if let Err(e) = self.select_protocol(WireProtocol::Jtag) {
-                return Err((self, e));
-            }
-            match XtensaCommunicationInterface::new(self) {
-                Ok(interface) => Ok(interface),
-                Err((probe, err)) => Err((probe.into_probe(), err)),
-            }
+            self.select_protocol(WireProtocol::Jtag)?;
+            Ok(XtensaCommunicationInterface::new(self, state))
         } else {
-            Err((
-                self,
-                DebugProbeError::InterfaceNotAvailable {
-                    interface_name: "JTAG",
-                },
-            ))
+            Err(DebugProbeError::InterfaceNotAvailable {
+                interface_name: "JTAG",
+            })
         }
     }
 
     fn has_xtensa_interface(&self) -> bool {
         self.supported_protocols.contains(&WireProtocol::Jtag)
+    }
+
+    fn try_into_jlink(&mut self) -> Result<&mut JLink, DebugProbeError> {
+        Ok(self)
     }
 }
 
@@ -1200,12 +1206,7 @@ fn list_jlink_devices() -> Vec<DebugProbeInfo> {
         .filter(is_jlink)
         .map(|info| {
             DebugProbeInfo::new(
-                format!(
-                    "J-Link{}",
-                    info.product_string()
-                        .map(|p| format!(" ({p})"))
-                        .unwrap_or_default()
-                ),
+                info.product_string().unwrap_or("J-Link").to_string(),
                 info.vendor_id(),
                 info.product_id(),
                 info.serial_number().map(|s| s.to_string()),

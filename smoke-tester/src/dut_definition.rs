@@ -1,11 +1,13 @@
-//! # DUT Defintions
+//! # DUT Definitions
 //!
 //! This module handles the definition of the different devices under test (DUTs),
 //! which are used by the tester.
 
-use anyhow::{bail, ensure, Context, Result};
+use miette::IntoDiagnostic;
+use miette::Result;
+use miette::WrapErr;
 use probe_rs::{
-    config::{get_target_by_name, search_chips},
+    config::get_target_by_name,
     probe::{list::Lister, DebugProbeSelector, Probe},
     Target,
 };
@@ -21,6 +23,7 @@ struct RawDutDefinition {
     /// Selector for the debug probe to be used.
     /// See [probe_rs::probe::DebugProbeSelector].
     probe_selector: String,
+    probe_speed: Option<u32>,
 
     flash_test_binary: Option<String>,
 
@@ -31,21 +34,21 @@ struct RawDutDefinition {
 impl RawDutDefinition {
     /// Try to parse a DUT definition from a file.
     fn from_file(file: &Path) -> Result<Self> {
-        let file_content = std::fs::read_to_string(file)?;
+        let file_content = std::fs::read_to_string(file).into_diagnostic()?;
 
-        let definition: RawDutDefinition = toml::from_str(&file_content)?;
+        let definition: RawDutDefinition = toml::from_str(&file_content).into_diagnostic()?;
 
         Ok(definition)
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum DefinitionSource {
     File(PathBuf),
     Cli,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct DutDefinition {
     pub chip: Target,
 
@@ -55,6 +58,11 @@ pub struct DutDefinition {
     /// If not set, any detected probe will be used.
     /// If multiple probes are found, an error is returned.
     pub probe_selector: Option<DebugProbeSelector>,
+
+    /// Probe speed in kHz.
+    ///
+    /// If not set, the default speed of the probe will be used.
+    pub probe_speed: Option<u32>,
 
     /// Path to a binary which can be used to test
     /// flashing for the DUT.
@@ -69,26 +77,28 @@ pub struct DutDefinition {
 }
 
 impl DutDefinition {
-    pub fn new(chip: &str, probe: &str) -> Result<Self> {
+    pub fn new(chip: &str, probe: &str) -> miette::Result<Self> {
         let target = lookup_unique_target(chip)?;
 
-        let selector: DebugProbeSelector = probe.parse()?;
+        let selector: DebugProbeSelector = probe.parse().into_diagnostic()?;
 
         Ok(DutDefinition {
             chip: target,
             probe_selector: Some(selector),
+            probe_speed: None,
             flash_test_binary: None,
             source: DefinitionSource::Cli,
             reset_connected: false,
         })
     }
 
-    pub fn autodetect_probe(chip: &str) -> Result<Self> {
+    pub fn autodetect_probe(chip: &str) -> miette::Result<Self> {
         let target = lookup_unique_target(chip)?;
 
         Ok(DutDefinition {
             chip: target,
             probe_selector: None,
+            probe_speed: None,
             flash_test_binary: None,
             source: DefinitionSource::Cli,
             reset_connected: false,
@@ -106,7 +116,7 @@ impl DutDefinition {
     pub fn collect(directory: impl AsRef<Path>) -> Result<Vec<DutDefinition>> {
         let directory = directory.as_ref();
 
-        ensure!(
+        miette::ensure!(
             directory.is_dir(),
             "Unable to collect target definitions from path '{}'. Path is not a directory.",
             directory.display()
@@ -114,8 +124,8 @@ impl DutDefinition {
 
         let mut definitions = Vec::new();
 
-        for file in directory.read_dir()? {
-            let file_path = file?.path();
+        for file in directory.read_dir().into_diagnostic()? {
+            let file_path = file.into_diagnostic()?.path();
 
             // Ignore files without .toml ending
             if file_path.extension() != Some(OsStr::new("toml")) {
@@ -126,8 +136,9 @@ impl DutDefinition {
                 continue;
             }
 
-            let definition = DutDefinition::from_file(&file_path)
-                .with_context(|| format!("Failed to parse definition '{}'", file_path.display()))?;
+            let definition = DutDefinition::from_file(&file_path).wrap_err_with(|| {
+                format!("Failed to parse definition '{}'", file_path.display())
+            })?;
 
             definitions.push(definition);
         }
@@ -145,33 +156,34 @@ impl DutDefinition {
     pub fn open_probe(&self) -> Result<Probe> {
         let lister = Lister::new();
 
-        match &self.probe_selector {
-            Some(selector) => {
-                let probe = lister
-                    .open(selector)
-                    .with_context(|| format!("Failed to open probe with selector {selector}"))?;
-
-                Ok(probe)
-            }
+        let mut probe = match &self.probe_selector {
+            Some(selector) => lister
+                .open(selector)
+                .into_diagnostic()
+                .wrap_err_with(|| format!("Failed to open probe with selector {selector}"))?,
             None => {
                 let probes = lister.list_all();
 
-                ensure!(!probes.is_empty(), "No probes detected!");
+                miette::ensure!(!probes.is_empty(), "No probes detected!");
 
-                ensure!(
+                miette::ensure!(
                     probes.len() < 2,
                     "Multiple probes detected. Specify which probe to use using the '--probe' argument."
                 );
 
-                let probe = probes[0].open()?;
-
-                Ok(probe)
+                probes[0].open().into_diagnostic()?
             }
+        };
+
+        if let Some(probe_speed) = self.probe_speed {
+            probe.set_speed(probe_speed).into_diagnostic()?;
         }
+
+        Ok(probe)
     }
 
     fn from_raw_definition(raw_definition: RawDutDefinition, source_file: &Path) -> Result<Self> {
-        let probe_selector = Some(raw_definition.probe_selector.try_into()?);
+        let probe_selector = Some(raw_definition.probe_selector.try_into().into_diagnostic()?);
 
         let target = lookup_unique_target(&raw_definition.chip)?;
 
@@ -181,6 +193,7 @@ impl DutDefinition {
 
         Ok(Self {
             chip: target,
+            probe_speed: raw_definition.probe_speed,
             probe_selector,
             flash_test_binary,
             source: DefinitionSource::File(source_file.to_owned()),
@@ -190,35 +203,33 @@ impl DutDefinition {
 }
 
 fn lookup_unique_target(chip: &str) -> Result<Target> {
-    let targets = search_chips(chip)?;
+    let target = get_target_by_name(chip).into_diagnostic()?;
 
-    ensure!(
-        !targets.is_empty(),
-        "Unable to find any chip matching {}",
-        &chip
-    );
-
-    if targets.len() > 1 {
-        let target_string = String::from(chip).to_ascii_uppercase();
-        if targets.contains(&target_string) {
-            // Multiple chips returned, but one was an exact match so we're using it
-            let target = get_target_by_name(target_string)?;
-            return Ok(target);
-        } else {
-            eprintln!(
-                "For tests, chip definition must be exact. Chip name {} matches multiple chips:",
-                &chip
-            );
-
-            for target in &targets {
-                eprintln!("\t{target}");
-            }
-
-            bail!("Chip definition does not match exactly.");
-        }
+    if !target.name.eq_ignore_ascii_case(chip) {
+        miette::bail!("Chip definition does not match exactly, the chip is specified as {}, but the entry in the registry is {}", chip, target.name);
     }
 
-    let target = get_target_by_name(&targets[0])?;
-
     Ok(target)
+}
+
+#[test]
+fn find_unique_target() {
+    let target = lookup_unique_target("nRF52840_xxAA").unwrap();
+
+    assert_eq!(target.name, "nRF52840_xxAA");
+}
+
+#[test]
+fn find_unique_target_failure() {
+    // this should fail because the full name is nRF52840_xxAA
+    lookup_unique_target("nRF52840_xx").unwrap_err();
+}
+
+#[test]
+fn find_unique_target_with_non_unique_prefix() {
+    // There is also a chip named "esp32c6_lp" in the registry, this ensures
+    // that looking up just "esp32c6" still works.
+    let target = lookup_unique_target("esp32c6").unwrap();
+
+    assert_eq!(target.name, "esp32c6");
 }

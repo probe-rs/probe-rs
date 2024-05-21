@@ -1,6 +1,6 @@
 use probe_rs::debug::{debug_info::DebugInfo, ColumnType, SourceLocation};
 use std::path::PathBuf;
-use typed_path::UnixPathBuf;
+use typed_path::{TypedPath, UnixPathBuf};
 
 const TEST_DATA: [(u64, u64, ColumnType); 8] = [
     // Target address, line, column
@@ -111,4 +111,16 @@ fn find_non_existing_unit_by_path() {
     assert!(debug_info
         .get_breakpoint_location(&unit_path, 14, None)
         .is_err());
+}
+
+#[test]
+fn regression_pr2324() {
+    let path = "C:\\_Hobby\\probe-rs-test-c-firmware/Atmel/hpl/core/hpl_init.c";
+
+    let di = DebugInfo::from_file("tests/debug-unwind-tests/atsamd51p19a.elf").unwrap();
+    let path = TypedPath::derive(path).to_path_buf();
+
+    let addr = di.get_breakpoint_location(&path, 58, None).unwrap();
+
+    assert_eq!(addr.address, 0x2e4);
 }

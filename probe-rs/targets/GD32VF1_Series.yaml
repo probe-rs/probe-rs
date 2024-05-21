@@ -37,7 +37,6 @@ flash_algorithms:
     pc_uninit: 298
     pc_program_page: 220
     pc_erase_sector: 0
-    pc_erase_all: ~
     data_section_offset: 312
     flash_properties:
       address_range:

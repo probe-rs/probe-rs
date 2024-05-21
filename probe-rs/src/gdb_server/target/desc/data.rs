@@ -200,7 +200,7 @@ impl TargetDescription {
     pub fn update_register_name(&mut self, old_name: &'static str, new_name: &'static str) {
         for reg in self.regs.iter_mut() {
             if reg.name == old_name {
-                reg.name = new_name.to_owned();
+                new_name.clone_into(&mut reg.name);
             }
         }
     }

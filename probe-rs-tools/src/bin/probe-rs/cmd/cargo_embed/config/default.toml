@@ -1,0 +1,102 @@
+[default.probe]
+# USB vendor ID
+# usb_vid = "1337"
+# USB product ID
+# usb_pid = "1337"
+# Serial number
+# serial = "12345678"
+# The protocol to be used for communicating with the target.
+protocol = "Swd"
+# The speed in kHz of the data link to the target.
+# speed = 1337
+
+[default.flashing]
+# Whether or not the target should be flashed.
+enabled = true
+# Whether or not bytes erased but not rewritten with data from the ELF
+# should be restored with their contents before erasing.
+restore_unwritten_bytes = false
+# The path where an SVG of the assembled flash layout should be written to.
+# flash_layout_output_path = "out.svg"
+# Triggers a full chip erase instead of a page by page erase.
+do_chip_erase = false
+# Whether to disable double buffering
+disable_double_buffering = false
+# Whether to verify flash contents after downloading
+verify = false
+
+[default.reset]
+# Whether or not the target should be reset.
+# When flashing is enabled as well, the target will be reset after flashing.
+enabled = true
+# Whether or not the target should be halted after reset.
+halt_afterwards = false
+
+[default.general]
+# The chip name of the chip to be debugged.
+# chip = "name"
+# A list of chip descriptions to be loaded during runtime.
+chip_descriptions = []
+# The default log level to be used. Possible values are one of:
+#   "OFF", "ERROR", "WARN", "INFO", "DEBUG", "TRACE"
+log_level = "WARN"
+# Use this flag to assert the nreset & ntrst pins during attaching the probe to the chip.
+connect_under_reset = false
+
+[default.rtt]
+# Whether or not an RTTUI should be opened after flashing.
+enabled = false
+# The duration in ms for which the logger should retry to attach to RTT.
+timeout = 3000
+# Whether to save rtt history buffer on exit.
+log_enabled = false
+# Where to save rtt history buffer relative to manifest path.
+log_path = "./logs"
+# A list of up (target -> host) channel settings associations to be displayed. If left empty, all channels are displayed.
+# object key  - RTT channel identifier number
+# mode     (Optional) - RTT operation mode. Describes how the target handles RTT outputs that won't
+#                       fit in the buffer. If left unset, the firmware will determine the default
+#                       for each RTT up channel.
+#              * NoBlockSkip - Skip writing the data completely if it doesn't fit in its
+#                            entirety.
+#              * NoBlockTrim - Write as much as possible of the data and ignore the rest.
+#              * BlockIfFull - Spin until the host reads data.  Can result in app freezing.
+# format   (Optional) - How to interpret data from target firmware.  One of:
+#              * String - Directly show output from the target (default)
+#              * Defmt  - Format output on the host, see https://defmt.ferrous-systems.com/
+#              * BinaryLE - Display as raw hex
+# show_location (Optional) - Whether to show the location of defmt messages in the UI.
+# show_timestamps (Optional) - Whether to show the timestamps of String and Defmt messages in the UI, if available.
+# socket   (Optional) - Server socket address (for optional external frontend or endpoint).
+# log_format (Optional) - Control the output format for `format = Defmt`.
+up_channels = [
+    # { channel = 0, mode = "BlockIfFull", format = "Defmt", show_location = true },
+    # { channel = 1, mode = "BlockIfFull", format = "String", show_timestamps = false, socket = "127.0.0.1:12345" },
+]
+
+# A list of down (host -> target) channel settings. You can select a down channel for each UI tab,
+# which will be used to send data to the target.
+# object key  - RTT channel identifier number
+# mode     (Optional) - RTT operation mode. Describes how the target handles RTT outputs that won't
+#                       fit in the buffer. If left unset, the firmware will determine the default
+#                       for each RTT down channel.
+down_channels = [
+    # { channel = 0, mode = "BlockIfFull" }
+]
+
+# UI tab settings. All up channels are displayed, except when hidden here. You can specify how each
+# tab is displayed and whether they allow sending data to the target.
+# up_channel              - The channel_number of the RTT up channel to display
+# hide         (Optional) - Whether to hide the tab. Defaults to false.
+# down_channel (Optional) - The channel_number of the RTT down channel to use for this tab.
+# name         (Optional) - String to be displayed in the RTTUI tab. Defaults to the channel name.
+tabs = [
+    # { up_channel = 0, down_channel = 0, name = "My channel" },
+    # { up_channel = 1, hide = true },
+]
+
+[default.gdb]
+# Whether or not a GDB server should be opened after flashing.
+enabled = false
+# The connection string in host:port format wher the GDB server will open a socket.
+gdb_connection_string = "127.0.0.1:1337"

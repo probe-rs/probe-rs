@@ -3,8 +3,6 @@ use super::error::JlinkError;
 
 use super::Command;
 
-use byteorder::{LittleEndian, ReadBytesExt};
-
 use std::{cmp, fmt};
 
 use super::JLink;
@@ -35,7 +33,7 @@ impl SpeedInfo {
 /// Target communication speed setting.
 ///
 /// This determines the clock frequency of the target communication. Supported speeds for the
-/// currently selected target interface can be fetched via [`JayLink::read_speeds`].
+/// currently selected target interface can be fetched via [`JLink::read_speeds`].
 #[derive(Debug, Copy, Clone)]
 pub struct SpeedConfig {
     raw: u16,
@@ -84,11 +82,13 @@ impl JLink {
 
         let mut buf = [0; 6];
         self.read(&mut buf)?;
-        let mut buf = &buf[..];
+
+        let base_freq_bytes = <[u8; 4]>::try_from(&buf[0..4]).unwrap();
+        let min_div_bytes = <[u8; 2]>::try_from(&buf[4..6]).unwrap();
 
         Ok(SpeedInfo {
-            base_freq: buf.read_u32::<LittleEndian>().unwrap(),
-            min_div: buf.read_u16::<LittleEndian>().unwrap(),
+            base_freq: u32::from_le_bytes(base_freq_bytes),
+            min_div: u16::from_le_bytes(min_div_bytes),
         })
     }
 

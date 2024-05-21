@@ -2201,7 +2201,6 @@ flash_algorithms:
     pc_uninit: 0x59
     pc_program_page: 0xe1
     pc_erase_sector: 0x89
-    pc_erase_all: null
     data_section_offset: 0x1f4
     flash_properties:
       address_range:
@@ -2224,7 +2223,6 @@ flash_algorithms:
     pc_uninit: 0x4f
     pc_program_page: 0xc3
     pc_erase_sector: 0x75
-    pc_erase_all: null
     data_section_offset: 0x134
     flash_properties:
       address_range:
@@ -2270,7 +2268,6 @@ flash_algorithms:
     pc_uninit: 0x59
     pc_program_page: 0xe1
     pc_erase_sector: 0x89
-    pc_erase_all: null
     data_section_offset: 0x1f4
     flash_properties:
       address_range:
@@ -2293,7 +2290,6 @@ flash_algorithms:
     pc_uninit: 0x4f
     pc_program_page: 0xc3
     pc_erase_sector: 0x75
-    pc_erase_all: null
     data_section_offset: 0x134
     flash_properties:
       address_range:
@@ -2339,7 +2335,6 @@ flash_algorithms:
     pc_uninit: 0x59
     pc_program_page: 0xe1
     pc_erase_sector: 0x89
-    pc_erase_all: null
     data_section_offset: 0x1f4
     flash_properties:
       address_range:
@@ -2362,7 +2357,6 @@ flash_algorithms:
     pc_uninit: 0x4f
     pc_program_page: 0xc3
     pc_erase_sector: 0x75
-    pc_erase_all: null
     data_section_offset: 0x134
     flash_properties:
       address_range:
@@ -2408,7 +2402,6 @@ flash_algorithms:
     pc_uninit: 0x59
     pc_program_page: 0xe3
     pc_erase_sector: 0x89
-    pc_erase_all: null
     data_section_offset: 0x1fc
     flash_properties:
       address_range:
@@ -2431,7 +2424,6 @@ flash_algorithms:
     pc_uninit: 0x4f
     pc_program_page: 0xc7
     pc_erase_sector: 0x75
-    pc_erase_all: null
     data_section_offset: 0x13c
     flash_properties:
       address_range:

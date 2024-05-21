@@ -4,8 +4,7 @@ mod tools;
 
 use crate::{
     architecture::arm::{
-        communication_interface::DapProbe,
-        communication_interface::UninitializedArmProbe,
+        communication_interface::{DapProbe, UninitializedArmProbe},
         dp::{Abort, Ctrl},
         swo::poll_interval_from_buf_size,
         ArmCommunicationInterface, ArmError, DapError, Pins, PortType, RawDapAccess, Register,
@@ -163,7 +162,7 @@ impl CmsisDap {
     ///
     /// The actual clock frequency used by the device might be lower.
     fn set_swj_clock(&mut self, clock_hz: u32) -> Result<(), CmsisDapError> {
-        commands::send_command::<SWJClockRequest>(&mut self.device, SWJClockRequest(clock_hz))
+        commands::send_command(&mut self.device, SWJClockRequest(clock_hz))
             .map_err(CmsisDapError::from)
             .and_then(|v| match v {
                 SWJClockResponse(Status::DAPOk) => Ok(()),
@@ -172,7 +171,7 @@ impl CmsisDap {
     }
 
     fn transfer_configure(&mut self, request: ConfigureRequest) -> Result<(), CmsisDapError> {
-        commands::send_command::<ConfigureRequest>(&mut self.device, request)
+        commands::send_command(&mut self.device, request)
             .map_err(CmsisDapError::from)
             .and_then(|v| match v {
                 ConfigureResponse(Status::DAPOk) => Ok(()),
@@ -184,7 +183,7 @@ impl CmsisDap {
         &mut self,
         request: swd::configure::ConfigureRequest,
     ) -> Result<(), CmsisDapError> {
-        commands::send_command::<swd::configure::ConfigureRequest>(&mut self.device, request)
+        commands::send_command(&mut self.device, request)
             .map_err(CmsisDapError::from)
             .and_then(|v| match v {
                 swd::configure::ConfigureResponse(Status::DAPOk) => Ok(()),
@@ -376,7 +375,7 @@ impl CmsisDap {
     }
 
     fn send_jtag_configure(&mut self, request: JtagConfigureRequest) -> Result<(), CmsisDapError> {
-        commands::send_command::<JtagConfigureRequest>(&mut self.device, request)
+        commands::send_command(&mut self.device, request)
             .map_err(CmsisDapError::from)
             .and_then(|v| match v {
                 JtagConfigureResponse(Status::DAPOk) => Ok(()),
@@ -388,7 +387,7 @@ impl CmsisDap {
         &mut self,
         request: JtagSequenceRequest,
     ) -> Result<Vec<u8>, CmsisDapError> {
-        commands::send_command::<JtagSequenceRequest>(&mut self.device, request)
+        commands::send_command(&mut self.device, request)
             .map_err(CmsisDapError::from)
             .and_then(|v| match v {
                 JtagSequenceResponse(Status::DAPOk, tdo) => Ok(tdo),
@@ -400,7 +399,7 @@ impl CmsisDap {
         // Ensure all pending commands are processed.
         //self.process_batch()?;
 
-        commands::send_command::<SequenceRequest>(&mut self.device, request)
+        commands::send_command(&mut self.device, request)
             .map_err(CmsisDapError::from)
             .and_then(|v| match v {
                 SequenceResponse(Status::DAPOk) => Ok(()),
@@ -489,12 +488,10 @@ impl CmsisDap {
                 })
                 .collect();
 
-            let response = commands::send_command::<TransferRequest>(
-                &mut self.device,
-                TransferRequest::new(&transfers),
-            )
-            .map_err(CmsisDapError::from)
-            .map_err(DebugProbeError::from)?;
+            let response =
+                commands::send_command(&mut self.device, TransferRequest::new(&transfers))
+                    .map_err(CmsisDapError::from)
+                    .map_err(DebugProbeError::from)?;
 
             let count = response.transfer_count as usize;
 
@@ -758,6 +755,22 @@ impl DebugProbe for CmsisDap {
         Ok(())
     }
 
+    /// Returns the JTAG scan chain
+    fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
+        match self.active_protocol() {
+            Some(WireProtocol::Jtag) => {
+                if let Some(ref chain) = self.scan_chain {
+                    Ok(chain.as_slice())
+                } else {
+                    Ok(&[])
+                }
+            }
+            _ => Err(DebugProbeError::InterfaceNotAvailable {
+                interface_name: "JTAG",
+            }),
+        }
+    }
+
     /// Enters debug mode.
     #[tracing::instrument(skip(self))]
     fn attach(&mut self) -> Result<(), DebugProbeError> {
@@ -1000,21 +1013,27 @@ impl RawDapAccess for CmsisDap {
         self
     }
 
-    fn configure_jtag(&mut self) -> Result<(), DebugProbeError> {
-        let chain = self.jtag_scan(
+    fn configure_jtag(&mut self, skip_scan: bool) -> Result<(), DebugProbeError> {
+        let ir_lengths = if skip_scan {
             self.scan_chain
                 .as_ref()
-                .map(|chain| {
-                    chain
-                        .iter()
-                        .filter_map(|s| s.ir_len)
-                        .map(|s| s as usize)
-                        .collect::<Vec<usize>>()
-                })
-                .as_deref(),
-        )?;
-        let ir_lengths = chain.iter().map(|item| item.irlen as u8).collect();
-
+                .map(|chain| chain.iter().filter_map(|s| s.ir_len).collect::<Vec<u8>>())
+                .unwrap_or_default()
+        } else {
+            let chain = self.jtag_scan(
+                self.scan_chain
+                    .as_ref()
+                    .map(|chain| {
+                        chain
+                            .iter()
+                            .filter_map(|s| s.ir_len)
+                            .map(|s| s as usize)
+                            .collect::<Vec<usize>>()
+                    })
+                    .as_deref(),
+            )?;
+            chain.iter().map(|item| item.irlen as u8).collect()
+        };
         tracing::info!("Configuring JTAG with ir lengths: {:?}", ir_lengths);
         self.send_jtag_configure(JtagConfigureRequest::new(ir_lengths)?)?;
 

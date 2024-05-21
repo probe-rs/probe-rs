@@ -18,9 +18,11 @@ pub(crate) struct FunctionDie<'abbrev, 'unit> {
     pub(crate) unit_info: &'unit UnitInfo,
     /// The DIE (Debugging Information Entry) for the function.
     pub(crate) function_die: Die<'abbrev, 'unit>,
-    /// The specification DIE for the function, if it has one.
-    /// This can apply to both inlined and regular function definitions.
-    /// this will contain separately declared attributes.
+    /// The optional specification DIE for the function, if it has one.
+    /// - For regular functions, this applies to the `function_die`.
+    /// - For inlined functions, this applies to the `abstract_die`.
+    /// The specification DIE will contain separately declared attributes,
+    /// e.g. for the function name.
     /// See DWARF spec, 2.13.2.
     pub(crate) specification_die: Option<Die<'abbrev, 'unit>>,
     /// Only present for inlined functions, where this is a reference
@@ -38,53 +40,79 @@ impl PartialEq for FunctionDie<'_, '_> {
 
 impl<'abbrev, 'unit> FunctionDie<'abbrev, 'unit> {
     /// Create a new function DIE reference.
+    /// We only return DIE's that are functions, with valid address ranges that represent machine code
+    /// relevant to the address/program counter specified.
+    /// Other DIE's will return None, and should be ignored.
     pub(crate) fn new(
-        die: Die<'abbrev, 'unit>,
+        function_die: Die<'abbrev, 'unit>,
         unit_info: &'unit UnitInfo,
         debug_info: &'abbrev DebugInfo,
-    ) -> Option<Self>
+        address: u64,
+    ) -> Result<Option<Self>, DebugError>
     where
         'abbrev: 'unit,
         'unit: 'abbrev,
     {
-        let tag = die.tag();
-
-        let gimli::DW_TAG_subprogram = tag else {
-            // We only need DIEs for functions, so we can ignore all other DIEs.
-            return None;
+        let is_inlined_function = match function_die.tag() {
+            gimli::DW_TAG_subprogram => false,
+            gimli::DW_TAG_inlined_subroutine => true,
+            _ => {
+                // We only need DIEs for functions, so we can ignore all other DIEs.
+                return Ok(None);
+            }
         };
-        // Find the specification definition
-        let specification_die =
-            debug_info.resolve_die_reference(gimli::DW_AT_specification, &die, unit_info);
-        Some(Self {
-            unit_info,
-            function_die: die,
-            specification_die,
-            abstract_die: None,
-            ranges: Vec::new(),
-        })
-    }
 
-    /// Creates a new inlined function DIE reference.
-    pub(crate) fn new_inlined(
-        concrete_die: Die<'abbrev, 'unit>,
-        abstract_die: Die<'abbrev, 'unit>,
-        specification_die: Option<Die<'abbrev, 'unit>>,
-        unit_info: &'unit UnitInfo,
-    ) -> Option<Self> {
-        let tag = concrete_die.tag();
+        //Validate the function DIE ranges, and confirm this DIE applies to the requested address.
+        let mut gimli_ranges = debug_info
+            .dwarf
+            .die_ranges(&unit_info.unit, &function_die)?;
+        let mut die_ranges = Vec::new();
+        while let Ok(Some(gimli_range)) = gimli_ranges.next() {
+            if gimli_range.begin == 0 {
+                //TODO: The DW_AT_subprograms with low_pc == 0 cause overlapping ranges with other 'valid' function dies, and obscures the correct function die.
+                // We need to understand what those mean, and how to handle them correctly.
+                return Ok(None);
+            }
+            die_ranges.push(gimli_range.begin..gimli_range.end);
+        }
+        if !die_ranges.iter().any(|range| range.contains(&address)) {
+            return Ok(None);
+        }
 
-        let gimli::DW_TAG_inlined_subroutine = tag else {
-            // We only need DIEs for inlined functions, so we can ignore all other DIEs.
-            return None;
+        let specification_die;
+
+        // For inlined functions, we also need to find the abstract origin.
+        let abstract_die = if is_inlined_function {
+            let Some(abstract_die) = debug_info.resolve_die_reference(
+                gimli::DW_AT_abstract_origin,
+                &function_die,
+                unit_info,
+            ) else {
+                tracing::debug!("No abstract origin found for inlined function");
+                return Ok(None);
+            };
+            specification_die = debug_info.resolve_die_reference(
+                gimli::DW_AT_specification,
+                &abstract_die,
+                unit_info,
+            );
+            Some(abstract_die)
+        } else {
+            specification_die = debug_info.resolve_die_reference(
+                gimli::DW_AT_specification,
+                &function_die,
+                unit_info,
+            );
+            None
         };
-        Some(Self {
+
+        Ok(Some(Self {
             unit_info,
-            function_die: concrete_die,
+            function_die,
             specification_die,
-            abstract_die: Some(abstract_die),
-            ranges: Vec::new(),
-        })
+            abstract_die,
+            ranges: die_ranges,
+        }))
     }
 
     /// Test whether the given address is contained in the address ranges of this function.
@@ -202,7 +230,7 @@ impl<'abbrev, 'unit> FunctionDie<'abbrev, 'unit> {
     pub fn frame_base(
         &self,
         debug_info: &super::DebugInfo,
-        memory: &mut impl MemoryInterface,
+        memory: &mut dyn MemoryInterface,
         frame_info: StackFrameInfo,
     ) -> Result<Option<u64>, DebugError> {
         match self.unit_info.extract_location(

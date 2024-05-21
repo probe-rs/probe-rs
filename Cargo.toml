@@ -18,16 +18,19 @@ members = [
     "smoke-tester",
     "xtask",
     "target-gen",
+    "probe-rs-tools",
+    "probe-rs-mi",
 ]
 exclude = ["probe-rs/tests/gpio-hal-blinky"]
 
 [workspace.dependencies]
 probe-rs = { path = "probe-rs", version = "0.23.0" }
 probe-rs-target = { path = "probe-rs-target", version = "0.23.0" }
+probe-rs-mi = { path = "probe-rs-mi", version = "0.1.0" }
 
 docsplay = "0.1.1"
-thiserror = "1.0.58"
-anyhow = "1.0.81"
+thiserror = "1.0.59"
+anyhow = "1.0.82"
 
 [workspace.metadata.release]
 shared-version = true
@@ -36,13 +39,17 @@ tag-name = "v{{version}}"
 # Config for 'cargo dist'
 [workspace.metadata.dist]
 # The preferred cargo-dist version to use in CI (Cargo.toml SemVer syntax)
-cargo-dist-version = "0.11.1"
-# The preferred Rust toolchain to use in CI (rustup toolchain syntax)
-rust-toolchain-version = "1.74.0"
+cargo-dist-version = "0.13.0"
 # CI backends to support
 ci = ["github"]
 # Target platforms to build apps for (Rust target-triple syntax)
-targets = ["aarch64-apple-darwin", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"]
+targets = [
+    "aarch64-apple-darwin",
+    "aarch64-unknown-linux-gnu",
+    "x86_64-apple-darwin",
+    "x86_64-unknown-linux-gnu",
+    "x86_64-pc-windows-msvc",
+]
 # Build only the required packages, and individually
 precise-builds = true
 # The archive format to use for non-windows builds (defaults .tar.xz)
@@ -55,6 +62,8 @@ pr-run-mode = "plan"
 tap = "probe-rs/homebrew-probe-rs"
 # Publish jobs to run in CI
 publish-jobs = ["homebrew"]
+# Whether to install an updater program
+install-updater = false
 # Select custom runner for ARM Linux
 [workspace.metadata.dist.github-custom-runners]
 aarch64-unknown-linux-gnu = "buildjet-2vcpu-ubuntu-2204-arm"

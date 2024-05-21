@@ -2,11 +2,9 @@
 
 use super::{AccessPort, ApRegister, Register};
 use crate::architecture::arm::{communication_interface::RegisterParseError, ApAddress};
-use enum_primitive_derive::Primitive;
-use num_traits::cast::{FromPrimitive, ToPrimitive};
 
 /// Describes the class of an access port defined in the [`ARM Debug Interface v5.2`](https://developer.arm.com/documentation/ihi0031/f/?lang=en) specification.
-#[derive(Debug, Primitive, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ApClass {
     /// This describes a custom AP that is vendor defined and not defined by ARM
     #[default]
@@ -17,10 +15,22 @@ pub enum ApClass {
     MemAp = 0b1000,
 }
 
+impl ApClass {
+    /// Tries to create an `ApClass` from a given `u8`.
+    pub fn from_u8(value: u8) -> Option<Self> {
+        match value {
+            0b0000 => Some(ApClass::Undefined),
+            0b0001 => Some(ApClass::ComAp),
+            0b1000 => Some(ApClass::MemAp),
+            _ => None,
+        }
+    }
+}
+
 /// The type of AP defined in the [`ARM Debug Interface v5.2`](https://developer.arm.com/documentation/ihi0031/f/?lang=en) specification.
 /// The different types correspond to the different access/memory buses of ARM cores.
 #[allow(non_camel_case_types)]
-#[derive(Debug, Primitive, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ApType {
     /// This is the most basic AP that is included in most MCUs and uses SWD or JTAG as an access bus.
     #[default]
@@ -39,6 +49,23 @@ pub enum ApType {
     AmbaAxi5 = 0x7,
     /// A AMBA based protected AHB5 AP (see E1.7).
     AmbaAhb5Hprot = 0x8,
+}
+
+impl ApType {
+    /// Tries to create an `ApType` from a given `u8`.
+    pub fn from_u8(value: u8) -> Option<Self> {
+        match value {
+            0x0 => Some(ApType::JtagComAp),
+            0x1 => Some(ApType::AmbaAhb3),
+            0x2 => Some(ApType::AmbaAhb2Ahb3),
+            0x4 => Some(ApType::AmbaAxi3Axi4),
+            0x5 => Some(ApType::AmbaAhb5),
+            0x6 => Some(ApType::AmbaAhb4),
+            0x7 => Some(ApType::AmbaAxi5),
+            0x8 => Some(ApType::AmbaAhb5Hprot),
+            _ => None,
+        }
+    }
 }
 
 define_ap!(
@@ -61,7 +88,7 @@ define_ap_register!(
         /// The revision of this access point.
         REVISION: u8,
         /// The JEP106 code of the designer of this access point.
-        DESIGNER: u16,
+        DESIGNER: jep106::JEP106Code,
         /// The class of this access point.
         CLASS: ApClass,
         #[doc(hidden)]
@@ -73,15 +100,21 @@ define_ap_register!(
     ],
     from: value => Ok(IDR {
         REVISION: ((value >> 28) & 0x0F) as u8,
-        DESIGNER: ((value >> 17) & 0x7FF) as u16,
+        DESIGNER: {
+            let designer = ((value >> 17) & 0x7FF) as u16;
+            let cc = (designer >> 7) as u8;
+            let id = (designer & 0x7f) as u8;
+
+            jep106::JEP106Code::new(cc, id)
+        },
         CLASS: ApClass::from_u8(((value >> 13) & 0x0F) as u8).ok_or_else(|| RegisterParseError::new("IDR", value))?,
         _RES0: 0,
         VARIANT: ((value >> 4) & 0x0F) as u8,
         TYPE: ApType::from_u8((value & 0x0F) as u8).ok_or_else(|| RegisterParseError::new("IDR", value))?
     }),
     to: value => (u32::from(value.REVISION) << 28)
-        | (u32::from(value.DESIGNER) << 17)
-        | (value.CLASS.to_u32().unwrap() << 13)
+        | (((u32::from(value.DESIGNER.cc) << 7) | u32::from(value.DESIGNER.id)) << 17)
+        | ((value.CLASS as u32) << 13)
         | (u32::from(value.VARIANT) << 4)
-        | (value.TYPE.to_u32().unwrap())
+        | (value.TYPE as u32)
 );

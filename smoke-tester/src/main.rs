@@ -1,85 +1,137 @@
 use std::{
-    error::Error,
     io::Write,
-    marker::PhantomData,
-    path::Path,
+    path::{Path, PathBuf},
     process::ExitCode,
     time::{Duration, Instant},
 };
 
-use crate::{
-    dut_definition::{DefinitionSource, DutDefinition},
-    tests::test_flashing,
-};
-use anyhow::{Context, Result};
-use colored::Colorize;
+use crate::dut_definition::{DefinitionSource, DutDefinition};
 
-use clap::{Arg, Command};
+use clap::{Parser, Subcommand};
+use colored::Colorize;
 use linkme::distributed_slice;
+use miette::{Context, IntoDiagnostic, Result};
 use probe_rs::Permissions;
 
 mod dut_definition;
 mod macros;
 mod tests;
 
+#[derive(Debug, miette::Diagnostic, thiserror::Error)]
+pub enum TestFailure {
+    #[error("Test returned an error")]
+    Error(#[from] Box<dyn std::error::Error + Send + Sync + 'static>),
+
+    #[error("The test was skipped: {0}")]
+    Skipped(String),
+
+    #[error("Test is not implemented for target {0:?}: {1}")]
+    UnimplementedForTarget(Box<probe_rs::Target>, String),
+    #[error("A resource necessary to execute the test is not available: {0}")]
+    MissingResource(String),
+
+    /// A fatal error means that all future tests will be cancelled as well.
+    #[error("A fatal error occured")]
+    Fatal(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
+}
+
+impl From<miette::ErrReport> for TestFailure {
+    fn from(report: miette::ErrReport) -> Self {
+        TestFailure::Error(report.into())
+    }
+}
+
+impl From<probe_rs::Error> for TestFailure {
+    fn from(error: probe_rs::Error) -> Self {
+        TestFailure::Error(error.into())
+    }
+}
+
+pub type TestResult = Result<(), TestFailure>;
+
+#[derive(Debug)]
+struct SingleTestReport {
+    result: TestResult,
+    _duration: Duration,
+}
+
+impl SingleTestReport {
+    fn has_fatal_error(&self) -> bool {
+        matches!(self.result, Err(TestFailure::Fatal(_)))
+    }
+
+    fn failed(&self) -> bool {
+        matches!(
+            self.result,
+            Err(TestFailure::Error(_) | TestFailure::Fatal(_))
+        )
+    }
+}
+
+#[derive(Debug, Subcommand)]
+enum Command {
+    Test {
+        #[arg(long, value_name = "FILE")]
+        markdown_summary: Option<PathBuf>,
+    },
+}
+
+#[derive(Debug, Parser)]
+struct Opt {
+    #[command(subcommand)]
+    command: Command,
+
+    #[arg(long, global = true, value_name = "DIRECTORY", conflicts_with_all = ["chip", "probe", "single_dut"])]
+    dut_definitions: Option<PathBuf>,
+
+    #[arg(long, global = true, value_name = "CHIP", conflicts_with_all = ["dut_definitions", "single_dut"])]
+    chip: Option<String>,
+
+    #[arg(long, global = true, value_name = "PROBE")]
+    probe: Option<String>,
+
+    #[arg(long, global = true, value_name = "PROBE_SPEED")]
+    probe_speed: Option<u32>,
+
+    #[arg(long, global = true, value_name = "FILE", conflicts_with_all = ["chip", "dut_definitions"])]
+    single_dut: Option<PathBuf>,
+}
+
 fn main() -> Result<ExitCode> {
     pretty_env_logger::init();
 
-    let app = Command::new("smoke tester")
-        .arg(
-            Arg::new("dut_definitions")
-                .long("dut-definitions")
-                .value_name("DIRECTORY")
-                .conflicts_with_all(["chip", "probe", "single_dut"])
-                .required(true),
-        )
-        .arg(
-            Arg::new("chip")
-                .long("chip")
-                .value_name("CHIP")
-                .conflicts_with_all(["dut_definitions", "single_dut"])
-                .required(true),
-        )
-        .arg(
-            Arg::new("probe")
-                .long("probe")
-                .value_name("PROBE")
-                .required(false),
-        )
-        .arg(
-            Arg::new("single_dut")
-                .long("single-dut")
-                .value_name("FILE")
-                .required(true)
-                .conflicts_with_all(["chip", "dut_definitions"]),
-        )
-        .arg(
-            Arg::new("markdown_summary")
-                .long("markdown-summary")
-                .value_name("FILE")
-                .required(false),
-        );
+    let opt = Opt::parse();
 
-    let matches = app.get_matches();
-
-    let definitions = if let Some(dut_definitions) = matches.get_one::<String>("dut_definitions") {
+    let mut definitions = if let Some(dut_definitions) = opt.dut_definitions.as_deref() {
         let definitions = DutDefinition::collect(dut_definitions)?;
         println!("Found {} target definitions.", definitions.len());
         definitions
-    } else if let Some(single_dut) = matches.get_one::<String>("single_dut") {
+    } else if let Some(single_dut) = opt.single_dut.as_deref() {
         vec![DutDefinition::from_file(Path::new(single_dut))?]
     } else {
         // Chip needs to be specified
-        let chip = matches.get_one::<String>("chip").unwrap(); // If dut-definitions is not present, chip must be present
+        let chip = opt.chip.as_deref().unwrap(); // If dut-definitions is not present, chip must be present
 
-        if let Some(probe) = matches.get_one::<String>("probe") {
+        if let Some(probe) = &opt.probe {
             vec![DutDefinition::new(chip, probe)?]
         } else {
             vec![DutDefinition::autodetect_probe(chip)?]
         }
     };
 
-    let mut test_tracker = TestTracker::new(definitions, 0);
+    for definition in &mut definitions {
+        if let Some(probe_speed) = opt.probe_speed {
+            definition.probe_speed = Some(probe_speed);
+        }
+    }
+
+    match opt.command {
+        Command::Test { markdown_summary } => run_test(&definitions, markdown_summary),
+    }
+}
+
+fn run_test(definitions: &[DutDefinition], markdown_summary: Option<PathBuf>) -> Result<ExitCode> {
+    let mut test_tracker = TestTracker::new(definitions);
 
     let result = test_tracker.run(|tracker, definition| {
         let probe = definition.open_probe()?;
@@ -90,9 +142,12 @@ fn main() -> Result<ExitCode> {
         // We don't care about existing flash contents
         let permissions = Permissions::default().allow_erase_all();
 
+        let mut fail_counter = 0;
+
         let mut session = probe
             .attach(definition.chip.clone(), permissions)
-            .context("Failed to attach to chip")?;
+            .into_diagnostic()
+            .wrap_err("Failed to attach to chip")?;
         let cores = session.list_cores();
 
         // TODO: Handle different cores. Handling multiple cores is not supported properly yet,
@@ -100,25 +155,43 @@ fn main() -> Result<ExitCode> {
         for (core_index, core_type) in cores.into_iter().take(1) {
             println_dut_status!(tracker, blue, "Core {}: {:?}", core_index, core_type);
 
-            let mut core = session.core(core_index)?;
+            let mut core = session.core(core_index).into_diagnostic()?;
 
             println_dut_status!(tracker, blue, "Halting core..");
 
-            core.reset_and_halt(Duration::from_millis(500))?;
+            core.reset_and_halt(Duration::from_millis(500))
+                .into_diagnostic()?;
 
             for test_fn in CORE_TESTS {
-                tracker.run_test(|tracker| test_fn(tracker, &mut core))?;
+                let result = tracker.run_test(|tracker| test_fn(tracker, &mut core));
+
+                if result.has_fatal_error() {
+                    return Err(miette::miette!("Test failed with fatal error"));
+                }
+
+                if result.failed() {
+                    fail_counter += 1;
+                }
             }
 
             // Ensure core is not running anymore.
-            core.reset_and_halt(Duration::from_millis(200))?;
+            core.reset_and_halt(Duration::from_millis(200))
+                .into_diagnostic()
+                .wrap_err_with(|| {
+                    format!("Failed to reset core with index {core_index} after test")
+                })?;
         }
 
-        if let Some(flash_binary) = &definition.flash_test_binary {
-            tracker.run_test(|tracker| {
-                test_flashing(tracker, &mut session, flash_binary)?;
-                Ok(())
-            })?;
+        for test in SESSION_TESTS {
+            let result = tracker.run_test(|tracker| test(tracker, &mut session));
+
+            if result.has_fatal_error() {
+                return Err(miette::miette!("Test failed with fatal error"));
+            }
+
+            if result.failed() {
+                fail_counter += 1;
+            }
         }
 
         drop(session);
@@ -128,28 +201,42 @@ fn main() -> Result<ExitCode> {
         if definition.reset_connected {
             let probe = definition.open_probe()?;
 
-            let _session =
-                probe.attach_under_reset(definition.chip.clone(), Permissions::default())?;
+            let _session = probe
+                .attach_under_reset(definition.chip.clone(), Permissions::default())
+                .into_diagnostic()?;
         }
 
-        Ok(())
+        match fail_counter {
+            0 => Ok(()),
+            1 => Err(miette::miette!("1 test failed")),
+            count => Err(miette::miette!("{count} tests failed")),
+        }
     });
 
     println!();
 
     let printer = ConsoleReportPrinter;
 
-    printer.print(&result, std::io::stdout())?;
+    printer
+        .print(&result, std::io::stdout())
+        .into_diagnostic()?;
 
-    if let Some(summary_file) = matches.get_one::<String>("markdown_summary") {
-        let mut file = std::fs::File::create(summary_file)?;
+    if let Some(summary_file) = &markdown_summary {
+        let mut file = std::fs::File::create(summary_file)
+            .into_diagnostic()
+            .wrap_err_with(|| {
+                format!(
+                    "Failed to create markdown summary file at location {}",
+                    summary_file.display()
+                )
+            })?;
 
-        writeln!(file, "## smoke-tester")?;
+        writeln!(file, "## smoke-tester").into_diagnostic()?;
 
         for dut in &result.dut_tests {
             let test_state = if dut.succesful { "Passed" } else { "Failed" };
 
-            writeln!(file, " - {}: {}", dut.name, test_state)?;
+            writeln!(file, " - {}: {}", dut.name, test_state).into_diagnostic()?;
         }
     }
 
@@ -236,22 +323,19 @@ impl ConsoleReportPrinter {
     }
 }
 
-pub struct TestTracker<'a> {
-    dut_definitions: Vec<DutDefinition>,
+#[derive(Debug)]
+pub struct TestTracker<'dut> {
+    dut_definitions: &'dut [DutDefinition],
     current_dut: usize,
-    num_tests: usize,
     current_test: usize,
-    _marker: PhantomData<&'a ()>,
 }
 
-impl<'a> TestTracker<'a> {
-    fn new(dut_definitions: Vec<DutDefinition>, num_tests: usize) -> Self {
+impl<'dut> TestTracker<'dut> {
+    fn new(dut_definitions: &'dut [DutDefinition]) -> Self {
         Self {
             dut_definitions,
             current_dut: 0,
-            num_tests,
             current_test: 0,
-            _marker: PhantomData,
         }
     }
 
@@ -276,27 +360,29 @@ impl<'a> TestTracker<'a> {
         self.current_test + 1
     }
 
-    fn num_tests(&self) -> usize {
-        self.num_tests
-    }
-
     fn advance_test(&mut self) {
         self.current_test += 1;
+    }
+
+    pub fn current_target(&self) -> &probe_rs::Target {
+        &self.dut_definitions[self.current_dut].chip
+    }
+
+    pub fn current_dut_definition(&self) -> &DutDefinition {
+        &self.dut_definitions[self.current_dut]
     }
 
     #[must_use]
     fn run(
         &mut self,
-        handle_dut: impl Fn(&mut TestTracker, &DutDefinition) -> Result<(), probe_rs::Error>
-            + Sync
-            + Send,
+        handle_dut: impl Fn(&mut TestTracker, &DutDefinition) -> miette::Result<()> + Sync + Send,
     ) -> TestReport {
         let mut report = TestReport::new();
 
         let mut tests_ok = true;
 
-        for definition in &self.dut_definitions.clone() {
-            print_dut_status!(self, blue, "Starting Test",);
+        for definition in self.dut_definitions {
+            print_dut_status!(self, blue, "Starting Test");
 
             if let DefinitionSource::File(path) = &definition.source {
                 print!(" - {}", path.display());
@@ -312,7 +398,7 @@ impl<'a> TestTracker<'a> {
                         name: definition.chip.name.clone(),
                         succesful: true,
                     });
-                    println_dut_status!(self, green, "Tests Passed",);
+                    println_dut_status!(self, green, "Tests Passed");
                 }
                 Ok(Err(e)) => {
                     tests_ok = false;
@@ -327,7 +413,7 @@ impl<'a> TestTracker<'a> {
                         println_dut_status!(self, red, " caused by:    {}", source);
                     }
 
-                    println_dut_status!(self, red, "Tests Failed",);
+                    println_dut_status!(self, red, "Tests Failed");
                 }
                 Err(_join_err) => {
                     tests_ok = false;
@@ -344,9 +430,9 @@ impl<'a> TestTracker<'a> {
         }
 
         if tests_ok {
-            println_status!(self, green, "All DUTs passed.",);
+            println_status!(self, green, "All DUTs passed.");
         } else {
-            println_status!(self, red, "Some DUTs failed some tests.",);
+            println_status!(self, red, "Some DUTs failed some tests.");
         }
 
         report
@@ -354,8 +440,8 @@ impl<'a> TestTracker<'a> {
 
     fn run_test(
         &mut self,
-        test: impl FnOnce(&TestTracker) -> Result<(), probe_rs::Error>,
-    ) -> Result<(), probe_rs::Error> {
+        test: impl FnOnce(&TestTracker) -> Result<(), TestFailure>,
+    ) -> SingleTestReport {
         let start_time = Instant::now();
 
         let test_result = test(self);
@@ -372,16 +458,35 @@ impl<'a> TestTracker<'a> {
             Ok(()) => {
                 println_test_status!(self, green, "Test passed in {formatted_duration}.");
             }
+            Err(TestFailure::UnimplementedForTarget(target, message)) => {
+                println_test_status!(
+                    self,
+                    yellow,
+                    "Test not implemented for {}: {}",
+                    target.name,
+                    message
+                );
+            }
+            Err(TestFailure::MissingResource(message)) => {
+                println_test_status!(self, yellow, "Missing resource for test: {}", message);
+            }
             Err(_e) => {
                 println_test_status!(self, red, "Test failed in {formatted_duration}.");
             }
         };
         self.advance_test();
 
-        test_result
+        SingleTestReport {
+            result: test_result,
+            _duration: duration,
+        }
     }
 }
 
 /// A list of all tests which run on cores.
 #[distributed_slice]
-pub static CORE_TESTS: [fn(&TestTracker, &mut probe_rs::Core) -> Result<(), probe_rs::Error>];
+pub static CORE_TESTS: [fn(&TestTracker, &mut probe_rs::Core) -> TestResult];
+
+/// A list of all tests which run on `Session`.
+#[distributed_slice]
+pub static SESSION_TESTS: [fn(&TestTracker, &mut probe_rs::Session) -> TestResult];
