@@ -448,14 +448,17 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         }
     }
 
-    /// Prepare the target debug port for connection. This is based on the
-    /// `DebugPortSetup` function from the [ARM SVD Debug Description].
+    /// Prepare the target debug port for connection. This is based on the `DebugPortSetup` function
+    /// from the [ARM SVD Debug Description].
     ///
-    /// After this function has been executed, it should be possible to read and write registers using SWD requests.
+    /// After this function has been executed, it should be possible to read and write registers
+    /// using SWD requests.
     ///
-    /// If this function cannot read the DPIDR register, it will retry up to 5 times, and return an error if it still cannot read it.
+    /// If this function cannot read the DPIDR register, it will retry up to 5 times, and return an
+    /// error if it still cannot read it.
     ///
-    /// [ARM SVD Debug Description]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/debug_description.html#debugPortSetup
+    /// [ARM SVD Debug Description]:
+    ///     https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/debug_description.html#debugPortSetup
     #[doc(alias = "DebugPortSetup")]
     fn debug_port_setup(
         &self,
@@ -489,7 +492,8 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
 
         // TODO: Use atomic block
 
-        for _ in 0..num_retries {
+        let mut retry = 0;
+        loop {
             // Ensure current debug interface is in reset state.
             swd_line_reset(interface, 0)?;
 
@@ -551,14 +555,15 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
             // End of atomic block.
 
             // SWD or JTAG should now be activated, so we can try and connect to the debug port.
-            if self.debug_port_connect(interface, dp).is_ok() {
-                return Ok(());
-            }
+            break match self.debug_port_connect(interface, dp) {
+                Ok(()) => Ok(()),
+                Err(_) if retry < num_retries => {
+                    retry += 1;
+                    continue;
+                }
+                Err(err) => Err(err),
+            };
         }
-
-        Err(ArmError::Other(anyhow::anyhow!(
-            "Failed to connect to the debug port. Please check the debug cable and target power. If SWD multi-drop is used, ensure the correct TARGETSEL value is used."
-        )))
     }
 
     /// Connect to the target debug port and power it up. This is based on the

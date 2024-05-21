@@ -190,8 +190,7 @@ impl Session {
         };
 
         if AttachMethod::UnderReset == attach_method {
-            let span = tracing::debug_span!("Asserting hardware assert");
-            let _enter = span.enter();
+            let _span = tracing::debug_span!("Asserting hardware reset").entered();
 
             if let Some(dap_probe) = probe.try_as_dap_probe() {
                 sequence_handle.reset_hardware_assert(dap_probe)?;

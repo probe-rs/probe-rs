@@ -307,14 +307,20 @@ impl Probe {
         permissions: Permissions,
     ) -> Result<Session, Error> {
         // The session will de-assert reset after connecting to the debug interface.
-        Session::new(self, target.into(), AttachMethod::UnderReset, permissions).map_err(|e| {
-            if matches!(e, Error::Arm(ArmError::Timeout) | Error::Riscv(RiscvError::Timeout)| Error::Xtensa(XtensaError::Timeout)) {
-                Error::Other(
-                anyhow::anyhow!("Timeout while attaching to target under reset. This can happen if the target is not responding to the reset sequence. Ensure the chip's reset pin is connected, or try attaching without reset (`connectUnderReset = false` for DAP Clients, or remove `connect-under-reset` option from CLI options.)."))
-            } else {
-                e
-            }
-        })
+        Session::new(self, target.into(), AttachMethod::UnderReset, permissions).map_err(
+            |e| match e {
+                Error::Arm(ArmError::Timeout)
+                | Error::Riscv(RiscvError::Timeout)
+                | Error::Xtensa(XtensaError::Timeout) => Error::Other(anyhow::anyhow!(
+                    "Timeout while attaching to target under reset. \
+                    This can happen if the target is not responding to the reset sequence. \
+                    Ensure the chip's reset pin is connected, or try attaching without reset \
+                    (`connectUnderReset = false` for DAP Clients, or remove `connect-under-reset` \
+                        option from CLI options.)."
+                )),
+                e => e,
+            },
+        )
     }
 
     /// Selects the transport protocol to be used by the debug probe.

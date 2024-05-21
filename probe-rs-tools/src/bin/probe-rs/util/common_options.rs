@@ -415,6 +415,7 @@ CARGO BUILD OPTIONS:
 pub enum OperationError {
     #[error("No connected probes were found.")]
     NoProbesFound,
+
     #[error("Failed to open the ELF file '{path}' for flashing.")]
     #[allow(dead_code)]
     FailedToOpenElf {
@@ -422,79 +423,82 @@ pub enum OperationError {
         source: std::io::Error,
         path: PathBuf,
     },
+
     #[error("Failed to load the ELF data.")]
     #[allow(dead_code)]
     FailedToLoadElfData(#[source] FileDownloadError),
+
     #[error("Failed to open the debug probe.")]
     FailedToOpenProbe(#[source] DebugProbeError),
+
     #[error("{} probes were found: {}", .list.len(), print_list(.list))]
     MultipleProbesFound { list: Vec<DebugProbeInfo> },
+
     #[error("The flashing procedure failed for '{path}'.")]
     FlashingFailed {
-        #[source]
         source: FlashError,
         target: Box<Target>, // Box to reduce enum size
         target_spec: Option<String>,
         path: PathBuf,
     },
+
     #[error("Failed to open the chip description '{path}'.")]
     ChipDescriptionNotFound {
-        #[source]
         source: std::io::Error,
         path: PathBuf,
     },
+
     #[error("Failed to parse the chip description '{path}'.")]
     FailedChipDescriptionParsing {
-        #[source]
         source: RegistryError,
         path: PathBuf,
     },
+
     #[error("Failed to change the working directory to '{path}'.")]
     FailedToChangeWorkingDirectory {
-        #[source]
         source: std::io::Error,
         path: PathBuf,
     },
+
     #[error("Failed to build the cargo project at '{path}'.")]
     FailedToBuildExternalCargoProject {
-        #[source]
         source: ArtifactError,
         path: PathBuf,
     },
+
     #[error("Failed to build the cargo project.")]
     FailedToBuildCargoProject(#[source] ArtifactError),
+
     #[error("The chip '{name}' was not found in the database.")]
-    ChipNotFound {
-        #[source]
-        source: RegistryError,
-        name: String,
-    },
+    ChipNotFound { source: RegistryError, name: String },
+
     #[error("The protocol '{protocol}' could not be selected.")]
     FailedToSelectProtocol {
-        #[source]
         source: DebugProbeError,
         protocol: WireProtocol,
     },
+
     #[error("The protocol speed could not be set to '{speed}' kHz.")]
-    FailedToSelectProtocolSpeed {
-        #[source]
-        source: DebugProbeError,
-        speed: u32,
-    },
+    FailedToSelectProtocolSpeed { source: DebugProbeError, speed: u32 },
+
     #[error("Connecting to the chip was unsuccessful.")]
     AttachingFailed {
-        #[source]
         source: probe_rs::Error,
         connect_under_reset: bool,
     },
+
     #[error("Failed to get a handle to the first core.")]
     AttachingToCoreFailed(#[source] probe_rs::Error),
+
     #[error("The reset of the target failed.")]
     TargetResetFailed(#[source] probe_rs::Error),
+
     #[error("The target could not be reset and halted.")]
     TargetResetHaltFailed(#[source] probe_rs::Error),
+
     #[error("Failed to write to file")]
     IOError(#[source] std::io::Error),
+
     #[error("Failed to parse CLI arguments.")]
     CliArgument(#[from] clap::Error),
 }
