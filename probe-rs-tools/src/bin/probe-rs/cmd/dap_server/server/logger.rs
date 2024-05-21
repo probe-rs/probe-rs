@@ -5,13 +5,11 @@ use crate::cmd::dap_server::{
 use parking_lot::{Mutex, MutexGuard};
 use std::{
     fs::File,
-    io::{stderr, BufRead, BufReader, LineWriter, SeekFrom, Write},
-    ops::Deref,
+    io::{stderr, Write},
     path::Path,
     sync::Arc,
 };
 
-use tempfile::tempfile;
 use tracing::{level_filters::LevelFilter, subscriber::DefaultGuard};
 use tracing_subscriber::{
     fmt::{format::FmtSpan, MakeWriter},
@@ -27,9 +25,7 @@ pub(crate) struct DebugLogger {
     /// and will be automatically removed by the OS when the last handle to it is closed.
     ///  - When the DAP server is running, the tracing messages are sent to the console.
     ///  - When the DAP server exits, the remaining messages in this buffer are sent to `stderr`.
-    buffer_file: Arc<Mutex<File>>,
-    /// Keep track of where we are in the file, so that we don't re-read or overwrite data.
-    seek_pointer: SeekFrom,
+    buffer_file: Arc<Mutex<Vec<u8>>>,
     /// We need to hold onto the tracing `DefaultGuard` for the `lifetime of DebugLogger`.
     /// Using the `DefaultGuard` will ensure that the tracing subscriber be dropped when the `DebugLogger`
     /// is dropped at the end of the `Debugger` lifetime. If we don't set it up this way,
@@ -38,7 +34,7 @@ pub(crate) struct DebugLogger {
 }
 
 #[derive(Clone)]
-struct WriterWrapper(Arc<Mutex<File>>);
+struct WriterWrapper(Arc<Mutex<Vec<u8>>>);
 
 /// Get a handle to the buffered log file, so that `tracing` can write to it.
 ///
@@ -76,8 +72,7 @@ impl DebugLogger {
     /// Create a new DebugTraceFile instance
     pub(crate) fn new(log_file: Option<&Path>) -> Result<Self, DebuggerError> {
         let mut debug_logger = Self {
-            buffer_file: Arc::new(Mutex::new(tempfile()?)),
-            seek_pointer: SeekFrom::Start(0),
+            buffer_file: Arc::new(Mutex::new(Vec::new())),
             log_default_guard: None,
         };
         debug_logger.log_default_guard = Some(debug_logger.setup_logging(log_file)?);
@@ -85,11 +80,27 @@ impl DebugLogger {
         Ok(debug_logger)
     }
 
-    /// Get a lock on the buffer file, so that we can update the file pointer when needed.
-    /// This is only used when we want to make sure we maintain the `DebugLogger::seek_pointer`
-    /// to ensure we keep track of the last data we sent to the DAP client.
-    fn locked_buffer_file(&self) -> MutexGuard<File> {
+    fn locked_buffer(&self) -> MutexGuard<Vec<u8>> {
         self.buffer_file.lock()
+    }
+
+    fn _process_new_log_lines(
+        &mut self,
+        mut callback: impl FnMut(&str),
+    ) -> Result<(), DebuggerError> {
+        let new = {
+            let mut locked_log = self.buffer_file.lock();
+            let new_bytes = std::mem::take(&mut *locked_log);
+
+            String::from_utf8_lossy(&new_bytes).to_string()
+        };
+
+        let mut buffer_lines = new.lines();
+        while let Some(next_line) = buffer_lines.next() {
+            callback(&next_line);
+        }
+
+        Ok(())
     }
 
     /// Flush the buffer to the DAP client's Debug Console
@@ -97,38 +108,14 @@ impl DebugLogger {
         &mut self,
         debug_adapter: &mut DebugAdapter<impl ProtocolAdapter>,
     ) -> Result<(), DebuggerError> {
-        let locked_log = self.locked_buffer_file();
-        let read_from_log = locked_log.deref();
-        let mut tracing_log_handle = BufReader::new(read_from_log.try_clone()?);
-        std::io::Seek::seek(&mut tracing_log_handle, self.seek_pointer)?;
-        let mut buffer_lines = tracing_log_handle.lines();
-        while let Some(Ok(next_line)) = buffer_lines.next() {
-            debug_adapter.log_to_console(next_line);
-        }
-        // Update the seek_pointer to the end of the file, so that we don't re-read the same lines.
-        let mut truncate_file = read_from_log.try_clone()?;
-        let later_read_pos = std::io::Seek::seek(&mut truncate_file, std::io::SeekFrom::End(0))?;
-        drop(locked_log);
-        self.seek_pointer = std::io::SeekFrom::Start(later_read_pos);
-        Ok(())
+        self._process_new_log_lines(|line| {
+            debug_adapter.log_to_console(line);
+        })
     }
 
     /// Flush the buffer to the stderr
     pub(crate) fn flush(&mut self) -> Result<(), DebuggerError> {
-        let locked_log = self.locked_buffer_file();
-        let read_from_log = locked_log.deref();
-        let mut tracing_log_handle = BufReader::new(read_from_log.try_clone()?);
-        std::io::Seek::seek(&mut tracing_log_handle, self.seek_pointer)?;
-        let mut buffer_lines = tracing_log_handle.lines();
-        while let Some(Ok(next_line)) = buffer_lines.next() {
-            eprintln!("{}", next_line);
-        }
-        // Update the seek_pointer to the end of the file, so that we don't re-read the same lines.
-        let mut truncate_file = read_from_log.try_clone()?;
-        let later_read_pos = std::io::Seek::seek(&mut truncate_file, std::io::SeekFrom::End(0))?;
-        drop(locked_log);
-        self.seek_pointer = std::io::SeekFrom::Start(later_read_pos);
-        Ok(())
+        self._process_new_log_lines(|line| eprintln!("{}", line))
     }
 
     /// Setup logging, according to the following rules.
@@ -222,17 +209,10 @@ impl DebugLogger {
     /// We can send messages directly to the console, irrespective of log levels, by writing to the `buffer_file`.
     /// If no `buffer_file` is available, we write to `stderr`.
     pub(crate) fn log_to_console(&mut self, message: &str) -> Result<(), DebuggerError> {
-        let locked_log = self.locked_buffer_file();
-        let read_from_log = locked_log.deref();
-        let mut tracing_log_append_handle = read_from_log.try_clone()?;
-        std::io::Seek::seek(&mut tracing_log_append_handle, std::io::SeekFrom::End(0))?;
-        let mut tracing_log_handle = LineWriter::new(tracing_log_append_handle);
-        tracing_log_handle.write_all(format!("probe-rs-debug: {}\n", message).as_bytes())?;
-        tracing_log_handle.flush()?;
-        // Make sure we reset the `seek_pointer` to what it was before we wrote to the file,
-        // so that we can send this data to the console.
-        let mut truncate_file = read_from_log.try_clone()?;
-        let _ = std::io::Seek::seek(&mut truncate_file, self.seek_pointer)?;
+        let mut locked_log = self.locked_buffer();
+
+        writeln!(locked_log, "probe-rs-debug: {message}")?;
+
         Ok(())
     }
 }

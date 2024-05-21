@@ -75,7 +75,6 @@ schemafy = { version = "0.6" }
 serde_json = { version = "1.0.116" }
 signal-hook = "0.3"
 svd-parser = { version = "0.14", features = ["expand"] }
-tempfile = "3.10"
 termtree = { version = "0.4" }
 textwrap = { version = "0.16" }
 time = { version = "0.3", default-features = false, features = [
