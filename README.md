@@ -148,7 +148,7 @@ fn main() -> Result<(), probe_rs::Error> {
 
 Don't hesitate to [file an issue](https://github.com/probe-rs/probe-rs/issues/new), ask questions on [Matrix](https://matrix.to/#/#probe-rs:matrix.org), or contact [@Yatekii](https://github.com/Yatekii) via e-mail.
 
-There is also a [trouble-shooting section](https://probe.rs/docs/knowledge-base/troubleshooting/) on the [project page](https://probe.rs/).
+There is also a [troubleshooting section](https://probe.rs/docs/knowledge-base/troubleshooting/) on the [project page](https://probe.rs/).
 
 ### How can I help?
 
