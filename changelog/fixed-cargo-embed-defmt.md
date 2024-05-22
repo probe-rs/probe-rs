@@ -1,1 +1,0 @@
-Fixed cargo-embed not processing defmt data correctly

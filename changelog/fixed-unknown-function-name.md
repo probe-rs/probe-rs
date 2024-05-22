@@ -1,1 +1,0 @@
-The debug unwind sometimes reported "unknown" for function names, when the DWARF encodes the name behind a `DW_AT_specification` reference. The fix will resolve any of the attributes, not just the name, which are in the DIE referenced by the `DW_AT_specification` tag.

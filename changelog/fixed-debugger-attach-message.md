@@ -1,1 +1,0 @@
-Provide a helpful error message when invalid `connectUnderReset` is used.

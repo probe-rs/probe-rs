@@ -1,1 +1,0 @@
-The `Run` cmd has been refactored to allow multiple different run modes in the future.

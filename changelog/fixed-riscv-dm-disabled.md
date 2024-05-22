@@ -1,1 +1,0 @@
-RISC-V: fixed an issue that accidentally disabled the debug module during certain operations
