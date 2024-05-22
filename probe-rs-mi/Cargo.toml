@@ -11,5 +11,5 @@ license.workspace = true
 description = "The probe-rs machine interface for computers interfacing probe-rs"
 
 [dependencies]
-semver = "1"
-serde = "1"
+semver = { version = "1", features = ["serde"] }
+serde = { version = "1", features = ["derive"] }
