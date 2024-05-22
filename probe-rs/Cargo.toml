@@ -114,6 +114,6 @@ replace = "[unreleased]: https://github.com/probe-rs/probe-rs/compare/v{{version
 
 
 [package.metadata.binstall]
-pkg-url = "{ repo }/releases/download/v{ version }/probe-rs-cli-{ target }-v{ version }{ archive-suffix }"
-bin-dir = "probe-rs-cli-{ target }-v{ version }/{ bin }{ binary-ext }"
+pkg-url = "{ repo }/releases/download/v{ version }/probe-rs-tools-{ target }-v{ version }{ archive-suffix }"
+bin-dir = "probe-rs-tools-{ target }-v{ version }/{ bin }{ binary-ext }"
 pkg-fmt = "tgz"
