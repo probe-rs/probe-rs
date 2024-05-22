@@ -1,5 +1,5 @@
 [package]
-version = "0.1.0"
+version = "0.24.0"
 name = "probe-rs-mi"
 edition.workspace = true
 documentation.workspace = true

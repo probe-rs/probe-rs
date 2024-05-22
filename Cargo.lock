@@ -2629,7 +2629,7 @@ dependencies = [
 
 [[package]]
 name = "probe-rs"
-version = "0.23.0"
+version = "0.24.0"
 dependencies = [
  "anyhow",
  "async-io",
@@ -2681,7 +2681,7 @@ dependencies = [
 
 [[package]]
 name = "probe-rs-mi"
-version = "0.1.0"
+version = "0.24.0"
 dependencies = [
  "semver",
  "serde",
@@ -2689,7 +2689,7 @@ dependencies = [
 
 [[package]]
 name = "probe-rs-target"
-version = "0.23.0"
+version = "0.24.0"
 dependencies = [
  "base64",
  "jep106",
@@ -2699,7 +2699,7 @@ dependencies = [
 
 [[package]]
 name = "probe-rs-tools"
-version = "0.23.0"
+version = "0.24.0"
 dependencies = [
  "addr2line 0.22.0",
  "ansi-parser",
@@ -3120,7 +3120,7 @@ checksum = "3cd14fd5e3b777a7422cca79358c57a8f6e3a703d9ac187448d0daf220c2407f"
 
 [[package]]
 name = "rtthost"
-version = "0.23.0"
+version = "0.24.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -3584,7 +3584,7 @@ checksum = "b7c388c1b5e93756d0c740965c41e8822f866621d41acbdf6336a6a168f8840c"
 
 [[package]]
 name = "smoke_tester"
-version = "0.23.0"
+version = "0.24.0"
 dependencies = [
  "clap",
  "colored",
@@ -3775,7 +3775,7 @@ checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
 
 [[package]]
 name = "target-gen"
-version = "0.23.0"
+version = "0.24.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -4726,7 +4726,7 @@ checksum = "9d422e8e38ec76e2f06ee439ccc765e9c6a9638b9e7c9f2e8255e4d41e8bd852"
 
 [[package]]
 name = "xtask"
-version = "0.23.0"
+version = "0.24.0"
 dependencies = [
  "anyhow",
  "clap",

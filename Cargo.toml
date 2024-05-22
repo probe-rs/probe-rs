@@ -1,5 +1,5 @@
 [workspace.package]
-version = "0.23.0"
+version = "0.24.0"
 edition = "2021"
 
 documentation = "https://docs.rs/probe-rs/"
@@ -24,9 +24,9 @@ members = [
 exclude = ["probe-rs/tests/gpio-hal-blinky"]
 
 [workspace.dependencies]
-probe-rs = { path = "probe-rs", version = "0.23.0" }
-probe-rs-target = { path = "probe-rs-target", version = "0.23.0" }
-probe-rs-mi = { path = "probe-rs-mi", version = "0.1.0" }
+probe-rs = { path = "probe-rs", version = "0.24.0" }
+probe-rs-target = { path = "probe-rs-target", version = "0.24.0" }
+probe-rs-mi = { path = "probe-rs-mi", version = "0.24.0" }
 
 docsplay = "0.1.1"
 thiserror = "1.0.59"
