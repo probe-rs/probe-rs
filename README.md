@@ -59,10 +59,10 @@ irm https://github.com/probe-rs/probe-rs/releases/latest/download/probe-rs-insta
 
 #### From source
 
-The tools can also be installed from source. After installing the necessary [prerequisites](#building), the latest released version can be installed using `cargo install`:
+The tools can also be installed from source. After installing the necessary [prerequisites](#building), the latest development version can be installed using `cargo install`:
 
 ```bash
-cargo install probe-rs-tools --locked
+cargo install probe-rs-tools --git https://github.com/probe-rs/probe-rs --locked
 ```
 
 This will compile the tools and place them into the cargo `bin` directory. See the [Cargo book](https://doc.rust-lang.org/cargo/commands/cargo-install.html) for details.
