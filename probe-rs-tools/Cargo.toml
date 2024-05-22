@@ -53,7 +53,7 @@ cargo_metadata = { version = "0.18" }
 clap = { version = "4", features = ["derive", "env"] }
 colored = { version = "2" }
 crossterm = { version = "<= 0.27" }
-defmt-decoder = { version = "=0.3.10", features = [
+defmt-decoder = { version = "=0.3.11", features = [
     "unstable",
 ] } # pinned because "unstable" has potential for breaking changes
 directories = { version = "5" }
