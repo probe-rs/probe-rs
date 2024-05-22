@@ -1,1 +1,0 @@
-The MI now has a `meta` command that returns a bunch of meta info about the binary build, such as the version or the commit hash off which the binary was built.

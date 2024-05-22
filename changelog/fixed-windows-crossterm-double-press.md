@@ -1,1 +1,0 @@
-Prevent duplicate inputs being registered in cargo-embed on Windows.

@@ -1,1 +1,0 @@
-Add support RTT for 64bit processor
