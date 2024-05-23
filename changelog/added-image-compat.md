@@ -1,1 +1,0 @@
-`cargo embed` and `cargo flash` now try to verify image compatibility

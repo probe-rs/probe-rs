@@ -202,7 +202,7 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
                                             \
                     You can also set the [default.probe] config attribute \
                     (in your Embed.toml) to select which probe to use. \
-                    For usage examples see https://github.com/probe-rs/cargo-embed/blob/master/src/config/default.toml .",
+                    For usage examples see https://github.com/probe-rs/probe-rs/blob/master/probe-rs-tools/src/bin/probe-rs/cmd/cargo_embed/config/default.toml .",
                     list.iter().enumerate().fold(String::new(), |mut s, (num, link)| { let _ = writeln!(s, "[{num}]: {link}"); s })));
         }
         Err(OperationError::AttachingFailed {

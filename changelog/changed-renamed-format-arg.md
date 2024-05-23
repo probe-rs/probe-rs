@@ -1,1 +1,0 @@
-Renamed the `--format` argument to `--binary-format` for upcoming embedded-test integration.

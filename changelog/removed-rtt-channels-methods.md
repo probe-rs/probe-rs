@@ -1,1 +1,0 @@
-Removed `drain()` from `rtt::Channels`
