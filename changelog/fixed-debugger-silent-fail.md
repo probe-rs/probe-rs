@@ -1,1 +1,0 @@
-Do not 'silence' errors that need to be reported to the user. Specifically errors during the `attach` and `launch` requests, where flashing can fail, and the user needs to know about it.

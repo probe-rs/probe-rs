@@ -1,1 +1,0 @@
-The process of finding function DIE's assigned the `low_pc` and `high_pc` values based on only the last processed `gimli::Range` for the funciton DIE. 

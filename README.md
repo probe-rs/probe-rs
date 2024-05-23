@@ -59,10 +59,10 @@ irm https://github.com/probe-rs/probe-rs/releases/latest/download/probe-rs-insta
 
 #### From source
 
-The tools can also be installed from source. After installing the necessary [prerequisites](#building), the latest released version can be installed using `cargo install`:
+The tools can also be installed from source. After installing the necessary [prerequisites](#building), the latest development version can be installed using `cargo install`:
 
 ```bash
-cargo install probe-rs --locked --features cli
+cargo install probe-rs-tools --git https://github.com/probe-rs/probe-rs --locked
 ```
 
 This will compile the tools and place them into the cargo `bin` directory. See the [Cargo book](https://doc.rust-lang.org/cargo/commands/cargo-install.html) for details.
@@ -148,7 +148,7 @@ fn main() -> Result<(), probe_rs::Error> {
 
 Don't hesitate to [file an issue](https://github.com/probe-rs/probe-rs/issues/new), ask questions on [Matrix](https://matrix.to/#/#probe-rs:matrix.org), or contact [@Yatekii](https://github.com/Yatekii) via e-mail.
 
-There is also a [trouble-shooting section](https://probe.rs/docs/knowledge-base/troubleshooting/) on the [project page](https://probe.rs/).
+There is also a [troubleshooting section](https://probe.rs/docs/knowledge-base/troubleshooting/) on the [project page](https://probe.rs/).
 
 ### How can I help?
 

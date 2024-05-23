@@ -1,1 +1,0 @@
-Removed `halt_afterwards` from Embed.toml

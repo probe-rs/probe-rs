@@ -1,1 +1,0 @@
-Users can now specify RTT channel operating mode for the debugger.
