@@ -20,9 +20,9 @@ Some examples where the breakpoint will not be set exactly where the user expect
 
 The stepping actions are based on available requests and step granularities defined by the [DAP protocol](https://microsoft.github.io/debug-adapter-protocol/specification#Types_SteppingGranularity).
 
-The stepping implementation shares logic with the [breakpoint](#breakpoints) discssion above, and many of the same rules apply with respect to indentifying valid halt points.
+The stepping implementation shares logic with the [breakpoint](#breakpoints) discussion above, and many of the same rules apply with respect to indentifying valid halt points.
 
-In all cases, it is important remember that stepping is an implied request to 'run' the target to some future haltpoint that is not necessarily the immediate next instruction. The implication of this is that other breakpoints, exceptions, and interrupts, may result in the processor executing code, and possibly halting on an instruction that is not the target of the user's step action. This is consistent with other debuggers like 'gdb' and 'lldb'.
+In all cases, it is important to remember that stepping is an implied request to 'run' the target to some future haltpoint that is not necessarily the immediate next instruction. The implication of this is that other breakpoints, code branching, exceptions, interrupts, and other pre-emptions, may result in the processor executing code, and possibly halting on an instruction that is not the target of the user's step action. This is consistent with other debuggers like 'gdb' and 'lldb'.
 
 ### Stepping at 'instruction' level
 
@@ -30,23 +30,24 @@ The user must be in an interface that supports viewing disassembled code, e.g. V
 
 ### Stepping at 'statement' level
 
-When a user requests a stepping action, while inside non-assembly code (e.g. Rust or C), the stepping instructions are automatically done on a 'statement-by-statement' basis. Most modern programming languages allow multiple 'statements' on a single line of source code. e.g. `let result_value = call_a_function(call_another_function_to_get_parameter(another-parameter));`
+When a user requests a stepping action, while inside non-assembly code (e.g. Rust or C), the stepping instructions are automatically done on a 'statement-by-statement' basis. Most modern programming languages allow multiple 'statements' on a single line of source code. e.g. `let result_value = call_a_function(call_another_function_to_get_parameter(another-parameter));`, constitutes a 'statement' for each of the function calls, as well as one for binding the result to the variable.
 
 #### 'step-over' (a.k.a. 'next')
 
-- [ ] Stepping over a statement that calls a non-inlined function, will run until the function returns before halting.
-- [ ] Stepping over a statement that precedes another statement that calls an inlined function, will step to the first statement in the inlined function, since logically, that is the next statement in the current sequence.
+- [ ] Stepping over a statement that calls a non-inlined function, will run until the function returns before halting. If your code is such that the called function runs a long time, the stepping action may appear to not return control to you, but it really is just waiting for the next halt.
+- [ ] Stepping over a statement, which is followed by a statement that calls an inlined function, the target will step to the first statement in the inlined function, since logically, that is the next statement in the current sequence.
 
 #### 'step-into'
 
-- [ ] Stepping into a statement that does not call a non-inlined function, will simply step over the statement.
-- [ ] Stepping into a a statement that calls a function, will halt at the first instruction after the prologue of the function.
+- [ ] Stepping into a statement that does not call function, will simply step over the statement.
+- [ ] Stepping into a statement that calls a non-inlined function, will halt at the first instruction after the prologue of the function.
+- [ ] Stepping into a statement that calls an inlined function will step over that statement, because inlined code would have already been executed at that point.
 
 #### 'step-out'
 
 - [ ] Stepping out of a no-return function, e.g. `fn main() -> !` is not possible, and will display a message to that effect.
 - [ ] For other functions, the halt target will be the first statement after the statement that called the function.
-- [ ] In some circumstances where the debug info does not have enough information to complete this request in one step, the target will have an interrim haltpoint at the last valid instruction in the current function.
+- [ ] In some circumstances where the debug info does not have enough information to complete this request in one step, the target will insert an interrim haltpoint at the last valid instruction in the current function.
 
 #### 'run to line'
 
