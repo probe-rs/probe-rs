@@ -108,8 +108,3 @@ replace = "## [{{version}}]\n\nReleased {{date}}"
 file = "../CHANGELOG.md"
 search = "\\[unreleased\\]: https://github.com/probe-rs/probe-rs/compare/v([a-z0-9.-]+)\\.\\.\\.master"
 replace = "[unreleased]: https://github.com/probe-rs/probe-rs/compare/v{{version}}...master\n[{{version}}]: https://github.com/probe-rs/probe-rs/compare/v$1...v{{version}}"
-
-[package.metadata.binstall]
-pkg-url = "{ repo }/releases/download/v{ version }/probe-rs-tools-{ target }-v{ version }{ archive-suffix }"
-bin-dir = "probe-rs-tools-{ target }-v{ version }/{ bin }{ binary-ext }"
-pkg-fmt = "tgz"
