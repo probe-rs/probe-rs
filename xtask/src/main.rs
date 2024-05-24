@@ -208,15 +208,8 @@ fn check_changelog() -> Result<()> {
             return Ok(());
         }
 
-        if !info
-            .files
-            .iter()
-            .any(|f| f.path.starts_with(FRAGMENTS_DIR) && f.additions > 0)
-        {
-            anyhow::bail!(
-                "No new changelog fragments detected, and 'skip-changelog' label not applied."
-            );
-        }
+        disallow_editing_main_changelog(&info)?;
+        require_changelog_fragment(&info)?;
     } else {
         println!("Unable to fetch PR info, just checking fragments.");
     }
@@ -224,6 +217,39 @@ fn check_changelog() -> Result<()> {
     check_fragments()?;
 
     println!("Everything looks good 👍");
+
+    Ok(())
+}
+
+fn disallow_editing_main_changelog(info: &PrInfo) -> Result<()> {
+    if info.labels.iter().any(|l| l.name == "release") {
+        // The release PR is allowed to edit the main changelog.
+        return Ok(());
+    }
+
+    if info
+        .files
+        .iter()
+        .any(|f| f.path == Path::new(CHANGELOG_FILE))
+    {
+        anyhow::bail!(
+            "Please do not edit {CHANGELOG_FILE} directly. Take a look at CONTRIBUTING.md for information on changelog fragments instead."
+        );
+    }
+
+    Ok(())
+}
+
+fn require_changelog_fragment(info: &PrInfo) -> Result<()> {
+    if !info
+        .files
+        .iter()
+        .any(|f| f.path.starts_with(FRAGMENTS_DIR) && f.additions > 0)
+    {
+        anyhow::bail!(
+            "No new changelog fragments detected, and 'skip-changelog' label not applied."
+        );
+    }
 
     Ok(())
 }
