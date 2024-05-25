@@ -305,7 +305,7 @@ impl FlashBuilder {
             let range = info.base_address..page_end;
 
             // Ignore the page if it's outside the NvmRegion.
-            if !region.range.contains_range(&range.clone()) {
+            if !region.range.contains_range(&range) {
                 continue;
             }
 
