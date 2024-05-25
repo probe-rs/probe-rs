@@ -2,6 +2,17 @@ name: SAME53
 manufacturer:
   id: 0x1f
   cc: 0x0
+chip_detection:
+ - !Atsam
+    processor: 6
+    family: 3
+    series: 3
+    variants:
+      0x02: ATSAME53N20A
+      0x03: ATSAME53N19A
+      0x04: ATSAME53J20A
+      0x05: ATSAME53J19A
+      0x06: ATSAME53J18A
 variants:
 - name: ATSAME53J18A
   cores:
