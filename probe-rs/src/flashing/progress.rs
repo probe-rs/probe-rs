@@ -40,11 +40,11 @@ impl FlashProgress {
     }
 
     /// Signalize that the flashing algorithm was set up and is initialized.
-    pub(super) fn initialized<'a>(
+    pub(super) fn initialized(
         &self,
         chip_erase: bool,
         restore_unwritten: bool,
-        phases: &'a [FlashLayout],
+        phases: Vec<FlashLayout>,
     ) {
         self.emit(ProgressEvent::Initialized {
             chip_erase,
@@ -113,7 +113,7 @@ impl FlashProgress {
         self.emit(ProgressEvent::FinishedFilling);
     }
 
-    pub(super) fn message<'a>(&self, message: &'a str) {
+    pub(super) fn message(&self, message: String) {
         self.emit(ProgressEvent::DiagnosticMessage { message });
     }
 }
@@ -137,7 +137,7 @@ impl FlashProgress {
 /// If an error occurs in any stage, one of the `Failed*` event will be returned,
 /// and no further events will be returned.
 #[derive(Debug)]
-pub enum ProgressEvent<'a> {
+pub enum ProgressEvent {
     /// The flash layout has been built and the flashing procedure was initialized.
     Initialized {
         /// Whether the chip erase feature is enabled.
@@ -148,7 +148,7 @@ pub enum ProgressEvent<'a> {
         /// The layout of the flash contents as it will be used by the flash procedure, grouped by
         /// phases (fill, erase, program sequences).
         /// This is an exact report of what the flashing procedure will do during the flashing process.
-        phases: &'a [FlashLayout],
+        phases: Vec<FlashLayout>,
 
         /// Whether the unwritten flash contents will be restored after erasing.
         restore_unwritten: bool,
@@ -200,6 +200,6 @@ pub enum ProgressEvent<'a> {
     /// a message was received from the algo.
     DiagnosticMessage {
         /// The message that was emitted.
-        message: &'a str,
+        message: String,
     },
 }

@@ -462,11 +462,7 @@ impl FlashLoader {
             phases.push(phase_layout);
         }
 
-        progress.initialized(
-            do_chip_erase,
-            options.keep_unwritten_bytes,
-            phases.as_slice(),
-        );
+        progress.initialized(do_chip_erase, options.keep_unwritten_bytes, phases);
 
         // Iterate all flash algorithms we need to use and do the flashing.
         for ((algo_name, core), regions) in algos {

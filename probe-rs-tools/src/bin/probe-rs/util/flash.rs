@@ -73,8 +73,6 @@ pub fn run_flash_download(
 
                     let mut flash_layout = FlashLayout::default();
                     for phase_layout in phases {
-                        flash_layout.merge_from(phase_layout.clone());
-
                         if restore_unwritten {
                             let fill_size =
                                 flash_layout.fills().iter().map(|s| s.size()).sum::<u64>();
@@ -94,6 +92,8 @@ pub fn run_flash_download(
                         progress_bars
                             .program
                             .add(multi_progress.add(ProgressBar::new(0)));
+
+                        flash_layout.merge_from(phase_layout);
                     }
 
                     // TODO: progress bar for verifying?
