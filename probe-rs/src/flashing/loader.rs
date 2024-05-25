@@ -398,17 +398,13 @@ impl FlashLoader {
             }
 
             let algo = Self::get_flash_algorithm_for_region(region, session.target())?;
+            let core_name = region
+                .cores
+                .first()
+                .ok_or_else(|| FlashError::NoNvmCoreAccess(region.clone()))?
+                .clone();
 
-            let entry = algos
-                .entry((
-                    algo.name.clone(),
-                    region
-                        .cores
-                        .first()
-                        .ok_or_else(|| FlashError::NoNvmCoreAccess(region.clone()))?
-                        .clone(),
-                ))
-                .or_default();
+            let entry = algos.entry((algo.name.clone(), core_name)).or_default();
             entry.push(region.clone());
 
             tracing::debug!("     -- using algorithm: {}", algo.name);

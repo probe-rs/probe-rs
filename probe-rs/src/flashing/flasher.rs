@@ -180,19 +180,21 @@ impl<'session> Flasher<'session> {
 
         for (offset, (original, read_back)) in algo.instructions.iter().zip(data.iter()).enumerate()
         {
-            if original != read_back {
-                tracing::error!(
-                    "Failed to verify flash algorithm. Data mismatch at address {:#010x}",
-                    algo.load_address + (4 * offset) as u64
-                );
-                tracing::error!("Original instruction: {:#010x}", original);
-                tracing::error!("Readback instruction: {:#010x}", read_back);
-
-                tracing::error!("Original: {:x?}", &algo.instructions);
-                tracing::error!("Readback: {:x?}", &data);
-
-                return Err(FlashError::FlashAlgorithmNotLoaded);
+            if original == read_back {
+                continue;
             }
+
+            tracing::error!(
+                "Failed to verify flash algorithm. Data mismatch at address {:#010x}",
+                algo.load_address + (4 * offset) as u64
+            );
+            tracing::error!("Original instruction: {:#010x}", original);
+            tracing::error!("Readback instruction: {:#010x}", read_back);
+
+            tracing::error!("Original: {:x?}", &algo.instructions);
+            tracing::error!("Readback: {:x?}", &data);
+
+            return Err(FlashError::FlashAlgorithmNotLoaded);
         }
 
         tracing::debug!("RAM contents match flashing algo blob.");
