@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ChipDetectionMethod {
     /// Microchip ATSAM chip detection information.
-    Atsam(AtsamDetection),
+    AtsamDsu(AtsamDsuDetection),
 
     /// Espressif chip detection information.
     Espressif(EspressifDetection),
@@ -16,8 +16,8 @@ pub enum ChipDetectionMethod {
 
 impl ChipDetectionMethod {
     /// Returns the ATSAM detection information if available.
-    pub fn as_atsam(&self) -> Option<&AtsamDetection> {
-        if let Self::Atsam(v) = self {
+    pub fn as_atsam_dsu(&self) -> Option<&AtsamDsuDetection> {
+        if let Self::AtsamDsu(v) = self {
             Some(v)
         } else {
             None
@@ -34,9 +34,9 @@ impl ChipDetectionMethod {
     }
 }
 
-/// Microchip ATSAM chip detection information.
+/// Microchip ATSAM chip detection information when the device contains a DSU.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AtsamDetection {
+pub struct AtsamDsuDetection {
     /// DSU DID register, Processor field
     pub processor: u8,
 

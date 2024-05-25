@@ -57,7 +57,7 @@ impl Vendor for Microchip {
             for info in family
                 .chip_detection
                 .iter()
-                .filter_map(ChipDetectionMethod::as_atsam)
+                .filter_map(ChipDetectionMethod::as_atsam_dsu)
             {
                 if info.processor != did.processor() as u8
                     || info.family != did.family() as u8

@@ -3,7 +3,7 @@ manufacturer:
   id: 0x1f
   cc: 0x0
 chip_detection:
- - !Atsam
+ - !AtsamDsu
     processor: 6
     family: 3
     series: 3
