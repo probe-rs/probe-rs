@@ -277,7 +277,7 @@ impl FlashBuilder {
         let mut data_blocks: Vec<FlashDataBlockSpan> = Vec::new();
 
         for info in flash_algorithm.iter_sectors() {
-            let range = info.base_address..info.base_address + info.size;
+            let range = info.address_range();
 
             // Ignore the sector if it's outside the NvmRegion.
             if !region.range.contains_range(&range) {
@@ -285,7 +285,7 @@ impl FlashBuilder {
             }
 
             let page = flash_algorithm.page_info(info.base_address).unwrap();
-            let page_range = page.base_address..page.base_address + page.size as u64;
+            let page_range = page.address_range();
             let sector_has_data = self.has_data_in_range(&range);
             let page_has_data = self.has_data_in_range(&page_range);
 
@@ -301,8 +301,7 @@ impl FlashBuilder {
         }
 
         for info in flash_algorithm.iter_pages() {
-            let page_end = info.base_address + info.size as u64;
-            let range = info.base_address..page_end;
+            let range = info.address_range();
 
             // Ignore the page if it's outside the NvmRegion.
             if !region.range.contains_range(&range) {
@@ -310,7 +309,7 @@ impl FlashBuilder {
             }
 
             let sector = flash_algorithm.sector_info(info.base_address).unwrap();
-            let sector_range = sector.base_address..sector.base_address + sector.size;
+            let sector_range = sector.address_range();
             let sector_has_data = self.has_data_in_range(&sector_range);
             let page_has_data = self.has_data_in_range(&range);
 
@@ -342,10 +341,10 @@ impl FlashBuilder {
             }
 
             // Fill the hole between the last data block (or page start if there are no blocks) and page end.
-            if fill_start_addr < page_end {
+            if fill_start_addr < range.end {
                 fills.push(FlashFill {
                     address: fill_start_addr,
-                    size: page_end - fill_start_addr,
+                    size: range.end - fill_start_addr,
                     page_index: pages.len(),
                 });
             }
