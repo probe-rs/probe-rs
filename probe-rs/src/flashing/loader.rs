@@ -432,7 +432,26 @@ impl FlashLoader {
         let mut do_chip_erase = options.do_chip_erase;
         let mut did_chip_erase = false;
 
-        // Iterate all flash algorithms we need to use.
+        // No longer needs to be mutable.
+        let algos = algos;
+
+        // Iterate all flash algorithms to initialize a few things.
+        for (algo_name, core) in algos.keys() {
+            // This can't fail, algo_name comes from the target.
+            let algo = session.target().flash_algorithm_by_name(algo_name);
+            let algo = algo.unwrap().clone();
+
+            let flasher = Flasher::new(session, *core, &algo, options.progress.clone())?;
+            // If the first flash algo doesn't support erase all, disable chip erase.
+            // TODO: we could sort by support but it's unlikely to make a difference.
+            if do_chip_erase && !flasher.is_chip_erase_supported() {
+                do_chip_erase = false;
+                tracing::warn!("Chip erase was the selected method to erase the sectors but this chip does not support chip erases (yet).");
+                tracing::warn!("A manual sector erase will be performed.");
+            }
+        }
+
+        // Iterate all flash algorithms we need to use and do the flashing.
         for ((algo_name, core), regions) in algos {
             tracing::debug!("Flashing ranges for algo: {}", algo_name);
 
@@ -441,13 +460,6 @@ impl FlashLoader {
             let algo = algo.unwrap().clone();
 
             let mut flasher = Flasher::new(session, core, &algo, options.progress.clone())?;
-
-            // If the flash algo doesn't support erase all, disable chip erase.
-            if do_chip_erase && !flasher.is_chip_erase_supported() {
-                do_chip_erase = false;
-                tracing::warn!("Chip erase was the selected method to erase the sectors but this chip does not support chip erases (yet).");
-                tracing::warn!("A manual sector erase will be performed.");
-            }
 
             if do_chip_erase {
                 tracing::debug!("    Doing chip erase...");
