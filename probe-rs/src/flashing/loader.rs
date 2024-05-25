@@ -363,7 +363,7 @@ impl FlashLoader {
             tracing::warn!("Memory map of flash loader does not match memory map of target!");
         }
 
-        let mut algos: HashMap<(String, String), Vec<NvmRegion>> = HashMap::new();
+        let mut algos: HashMap<(String, usize), Vec<NvmRegion>> = HashMap::new();
 
         // Commit NVM first
 
@@ -397,14 +397,21 @@ impl FlashLoader {
                 continue;
             }
 
-            let algo = Self::get_flash_algorithm_for_region(region, session.target())?;
+            let target = session.target();
+            let algo = Self::get_flash_algorithm_for_region(region, target)?;
             let core_name = region
                 .cores
                 .first()
                 .ok_or_else(|| FlashError::NoNvmCoreAccess(region.clone()))?
                 .clone();
 
-            let entry = algos.entry((algo.name.clone(), core_name)).or_default();
+            let core = target
+                .cores
+                .iter()
+                .position(|c| c.name == core_name)
+                .unwrap();
+
+            let entry = algos.entry((algo.name.clone(), core)).or_default();
             entry.push(region.clone());
 
             tracing::debug!("     -- using algorithm: {}", algo.name);
@@ -426,19 +433,13 @@ impl FlashLoader {
         let mut did_chip_erase = false;
 
         // Iterate all flash algorithms we need to use.
-        for ((algo_name, core_name), regions) in algos {
+        for ((algo_name, core), regions) in algos {
             tracing::debug!("Flashing ranges for algo: {}", algo_name);
 
             // This can't fail, algo_name comes from the target.
             let algo = session.target().flash_algorithm_by_name(&algo_name);
             let algo = algo.unwrap().clone();
 
-            let core = session
-                .target()
-                .cores
-                .iter()
-                .position(|c| c.name == core_name)
-                .unwrap();
             let mut flasher = Flasher::new(session, core, &algo, options.progress.clone())?;
 
             // If the flash algo doesn't support erase all, disable chip erase.
