@@ -426,6 +426,9 @@ impl FlashLoader {
             return Ok(());
         }
 
+        let mut do_chip_erase = options.do_chip_erase;
+        let mut did_chip_erase = false;
+
         // Iterate all flash algorithms we need to use.
         for ((algo_name, core_name), regions) in algos {
             tracing::debug!("Flashing ranges for algo: {}", algo_name);
@@ -442,8 +445,6 @@ impl FlashLoader {
                 .unwrap();
             let mut flasher = Flasher::new(session, core, &algo, options.progress.clone())?;
 
-            let mut do_chip_erase = options.do_chip_erase;
-
             // If the flash algo doesn't support erase all, disable chip erase.
             if do_chip_erase && !flasher.is_chip_erase_supported() {
                 do_chip_erase = false;
@@ -454,6 +455,8 @@ impl FlashLoader {
             if do_chip_erase {
                 tracing::debug!("    Doing chip erase...");
                 flasher.run_erase_all()?;
+                do_chip_erase = false;
+                did_chip_erase = true;
             }
 
             let mut do_use_double_buffering = flasher.double_buffering_supported();
@@ -475,7 +478,7 @@ impl FlashLoader {
                     &self.builder,
                     options.keep_unwritten_bytes,
                     do_use_double_buffering,
-                    options.skip_erase || do_chip_erase,
+                    options.skip_erase || did_chip_erase,
                 )?;
             }
         }
