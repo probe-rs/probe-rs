@@ -343,7 +343,7 @@ impl<'session> Flasher<'session> {
 
         let flash_encoder = FlashEncoder::new(self.flash_algorithm.transfer_encoding, flash_layout);
 
-        // Skip erase if necessary
+        // Skip erase if necessary (i.e. chip erase was done before)
         if !skip_erasing {
             // Erase all necessary sectors
             self.sector_erase(&flash_encoder)?;
@@ -381,13 +381,8 @@ impl<'session> Flasher<'session> {
 
     /// Programs the pages given in `flash_layout` into the flash.
     fn program_simple(&mut self, flash_encoder: &FlashEncoder) -> Result<(), FlashError> {
-        self.progress.started_programming(
-            flash_encoder
-                .pages()
-                .iter()
-                .map(|p| p.data().len() as u64)
-                .sum(),
-        );
+        self.progress
+            .started_programming(flash_encoder.program_size());
 
         let mut t = Instant::now();
         let result = self.run_program(|active| {
@@ -454,13 +449,8 @@ impl<'session> Flasher<'session> {
     /// fit at least two page buffers. See [Flasher::double_buffering_supported].
     fn program_double_buffer(&mut self, flash_encoder: &FlashEncoder) -> Result<(), FlashError> {
         let mut current_buf = 0;
-        self.progress.started_programming(
-            flash_encoder
-                .pages()
-                .iter()
-                .map(|p| p.data().len() as u64)
-                .sum(),
-        );
+        self.progress
+            .started_programming(flash_encoder.program_size());
 
         let mut t = Instant::now();
         let result = self.run_program(|active| {
