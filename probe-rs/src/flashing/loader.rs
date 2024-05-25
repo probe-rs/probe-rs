@@ -435,7 +435,7 @@ impl FlashLoader {
         // No longer needs to be mutable.
         let algos = algos;
 
-        let mut complete_layout = FlashLayout::default();
+        let mut phases = vec![];
 
         // Iterate all flash algorithms to initialize a few things.
         for ((algo_name, core), regions) in algos.iter() {
@@ -452,15 +452,21 @@ impl FlashLoader {
                 tracing::warn!("A manual sector erase will be performed.");
             }
 
+            let mut phase_layout = FlashLayout::default();
             for region in regions {
                 let layout =
                     flasher.flash_layout(region, &self.builder, options.keep_unwritten_bytes)?;
 
-                complete_layout.merge_from(layout);
+                phase_layout.merge_from(layout);
             }
+            phases.push(phase_layout);
         }
 
-        progress.initialized(&complete_layout);
+        progress.initialized(
+            do_chip_erase,
+            options.keep_unwritten_bytes,
+            phases.as_slice(),
+        );
 
         // Iterate all flash algorithms we need to use and do the flashing.
         for ((algo_name, core), regions) in algos {

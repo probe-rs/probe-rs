@@ -40,8 +40,17 @@ impl FlashProgress {
     }
 
     /// Signalize that the flashing algorithm was set up and is initialized.
-    pub(super) fn initialized<'a>(&self, flash_layout: &'a FlashLayout) {
-        self.emit(ProgressEvent::Initialized { flash_layout });
+    pub(super) fn initialized<'a>(
+        &self,
+        chip_erase: bool,
+        restore_unwritten: bool,
+        phases: &'a [FlashLayout],
+    ) {
+        self.emit(ProgressEvent::Initialized {
+            chip_erase,
+            restore_unwritten,
+            phases,
+        });
     }
 
     /// Signalize that the erasing procedure started.
@@ -131,9 +140,18 @@ impl FlashProgress {
 pub enum ProgressEvent<'a> {
     /// The flash layout has been built and the flashing procedure was initialized.
     Initialized {
-        /// The layout of the flash contents as it will be used by the flash procedure.
+        /// Whether the chip erase feature is enabled.
+        /// If this is true, the chip will be erased before any other operation. No separate erase
+        /// progress bars are necessary in this case.
+        chip_erase: bool,
+
+        /// The layout of the flash contents as it will be used by the flash procedure, grouped by
+        /// phases (fill, erase, program sequences).
         /// This is an exact report of what the flashing procedure will do during the flashing process.
-        flash_layout: &'a FlashLayout,
+        phases: &'a [FlashLayout],
+
+        /// Whether the unwritten flash contents will be restored after erasing.
+        restore_unwritten: bool,
     },
     /// Filling of flash pages has started.
     StartedFilling,
