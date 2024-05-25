@@ -799,10 +799,10 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
                 let mut buffer = vec![0; channel.buffer_size()];
                 match channel.read(&mut self.core, &mut buffer) {
                     Ok(read) if read > 0 => {
-                        let message = String::from_utf8_lossy(&buffer[..read]).to_string();
+                        let message = String::from_utf8_lossy(&buffer[..read]);
                         let channel = channel.name().unwrap_or("unnamed");
                         tracing::debug!("RTT({channel}): {message}");
-                        self.progress.message(message);
+                        self.progress.message(message.as_ref());
                     }
                     Ok(_) => (),
                     Err(error) => tracing::debug!("Reading RTT failed: {error}"),

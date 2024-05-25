@@ -40,7 +40,7 @@ impl FlashProgress {
     }
 
     /// Signalize that the flashing algorithm was set up and is initialized.
-    pub(super) fn initialized(&self, flash_layout: FlashLayout) {
+    pub(super) fn initialized<'a>(&self, flash_layout: &'a FlashLayout) {
         self.emit(ProgressEvent::Initialized { flash_layout });
     }
 
@@ -104,7 +104,7 @@ impl FlashProgress {
         self.emit(ProgressEvent::FinishedFilling);
     }
 
-    pub(super) fn message(&self, message: String) {
+    pub(super) fn message<'a>(&self, message: &'a str) {
         self.emit(ProgressEvent::DiagnosticMessage { message });
     }
 }
@@ -128,12 +128,12 @@ impl FlashProgress {
 /// If an error occurs in any stage, one of the `Failed*` event will be returned,
 /// and no further events will be returned.
 #[derive(Debug)]
-pub enum ProgressEvent {
+pub enum ProgressEvent<'a> {
     /// The flash layout has been built and the flashing procedure was initialized.
     Initialized {
         /// The layout of the flash contents as it will be used by the flash procedure.
         /// This is an exact report of what the flashing procedure will do during the flashing process.
-        flash_layout: FlashLayout,
+        flash_layout: &'a FlashLayout,
     },
     /// Filling of flash pages has started.
     StartedFilling,
@@ -182,6 +182,6 @@ pub enum ProgressEvent {
     /// a message was received from the algo.
     DiagnosticMessage {
         /// The message that was emitted.
-        message: String,
+        message: &'a str,
     },
 }

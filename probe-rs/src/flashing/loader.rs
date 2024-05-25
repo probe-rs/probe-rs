@@ -460,7 +460,7 @@ impl FlashLoader {
             }
         }
 
-        progress.initialized(complete_layout);
+        progress.initialized(&complete_layout);
 
         // Iterate all flash algorithms we need to use and do the flashing.
         for ((algo_name, core), regions) in algos {
