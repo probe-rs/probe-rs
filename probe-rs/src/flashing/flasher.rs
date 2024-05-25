@@ -4,6 +4,7 @@ use tracing::Level;
 use super::{FlashAlgorithm, FlashBuilder, FlashError, FlashFill, FlashPage, FlashProgress};
 use crate::config::NvmRegion;
 use crate::flashing::encoder::FlashEncoder;
+use crate::flashing::FlashLayout;
 use crate::memory::MemoryInterface;
 use crate::{core::CoreRegisters, session::Session, Core, InstructionSet};
 use std::{
@@ -62,7 +63,7 @@ impl<'session> Flasher<'session> {
         session: &'session mut Session,
         core_index: usize,
         raw_flash_algorithm: &RawFlashAlgorithm,
-        progress: Option<FlashProgress>,
+        progress: FlashProgress,
     ) -> Result<Self, FlashError> {
         let target = session.target();
 
@@ -130,7 +131,7 @@ impl<'session> Flasher<'session> {
             session,
             core_index,
             flash_algorithm,
-            progress: progress.unwrap_or(FlashProgress::new(|_| {})),
+            progress,
         };
 
         this.load()?;
@@ -309,12 +310,7 @@ impl<'session> Flasher<'session> {
     ) -> Result<(), FlashError> {
         tracing::debug!("Starting program procedure.");
         // Convert the list of flash operations into flash sectors and pages.
-        let mut flash_layout = flash_builder.build_sectors_and_pages(
-            region,
-            &self.flash_algorithm,
-            restore_unwritten_bytes,
-        )?;
-        self.progress.initialized(flash_layout.clone());
+        let mut flash_layout = self.flash_layout(region, flash_builder, restore_unwritten_bytes)?;
 
         tracing::debug!("Double Buffering enabled: {:?}", enable_double_buffering);
         tracing::debug!(
@@ -531,6 +527,19 @@ impl<'session> Flasher<'session> {
         }
 
         Ok(())
+    }
+
+    pub(super) fn flash_layout(
+        &self,
+        region: &NvmRegion,
+        flash_builder: &FlashBuilder,
+        restore_unwritten_bytes: bool,
+    ) -> Result<FlashLayout, FlashError> {
+        flash_builder.build_sectors_and_pages(
+            region,
+            &self.flash_algorithm,
+            restore_unwritten_bytes,
+        )
     }
 }
 

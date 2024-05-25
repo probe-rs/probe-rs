@@ -27,6 +27,13 @@ impl FlashProgress {
         }
     }
 
+    /// Create a new `FlashProgress` structure with an empty handler.
+    pub fn empty() -> Self {
+        Self {
+            handler: Arc::new(|_| {}),
+        }
+    }
+
     /// Emit a flashing progress event.
     fn emit(&self, event: ProgressEvent) {
         (self.handler)(event);

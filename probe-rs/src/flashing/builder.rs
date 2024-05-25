@@ -107,6 +107,14 @@ pub struct FlashLayout {
 }
 
 impl FlashLayout {
+    /// Merge another flash layout into this one.
+    pub fn merge_from(&mut self, other: FlashLayout) {
+        self.sectors.extend(other.sectors);
+        self.pages.extend(other.pages);
+        self.fills.extend(other.fills);
+        self.data_blocks.extend(other.data_blocks);
+    }
+
     /// List of sectors which are erased during flashing.
     pub fn sectors(&self) -> &[FlashSector] {
         &self.sectors

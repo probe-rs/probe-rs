@@ -264,9 +264,9 @@ pub fn run_flash_erase(
     erase_type: EraseType,
 ) -> Result<()> {
     if let EraseSectors(start_sector, sectors) = erase_type {
-        erase_sectors(session, Some(progress), start_sector, sectors)?;
+        erase_sectors(session, progress, start_sector, sectors)?;
     } else {
-        erase_all(session, Some(progress))?;
+        erase_all(session, progress)?;
     }
 
     Ok(())
