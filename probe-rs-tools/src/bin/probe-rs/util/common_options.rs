@@ -194,12 +194,13 @@ impl LoadedProbeOptions {
         Ok(target)
     }
 
-    /// Provide a list of numerically identified probes and allow for a stdin selection
-    fn interactive_probe_select(&self, lister: &Lister) -> Result<DebugProbeInfo, OperationError> {
-        let list = lister.list_all();
+    /// Allow for a stdin selection of the given probes
+    fn interactive_probe_select(
+        list: &[DebugProbeInfo],
+    ) -> Result<&DebugProbeInfo, OperationError> {
         println!("Available Probes:");
-        for (i, l) in list.iter().enumerate() {
-            println!("{}: {}", i, l);
+        for (i, probe_info) in list.iter().enumerate() {
+            println!("{i}: {probe_info}");
         }
 
         print!("Selection: ");
@@ -212,14 +213,25 @@ impl LoadedProbeOptions {
 
         let probe_idx = input
             .trim()
-            .parse::<u32>()
+            .parse::<usize>()
             .map_err(OperationError::ParseProbeIndex)?;
 
-        let Some(info) = list.get(probe_idx as usize) else {
-            return Err(OperationError::NoProbesFound);
+        list.get(probe_idx).ok_or(OperationError::NoProbesFound)
+    }
+
+    /// Selects a probe from a list of probes.
+    /// If there is only one probe, it will be selected automatically.
+    /// If there are multiple probes, the user will be prompted to select one unless
+    /// started in non-interactive mode.
+    fn select_probe(lister: &Lister, non_interactive: bool) -> Result<Probe, OperationError> {
+        let list = lister.list_all();
+        let selected = match list.len() {
+            0 | 1 => list.first().ok_or(OperationError::NoProbesFound),
+            _ if non_interactive => Err(OperationError::MultipleProbesFound { list }),
+            _ => Self::interactive_probe_select(&list),
         };
 
-        Ok(info.clone())
+        selected.and_then(|probe_info| Ok(lister.open(probe_info)?))
     }
 
     /// Attaches to specified probe and configures it.
@@ -229,29 +241,10 @@ impl LoadedProbeOptions {
         } else {
             // If we got a probe selector as an argument, open the probe
             // matching the selector if possible.
-            let probe = match &self.0.probe {
-                Some(selector) => lister.open(selector),
-                None => {
-                    // Only automatically select a probe if there is
-                    // only a single probe detected.
-                    let list = lister.list_all();
-                    if list.len() > 1 {
-                        if self.0.non_interactive {
-                            return Err(OperationError::MultipleProbesFound { list });
-                        } else {
-                            let info = self.interactive_probe_select(lister)?;
-                            lister.open(info)
-                        }
-                    } else {
-                        let Some(info) = list.first() else {
-                            return Err(OperationError::NoProbesFound);
-                        };
-                        lister.open(info)
-                    }
-                }
-            };
-
-            probe.map_err(OperationError::FailedToOpenProbe)?
+            match &self.0.probe {
+                Some(selector) => lister.open(selector)?,
+                None => Self::select_probe(lister, self.0.non_interactive)?,
+            }
         };
 
         if let Some(protocol) = self.0.protocol {
@@ -470,7 +463,7 @@ pub enum OperationError {
     FailedToLoadElfData(#[source] FileDownloadError),
 
     #[error("Failed to open the debug probe.")]
-    FailedToOpenProbe(#[source] DebugProbeError),
+    FailedToOpenProbe(#[from] DebugProbeError),
 
     #[error("{} probes were found: {}", .list.len(), print_list(.list))]
     MultipleProbesFound { list: Vec<DebugProbeInfo> },
