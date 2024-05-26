@@ -15,37 +15,35 @@ fn main() {
     println!("cargo:rerun-if-changed=targets");
     println!("cargo:rerun-if-env-changed=PROBE_RS_TARGETS_DIR");
 
-    // Test if we have to generate built-in targets
-    if env::var("CARGO_FEATURE_BUILTIN_TARGETS").is_err() {
-        return;
-    }
-
     let mut families: Vec<ChipFamily> = Vec::new();
 
-    let mut files = vec![];
-    visit_dirs(Path::new("targets"), &mut files).unwrap();
+    // Test if we have to generate built-in targets
+    if env::var("CARGO_FEATURE_BUILTIN_TARGETS").is_ok() {
+        let mut files = vec![];
+        visit_dirs(Path::new("targets"), &mut files).unwrap();
 
-    // Check if there are any additional targets to generate for
-    match env::var("PROBE_RS_TARGETS_DIR") {
-        Ok(additional_target_dir) => {
-            println!("cargo:rerun-if-changed={additional_target_dir}");
-            visit_dirs(Path::new(&additional_target_dir), &mut files).unwrap();
+        // Check if there are any additional targets to generate for
+        match env::var("PROBE_RS_TARGETS_DIR") {
+            Ok(additional_target_dir) => {
+                println!("cargo:rerun-if-changed={additional_target_dir}");
+                visit_dirs(Path::new(&additional_target_dir), &mut files).unwrap();
+            }
+            Err(_err) => {
+                // Do nothing as you dont have to add any other targets
+            }
         }
-        Err(_err) => {
-            // Do nothing as you dont have to add any other targets
-        }
-    }
 
-    for file in files {
-        let string = read_to_string(&file).expect(
-            "Algorithm definition file could not be read. This is a bug. Please report it.",
-        );
+        for file in files {
+            let string = read_to_string(&file).expect(
+                "Algorithm definition file could not be read. This is a bug. Please report it.",
+            );
 
-        let yaml: Result<ChipFamily, _> = serde_yaml::from_str(&string);
+            let yaml: Result<ChipFamily, _> = serde_yaml::from_str(&string);
 
-        match yaml {
-            Ok(familiy) => families.push(familiy),
-            Err(e) => panic!("Failed to parse target file: {file:?} because:\n{e}"),
+            match yaml {
+                Ok(familiy) => families.push(familiy),
+                Err(e) => panic!("Failed to parse target file: {file:?} because:\n{e}"),
+            }
         }
     }
 
