@@ -182,6 +182,7 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
         chip,
         chip_description_path: None,
         protocol: Some(config.probe.protocol),
+        non_interactive: false,
         probe: selector,
         speed: config.probe.speed,
         connect_under_reset: config.general.connect_under_reset,

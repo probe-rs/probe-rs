@@ -1,5 +1,6 @@
 use std::{
     fs::File,
+    io::Write,
     path::{Path, PathBuf},
 };
 
@@ -79,6 +80,14 @@ pub struct ProbeOptions {
     /// Protocol used to connect to chip. Possible options: [swd, jtag]
     #[arg(long, env = "PROBE_RS_PROTOCOL", help_heading = "PROBE CONFIGURATION")]
     pub protocol: Option<WireProtocol>,
+
+    /// Disable interactive probe selection
+    #[arg(
+        long,
+        env = "PROBE_RS_NON_INTERACTIVE",
+        help_heading = "PROBE CONFIGURATION"
+    )]
+    pub non_interactive: bool,
 
     /// Use this flag to select a specific probe in the list.
     ///
@@ -185,6 +194,34 @@ impl LoadedProbeOptions {
         Ok(target)
     }
 
+    /// Provide a list of numerically identified probes and allow for a stdin selection
+    fn interactive_probe_select(&self, lister: &Lister) -> Result<DebugProbeInfo, OperationError> {
+        let list = lister.list_all();
+        println!("Available Probes:");
+        for (i, l) in list.iter().enumerate() {
+            println!("{}: {}", i, l);
+        }
+
+        print!("Selection: ");
+        std::io::stdout().flush().unwrap();
+
+        let mut input = String::new();
+        std::io::stdin()
+            .read_line(&mut input)
+            .expect("Expect input for probe selection");
+
+        let probe_idx = input
+            .trim()
+            .parse::<u32>()
+            .map_err(OperationError::ParseProbeIndex)?;
+
+        let Some(info) = list.get(probe_idx as usize) else {
+            return Err(OperationError::NoProbesFound);
+        };
+
+        Ok(info.clone())
+    }
+
     /// Attaches to specified probe and configures it.
     pub fn attach_probe(&self, lister: &Lister) -> Result<Probe, OperationError> {
         let mut probe = if self.0.dry_run {
@@ -199,14 +236,18 @@ impl LoadedProbeOptions {
                     // only a single probe detected.
                     let list = lister.list_all();
                     if list.len() > 1 {
-                        return Err(OperationError::MultipleProbesFound { list });
+                        if self.0.non_interactive {
+                            return Err(OperationError::MultipleProbesFound { list });
+                        } else {
+                            let info = self.interactive_probe_select(lister)?;
+                            lister.open(info)
+                        }
+                    } else {
+                        let Some(info) = list.first() else {
+                            return Err(OperationError::NoProbesFound);
+                        };
+                        lister.open(info)
                     }
-
-                    let Some(info) = list.first() else {
-                        return Err(OperationError::NoProbesFound);
-                    };
-
-                    lister.open(info)
                 }
             };
 
@@ -501,6 +542,8 @@ pub enum OperationError {
 
     #[error("Failed to parse CLI arguments.")]
     CliArgument(#[from] clap::Error),
+    #[error("Failed to parse interactive probe index selection")]
+    ParseProbeIndex(#[source] std::num::ParseIntError),
 }
 
 /// Used in errors it can print a list of items.
