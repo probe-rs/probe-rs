@@ -13,6 +13,7 @@ pub mod infineon;
 pub mod microchip;
 pub mod nordicsemi;
 pub mod nxp;
+pub mod raspberrypi;
 pub mod silabs;
 pub mod st;
 pub mod ti;
@@ -31,6 +32,7 @@ static VENDORS: Lazy<Mutex<Vec<Box<dyn Vendor>>>> = Lazy::new(|| {
         Box::new(ti::TexasInstruments),
         Box::new(espressif::Espressif),
         Box::new(nordicsemi::NordicSemi),
+        Box::new(raspberrypi::RaspberryPi),
         Box::new(nxp::Nxp),
         Box::new(st::St),
     ];
