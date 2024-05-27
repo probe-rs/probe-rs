@@ -208,7 +208,7 @@ fn check_changelog() -> Result<()> {
             return Ok(());
         }
 
-        disallow_editing_main_changelog(&info)?;
+        disallow_editing_main_changelog(&info, &pr_number)?;
         require_changelog_fragment(&info)?;
     } else {
         println!("Unable to fetch PR info, just checking fragments.");
@@ -221,7 +221,7 @@ fn check_changelog() -> Result<()> {
     Ok(())
 }
 
-fn disallow_editing_main_changelog(info: &PrInfo) -> Result<()> {
+fn disallow_editing_main_changelog(info: &PrInfo, pr: &str) -> Result<()> {
     if info.labels.iter().any(|l| l.name == "release") {
         // The release PR is allowed to edit the main changelog.
         return Ok(());
@@ -232,9 +232,13 @@ fn disallow_editing_main_changelog(info: &PrInfo) -> Result<()> {
         .iter()
         .any(|f| f.path == Path::new(CHANGELOG_FILE))
     {
-        anyhow::bail!(
-            "Please do not edit {CHANGELOG_FILE} directly. Take a look at CONTRIBUTING.md for information on changelog fragments instead."
-        );
+        let message = format!("Please do not edit {CHANGELOG_FILE} directly. Take a look at [CONTRIBUTING.md](https://github.com/probe-rs/probe-rs/blob/master/CONTRIBUTING.md) for information on changelog fragments instead.");
+
+        let sh = Shell::new()?;
+        cmd!(sh, "gh pr comment {pr} -b {message}")
+            .run()
+            .context("Failed to comment on PR")?;
+        anyhow::bail!("Please do not edit {CHANGELOG_FILE} directly");
     }
 
     Ok(())
