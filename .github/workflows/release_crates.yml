@@ -74,6 +74,7 @@ jobs:
 
           echo "::group::Tagging release using 'cargo release tag'"
           cargo release tag --no-confirm --execute --sign-tag --tag-prefix "" --exclude probe-rs-mi
+          # `|| true` to avoid "no package selected" errors if probe-rs-mi is not updated
           cargo release tag --no-confirm --execute --sign-tag --package probe-rs-mi || true
           echo "::endgroup::"
 
