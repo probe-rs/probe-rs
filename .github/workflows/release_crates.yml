@@ -80,6 +80,7 @@ jobs:
 
           echo "::group::Pushing tags to remote using 'cargo release push'"
           cargo release push --no-confirm --execute --tag-prefix "" --exclude probe-rs-mi
+          # `|| true` to avoid "no package selected" errors if probe-rs-mi is not updated
           cargo release push --no-confirm --execute --package probe-rs-mi || true
           echo "::endgroup::"
         env:
