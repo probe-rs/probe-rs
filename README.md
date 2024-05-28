@@ -67,6 +67,15 @@ cargo install probe-rs-tools --git https://github.com/probe-rs/probe-rs --locked
 
 This will compile the tools and place them into the cargo `bin` directory. See the [Cargo book](https://doc.rust-lang.org/cargo/commands/cargo-install.html) for details.
 
+**Note**: If you are using a musl-based Linux system like Alpine Linux, you have to set the compiler to
+dynamically link, instead of the default static linking. This prevents a [subtle bug](https://github.com/probe-rs/probe-rs/issues/2148) in `libudev-sys`<=0.1.4 from being introduced in the resulting binaries.
+
+For musl-based systems (e.g. Alpine Linux):
+
+```sh
+RUSTFLAGS="-C target-feature=-crt-static" cargo install probe-rs --locked --features cli
+```
+
 
 ### cargo-flash
 
@@ -172,6 +181,9 @@ Building requires Rust and Cargo which can be installed [using rustup](https://r
 
 # Fedora
 > sudo dnf install -y libudev-devel
+
+# Alpine
+> doas apk install eudev-dev
 ```
 
 ### Adding Targets
