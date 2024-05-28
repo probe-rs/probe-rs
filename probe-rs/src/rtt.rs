@@ -122,13 +122,13 @@ enum RttControlBlockHeader {
 impl RttControlBlockHeader {
     pub fn try_from_header(is_64_bit: bool, mem: &[u8]) -> Result<Self, Error> {
         if is_64_bit {
-            RttControlBlockHeaderInner::<u32>::read_from(mem)
-                .ok_or(Error::ControlBlockNotFound)
-                .map(Self::Header32)
-        } else {
             RttControlBlockHeaderInner::<u64>::read_from(mem)
                 .ok_or(Error::ControlBlockNotFound)
                 .map(Self::Header64)
+        } else {
+            RttControlBlockHeaderInner::<u32>::read_from(mem)
+                .ok_or(Error::ControlBlockNotFound)
+                .map(Self::Header32)
         }
     }
 
@@ -249,7 +249,7 @@ impl Rtt {
         }
 
         let max_up_channels = rtt_header.max_up_channels();
-        let max_down_channels = rtt_header.max_up_channels();
+        let max_down_channels = rtt_header.max_down_channels();
 
         // *Very* conservative sanity check, most people only use a handful of RTT channels
         if max_up_channels > 255 || max_down_channels > 255 {
