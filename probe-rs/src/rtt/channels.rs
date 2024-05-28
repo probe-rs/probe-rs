@@ -8,6 +8,12 @@ use crate::rtt::RttChannel;
 #[derive(Debug)]
 pub struct Channels<T: RttChannel>(pub(crate) Vec<Option<T>>);
 
+impl<T: RttChannel> Default for Channels<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T: RttChannel> Channels<T> {
     /// Creates a new empty list of channels.
     pub fn new() -> Self {
