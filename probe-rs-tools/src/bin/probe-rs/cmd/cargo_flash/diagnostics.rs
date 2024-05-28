@@ -6,7 +6,6 @@ use std::fmt::Write;
 use bytesize::ByteSize;
 
 use probe_rs::{
-    config::MemoryRegion,
     config::{RegistryError, TargetDescriptionSource},
     flashing::{FileDownloadError, FlashError},
     Error as ProbeRsError, Target,
@@ -267,18 +266,14 @@ fn generate_flash_error_hints(
                 );
 
                 for memory_region in &target.memory_map {
-                    match memory_region {
-                        MemoryRegion::Ram(_) => {}
-                        MemoryRegion::Generic(_) => {}
-                        MemoryRegion::Nvm(flash) => {
-                            let _ = writeln!(
-                                hint_available_regions,
-                                "  {:#010X?} ({})",
-                                flash.range,
-                                ByteSize(flash.range.end - flash.range.start)
-                                    .to_string_as(true)
-                            );
-                        }
+                    if let Some(flash) = memory_region.as_nvm_region() {
+                        let _ = writeln!(
+                            hint_available_regions,
+                            "  {:#010x?} ({})",
+                            flash.range,
+                            ByteSize(flash.range.end - flash.range.start)
+                                .to_string_as(true)
+                        );
                     }
                 }
 

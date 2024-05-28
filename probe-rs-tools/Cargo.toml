@@ -44,7 +44,6 @@ itertools = { version = "0.12" }
 
 # CLI-only
 addr2line = { version = "0.22" }
-byte-unit = { version = "5" }
 bytesize = { version = "1" }
 capstone = { version = "0.12" }
 cargo_metadata = { version = "0.18" }

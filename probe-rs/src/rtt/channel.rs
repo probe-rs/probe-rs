@@ -504,12 +504,9 @@ fn read_c_string(
     // Find out which memory range contains the pointer
     let range = memory_map
         .iter()
-        .filter_map(|r| match r {
-            MemoryRegion::Nvm(r) => Some(&r.range),
-            MemoryRegion::Ram(r) => Some(&r.range),
-            _ => None,
-        })
-        .find(|r| r.contains(&ptr));
+        .filter(|r| r.is_ram() || r.is_nvm())
+        .find(|r| r.contains(ptr))
+        .map(|r| r.address_range());
 
     // If the pointer is not within any valid range, return None.
     let Some(range) = range else {
