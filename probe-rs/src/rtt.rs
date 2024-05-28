@@ -166,18 +166,37 @@ impl RttControlBlockHeader {
         }
     }
 
+    pub fn channel_buffer_size(&self) -> usize {
+        match self {
+            RttControlBlockHeader::Header32(_x) => RttChannelBufferInner::<u32>::size(),
+            RttControlBlockHeader::Header64(_x) => RttChannelBufferInner::<u64>::size(),
+        }
+    }
+
     pub fn total_rtt_buffer_size(&self) -> usize {
         let total_number_of_channels = self.max_up_channels() + self.max_down_channels();
-        let channel_size = match self {
-            RttControlBlockHeader::Header32(_x) => {
-                std::mem::size_of::<RttChannelBufferInner<u32>>()
-            }
-            RttControlBlockHeader::Header64(_x) => {
-                std::mem::size_of::<RttChannelBufferInner<u64>>()
-            }
-        };
+        let channel_size = self.channel_buffer_size();
 
         self.header_size() + channel_size * total_number_of_channels
+    }
+
+    pub fn parse_channel_buffers(&self, mem: &[u8]) -> Result<Vec<RttChannelBuffer>, Error> {
+        let buffers = match self {
+            RttControlBlockHeader::Header32(_) => RttChannelBufferInner::<u32>::slice_from(mem)
+                .ok_or(Error::ControlBlockNotFound)?
+                .iter()
+                .copied()
+                .map(RttChannelBuffer::from)
+                .collect::<Vec<RttChannelBuffer>>(),
+            RttControlBlockHeader::Header64(_) => RttChannelBufferInner::<u64>::slice_from(mem)
+                .ok_or(Error::ControlBlockNotFound)?
+                .iter()
+                .copied()
+                .map(RttChannelBuffer::from)
+                .collect::<Vec<RttChannelBuffer>>(),
+        };
+
+        Ok(buffers)
     }
 }
 
@@ -210,9 +229,8 @@ impl Rtt {
             Some(mem) => Cow::Borrowed(mem),
             None => {
                 // If memory wasn't passed in, read the minimum header size
-                let mut mem: Vec<u8> = Vec::new();
                 let new_length = RttControlBlockHeader::minimal_header_size(is_64_bit);
-                mem.resize(new_length, 0u8);
+                let mut mem = vec![0; new_length];
                 core.read(ptr, &mut mem)?;
                 Cow::Owned(mem)
             }
@@ -265,67 +283,17 @@ impl Rtt {
         let mut up_channels = BTreeMap::new();
         let mut down_channels = BTreeMap::new();
 
+        let channel_buffer_size = rtt_header.channel_buffer_size();
+
         let up_channels_start = rtt_header.header_size();
-        let (up_channels_buffer, up_channels_end) = match rtt_header {
-            RttControlBlockHeader::Header32(_) => {
-                let up_channels_end =
-                    up_channels_start + max_up_channels * RttChannelBufferInner::<u32>::size();
+        let up_channels_len = max_up_channels * channel_buffer_size;
+        let up_channels_raw_buffer = &mem[up_channels_start..][..up_channels_len];
+        let up_channels_buffer = rtt_header.parse_channel_buffers(up_channels_raw_buffer)?;
 
-                (
-                    RttChannelBufferInner::<u32>::slice_from(
-                        &mem[up_channels_start..up_channels_end],
-                    )
-                    .ok_or(Error::ControlBlockNotFound)?
-                    .iter()
-                    .map(|i| RttChannelBuffer::from(*i))
-                    .collect::<Vec<RttChannelBuffer>>(),
-                    up_channels_end,
-                )
-            }
-            RttControlBlockHeader::Header64(_) => {
-                let up_channels_end =
-                    up_channels_start + max_up_channels * RttChannelBufferInner::<u64>::size();
-
-                (
-                    RttChannelBufferInner::<u64>::slice_from(
-                        &mem[up_channels_start..up_channels_end],
-                    )
-                    .ok_or(Error::ControlBlockNotFound)?
-                    .iter()
-                    .map(|i| RttChannelBuffer::from(*i))
-                    .collect::<Vec<RttChannelBuffer>>(),
-                    up_channels_end,
-                )
-            }
-        };
-
-        let down_channels_start = up_channels_end;
-        let down_channels_buffer = match rtt_header {
-            RttControlBlockHeader::Header32(_) => {
-                let down_channels_end = down_channels_start
-                    + max_down_channels * std::mem::size_of::<RttChannelBufferInner<u32>>();
-
-                RttChannelBufferInner::<u32>::slice_from(
-                    &mem[down_channels_start..down_channels_end],
-                )
-                .ok_or(Error::ControlBlockNotFound)?
-                .iter()
-                .map(|i| RttChannelBuffer::from(*i))
-                .collect::<Vec<RttChannelBuffer>>()
-            }
-            RttControlBlockHeader::Header64(_) => {
-                let downchannels_end = down_channels_start
-                    + max_down_channels * std::mem::size_of::<RttChannelBufferInner<u64>>();
-
-                RttChannelBufferInner::<u64>::slice_from(
-                    &mem[down_channels_start..downchannels_end],
-                )
-                .ok_or(Error::ControlBlockNotFound)?
-                .iter()
-                .map(|i| RttChannelBuffer::from(*i))
-                .collect::<Vec<RttChannelBuffer>>()
-            }
-        };
+        let down_channels_start = up_channels_start + up_channels_len;
+        let down_channels_len = max_down_channels * channel_buffer_size;
+        let down_channels_raw_buffer = &mem[down_channels_start..][..down_channels_len];
+        let down_channels_buffer = rtt_header.parse_channel_buffers(down_channels_raw_buffer)?;
 
         let mut offset = up_channels_start as u64;
         for (i, b) in up_channels_buffer.iter().enumerate() {
