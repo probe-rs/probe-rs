@@ -1,4 +1,4 @@
-use probe_rs_target::{MemoryRegion, RamRegion, RawFlashAlgorithm};
+use probe_rs_target::{MemoryRegion, RawFlashAlgorithm};
 use tracing::Level;
 
 use super::{FlashAlgorithm, FlashBuilder, FlashError, FlashFill, FlashPage, FlashProgress};
@@ -66,19 +66,12 @@ impl<'session> Flasher<'session> {
     ) -> Result<Self, FlashError> {
         let target = session.target();
 
-        fn filter_ram_region(mm: &MemoryRegion) -> Option<&RamRegion> {
-            match mm {
-                MemoryRegion::Ram(ram) => Some(ram),
-                _ => None,
-            }
-        }
-
         // Find a RAM region from which we can run the algo.
         let mm = &target.memory_map;
         let core_name = &target.cores[core_index].name;
         let ram = mm
             .iter()
-            .filter_map(filter_ram_region)
+            .filter_map(MemoryRegion::as_ram_region)
             .find(|ram| {
                 // If the algorithm has a forced load address, we try to use it.
                 // If not, then follow the CMSIS-Pack spec and use first available RAM region.
@@ -104,7 +97,7 @@ impl<'session> Flasher<'session> {
 
         let data_ram = if let Some(data_load_address) = raw_flash_algorithm.data_load_address {
             mm.iter()
-                .filter_map(filter_ram_region)
+                .filter_map(MemoryRegion::as_ram_region)
                 .find(|ram| {
                     // The RAM must contain the forced load address _and_
                     // be accessible from the core we're going to run the
