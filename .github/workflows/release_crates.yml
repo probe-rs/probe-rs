@@ -73,11 +73,15 @@ jobs:
           echo "::endgroup::"
 
           echo "::group::Tagging release using 'cargo release tag'"
-          cargo release tag --no-confirm --execute --sign-tag --tag-prefix ""
+          cargo release tag --no-confirm --execute --sign-tag --tag-prefix "" --exclude probe-rs-mi
+          # `|| true` to avoid "no package selected" errors if probe-rs-mi is not updated
+          cargo release tag --no-confirm --execute --sign-tag --package probe-rs-mi || true
           echo "::endgroup::"
 
           echo "::group::Pushing tags to remote using 'cargo release push'"
-          cargo release push --no-confirm --execute --tag-prefix ""
+          cargo release push --no-confirm --execute --tag-prefix "" --exclude probe-rs-mi
+          # `|| true` to avoid "no package selected" errors if probe-rs-mi is not updated
+          cargo release push --no-confirm --execute --package probe-rs-mi || true
           echo "::endgroup::"
         env:
           SSH_AUTH_SOCK: /tmp/ssh_agent.sock
