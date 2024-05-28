@@ -50,7 +50,13 @@ impl<'a> FunctionDie<'a> {
         address: u64,
     ) -> Result<Option<Self>, DebugError> {
         let is_inlined_function = match function_die.tag() {
-            gimli::DW_TAG_subprogram => false,
+            gimli::DW_TAG_subprogram => function_die
+                .attr(gimli::DW_AT_inline)
+                .ok()
+                .flatten()
+                .and_then(|attr| attr.udata_value())
+                .map(|is_inlined| is_inlined.eq(&1))
+                .unwrap_or(false),
             gimli::DW_TAG_inlined_subroutine => true,
             _ => {
                 // We only need DIEs for functions, so we can ignore all other DIEs.

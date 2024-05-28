@@ -651,7 +651,13 @@ impl DebugInfo {
             };
 
             // PART 2: Setup the registers for the next iteration (a.k.a. unwind previous frame, a.k.a. "callee", in the call stack).
-            tracing::trace!("UNWIND - Preparing to unwind the registers for the previous frame.");
+            tracing::debug!(
+                "UNWIND - Preparing to unwind the registers for the frame that called: {} @ {frame_pc:010x}.",
+                stack_frames
+                    .last()
+                    .map(|frame| frame.function_name.as_str())
+                    .unwrap_or("<unknown function>")
+            );
 
             // Because we will be updating the `unwind_registers` with previous frame unwind info,
             // we need to keep a copy of the current frame's registers that can be used to resolve [DWARF](https://dwarfstd.org) expressions.
@@ -1182,7 +1188,7 @@ fn unwind_register_using_rule(
                         if fp.data_type == RegisterDataType::UnsignedInteger(32) {
                             RegisterValue::U32(unwind_cfa as u32 & !0b11)
                         } else {
-                            RegisterValue::U64(unwind_cfa & !0b11)
+                            RegisterValue::U64(unwind_cfa)
                         }
                     })
                 }
@@ -1194,7 +1200,7 @@ fn unwind_register_using_rule(
                         if sp.data_type == RegisterDataType::UnsignedInteger(32) {
                             RegisterValue::U32(unwind_cfa as u32 & !0b11)
                         } else {
-                            RegisterValue::U64(unwind_cfa & !0b11)
+                            RegisterValue::U64(unwind_cfa)
                         }
                     })
                 }

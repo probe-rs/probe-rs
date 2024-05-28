@@ -4,12 +4,12 @@ mod instruction;
 mod sequence;
 mod stepping;
 use self::sequence::Sequence;
-
 use super::{
     unit_info::{self},
     ColumnType, DebugInfo,
 };
 pub use breakpoint::VerifiedBreakpoint;
+use core::fmt::Debug;
 use instruction::Instruction;
 use serde::Serialize;
 pub use stepping::Stepping;
@@ -36,7 +36,7 @@ pub(crate) fn canonical_unit_path_eq(unit_path: TypedPath, source_file_path: Typ
 
 /// A specific location in source code.
 /// Each unique line, column, file and directory combination is a unique source location.
-#[derive(Clone, PartialEq, Eq, Serialize)]
+#[derive(Clone, Default, PartialEq, Eq, Serialize)]
 pub struct SourceLocation {
     /// The path to the source file
     #[serde(serialize_with = "serialize_typed_path")]
@@ -57,6 +57,21 @@ impl std::fmt::Debug for SourceLocation {
             self.path.to_path().display(),
             self.line,
             self.column
+        )
+    }
+}
+
+impl Debug for SourceLocation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "line: {:?}, column: {:?}, in file: {:?}",
+            self.line,
+            self.column,
+            match self.combined_typed_path().as_ref() {
+                Some(path) => path.to_string_lossy(),
+                None => std::borrow::Cow::Borrowed("<unspecified>"),
+            }
         )
     }
 }
@@ -87,7 +102,6 @@ impl SourceLocation {
 }
 
 /// Return the line program sequences with matching path entries, from all matching compilation units.
-/// The optional filter on address helps to reduce the number of line sequences to return.
 pub(crate) fn line_sequences_for_path<'a>(
     debug_info: &'a DebugInfo,
     path: &TypedPathBuf,

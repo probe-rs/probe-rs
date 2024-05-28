@@ -47,6 +47,17 @@ pub(crate) struct Block {
     pub(crate) steps_to: Option<u64>,
 }
 
+impl Debug for Block {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.included_addresses() {
+            Some(included_addresses) => {
+                write!(f, "Block instruction range: {included_addresses:?}")
+            }
+            None => write!(f, "Empty block"),
+        }
+    }
+}
+
 impl Block {
     pub(crate) fn new(
         starting_address: u64,

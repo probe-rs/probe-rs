@@ -270,14 +270,16 @@ impl<'debug_info> Sequence<'debug_info> {
     /// See [`VerifiedBreakpoint::for_address()`].
     // TODO: We need tests for the various scenarios below.
     pub(crate) fn haltpoint_for_address(&self, address: u64) -> Option<VerifiedBreakpoint> {
-        tracing::debug!("Looking for halt instruction at address={address:#010x}");
+        tracing::trace!("Looking for halt instruction at address={address:#010x}");
 
         let Some(block) = self
             .blocks
             .iter()
             .find(|block| block.contains_address(address))
         else {
-            tracing::warn!("Could not find a valid breakpoint for address={address:#010x}");
+            tracing::trace!(
+                "No valid breakpoint for address={address:#010x}(exact match), in: {self:?}"
+            );
             return None;
         };
 
@@ -317,10 +319,12 @@ impl<'debug_info> Sequence<'debug_info> {
                 },
             )
         }) {
-            tracing::debug!("Found a matching breakpoint: {breakpoint:?}");
+            tracing::trace!("Found a matching breakpoint: {breakpoint:?}");
             Some(breakpoint)
         } else {
-            tracing::warn!("Could not find a valid breakpoint for address={address:#010x}");
+            tracing::trace!(
+                "No valid breakpoint for address={address:#010x}(close match), in: {self:?}"
+            );
             None
         }
     }
@@ -329,14 +333,14 @@ impl<'debug_info> Sequence<'debug_info> {
     /// If the current instruction is in a ['Block'], find the next valid halt location in the
     /// next linked block in the sequence.
     pub(crate) fn haltpoint_for_next_block(&self, address: u64) -> Option<VerifiedBreakpoint> {
-        tracing::debug!("Looking for next block halt instruction at address={address:#010x}");
+        tracing::trace!("Looking for next block halt instruction at address={address:#010x}");
 
         let Some(block) = self
             .blocks
             .iter()
             .find(|block| block.contains_address(address))
         else {
-            tracing::warn!("Could not find a valid breakpoint for address={address:#010x}");
+            tracing::trace!("No valid breakpoint for address={address:#010x} in: {self:?}");
             return None;
         };
 
@@ -371,7 +375,7 @@ impl<'debug_info> Sequence<'debug_info> {
             tracing::debug!("Found a matching breakpoint: {breakpoint:?}");
             Some(breakpoint)
         } else {
-            tracing::warn!("Could not find a valid breakpoint for address={address:#010x}");
+            tracing::debug!("No valid breakpoint for address={address:#010x} in: {block:?}");
             None
         }
     }
@@ -421,8 +425,8 @@ impl<'debug_info> Sequence<'debug_info> {
             }
         }
 
-        tracing::warn!(
-            "Could not find a valid breakpoint for line={line}, column={} in file: {}",
+        tracing::trace!(
+            "Sequence does not contain a valid breakpoint for line={line}, column={} in file: {}",
             column.unwrap(),
             self.debug_info
                 .get_path(&self.program_unit.unit, matching_file_index.unwrap())

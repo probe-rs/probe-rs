@@ -85,16 +85,11 @@ impl Stepping {
             step_error
         })?;
         tracing::debug!(
-            "Target for step ({:20?}): \n\tfrom: {:?} @ {:#010X} \n\t  is: {:?} @ {:#010X}",
+            "Step ({:20?}):\n\tFrom: {:?}\n\t  To: {:?}\n\t@ {:#010X}",
             self,
             debug_info
                 .get_source_location(origin_program_counter)
-                .map(|source_location| (
-                    source_location.path,
-                    source_location.line,
-                    source_location.column
-                )),
-            origin_program_counter,
+                .unwrap_or_default(),
             target_breakpoint.source_location,
             target_breakpoint.address
         );
@@ -195,7 +190,7 @@ fn get_step_out_location(
             .unwrap_or_else(|| {
                 // This should never happen, but if it does, it is probably more useful to just step over
                 // the current statement, than to give an error.
-                tracing::debug!(
+                tracing::warn!(
                     "Unable to identify the call-site for the inlined function {:?}",
                     function.function_name(debug_info)
                 );
@@ -304,13 +299,6 @@ fn get_step_over_location(
                 .ok_or_else(|| DebugError::WarnAndContinue {
                     message: "No valid halt location found in the current sequence.".to_string(),
                 })
-            //     program_counter = core.step()?.pc;
-            //     if let ControlFlow::Break(debug_error) = validate_core_status_after_step(core) {
-            //         return Err(debug_error);
-            //     }
-            //     VerifiedBreakpoint::for_address(debug_info, terminating_address)
-            // } else {
-            //     Ok(candidate_haltpoint)
         } else {
             Ok(candidate_haltpoint)
         }
