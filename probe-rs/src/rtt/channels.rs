@@ -11,6 +11,17 @@ use std::collections::{
 pub struct Channels<T: RttChannel>(pub(crate) BTreeMap<usize, T>);
 
 impl<T: RttChannel> Channels<T> {
+    /// Creates a new empty list of channels.
+    pub fn new() -> Self {
+        Self(BTreeMap::new())
+    }
+
+    /// Appends a channel to the list.
+    pub fn push(&mut self, channel: T) {
+        let i = self.0.len();
+        self.0.insert(i, channel);
+    }
+
     /// Returns the number of channels on the list.
     pub fn len(&self) -> usize {
         self.0.len()

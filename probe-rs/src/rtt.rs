@@ -53,7 +53,6 @@ pub use channels::Channels;
 
 use crate::{config::MemoryRegion, Core, MemoryInterface};
 use std::borrow::Cow;
-use std::collections::BTreeMap;
 use std::ops::Range;
 use zerocopy::FromBytes;
 use zerocopy_derive::{FromBytes, FromZeroes};
@@ -276,8 +275,8 @@ impl Rtt {
             return Ok(None);
         }
 
-        let mut up_channels = BTreeMap::new();
-        let mut down_channels = BTreeMap::new();
+        let mut up_channels = Channels::new();
+        let mut down_channels = Channels::new();
 
         let channel_buffer_size = rtt_header.channel_buffer_size();
 
@@ -294,7 +293,7 @@ impl Rtt {
         let mut offset = up_channels_start as u64;
         for (i, b) in up_channels_buffer.into_iter().enumerate() {
             if let Some(chan) = Channel::from(core, i, memory_map, ptr + offset, b)? {
-                up_channels.insert(i, UpChannel(chan));
+                up_channels.push(UpChannel(chan));
             } else {
                 tracing::warn!("Buffer for up channel {} not initialized", i);
             }
@@ -303,7 +302,7 @@ impl Rtt {
 
         for (i, b) in down_channels_buffer.into_iter().enumerate() {
             if let Some(chan) = Channel::from(core, i, memory_map, ptr + offset, b)? {
-                down_channels.insert(i, DownChannel(chan));
+                down_channels.push(DownChannel(chan));
             } else {
                 tracing::warn!("Buffer for down channel {} not initialized", i);
             }
@@ -312,8 +311,8 @@ impl Rtt {
 
         Ok(Some(Rtt {
             ptr,
-            up_channels: Channels(up_channels),
-            down_channels: Channels(down_channels),
+            up_channels,
+            down_channels,
         }))
     }
 
@@ -484,8 +483,8 @@ mod test {
         fn rtt(ptr: u32) -> Rtt {
             Rtt {
                 ptr: ptr.into(),
-                up_channels: Channels(std::collections::BTreeMap::new()),
-                down_channels: Channels(std::collections::BTreeMap::new()),
+                up_channels: Channels::new(),
+                down_channels: Channels::new(),
             }
         }
 
