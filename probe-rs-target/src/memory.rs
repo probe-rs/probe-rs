@@ -200,6 +200,22 @@ impl MemoryRegion {
             MemoryRegion::Nvm(region) => &region.cores,
         }
     }
+
+    /// Returns `true` if the memory region is [`Ram`].
+    ///
+    /// [`Ram`]: MemoryRegion::Ram
+    #[must_use]
+    pub fn is_ram(&self) -> bool {
+        matches!(self, Self::Ram(..))
+    }
+
+    /// Returns `true` if the memory region is [`Nvm`].
+    ///
+    /// [`Nvm`]: MemoryRegion::Nvm
+    #[must_use]
+    pub fn is_nvm(&self) -> bool {
+        matches!(self, Self::Nvm(..))
+    }
 }
 
 #[cfg(test)]
