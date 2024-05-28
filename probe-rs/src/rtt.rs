@@ -120,15 +120,11 @@ enum RttControlBlockHeader {
 }
 
 impl RttControlBlockHeader {
-    pub fn try_from_header(is_64_bit: bool, mem: &[u8]) -> Result<Self, Error> {
+    pub fn try_from_header(is_64_bit: bool, mem: &[u8]) -> Option<Self> {
         if is_64_bit {
-            RttControlBlockHeaderInner::<u64>::read_from(mem)
-                .ok_or(Error::ControlBlockNotFound)
-                .map(Self::Header64)
+            RttControlBlockHeaderInner::<u64>::read_from(mem).map(Self::Header64)
         } else {
-            RttControlBlockHeaderInner::<u32>::read_from(mem)
-                .ok_or(Error::ControlBlockNotFound)
-                .map(Self::Header32)
+            RttControlBlockHeaderInner::<u32>::read_from(mem).map(Self::Header32)
         }
     }
 
@@ -235,7 +231,8 @@ impl Rtt {
             }
         };
 
-        let rtt_header = RttControlBlockHeader::try_from_header(is_64_bit, &mem)?;
+        let rtt_header = RttControlBlockHeader::try_from_header(is_64_bit, &mem)
+            .ok_or(Error::ControlBlockNotFound)?;
 
         // Validate that the control block starts with the ID bytes
         let rtt_id = rtt_header.id();
