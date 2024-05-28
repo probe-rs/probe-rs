@@ -35,12 +35,12 @@ When a user requests a stepping action, while inside non-assembly code (e.g. Rus
 #### 'step-over' (a.k.a. 'next')
 
 - [ ] Stepping over a statement that calls a non-inlined function, will run until the function returns before halting. If your code is such that the called function runs a long time, the stepping action may appear to not return control to you, but it really is just waiting for the next halt.
-- [ ] Stepping over a statement, which is followed by a statement that calls an inlined function, the target will step to the first statement in the inlined function, since logically, that is the next statement in the current sequence.
+- [x] Stepping over a statement, which is followed by a statement that calls an inlined function, the target will step to the first statement in the inlined function, since logically, that is the next statement in the current sequence.
 
 #### 'step-into'
 
 - [ ] Stepping into a statement that does not call function, will simply step over the statement.
-- [ ] Stepping into a statement that calls a non-inlined function, will halt at the first instruction after the prologue of the function.
+- [x] Stepping into a statement that calls a non-inlined function, will halt at the first instruction after the prologue of the function.
 - [ ] Stepping into a statement that calls an inlined function will step over that statement, because inlined code would have already been executed at that point.
 
 #### 'step-out'

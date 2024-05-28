@@ -1,5 +1,6 @@
 use super::instruction::{Instruction, InstructionRole};
 use crate::debug::{unit_info::UnitInfo, DebugError, DebugInfo};
+use core::fmt::Debug;
 use std::ops::RangeInclusive;
 
 /// The concept of an instruction block is based on
@@ -43,6 +44,17 @@ pub(crate) struct Block {
     pub(crate) instructions: Vec<Instruction>,
     ///  - The `steps_to` identifies the address of the instruction immediately following this block.
     pub(crate) steps_to: Option<u64>,
+}
+
+impl Debug for Block {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.included_addresses() {
+            Some(included_addresses) => {
+                write!(f, "Block instruction range: {included_addresses:?}")
+            }
+            None => write!(f, "Empty block"),
+        }
+    }
 }
 
 impl Block {

@@ -84,6 +84,7 @@ impl UnitInfo {
             tracing::debug!("Checking for inlined functions");
             let inlined_functions =
                 self.find_inlined_functions(debug_info, address, current.offset())?;
+
             tracing::debug!(
                 "{} inlined functions for address {}",
                 inlined_functions.len(),
