@@ -40,7 +40,7 @@ typed-path = "0.8"
 probe-rs-target = { workspace = true }
 probe-rs-mi = { workspace = true }
 
-itertools = { version = "0.12" }
+itertools = "0.13"
 
 # CLI-only
 addr2line = { version = "0.22" }
