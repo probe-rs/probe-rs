@@ -1308,10 +1308,7 @@ version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "52527eb5074e35e9339c6b4e8d12600c7128b68fb25dcb9fa9dec18f7c25f3a5"
 dependencies = [
- "fastrand",
  "futures-core",
- "futures-io",
- "parking",
  "pin-project-lite",
 ]
 
@@ -2575,7 +2572,6 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
- "static_assertions",
  "svg",
  "termtree",
  "test-case",

@@ -54,12 +54,11 @@ object = { version = "0.35", default-features = false, features = [
     "std",
 ] }
 nusb = { version = "0.1.9" }
-futures-lite = "2"
+futures-lite = { version = "2", default-features = false }
 async-io = "2"
 scroll = "0.12"
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9"
-static_assertions = "1"
 svg = "0.17"
 thiserror = { workspace = true }
 tracing = { version = "0.1", features = ["log"] }
