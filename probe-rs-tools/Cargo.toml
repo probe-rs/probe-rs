@@ -43,33 +43,33 @@ probe-rs-mi = { workspace = true }
 itertools = "0.13"
 
 # CLI-only
-addr2line = { version = "0.22" }
-bytesize = { version = "1" }
-capstone = { version = "0.12" }
-cargo_metadata = { version = "0.18" }
+addr2line = "0.22"
+bytesize = "1"
+capstone = "0.12"
+cargo_metadata = "0.18"
 clap = { version = "4", features = ["derive", "env"] }
-colored = { version = "2" }
-crossterm = { version = "<= 0.27" }
+colored = "2"
+crossterm = "<= 0.27"
 defmt-decoder = { version = "=0.3.11", features = [
     "unstable",
 ] } # pinned because "unstable" has potential for breaking changes
-directories = { version = "5" }
-dunce = { version = "1" }
+directories = "5"
+dunce = "1"
 figment = { version = "0.10", features = ["toml", "json", "yaml", "env"] }
 goblin = { version = "0.8", default-features = false, features = ["elf32", "elf64", "endian_fd"] }
-indicatif = { version = "0.17" }
+indicatif = "0.17"
 insta = { version = "1.38", default-features = false, features = ["yaml"] }
 itm = { version = "0.9.0-rc.1", default-features = false }
 parse_int = "0.6"
-libtest-mimic = { version = "0.7.2" }
-rand = { version = "0.8" }
+libtest-mimic = "0.7.2"
+rand = "0.8"
 rustyline = { version = "14", default-features = false, features = ["with-dirs", "with-file-history"] }
-sanitize-filename = { version = "0.5" }
-schemafy = { version = "0.6" }
-serde_json = { version = "1.0.116" }
+sanitize-filename = "0.5"
+schemafy = "0.6"
+serde_json = "1.0.116"
 signal-hook = { version = "0.3", default-features = false }
 svd-parser = { version = "0.14", features = ["expand"] }
-termtree = { version = "0.4" }
+termtree = "0.4"
 textwrap = { version = "0.16", default-features = false, features = ["unicode-linebreak", "unicode-width"] }
 time = { version = "0.3", default-features = false, features = [
     "formatting",
@@ -77,7 +77,7 @@ time = { version = "0.3", default-features = false, features = [
     "local-offset",
 ] }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
-tracing-appender = { version = "0.2" }
+tracing-appender = "0.2"
 ratatui = { version = "0.26.2", default-features = false, features = [
     "crossterm",
 ] }
@@ -95,7 +95,7 @@ zip = "1.1.4"
 urlencoding = "2"
 
 [build-dependencies]
-git-version = { version = "0.3" }
+git-version = "0.3"
 
 [dev-dependencies]
 pretty_assertions = "1.4.0"

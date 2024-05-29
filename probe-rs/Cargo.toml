@@ -30,12 +30,15 @@ builtin-targets = []
 test = []
 
 [dependencies]
-anyhow = { workspace = true }
+anyhow.workspace = true
+docsplay.workspace = true
+thiserror.workspace = true
+probe-rs-target.workspace = true
+
 bincode = "1.3"
 bitfield = "0.15"
 bitflags = "2"
 bitvec = "1"
-docsplay = { workspace = true }
 gimli = { version = "0.29", default-features = false, features = [
     "endian-reader",
     "read",
@@ -54,19 +57,18 @@ object = { version = "0.35", default-features = false, features = [
     "read_core",
     "std",
 ] }
-nusb = { version = "0.1.9" }
+nusb = "0.1.9"
 futures-lite = { version = "2", default-features = false }
 async-io = "2"
 scroll = "0.12"
 svg = "0.17"
-thiserror = { workspace = true }
 tracing = { version = "0.1", features = ["log"] }
 uf2-decode = "0.2"
 typed-path = "0.8"
 espflash = { version = "3", default-features = false }
-dunce = { version = "1" }
+dunce = "1"
 parse_int = "0.6"
-parking_lot = { version = "0.12.2" }
+parking_lot = "0.12.2"
 zerocopy = "0.7.32"
 zerocopy-derive = "0.7.32"
 
@@ -76,15 +78,14 @@ rmp-serde = "1"
 
 # optional
 hexdump = { version = "0.1", optional = true }
-# path
-probe-rs-target = { workspace = true }
 
 # gdb server
 gdbstub = { version = "0.7", optional = true }
 
 [build-dependencies]
+probe-rs-target.workspace = true
+
 bincode = "1"
-probe-rs-target = { workspace = true }
 serde_yaml = "0.9"
 
 [dev-dependencies]

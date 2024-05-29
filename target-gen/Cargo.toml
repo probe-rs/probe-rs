@@ -17,7 +17,7 @@ license.workspace = true
 [dependencies]
 probe-rs = { path = "../probe-rs", version = "0.24.0", default-features = false }
 probe-rs-target = { path = "../probe-rs-target", version = "0.24.0", default-features = false }
-cmsis-pack = { version = "0.7.0" }
+cmsis-pack = "0.7.0"
 goblin = { version = "0.8.2", default-features = false, features = [
     "elf32",
     "elf64",
@@ -43,7 +43,7 @@ tracing-subscriber = { version = "0.3.18", features = [
     "tracing-log",
 ] }
 xshell = { version = "0.2", default-features = false }
-parse_int = { version = "0.6.0" }
+parse_int = "0.6"
 
 [dev-dependencies]
 assert_cmd = "2.0.14"
