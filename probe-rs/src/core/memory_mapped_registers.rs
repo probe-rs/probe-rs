@@ -80,6 +80,8 @@ macro_rules! memory_mapped_bitfield_register {
             $(#[$outer])*
             #[doc= concat!("A [`bitfield::bitfield!`] register mapping for the register `",  $reg_name, "` located at address `", stringify!($addr), "`.")]
             #[derive(Copy, Clone)]
+            #[allow(clippy::upper_case_acronyms)]
+            #[allow(non_camel_case_types)]
             ($vis_modifier) struct $struct_name($reg_type);
             impl Debug;
             $($rest)*
