@@ -21,7 +21,7 @@ use probe_rs::{
     debug::{debug_info::DebugInfo, registers::DebugRegisters, stack_frame::StackFrame},
     Core, CoreType, InstructionSet, MemoryInterface, RegisterValue,
 };
-use rustyline::DefaultEditor;
+use rustyline::{error::ReadlineError, DefaultEditor};
 
 use crate::{util::common_options::ProbeOptions, CoreOptions};
 
@@ -58,30 +58,22 @@ impl Cmd {
         loop {
             cli_data.print_state()?;
 
-            let readline = rl.readline(">> ");
-            match readline {
+            match rl.readline(">> ") {
                 Ok(line) => {
                     let history_entry: &str = line.as_ref();
                     rl.add_history_entry(history_entry)?;
                     let cli_state = cli.handle_line(&line, &mut cli_data)?;
 
-                    match cli_state {
-                        CliState::Continue => (),
-                        CliState::Stop => break,
+                    if cli_state == CliState::Stop {
+                        break;
                     }
                 }
-                Err(e) => {
-                    use rustyline::error::ReadlineError;
-
-                    match e {
-                        // For end of file and ctrl-c, we just quit
-                        ReadlineError::Eof | ReadlineError::Interrupted => return Ok(()),
-                        actual_error => {
-                            // Show error message and quit
-                            println!("Error handling input: {actual_error:?}");
-                            break;
-                        }
-                    }
+                // For end of file and ctrl-c, we just quit
+                Err(ReadlineError::Eof | ReadlineError::Interrupted) => return Ok(()),
+                Err(actual_error) => {
+                    // Show error message and quit
+                    println!("Error handling input: {actual_error:?}");
+                    break;
                 }
             }
         }
@@ -1084,6 +1076,7 @@ impl HaltedState {
     }
 }
 
+#[derive(PartialEq)]
 pub enum CliState {
     Continue,
     Stop,
