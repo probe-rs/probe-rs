@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    fmt::Write as _,
     io::{Cursor, Write},
     path::{Path, PathBuf},
 };
@@ -126,8 +127,7 @@ impl FragmentList {
     }
 }
 
-fn get_changelog_fragments(fragments_dir: &Path) -> Result<FragmentList> {
-    let mut list = FragmentList::new();
+fn check_local_changelog_fragments(list: &mut FragmentList, fragments_dir: &Path) -> Result<()> {
     let github_token = std::env::var("GH_TOKEN").context("GH_TOKEN not set")?;
 
     let fragment_files = std::fs::read_dir(fragments_dir)
@@ -175,7 +175,46 @@ fn get_changelog_fragments(fragments_dir: &Path) -> Result<FragmentList> {
         }
     }
 
-    Ok(list)
+    Ok(())
+}
+
+/// pull_request_target runs in the context of the PR's target, so it does not include the PR's changes.
+/// This function takes the PR data and fetches the changelog files from the info itself.
+fn check_new_changelog_fragments(list: &mut FragmentList, info: &PrInfo) -> Result<()> {
+    println!("Checking PR {} for changelog fragments", info.number);
+    for file in info.files.iter() {
+        let path = file.path.clone();
+        if !path.starts_with(FRAGMENTS_DIR) {
+            continue;
+        }
+
+        let Some((category, _)) = path
+            .file_name()
+            .expect("All files should have a name")
+            .to_str()
+            .with_context(|| format!("Filename {path:?} is not valid UTF-8"))?
+            .split_once('-')
+        else {
+            // Unable to split filename
+            list.invalid_fragments.push(path);
+            continue;
+        };
+
+        println!("Changelog file: {}", path.display());
+
+        if let Some(fragments) = list.fragments.get_mut(category) {
+            fragments.push(Fragment {
+                pr_number: Some(info.number.to_string()),
+                author: Some(info.author.login.clone()),
+                path: path.clone(),
+            });
+        } else {
+            // Incorrect caregory
+            list.invalid_fragments.push(path);
+        }
+    }
+
+    Ok(())
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -190,7 +229,14 @@ struct Label {
 }
 
 #[derive(Debug, serde::Deserialize)]
+struct PrAuthor {
+    login: String,
+}
+
+#[derive(Debug, serde::Deserialize)]
 struct PrInfo {
+    number: u64,
+    author: PrAuthor,
     labels: Vec<Label>,
     files: Vec<PrFile>,
 }
@@ -200,7 +246,13 @@ fn check_changelog() -> Result<()> {
 
     let pr_number = std::env::var("PR").unwrap_or_default();
 
-    if let Ok(info_json) = cmd!(sh, "gh pr view {pr_number} --json labels,files").read() {
+    let mut fragment_list = FragmentList::new();
+    if let Ok(info_json) = cmd!(
+        sh,
+        "gh pr view {pr_number} --json labels,files,author,number"
+    )
+    .read()
+    {
         let info: PrInfo = serde_json::from_str(&info_json)?;
 
         if info.labels.iter().any(|l| l.name == "skip-changelog") {
@@ -210,11 +262,13 @@ fn check_changelog() -> Result<()> {
 
         disallow_editing_main_changelog(&info, &pr_number)?;
         require_changelog_fragment(&info)?;
+        check_new_changelog_fragments(&mut fragment_list, &info)?;
     } else {
         println!("Unable to fetch PR info, just checking fragments.");
     }
 
-    check_fragments()?;
+    check_local_changelog_fragments(&mut fragment_list, Path::new(FRAGMENTS_DIR))?;
+    print_fragment_list(fragment_list, &pr_number)?;
 
     println!("Everything looks good 👍");
 
@@ -234,12 +288,18 @@ fn disallow_editing_main_changelog(info: &PrInfo, pr: &str) -> Result<()> {
     {
         let message = format!("Please do not edit {CHANGELOG_FILE} directly. Take a look at [CONTRIBUTING.md](https://github.com/probe-rs/probe-rs/blob/master/CONTRIBUTING.md) for information on changelog fragments instead.");
 
-        let sh = Shell::new()?;
-        cmd!(sh, "gh pr comment {pr} -b {message}")
-            .run()
-            .context("Failed to comment on PR")?;
+        write_comment(pr, &message)?;
         anyhow::bail!("Please do not edit {CHANGELOG_FILE} directly");
     }
+
+    Ok(())
+}
+
+fn write_comment(pr: &str, message: &str) -> Result<()> {
+    let sh = Shell::new()?;
+    cmd!(sh, "gh pr comment {pr} -b {message}")
+        .run()
+        .context("Failed to comment on PR")?;
 
     Ok(())
 }
@@ -258,27 +318,35 @@ fn require_changelog_fragment(info: &PrInfo) -> Result<()> {
     Ok(())
 }
 
-fn check_fragments() -> Result<(), anyhow::Error> {
-    let fragment_list = get_changelog_fragments(Path::new(FRAGMENTS_DIR))?;
+fn print_fragment_list(fragment_list: FragmentList, pr: &str) -> Result<()> {
     if !fragment_list.invalid_fragments.is_empty() {
-        println!("The following changelog fragments do not match the expected pattern:");
-        println!();
+        let mut message = String::new();
+
+        writeln!(
+            &mut message,
+            "The following changelog fragments do not match the expected pattern:"
+        )?;
+        writeln!(&mut message)?;
 
         for invalid_fragment in fragment_list.invalid_fragments {
-            println!(" - {}", invalid_fragment.display());
+            writeln!(&mut message, " - {}", invalid_fragment.display())?;
         }
 
-        println!();
-        println!(
+        writeln!(&mut message)?;
+        writeln!(
+            &mut message,
             "Files should start with one of the categories followed by a dash, and end with '.md'"
-        );
-        println!("For example: 'added-foo-bar.md'");
-        println!();
-        println!("Valid categories are:");
+        )?;
+        writeln!(&mut message, "For example: 'added-foo-bar.md'")?;
+        writeln!(&mut message)?;
+        writeln!(&mut message, "Valid categories are:")?;
         for category in CHANGELOG_CATEGORIES {
-            println!(" - {}", category.to_lowercase());
+            writeln!(&mut message, " - {}", category.to_lowercase())?;
         }
-        println!();
+        writeln!(&mut message)?;
+
+        println!("{}", message);
+        write_comment(pr, &message)?;
 
         anyhow::bail!("Invalid changelog fragments found");
     } else {
@@ -321,7 +389,8 @@ fn assemble_changelog(
         anyhow::bail!("Changelog has local changes, aborting.\nUse --force to override.");
     }
 
-    let fragment_list = get_changelog_fragments(Path::new(FRAGMENTS_DIR))?;
+    let mut fragment_list = FragmentList::new();
+    check_local_changelog_fragments(&mut fragment_list, Path::new(FRAGMENTS_DIR))?;
 
     ensure!(
         fragment_list.invalid_fragments.is_empty(),
