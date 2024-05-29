@@ -4,7 +4,7 @@ mod rttui;
 
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
-use colored::*;
+use colored::Colorize;
 use parking_lot::FairMutex;
 use probe_rs::gdb_server::GdbInstanceConfiguration;
 use probe_rs::probe::list::Lister;

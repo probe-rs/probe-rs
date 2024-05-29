@@ -1,5 +1,5 @@
 /// Error handling
-use colored::*;
+use colored::{ColoredString, Colorize};
 use std::error::Error;
 use std::fmt::Write;
 
