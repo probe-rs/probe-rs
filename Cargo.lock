@@ -2566,7 +2566,6 @@ dependencies = [
  "once_cell",
  "parking_lot",
  "parse_int",
- "paste",
  "pretty_assertions",
  "pretty_env_logger",
  "probe-rs-target",

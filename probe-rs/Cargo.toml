@@ -23,10 +23,8 @@ exclude = ["tests/"]
 default = ["builtin-targets"]
 gdb-server = ["dep:gdbstub"]
 
-
 # Enable all built in targets.
 builtin-targets = []
-
 
 # Enable helpers for testing
 test = []
@@ -55,7 +53,6 @@ object = { version = "0.35", default-features = false, features = [
     "read_core",
     "std",
 ] }
-paste = "1"
 nusb = { version = "0.1.9" }
 futures-lite = "2"
 async-io = "2"
@@ -90,7 +87,6 @@ bincode = "1"
 probe-rs-target = { workspace = true }
 serde_yaml = "0.9"
 
-
 [dev-dependencies]
 pretty_env_logger = "0.5"
 rand = "0.8"
@@ -111,7 +107,6 @@ replace = "## [{{version}}]\n\nReleased {{date}}"
 file = "../CHANGELOG.md"
 search = "\\[unreleased\\]: https://github.com/probe-rs/probe-rs/compare/v([a-z0-9.-]+)\\.\\.\\.master"
 replace = "[unreleased]: https://github.com/probe-rs/probe-rs/compare/v{{version}}...master\n[{{version}}]: https://github.com/probe-rs/probe-rs/compare/v$1...v{{version}}"
-
 
 [package.metadata.binstall]
 pkg-url = "{ repo }/releases/download/v{ version }/probe-rs-tools-{ target }-v{ version }{ archive-suffix }"
