@@ -67,14 +67,12 @@ rustyline = { version = "14", default-features = false, features = ["with-dirs",
 sanitize-filename = { version = "0.5" }
 schemafy = { version = "0.6" }
 serde_json = { version = "1.0.116" }
-signal-hook = "0.3"
+signal-hook = { version = "0.3", default-features = false }
 svd-parser = { version = "0.14", features = ["expand"] }
 termtree = { version = "0.4" }
-textwrap = { version = "0.16" }
+textwrap = { version = "0.16", default-features = false, features = ["unicode-linebreak", "unicode-width"] }
 time = { version = "0.3", default-features = false, features = [
-    "alloc",
     "formatting",
-    "large-dates",
     "macros",
     "local-offset",
 ] }
