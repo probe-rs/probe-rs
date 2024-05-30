@@ -1,7 +1,7 @@
 mod diagnostics;
 
 use clap::Parser;
-use colored::*;
+use colored::Colorize;
 use diagnostics::render_diagnostics;
 use probe_rs::probe::list::Lister;
 use std::ffi::OsString;

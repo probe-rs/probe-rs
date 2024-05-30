@@ -778,7 +778,11 @@ impl Session {
 }
 
 // This test ensures that [Session] is fully [Send] + [Sync].
-static_assertions::assert_impl_all!(Session: Send);
+const _: fn() = || {
+    fn assert_impl_all<T: ?Sized + Send>() {}
+
+    assert_impl_all::<Session>();
+};
 
 // TODO tiwalun: Enable again, after rework of Session::new is done.
 impl Drop for Session {

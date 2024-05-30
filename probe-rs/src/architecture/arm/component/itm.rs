@@ -88,7 +88,6 @@ mod register {
     use crate::memory_mapped_bitfield_register;
 
     memory_mapped_bitfield_register! {
-        #[allow(non_camel_case_types)]
         pub struct ITM_TER(u32);
         0xE00,"ITM_TER",
         impl From;
