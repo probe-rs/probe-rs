@@ -1,7 +1,5 @@
 //! Support for J-Link Debug probes
 
-#[macro_use]
-mod macros;
 mod bits;
 pub mod capabilities;
 mod error;

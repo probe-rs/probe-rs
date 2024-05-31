@@ -36,21 +36,6 @@ pub enum Interface {
 }
 
 impl Interface {
-    const fn next(self) -> Option<Self> {
-        let next = match self {
-            Self::Jtag => Self::Swd,
-            Self::Swd => Self::Bdm3,
-            Self::Bdm3 => Self::Fine,
-            Self::Fine => Self::Pic32Icsp,
-            Self::Pic32Icsp => Self::Spi,
-            Self::Spi => Self::C2,
-            Self::C2 => Self::CJtag,
-            Self::CJtag => Self::Mc2WireJtag,
-            Self::Mc2WireJtag => return None,
-        };
-        Some(next)
-    }
-
     fn mask(self) -> u32 {
         1 << self as u32
     }
@@ -63,13 +48,13 @@ impl Interface {
 /// Iterator over supported [`Interface`]s.
 #[derive(Debug)]
 pub struct InterfaceIter {
-    current: Interface,
+    current: Option<Interface>,
 }
 
 impl InterfaceIter {
     pub fn new() -> Self {
         Self {
-            current: Interface::Jtag,
+            current: Some(Interface::Jtag),
         }
     }
 }
@@ -78,12 +63,24 @@ impl Iterator for InterfaceIter {
     type Item = Interface;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(next) = self.current.next() {
-            self.current = next;
-            Some(next)
-        } else {
-            None
-        }
+        // We'll return the current value, so let's grab it.
+        // If it's None, we're done, so let's just return None here.
+        let current = self.current?;
+
+        // Update the current value to the next one
+        self.current = match current {
+            Interface::Jtag => Some(Interface::Swd),
+            Interface::Swd => Some(Interface::Bdm3),
+            Interface::Bdm3 => Some(Interface::Fine),
+            Interface::Fine => Some(Interface::Pic32Icsp),
+            Interface::Pic32Icsp => Some(Interface::Spi),
+            Interface::Spi => Some(Interface::C2),
+            Interface::C2 => Some(Interface::CJtag),
+            Interface::CJtag => Some(Interface::Mc2WireJtag),
+            Interface::Mc2WireJtag => None,
+        };
+
+        Some(current)
     }
 }
 
@@ -111,7 +108,7 @@ impl Interfaces {
 
     /// Returns whether `interface` is contained in `self`.
     pub fn contains(&self, interface: Interface) -> bool {
-        self.0 & interface.mask() != 0
+        self.0 & interface.mask() == interface.mask()
     }
 }
 
@@ -137,11 +134,8 @@ impl Iterator for InterfacesIter {
     type Item = Interface;
 
     fn next(&mut self) -> Option<Self::Item> {
-        while let Some(current) = self.current.next() {
-            if self.interfaces.contains(current) {
-                return Some(current);
-            }
-        }
-        None
+        self.current
+            .by_ref()
+            .find(|&current| self.interfaces.contains(current))
     }
 }

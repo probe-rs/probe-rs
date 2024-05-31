@@ -2385,7 +2385,6 @@ dependencies = [
  "async-io",
  "bincode",
  "bitfield",
- "bitflags 2.5.0",
  "bitvec",
  "clap",
  "docsplay",

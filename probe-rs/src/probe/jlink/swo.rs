@@ -1,15 +1,11 @@
 //! SWO capture support for J-Link probes.
 
-#![allow(unused)]
-
 use super::Command;
 use super::JLink;
 
 use super::capabilities::Capability;
 use super::error::JlinkError;
 use super::interface::Interface;
-
-use bitflags::bitflags;
 
 use std::{cmp, ops::Deref};
 use tracing::warn;
@@ -43,22 +39,26 @@ pub enum SwoMode {
     // FIXME: Manchester encoding?
 }
 
-bitflags! {
-    /// SWO status returned by probe on SWO buffer read.
-    #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-    struct SwoStatus: u32 {
-        /// The on-probe buffer has overflowed. Device data was lost.
-        const OVERRUN = 1 << 0;
+/// SWO status returned by probe on SWO buffer read.
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+struct SwoStatus(u32);
+impl SwoStatus {
+    /// The on-probe buffer has overflowed. Device data was lost.
+    const OVERRUN: u32 = 1 << 0;
+    const ALL_MASK: u32 = Self::OVERRUN;
+
+    fn contains(&self, status: u32) -> bool {
+        self.0 & status != 0
     }
 }
 
 impl SwoStatus {
     fn new(bits: u32) -> Self {
-        let flags = SwoStatus::from_bits_truncate(bits);
-        if flags.bits() != bits {
-            warn!("Unknown SWO status flag bits: 0x{:08X}", bits);
+        let flags = bits & Self::ALL_MASK;
+        if flags != bits {
+            warn!("Unknown SWO status flag bits: {:#010x}", bits);
         }
-        flags
+        Self(flags)
     }
 }
 
@@ -143,7 +143,7 @@ impl JLink {
 
         // Skip length and reserved word.
         // FIXME: What's the word after the length for?
-        let mut buf = &buf[8..];
+        let buf = &buf[8..];
 
         let base_freq_bytes = <[u8; 4]>::try_from(&buf[0..4]).unwrap();
         let min_div_bytes = <[u8; 4]>::try_from(&buf[4..8]).unwrap();
