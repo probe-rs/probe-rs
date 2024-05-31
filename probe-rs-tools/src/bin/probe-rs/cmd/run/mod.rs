@@ -265,6 +265,7 @@ impl RunLoop {
         let mut rtt_config = rtt::RttConfig::default();
         rtt_config.channels.push(rtt::RttChannelConfig {
             channel_number: Some(0),
+            show_timestamps: true,
             show_location: !self.no_location,
             log_format: self.log_format.clone(),
             ..Default::default()
