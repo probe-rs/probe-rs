@@ -289,14 +289,11 @@ fn check_new_changelog_fragments(list: &mut FragmentList, info: &PrInfo) -> Resu
 }
 
 #[derive(Debug, serde::Deserialize)]
-struct PrFile {
-    path: PathBuf,
-    additions: usize,
-}
-
-#[derive(Debug, serde::Deserialize)]
-struct Label {
-    name: String,
+struct PrInfo {
+    number: u64,
+    author: PrAuthor,
+    labels: Vec<Label>,
+    files: Vec<PrFile>,
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -305,12 +302,16 @@ struct PrAuthor {
 }
 
 #[derive(Debug, serde::Deserialize)]
-struct PrInfo {
-    number: u64,
-    author: PrAuthor,
-    labels: Vec<Label>,
-    files: Vec<PrFile>,
+struct Label {
+    name: String,
 }
+
+#[derive(Debug, serde::Deserialize)]
+struct PrFile {
+    path: PathBuf,
+    additions: usize,
+}
+
 impl PrInfo {
     fn load(pr_number: u64) -> Result<Self> {
         let sh = Shell::new()?;
