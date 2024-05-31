@@ -76,7 +76,14 @@ time = { version = "0.3", default-features = false, features = [
     "macros",
     "local-offset",
 ] }
-tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing-subscriber = { version = "0.3", features = [
+    "env-filter",
+    "json",
+    "smallvec",
+    "fmt",
+    "ansi",
+    "std"
+] }
 tracing-appender = "0.2"
 ratatui = { version = "0.26.2", default-features = false, features = [
     "crossterm",
