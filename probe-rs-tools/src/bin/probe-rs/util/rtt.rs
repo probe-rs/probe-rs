@@ -144,7 +144,7 @@ impl Default for RttChannelConfig {
             channel_number: Default::default(),
             data_format: Default::default(),
             mode: Default::default(),
-            show_timestamps: true,
+            show_timestamps: default_show_timestamps(),
             show_location: Default::default(),
             log_format: Default::default(),
         }
