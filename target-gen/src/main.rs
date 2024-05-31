@@ -7,7 +7,7 @@ pub mod parser;
 
 use anyhow::{ensure, Context, Result};
 use clap::Parser;
-use probe_rs::config::ChipFamily;
+use probe_rs_target::ChipFamily;
 use std::{
     env::current_dir,
     fs::create_dir,

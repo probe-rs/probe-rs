@@ -1,8 +1,7 @@
 use anyhow::{bail, Context, Result};
-use probe_rs::CoreType;
 use probe_rs_target::{
-    ArmCoreAccessOptions, Chip, ChipFamily, Core, CoreAccessOptions, MemoryRegion, NvmRegion,
-    RamRegion, TargetDescriptionSource::BuiltIn,
+    ArmCoreAccessOptions, Chip, ChipFamily, Core, CoreAccessOptions, CoreType, MemoryRegion,
+    NvmRegion, RamRegion, TargetDescriptionSource,
 };
 use std::{
     collections::HashMap,
@@ -114,7 +113,7 @@ pub fn cmd_elf(
                 default_binary_format: None,
             }],
             flash_algorithms: vec![algorithm],
-            source: BuiltIn,
+            source: TargetDescriptionSource::BuiltIn,
         };
 
         let output_yaml = serialize_to_yaml_string(&chip_family)?;

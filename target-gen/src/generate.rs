@@ -2,16 +2,11 @@ use anyhow::{anyhow, bail, Context, Error, Result};
 use cmsis_pack::pdsc::{AccessPort, Algorithm, Core, Device, Package, Processor};
 use cmsis_pack::{pack_index::PdscRef, utils::FromElem};
 use futures::StreamExt;
-use probe_rs::{
-    config::{
-        Chip, ChipFamily, Core as ProbeCore, GenericRegion, MemoryRegion, NvmRegion, RamRegion,
-        RawFlashAlgorithm,
-    },
-    flashing::FlashAlgorithm,
-    Architecture, CoreType,
-};
+use probe_rs::flashing::FlashAlgorithm;
 use probe_rs_target::{
-    ArmCoreAccessOptions, CoreAccessOptions, RiscvCoreAccessOptions, XtensaCoreAccessOptions,
+    Architecture, ArmCoreAccessOptions, Chip, ChipFamily, Core as ProbeCore, CoreAccessOptions,
+    CoreType, GenericRegion, MemoryRegion, NvmRegion, RamRegion, RawFlashAlgorithm,
+    RiscvCoreAccessOptions, TargetDescriptionSource, XtensaCoreAccessOptions,
 };
 use std::collections::HashMap;
 use std::ffi::OsStr;
@@ -113,7 +108,7 @@ where
                 pack_file_release: pack_file_release.clone(),
                 variants: Vec::new(),
                 flash_algorithms: Vec::new(),
-                source: probe_rs::config::TargetDescriptionSource::BuiltIn,
+                source: TargetDescriptionSource::BuiltIn,
             });
             // This unwrap is always safe as we insert at least one item previously.
             families.last_mut().unwrap()
