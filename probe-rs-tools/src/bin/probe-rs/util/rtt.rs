@@ -114,7 +114,7 @@ impl RttConfig {
 }
 
 /// The User specified configuration for each active RTT Channel.
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RttChannelConfig {
     pub channel_number: Option<usize>,
@@ -136,6 +136,19 @@ pub struct RttChannelConfig {
     #[serde(default)]
     /// Controls the output format for DataFormat::Defmt.
     pub log_format: Option<String>,
+}
+
+impl Default for RttChannelConfig {
+    fn default() -> Self {
+        RttChannelConfig {
+            channel_number: Default::default(),
+            data_format: Default::default(),
+            mode: Default::default(),
+            show_timestamps: default_show_timestamps(),
+            show_location: Default::default(),
+            log_format: Default::default(),
+        }
+    }
 }
 
 pub enum ChannelDataFormat {
