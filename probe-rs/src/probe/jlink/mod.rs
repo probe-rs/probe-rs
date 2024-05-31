@@ -553,7 +553,7 @@ impl JLink {
 
         self.require_interface_supported(intf)?;
 
-        self.write_cmd(&[Command::SelectIf as u8, intf.as_u8()])?;
+        self.write_cmd(&[Command::SelectIf as u8, intf as u8])?;
 
         // Returns the previous interface, ignore it
         let mut buf = [0; 4];
