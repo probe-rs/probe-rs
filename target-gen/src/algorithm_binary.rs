@@ -2,7 +2,7 @@ use goblin::{
     elf::program_header::PT_LOAD,
     elf64::section_header::{SHT_NOBITS, SHT_PROGBITS},
 };
-use probe_rs::config::MemoryRange;
+use probe_rs_target::MemoryRange;
 
 use anyhow::{anyhow, Result};
 
