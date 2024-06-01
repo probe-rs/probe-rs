@@ -4,8 +4,8 @@ use std::fmt;
 #[derive(Clone)]
 pub struct BitIter<'a> {
     buf: &'a [u8],
-    next_bit: u8,
-    bits_left: usize,
+    total_bits: usize,
+    current_bit: usize,
 }
 
 impl<'a> BitIter<'a> {
@@ -19,8 +19,8 @@ impl<'a> BitIter<'a> {
 
         Self {
             buf,
-            next_bit: 0,
-            bits_left: total_bits,
+            total_bits,
+            current_bit: 0,
         }
     }
 }
@@ -29,25 +29,23 @@ impl Iterator for BitIter<'_> {
     type Item = bool;
 
     fn next(&mut self) -> Option<bool> {
-        if self.bits_left > 0 {
-            let byte = self.buf.first().unwrap();
-            let bit = byte & (1 << self.next_bit) != 0;
-            if self.next_bit < 7 {
-                self.next_bit += 1;
-            } else {
-                self.next_bit = 0;
-                self.buf = &self.buf[1..];
-            }
-
-            self.bits_left -= 1;
-            Some(bit)
-        } else {
-            None
+        if self.current_bit == self.total_bits {
+            return None;
         }
+
+        let current_bit = self.current_bit;
+        let byte = current_bit / 8;
+        let bit = current_bit % 8;
+
+        let bit = self.buf[byte] & (1 << bit) != 0;
+        self.current_bit += 1;
+
+        Some(bit)
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        (self.bits_left, Some(self.bits_left))
+        let remaining = self.total_bits - self.current_bit;
+        (remaining, Some(remaining))
     }
 }
 
@@ -83,23 +81,13 @@ impl<I: Iterator<Item = bool>> Iterator for ByteIter<I> {
     fn next(&mut self) -> Option<u8> {
         // Collapse 8 bits from `inner` into a byte (LSb first).
         let mut byte = 0;
-        let mut empty = true;
-        for pos in 0..8 {
-            let bit = if let Some(bit) = self.inner.next() {
-                bit
-            } else {
-                break;
-            };
-            empty = false;
-            let mask = if bit { 1 } else { 0 } << pos;
-            byte |= mask;
+        let mut has_data = false;
+        for (pos, bit) in self.inner.by_ref().take(8).enumerate() {
+            has_data = true;
+            byte |= (bit as u8) << pos;
         }
 
-        if empty {
-            None
-        } else {
-            Some(byte)
-        }
+        has_data.then_some(byte)
     }
 }
 
@@ -109,40 +97,40 @@ mod tests {
 
     #[test]
     fn collapse_bytes() {
-        fn collapse(v: Vec<bool>) -> Vec<u8> {
+        fn collapse<const N: usize>(v: [bool; N]) -> Vec<u8> {
             v.into_iter().collapse_bytes().collect()
         }
 
-        assert_eq!(collapse(vec![]), vec![]);
-        assert_eq!(collapse(vec![true]), vec![0x01]);
-        assert_eq!(collapse(vec![false, true]), vec![0x02]);
-        assert_eq!(collapse(vec![true, false]), vec![0x01]);
-        assert_eq!(collapse(vec![false]), vec![0x00]);
-        assert_eq!(collapse(vec![false; 8]), vec![0x00]);
-        assert_eq!(collapse(vec![true; 8]), vec![0xFF]);
-        assert_eq!(collapse(vec![true; 7]), vec![0x7F]);
-        assert_eq!(collapse(vec![true; 9]), vec![0xFF, 0x01]);
+        assert_eq!(collapse([]), []);
+        assert_eq!(collapse([true]), [0x01]);
+        assert_eq!(collapse([false, true]), [0x02]);
+        assert_eq!(collapse([true, false]), [0x01]);
+        assert_eq!(collapse([false]), [0x00]);
+        assert_eq!(collapse([false; 8]), [0x00]);
+        assert_eq!(collapse([true; 8]), [0xFF]);
+        assert_eq!(collapse([true; 7]), [0x7F]);
+        assert_eq!(collapse([true; 9]), [0xFF, 0x01]);
     }
 
     #[test]
     fn bit_iter() {
-        fn bit_iter(b: Vec<u8>, num: usize) -> Vec<bool> {
+        fn bit_iter<const N: usize>(b: [u8; N], num: usize) -> Vec<bool> {
             BitIter::new(&b, num).collect()
         }
 
-        assert_eq!(bit_iter(vec![], 0), Vec::<bool>::new());
-        assert_eq!(bit_iter(vec![0xFF], 0), Vec::<bool>::new());
-        assert_eq!(bit_iter(vec![0xFF, 0xFF], 0), Vec::<bool>::new());
-        assert_eq!(bit_iter(vec![0xFF], 1), vec![true]);
-        assert_eq!(bit_iter(vec![0x00], 1), vec![false]);
-        assert_eq!(bit_iter(vec![0x01], 1), vec![true]);
-        assert_eq!(bit_iter(vec![0x01], 2), vec![true, false]);
-        assert_eq!(bit_iter(vec![0x02], 2), vec![false, true]);
-        assert_eq!(bit_iter(vec![0x02], 3), vec![false, true, false]);
+        assert_eq!(bit_iter([], 0), Vec::<bool>::new());
+        assert_eq!(bit_iter([0xFF], 0), Vec::<bool>::new());
+        assert_eq!(bit_iter([0xFF, 0xFF], 0), Vec::<bool>::new());
+        assert_eq!(bit_iter([0xFF], 1), [true]);
+        assert_eq!(bit_iter([0x00], 1), [false]);
+        assert_eq!(bit_iter([0x01], 1), [true]);
+        assert_eq!(bit_iter([0x01], 2), [true, false]);
+        assert_eq!(bit_iter([0x02], 2), [false, true]);
+        assert_eq!(bit_iter([0x02], 3), [false, true, false]);
 
         assert_eq!(
-            bit_iter(vec![0x01, 0x01], 9),
-            vec![true, false, false, false, false, false, false, false, true]
+            bit_iter([0x01, 0x01], 9),
+            [true, false, false, false, false, false, false, false, true]
         );
     }
 }
