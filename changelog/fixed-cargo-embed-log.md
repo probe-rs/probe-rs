@@ -1,0 +1,1 @@
+Use `RUST_LOG` as the log filter if `Embed.toml` does not specify a level.
