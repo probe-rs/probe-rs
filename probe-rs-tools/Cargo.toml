@@ -92,12 +92,8 @@ clap_complete = "4.5.2"
 regex = "1.10.4"
 semver = "1"
 zip = { version = "2.0.0", default-features = false, features = [
-    "bzip2",
-    "deflate64",
     "deflate",
-    "lzma",
     "time",
-    "zstd",
 ] }
 urlencoding = "2"
 
