@@ -12,7 +12,10 @@ use crate::MemoryMappedRegister;
 
 /// Marker struct indicating initialization sequencing for cc13xx_cc26xx family parts.
 #[derive(Debug)]
-pub struct CC13xxCC26xx {}
+pub struct CC13xxCC26xx {
+    // Chip name
+    name: String,
+}
 
 // IR register values, see https://www.ti.com/lit/ug/swcu185f/swcu185f.pdf table 6-7
 const IR_ROUTER: u64 = 0x02;
@@ -37,8 +40,8 @@ fn set_n_bits(x: u32) -> u64 {
 
 impl CC13xxCC26xx {
     /// Create the sequencer for the cc13xx_cc26xx family of parts.
-    pub fn create() -> Arc<Self> {
-        Arc::new(Self {})
+    pub fn create(name: String) -> Arc<Self> {
+        Arc::new(Self { name })
     }
 
     /// This function implements a Zero Bit Scan(ZBS)
@@ -306,6 +309,38 @@ impl CC13xxCC26xx {
     }
 }
 
+/// Do a full system reset (emulated PIN reset)
+///
+/// CPU reset alone is not possible since AIRCR.SYSRESETREQ will be
+/// converted to system reset on these devices.
+///
+/// The below code writes to the following bit
+/// `AON_PMCTL.RESETCTL.SYSRESET=1`d or its equivalent based on family
+fn reset_chip(chip: &str, probe: &mut dyn ArmProbe) {
+    // The CC family of device have a pattern where the 6th character of the device name dictates the family
+    // Use this to determine the correct address to write to
+    match chip.chars().nth(5).unwrap() {
+        // Note that errors are ignored
+        // writing this register will immediately trigger a system reset which causes us to lose the debug interface
+        // We also don't need to worry about preserving register state because we will anyway reset.
+        '0' => {
+            probe.write_word_32(0x4009_0004, 0x8000_0000).ok();
+        }
+        '1' | '2' => {
+            probe.write_word_32(0x4009_0028, 0x8000_0000).ok();
+        }
+        '4' => {
+            probe.write_word_32(0x5809_0028, 0x8000_0000).ok();
+        }
+        _ => {
+            unreachable!(
+                "TI CC13xx/CC26xx debug sequence used on an unsupported chip: {chip}",
+                chip = chip
+            );
+        }
+    }
+}
+
 impl ArmDebugSequence for CC13xxCC26xx {
     fn reset_system(
         &self,
@@ -316,13 +351,8 @@ impl ArmDebugSequence for CC13xxCC26xx {
         // Check if the previous code requested a halt before reset
         let demcr = Demcr(probe.read_word_32(Demcr::get_mmio_address())?);
 
-        // Do a full system reset (emulated PIN reset)
-        // CPU reset alone is not possible since AIRCR.SYSRESETREQ will be
-        // converted to system reset on these devices.
-        //
-        // The below code writes to the following bit
-        // AON_PMCTL.RESETCTL.SYSRESET=1
-        probe.write_word_32(0x4009_0028, 0x8000_0000).ok();
+        // Do target specific reset
+        reset_chip(&self.name, probe);
 
         // Since the system went down, including the debug, we should flush any pending operations
         probe.flush().ok();
