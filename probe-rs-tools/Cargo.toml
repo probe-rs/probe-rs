@@ -34,7 +34,7 @@ object = { version = "0.36", default-features = false, features = [
 scroll = "0.12"
 serde = { version = "1", features = ["derive"] }
 thiserror = { workspace = true }
-tracing = { version = "0.1", features = ["log"] }
+tracing = "0.1"
 typed-path = "0.8"
 # path
 probe-rs-target = { workspace = true }

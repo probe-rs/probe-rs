@@ -62,7 +62,7 @@ futures-lite = { version = "2", default-features = false }
 async-io = "2"
 scroll = "0.12"
 svg = "0.17"
-tracing = { version = "0.1", features = ["log"] }
+tracing = "0.1"
 uf2-decode = "0.2"
 typed-path = "0.8"
 espflash = { version = "3", default-features = false }
