@@ -139,57 +139,67 @@ impl FragmentList {
     }
 
     fn display(&self) -> String {
-        let mut message = String::new();
-        if self.invalid_fragments.is_empty() {
-            writeln!(
-                &mut message,
-                "Found {} valid fragments:",
-                self.fragments.len()
-            )
-            .unwrap();
-
-            for (group, fragments) in self.fragments.iter() {
-                if fragments.is_empty() {
-                    continue;
-                }
-
-                writeln!(&mut message, " {group}:").unwrap();
-
-                for fragment in fragments {
-                    writeln!(
-                        &mut message,
-                        "  - {} (#{}) by @{}",
-                        fragment.path.display(),
-                        fragment.pr_number.as_deref().unwrap_or("<unknown>"),
-                        fragment.author.as_deref().unwrap_or("<unknown>")
-                    )
-                    .unwrap();
-                }
-            }
+        if self.is_ok() {
+            self.ok_message()
         } else {
-            message.push_str(
-                "The following changelog fragments \
-                do not match the expected pattern:\n",
-            );
+            self.error_message()
+        }
+    }
 
-            for invalid_fragment in self.invalid_fragments.iter() {
-                writeln!(&mut message, " - {}", invalid_fragment.display()).unwrap();
+    fn ok_message(&self) -> String {
+        let mut message = String::new();
+        writeln!(
+            &mut message,
+            "Found {} valid fragments:",
+            self.fragments.len()
+        )
+        .unwrap();
+
+        for (group, fragments) in self.fragments.iter() {
+            if fragments.is_empty() {
+                continue;
             }
-            message.push('\n');
 
-            message.push_str(
-                "Files should start with one of the categories followed \
-                by a dash, and end with '.md'\n\
-                For example: 'added-foo-bar.md'\n\
-                \n",
-            );
+            writeln!(&mut message, " {group}:").unwrap();
 
-            message.push_str("Valid categories are:\n");
-            for category in CHANGELOG_CATEGORIES {
-                writeln!(&mut message, " - {}", category.to_lowercase()).unwrap();
+            for fragment in fragments {
+                writeln!(
+                    &mut message,
+                    "  - {} (#{}) by @{}",
+                    fragment.path.display(),
+                    fragment.pr_number.as_deref().unwrap_or("<unknown>"),
+                    fragment.author.as_deref().unwrap_or("<unknown>")
+                )
+                .unwrap();
             }
         }
 
+        message
+    }
+
+    fn error_message(&self) -> String {
+        let mut message = String::new();
+        message.push_str(
+            "The following changelog fragments \
+            do not match the expected pattern:\n",
+        );
+
+        for invalid_fragment in self.invalid_fragments.iter() {
+            writeln!(&mut message, " - {}", invalid_fragment.display()).unwrap();
+        }
+        message.push('\n');
+
+        message.push_str(
+            "Files should start with one of the categories followed \
+            by a dash, and end with '.md'\n\
+            For example: 'added-foo-bar.md'\n\
+            \n",
+        );
+
+        message.push_str("Valid categories are:\n");
+        for category in CHANGELOG_CATEGORIES {
+            writeln!(&mut message, " - {}", category.to_lowercase()).unwrap();
+        }
         message
     }
 }
