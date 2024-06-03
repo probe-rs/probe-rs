@@ -80,8 +80,7 @@ impl JLink {
 
         self.write_cmd(&[Command::GetSpeeds as u8])?;
 
-        let mut buf = [0; 6];
-        self.read(&mut buf)?;
+        let buf = self.read_n::<6>()?;
 
         let base_freq_bytes = <[u8; 4]>::try_from(&buf[0..4]).unwrap();
         let min_div_bytes = <[u8; 2]>::try_from(&buf[4..6]).unwrap();

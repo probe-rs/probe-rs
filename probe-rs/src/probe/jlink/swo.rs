@@ -128,8 +128,7 @@ impl JLink {
 
         self.write_cmd(&buf)?;
 
-        let mut buf = [0; 28];
-        self.read(&mut buf)?;
+        let buf = self.read_n::<28>()?;
 
         let mut len = [0; 4];
         len.copy_from_slice(&buf[0..4]);
@@ -194,9 +193,7 @@ impl JLink {
 
         self.write_cmd(&buf)?;
 
-        let mut status = [0; 4];
-        self.read(&mut status)?;
-        let _status = SwoStatus::new(u32::from_le_bytes(status));
+        let _status = self.read_u32().map(SwoStatus::new)?;
 
         Ok(())
     }
@@ -213,9 +210,7 @@ impl JLink {
 
         self.write_cmd(&buf)?;
 
-        let mut status = [0; 4];
-        self.read(&mut status)?;
-        let _status = SwoStatus::new(u32::from_le_bytes(status));
+        let _status = self.read_u32().map(SwoStatus::new)?;
         // FIXME: What to do with the status?
 
         Ok(())
@@ -241,8 +236,7 @@ impl JLink {
 
         self.write_cmd(&cmd)?;
 
-        let mut header = [0; 8];
-        self.read(&mut header)?;
+        let header = self.read_n::<8>()?;
 
         let status = {
             let mut status = [0; 4];
@@ -253,15 +247,14 @@ impl JLink {
         let length = {
             let mut length = [0; 4];
             length.copy_from_slice(&header[4..8]);
-            u32::from_le_bytes(length)
+            u32::from_le_bytes(length) as usize
         };
 
         if status.contains(SwoStatus::OVERRUN) {
             warn!("SWO probe buffer overrun");
         }
 
-        let len = length as usize;
-        let buf = &mut data[..len];
+        let buf = &mut data[..length];
         self.read(buf)?;
 
         Ok(SwoData { data: buf, status })
