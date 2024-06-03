@@ -24,7 +24,6 @@
 
 mod chip_info;
 pub(crate) mod registry;
-pub mod sequences;
 mod target;
 
 pub use probe_rs_target::{
