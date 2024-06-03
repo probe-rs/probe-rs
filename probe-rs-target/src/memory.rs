@@ -66,6 +66,13 @@ pub struct SectorInfo {
     pub size: u64,
 }
 
+impl SectorInfo {
+    /// Returns the address range of the sector.
+    pub fn address_range(&self) -> Range<u64> {
+        self.base_address..self.base_address + self.size
+    }
+}
+
 /// Information about a group of flash sectors, which
 /// is used as part of the [`FlashProperties`] struct.
 ///
@@ -94,6 +101,13 @@ pub struct PageInfo {
     pub base_address: u64,
     /// Size of the page
     pub size: u32,
+}
+
+impl PageInfo {
+    /// Returns the address range of the sector.
+    pub fn address_range(&self) -> Range<u64> {
+        self.base_address..self.base_address + self.size as u64
+    }
 }
 
 /// Holds information about the entire flash.

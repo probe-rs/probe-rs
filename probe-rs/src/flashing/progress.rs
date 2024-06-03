@@ -27,14 +27,30 @@ impl FlashProgress {
         }
     }
 
+    /// Create a new `FlashProgress` structure with an empty handler.
+    pub fn empty() -> Self {
+        Self {
+            handler: Arc::new(|_| {}),
+        }
+    }
+
     /// Emit a flashing progress event.
     fn emit(&self, event: ProgressEvent) {
         (self.handler)(event);
     }
 
     /// Signalize that the flashing algorithm was set up and is initialized.
-    pub(super) fn initialized(&self, flash_layout: FlashLayout) {
-        self.emit(ProgressEvent::Initialized { flash_layout });
+    pub(super) fn initialized(
+        &self,
+        chip_erase: bool,
+        restore_unwritten: bool,
+        phases: Vec<FlashLayout>,
+    ) {
+        self.emit(ProgressEvent::Initialized {
+            chip_erase,
+            restore_unwritten,
+            phases,
+        });
     }
 
     /// Signalize that the erasing procedure started.
@@ -124,9 +140,18 @@ impl FlashProgress {
 pub enum ProgressEvent {
     /// The flash layout has been built and the flashing procedure was initialized.
     Initialized {
-        /// The layout of the flash contents as it will be used by the flash procedure.
+        /// Whether the chip erase feature is enabled.
+        /// If this is true, the chip will be erased before any other operation. No separate erase
+        /// progress bars are necessary in this case.
+        chip_erase: bool,
+
+        /// The layout of the flash contents as it will be used by the flash procedure, grouped by
+        /// phases (fill, erase, program sequences).
         /// This is an exact report of what the flashing procedure will do during the flashing process.
-        flash_layout: FlashLayout,
+        phases: Vec<FlashLayout>,
+
+        /// Whether the unwritten flash contents will be restored after erasing.
+        restore_unwritten: bool,
     },
     /// Filling of flash pages has started.
     StartedFilling,

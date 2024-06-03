@@ -11,7 +11,7 @@ use super::FlashProgress;
 ///
 /// The optional progress will only be used to emit RTT messages.
 /// No actual indication for the state of the erase all operation will be given.
-pub fn erase_all(session: &mut Session, progress: Option<FlashProgress>) -> Result<(), FlashError> {
+pub fn erase_all(session: &mut Session, progress: FlashProgress) -> Result<(), FlashError> {
     tracing::debug!("Erasing all...");
 
     let mut algos: HashMap<(String, String), Vec<NvmRegion>> = HashMap::new();
@@ -95,9 +95,10 @@ pub fn erase_all(session: &mut Session, progress: Option<FlashProgress>) -> Resu
 }
 
 /// Erases `sectors` sectors starting from `start_sector` from flash.
+// TODO: currently no progress is reported by anything in this function.
 pub fn erase_sectors(
     session: &mut Session,
-    progress: Option<FlashProgress>,
+    progress: FlashProgress,
     start_sector: usize,
     sectors: usize,
 ) -> Result<(), FlashError> {

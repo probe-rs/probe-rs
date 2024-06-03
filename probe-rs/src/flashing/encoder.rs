@@ -140,4 +140,8 @@ impl FlashEncoder {
     pub fn sectors(&self) -> &[FlashSector] {
         self.encoder.sectors()
     }
+
+    pub fn program_size(&self) -> u64 {
+        self.pages().iter().map(|p| p.data().len() as u64).sum()
+    }
 }

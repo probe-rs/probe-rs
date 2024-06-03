@@ -679,18 +679,26 @@ impl Debugger {
                 let mut flash_progress = progress_state.borrow_mut();
                 let mut debug_adapter = rc_debug_adapter_clone.borrow_mut();
                 match event {
-                    ProgressEvent::Initialized { flash_layout } => {
-                        flash_progress.total_page_size =
-                            flash_layout.pages().iter().map(|s| s.size() as usize).sum();
+                    ProgressEvent::Initialized { phases, .. } => {
+                        for phase_layout in phases {
+                            flash_progress.total_page_size += phase_layout
+                                .pages()
+                                .iter()
+                                .map(|s| s.size() as usize)
+                                .sum::<usize>();
 
-                        flash_progress.total_sector_size = flash_layout
-                            .sectors()
-                            .iter()
-                            .map(|s| s.size() as usize)
-                            .sum();
+                            flash_progress.total_sector_size += phase_layout
+                                .sectors()
+                                .iter()
+                                .map(|s| s.size() as usize)
+                                .sum::<usize>();
 
-                        flash_progress.total_fill_size =
-                            flash_layout.fills().iter().map(|s| s.size() as usize).sum();
+                            flash_progress.total_fill_size += phase_layout
+                                .fills()
+                                .iter()
+                                .map(|s| s.size() as usize)
+                                .sum::<usize>();
+                        }
                     }
                     ProgressEvent::StartedFilling => {
                         debug_adapter
