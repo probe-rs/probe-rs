@@ -456,26 +456,13 @@ fn coresight_component_tree(
 fn process_vendor_rom_tables(
     interface: &mut dyn ArmProbeInterface,
     id: &ComponentId,
-    _table: &RomTable,
+    table: &RomTable,
     access_port: MemoryAp,
     tree: &mut Tree<String>,
 ) -> Result<()> {
-    let peripheral_id = id.peripheral_id();
-    let Some(part_info) = peripheral_id.determine_part() else {
-        return Ok(());
-    };
-
-    if part_info.peripheral_type() == PeripheralType::Custom && part_info.name() == "Atmel DSU" {
-        use probe_rs::vendor::microchip::sequences::atsam::DsuDid;
-
-        // Read and parse the DID register
-        let did = DsuDid(
-            interface
-                .memory_interface(access_port)?
-                .read_word_32(DsuDid::ADDRESS)?,
-        );
-
-        tree.push(format!("Atmel device (DID = {:#010x})", did.0));
+    let vendors = probe_rs::vendor::vendors();
+    for vendor in vendors.iter() {
+        vendor.parse_custom_rom_table(interface, id, table, access_port, tree)?;
     }
 
     Ok(())
