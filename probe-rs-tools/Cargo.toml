@@ -18,7 +18,7 @@ default-run = "probe-rs"
 anyhow = { workspace = true }
 base64 = "0.22"
 docsplay = { workspace = true }
-gimli = { version = "0.30", default-features = false, features = [
+gimli = { version = "0.29", default-features = false, features = [
     "endian-reader",
     "read",
     "std",
@@ -43,7 +43,7 @@ probe-rs-mi = { workspace = true }
 itertools = "0.13"
 
 # CLI-only
-addr2line = "0.23"
+addr2line = "0.22"
 bytesize = "1"
 capstone = "0.12"
 cargo_metadata = "0.18"
