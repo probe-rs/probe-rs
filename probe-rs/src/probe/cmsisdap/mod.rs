@@ -549,7 +549,6 @@ impl CmsisDap {
 
                     tracing::trace!("draining {:?} and retries left {:?}", count, retry);
                     batch.drain(0..count);
-                    continue;
                 }
                 Ack::Wait => {
                     tracing::trace!("wait");
