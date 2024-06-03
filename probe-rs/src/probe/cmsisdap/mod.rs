@@ -493,7 +493,7 @@ impl CmsisDap {
                     .map_err(CmsisDapError::from)
                     .map_err(DebugProbeError::from)?;
 
-            let count = response.transfer_count as usize;
+            let count = response.transfers.len();
 
             tracing::debug!("{:?} of batch of {} items executed", count, batch.len());
 
@@ -508,7 +508,7 @@ impl CmsisDap {
             match response.last_transfer_response.ack {
                 Ack::Ok => {
                     tracing::trace!("Transfer status: ACK");
-                    return Ok(response.transfers[response.transfers.len() - 1].data);
+                    return Ok(response.transfers[count - 1].data);
                 }
                 Ack::NoAck => {
                     tracing::trace!(

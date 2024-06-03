@@ -212,7 +212,6 @@ impl Request for TransferRequest {
         }
 
         Ok(TransferResponse {
-            transfer_count,
             last_transfer_response,
             transfers,
         })
@@ -239,8 +238,6 @@ pub struct LastTransferResponse {
 
 #[derive(Debug)]
 pub struct TransferResponse {
-    /// Number of transfers: 1 .. 255 that are executed.
-    pub transfer_count: u8,
     /// Contains information about last response from target Device.
     pub last_transfer_response: LastTransferResponse,
     /// Responses to each requested transfer in `TransferRequest`. May be shorter than
