@@ -552,7 +552,7 @@ impl CmsisDap {
                     continue;
                 }
                 Ack::Wait => {
-                    tracing::trace!("wait",);
+                    tracing::trace!("wait");
 
                     let mut abort = Abort(0);
                     abort.set_dapabort(true);
