@@ -225,6 +225,7 @@ pub enum Ack {
     Ok = 1,
     Wait = 2,
     Fault = 4,
+    #[allow(clippy::enum_variant_names)]
     NoAck = 7,
 }
 
