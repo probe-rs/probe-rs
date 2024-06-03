@@ -1,7 +1,5 @@
 //! Support for J-Link Debug probes
 
-#[macro_use]
-mod macros;
 mod bits;
 pub mod capabilities;
 mod error;
@@ -552,7 +550,7 @@ impl JLink {
 
         self.require_interface_supported(intf)?;
 
-        self.write_cmd(&[Command::SelectIf as u8, intf.as_u8()])?;
+        self.write_cmd(&[Command::SelectIf as u8, intf as u8])?;
 
         // Returns the previous interface, ignore it
         let _ = self.read_u32()?;

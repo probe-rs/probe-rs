@@ -23,7 +23,7 @@ pub enum JlinkError {
     /// operation isn't set when that operation is attempted.
     ///
     /// Capabilities can be read by calling [`JLink::capabilities`], which returns a
-    /// [`Capabilities`] bitflags struct.
+    /// [`Capabilities`] struct.
     MissingCapability(Capability),
 
     #[error("probe does not support target interface {0:?}")]
