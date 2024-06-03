@@ -495,7 +495,7 @@ impl CmsisDap {
 
             let count = response.transfers.len();
 
-            tracing::debug!("{:?} of batch of {} items executed", count, batch.len());
+            tracing::debug!("{} of batch of {} items executed", count, batch.len());
 
             if response.last_transfer_response.protocol_error {
                 if count > 0 {
