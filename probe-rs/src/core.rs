@@ -429,52 +429,10 @@ impl<'probe> Core<'probe> {
         target: &Target,
         core_type: CoreType,
     ) -> CombinedCoreState {
-        let specific_state = SpecificCoreState::from_core_type(core_type);
-
-        match options {
-            CoreAccessOptions::Arm(options) => {
-                let DebugSequence::Arm(sequence) = target.debug_sequence.clone() else {
-                    panic!(
-                        "Mismatch between sequence and core kind. This is a bug, please report it."
-                    );
-                };
-
-                let core_state = CoreState::new(ResolvedCoreOptions::Arm { sequence, options });
-
-                CombinedCoreState {
-                    id,
-                    core_state,
-                    specific_state,
-                }
-            }
-            CoreAccessOptions::Riscv(options) => {
-                let DebugSequence::Riscv(sequence) = target.debug_sequence.clone() else {
-                    panic!(
-                        "Mismatch between sequence and core kind. This is a bug, please report it."
-                    );
-                };
-
-                let core_state = CoreState::new(ResolvedCoreOptions::Riscv { sequence, options });
-                CombinedCoreState {
-                    id,
-                    core_state,
-                    specific_state,
-                }
-            }
-            CoreAccessOptions::Xtensa(options) => {
-                let DebugSequence::Xtensa(sequence) = target.debug_sequence.clone() else {
-                    panic!(
-                        "Mismatch between sequence and core kind. This is a bug, please report it."
-                    );
-                };
-
-                let core_state = CoreState::new(ResolvedCoreOptions::Xtensa { sequence, options });
-                CombinedCoreState {
-                    id,
-                    core_state,
-                    specific_state,
-                }
-            }
+        CombinedCoreState {
+            id,
+            core_state: CoreState::new(ResolvedCoreOptions::new(target, options)),
+            specific_state: SpecificCoreState::from_core_type(core_type),
         }
     }
 
@@ -958,7 +916,32 @@ pub enum ResolvedCoreOptions {
         options: XtensaCoreAccessOptions,
     },
 }
+
 impl ResolvedCoreOptions {
+    fn new(target: &Target, options: CoreAccessOptions) -> Self {
+        match options {
+            CoreAccessOptions::Arm(options) => {
+                if let DebugSequence::Arm(sequence) = target.debug_sequence.clone() {
+                    return ResolvedCoreOptions::Arm { sequence, options };
+                }
+            }
+            CoreAccessOptions::Riscv(options) => {
+                if let DebugSequence::Riscv(sequence) = target.debug_sequence.clone() {
+                    return ResolvedCoreOptions::Riscv { sequence, options };
+                }
+            }
+            CoreAccessOptions::Xtensa(options) => {
+                if let DebugSequence::Xtensa(sequence) = target.debug_sequence.clone() {
+                    return ResolvedCoreOptions::Xtensa { sequence, options };
+                }
+            }
+        }
+
+        unreachable!(
+            "Mismatch between core kind and access options. This is a bug, please report it."
+        );
+    }
+
     fn interface_idx(&self) -> usize {
         match self {
             Self::Arm { .. } => 0, // TODO
