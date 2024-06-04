@@ -138,8 +138,6 @@ impl InnerTransferResponse {
 pub struct TransferRequest {
     /// Zero based device index of the selected JTAG device. For SWD mode the value is ignored.
     pub dap_index: u8,
-    /// Number of transfers: 1 .. 255. For each transfer a Transfer Request BYTE is sent. Depending on the request an additional Transfer Data WORD is sent.
-    pub transfer_count: u8,
     transfers: Vec<InnerTransferRequest>,
 }
 
@@ -147,7 +145,6 @@ impl TransferRequest {
     pub fn empty() -> Self {
         Self {
             dap_index: 0,
-            transfer_count: 0,
             transfers: vec![],
         }
     }
@@ -167,7 +164,6 @@ impl TransferRequest {
     pub fn add_read(&mut self, port: PortType, addr: u8) {
         self.transfers
             .push(InnerTransferRequest::new(port, RW::R, addr as u8, None));
-        self.transfer_count += 1;
     }
 
     pub fn add_write(&mut self, port: PortType, addr: u8, data: u32) {
@@ -177,7 +173,6 @@ impl TransferRequest {
             addr as u8,
             Some(data),
         ));
-        self.transfer_count += 1;
     }
 }
 
@@ -192,7 +187,7 @@ impl Request for TransferRequest {
         buffer[0] = self.dap_index;
         size += 1;
 
-        buffer[1] = self.transfer_count;
+        buffer[1] = self.transfers.len() as u8;
         size += 1;
 
         for transfer in self.transfers.iter() {
