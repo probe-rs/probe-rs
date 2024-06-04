@@ -364,16 +364,11 @@ impl ExceptionInterface for UnimplementedExceptionHandler {
 
 /// Creates a new exception interface for the [`CoreType`] at hand.
 pub fn exception_handler_for_core(core_type: CoreType) -> Box<dyn ExceptionInterface> {
+    use crate::architecture::arm::core::exception_handling::{armv6m, armv7m, armv8m};
     match core_type {
-        CoreType::Armv6m => Box::new(
-            crate::architecture::arm::core::exception_handling::armv6m::ArmV6MExceptionHandler {},
-        ),
-        CoreType::Armv7m | CoreType::Armv7em => Box::new(
-            crate::architecture::arm::core::exception_handling::armv7m::ArmV7MExceptionHandler {},
-        ),
-        CoreType::Armv8m => Box::new(
-            crate::architecture::arm::core::exception_handling::armv8m::ArmV8MExceptionHandler,
-        ),
+        CoreType::Armv6m => Box::new(armv6m::ArmV6MExceptionHandler),
+        CoreType::Armv7m | CoreType::Armv7em => Box::new(armv7m::ArmV7MExceptionHandler),
+        CoreType::Armv8m => Box::new(armv8m::ArmV8MExceptionHandler),
         CoreType::Armv7a | CoreType::Armv8a | CoreType::Riscv | CoreType::Xtensa => {
             Box::new(UnimplementedExceptionHandler)
         }
