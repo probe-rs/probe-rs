@@ -135,8 +135,7 @@ impl DebugLogger {
             Some(log_path) => {
                 let log_file = File::create(log_path)?;
                 let log_message = format!(
-                    "Log output for {} will be written to: {}",
-                    environment_filter,
+                    r#"Log output for "{environment_filter}" will be written to: {}"#,
                     log_path.display()
                 );
 
@@ -176,8 +175,7 @@ impl DebugLogger {
                 }
 
                 let log_message = format!(
-                    "Log output for {} will be written to the Debug Console.",
-                    environment_filter
+                    r#"Log output for "{environment_filter}" will be written to the Debug Console."#
                 );
 
                 // If no log file desitination is specified, send logs via the buffer, to the DAP
