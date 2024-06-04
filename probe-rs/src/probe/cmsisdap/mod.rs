@@ -456,6 +456,36 @@ impl CmsisDap {
         }
     }
 
+    fn write_abort(&mut self, abort: Abort) -> Result<(), ArmError> {
+        let response = commands::send_command(
+            &mut self.device,
+            TransferRequest::new(&[InnerTransferRequest::new(
+                PortType::DebugPort,
+                RW::W,
+                Abort::ADDRESS,
+                Some(abort.into()),
+            )]),
+        )
+        .map_err(CmsisDapError::from)
+        .map_err(DebugProbeError::from)?;
+
+        // We can assume that the single transfer is always executed,
+        // no need to check here.
+
+        if response.last_transfer_response.protocol_error {
+            // TODO: What does this protocol error mean exactly?
+            //       Should be verified in CMSIS-DAP spec
+            Err(DapError::SwdProtocol.into())
+        } else {
+            match response.last_transfer_response.ack {
+                Ack::Ok => Ok(()),
+                Ack::Wait => Err(DapError::WaitResponse.into()),
+                Ack::Fault => Err(DapError::FaultResponse.into()),
+                Ack::NoAck => Err(DapError::NoAcknowledge.into()),
+            }
+        }
+    }
+
     /// Immediately send whatever is in our batch if it is not empty.
     ///
     /// If the last transfer was a read, result is Some with the read value.
@@ -536,17 +566,12 @@ impl CmsisDap {
                     tracing::trace!("Ctrl/Stat register value is: {:?}", ctrl);
 
                     if ctrl.sticky_err() {
-                        let mut abort = Abort(0);
-
                         // Clear sticky error flags.
-                        abort.set_stkerrclr(ctrl.sticky_err());
-
-                        RawDapAccess::raw_write_register(
-                            self,
-                            PortType::DebugPort,
-                            Abort::ADDRESS,
-                            abort.into(),
-                        )?;
+                        self.write_abort({
+                            let mut abort = Abort(0);
+                            abort.set_stkerrclr(ctrl.sticky_err());
+                            abort
+                        })?;
                     }
 
                     let successful = count.saturating_sub(1);
@@ -560,15 +585,11 @@ impl CmsisDap {
                         batch.len()
                     );
 
-                    let mut abort = Abort(0);
-                    abort.set_dapabort(true);
-
-                    RawDapAccess::raw_write_register(
-                        self,
-                        PortType::DebugPort,
-                        Abort::ADDRESS,
-                        abort.into(),
-                    )?;
+                    self.write_abort({
+                        let mut abort = Abort(0);
+                        abort.set_dapabort(true);
+                        abort
+                    })?;
 
                     return Err(DapError::WaitResponse.into());
                 }
