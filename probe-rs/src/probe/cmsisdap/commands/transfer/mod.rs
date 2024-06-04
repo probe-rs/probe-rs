@@ -163,16 +163,12 @@ impl TransferRequest {
 
     pub fn add_read(&mut self, port: PortType, addr: u8) {
         self.transfers
-            .push(InnerTransferRequest::new(port, RW::R, addr as u8, None));
+            .push(InnerTransferRequest::new(port, RW::R, addr, None));
     }
 
     pub fn add_write(&mut self, port: PortType, addr: u8, data: u32) {
-        self.transfers.push(InnerTransferRequest::new(
-            port,
-            RW::W,
-            addr as u8,
-            Some(data),
-        ));
+        self.transfers
+            .push(InnerTransferRequest::new(port, RW::W, addr, Some(data)));
     }
 }
 
