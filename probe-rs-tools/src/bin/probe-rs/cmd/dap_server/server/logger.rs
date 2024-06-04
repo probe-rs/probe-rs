@@ -21,11 +21,10 @@ use tracing_subscriber::{
 /// DebugLogger manages the temporary file that is used to store the tracing messages that are generated during the DAP sessions.
 /// For portions of the Debugger lifetime where no DAP session is active, the tracing messages are sent to `stderr`.
 pub(crate) struct DebugLogger {
-    /// This is a temporary file, created inside of `std::env::temp_dir()`,
-    /// and will be automatically removed by the OS when the last handle to it is closed.
+    /// This is a temporary buffer that is periodically flushed.
     ///  - When the DAP server is running, the tracing messages are sent to the console.
     ///  - When the DAP server exits, the remaining messages in this buffer are sent to `stderr`.
-    buffer_file: Arc<Mutex<Vec<u8>>>,
+    buffer: Arc<Mutex<Vec<u8>>>,
     /// We need to hold onto the tracing `DefaultGuard` for the `lifetime of DebugLogger`.
     /// Using the `DefaultGuard` will ensure that the tracing subscriber be dropped when the `DebugLogger`
     /// is dropped at the end of the `Debugger` lifetime. If we don't set it up this way,
@@ -72,7 +71,7 @@ impl DebugLogger {
     /// Create a new DebugTraceFile instance
     pub(crate) fn new(log_file: Option<&Path>) -> Result<Self, DebuggerError> {
         let mut debug_logger = Self {
-            buffer_file: Arc::new(Mutex::new(Vec::new())),
+            buffer: Arc::new(Mutex::new(Vec::new())),
             log_default_guard: None,
         };
         debug_logger.log_default_guard = Some(debug_logger.setup_logging(log_file)?);
@@ -81,7 +80,7 @@ impl DebugLogger {
     }
 
     fn locked_buffer(&self) -> MutexGuard<Vec<u8>> {
-        self.buffer_file.lock()
+        self.buffer.lock()
     }
 
     fn process_new_log_lines(
@@ -89,7 +88,7 @@ impl DebugLogger {
         mut callback: impl FnMut(&str),
     ) -> Result<(), DebuggerError> {
         let new = {
-            let mut locked_log = self.buffer_file.lock();
+            let mut locked_log = self.buffer.lock();
             let new_bytes = std::mem::take(&mut *locked_log);
 
             String::from_utf8_lossy(&new_bytes).to_string()
@@ -124,7 +123,7 @@ impl DebugLogger {
     /// 2. If no `log_file` destination is supplied, output will be written to the DAP client's Debug Console,
     /// 3. Irrespective of the RUST_LOG environment variable, configure a subscriber that will write with `LevelFilter::ERROR` to stderr,
     ///     because these errors are picked up and reported to the user by the VSCode extension, when no DAP session is available.
-    pub(crate) fn setup_logging(
+    pub fn setup_logging(
         &mut self,
         log_file: Option<&Path>,
     ) -> Result<DefaultGuard, DebuggerError> {
@@ -133,12 +132,13 @@ impl DebugLogger {
         } else {
             EnvFilter::new("probe_rs=warn")
         };
-        Ok(match log_file {
+
+        match log_file {
             Some(log_path) => {
                 let log_file = File::create(log_path)?;
                 let log_message = format!(
-                    "Log output for {:?} will be written to: {:?}",
-                    &environment_filter.to_string(),
+                    "Log output for {} will be written to: {}",
+                    environment_filter,
                     log_path.display()
                 );
 
@@ -167,25 +167,22 @@ impl DebugLogger {
                     .set_default();
                 // Tell the user where RUST_LOG messages are written.
                 self.log_to_console(&log_message)?;
-                log_default_guard
+                Ok(log_default_guard)
             }
             None => {
-                if let Some(max_level) = environment_filter.max_level_hint() {
-                    if max_level == LevelFilter::TRACE {
-                        return Err(DebuggerError::UserMessage(
-                                    format!("{}{}",
-                                    "Using the `TRACE` log level to stream data to the console may have adverse effects on performance. ",
-                                    "Consider using a less verbose log level, or use one of the `logFile` or `logToDir` options."
-                                )));
-                    }
+                if let Some(LevelFilter::TRACE) = environment_filter.max_level_hint() {
+                    return Err(DebuggerError::UserMessage(String::from(
+                        r#"Using the `TRACE` log level to stream data to the console may have adverse effects on performance.
+                        Consider using a less verbose log level, or use one of the `logFile` or `logToDir` options."#,
+                    )));
                 }
 
                 let log_message = format!(
-                    "Log output for {:?} will be written to the Debug Console.",
-                    &environment_filter.to_string()
+                    "Log output for {} will be written to the Debug Console.",
+                    environment_filter
                 );
 
-                // If no log file desitination is specified, send logs via the buffer file, to the DAP
+                // If no log file desitination is specified, send logs via the buffer, to the DAP
                 // client's Debug Console.
                 let buffer_layer = tracing_subscriber::fmt::layer()
                     .compact()
@@ -193,7 +190,7 @@ impl DebugLogger {
                     .without_time()
                     .with_line_number(true)
                     .with_span_events(FmtSpan::FULL)
-                    .with_writer(WriterWrapper(self.buffer_file.clone()))
+                    .with_writer(WriterWrapper(self.buffer.clone()))
                     .with_filter(environment_filter);
 
                 let log_default_guard = tracing_subscriber::registry()
@@ -201,9 +198,9 @@ impl DebugLogger {
                     .set_default();
                 // Tell the user where RUST_LOG messages are written.
                 self.log_to_console(&log_message)?;
-                log_default_guard
+                Ok(log_default_guard)
             }
-        })
+        }
     }
 
     /// We can send messages directly to the console, irrespective of log levels, by writing to the `buffer_file`.
