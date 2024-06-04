@@ -20,6 +20,7 @@ use tracing_subscriber::{
 
 /// DebugLogger manages the temporary file that is used to store the tracing messages that are generated during the DAP sessions.
 /// For portions of the Debugger lifetime where no DAP session is active, the tracing messages are sent to `stderr`.
+#[derive(Clone)]
 pub(crate) struct DebugLogger {
     /// This is a temporary buffer that is periodically flushed.
     ///  - When the DAP server is running, the tracing messages are sent to the console.
@@ -29,7 +30,7 @@ pub(crate) struct DebugLogger {
     /// Using the `DefaultGuard` will ensure that the tracing subscriber be dropped when the `DebugLogger`
     /// is dropped at the end of the `Debugger` lifetime. If we don't set it up this way,
     /// the tests will fail because a default subscriber is already set.
-    log_default_guard: Option<DefaultGuard>,
+    log_default_guard: Arc<Option<DefaultGuard>>,
 }
 
 #[derive(Clone)]
@@ -72,9 +73,9 @@ impl DebugLogger {
     pub(crate) fn new(log_file: Option<&Path>) -> Result<Self, DebuggerError> {
         let mut debug_logger = Self {
             buffer: Arc::new(Mutex::new(Vec::new())),
-            log_default_guard: None,
+            log_default_guard: Arc::new(None),
         };
-        debug_logger.log_default_guard = Some(debug_logger.setup_logging(log_file)?);
+        debug_logger.log_default_guard = Arc::new(Some(debug_logger.setup_logging(log_file)?));
 
         Ok(debug_logger)
     }
@@ -83,10 +84,7 @@ impl DebugLogger {
         self.buffer.lock()
     }
 
-    fn process_new_log_lines(
-        &mut self,
-        mut callback: impl FnMut(&str),
-    ) -> Result<(), DebuggerError> {
+    fn process_new_log_lines(&self, mut callback: impl FnMut(&str)) -> Result<(), DebuggerError> {
         let new = {
             let mut locked_log = self.buffer.lock();
             let new_bytes = std::mem::take(&mut *locked_log);
@@ -104,7 +102,7 @@ impl DebugLogger {
 
     /// Flush the buffer to the DAP client's Debug Console
     pub(crate) fn flush_to_dap(
-        &mut self,
+        &self,
         debug_adapter: &mut DebugAdapter<impl ProtocolAdapter>,
     ) -> Result<(), DebuggerError> {
         self.process_new_log_lines(|line| {
@@ -113,7 +111,7 @@ impl DebugLogger {
     }
 
     /// Flush the buffer to the stderr
-    pub(crate) fn flush(&mut self) -> Result<(), DebuggerError> {
+    pub(crate) fn flush(&self) -> Result<(), DebuggerError> {
         self.process_new_log_lines(|line| eprintln!("{}", line))
     }
 
