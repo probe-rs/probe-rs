@@ -465,16 +465,18 @@ impl CmsisDap {
     /// raised if necessary.
     #[tracing::instrument(skip(self))]
     fn process_batch(&mut self) -> Result<Option<u32>, ArmError> {
-        if self.batch.is_empty() {
+        let mut batch = std::mem::take(&mut self.batch);
+        if batch.is_empty() {
             return Ok(None);
         }
-
-        let mut batch = std::mem::take(&mut self.batch);
 
         tracing::debug!("{} items in batch", batch.len());
 
         for retry in (0..5).rev() {
             tracing::debug!("Attempting batch of {} items", batch.len());
+            if batch.is_empty() {
+                break;
+            }
 
             let transfers: Vec<InnerTransferRequest> = batch
                 .iter()
@@ -511,7 +513,7 @@ impl CmsisDap {
                     return Ok(response.transfers[count - 1].data);
                 }
                 Ack::NoAck => {
-                    tracing::trace!(
+                    tracing::debug!(
                         "Transfer status for batch item {}/{}: NACK",
                         count,
                         batch.len()
@@ -520,7 +522,7 @@ impl CmsisDap {
                     return Err(DapError::NoAcknowledge.into());
                 }
                 Ack::Fault => {
-                    tracing::trace!(
+                    tracing::debug!(
                         "Transfer status for batch item {}/{}: FAULT",
                         count,
                         batch.len()
@@ -547,11 +549,16 @@ impl CmsisDap {
                         )?;
                     }
 
-                    tracing::trace!("draining {:?} and retries left {:?}", count, retry);
-                    batch.drain(0..count);
+                    let successful = count.saturating_sub(1);
+                    tracing::trace!("draining {:?} and retries left {:?}", successful, retry);
+                    batch.drain(0..successful);
                 }
                 Ack::Wait => {
-                    tracing::trace!("wait");
+                    tracing::debug!(
+                        "Transfer status for batch item {}/{}: WAIT",
+                        count,
+                        batch.len()
+                    );
 
                     let mut abort = Abort(0);
                     abort.set_dapabort(true);
