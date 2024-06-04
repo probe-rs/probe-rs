@@ -493,9 +493,9 @@ impl CmsisDap {
                     .map_err(CmsisDapError::from)
                     .map_err(DebugProbeError::from)?;
 
-            let count = response.transfer_count as usize;
+            let count = response.transfers.len();
 
-            tracing::debug!("{:?} of batch of {} items executed", count, batch.len());
+            tracing::debug!("{} of batch of {} items executed", count, batch.len());
 
             if response.last_transfer_response.protocol_error {
                 if count > 0 {
@@ -508,7 +508,7 @@ impl CmsisDap {
             match response.last_transfer_response.ack {
                 Ack::Ok => {
                     tracing::trace!("Transfer status: ACK");
-                    return Ok(response.transfers[response.transfers.len() - 1].data);
+                    return Ok(response.transfers[count - 1].data);
                 }
                 Ack::NoAck => {
                     tracing::trace!(
@@ -549,10 +549,9 @@ impl CmsisDap {
 
                     tracing::trace!("draining {:?} and retries left {:?}", count, retry);
                     batch.drain(0..count);
-                    continue;
                 }
                 Ack::Wait => {
-                    tracing::trace!("wait",);
+                    tracing::trace!("wait");
 
                     let mut abort = Abort(0);
                     abort.set_dapabort(true);

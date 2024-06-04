@@ -1,5 +1,7 @@
 pub mod configure;
 
+use std::iter;
+
 use super::{CommandId, Request, SendError};
 use crate::architecture::arm::PortType;
 use scroll::{Pread, Pwrite, LE};
@@ -98,7 +100,7 @@ impl InnerTransferResponse {
 
         let mut offset = 0;
         // Only expect response data if the transfer was successful
-        if let Ack::Ok = ack {
+        if ack == Ack::Ok {
             if req.td_timestamp_request {
                 if buffer.len() < offset + 4 {
                     return Err(SendError::NotEnoughData);
@@ -172,12 +174,12 @@ impl Request for TransferRequest {
         Ok(size)
     }
 
-    fn parse_response(&self, mut buffer: &[u8]) -> Result<Self::Response, SendError> {
+    fn parse_response(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
         if buffer.len() < 2 {
             return Err(SendError::NotEnoughData);
         }
-        let transfer_count = buffer[0];
-        if transfer_count as usize > self.transfers.len() {
+        let transfer_count = buffer[0] as usize;
+        if transfer_count > self.transfers.len() {
             tracing::error!("Transfer count larger than requested number of transfers");
             return Err(SendError::UnexpectedAnswer);
         }
@@ -190,43 +192,40 @@ impl Request for TransferRequest {
                 7 => Ack::NoAck,
                 _ => Ack::NoAck,
             },
-            protocol_error: buffer[1] & 0x8 > 1,
-            value_missmatch: buffer[1] & 0x10 > 1,
+            protocol_error: buffer[1] & 0x8 != 0,
+            value_mismatch: buffer[1] & 0x10 != 0,
         };
+        let mut buffer = &buffer[2..];
 
-        buffer = &buffer[2..];
-        let mut transfers = Vec::new();
-        let xfer_count_and_ack = (0..transfer_count).map(|i| {
-            if i + 1 == transfer_count {
-                (i as usize, last_transfer_response.ack.clone())
-            } else {
-                (i as usize, Ack::Ok)
+        let mut transfers = Vec::with_capacity(transfer_count);
+        if transfer_count > 0 {
+            let acks = iter::repeat(Ack::Ok)
+                .take(transfer_count - 1)
+                .chain(iter::once(last_transfer_response.ack))
+                .zip(self.transfers.iter());
+
+            for (ack, req) in acks {
+                let (resp, len) = InnerTransferResponse::from_bytes(req, ack, buffer)?;
+                transfers.push(resp);
+                buffer = &buffer[len..];
             }
-        });
-
-        for (i, ack) in xfer_count_and_ack {
-            let req = &self.transfers[i];
-            let (resp, len) = InnerTransferResponse::from_bytes(req, ack, buffer)?;
-            transfers.push(resp);
-            buffer = &buffer[len..];
         }
 
         Ok(TransferResponse {
-            transfer_count,
             last_transfer_response,
             transfers,
         })
     }
 }
 
-#[allow(clippy::enum_variant_names)]
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Ack {
     /// TODO: ??????????????????????? Docs are weird?
     /// OK (for SWD protocol), OK or FAULT (for JTAG protocol),
     Ok = 1,
     Wait = 2,
     Fault = 4,
+    #[allow(clippy::enum_variant_names)]
     NoAck = 7,
 }
 
@@ -234,13 +233,11 @@ pub enum Ack {
 pub struct LastTransferResponse {
     pub ack: Ack,
     pub protocol_error: bool,
-    pub value_missmatch: bool,
+    pub value_mismatch: bool,
 }
 
 #[derive(Debug)]
 pub struct TransferResponse {
-    /// Number of transfers: 1 .. 255 that are executed.
-    pub transfer_count: u8,
     /// Contains information about last response from target Device.
     pub last_transfer_response: LastTransferResponse,
     /// Responses to each requested transfer in `TransferRequest`. May be shorter than
