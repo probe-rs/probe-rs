@@ -35,7 +35,7 @@ docsplay.workspace = true
 thiserror.workspace = true
 probe-rs-target.workspace = true
 
-bincode = "1.3"
+bincode = "1"
 bitfield = "0.15"
 bitvec = "1"
 gimli = { version = "0.29", default-features = false, features = [
