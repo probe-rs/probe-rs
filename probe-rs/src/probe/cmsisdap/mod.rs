@@ -47,8 +47,7 @@ use commands::{
     swo,
     transfer::{
         configure::{ConfigureRequest, ConfigureResponse},
-        Ack, InnerTransferRequest, TransferBlockRequest, TransferBlockResponse, TransferRequest,
-        RW,
+        Ack, TransferBlockRequest, TransferBlockResponse, TransferRequest,
     },
     CmsisDapDevice, Status,
 };
@@ -418,12 +417,7 @@ impl CmsisDap {
     fn read_ctrl_register(&mut self) -> Result<Ctrl, ArmError> {
         let response = commands::send_command(
             &mut self.device,
-            TransferRequest::new(&[InnerTransferRequest::new(
-                PortType::DebugPort,
-                RW::R,
-                Ctrl::ADDRESS,
-                None,
-            )]),
+            TransferRequest::read(PortType::DebugPort, Ctrl::ADDRESS),
         )
         .map_err(CmsisDapError::from)
         .map_err(DebugProbeError::from)?;
@@ -459,12 +453,7 @@ impl CmsisDap {
     fn write_abort(&mut self, abort: Abort) -> Result<(), ArmError> {
         let response = commands::send_command(
             &mut self.device,
-            TransferRequest::new(&[InnerTransferRequest::new(
-                PortType::DebugPort,
-                RW::W,
-                Abort::ADDRESS,
-                Some(abort.into()),
-            )]),
+            TransferRequest::write(PortType::DebugPort, Abort::ADDRESS, abort.into()),
         )
         .map_err(CmsisDapError::from)
         .map_err(DebugProbeError::from)?;
@@ -508,22 +497,21 @@ impl CmsisDap {
                 break;
             }
 
-            let transfers: Vec<InnerTransferRequest> = batch
-                .iter()
-                .map(|command| match *command {
-                    BatchCommand::Read(port, addr) => {
-                        InnerTransferRequest::new(port, RW::R, addr as u8, None)
+            let mut transfers = TransferRequest::empty();
+            for command in batch.iter().copied() {
+                match command {
+                    BatchCommand::Read(port, register) => {
+                        transfers.add_read(port, register as u8);
                     }
-                    BatchCommand::Write(port, addr, data) => {
-                        InnerTransferRequest::new(port, RW::W, addr as u8, Some(data))
+                    BatchCommand::Write(port, register, value) => {
+                        transfers.add_write(port, register as u8, value);
                     }
-                })
-                .collect();
+                }
+            }
 
-            let response =
-                commands::send_command(&mut self.device, TransferRequest::new(&transfers))
-                    .map_err(CmsisDapError::from)
-                    .map_err(DebugProbeError::from)?;
+            let response = commands::send_command(&mut self.device, transfers)
+                .map_err(CmsisDapError::from)
+                .map_err(DebugProbeError::from)?;
 
             let count = response.transfers.len();
 
