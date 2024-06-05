@@ -199,7 +199,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   default_binary_format: raw
 ";
         assert_eq!(yaml_string, expectation);
