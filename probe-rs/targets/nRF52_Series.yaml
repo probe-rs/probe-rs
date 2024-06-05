@@ -3,77 +3,11 @@ manufacturer:
   id: 0x44
   cc: 0x2
 variants:
-- name: nRF52805_xxAA
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20006000
-    cores:
-    - main
-  - !Ram
-    range:
-      start: 0x800000
-      end: 0x806000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x30000
-    is_boot_memory: true
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x10001000
-      end: 0x10002000
-    cores:
-    - main
-  flash_algorithms:
-  - nrf52
-- name: nRF52810_xxAA
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20006000
-    cores:
-    - main
-  - !Ram
-    range:
-      start: 0x800000
-      end: 0x806000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x30000
-    is_boot_memory: true
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x10001000
-      end: 0x10002000
-    cores:
-    - main
-  flash_algorithms:
-  - nrf52
-- name: nRF52811_xxAA
+- name: nRF528xx_xxAA
+  aliases:
+  - nRF52805_xxAA
+  - nRF52810_xxAA
+  - nRF52811_xxAA
   cores:
   - name: main
     type: armv7em

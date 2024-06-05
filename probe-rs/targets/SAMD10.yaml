@@ -49,7 +49,10 @@ variants:
     - main
   flash_algorithms:
   - atsamd10_16
-- name: ATSAMD10D13AM
+- name: ATSAMD10D13Ax
+  aliases:
+  - ATSAMD10D13AM
+  - ATSAMD10D13AS
   cores:
   - name: main
     type: armv6m
@@ -72,76 +75,11 @@ variants:
     - main
   flash_algorithms:
   - atsamd10_8
-- name: ATSAMD10D13AS
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x2000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - atsamd10_8
-- name: ATSAMD10D14AM
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x4000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - atsamd10_16
-- name: ATSAMD10D14AS
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x4000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - atsamd10_16
-- name: ATSAMD10D14AU
+- name: ATSAMD10D14Ax
+  aliases:
+  - ATSAMD10D14AM
+  - ATSAMD10D14AS
+  - ATSAMD10D14AU
   cores:
   - name: main
     type: armv6m

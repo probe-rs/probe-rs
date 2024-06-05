@@ -3,30 +3,10 @@ manufacturer:
   id: 0x21
   cc: 0x2
 variants:
-- name: EFR32BG22C112F352
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x58000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - geckos2
-- name: EFR32BG22C222F352
+- name: EFR32BG22Cxx2F352
+  aliases:
+  - EFR32BG22C112F352
+  - EFR32BG22C222F352
   cores:
   - name: main
     type: armv8m

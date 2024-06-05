@@ -12,7 +12,6 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    # Target internal QSPI flash.
     name: FlexSPI2
     range:
       start: 0x70000000

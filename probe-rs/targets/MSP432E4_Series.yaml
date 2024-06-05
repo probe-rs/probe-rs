@@ -5,32 +5,10 @@ manufacturer:
 generated_from_pack: true
 pack_file_release: 3.2.6
 variants:
-- name: MSP432E401Y
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x0
-      end: 0x100000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - msp432e4_mainflash1024kb
-- name: MSP432E411Y
+- name: MSP432E4x1Y
+  aliases:
+  - MSP432E401Y
+  - MSP432E411Y
   cores:
   - name: main
     type: armv7em

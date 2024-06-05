@@ -3,7 +3,10 @@ manufacturer:
   id: 0x1f
   cc: 0x0
 variants:
-- name: ATSAME51G18A
+- name: ATSAME51x18A
+  aliases:
+  - ATSAME51G18A
+  - ATSAME51J18A
   cores:
   - name: main
     type: armv7em
@@ -21,104 +24,16 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - atsame51_256
-- name: ATSAME51G19A
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x80000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - atsame51_512
-- name: ATSAME51J18A
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x40000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - atsame51_256
-- name: ATSAME51J19A
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x80000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - atsame51_512
-- name: ATSAME51J20A
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x100000
     is_boot_memory: true
     cores:
     - main
   flash_algorithms:
   - atsame51_1024
-- name: ATSAME51N19A
+- name: ATSAME51x19A
+  aliases:
+  - ATSAME51G19A
+  - ATSAME51J19A
+  - ATSAME51N19A
   cores:
   - name: main
     type: armv7em
@@ -140,8 +55,11 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsame51_512
-- name: ATSAME51N20A
+  - atsame51_1024
+- name: ATSAME51x20A
+  aliases:
+  - ATSAME51J20A
+  - ATSAME51N20A
   cores:
   - name: main
     type: armv7em
@@ -165,50 +83,6 @@ variants:
   flash_algorithms:
   - atsame51_1024
 flash_algorithms:
-- name: atsame51_256
-  description: ATSAME51 256kB Flash
-  default: true
-  instructions: ASGJB4prUgcB1SFKCmDPIiBJEgIKgE4iCoIfSUlECGAAIHBHACBwRxpJSGEbSoqASorSB/zQSGEYSBE4iIBIisAH/NAIik4hCEAA0AEgcEcwtRJLD0zbHKOAY4rbB/zQyRyJCANGiQAC4CDKCR8gwwAp+tFgYQlIDziggGCKwAf80CCKTiEIQADQASAwvQAAIgABAABAAEEEAAAAEqUAAAAAAAAAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x25
-  pc_program_page: 0x51
-  pc_erase_sector: 0x29
-  data_section_offset: 0xa0
-  flash_properties:
-    address_range:
-      start: 0x0
-      end: 0x40000
-    page_size: 0x200
-    erased_byte_value: 0xff
-    program_page_timeout: 100
-    erase_sector_timeout: 1000
-    sectors:
-    - size: 0x2000
-      address: 0x0
-  cores:
-  - main
-- name: atsame51_512
-  description: ATSAME51 512kB Flash
-  default: true
-  instructions: ASGJB4prUgcB1SFKCmDPIiBJEgIKgE4iCoIfSUlECGAAIHBHACBwRxpJSGEbSoqASorSB/zQSGEYSBE4iIBIisAH/NAIik4hCEAA0AEgcEcwtRJLD0zbHKOAY4rbB/zQyRyJCANGiQAC4CDKCR8gwwAp+tFgYQlIDziggGCKwAf80CCKTiEIQADQASAwvQAAIgABAABAAEEEAAAAEqUAAAAAAAAAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x25
-  pc_program_page: 0x51
-  pc_erase_sector: 0x29
-  data_section_offset: 0xa0
-  flash_properties:
-    address_range:
-      start: 0x0
-      end: 0x80000
-    page_size: 0x200
-    erased_byte_value: 0xff
-    program_page_timeout: 100
-    erase_sector_timeout: 1000
-    sectors:
-    - size: 0x2000
-      address: 0x0
-  cores:
-  - main
 - name: atsame51_1024
   description: ATSAME51 1024kB Flash
   default: true

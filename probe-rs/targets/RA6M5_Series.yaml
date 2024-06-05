@@ -2,7 +2,10 @@ name: RA6M5 Series
 generated_from_pack: true
 pack_file_release: 5.3.0
 variants:
-- name: R7FA6M5AG
+- name: R7FA6M5xG
+  aliases:
+  - R7FA6M5AG
+  - R7FA6M5BG
   cores:
   - name: main
     type: armv8m
@@ -43,7 +46,10 @@ variants:
   - ra6m5_1_dot_5m
   - ra6m5_data_c1dot5m
   - ra6m5_conf
-- name: R7FA6M5AH
+- name: R7FA6M5xH
+  aliases:
+  - R7FA6M5AH
+  - R7FA6M5BH
   cores:
   - name: main
     type: armv8m
@@ -124,88 +130,6 @@ variants:
   flash_algorithms:
   - ra6m5_1m
   - ra6m5_data_c1m
-  - ra6m5_conf
-- name: R7FA6M5BG
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x0
-      end: 0x180000
-    is_boot_memory: true
-    cores:
-    - main
-  - !Generic
-    name: ConfigROM
-    range:
-      start: 0x100a000
-      end: 0x100a300
-    cores:
-    - main
-  - !Generic
-    name: DataFlash
-    range:
-      start: 0x8000000
-      end: 0x8002000
-    cores:
-    - main
-  flash_algorithms:
-  - ra6m5_1_dot_5m
-  - ra6m5_data_c1dot5m
-  - ra6m5_conf
-- name: R7FA6M5BH
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x0
-      end: 0x200000
-    is_boot_memory: true
-    cores:
-    - main
-  - !Generic
-    name: ConfigROM
-    range:
-      start: 0x100a000
-      end: 0x100a300
-    cores:
-    - main
-  - !Generic
-    name: DataFlash
-    range:
-      start: 0x8000000
-      end: 0x8002000
-    cores:
-    - main
-  flash_algorithms:
-  - ra6m5_2m
-  - ra6m5_data_c2m
   - ra6m5_conf
 flash_algorithms:
 - name: ra6m5_1_dot_5m

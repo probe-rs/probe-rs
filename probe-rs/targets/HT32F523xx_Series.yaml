@@ -147,7 +147,10 @@ variants:
   flash_algorithms:
   - ht32f
   - ht32f_opt
-- name: HT32F52342
+- name: HT32F5234x
+  aliases:
+  - HT32F52342
+  - HT32F52344
   cores:
   - name: main
     type: armv6m
@@ -171,7 +174,11 @@ variants:
   flash_algorithms:
   - ht32f
   - ht32f_opt
-- name: HT32F52342_33QFN
+- name: HT32F5234x_xxQFN
+  aliases:
+  - HT32F52342_33QFN
+  - HT32F52344_33QFN
+  - HT32F52344_46QFN
   cores:
   - name: main
     type: armv6m
@@ -195,151 +202,12 @@ variants:
   flash_algorithms:
   - ht32f
   - ht32f_opt
-- name: HT32F52342_48LQFP
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x10000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT32F52342_64LQFP
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x10000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT32F52344
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x10000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT32F52344_33QFN
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x10000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT32F52344_46QFN
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x10000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT32F52344_48LQFP
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x10000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT32F52344_64LQFP
+- name: HT32F5234x_xxLQFP
+  aliases:
+  - HT32F52342_48LQFP
+  - HT32F52342_64LQFP
+  - HT32F52344_48LQFP
+  - HT32F52344_64LQFP
   cores:
   - name: main
     type: armv6m
@@ -411,31 +279,10 @@ variants:
   flash_algorithms:
   - ht32f
   - ht32f_opt
-- name: HT32F52352_48LQFP
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x1fe00
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT32F52352_64LQFP
+- name: HT32F52352_xxLQFP
+  aliases:
+  - HT32F52352_48LQFP
+  - HT32F52352_64LQFP
   cores:
   - name: main
     type: armv6m
@@ -483,7 +330,10 @@ variants:
   flash_algorithms:
   - ht32f
   - ht32f_opt
-- name: HT32F52354_33QFN
+- name: HT32F52354_xxQFN
+  aliases:
+  - HT32F52354_33QFN
+  - HT32F52354_46QFN
   cores:
   - name: main
     type: armv6m
@@ -507,55 +357,10 @@ variants:
   flash_algorithms:
   - ht32f
   - ht32f_opt
-- name: HT32F52354_46QFN
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x1fe00
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT32F52354_48LQFP
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x1fe00
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT32F52354_64LQFP
+- name: HT32F52354_xxLQFP
+  aliases:
+  - HT32F52354_48LQFP
+  - HT32F52354_64LQFP
   cores:
   - name: main
     type: armv6m
@@ -627,55 +432,11 @@ variants:
   flash_algorithms:
   - ht32f
   - ht32f_opt
-- name: HT32F52357_48LQFP
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x20000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT32F52357_64LQFP
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x20000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT32F52357_80LQFP
+- name: HT32F52357_xxLQFP
+  aliases:
+  - HT32F52357_48LQFP
+  - HT32F52357_64LQFP
+  - HT32F52357_80LQFP
   cores:
   - name: main
     type: armv6m
@@ -747,55 +508,11 @@ variants:
   flash_algorithms:
   - ht32f
   - ht32f_opt
-- name: HT32F52367_48LQFP
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x3fc00
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT32F52367_64LQFP
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x3fc00
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT32F52367_80LQFP
+- name: HT32F52367_xxLQFP
+  aliases:
+  - HT32F52367_48LQFP
+  - HT32F52367_64LQFP
+  - HT32F52367_80LQFP
   cores:
   - name: main
     type: armv6m

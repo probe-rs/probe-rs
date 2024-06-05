@@ -3,7 +3,12 @@ manufacturer:
   id: 0x1f
   cc: 0x0
 variants:
-- name: ATSAMD21E15A
+- name: ATSAMD21x15x
+  aliases:
+  - ATSAMD21E15A
+  - ATSAMD21E15B
+  - ATSAMD21G15A
+  - ATSAMD21J15A
   cores:
   - name: main
     type: armv6m
@@ -26,7 +31,10 @@ variants:
     - main
   flash_algorithms:
   - atsamd21_32
-- name: ATSAMD21E15B
+- name: ATSAMD21E15xU
+  aliases:
+  - ATSAMD21E15BU
+  - ATSAMD21E15CU
   cores:
   - name: main
     type: armv6m
@@ -49,7 +57,13 @@ variants:
     - main
   flash_algorithms:
   - atsamd21_32
-- name: ATSAMD21E15BU
+  - atsamd21_128_eeprom
+- name: ATSAMD21x15x
+  aliases:
+  - ATSAMD21E15L
+  - ATSAMD21G15B
+  - ATSAMD21G15L
+  - ATSAMD21J15B
   cores:
   - name: main
     type: armv6m
@@ -72,56 +86,15 @@ variants:
     - main
   flash_algorithms:
   - atsamd21_32
-  - atsamd21_32_eeprom
-- name: ATSAMD21E15CU
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x8000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - atsamd21_32
-  - atsamd21_32_eeprom
-- name: ATSAMD21E15L
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x8000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - atsamd21_32
-  - atsamd21_32_eeprom
-- name: ATSAMD21E16A
+  - atsamd21_128_eeprom
+- name: ATSAMD21x16x
+  aliases:
+  - ATSAMD21E16A
+  - ATSAMD21E16B
+  - ATSAMD21E16L
+  - ATSAMD21G16B
+  - ATSAMD21G16L
+  - ATSAMD21J16B
   cores:
   - name: main
     type: armv6m
@@ -144,8 +117,11 @@ variants:
     - main
   flash_algorithms:
   - atsamd21_64
-  - atsamd21_64_eeprom
-- name: ATSAMD21E16B
+  - atsamd21_128_eeprom
+- name: ATSAMD21E16xU
+  aliases:
+  - ATSAMD21E16BU
+  - ATSAMD21E16CU
   cores:
   - name: main
     type: armv6m
@@ -168,80 +144,12 @@ variants:
     - main
   flash_algorithms:
   - atsamd21_64
-  - atsamd21_64_eeprom
-- name: ATSAMD21E16BU
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x10000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - atsamd21_64
-  - atsamd21_64_eeprom
-- name: ATSAMD21E16CU
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x10000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - atsamd21_64
-  - atsamd21_64_eeprom
-- name: ATSAMD21E16L
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x10000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - atsamd21_64
-  - atsamd21_64_eeprom
-- name: ATSAMD21E17A
+  - atsamd21_128_eeprom
+- name: ATSAMD21x17A
+  aliases:
+  - ATSAMD21E17A
+  - ATSAMD21G17A
+  - ATSAMD21J17A
   cores:
   - name: main
     type: armv6m
@@ -264,7 +172,13 @@ variants:
     - main
   flash_algorithms:
   - atsamd21_128
-- name: ATSAMD21E17D
+- name: ATSAMD21x17x
+  aliases:
+  - ATSAMD21E17D
+  - ATSAMD21E17L
+  - ATSAMD21G17D
+  - ATSAMD21G17L
+  - ATSAMD21J17D
   cores:
   - name: main
     type: armv6m
@@ -312,31 +226,11 @@ variants:
   flash_algorithms:
   - atsamd21_128
   - atsamd21_128_eeprom
-- name: ATSAMD21E17L
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x20000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - atsamd21_128
-  - atsamd21_128_eeprom
-- name: ATSAMD21E18A
+- name: ATSAMD21x18A
+  aliases:
+  - ATSAMD21E18A
+  - ATSAMD21G18A
+  - ATSAMD21J18A
   cores:
   - name: main
     type: armv6m
@@ -359,78 +253,10 @@ variants:
     - main
   flash_algorithms:
   - atsamd21_256
-- name: ATSAMD21G15A
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x8000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - atsamd21_32
-- name: ATSAMD21G15B
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x8000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - atsamd21_32
-  - atsamd21_32_eeprom
-- name: ATSAMD21G15L
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x8000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - atsamd21_32
-  - atsamd21_32_eeprom
-- name: ATSAMD21G16A
+- name: ATSAMD21x16A
+  aliases:
+  - ATSAMD21G16A
+  - ATSAMD21J16A
   cores:
   - name: main
     type: armv6m
@@ -453,77 +279,6 @@ variants:
     - main
   flash_algorithms:
   - atsamd21_64
-- name: ATSAMD21G16B
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x10000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - atsamd21_64
-  - atsamd21_64_eeprom
-- name: ATSAMD21G16L
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x10000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - atsamd21_64
-  - atsamd21_64_eeprom
-- name: ATSAMD21G17A
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x20000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - atsamd21_128
 - name: ATSAMD21G17AU
   cores:
   - name: main
@@ -547,242 +302,7 @@ variants:
     - main
   flash_algorithms:
   - atsamd21_128
-- name: ATSAMD21G17D
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x20000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - atsamd21_128
-  - atsamd21_128_eeprom
-- name: ATSAMD21G17L
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x20000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - atsamd21_128
-  - atsamd21_128_eeprom
-- name: ATSAMD21G18A
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x40000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - atsamd21_256
 - name: ATSAMD21G18AU
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x40000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - atsamd21_256
-- name: ATSAMD21J15A
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x8000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - atsamd21_32
-- name: ATSAMD21J15B
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x8000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - atsamd21_32
-  - atsamd21_32_eeprom
-- name: ATSAMD21J16A
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x10000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - atsamd21_64
-- name: ATSAMD21J16B
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x10000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - atsamd21_64
-  - atsamd21_64_eeprom
-- name: ATSAMD21J17A
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x20000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - atsamd21_128
-- name: ATSAMD21J17D
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x20000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - atsamd21_128
-  - atsamd21_128_eeprom
-- name: ATSAMD21J18A
   cores:
   - name: main
     type: armv6m
@@ -828,8 +348,8 @@ flash_algorithms:
       address: 0x0
   cores:
   - main
-- name: atsamd21_32_eeprom
-  description: ATSAMD21 1kB Data EEPROM
+- name: atsamd21_128_eeprom
+  description: ATSAMD21 4kB Data EEPROM
   default: true
   instructions: QSEJBgpoUgcB1QQiCmAcShpJUWAbSUlECGAAIHBHACBwR0EIFkjBYRdJAYABfckH/NAAfYAHAdUBIHBHACBwRxC1EUwOSyo0HIAcfeQH/NDJHIkIiQAC4BDKCR8QwAAp+tEJSIAcGIAYfcAH/NAYfYAHAdUBIBC9ACAQvZ4ABAAAQABBBAAAABqlAAAAAAAAAAAAAA==
   pc_init: 0x1
@@ -840,7 +360,7 @@ flash_algorithms:
   flash_properties:
     address_range:
       start: 0x400000
-      end: 0x400400
+      end: 0x401000
     page_size: 0x40
     erased_byte_value: 0xff
     program_page_timeout: 100
@@ -872,28 +392,6 @@ flash_algorithms:
       address: 0x0
   cores:
   - main
-- name: atsamd21_64_eeprom
-  description: ATSAMD21 2kB Data EEPROM
-  default: true
-  instructions: QSEJBgpoUgcB1QQiCmAcShpJUWAbSUlECGAAIHBHACBwR0EIFkjBYRdJAYABfckH/NAAfYAHAdUBIHBHACBwRxC1EUwOSyo0HIAcfeQH/NDJHIkIiQAC4BDKCR8QwAAp+tEJSIAcGIAYfcAH/NAYfYAHAdUBIBC9ACAQvZ4ABAAAQABBBAAAABqlAAAAAAAAAAAAAA==
-  pc_init: 0x1
-  pc_uninit: 0x1f
-  pc_program_page: 0x41
-  pc_erase_sector: 0x23
-  data_section_offset: 0x8c
-  flash_properties:
-    address_range:
-      start: 0x400000
-      end: 0x400800
-    page_size: 0x40
-    erased_byte_value: 0xff
-    program_page_timeout: 100
-    erase_sector_timeout: 1000
-    sectors:
-    - size: 0x100
-      address: 0x0
-  cores:
-  - main
 - name: atsamd21_128
   description: ATSAMD21 128kB Flash
   default: true
@@ -913,28 +411,6 @@ flash_algorithms:
     erase_sector_timeout: 1000
     sectors:
     - size: 0x2000
-      address: 0x0
-  cores:
-  - main
-- name: atsamd21_128_eeprom
-  description: ATSAMD21 4kB Data EEPROM
-  default: true
-  instructions: QSEJBgpoUgcB1QQiCmAcShpJUWAbSUlECGAAIHBHACBwR0EIFkjBYRdJAYABfckH/NAAfYAHAdUBIHBHACBwRxC1EUwOSyo0HIAcfeQH/NDJHIkIiQAC4BDKCR8QwAAp+tEJSIAcGIAYfcAH/NAYfYAHAdUBIBC9ACAQvZ4ABAAAQABBBAAAABqlAAAAAAAAAAAAAA==
-  pc_init: 0x1
-  pc_uninit: 0x1f
-  pc_program_page: 0x41
-  pc_erase_sector: 0x23
-  data_section_offset: 0x8c
-  flash_properties:
-    address_range:
-      start: 0x400000
-      end: 0x401000
-    page_size: 0x40
-    erased_byte_value: 0xff
-    program_page_timeout: 100
-    erase_sector_timeout: 1000
-    sectors:
-    - size: 0x100
       address: 0x0
   cores:
   - main

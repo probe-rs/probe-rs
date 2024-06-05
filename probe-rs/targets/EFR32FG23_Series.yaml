@@ -3,7 +3,12 @@ manufacturer:
   id: 0x21
   cc: 0x2
 variants:
-- name: EFR32FG23A010F256
+- name: EFR32FG23x0x0F256
+  aliases:
+  - EFR32FG23A010F256
+  - EFR32FG23A020F256
+  - EFR32FG23B010F256
+  - EFR32FG23B020F256
   cores:
   - name: main
     type: armv8m
@@ -26,191 +31,14 @@ variants:
     - main
   flash_algorithms:
   - geckos2c3
-- name: EFR32FG23A010F512
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - geckos2c3
-- name: EFR32FG23A011F512
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - geckos2c3
-- name: EFR32FG23A020F256
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - geckos2c3
-- name: EFR32FG23A020F512
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - geckos2c3
-- name: EFR32FG23A021F512
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - geckos2c3
-- name: EFR32FG23B010F256
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - geckos2c3
-- name: EFR32FG23B010F512
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - geckos2c3
-- name: EFR32FG23B020F256
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - geckos2c3
-- name: EFR32FG23B020F512
+- name: EFR32FG23x0xxF512
+  aliases:
+  - EFR32FG23A010F512
+  - EFR32FG23A011F512
+  - EFR32FG23A020F512
+  - EFR32FG23A021F512
+  - EFR32FG23B010F512
+  - EFR32FG23B020F512
   cores:
   - name: main
     type: armv8m

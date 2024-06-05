@@ -3,7 +3,11 @@ manufacturer:
   id: 0x21
   cc: 0x2
 variants:
-- name: EFR32FG1P131F64
+- name: EFR32FG1P13xF64
+  aliases:
+  - EFR32FG1P131F64
+  - EFR32FG1P132F64
+  - EFR32FG1P133F64
   cores:
   - name: main
     type: armv7em
@@ -26,7 +30,11 @@ variants:
     - main
   flash_algorithms:
   - geckop2
-- name: EFR32FG1P131F128
+- name: EFR32FG1P13xF128
+  aliases:
+  - EFR32FG1P131F128
+  - EFR32FG1P132F128
+  - EFR32FG1P133F128
   cores:
   - name: main
     type: armv7em
@@ -49,145 +57,11 @@ variants:
     - main
   flash_algorithms:
   - geckop2
-- name: EFR32FG1P131F256
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20007c00
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x40000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - geckop2
-- name: EFR32FG1P132F64
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x10000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - geckop2
-- name: EFR32FG1P132F128
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20007c00
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x20000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - geckop2
-- name: EFR32FG1P132F256
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20007c00
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x40000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - geckop2
-- name: EFR32FG1P133F64
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x10000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - geckop2
-- name: EFR32FG1P133F128
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20007c00
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x20000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - geckop2
-- name: EFR32FG1P133F256
+- name: EFR32FG1P13xF256
+  aliases:
+  - EFR32FG1P131F256
+  - EFR32FG1P132F256
+  - EFR32FG1P133F256
   cores:
   - name: main
     type: armv7em

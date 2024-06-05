@@ -27,31 +27,10 @@ variants:
   flash_algorithms:
   - ht32f
   - ht32f_opt
-- name: HT32F1653_48LQFP
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x8000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT32F1653_64LQFP
+- name: HT32F1653_xxLQFP
+  aliases:
+  - HT32F1653_48LQFP
+  - HT32F1653_64LQFP
   cores:
   - name: main
     type: armv7m
@@ -99,31 +78,10 @@ variants:
   flash_algorithms:
   - ht32f
   - ht32f_opt
-- name: HT32F1654_48LQFP
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0xfc00
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT32F1654_64LQFP
+- name: HT32F1654_xxLQFP
+  aliases:
+  - HT32F1654_48LQFP
+  - HT32F1654_64LQFP
   cores:
   - name: main
     type: armv7m
@@ -195,31 +153,10 @@ variants:
   flash_algorithms:
   - ht32f
   - ht32f_opt
-- name: HT32F1655_48LQFP
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x20000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT32F1655_64LQFP
+- name: HT32F1655_xxLQFP
+  aliases:
+  - HT32F1655_48LQFP
+  - HT32F1655_64LQFP
   cores:
   - name: main
     type: armv7m
@@ -291,31 +228,10 @@ variants:
   flash_algorithms:
   - ht32f
   - ht32f_opt
-- name: HT32F1656_48LQFP
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x3fc00
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT32F1656_64LQFP
+- name: HT32F1656_xxLQFP
+  aliases:
+  - HT32F1656_48LQFP
+  - HT32F1656_64LQFP
   cores:
   - name: main
     type: armv7m

@@ -3,7 +3,12 @@ manufacturer:
   id: 0x15
   cc: 0x0
 variants:
-- name: LPC802M001JDH16
+- name: LPC802M0x1Jxxxx
+  aliases:
+  - LPC802M001JDH16
+  - LPC802M001JDH20
+  - LPC802M001JHI33
+  - LPC802M011JDH20
   cores:
   - name: main
     type: armv6m
@@ -26,145 +31,12 @@ variants:
     - main
   flash_algorithms:
   - lpc80x_16
-- name: LPC802M001JDH20
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x10000000
-      end: 0x10000800
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x4000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - lpc80x_16
-- name: LPC802M001JHI33
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x10000000
-      end: 0x10000800
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x4000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - lpc80x_16
-- name: LPC802M011JDH20
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x10000000
-      end: 0x10000800
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x4000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - lpc80x_16
-- name: LPC804M101JDH20
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x10000000
-      end: 0x10001000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x8000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - lpc80x_32
-- name: LPC804M101JDH24
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x10000000
-      end: 0x10001000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x8000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - lpc80x_32
-- name: LPC804M101JHI33
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x10000000
-      end: 0x10001000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x8000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - lpc80x_32
-- name: LPC804M111JDH24
+- name: LPC804M1x1Jxxxx
+  aliases:
+  - LPC804M101JDH20
+  - LPC804M101JDH24
+  - LPC804M101JHI33
+  - LPC804M111JDH24
   cores:
   - name: main
     type: armv6m
@@ -256,7 +128,14 @@ variants:
     - main
   flash_algorithms:
   - lpc8xx_16
-- name: LPC812M101JDH16
+- name: LPC8x2M101xxxxx
+  aliases:
+  - LPC812M101JDH16
+  - LPC812M101JDH20
+  - LPC812M101JTB16
+  - LPC822M101JDH20
+  - LPC822M101JHI33
+  - LPC832M101FDH20
   cores:
   - name: main
     type: armv6m
@@ -279,99 +158,10 @@ variants:
     - main
   flash_algorithms:
   - lpc8xx_16
-- name: LPC812M101JDH20
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x10000000
-      end: 0x10001000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x4000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - lpc8xx_16
-- name: LPC812M101JTB16
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x10000000
-      end: 0x10001000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x4000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - lpc8xx_16
-- name: LPC822M101JDH20
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x10000000
-      end: 0x10001000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x4000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - lpc8xx_16
-- name: LPC822M101JHI33
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x10000000
-      end: 0x10001000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x4000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - lpc8xx_16
-- name: LPC824M201JDH20
+- name: LPC824M201Jxxxx
+  aliases:
+  - LPC824M201JDH20
+  - LPC824M201JHI33
   cores:
   - name: main
     type: armv6m
@@ -394,52 +184,6 @@ variants:
     - main
   flash_algorithms:
   - lpc8xx_32
-- name: LPC824M201JHI33
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x10000000
-      end: 0x10002000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x8000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - lpc8xx_32
-- name: LPC832M101FDH20
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x10000000
-      end: 0x10001000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x4000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - lpc8xx_16
 - name: LPC834M101FHI33
   cores:
   - name: main
@@ -463,7 +207,12 @@ variants:
     - main
   flash_algorithms:
   - lpc8xx_32
-- name: LPC844M201JBD48
+- name: LPC844M201Jxxxx
+  aliases:
+  - LPC844M201JBD48
+  - LPC844M201JBD64
+  - LPC844M201JHI33
+  - LPC844M201JHI48
   cores:
   - name: main
     type: armv6m
@@ -486,145 +235,12 @@ variants:
     - main
   flash_algorithms:
   - lpc84x_64
-- name: LPC844M201JBD64
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x10000000
-      end: 0x10002000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x10000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - lpc84x_64
-- name: LPC844M201JHI33
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x10000000
-      end: 0x10002000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x10000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - lpc84x_64
-- name: LPC844M201JHI48
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x10000000
-      end: 0x10002000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x10000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - lpc84x_64
-- name: LPC845M301JBD48
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x10000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - lpc84x_64
-- name: LPC845M301JBD64
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x10000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - lpc84x_64
-- name: LPC845M301JHI33
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x10000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - lpc84x_64
-- name: LPC845M301JHI48
+- name: LPC845M301Jxxxx
+  aliases:
+  - LPC845M301JBD48
+  - LPC845M301JBD64
+  - LPC845M301JHI33
+  - LPC845M301JHI48
   cores:
   - name: main
     type: armv6m

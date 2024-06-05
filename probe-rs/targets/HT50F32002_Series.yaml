@@ -27,7 +27,12 @@ variants:
   flash_algorithms:
   - ht32f
   - ht32f_opt
-- name: HT50F32002_24QFN
+- name: HT50F32002_xxxxx
+  aliases:
+  - HT50F32002_24QFN
+  - HT50F32002_28SOP
+  - HT50F32002_33QFN
+  - HT50F32002_46QFN
   cores:
   - name: main
     type: armv6m
@@ -51,151 +56,12 @@ variants:
   flash_algorithms:
   - ht32f
   - ht32f_opt
-- name: HT50F32002_24SSOP
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x8000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT50F32002_28SOP
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x8000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT50F32002_28SSOP
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x8000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT50F32002_33QFN
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x8000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT50F32002_44LQFP
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x8000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT50F32002_46QFN
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x8000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT50F32002_48LQFP
+- name: HT50F32002_xxxxxP
+  aliases:
+  - HT50F32002_24SSOP
+  - HT50F32002_28SSOP
+  - HT50F32002_44LQFP
+  - HT50F32002_48LQFP
   cores:
   - name: main
     type: armv6m

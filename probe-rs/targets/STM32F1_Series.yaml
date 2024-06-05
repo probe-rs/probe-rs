@@ -3,7 +3,15 @@ manufacturer:
   id: 0x20
   cc: 0x0
 variants:
-- name: STM32F100C4
+- name: STM32F10xx4
+  aliases:
+  - STM32F100C4
+  - STM32F100R4
+  - STM32F101C4
+  - STM32F101R4
+  - STM32F101T4
+  - STM32F102C4
+  - STM32F102R4
   cores:
   - name: main
     type: armv7m
@@ -25,9 +33,12 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f10x_16
+  - stm32f10x_128
   - stm32f10x_opt
-- name: STM32F100C6
+- name: STM32F100x6
+  aliases:
+  - STM32F100C6
+  - STM32F100R6
   cores:
   - name: main
     type: armv7m
@@ -51,7 +62,11 @@ variants:
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
-- name: STM32F100C8
+- name: STM32F100x8
+  aliases:
+  - STM32F100C8
+  - STM32F100R8
+  - STM32F100V8
   cores:
   - name: main
     type: armv7m
@@ -75,7 +90,11 @@ variants:
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
-- name: STM32F100CB
+- name: STM32F100xB
+  aliases:
+  - STM32F100CB
+  - STM32F100RB
+  - STM32F100VB
   cores:
   - name: main
     type: armv7m
@@ -99,103 +118,11 @@ variants:
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
-- name: STM32F100R4
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8004000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_16
-  - stm32f10x_opt
-- name: STM32F100R6
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_128
-  - stm32f10x_opt
-- name: STM32F100R8
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_128
-  - stm32f10x_opt
-- name: STM32F100RB
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_128
-  - stm32f10x_opt
-- name: STM32F100RC
+- name: STM32F100xC
+  aliases:
+  - STM32F100RC
+  - STM32F100VC
+  - STM32F100ZC
   cores:
   - name: main
     type: armv7m
@@ -219,7 +146,11 @@ variants:
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
-- name: STM32F100RD
+- name: STM32F100xD
+  aliases:
+  - STM32F100RD
+  - STM32F100VD
+  - STM32F100ZD
   cores:
   - name: main
     type: armv7m
@@ -243,7 +174,11 @@ variants:
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
-- name: STM32F100RE
+- name: STM32F100xE
+  aliases:
+  - STM32F100RE
+  - STM32F100VE
+  - STM32F100ZE
   cores:
   - name: main
     type: armv7m
@@ -267,223 +202,13 @@ variants:
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
-- name: STM32F100V8
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_128
-  - stm32f10x_opt
-- name: STM32F100VB
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_128
-  - stm32f10x_opt
-- name: STM32F100VC
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20006000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_512
-  - stm32f10x_opt
-- name: STM32F100VD
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8060000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_512
-  - stm32f10x_opt
-- name: STM32F100VE
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_512
-  - stm32f10x_opt
-- name: STM32F100ZC
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20006000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_512
-  - stm32f10x_opt
-- name: STM32F100ZD
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8060000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_512
-  - stm32f10x_opt
-- name: STM32F100ZE
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_512
-  - stm32f10x_opt
-- name: STM32F101C4
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8004000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_16
-  - stm32f10x_opt
-- name: STM32F101C6
+- name: STM32F10xx6
+  aliases:
+  - STM32F101C6
+  - STM32F101R6
+  - STM32F101T6
+  - STM32F102C6
+  - STM32F102R6
   cores:
   - name: main
     type: armv7m
@@ -507,7 +232,14 @@ variants:
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
-- name: STM32F101C8
+- name: STM32F10xx8
+  aliases:
+  - STM32F101C8
+  - STM32F101R8
+  - STM32F101T8
+  - STM32F101V8
+  - STM32F102C8
+  - STM32F102R8
   cores:
   - name: main
     type: armv7m
@@ -531,7 +263,14 @@ variants:
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
-- name: STM32F101CB
+- name: STM32F10xxB
+  aliases:
+  - STM32F101CB
+  - STM32F101RB
+  - STM32F101TB
+  - STM32F101VB
+  - STM32F102CB
+  - STM32F102RB
   cores:
   - name: main
     type: armv7m
@@ -555,103 +294,11 @@ variants:
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
-- name: STM32F101R4
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8004000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_16
-  - stm32f10x_opt
-- name: STM32F101R6
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20001800
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_128
-  - stm32f10x_opt
-- name: STM32F101R8
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20002800
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_128
-  - stm32f10x_opt
-- name: STM32F101RB
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_128
-  - stm32f10x_opt
-- name: STM32F101RC
+- name: STM32F101xC
+  aliases:
+  - STM32F101RC
+  - STM32F101VC
+  - STM32F101ZC
   cores:
   - name: main
     type: armv7m
@@ -675,7 +322,11 @@ variants:
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
-- name: STM32F101RD
+- name: STM32F101xD
+  aliases:
+  - STM32F101RD
+  - STM32F101VD
+  - STM32F101ZD
   cores:
   - name: main
     type: armv7m
@@ -699,7 +350,11 @@ variants:
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
-- name: STM32F101RE
+- name: STM32F101xE
+  aliases:
+  - STM32F101RE
+  - STM32F101VE
+  - STM32F101ZE
   cores:
   - name: main
     type: armv7m
@@ -723,7 +378,11 @@ variants:
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
-- name: STM32F101RF
+- name: STM32F101xF
+  aliases:
+  - STM32F101RF
+  - STM32F101VF
+  - STM32F101ZF
   cores:
   - name: main
     type: armv7m
@@ -747,7 +406,11 @@ variants:
   flash_algorithms:
   - stm32f10x_1024
   - stm32f10x_opt
-- name: STM32F101RG
+- name: STM32F101xG
+  aliases:
+  - STM32F101RG
+  - STM32F101VG
+  - STM32F101ZG
   cores:
   - name: main
     type: armv7m
@@ -771,583 +434,11 @@ variants:
   flash_algorithms:
   - stm32f10x_1024
   - stm32f10x_opt
-- name: STM32F101T4
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8004000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_16
-  - stm32f10x_opt
-- name: STM32F101T6
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20001800
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_128
-  - stm32f10x_opt
-- name: STM32F101T8
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20002800
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_128
-  - stm32f10x_opt
-- name: STM32F101TB
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_128
-  - stm32f10x_opt
-- name: STM32F101V8
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20002800
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_128
-  - stm32f10x_opt
-- name: STM32F101VB
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_128
-  - stm32f10x_opt
-- name: STM32F101VC
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_512
-  - stm32f10x_opt
-- name: STM32F101VD
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8060000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_512
-  - stm32f10x_opt
-- name: STM32F101VE
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_512
-  - stm32f10x_opt
-- name: STM32F101VF
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x80c0000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_1024
-  - stm32f10x_opt
-- name: STM32F101VG
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_1024
-  - stm32f10x_opt
-- name: STM32F101ZC
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_512
-  - stm32f10x_opt
-- name: STM32F101ZD
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8060000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_512
-  - stm32f10x_opt
-- name: STM32F101ZE
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_512
-  - stm32f10x_opt
-- name: STM32F101ZF
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x80c0000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_1024
-  - stm32f10x_opt
-- name: STM32F101ZG
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_1024
-  - stm32f10x_opt
-- name: STM32F102C4
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8004000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_16
-  - stm32f10x_opt
-- name: STM32F102C6
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20001800
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_128
-  - stm32f10x_opt
-- name: STM32F102C8
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20002800
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_128
-  - stm32f10x_opt
-- name: STM32F102CB
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_128
-  - stm32f10x_opt
-- name: STM32F102R4
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8004000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_16
-  - stm32f10x_opt
-- name: STM32F102R6
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20001800
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_128
-  - stm32f10x_opt
-- name: STM32F102R8
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20002800
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_128
-  - stm32f10x_opt
-- name: STM32F102RB
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_128
-  - stm32f10x_opt
-- name: STM32F103C4
+- name: STM32F103x4
+  aliases:
+  - STM32F103C4
+  - STM32F103R4
+  - STM32F103T4
   cores:
   - name: main
     type: armv7m
@@ -1369,9 +460,13 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f10x_16
+  - stm32f10x_128
   - stm32f10x_opt
-- name: STM32F103C6
+- name: STM32F103x6
+  aliases:
+  - STM32F103C6
+  - STM32F103R6
+  - STM32F103T6
   cores:
   - name: main
     type: armv7m
@@ -1395,7 +490,12 @@ variants:
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
-- name: STM32F103C8
+- name: STM32F103x8
+  aliases:
+  - STM32F103C8
+  - STM32F103R8
+  - STM32F103T8
+  - STM32F103V8
   cores:
   - name: main
     type: armv7m
@@ -1419,7 +519,12 @@ variants:
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
-- name: STM32F103CB
+- name: STM32F103xB
+  aliases:
+  - STM32F103CB
+  - STM32F103RB
+  - STM32F103TB
+  - STM32F103VB
   cores:
   - name: main
     type: armv7m
@@ -1443,103 +548,11 @@ variants:
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
-- name: STM32F103R4
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20001800
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8004000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_16
-  - stm32f10x_opt
-- name: STM32F103R6
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20002800
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_128
-  - stm32f10x_opt
-- name: STM32F103R8
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_128
-  - stm32f10x_opt
-- name: STM32F103RB
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_128
-  - stm32f10x_opt
-- name: STM32F103RC
+- name: STM32F103xC
+  aliases:
+  - STM32F103RC
+  - STM32F103VC
+  - STM32F103ZC
   cores:
   - name: main
     type: armv7m
@@ -1563,7 +576,11 @@ variants:
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
-- name: STM32F103RD
+- name: STM32F103xD
+  aliases:
+  - STM32F103RD
+  - STM32F103VD
+  - STM32F103ZD
   cores:
   - name: main
     type: armv7m
@@ -1587,7 +604,11 @@ variants:
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
-- name: STM32F103RE
+- name: STM32F103xE
+  aliases:
+  - STM32F103RE
+  - STM32F103VE
+  - STM32F103ZE
   cores:
   - name: main
     type: armv7m
@@ -1611,7 +632,11 @@ variants:
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
-- name: STM32F103RF
+- name: STM32F103xF
+  aliases:
+  - STM32F103RF
+  - STM32F103VF
+  - STM32F103ZF
   cores:
   - name: main
     type: armv7m
@@ -1635,7 +660,11 @@ variants:
   flash_algorithms:
   - stm32f10x_1024
   - stm32f10x_opt
-- name: STM32F103RG
+- name: STM32F103xG
+  aliases:
+  - STM32F103RG
+  - STM32F103VG
+  - STM32F103ZG
   cores:
   - name: main
     type: armv7m
@@ -1659,391 +688,10 @@ variants:
   flash_algorithms:
   - stm32f10x_1024
   - stm32f10x_opt
-- name: STM32F103T4
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20001800
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8004000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_16
-  - stm32f10x_opt
-- name: STM32F103T6
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20002800
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_128
-  - stm32f10x_opt
-- name: STM32F103T8
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_128
-  - stm32f10x_opt
-- name: STM32F103TB
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_128
-  - stm32f10x_opt
-- name: STM32F103V8
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_128
-  - stm32f10x_opt
-- name: STM32F103VB
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_128
-  - stm32f10x_opt
-- name: STM32F103VC
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_512
-  - stm32f10x_opt
-- name: STM32F103VD
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8060000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_512
-  - stm32f10x_opt
-- name: STM32F103VE
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_512
-  - stm32f10x_opt
-- name: STM32F103VF
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x80c0000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_1024
-  - stm32f10x_opt
-- name: STM32F103VG
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_1024
-  - stm32f10x_opt
-- name: STM32F103ZC
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_512
-  - stm32f10x_opt
-- name: STM32F103ZD
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8060000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_512
-  - stm32f10x_opt
-- name: STM32F103ZE
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_512
-  - stm32f10x_opt
-- name: STM32F103ZF
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x80c0000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_1024
-  - stm32f10x_opt
-- name: STM32F103ZG
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_1024
-  - stm32f10x_opt
-- name: STM32F105R8
+- name: STM32F105x8
+  aliases:
+  - STM32F105R8
+  - STM32F105V8
   cores:
   - name: main
     type: armv7m
@@ -2065,9 +713,14 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f10x_cl
+  - stm32f10x_512
   - stm32f10x_opt
-- name: STM32F105RB
+- name: STM32F10xxB
+  aliases:
+  - STM32F105RB
+  - STM32F105VB
+  - STM32F107RB
+  - STM32F107VB
   cores:
   - name: main
     type: armv7m
@@ -2089,9 +742,14 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f10x_cl
+  - stm32f10x_512
   - stm32f10x_opt
-- name: STM32F105RC
+- name: STM32F10xxC
+  aliases:
+  - STM32F105RC
+  - STM32F105VC
+  - STM32F107RC
+  - STM32F107VC
   cores:
   - name: main
     type: armv7m
@@ -2113,175 +771,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f10x_cl
-  - stm32f10x_opt
-- name: STM32F105V8
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_cl
-  - stm32f10x_opt
-- name: STM32F105VB
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_cl
-  - stm32f10x_opt
-- name: STM32F105VC
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_cl
-  - stm32f10x_opt
-- name: STM32F107RB
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_cl
-  - stm32f10x_opt
-- name: STM32F107RC
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_cl
-  - stm32f10x_opt
-- name: STM32F107VB
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_cl
-  - stm32f10x_opt
-- name: STM32F107VC
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f10x_cl
+  - stm32f10x_512
   - stm32f10x_opt
 flash_algorithms:
 - name: stm32f10x_512
@@ -2352,29 +842,6 @@ flash_algorithms:
       address: 0x0
   cores:
   - main
-- name: stm32f10x_cl
-  description: STM32F10x Connectivity Line Flash
-  default: true
-  instructions: ELUDRgAgREwgYERIYGBESGBgIEbAaRDwBA8I0UXyVVBATCBgBiBgYED2/3CgYAAgEL0BRjhIAGlA8IAANkoQYQAgcEc0SABpQPAEADJJCGEIRgBpQPBAAAhhA+BK9qogMEkIYCxIwGgQ8AEP9tEqSABpIPAEAChJCGEAIHBHAUYlSABpQPACACNKEGEQRkFhAGlA8EAAEGED4Er2qiAhShBgHUjAaBDwAQ/20RpIAGkg8AIAGEoQYQAgcEcQtQNGSBwg8AEBIuATSABpQPABABFMIGEQiBiAAL8PSMBoEPABD/rRDEgAaSDwAQAKTCBhIEbAaBDwFA8G0CBGwGhA8BQA4GABIBC9mxySHIkeACna0QAg9+cAAAAgAkAjAWdFq4nvzQAwAEAAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x33
-  pc_program_page: 0xbd
-  pc_erase_sector: 0x7f
-  pc_erase_all: 0x45
-  data_section_offset: 0x128
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8040000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 100
-    erase_sector_timeout: 500
-    sectors:
-    - size: 0x800
-      address: 0x0
-  cores:
-  - main
 - name: stm32f10x_1024
   description: STM32F10x XL-density Flash
   default: true
@@ -2395,29 +862,6 @@ flash_algorithms:
     erase_sector_timeout: 500
     sectors:
     - size: 0x800
-      address: 0x0
-  cores:
-  - main
-- name: stm32f10x_16
-  description: STM32F10x Low-density Flash
-  default: true
-  instructions: ELUDRgAgREwgYERIYGBESGBgIEbAaRDwBA8I0UXyVVBATCBgBiBgYED2/3CgYAAgEL0BRjhIAGlA8IAANkoQYQAgcEc0SABpQPAEADJJCGEIRgBpQPBAAAhhA+BK9qogMEkIYCxIwGgQ8AEP9tEqSABpIPAEAChJCGEAIHBHAUYlSABpQPACACNKEGEQRkFhAGlA8EAAEGED4Er2qiAhShBgHUjAaBDwAQ/20RpIAGkg8AIAGEoQYQAgcEcQtQNGSBwg8AEBIuATSABpQPABABFMIGEQiBiAAL8PSMBoEPABD/rRDEgAaSDwAQAKTCBhIEbAaBDwFA8G0CBGwGhA8BQA4GABIBC9mxySHIkeACna0QAg9+cAAAAgAkAjAWdFq4nvzQAwAEAAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x33
-  pc_program_page: 0xbd
-  pc_erase_sector: 0x7f
-  pc_erase_all: 0x45
-  data_section_offset: 0x128
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8004000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 100
-    erase_sector_timeout: 500
-    sectors:
-    - size: 0x400
       address: 0x0
   cores:
   - main

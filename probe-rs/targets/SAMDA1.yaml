@@ -3,7 +3,11 @@ manufacturer:
   id: 0x1f
   cc: 0x0
 variants:
-- name: ATSAMDA1E14B
+- name: ATSAMDA1x14B
+  aliases:
+  - ATSAMDA1E14B
+  - ATSAMDA1G14B
+  - ATSAMDA1J14B
   cores:
   - name: main
     type: armv6m
@@ -26,7 +30,11 @@ variants:
     - main
   flash_algorithms:
   - atsamda1_16
-- name: ATSAMDA1E15B
+- name: ATSAMDA1x15B
+  aliases:
+  - ATSAMDA1E15B
+  - ATSAMDA1G15B
+  - ATSAMDA1J15B
   cores:
   - name: main
     type: armv6m
@@ -49,145 +57,11 @@ variants:
     - main
   flash_algorithms:
   - atsamda1_32
-- name: ATSAMDA1E16B
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x10000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - atsamda1_64
-- name: ATSAMDA1G14B
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x4000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - atsamda1_16
-- name: ATSAMDA1G15B
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x8000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - atsamda1_32
-- name: ATSAMDA1G16B
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x10000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - atsamda1_64
-- name: ATSAMDA1J14B
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x4000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - atsamda1_16
-- name: ATSAMDA1J15B
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x8000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - atsamda1_32
-- name: ATSAMDA1J16B
+- name: ATSAMDA1x16B
+  aliases:
+  - ATSAMDA1E16B
+  - ATSAMDA1G16B
+  - ATSAMDA1J16B
   cores:
   - name: main
     type: armv6m

@@ -2,7 +2,10 @@ name: RA8D1 Series
 generated_from_pack: true
 pack_file_release: 5.3.0
 variants:
-- name: R7FA8D1AF
+- name: R7FA8D1xF
+  aliases:
+  - R7FA8D1AF
+  - R7FA8D1BF
   cores:
   - name: main
     type: armv8m
@@ -64,131 +67,10 @@ variants:
   - ra8d1_1m
   - ra8d1_data_c1m
   - ra8d1_cconf
-- name: R7FA8D1AH
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x22000000
-      end: 0x220e0000
-    cores:
-    - main
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x2000000
-      end: 0x21f8000
-    is_boot_memory: true
-    cores:
-    - main
-  - !Generic
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Generic
-    name: ConfigROM
-    range:
-      start: 0x300a100
-      end: 0x300a200
-    cores:
-    - main
-  - !Generic
-    name: ConfigROM_S
-    range:
-      start: 0x300a200
-      end: 0x300a300
-    cores:
-    - main
-  - !Generic
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Generic
-    name: DataFlash
-    range:
-      start: 0x27000000
-      end: 0x27003000
-    cores:
-    - main
-  flash_algorithms:
-  - ra8d1_2m
-  - ra8d1_data_c2m
-  - ra8d1_cconf
-- name: R7FA8D1BF
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x22000000
-      end: 0x220e0000
-    cores:
-    - main
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x2000000
-      end: 0x2100000
-    is_boot_memory: true
-    cores:
-    - main
-  - !Generic
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Generic
-    name: ConfigROM
-    range:
-      start: 0x300a100
-      end: 0x300a200
-    cores:
-    - main
-  - !Generic
-    name: ConfigROM_S
-    range:
-      start: 0x300a200
-      end: 0x300a300
-    cores:
-    - main
-  - !Generic
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Generic
-    name: DataFlash
-    range:
-      start: 0x27000000
-      end: 0x27003000
-    cores:
-    - main
-  flash_algorithms:
-  - ra8d1_1m
-  - ra8d1_data_c1m
-  - ra8d1_cconf
-- name: R7FA8D1BH
+- name: R7FA8D1xH
+  aliases:
+  - R7FA8D1AH
+  - R7FA8D1BH
   cores:
   - name: main
     type: armv8m

@@ -3,7 +3,12 @@ manufacturer:
   id: 0x44
   cc: 0x2
 variants:
-- name: nRF51422_xxAA
+- name: nRF51xxx_xxAA
+  aliases:
+  - nRF51422_xxAA
+  - nRF51802_xxAA
+  - nRF51822_xxAA
+  - nRF51824_xxAA
   cores:
   - name: main
     type: armv6m
@@ -28,7 +33,10 @@ variants:
   - nrf51xxx
   - nrf51xxx_sde
   - nrf51xxx_ecb
-- name: nRF51422_xxAB
+- name: nRF51x22_xxAB
+  aliases:
+  - nRF51422_xxAB
+  - nRF51822_xxAB
   cores:
   - name: main
     type: armv6m
@@ -53,7 +61,10 @@ variants:
   - nrf51xxx
   - nrf51xxx_sde
   - nrf51xxx_ecb
-- name: nRF51422_xxAC
+- name: nRF51x22_xxAC
+  aliases:
+  - nRF51422_xxAC
+  - nRF51822_xxAC
   cores:
   - name: main
     type: armv6m
@@ -96,131 +107,6 @@ variants:
     range:
       start: 0x0
       end: 0x30000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - nrf51xxx
-  - nrf51xxx_sde
-  - nrf51xxx_ecb
-- name: nRF51802_xxAA
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x40000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - nrf51xxx
-  - nrf51xxx_sde
-  - nrf51xxx_ecb
-- name: nRF51822_xxAA
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x40000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - nrf51xxx
-  - nrf51xxx_sde
-  - nrf51xxx_ecb
-- name: nRF51822_xxAB
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x20000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - nrf51xxx
-  - nrf51xxx_sde
-  - nrf51xxx_ecb
-- name: nRF51822_xxAC
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x40000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - nrf51xxx
-  - nrf51xxx_sde
-  - nrf51xxx_ecb
-- name: nRF51824_xxAA
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x40000
     is_boot_memory: true
     cores:
     - main

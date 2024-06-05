@@ -2,13 +2,11 @@ name: LPC54102
 generated_from_pack: true
 pack_file_release: 12.0.1
 variants:
-- name: LPC54102J256BD64
+- name: LPC54102J256xxxx
+  aliases:
+  - LPC54102J256BD64
+  - LPC54102J256UK49
   cores:
-  # - name: cm0plus
-  #   type: armv6m
-  #   core_access_options: !Arm
-  #     ap: 1
-  #     psel: 0
   - name: cm4
     type: armv7em
     core_access_options: !Arm
@@ -21,7 +19,6 @@ variants:
       start: 0x2000000
       end: 0x2010000
     cores:
-    # - cm0plus
     - cm4
   - !Ram
     name: SRAM1
@@ -29,7 +26,6 @@ variants:
       start: 0x2010000
       end: 0x2018000
     cores:
-    # - cm0plus
     - cm4
   - !Ram
     name: SRAM2
@@ -37,7 +33,6 @@ variants:
       start: 0x3400000
       end: 0x3402000
     cores:
-    # - cm0plus
     - cm4
   - !Nvm
     name: PROGRAM_FLASH
@@ -46,17 +41,14 @@ variants:
       end: 0x40000
     is_boot_memory: true
     cores:
-    # - cm0plus
     - cm4
   flash_algorithms:
   - lpc5410x_256
-- name: LPC54102J256UK49
+- name: LPC54102J512xxxx
+  aliases:
+  - LPC54102J512BD64
+  - LPC54102J512UK49
   cores:
-  # - name: cm0plus
-  #   type: armv6m
-  #   core_access_options: !Arm
-  #     ap: 1
-  #     psel: 0
   - name: cm4
     type: armv7em
     core_access_options: !Arm
@@ -69,7 +61,6 @@ variants:
       start: 0x2000000
       end: 0x2010000
     cores:
-    # - cm0plus
     - cm4
   - !Ram
     name: SRAM1
@@ -77,7 +68,6 @@ variants:
       start: 0x2010000
       end: 0x2018000
     cores:
-    # - cm0plus
     - cm4
   - !Ram
     name: SRAM2
@@ -85,55 +75,6 @@ variants:
       start: 0x3400000
       end: 0x3402000
     cores:
-    # - cm0plus
-    - cm4
-  - !Nvm
-    name: PROGRAM_FLASH
-    range:
-      start: 0x0
-      end: 0x40000
-    is_boot_memory: true
-    cores:
-    # - cm0plus
-    - cm4
-  flash_algorithms:
-  - lpc5410x_256
-- name: LPC54102J512BD64
-  cores:
-  # - name: cm0plus
-  #   type: armv6m
-  #   core_access_options: !Arm
-  #     ap: 1
-  #     psel: 0
-  - name: cm4
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    name: SRAM0
-    range:
-      start: 0x2000000
-      end: 0x2010000
-    cores:
-    # - cm0plus
-    - cm4
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x2010000
-      end: 0x2018000
-    cores:
-    # - cm0plus
-    - cm4
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x3400000
-      end: 0x3402000
-    cores:
-    # - cm0plus
     - cm4
   - !Nvm
     name: PROGRAM_FLASH
@@ -142,55 +83,6 @@ variants:
       end: 0x80000
     is_boot_memory: true
     cores:
-    # - cm0plus
-    - cm4
-  flash_algorithms:
-  - lpc5410x_512
-- name: LPC54102J512UK49
-  cores:
-  # - name: cm0plus
-  #   type: armv6m
-  #   core_access_options: !Arm
-  #     ap: 1
-  #     psel: 0
-  - name: cm4
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    name: SRAM0
-    range:
-      start: 0x2000000
-      end: 0x2010000
-    cores:
-    # - cm0plus
-    - cm4
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x2010000
-      end: 0x2018000
-    cores:
-    # - cm0plus
-    - cm4
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x3400000
-      end: 0x3402000
-    cores:
-    # - cm0plus
-    - cm4
-  - !Nvm
-    name: PROGRAM_FLASH
-    range:
-      start: 0x0
-      end: 0x80000
-    is_boot_memory: true
-    cores:
-    # - cm0plus
     - cm4
   flash_algorithms:
   - lpc5410x_512

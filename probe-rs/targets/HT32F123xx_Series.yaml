@@ -51,7 +51,10 @@ variants:
   flash_algorithms:
   - ht32f
   - ht32f_opt
-- name: HT32F12345_48LQFP
+- name: HT32F12345_xxLQFP
+  aliases:
+  - HT32F12345_48LQFP
+  - HT32F12345_64LQFP
   cores:
   - name: main
     type: armv7m
@@ -75,31 +78,11 @@ variants:
   flash_algorithms:
   - ht32f
   - ht32f_opt
-- name: HT32F12345_64LQFP
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0xfc00
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT32F12364
+- name: HT32Fx236x
+  aliases:
+  - HT32F12364
+  - HT32F12366
+  - HT32F22366
   cores:
   - name: main
     type: armv7m
@@ -123,7 +106,11 @@ variants:
   flash_algorithms:
   - ht32f
   - ht32f_opt
-- name: HT32F12364_46QFN
+- name: HT32Fx236x_46QFN
+  aliases:
+  - HT32F12364_46QFN
+  - HT32F12366_46QFN
+  - HT32F22366_46QFN
   cores:
   - name: main
     type: armv7m
@@ -147,31 +134,14 @@ variants:
   flash_algorithms:
   - ht32f
   - ht32f_opt
-- name: HT32F12364_48LQFP
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x3fc00
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT32F12364_64LQFP
+- name: HT32Fx236x_xxLQFP
+  aliases:
+  - HT32F12364_48LQFP
+  - HT32F12364_64LQFP
+  - HT32F12366_48LQFP
+  - HT32F12366_64LQFP
+  - HT32F22366_48LQFP
+  - HT32F22366_64LQFP
   cores:
   - name: main
     type: armv7m
@@ -267,7 +237,10 @@ variants:
   flash_algorithms:
   - ht32f
   - ht32f_opt
-- name: HT32F12365_48LQFP
+- name: HT32F12365_xxLQFP
+  aliases:
+  - HT32F12365_48LQFP
+  - HT32F12365_64LQFP
   cores:
   - name: main
     type: armv7m
@@ -291,247 +264,10 @@ variants:
   flash_algorithms:
   - ht32f
   - ht32f_opt
-- name: HT32F12365_64LQFP
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x3fc00
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT32F12366
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x3fc00
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT32F12366_100LQFP
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x3fc00
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT32F12366_46QFN
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x3fc00
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT32F12366_48LQFP
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x3fc00
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT32F12366_64LQFP
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x3fc00
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT32F22366
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x3fc00
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT32F22366_100LQFP
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x3fc00
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT32F22366_46QFN
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x3fc00
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT32F22366_48LQFP
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x3fc00
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT32F22366_64LQFP
+- name: HT32Fx2366_100LQFP
+  aliases:
+  - HT32F12366_100LQFP
+  - HT32F22366_100LQFP
   cores:
   - name: main
     type: armv7m

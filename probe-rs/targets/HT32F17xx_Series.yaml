@@ -51,7 +51,10 @@ variants:
   flash_algorithms:
   - ht32f
   - ht32f_opt
-- name: HT32F1755_48LQFP
+- name: HT32F1755_xxLQFP
+  aliases:
+  - HT32F1755_48LQFP
+  - HT32F1755_64LQFP
   cores:
   - name: main
     type: armv7m
@@ -99,31 +102,10 @@ variants:
   flash_algorithms:
   - ht32f
   - ht32f_opt
-- name: HT32F1755_64LQFP
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x1fc00
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT32F1765
+- name: HT32Fx7x5
+  aliases:
+  - HT32F1765
+  - HT32F2755
   cores:
   - name: main
     type: armv7m
@@ -147,7 +129,10 @@ variants:
   flash_algorithms:
   - ht32f
   - ht32f_opt
-- name: HT32F1765_100LQFP
+- name: HT32Fx7x5_100LQFP
+  aliases:
+  - HT32F1765_100LQFP
+  - HT32F2755_100LQFP
   cores:
   - name: main
     type: armv7m
@@ -171,7 +156,12 @@ variants:
   flash_algorithms:
   - ht32f
   - ht32f_opt
-- name: HT32F1765_48LQFP
+- name: HT32Fx7x5_xxLQFP
+  aliases:
+  - HT32F1765_48LQFP
+  - HT32F1765_64LQFP
+  - HT32F2755_48LQFP
+  - HT32F2755_64LQFP
   cores:
   - name: main
     type: armv7m
@@ -195,151 +185,10 @@ variants:
   flash_algorithms:
   - ht32f
   - ht32f_opt
-- name: HT32F1765_48QFN
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x1fc00
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT32F1765_64LQFP
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x1fc00
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT32F2755
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x1fc00
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT32F2755_100LQFP
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x1fc00
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT32F2755_48LQFP
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x1fc00
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT32F2755_48QFN
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x1fc00
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - ht32f
-  - ht32f_opt
-- name: HT32F2755_64LQFP
+- name: HT32Fx7x5_48QFN
+  aliases:
+  - HT32F1765_48QFN
+  - HT32F2755_48QFN
   cores:
   - name: main
     type: armv7m

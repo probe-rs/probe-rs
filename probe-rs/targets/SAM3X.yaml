@@ -2,7 +2,10 @@ name: SAM3X
 generated_from_pack: true
 pack_file_release: 1.0.50
 variants:
-- name: ATSAM3X4C
+- name: ATSAM3X4x
+  aliases:
+  - ATSAM3X4C
+  - ATSAM3X4E
   cores:
   - name: main
     type: armv7m
@@ -49,148 +52,11 @@ variants:
   flash_algorithms:
   - atsam3x_256
   - atsam3x_gpnvm
-- name: ATSAM3X4E
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x80000
-      end: 0xa0000
-    is_boot_memory: true
-    cores:
-    - main
-  - !Generic
-    name: IROM2
-    range:
-      start: 0xa0000
-      end: 0xc0000
-    cores:
-    - main
-  - !Generic
-    name: IROM3
-    range:
-      start: 0x100000
-      end: 0x200000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x20080000
-      end: 0x20088000
-    cores:
-    - main
-  flash_algorithms:
-  - atsam3x_256
-  - atsam3x_gpnvm
-- name: ATSAM3X8C
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x80000
-      end: 0xc0000
-    is_boot_memory: true
-    cores:
-    - main
-  - !Generic
-    name: IROM2
-    range:
-      start: 0xc0000
-      end: 0x100000
-    cores:
-    - main
-  - !Generic
-    name: IROM3
-    range:
-      start: 0x100000
-      end: 0x200000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x20080000
-      end: 0x20088000
-    cores:
-    - main
-  flash_algorithms:
-  - atsam3x_512
-  - atsam3x_gpnvm
-- name: ATSAM3X8E
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x80000
-      end: 0xc0000
-    is_boot_memory: true
-    cores:
-    - main
-  - !Generic
-    name: IROM2
-    range:
-      start: 0xc0000
-      end: 0x100000
-    cores:
-    - main
-  - !Generic
-    name: IROM3
-    range:
-      start: 0x100000
-      end: 0x200000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x20080000
-      end: 0x20088000
-    cores:
-    - main
-  flash_algorithms:
-  - atsam3x_512
-  - atsam3x_gpnvm
-- name: ATSAM3X8H
+- name: ATSAM3X8x
+  aliases:
+  - ATSAM3X8C
+  - ATSAM3X8E
+  - ATSAM3X8H
   cores:
   - name: main
     type: armv7m

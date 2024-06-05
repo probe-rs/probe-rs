@@ -3,30 +3,10 @@ manufacturer:
   id: 0x21
   cc: 0x2
 variants:
-- name: EFR32BG12P132F1024
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x100000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - geckos1
-- name: EFR32BG12P232F1024
+- name: EFR32BG12Px32F1024
+  aliases:
+  - EFR32BG12P132F1024
+  - EFR32BG12P232F1024
   cores:
   - name: main
     type: armv7em
@@ -72,53 +52,11 @@ variants:
     - main
   flash_algorithms:
   - geckos1
-- name: EFR32BG12P332F1024
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x100000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - geckos1
-- name: EFR32BG12P432F1024
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x100000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - geckos1
-- name: EFR32BG12P433F1024
+- name: EFR32BG12Px3xF1024
+  aliases:
+  - EFR32BG12P332F1024
+  - EFR32BG12P432F1024
+  - EFR32BG12P433F1024
   cores:
   - name: main
     type: armv7em

@@ -3,7 +3,12 @@ manufacturer:
   id: 0x21
   cc: 0x2
 variants:
-- name: EFR32BG21A010F1024
+- name: EFR32BG21x0x0F1024
+  aliases:
+  - EFR32BG21A010F1024
+  - EFR32BG21A020F1024
+  - EFR32BG21B010F1024
+  - EFR32BG21B020F1024
   cores:
   - name: main
     type: armv8m
@@ -26,7 +31,12 @@ variants:
     - main
   flash_algorithms:
   - geckos2
-- name: EFR32BG21A010F512
+- name: EFR32BG21x0x0F512
+  aliases:
+  - EFR32BG21A010F512
+  - EFR32BG21A020F512
+  - EFR32BG21B010F512
+  - EFR32BG21B020F512
   cores:
   - name: main
     type: armv8m
@@ -49,214 +59,12 @@ variants:
     - main
   flash_algorithms:
   - geckos2
-- name: EFR32BG21A010F768
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0xc0000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - geckos2
-- name: EFR32BG21A020F1024
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x100000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - geckos2
-- name: EFR32BG21A020F512
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x80000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - geckos2
-- name: EFR32BG21A020F768
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0xc0000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - geckos2
-- name: EFR32BG21B010F1024
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x100000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - geckos2
-- name: EFR32BG21B010F512
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x80000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - geckos2
-- name: EFR32BG21B010F768
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0xc0000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - geckos2
-- name: EFR32BG21B020F1024
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x100000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - geckos2
-- name: EFR32BG21B020F512
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x80000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - geckos2
-- name: EFR32BG21B020F768
+- name: EFR32BG21x0x0F768
+  aliases:
+  - EFR32BG21A010F768
+  - EFR32BG21A020F768
+  - EFR32BG21B010F768
+  - EFR32BG21B020F768
   cores:
   - name: main
     type: armv8m

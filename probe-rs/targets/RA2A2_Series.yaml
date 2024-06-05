@@ -2,48 +2,10 @@ name: RA2A2 Series
 generated_from_pack: true
 pack_file_release: 5.3.0
 variants:
-- name: R7FA2A2AD
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x0
-      end: 0x80000
-    is_boot_memory: true
-    cores:
-    - main
-  - !Generic
-    name: ConfigROM
-    range:
-      start: 0x1010000
-      end: 0x1010034
-    cores:
-    - main
-  - !Generic
-    name: DataFlash
-    range:
-      start: 0x40100000
-      end: 0x40102000
-    cores:
-    - main
-  flash_algorithms:
-  - ra2a2_512k
-  - ra2a2_data
-  - ra2a2_conf
-- name: R7FA2A2BD
+- name: R7FA2A2xD
+  aliases:
+  - R7FA2A2AD
+  - R7FA2A2BD
   cores:
   - name: main
     type: armv8m

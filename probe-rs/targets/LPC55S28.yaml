@@ -26,30 +26,10 @@ variants:
     - main
   flash_algorithms:
   - lpc55xx_512
-- name: LPC55S28JBD64
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x80000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - lpc55xx_512
-- name: LPC55S28JEV98
+- name: LPC55S28Jxxxx
+  aliases:
+  - LPC55S28JBD64
+  - LPC55S28JEV98
   cores:
   - name: main
     type: armv8m
