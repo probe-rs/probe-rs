@@ -1144,7 +1144,10 @@ variants:
   - at32f415_256
   - at32f415_bootmem_ap
   - at32f415_usd
-- name: AT32F4212C8T7
+- name: AT32F421xx8x7
+  aliases:
+  - AT32F4212C8T7
+  - AT32F421PF8P7
   cores:
   - name: main
     type: armv7em
@@ -1379,33 +1382,6 @@ variants:
     - main
   flash_algorithms:
   - at32f421_16
-  - at32f4212_bootmem_ap
-  - at32f4212_usd
-- name: AT32F421PF8P7
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - at32f415_64
   - at32f4212_bootmem_ap
   - at32f4212_usd
 - name: AT32F423x8x7

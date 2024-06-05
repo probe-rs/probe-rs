@@ -53,31 +53,10 @@ variants:
     - main
   flash_algorithms:
   - atsam4c32_2048
-- name: ATSAM4C4C
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20100000
-      end: 0x20102000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x0
-      end: 0x4000
-    is_boot_memory: true
-    cores:
-    - main
-  flash_algorithms:
-  - atsam4c_1024
-  - atsam4c_gpnvm
-- name: ATSAM4C8C
+- name: ATSAM4CxC
+  aliases:
+  - ATSAM4C4C
+  - ATSAM4C8C
   cores:
   - name: main
     type: armv7em
