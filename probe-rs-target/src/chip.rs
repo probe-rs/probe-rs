@@ -5,7 +5,6 @@ use crate::{
     serialize::{hex_option, hex_u_int},
     CoreType,
 };
-use educe::Educe;
 use serde::{Deserialize, Serialize};
 
 /// Represents a DAP scan chain element.
@@ -38,21 +37,15 @@ pub struct Jtag {
     pub scan_chain: Option<Vec<ScanChainElement>>,
 }
 
-fn len_eq(a: &str, b: &str) -> bool {
-    a.len() == b.len()
-}
-
 /// A single chip variant.
 ///
 /// This describes an exact chip variant, including the cores, flash and memory size. For example,
 /// the `nRF52832` chip has two variants, `nRF52832_xxAA` and `nRF52832_xxBB`. For this case,
 /// the struct will correspond to one of the variants, e.g. `nRF52832_xxAA`.
-#[derive(Debug, Clone, Serialize, Deserialize, Educe)]
-#[educe(PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Chip {
     /// This is the name of the chip in base form.
     /// E.g. `nRF52832`.
-    #[educe(PartialEq(method(len_eq)))]
     pub name: String,
     /// A list of target names that are identical to this target.
     #[serde(default)]

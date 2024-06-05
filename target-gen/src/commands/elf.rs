@@ -150,7 +150,13 @@ fn compact(family: &ChipFamily) -> ChipFamily {
 }
 
 fn compact_targets(out: &mut ChipFamily) {
-    let mut variants = std::mem::take(&mut out.variants).into_iter();
+    fn comparable_chip(chip: &Chip) -> Chip {
+        let mut chip = chip.clone();
+        chip.name = format!("{}", chip.name.len());
+        chip
+    }
+    let variants = std::mem::take(&mut out.variants);
+    let mut variants = variants.iter();
 
     let mut seen = std::collections::HashSet::new();
     while let Some(variant_a) = variants.next() {
@@ -158,8 +164,10 @@ fn compact_targets(out: &mut ChipFamily) {
             continue;
         }
 
+        let chip_template = comparable_chip(variant_a);
         let mut variant = variant_a.clone();
         let mut add_name = variant.aliases.is_empty();
+
         for variant_b in variants.clone() {
             if seen.contains(&variant_b.name) {
                 continue;
@@ -167,7 +175,7 @@ fn compact_targets(out: &mut ChipFamily) {
 
             // println!("Comparing {} and {}", variant_a.name, variant_b.name);
 
-            if variant_a == variant_b {
+            if chip_template == comparable_chip(variant_b) {
                 if add_name {
                     variant.aliases.push(variant_a.name.clone());
                     add_name = false;
@@ -195,29 +203,31 @@ fn compact_flash_algos(out: &mut ChipFamily) {
 
     let mut renames = std::collections::HashMap::<String, String>::new();
 
-    let mut algos = std::mem::take(&mut out.flash_algorithms).into_iter();
-    while let Some(mut widest_algo) = algos.next() {
-        if renames.contains_key(&widest_algo.name) {
+    let algos = std::mem::take(&mut out.flash_algorithms);
+    let mut algos = algos.iter();
+    while let Some(algo) = algos.next() {
+        if renames.contains_key(&algo.name) {
             continue;
         }
 
         // Collect renames because the new name may change during looping
-        let mut renamed = vec![widest_algo.name.clone()];
+        let mut renamed = vec![algo.name.clone()];
 
         // Find the algo with the widest address range and replace all others with it.
-        let algo_template = comparable_algo(&widest_algo);
+        let algo_template = comparable_algo(algo);
+        let mut widest_algo = algo.clone();
         for algo_b in algos.clone() {
             if renames.contains_key(&algo_b.name) {
                 continue;
             }
 
-            if algo_template == comparable_algo(&algo_b) {
+            if algo_template == comparable_algo(algo_b) {
                 renamed.push(algo_b.name.clone());
 
                 if algo_b.flash_properties.address_range.end
                     > widest_algo.flash_properties.address_range.end
                 {
-                    widest_algo = algo_b;
+                    widest_algo = algo_b.clone();
                 }
             }
         }
