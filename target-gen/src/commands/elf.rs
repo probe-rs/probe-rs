@@ -93,6 +93,7 @@ pub fn cmd_elf(
                 svd: None,
                 documentation: HashMap::new(),
                 name: "<chip name>".to_owned(),
+                aliases: vec![],
                 memory_map: vec![
                     MemoryRegion::Nvm(NvmRegion {
                         is_boot_memory: false,
@@ -139,12 +140,67 @@ pub fn cmd_elf(
     Ok(())
 }
 
+fn transform(family: &ChipFamily) -> ChipFamily {
+    let mut out = family.clone();
+    out.variants.clear();
+
+    let mut variants = family.variants().iter();
+    let mut seen = std::collections::HashSet::new();
+    while let Some(variant_a) = variants.next() {
+        if seen.contains(&variant_a.name) {
+            continue;
+        }
+
+        let mut variant = variant_a.clone();
+        let mut add_name = variant.aliases.is_empty();
+        for variant_b in variants.clone() {
+            if seen.contains(&variant_b.name) {
+                continue;
+            }
+
+            // println!("Comparing {} and {}", variant_a.name, variant_b.name);
+
+            if variant_a == variant_b {
+                if add_name {
+                    variant.aliases.push(variant_a.name.clone());
+                    add_name = false;
+                }
+                seen.insert(variant_b.name.clone());
+                diff_name(&mut variant.name, &variant_b.name);
+                variant.aliases.push(variant_b.name.clone());
+            }
+        }
+
+        variant.aliases.dedup();
+        // println!("Adding variant {}", variant.name);
+        out.variants.push(variant);
+    }
+
+    out
+}
+
+/// Replace the differing characters with 'x'
+fn diff_name(name: &mut String, other: &str) {
+    let mut new_name = String::with_capacity(name.len());
+
+    for (a, b) in name.chars().zip(other.chars()) {
+        if a.eq_ignore_ascii_case(&b) {
+            new_name.push(a);
+        } else {
+            new_name.push('x');
+        }
+    }
+
+    *name = new_name;
+}
+
 /// Some optimizations to improve the readability of the `serde_yaml` output:
 /// - If `Option<T>` is `None`, it is serialized as `null` ... we want to omit it.
 /// - If `Vec<T>` is empty, it is serialized as `[]` ... we want to omit it.
 /// - `serde_yaml` serializes hex formatted integers as single quoted strings, e.g. '0x1234' ... we need to remove the single quotes so that it round-trips properly.
 pub fn serialize_to_yaml_string(family: &ChipFamily) -> Result<String> {
-    let raw_yaml_string = serde_yaml::to_string(family)?;
+    let family = transform(family);
+    let raw_yaml_string = serde_yaml::to_string(&family)?;
 
     let mut yaml_string = String::with_capacity(raw_yaml_string.len());
     for reader_line in raw_yaml_string.lines() {

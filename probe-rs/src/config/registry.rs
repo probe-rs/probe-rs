@@ -92,6 +92,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
             generated_from_pack: false,
             variants: vec![Chip {
                 name: "riscv".to_owned(),
+                aliases: vec![],
                 part: None,
                 svd: None,
                 documentation: HashMap::new(),
@@ -154,20 +155,47 @@ impl Registry {
         let mut partial_matches = Vec::new();
         for family in self.families.iter() {
             for variant in family.variants.iter() {
-                if match_name_prefix(&variant.name, name) {
-                    if variant.name.len() == name.len() {
-                        tracing::debug!("Exact match for chip name: {}", variant.name);
-                        exact_matches += 1;
-                    } else {
-                        tracing::debug!("Partial match for chip name: {}", variant.name);
-                        partial_matches.push(variant.name.as_str());
-                        // Only select partial match if we don't have an exact match yet
-                        if exact_matches > 0 {
-                            continue;
-                        }
-                    }
-                    selected_family_and_chip = Some((family, variant));
+                if !match_name_prefix(&variant.name, name) {
+                    continue;
                 }
+
+                // Has the user explicitly requested the group name?
+                // Is there a matching alias in this variant?
+                if !variant.name.eq_ignore_ascii_case(name)
+                    && !variant.aliases.is_empty()
+                    && !variant
+                        .aliases
+                        .iter()
+                        .any(|alias| ignore_case_starts_with(alias, name))
+                {
+                    tracing::debug!("No alias match for chip name: {}", variant.name);
+                    continue;
+                }
+
+                if variant.name.len() == name.len() {
+                    tracing::debug!("Exact match for chip name: {}", variant.name);
+                    exact_matches += 1;
+                } else {
+                    tracing::debug!("Partial match for chip name: {}", variant.name);
+
+                    if variant.aliases.is_empty() {
+                        partial_matches.push(variant.name.as_str());
+                    } else {
+                        partial_matches.extend(
+                            variant
+                                .aliases
+                                .iter()
+                                .filter(|alias| ignore_case_starts_with(alias, name))
+                                .map(|alias| alias.as_str()),
+                        );
+                    }
+
+                    // Only select partial match if we don't have an exact match yet
+                    if exact_matches > 0 {
+                        continue;
+                    }
+                }
+                selected_family_and_chip = Some((family, variant));
             }
         }
 
@@ -252,7 +280,11 @@ impl Registry {
         for family in &self.families {
             for variant in family.variants.iter() {
                 if match_name_prefix(name, &variant.name) {
-                    targets.push(variant.name.to_string());
+                    if variant.aliases.is_empty() {
+                        targets.push(variant.name.to_string());
+                    } else {
+                        targets.extend(variant.aliases.iter().map(|a| a.to_string()));
+                    }
                 }
             }
         }
@@ -416,6 +448,20 @@ fn match_name_prefix(pattern: &str, name: &str) -> bool {
             return false;
         }
     }
+    true
+}
+
+fn ignore_case_starts_with(name: &str, prefix: &str) -> bool {
+    if name.len() < prefix.len() {
+        return false;
+    }
+
+    for (n, p) in name.chars().zip(prefix.chars()) {
+        if !n.eq_ignore_ascii_case(&p) {
+            return false;
+        }
+    }
+
     true
 }
 

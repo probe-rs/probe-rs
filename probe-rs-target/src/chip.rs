@@ -5,6 +5,7 @@ use crate::{
     serialize::{hex_option, hex_u_int},
     CoreType,
 };
+use educe::Educe;
 use serde::{Deserialize, Serialize};
 
 /// Represents a DAP scan chain element.
@@ -37,16 +38,25 @@ pub struct Jtag {
     pub scan_chain: Option<Vec<ScanChainElement>>,
 }
 
+fn len_eq(a: &str, b: &str) -> bool {
+    a.len() == b.len()
+}
+
 /// A single chip variant.
 ///
 /// This describes an exact chip variant, including the cores, flash and memory size. For example,
 /// the `nRF52832` chip has two variants, `nRF52832_xxAA` and `nRF52832_xxBB`. For this case,
 /// the struct will correspond to one of the variants, e.g. `nRF52832_xxAA`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Educe)]
+#[educe(PartialEq)]
 pub struct Chip {
     /// This is the name of the chip in base form.
     /// E.g. `nRF52832`.
+    #[educe(PartialEq(method(len_eq)))]
     pub name: String,
+    /// A list of target names that are identical to this target.
+    #[serde(default)]
+    pub aliases: Vec<String>,
     /// The `PART` register of the chip.
     /// This value can be determined via the `cli info` command.
     pub part: Option<u16>,
@@ -98,6 +108,7 @@ impl Chip {
     pub fn generic_arm(name: &str, core_type: CoreType) -> Self {
         Chip {
             name: name.to_string(),
+            aliases: vec![],
             part: None,
             svd: None,
             documentation: HashMap::new(),
@@ -116,7 +127,7 @@ impl Chip {
 }
 
 /// An individual core inside a chip
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Core {
     /// The core name.
     pub name: String,
@@ -131,7 +142,7 @@ pub struct Core {
 }
 
 /// The data required to access a core
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum CoreAccessOptions {
     /// ARM specific options
     Arm(ArmCoreAccessOptions),
@@ -142,7 +153,7 @@ pub enum CoreAccessOptions {
 }
 
 /// The data required to access an ARM core
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 pub struct ArmCoreAccessOptions {
     /// The access port number to access the core
     pub ap: u8,
@@ -160,7 +171,7 @@ pub struct ArmCoreAccessOptions {
 }
 
 /// The data required to access a Risc-V core
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RiscvCoreAccessOptions {
     /// The hart id
     pub hart_id: Option<u32>,
@@ -170,7 +181,7 @@ pub struct RiscvCoreAccessOptions {
 }
 
 /// The data required to access an Xtensa core
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct XtensaCoreAccessOptions {
     /// The JTAG TAP index of the core's debug module
     pub jtag_tap: Option<usize>,

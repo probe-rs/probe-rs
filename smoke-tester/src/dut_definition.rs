@@ -205,7 +205,7 @@ impl DutDefinition {
 fn lookup_unique_target(chip: &str) -> Result<Target> {
     let target = get_target_by_name(chip).into_diagnostic()?;
 
-    if !target.name.eq_ignore_ascii_case(chip) {
+    if target.name.len() != chip.len() {
         miette::bail!("Chip definition does not match exactly, the chip is specified as {}, but the entry in the registry is {}", chip, target.name);
     }
 

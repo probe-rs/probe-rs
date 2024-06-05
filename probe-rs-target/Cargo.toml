@@ -16,3 +16,4 @@ jep106 = "0.2.8"
 serde = { version = "1", features = ["derive"] }
 base64 = "0.22.1"
 url = { version = "2.5", features = ["serde"] }
+educe = "0.6"

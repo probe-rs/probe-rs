@@ -165,6 +165,7 @@ where
 
         family.variants.push(Chip {
             name: device_name,
+            aliases: vec![],
             part: None,
             svd: None,
             documentation: HashMap::new(),
