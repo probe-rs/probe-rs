@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::env;
 use std::fs::{read_dir, read_to_string};
 use std::io;
@@ -29,10 +28,7 @@ fn main() {
             });
 
             match serde_yaml::from_str::<ChipFamily>(&string) {
-                Ok(family) => {
-                    reject_duplicate_targets(&family);
-                    families.push(family);
-                }
+                Ok(family) => families.push(family),
                 Err(error) => panic!(
                     "Failed to parse target file: {} because:\n{error}",
                     file.display()
@@ -61,19 +57,6 @@ fn main() {
         panic!(
             "Failed to deserialize supported target definitions from bincode: {deserialize_error:?}"
         );
-    }
-}
-
-fn reject_duplicate_targets(family: &ChipFamily) {
-    let mut seen = HashSet::new();
-
-    for chip in family.variants.iter() {
-        if !seen.insert(&chip.name) {
-            panic!(
-                "Target {} appears multiple times in {}",
-                chip.name, family.name
-            );
-        }
     }
 }
 
