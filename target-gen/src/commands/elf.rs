@@ -1,7 +1,7 @@
 use anyhow::{bail, Context, Result};
 use probe_rs_target::{
     ArmCoreAccessOptions, Chip, ChipFamily, Core, CoreAccessOptions, CoreType, MemoryRegion,
-    NvmRegion, RamRegion, TargetDescriptionSource,
+    NvmRegion, RamRegion, RawFlashAlgorithm, TargetDescriptionSource,
 };
 use std::{
     borrow::Cow,
@@ -140,11 +140,18 @@ pub fn cmd_elf(
     Ok(())
 }
 
-fn transform(family: &ChipFamily) -> ChipFamily {
+fn compact(family: &ChipFamily) -> ChipFamily {
     let mut out = family.clone();
-    out.variants.clear();
 
-    let mut variants = family.variants().iter();
+    compact_targets(&mut out);
+    compact_flash_algos(&mut out);
+
+    out
+}
+
+fn compact_targets(out: &mut ChipFamily) {
+    let mut variants = std::mem::take(&mut out.variants).into_iter();
+
     let mut seen = std::collections::HashSet::new();
     while let Some(variant_a) = variants.next() {
         if seen.contains(&variant_a.name) {
@@ -175,8 +182,60 @@ fn transform(family: &ChipFamily) -> ChipFamily {
         // println!("Adding variant {}", variant.name);
         out.variants.push(variant);
     }
+}
 
-    out
+fn compact_flash_algos(out: &mut ChipFamily) {
+    fn comparable_algo(algo: &RawFlashAlgorithm) -> RawFlashAlgorithm {
+        let mut algo = algo.clone();
+        algo.flash_properties.address_range.end = 0;
+        algo.description = String::new();
+        algo.name = String::new();
+        algo
+    }
+
+    let mut renames = std::collections::HashMap::<String, String>::new();
+
+    let mut algos = std::mem::take(&mut out.flash_algorithms).into_iter();
+    while let Some(mut widest_algo) = algos.next() {
+        if renames.contains_key(&widest_algo.name) {
+            continue;
+        }
+
+        // Collect renames because the new name may change during looping
+        let mut renamed = vec![widest_algo.name.clone()];
+
+        // Find the algo with the widest address range and replace all others with it.
+        let algo_template = comparable_algo(&widest_algo);
+        for algo_b in algos.clone() {
+            if renames.contains_key(&algo_b.name) {
+                continue;
+            }
+
+            if algo_template == comparable_algo(&algo_b) {
+                renamed.push(algo_b.name.clone());
+
+                if algo_b.flash_properties.address_range.end
+                    > widest_algo.flash_properties.address_range.end
+                {
+                    widest_algo = algo_b;
+                }
+            }
+        }
+
+        for renamed in renamed {
+            renames.insert(renamed, widest_algo.name.clone());
+        }
+        out.flash_algorithms.push(widest_algo);
+    }
+
+    // Now walk through the target variants' flash algo map and apply the renames
+    for variant in &mut out.variants {
+        for flash_algo in &mut variant.flash_algorithms {
+            if let Some(new_name) = renames.get(flash_algo) {
+                flash_algo.clone_from(new_name);
+            }
+        }
+    }
 }
 
 /// Replace the differing characters with 'x'
@@ -199,7 +258,7 @@ fn diff_name(name: &mut String, other: &str) {
 /// - If `Vec<T>` is empty, it is serialized as `[]` ... we want to omit it.
 /// - `serde_yaml` serializes hex formatted integers as single quoted strings, e.g. '0x1234' ... we need to remove the single quotes so that it round-trips properly.
 pub fn serialize_to_yaml_string(family: &ChipFamily) -> Result<String> {
-    let family = transform(family);
+    let family = compact(family);
     let raw_yaml_string = serde_yaml::to_string(&family)?;
 
     let mut yaml_string = String::with_capacity(raw_yaml_string.len());
