@@ -143,8 +143,8 @@ pub fn cmd_elf(
 fn compact(family: &ChipFamily) -> ChipFamily {
     let mut out = family.clone();
 
-    compact_targets(&mut out);
     compact_flash_algos(&mut out);
+    compact_targets(&mut out);
 
     out
 }
