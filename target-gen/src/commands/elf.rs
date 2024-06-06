@@ -4,10 +4,11 @@ use probe_rs_target::{
     NvmRegion, RamRegion, TargetDescriptionSource,
 };
 use std::{
+    borrow::Cow,
     collections::HashMap,
     fmt::Write,
     fs::{File, OpenOptions},
-    io::{BufRead, Write as _},
+    io::Write as _,
     path::Path,
 };
 
@@ -143,31 +144,29 @@ pub fn cmd_elf(
 /// - If `Vec<T>` is empty, it is serialized as `[]` ... we want to omit it.
 /// - `serde_yaml` serializes hex formatted integers as single quoted strings, e.g. '0x1234' ... we need to remove the single quotes so that it round-trips properly.
 pub fn serialize_to_yaml_string(family: &ChipFamily) -> Result<String> {
-    let yaml_string = serde_yaml::to_string(&family)?;
-    let mut reader = std::io::BufReader::new(yaml_string.as_bytes());
-    let mut reader_line = String::new();
+    let raw_yaml_string = serde_yaml::to_string(family)?;
 
-    let mut yaml_string = String::new();
-    while reader.read_line(&mut reader_line)? > 0 {
-        if reader_line.ends_with(": null\n")
-            || reader_line.ends_with(": []\n")
-            || reader_line.ends_with(": {}\n")
-            || reader_line.ends_with(": false\n")
+    let mut yaml_string = String::with_capacity(raw_yaml_string.len());
+    for reader_line in raw_yaml_string.lines() {
+        if reader_line.ends_with(": null")
+            || reader_line.ends_with(": []")
+            || reader_line.ends_with(": {}")
+            || reader_line.ends_with(": false")
         {
             // Skip the line
-            reader_line.clear();
             continue;
         }
 
+        let mut reader_line = Cow::Borrowed(reader_line);
         if (reader_line.contains("'0x") || reader_line.contains("'0X"))
-            && reader_line.ends_with("'\n")
+            && reader_line.ends_with('\'')
         {
             // Remove the single quotes
-            reader_line = reader_line.replace('\'', "");
+            reader_line = reader_line.replace('\'', "").into();
         }
 
         yaml_string.write_str(&reader_line)?;
-        reader_line.clear();
+        yaml_string.push('\n');
     }
 
     Ok(yaml_string)
