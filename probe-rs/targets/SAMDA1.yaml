@@ -1,297 +1,279 @@
 name: SAMDA1
 manufacturer:
-  id: 0x1F
+  id: 0x1f
   cc: 0x0
 variants:
-  - name: ATSAMDA1E14B
+- name: ATSAMDA1E14B
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20001000
     cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 536870912
-            end: 536875008
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0
-            end: 16384
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - atsamda1_16
-  - name: ATSAMDA1E15B
+    - main
+  - !Nvm
+    range:
+      start: 0x0
+      end: 0x4000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 536870912
-            end: 536875008
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0
-            end: 32768
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - atsamda1_32
-  - name: ATSAMDA1E16B
+    - main
+  flash_algorithms:
+  - atsamda1_16
+- name: ATSAMDA1E15B
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20001000
     cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 536870912
-            end: 536879104
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0
-            end: 65536
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - atsamda1_64
-  - name: ATSAMDA1G14B
+    - main
+  - !Nvm
+    range:
+      start: 0x0
+      end: 0x8000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 536870912
-            end: 536875008
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0
-            end: 16384
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - atsamda1_16
-  - name: ATSAMDA1G15B
+    - main
+  flash_algorithms:
+  - atsamda1_32
+- name: ATSAMDA1E16B
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
     cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 536870912
-            end: 536875008
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0
-            end: 32768
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - atsamda1_32
-  - name: ATSAMDA1G16B
+    - main
+  - !Nvm
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 536870912
-            end: 536879104
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0
-            end: 65536
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - atsamda1_64
-  - name: ATSAMDA1J14B
+    - main
+  flash_algorithms:
+  - atsamda1_64
+- name: ATSAMDA1G14B
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20001000
     cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 536870912
-            end: 536875008
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0
-            end: 16384
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - atsamda1_16
-  - name: ATSAMDA1J15B
+    - main
+  - !Nvm
+    range:
+      start: 0x0
+      end: 0x4000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 536870912
-            end: 536875008
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0
-            end: 32768
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - atsamda1_32
-  - name: ATSAMDA1J16B
+    - main
+  flash_algorithms:
+  - atsamda1_16
+- name: ATSAMDA1G15B
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20001000
     cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 536870912
-            end: 536879104
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0
-            end: 65536
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - atsamda1_64
+    - main
+  - !Nvm
+    range:
+      start: 0x0
+      end: 0x8000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - atsamda1_32
+- name: ATSAMDA1G16B
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - atsamda1_64
+- name: ATSAMDA1J14B
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x0
+      end: 0x4000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - atsamda1_16
+- name: ATSAMDA1J15B
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x0
+      end: 0x8000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - atsamda1_32
+- name: ATSAMDA1J16B
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - atsamda1_64
 flash_algorithms:
-  - name: atsamda1_16
-    description: ATSAMDA1 16kB Flash
-    default: true
-    instructions: QSEJBgpoUgcB1QQiCmAoSiZJUWAnSUlECGAAIHBHACBwRw8hiQIBQEIIDyBAAgJAELUfSMJhIEoCgAJ90gf80B1MASI/PJICixgM4EoIwmEEgAJ90gf80AJ9kgcB1QEgEL3/MQExmULw0wAgEL0QtRFMD0vkHByAHH3kB/zQyRyJCIkAAuAQygkfEMAAKfrRCUg9OBiAGH3AB/zQGH2ABwHVASAQvQAgEL0AAJ4ABAAAQABBBAAAAEGlAAAAAAAAAAAAAA==
-    pc_init: 1
-    pc_uninit: 31
-    pc_program_page: 111
-    pc_erase_sector: 35
-    data_section_offset: 188
-    flash_properties:
-      address_range:
-        start: 0
-        end: 16384
-      page_size: 64
-      erased_byte_value: 255
-      program_page_timeout: 100
-      erase_sector_timeout: 1000
-      sectors:
-        - size: 1024
-          address: 0
-    cores:
-      - main
-  - name: atsamda1_32
-    description: ATSAMDA1 32kB Flash
-    default: true
-    instructions: QSEJBgpoUgcB1QQiCmAoSiZJUWAnSUlECGAAIHBHACBwRw8hyQIBQEIIDyCAAgJAELUfSMJhIEoCgAJ90gf80B1MASI/PNICixgM4EoIwmEEgAJ90gf80AJ9kgcB1QEgEL3/MQExmULw0wAgEL0QtRFMD0vkHByAHH3kB/zQyRyJCIkAAuAQygkfEMAAKfrRCUg9OBiAGH3AB/zQGH2ABwHVASAQvQAgEL0AAJ4ABAAAQABBBAAAAEGlAAAAAAAAAAAAAA==
-    pc_init: 1
-    pc_uninit: 31
-    pc_program_page: 111
-    pc_erase_sector: 35
-    data_section_offset: 188
-    flash_properties:
-      address_range:
-        start: 0
-        end: 32768
-      page_size: 64
-      erased_byte_value: 255
-      program_page_timeout: 100
-      erase_sector_timeout: 1000
-      sectors:
-        - size: 2048
-          address: 0
-    cores:
-      - main
-  - name: atsamda1_64
-    description: ATSAMDA1 64kB Flash
-    default: true
-    instructions: QSEJBgpoUgcB1QQiCmAoSiZJUWAnSUlECGAAIHBHACBwRw8hCQMBQEIIDyDAAgJAELUfSMJhIEoCgAJ90gf80B1MASI/PBIDixgM4EoIwmEEgAJ90gf80AJ9kgcB1QEgEL3/MQExmULw0wAgEL0QtRFMD0vkHByAHH3kB/zQyRyJCIkAAuAQygkfEMAAKfrRCUg9OBiAGH3AB/zQGH2ABwHVASAQvQAgEL0AAJ4ABAAAQABBBAAAAEGlAAAAAAAAAAAAAA==
-    pc_init: 1
-    pc_uninit: 31
-    pc_program_page: 111
-    pc_erase_sector: 35
-    data_section_offset: 188
-    flash_properties:
-      address_range:
-        start: 0
-        end: 65536
-      page_size: 64
-      erased_byte_value: 255
-      program_page_timeout: 100
-      erase_sector_timeout: 1000
-      sectors:
-        - size: 4096
-          address: 0
-    cores:
-      - main
+- name: atsamda1_16
+  description: ATSAMDA1 16kB Flash
+  default: true
+  instructions: QSEJBgpoUgcB1QQiCmAoSiZJUWAnSUlECGAAIHBHACBwRw8hiQIBQEIIDyBAAgJAELUfSMJhIEoCgAJ90gf80B1MASI/PJICixgM4EoIwmEEgAJ90gf80AJ9kgcB1QEgEL3/MQExmULw0wAgEL0QtRFMD0vkHByAHH3kB/zQyRyJCIkAAuAQygkfEMAAKfrRCUg9OBiAGH3AB/zQGH2ABwHVASAQvQAgEL0AAJ4ABAAAQABBBAAAAEGlAAAAAAAAAAAAAA==
+  pc_init: 0x1
+  pc_uninit: 0x1f
+  pc_program_page: 0x6f
+  pc_erase_sector: 0x23
+  data_section_offset: 0xbc
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x4000
+    page_size: 0x40
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x400
+      address: 0x0
+  cores:
+  - main
+- name: atsamda1_32
+  description: ATSAMDA1 32kB Flash
+  default: true
+  instructions: QSEJBgpoUgcB1QQiCmAoSiZJUWAnSUlECGAAIHBHACBwRw8hyQIBQEIIDyCAAgJAELUfSMJhIEoCgAJ90gf80B1MASI/PNICixgM4EoIwmEEgAJ90gf80AJ9kgcB1QEgEL3/MQExmULw0wAgEL0QtRFMD0vkHByAHH3kB/zQyRyJCIkAAuAQygkfEMAAKfrRCUg9OBiAGH3AB/zQGH2ABwHVASAQvQAgEL0AAJ4ABAAAQABBBAAAAEGlAAAAAAAAAAAAAA==
+  pc_init: 0x1
+  pc_uninit: 0x1f
+  pc_program_page: 0x6f
+  pc_erase_sector: 0x23
+  data_section_offset: 0xbc
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x8000
+    page_size: 0x40
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x800
+      address: 0x0
+  cores:
+  - main
+- name: atsamda1_64
+  description: ATSAMDA1 64kB Flash
+  default: true
+  instructions: QSEJBgpoUgcB1QQiCmAoSiZJUWAnSUlECGAAIHBHACBwRw8hCQMBQEIIDyDAAgJAELUfSMJhIEoCgAJ90gf80B1MASI/PBIDixgM4EoIwmEEgAJ90gf80AJ9kgcB1QEgEL3/MQExmULw0wAgEL0QtRFMD0vkHByAHH3kB/zQyRyJCIkAAuAQygkfEMAAKfrRCUg9OBiAGH3AB/zQGH2ABwHVASAQvQAgEL0AAJ4ABAAAQABBBAAAAEGlAAAAAAAAAAAAAA==
+  pc_init: 0x1
+  pc_uninit: 0x1f
+  pc_program_page: 0x6f
+  pc_erase_sector: 0x23
+  data_section_offset: 0xbc
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x10000
+    page_size: 0x40
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+  cores:
+  - main

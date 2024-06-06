@@ -1,7 +1,7 @@
 name: NXP MIMXRT500 Series
 manufacturer:
-  cc: 0x00
   id: 0x15
+  cc: 0x0
 # NOTE: This was originally generated from CMSIS-Pack but subsequently modified
 # to use datasheet-consistent names for the memory regions and to consolidate
 # the three chip variants into one target file, since they all have the same
@@ -16,28 +16,28 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   # RT595 also includes a Cadence Fusion F1 (Tensilica) core, but
   # probe-rs currently has no support for that architecture.
   memory_map:
   - !Ram
     name: Shared RAM partitions 0-31 via M33 code bus
     range:
-      start: 0x00000000
-      end: 0x00500000
+      start: 0x0
+      end: 0x500000
     cores:
     - cm33
   - !Generic
     name: ROM-Boot
     range:
-      start: 0x03000000
-      end: 0x03020000
+      start: 0x3000000
+      end: 0x3020000
     cores:
     - cm33
   - !Nvm
     name: FlexSPI0 memory-mapped space
     range:
-      start: 0x08000000
+      start: 0x8000000
       end: 0x10000000
     cores:
     - cm33
@@ -119,26 +119,26 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: Shared RAM partitions 0-31 via M33 code bus
     range:
-      start: 0x00000000
-      end: 0x00500000
+      start: 0x0
+      end: 0x500000
     cores:
     - cm33
   - !Generic
     name: ROM-Boot
     range:
-      start: 0x03000000
-      end: 0x03020000
+      start: 0x3000000
+      end: 0x3020000
     cores:
     - cm33
   - !Nvm
     name: FlexSPI0 memory-mapped space
     range:
-      start: 0x08000000
+      start: 0x8000000
       end: 0x10000000
     cores:
     - cm33
@@ -220,26 +220,26 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: Shared RAM partitions 0-31 via M33 code bus
     range:
-      start: 0x00000000
-      end: 0x00300000
+      start: 0x0
+      end: 0x300000
     cores:
     - cm33
   - !Generic
     name: ROM-Boot
     range:
-      start: 0x03000000
-      end: 0x03020000
+      start: 0x3000000
+      end: 0x3020000
     cores:
     - cm33
   - !Nvm
     name: FlexSPI0 memory-mapped space
     range:
-      start: 0x08000000
+      start: 0x8000000
       end: 0x10000000
     cores:
     - cm33
@@ -331,7 +331,7 @@ flash_algorithms:
   data_section_offset: 0x2f0
   flash_properties:
     address_range:
-      start: 0x08000000
+      start: 0x8000000
       end: 0x10000000
     page_size: 0x100
     erased_byte_value: 0xff

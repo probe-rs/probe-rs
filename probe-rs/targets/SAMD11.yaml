@@ -1,128 +1,120 @@
 name: SAMD11
 manufacturer:
-  id: 0x1F
+  id: 0x1f
   cc: 0x0
 variants:
-  - name: ATSAMD11C14A
+- name: ATSAMD11C14A
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20001000
     cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20001000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x0
-            end: 0x4000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - atsamd11_16
-  - name: ATSAMD11D14AM
+    - main
+  - !Nvm
+    range:
+      start: 0x0
+      end: 0x4000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20001000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x0
-            end: 0x4000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - atsamd11_16
-  - name: ATSAMD11D14AS
+    - main
+  flash_algorithms:
+  - atsamd11_16
+- name: ATSAMD11D14AM
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20001000
     cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20001000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x0
-            end: 0x4000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - atsamd11_16
-  - name: ATSAMD11D14AU
+    - main
+  - !Nvm
+    range:
+      start: 0x0
+      end: 0x4000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20001000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x0
-            end: 0x4000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - atsamd11_16
+    - main
+  flash_algorithms:
+  - atsamd11_16
+- name: ATSAMD11D14AS
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x0
+      end: 0x4000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - atsamd11_16
+- name: ATSAMD11D14AU
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x0
+      end: 0x4000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - atsamd11_16
 flash_algorithms:
-  - name: atsamd11_16
-    description: ATSAMD11 16kB Flash
-    cores:
-      - main
-    default: true
-    instructions: QSEJBgpoUgcB1QQiCmAoSiZJUWAnSUlECGAAIHBHACBwRw8hiQIBQEIIDyBAAgJAELUfSMJhIEoCgAJ90gf80B1MASI/PJICixgM4EoIwmEEgAJ90gf80AJ9kgcB1QEgEL3/MQExmULw0wAgEL0QtRFMD0vkHByAHH3kB/zQyRyJCIkAAuAQygkfEMAAKfrRCUg9OBiAGH3AB/zQGH2ABwHVASAQvQAgEL0AAJ4ABAAAQABBBAAAAEGlAAAAAAAAAAAAAA==
-    pc_init: 0x1
-    pc_uninit: 0x1f
-    pc_program_page: 0x6f
-    pc_erase_sector: 0x23
-    data_section_offset: 0xbc
-    flash_properties:
-      address_range:
-        start: 0x0
-        end: 0x4000
-      page_size: 0x40
-      erased_byte_value: 0xff
-      program_page_timeout: 0x64
-      erase_sector_timeout: 0x3e8
-      sectors:
-        - size: 0x400
-          address: 0x0
+- name: atsamd11_16
+  description: ATSAMD11 16kB Flash
+  default: true
+  instructions: QSEJBgpoUgcB1QQiCmAoSiZJUWAnSUlECGAAIHBHACBwRw8hiQIBQEIIDyBAAgJAELUfSMJhIEoCgAJ90gf80B1MASI/PJICixgM4EoIwmEEgAJ90gf80AJ9kgcB1QEgEL3/MQExmULw0wAgEL0QtRFMD0vkHByAHH3kB/zQyRyJCIkAAuAQygkfEMAAKfrRCUg9OBiAGH3AB/zQGH2ABwHVASAQvQAgEL0AAJ4ABAAAQABBBAAAAEGlAAAAAAAAAAAAAA==
+  pc_init: 0x1
+  pc_uninit: 0x1f
+  pc_program_page: 0x6f
+  pc_erase_sector: 0x23
+  data_section_offset: 0xbc
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x4000
+    page_size: 0x40
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x400
+      address: 0x0
+  cores:
+  - main

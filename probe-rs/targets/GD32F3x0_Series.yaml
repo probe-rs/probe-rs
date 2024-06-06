@@ -1,1145 +1,1037 @@
 name: GD32F3x0 Series
 manufacturer:
-  cc: 0x06
   id: 0x48
+  cc: 0x6
 variants:
-  - name: GD32F310C8
+- name: GD32F310C8
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x08000000
-            end: 0x08010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - gd32f3x0
-  - name: GD32F310F4
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20001000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x08000000
-            end: 0x08004000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - gd32f3x0
-  - name: GD32F310F6
+    - main
+  flash_algorithms:
+  - gd32f3x0
+- name: GD32F310F4
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20001000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20001000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x08000000
-            end: 0x08008000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - gd32f3x0
-  - name: GD32F310F8
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x08000000
-            end: 0x08010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - gd32f3x0
-  - name: GD32F310G8
+    - main
+  flash_algorithms:
+  - gd32f3x0
+- name: GD32F310F6
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20001000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x08000000
-            end: 0x08010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - gd32f3x0
-  - name: GD32F310K6
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20001000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x08000000
-            end: 0x08008000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - gd32f3x0
-  - name: GD32F310K8
+    - main
+  flash_algorithms:
+  - gd32f3x0
+- name: GD32F310F8
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x08000000
-            end: 0x08010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - gd32f3x0
-  - name: GD32F330C4
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20001000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x08000000
-            end: 0x08004000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - gd32f3x0
-  - name: GD32F330C6
+    - main
+  flash_algorithms:
+  - gd32f3x0
+- name: GD32F310G8
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20001000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x08000000
-            end: 0x08008000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - gd32f3x0
-  - name: GD32F330C8
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x08000000
-            end: 0x08010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - gd32f3x0
-  - name: GD32F330CB
+    - main
+  flash_algorithms:
+  - gd32f3x0
+- name: GD32F310K6
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20001000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20004000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x08000000
-            end: 0x08020000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - gd32f3x0
-  - name: GD32F330F4
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20001000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x08000000
-            end: 0x08004000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - gd32f3x0
-  - name: GD32F330F6
+    - main
+  flash_algorithms:
+  - gd32f3x0
+- name: GD32F310K8
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20001000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x08000000
-            end: 0x08008000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - gd32f3x0
-  - name: GD32F330F8
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x08000000
-            end: 0x08010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - gd32f3x0
-  - name: GD32F330G4
+    - main
+  flash_algorithms:
+  - gd32f3x0
+- name: GD32F330C4
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20001000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20001000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x08000000
-            end: 0x08004000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - gd32f3x0
-  - name: GD32F330G6
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20001000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x08000000
-            end: 0x08008000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - gd32f3x0
-  - name: GD32F330G8
+    - main
+  flash_algorithms:
+  - gd32f3x0
+- name: GD32F330C6
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20001000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x08000000
-            end: 0x08010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - gd32f3x0
-  - name: GD32F330K4
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20001000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x08000000
-            end: 0x08004000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - gd32f3x0
-  - name: GD32F330K6
+    - main
+  flash_algorithms:
+  - gd32f3x0
+- name: GD32F330C8
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20001000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x08000000
-            end: 0x08008000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - gd32f3x0
-  - name: GD32F330K8
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x08000000
-            end: 0x08010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - gd32f3x0
-  - name: GD32F330R8
+    - main
+  flash_algorithms:
+  - gd32f3x0
+- name: GD32F330CB
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20004000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20004000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x08000000
-            end: 0x08010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - gd32f3x0
-  - name: GD32F330RB
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20004000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x08000000
-            end: 0x08020000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - gd32f3x0
-  - name: GD32F350C4
+    - main
+  flash_algorithms:
+  - gd32f3x0
+- name: GD32F330F4
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20001000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20001000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x08000000
-            end: 0x08004000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - gd32f3x0
-  - name: GD32F350C6
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20001800
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x08000000
-            end: 0x08008000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - gd32f3x0
-  - name: GD32F350C8
+    - main
+  flash_algorithms:
+  - gd32f3x0
+- name: GD32F330F6
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20001000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x08000000
-            end: 0x08010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - gd32f3x0
-  - name: GD32F350CB
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20004000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x08000000
-            end: 0x08020000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - gd32f3x0
-  - name: GD32F350G4
+    - main
+  flash_algorithms:
+  - gd32f3x0
+- name: GD32F330F8
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20001000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x08000000
-            end: 0x08004000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - gd32f3x0
-  - name: GD32F350G6
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20001800
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x08000000
-            end: 0x08008000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - gd32f3x0
-  - name: GD32F350G8
+    - main
+  flash_algorithms:
+  - gd32f3x0
+- name: GD32F330G4
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20001000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x08000000
-            end: 0x08010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - gd32f3x0
-  - name: GD32F350K4
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20001000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x08000000
-            end: 0x08004000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - gd32f3x0
-  - name: GD32F350K6
+    - main
+  flash_algorithms:
+  - gd32f3x0
+- name: GD32F330G6
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20001000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20001800
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x08000000
-            end: 0x08008000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - gd32f3x0
-  - name: GD32F350K8
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x08000000
-            end: 0x08010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - gd32f3x0
-  - name: GD32F350R4
+    - main
+  flash_algorithms:
+  - gd32f3x0
+- name: GD32F330G8
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20001000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x08000000
-            end: 0x08004000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - gd32f3x0
-  - name: GD32F350R6
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x08000000
-            end: 0x08008000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - gd32f3x0
-  - name: GD32F350R8
+    - main
+  flash_algorithms:
+  - gd32f3x0
+- name: GD32F330K4
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20001000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20004000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x08000000
-            end: 0x08010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - gd32f3x0
-  - name: GD32F350RB
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20004000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x08000000
-            end: 0x08020000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - gd32f3x0
+    - main
+  flash_algorithms:
+  - gd32f3x0
+- name: GD32F330K6
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f3x0
+- name: GD32F330K8
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f3x0
+- name: GD32F330R8
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f3x0
+- name: GD32F330RB
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f3x0
+- name: GD32F350C4
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f3x0
+- name: GD32F350C6
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f3x0
+- name: GD32F350C8
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f3x0
+- name: GD32F350CB
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f3x0
+- name: GD32F350G4
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f3x0
+- name: GD32F350G6
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f3x0
+- name: GD32F350G8
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f3x0
+- name: GD32F350K4
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f3x0
+- name: GD32F350K6
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f3x0
+- name: GD32F350K8
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f3x0
+- name: GD32F350R4
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f3x0
+- name: GD32F350R6
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f3x0
+- name: GD32F350R8
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f3x0
+- name: GD32F350RB
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f3x0
 flash_algorithms:
-  - name: gd32f3x0
-    description: "GD32F3x0 FMC"
-    default: true
-    instructions: OUlv8xIASUQIYDhIACEBYDdJQWA3SUFgwGlABwjUNkhF8lVRAWAGIUFgQPb/cYFgACBwRy1IAWlB8IABAWEAIHBHKkgBaUHwBAEBYQFpQfBAAQFhSvaqISdKAOARYMNo2wf70QFpIfAEAQFhACBwRx5JCmlC8AICCmFIYQhpQPBAAAhhSvaqIBtKAOAQYMto2wf70QhpIPACAAhhACBwRxC1yRwh8AMBEEsZ4BxpRPABBBxhFGgEYNxo5Af80RxpJPABBBxh3GgU8BQPBdDYaEDwFADYYAEgEL0AHRIdCR8AKePRACAQvQQAAAAAIAJAIwFnRauJ780AMABAAAAAAAAAAAA=
-    pc_init: 1
-    pc_uninit: 53
-    pc_program_page: 161
-    pc_erase_sector: 113
-    pc_erase_all: 67
-    data_section_offset: 252
-    flash_properties:
-      address_range:
-        start: 0x08000000
-        end: 0x08020000
-      page_size: 1024
-      erased_byte_value: 255
-      program_page_timeout: 100
-      erase_sector_timeout: 3000
-      sectors:
-        - size: 1024
-          address: 0
-    cores:
-      - main
+- name: gd32f3x0
+  description: GD32F3x0 FMC
+  default: true
+  instructions: OUlv8xIASUQIYDhIACEBYDdJQWA3SUFgwGlABwjUNkhF8lVRAWAGIUFgQPb/cYFgACBwRy1IAWlB8IABAWEAIHBHKkgBaUHwBAEBYQFpQfBAAQFhSvaqISdKAOARYMNo2wf70QFpIfAEAQFhACBwRx5JCmlC8AICCmFIYQhpQPBAAAhhSvaqIBtKAOAQYMto2wf70QhpIPACAAhhACBwRxC1yRwh8AMBEEsZ4BxpRPABBBxhFGgEYNxo5Af80RxpJPABBBxh3GgU8BQPBdDYaEDwFADYYAEgEL0AHRIdCR8AKePRACAQvQQAAAAAIAJAIwFnRauJ780AMABAAAAAAAAAAAA=
+  pc_init: 0x1
+  pc_uninit: 0x35
+  pc_program_page: 0xa1
+  pc_erase_sector: 0x71
+  pc_erase_all: 0x43
+  data_section_offset: 0xfc
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0x8020000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x400
+      address: 0x0
+  cores:
+  - main

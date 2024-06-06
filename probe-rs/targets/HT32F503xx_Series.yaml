@@ -1,182 +1,172 @@
 name: HT32F503xx Series
 manufacturer:
-  cc: 0x06
   id: 0x76
+  cc: 0x6
 variants:
-  - name: HT32F50343
+- name: HT32F50343
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20003000
     cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20003000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x0
-            end: 0x10000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - ht32f
-      - ht32f_opt
-  - name: HT32F50343_32QFN
+    - main
+  - !Nvm
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20003000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x0
-            end: 0x10000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - ht32f
-      - ht32f_opt
-  - name: HT32F50343_46QFN
+    - main
+  flash_algorithms:
+  - ht32f
+  - ht32f_opt
+- name: HT32F50343_32QFN
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20003000
     cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20003000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x0
-            end: 0x10000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - ht32f
-      - ht32f_opt
-  - name: HT32F50343_48LQFP
+    - main
+  - !Nvm
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20003000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x0
-            end: 0x10000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - ht32f
-      - ht32f_opt
-  - name: HT32F50343_64LQFP
+    - main
+  flash_algorithms:
+  - ht32f
+  - ht32f_opt
+- name: HT32F50343_46QFN
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20003000
     cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20003000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x0
-            end: 0x10000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - ht32f
-      - ht32f_opt
+    - main
+  - !Nvm
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - ht32f
+  - ht32f_opt
+- name: HT32F50343_48LQFP
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - ht32f
+  - ht32f_opt
+- name: HT32F50343_64LQFP
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - ht32f
+  - ht32f_opt
 flash_algorithms:
-  - name: ht32f_opt
-    description: HT32 Series Flash Options
-    cores:
-      - main
-    default: true
-    instructions: RUkBIAhgRUkDIAhgREgeIUFhgWFESUNISUTIYD9IgDCAaEhgCGAAIHBHPUgMIQFhACHBYAhGcEc7SEhEwWg4SAFgCiHBYBQhAWEA4AC/AWnJBgkPDin50YFpNEoRQgPQHiGBYQEgcEcAIHBHLkpKRFFoSR6IQ5FoiEIB0QAgcEcTaNFoyRiBQgHYASBwRyRJCGAII8tgFCMLYZBgAOAAvwhpwAYADw4o+dGIaR9KEEDs0B4giGHo53C1G0vJHEtEiQiACN1oiQCAABtoRBjrGCQfnEIB0wEgcL0RSwQk3GAUJRJOE+AYYBRoXGAdYQDgAL8caeQGJA8OLPnRnGk0QgLQHiCYYebnAB0JHxIdACnp0QAgcL0AAACDCEAAAQhAAAAIQAAA8B8IAAAAHgACAAAAAAAAAAAAAAAAAAAAAAD/////AAAAAA==
-    pc_init: 0x1
-    pc_uninit: 0x2b
-    pc_program_page: 0xb9
-    pc_erase_sector: 0x6d
-    pc_erase_all: 0x39
-    data_section_offset: 0x130
-    flash_properties:
-      address_range:
-        start: 0x1ff00000
-        end: 0x1ff01000
-      page_size: 0x200
-      erased_byte_value: 0xff
-      program_page_timeout: 0x64
-      erase_sector_timeout: 0x1f4
-      sectors:
-        - size: 0x200
-          address: 0x0
-  - name: ht32f
-    description: HT32 Series Flash
-    cores:
-      - main
-    default: true
-    instructions: SUkBIAhgSUkDIAhgHiDJAkhhiGFFSYAxCGhFSoMYRUoAIEpE0GCIaAArUGBJaADRSR5BQwAgEWBwRz9IDCEBYQAhwWAIRnBHOkhIRMFoOkgBYAohwWAUIQFhAOAAvwFpyQYJDw4p+dGBaTRKEUID0B4hgWEBIHBHACBwRy1KSkRRaEkeiEORaIhCAdEAIHBHE2jRaMkYgUIB2AEgcEcmSQhgCCPLYBQjC2GQYADgAL8IacAGAA8OKPnRiGkfShBA7NAeIIhh6OdwtRpLyRxLRIkIgAjdaIkAgAAbaEQY6xgkH5xCAdMBIHC9E0sEJNxgFCUSThPgGGAUaFxgHWEA4AC/HGnkBiQPDiz50ZxpNEIC0B4gmGHm5wAdCR8SHQAp6dEAIHC9AAAAgwhAAAEIQK7qifwIAAAAAAAIQB4AAgAAAAAAAAAAAAAAAAAAAAAA/////wAAAAA=
-    pc_init: 0x1
-    pc_uninit: 0x3b
-    pc_program_page: 0xc9
-    pc_erase_sector: 0x7d
-    pc_erase_all: 0x49
-    data_section_offset: 0x140
-    flash_properties:
-      address_range:
-        start: 0x0
-        end: 0x100000
-      page_size: 0x200
-      erased_byte_value: 0xff
-      program_page_timeout: 0x64
-      erase_sector_timeout: 0x1f4
-      sectors:
-        - size: 0x200
-          address: 0x0
+- name: ht32f_opt
+  description: HT32 Series Flash Options
+  default: true
+  instructions: RUkBIAhgRUkDIAhgREgeIUFhgWFESUNISUTIYD9IgDCAaEhgCGAAIHBHPUgMIQFhACHBYAhGcEc7SEhEwWg4SAFgCiHBYBQhAWEA4AC/AWnJBgkPDin50YFpNEoRQgPQHiGBYQEgcEcAIHBHLkpKRFFoSR6IQ5FoiEIB0QAgcEcTaNFoyRiBQgHYASBwRyRJCGAII8tgFCMLYZBgAOAAvwhpwAYADw4o+dGIaR9KEEDs0B4giGHo53C1G0vJHEtEiQiACN1oiQCAABtoRBjrGCQfnEIB0wEgcL0RSwQk3GAUJRJOE+AYYBRoXGAdYQDgAL8caeQGJA8OLPnRnGk0QgLQHiCYYebnAB0JHxIdACnp0QAgcL0AAACDCEAAAQhAAAAIQAAA8B8IAAAAHgACAAAAAAAAAAAAAAAAAAAAAAD/////AAAAAA==
+  pc_init: 0x1
+  pc_uninit: 0x2b
+  pc_program_page: 0xb9
+  pc_erase_sector: 0x6d
+  pc_erase_all: 0x39
+  data_section_offset: 0x130
+  flash_properties:
+    address_range:
+      start: 0x1ff00000
+      end: 0x1ff01000
+    page_size: 0x200
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 500
+    sectors:
+    - size: 0x200
+      address: 0x0
+  cores:
+  - main
+- name: ht32f
+  description: HT32 Series Flash
+  default: true
+  instructions: SUkBIAhgSUkDIAhgHiDJAkhhiGFFSYAxCGhFSoMYRUoAIEpE0GCIaAArUGBJaADRSR5BQwAgEWBwRz9IDCEBYQAhwWAIRnBHOkhIRMFoOkgBYAohwWAUIQFhAOAAvwFpyQYJDw4p+dGBaTRKEUID0B4hgWEBIHBHACBwRy1KSkRRaEkeiEORaIhCAdEAIHBHE2jRaMkYgUIB2AEgcEcmSQhgCCPLYBQjC2GQYADgAL8IacAGAA8OKPnRiGkfShBA7NAeIIhh6OdwtRpLyRxLRIkIgAjdaIkAgAAbaEQY6xgkH5xCAdMBIHC9E0sEJNxgFCUSThPgGGAUaFxgHWEA4AC/HGnkBiQPDiz50ZxpNEIC0B4gmGHm5wAdCR8SHQAp6dEAIHC9AAAAgwhAAAEIQK7qifwIAAAAAAAIQB4AAgAAAAAAAAAAAAAAAAAAAAAA/////wAAAAA=
+  pc_init: 0x1
+  pc_uninit: 0x3b
+  pc_program_page: 0xc9
+  pc_erase_sector: 0x7d
+  pc_erase_all: 0x49
+  data_section_offset: 0x140
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x100000
+    page_size: 0x200
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 500
+    sectors:
+    - size: 0x200
+      address: 0x0
+  cores:
+  - main

@@ -3,4476 +3,4158 @@ manufacturer:
   id: 0x20
   cc: 0x0
 variants:
-  - name: STM32L010C6Tx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_32
-      - stm32l010x6_8_eeprom
-      - stm32l0xx_opt
-  - name: STM32L010F4Px
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20000800
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8004000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_16
-      - stm32l010x4_eeprom
-      - stm32l0xx_opt
-  - name: STM32L010K4Tx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20000800
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8004000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_16
-      - stm32l010x4_eeprom
-      - stm32l0xx_opt
-  - name: STM32L010K8Tx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_64
-      - stm32l010x6_8_eeprom
-      - stm32l0xx_opt
-  - name: STM32L010R8Tx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20000800
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_64
-      - stm32l010x6_8_eeprom
-      - stm32l0xx_opt
-  - name: STM32L010RBTx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20000800
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8020000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_128
-      - stm32l010xb_eeprom
-      - stm32l0xx_opt
-  - name: STM32L011D3Px
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20000800
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8002000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_8
-      - stm32l01_2x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L011D4Px
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20000800
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8004000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_16
-      - stm32l01_2x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L011E4Yx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20000800
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8004000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_16
-      - stm32l01_2x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L011F3Px
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20000800
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8002000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_8
-      - stm32l01_2x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L011F3Ux
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20000800
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8002000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_8
-      - stm32l01_2x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L011F4Px
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20000800
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8004000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_16
-      - stm32l01_2x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L011F4Ux
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20000800
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8004000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_16
-      - stm32l01_2x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L011G3Ux
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20000800
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8002000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_8
-      - stm32l01_2x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L011G4Ux
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20000800
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8004000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_16
-      - stm32l01_2x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L011K3Tx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20000800
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8002000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_8
-      - stm32l01_2x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L011K3Ux
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20000800
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8002000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_8
-      - stm32l01_2x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L011K4Tx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20000800
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8004000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_16
-      - stm32l01_2x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L011K4Ux
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20000800
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8004000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_16
-      - stm32l01_2x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L021D4Px
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20000800
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8004000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_16
-      - stm32l01_2x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L021F4Px
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20000800
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8004000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_16
-      - stm32l01_2x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L021F4Ux
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20000800
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8004000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_16
-      - stm32l01_2x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L021G4Ux
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20000800
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8004000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_16
-      - stm32l01_2x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L021K4Tx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20000800
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8004000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_16
-      - stm32l01_2x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L021K4Ux
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20000800
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8004000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_16
-      - stm32l01_2x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L031C4Tx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8004000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_16
-      - stm32l03_4x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L031C6Tx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_32
-      - stm32l03_4x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L031E4Yx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8004000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_16
-      - stm32l03_4x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L031E6Yx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_32
-      - stm32l03_4x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L031F4Px
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8004000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_16
-      - stm32l03_4x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L031F6Px
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_32
-      - stm32l03_4x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L031G4Ux
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8004000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_16
-      - stm32l03_4x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L031G6Ux
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_32
-      - stm32l03_4x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L031G6UxS
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_32
-      - stm32l03_4x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L031K4Tx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8004000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_16
-      - stm32l03_4x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L031K4Ux
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8004000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_16
-      - stm32l03_4x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L031K6Tx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_32
-      - stm32l03_4x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L031K6Ux
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_32
-      - stm32l03_4x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L041C4Tx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8004000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_16
-      - stm32l03_4x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L041C6Tx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_32
-      - stm32l03_4x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L041E6Yx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_32
-      - stm32l03_4x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L041F6Px
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_32
-      - stm32l03_4x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L041G6Ux
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_32
-      - stm32l03_4x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L041K6Tx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_32
-      - stm32l03_4x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L041K6Ux
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_32
-      - stm32l03_4x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L051C6Tx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_32
-      - stm32l05_6x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L051C8Tx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_64
-      - stm32l05_6x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L051K6Tx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_32
-      - stm32l05_6x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L051K6Ux
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_32
-      - stm32l05_6x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L051K8Tx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_64
-      - stm32l05_6x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L051K8Ux
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_64
-      - stm32l05_6x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L051R6Hx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_32
-      - stm32l05_6x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L051R6Tx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_32
-      - stm32l05_6x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L051R8Hx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_64
-      - stm32l05_6x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L051R8Tx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_64
-      - stm32l05_6x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L051T6Yx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_32
-      - stm32l05_6x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L051T8Yx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_64
-      - stm32l05_6x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L052C6Tx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_32
-      - stm32l05_6x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L052C8Tx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_64
-      - stm32l05_6x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L052K6Tx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_32
-      - stm32l05_6x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L052K6Ux
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_32
-      - stm32l05_6x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L052K8Tx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_64
-      - stm32l05_6x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L052K8Ux
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_64
-      - stm32l05_6x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L052R6Hx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_32
-      - stm32l05_6x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L052R6Tx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_32
-      - stm32l05_6x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L052R8Hx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_64
-      - stm32l05_6x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L052R8Tx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_64
-      - stm32l05_6x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L052T6Yx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_32
-      - stm32l05_6x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L052T8Yx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_64
-      - stm32l05_6x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L053C6Tx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_32
-      - stm32l05_6x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L053C8Tx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_64
-      - stm32l05_6x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L053R6Hx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_32
-      - stm32l05_6x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L053R6Tx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_32
-      - stm32l05_6x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L053R8Hx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_64
-      - stm32l05_6x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L053R8Tx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_64
-      - stm32l05_6x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L062K8Tx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_64
-      - stm32l05_6x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L062K8Ux
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_64
-      - stm32l05_6x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L063C8Tx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_64
-      - stm32l05_6x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L063R8Tx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20002000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_64
-      - stm32l05_6x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L071C8Tx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_64
-      - stm32l07x_64_eeprom
-      - stm32l0xx_opt
-  - name: STM32L071CBTx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8020000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_128
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L071CBYx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8020000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_128
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L071CZTx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8030000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_192
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L071CZYx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8030000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_192
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L071K8Ux
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_64
-      - stm32l07x_64_eeprom
-      - stm32l0xx_opt
-  - name: STM32L071KBTx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8020000
-          is_boot_memory: true
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8080000
-            end: 0x8080200
-          is_boot_memory: false
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_128
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L071KBUx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8020000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_128
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L071KZTx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8030000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_192
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L071KZUx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8030000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_192
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L071RBHx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8020000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_128
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L071RBTx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8020000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_128
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L071RZHx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8030000
-          is_boot_memory: true
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x08080000
-            end: 0x08081800
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x1FF80000
-            end: 0x1FF80020
-          is_boot_memory: false
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_192
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L071RZTx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8030000
-          is_boot_memory: true
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x08080000
-            end: 0x08081800
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x1FF80000
-            end: 0x1FF80020
-          is_boot_memory: false
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_192
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L071V8Ix
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_64
-      - stm32l07x_64_eeprom
-      - stm32l0xx_opt
-  - name: STM32L071V8Tx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_64
-      - stm32l07x_64_eeprom
-      - stm32l0xx_opt
-  - name: STM32L071VBIx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8020000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_128
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L071VBTx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8020000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_128
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L071VZIx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8030000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_192
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L071VZTx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8030000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_192
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L072CBTx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8020000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_128
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L072CBYx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8020000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_128
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L072CZEx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8030000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_192
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L072CZTx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8030000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_192
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L072CZYx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8030000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_192
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L072KBTx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8020000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_128
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L072KBUx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8020000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_128
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L072KZTx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8030000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_192
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L072KZUx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8030000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_192
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L072RBHx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8020000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_128
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L072RBIx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8020000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_128
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L072RBTx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8020000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_128
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L072RZHx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8030000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_192
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L072RZIx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8030000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_192
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L072RZTx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8030000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_192
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L072V8Ix
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_64
-      - stm32l07x_64_eeprom
-      - stm32l0xx_opt
-  - name: STM32L072V8Tx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_64
-      - stm32l07x_64_eeprom
-      - stm32l0xx_opt
-  - name: STM32L072VBIx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8020000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_128
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L072VBTx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8020000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_128
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L072VZIx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8030000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_192
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L072VZTx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8030000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_192
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L073CBTx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8020000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_128
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L073CZTx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8030000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_192
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L073RBHx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8020000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_128
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L073RBTx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8020000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_128
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L073RZHx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8030000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_192
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L073RZTx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8030000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_192
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L073V8Ix
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_64
-      - stm32l07x_64_eeprom
-      - stm32l0xx_opt
-  - name: STM32L073V8Tx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_64
-      - stm32l07x_64_eeprom
-      - stm32l0xx_opt
-  - name: STM32L073VBIx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8020000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_128
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L073VBTx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8020000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_128
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L073VZIx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8030000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_192
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L073VZTx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8030000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_192
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L081CZTx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8030000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_192
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L081KZTx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8030000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_192
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L081KZUx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8030000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_192
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L082CZYx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8030000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_192
-      - stm32l0xx_opt
-      - stm32l07_8x_eeprom
-  - name: STM32L082KBTx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8020000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_128
-      - stm32l0xx_opt
-      - stm32l07_8x_eeprom
-  - name: STM32L082KBUx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8020000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_128
-      - stm32l0xx_opt
-      - stm32l07_8x_eeprom
-  - name: STM32L082KZTx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8030000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_192
-      - stm32l0xx_opt
-      - stm32l07_8x_eeprom
-  - name: STM32L082KZUx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8030000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_192
-      - stm32l0xx_opt
-      - stm32l07_8x_eeprom
-  - name: STM32L083CBTx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8020000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_128
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L083CZTx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8030000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_192
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L083RBHx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8020000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_128
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L083RBTx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8020000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_128
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L083RZHx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8030000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_192
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L083RZTx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8030000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_192
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L083V8Ix
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20050000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_64
-      - stm32l07x_64_eeprom
-      - stm32l0xx_opt
-  - name: STM32L083V8Tx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20050000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_64
-      - stm32l07x_64_eeprom
-      - stm32l0xx_opt
-  - name: STM32L083VBIx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8020000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_128
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L083VBTx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8020000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_128
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L083VZIx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8030000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_192
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
-  - name: STM32L083VZTx
-    cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20005000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8030000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - stm32l0xx_192
-      - stm32l07_8x_eeprom
-      - stm32l0xx_opt
+- name: STM32L010C6Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_32
+  - stm32l010x6_8_eeprom
+  - stm32l0xx_opt
+- name: STM32L010F4Px
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20000800
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_16
+  - stm32l010x4_eeprom
+  - stm32l0xx_opt
+- name: STM32L010K4Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20000800
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_16
+  - stm32l010x4_eeprom
+  - stm32l0xx_opt
+- name: STM32L010K8Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_64
+  - stm32l010x6_8_eeprom
+  - stm32l0xx_opt
+- name: STM32L010R8Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20000800
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_64
+  - stm32l010x6_8_eeprom
+  - stm32l0xx_opt
+- name: STM32L010RBTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20000800
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_128
+  - stm32l010xb_eeprom
+  - stm32l0xx_opt
+- name: STM32L011D3Px
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20000800
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8002000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_8
+  - stm32l01_2x_eeprom
+  - stm32l0xx_opt
+- name: STM32L011D4Px
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20000800
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_16
+  - stm32l01_2x_eeprom
+  - stm32l0xx_opt
+- name: STM32L011E4Yx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20000800
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_16
+  - stm32l01_2x_eeprom
+  - stm32l0xx_opt
+- name: STM32L011F3Px
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20000800
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8002000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_8
+  - stm32l01_2x_eeprom
+  - stm32l0xx_opt
+- name: STM32L011F3Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20000800
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8002000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_8
+  - stm32l01_2x_eeprom
+  - stm32l0xx_opt
+- name: STM32L011F4Px
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20000800
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_16
+  - stm32l01_2x_eeprom
+  - stm32l0xx_opt
+- name: STM32L011F4Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20000800
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_16
+  - stm32l01_2x_eeprom
+  - stm32l0xx_opt
+- name: STM32L011G3Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20000800
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8002000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_8
+  - stm32l01_2x_eeprom
+  - stm32l0xx_opt
+- name: STM32L011G4Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20000800
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_16
+  - stm32l01_2x_eeprom
+  - stm32l0xx_opt
+- name: STM32L011K3Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20000800
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8002000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_8
+  - stm32l01_2x_eeprom
+  - stm32l0xx_opt
+- name: STM32L011K3Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20000800
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8002000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_8
+  - stm32l01_2x_eeprom
+  - stm32l0xx_opt
+- name: STM32L011K4Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20000800
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_16
+  - stm32l01_2x_eeprom
+  - stm32l0xx_opt
+- name: STM32L011K4Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20000800
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_16
+  - stm32l01_2x_eeprom
+  - stm32l0xx_opt
+- name: STM32L021D4Px
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20000800
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_16
+  - stm32l01_2x_eeprom
+  - stm32l0xx_opt
+- name: STM32L021F4Px
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20000800
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_16
+  - stm32l01_2x_eeprom
+  - stm32l0xx_opt
+- name: STM32L021F4Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20000800
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_16
+  - stm32l01_2x_eeprom
+  - stm32l0xx_opt
+- name: STM32L021G4Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20000800
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_16
+  - stm32l01_2x_eeprom
+  - stm32l0xx_opt
+- name: STM32L021K4Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20000800
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_16
+  - stm32l01_2x_eeprom
+  - stm32l0xx_opt
+- name: STM32L021K4Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20000800
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_16
+  - stm32l01_2x_eeprom
+  - stm32l0xx_opt
+- name: STM32L031C4Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_16
+  - stm32l03_4x_eeprom
+  - stm32l0xx_opt
+- name: STM32L031C6Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_32
+  - stm32l03_4x_eeprom
+  - stm32l0xx_opt
+- name: STM32L031E4Yx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_16
+  - stm32l03_4x_eeprom
+  - stm32l0xx_opt
+- name: STM32L031E6Yx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_32
+  - stm32l03_4x_eeprom
+  - stm32l0xx_opt
+- name: STM32L031F4Px
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_16
+  - stm32l03_4x_eeprom
+  - stm32l0xx_opt
+- name: STM32L031F6Px
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_32
+  - stm32l03_4x_eeprom
+  - stm32l0xx_opt
+- name: STM32L031G4Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_16
+  - stm32l03_4x_eeprom
+  - stm32l0xx_opt
+- name: STM32L031G6Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_32
+  - stm32l03_4x_eeprom
+  - stm32l0xx_opt
+- name: STM32L031G6UxS
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_32
+  - stm32l03_4x_eeprom
+  - stm32l0xx_opt
+- name: STM32L031K4Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_16
+  - stm32l03_4x_eeprom
+  - stm32l0xx_opt
+- name: STM32L031K4Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_16
+  - stm32l03_4x_eeprom
+  - stm32l0xx_opt
+- name: STM32L031K6Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_32
+  - stm32l03_4x_eeprom
+  - stm32l0xx_opt
+- name: STM32L031K6Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_32
+  - stm32l03_4x_eeprom
+  - stm32l0xx_opt
+- name: STM32L041C4Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_16
+  - stm32l03_4x_eeprom
+  - stm32l0xx_opt
+- name: STM32L041C6Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_32
+  - stm32l03_4x_eeprom
+  - stm32l0xx_opt
+- name: STM32L041E6Yx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_32
+  - stm32l03_4x_eeprom
+  - stm32l0xx_opt
+- name: STM32L041F6Px
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_32
+  - stm32l03_4x_eeprom
+  - stm32l0xx_opt
+- name: STM32L041G6Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_32
+  - stm32l03_4x_eeprom
+  - stm32l0xx_opt
+- name: STM32L041K6Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_32
+  - stm32l03_4x_eeprom
+  - stm32l0xx_opt
+- name: STM32L041K6Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_32
+  - stm32l03_4x_eeprom
+  - stm32l0xx_opt
+- name: STM32L051C6Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_32
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L051C8Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_64
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L051K6Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_32
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L051K6Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_32
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L051K8Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_64
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L051K8Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_64
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L051R6Hx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_32
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L051R6Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_32
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L051R8Hx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_64
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L051R8Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_64
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L051T6Yx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_32
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L051T8Yx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_64
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L052C6Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_32
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L052C8Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_64
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L052K6Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_32
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L052K6Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_32
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L052K8Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_64
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L052K8Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_64
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L052R6Hx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_32
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L052R6Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_32
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L052R8Hx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_64
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L052R8Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_64
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L052T6Yx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_32
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L052T8Yx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_64
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L053C6Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_32
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L053C8Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_64
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L053R6Hx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_32
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L053R6Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_32
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L053R8Hx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_64
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L053R8Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_64
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L062K8Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_64
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L062K8Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_64
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L063C8Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_64
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L063R8Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_64
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L071C8Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_64
+  - stm32l07x_64_eeprom
+  - stm32l0xx_opt
+- name: STM32L071CBTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_128
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L071CBYx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_128
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L071CZTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L071CZYx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L071K8Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_64
+  - stm32l07x_64_eeprom
+  - stm32l0xx_opt
+- name: STM32L071KBTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8080000
+      end: 0x8080200
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_128
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L071KBUx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_128
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L071KZTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L071KZUx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L071RBHx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_128
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L071RBTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_128
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L071RZHx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8080000
+      end: 0x8081800
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x1ff80000
+      end: 0x1ff80020
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L071RZTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8080000
+      end: 0x8081800
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x1ff80000
+      end: 0x1ff80020
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L071V8Ix
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_64
+  - stm32l07x_64_eeprom
+  - stm32l0xx_opt
+- name: STM32L071V8Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_64
+  - stm32l07x_64_eeprom
+  - stm32l0xx_opt
+- name: STM32L071VBIx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_128
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L071VBTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_128
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L071VZIx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L071VZTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L072CBTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_128
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L072CBYx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_128
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L072CZEx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L072CZTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L072CZYx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L072KBTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_128
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L072KBUx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_128
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L072KZTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L072KZUx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L072RBHx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_128
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L072RBIx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_128
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L072RBTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_128
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L072RZHx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L072RZIx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L072RZTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L072V8Ix
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_64
+  - stm32l07x_64_eeprom
+  - stm32l0xx_opt
+- name: STM32L072V8Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_64
+  - stm32l07x_64_eeprom
+  - stm32l0xx_opt
+- name: STM32L072VBIx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_128
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L072VBTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_128
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L072VZIx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L072VZTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L073CBTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_128
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L073CZTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L073RBHx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_128
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L073RBTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_128
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L073RZHx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L073RZTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L073V8Ix
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_64
+  - stm32l07x_64_eeprom
+  - stm32l0xx_opt
+- name: STM32L073V8Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_64
+  - stm32l07x_64_eeprom
+  - stm32l0xx_opt
+- name: STM32L073VBIx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_128
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L073VBTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_128
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L073VZIx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L073VZTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L081CZTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L081KZTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L081KZUx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L082CZYx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l0xx_opt
+  - stm32l07_8x_eeprom
+- name: STM32L082KBTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_128
+  - stm32l0xx_opt
+  - stm32l07_8x_eeprom
+- name: STM32L082KBUx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_128
+  - stm32l0xx_opt
+  - stm32l07_8x_eeprom
+- name: STM32L082KZTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l0xx_opt
+  - stm32l07_8x_eeprom
+- name: STM32L082KZUx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l0xx_opt
+  - stm32l07_8x_eeprom
+- name: STM32L083CBTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_128
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L083CZTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L083RBHx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_128
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L083RBTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_128
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L083RZHx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L083RZTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L083V8Ix
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_64
+  - stm32l07x_64_eeprom
+  - stm32l0xx_opt
+- name: STM32L083V8Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_64
+  - stm32l07x_64_eeprom
+  - stm32l0xx_opt
+- name: STM32L083VBIx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_128
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L083VBTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_128
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L083VZIx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L083VZTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
 flash_algorithms:
-  - name: stm32l0xx_16
-    description: STM32L0 16KB Flash
-    cores:
-      - main
-    default: true
-    instructions: ASoB0AIqF9E7SIFpDyISAhFDgWE5ScFgOUnBYDlJAWE5SQFhwGnAAgbUOUg3SQFgBiFBYDdJgWAAIHBHASgB0AIoCNEsSEFoAiIRQ0FgQWgBIhFDQWAAIHBHMLUmSUpoTBUiQ0pgSmgIJSpDSmAAIgJgKUgmSgDgEGCLadsH+9FIaKBDSGBIaKhDSGAAIDC9ASBwR/C1GEwAIyUVCCY/MYkJjEYk4GFoKUNhYGFoMUNhYEAhgMqAwAkfACn60RZJp2n/BwLQEk85YPnnoWkJBQkPBtCgaQ8hCQIIQ6BhASDwvWFoqUNhYGFosUNhYFscnEXY2AAg8L0AIAJA782riQUEAwK/rp2MFhUUE1VVAAAAMABA/w8AAKqqAAAAAAAA
-    pc_init: 0x1
-    pc_uninit: 0x3d
-    pc_program_page: 0x95
-    pc_erase_sector: 0x5b
-    data_section_offset: 0x11c
-    flash_properties:
-      address_range:
-        start: 0x8000000
-        end: 0x8004000
-      page_size: 0x400
-      erased_byte_value: 0x0
-      program_page_timeout: 0x1f4
-      erase_sector_timeout: 0x1f4
-      sectors:
-        - size: 0x80
-          address: 0x0
-  - name: stm32l01_2x_eeprom
-    description: STM32L0 512 Byte Data EEPROM
-    cores:
-      - main
-    default: false
-    instructions: ASoB0AIqE9E3SIFpDyISAhFDgWE1ScFgNUnBYMBpwAIG1DVIM0kBYAYhQWAzSYFgACBwRwEoAdACKATRKkhBaAEiEUNBYAAgcEfwtf8hATElTP8wAApiaAACTQAqQ2JgYmgQJzpDYmAlSiNLACYGYADgGmCmafYH+9GmaTYFNg8G0KBpDyEJAghDoGEBIPC9AB0JH+rRYGioQ2BgYGi4Q2BgACDwvQEgcEfwtf8jATMNTv8xCQp0aAkCnEN0YBBMDU0K4BdoB2AA4Cxgt2n/B/vRAB0JHxIdGx8AKQHQACvw0QAg8L0AAAAgAkDvzauJBQQDAlVVAAAAMABA/w8AAKqqAAAAAAAA
-    pc_init: 0x1
-    pc_uninit: 0x35
-    pc_program_page: 0xab
-    pc_erase_sector: 0x4b
-    data_section_offset: 0x104
-    flash_properties:
-      address_range:
-        start: 0x8080000
-        end: 0x8080200
-      page_size: 0x100
-      erased_byte_value: 0x0
-      program_page_timeout: 0x1f4
-      erase_sector_timeout: 0x1f4
-      sectors:
-        - size: 0x200
-          address: 0x0
-  - name: stm32l0xx_192
-    description: 'STM32L0 192KB Flash '
-    cores:
-      - main
-    default: true
-    instructions: ASoB0AIqF9E7SIFpDyISAhFDgWE5ScFgOUnBYDlJAWE5SQFhwGnAAgbUOUg3SQFgBiFBYDdJgWAAIHBHASgB0AIoCNEsSEFoAiIRQ0FgQWgBIhFDQWAAIHBHMLUmSUpoTBUiQ0pgSmgIJSpDSmAAIgJgKUgmSgDgEGCLadsH+9FIaKBDSGBIaKhDSGAAIDC9ASBwR/C1GEwAIyUVCCY/MYkJjEYk4GFoKUNhYGFoMUNhYEAhgMqAwAkfACn60RZJp2n/BwLQEk85YPnnoWkJBQkPBtCgaQ8hCQIIQ6BhASDwvWFoqUNhYGFosUNhYFscnEXY2AAg8L0AIAJA782riQUEAwK/rp2MFhUUE1VVAAAAMABA/w8AAKqqAAAAAAAA
-    pc_init: 0x1
-    pc_uninit: 0x3d
-    pc_program_page: 0x95
-    pc_erase_sector: 0x5b
-    data_section_offset: 0x11c
-    flash_properties:
-      address_range:
-        start: 0x8000000
-        end: 0x8030000
-      page_size: 0x400
-      erased_byte_value: 0x0
-      program_page_timeout: 0x1f4
-      erase_sector_timeout: 0x1f4
-      sectors:
-        - size: 0x80
-          address: 0x0
-  - name: stm32l010xb_eeprom
-    description: STM32L010 512 Byte Data EEPROM
-    cores:
-      - main
-    default: false
-    instructions: ASoB0AIqE9E3SIFpDyISAhFDgWE1ScFgNUnBYMBpwAIG1DVIM0kBYAYhQWAzSYFgACBwRwEoAdACKATRKkhBaAEiEUNBYAAgcEfwtf8hATElTP8wAApiaAACTQAqQ2JgYmgQJzpDYmAlSiNLACYGYADgGmCmafYH+9GmaTYFNg8G0KBpDyEJAghDoGEBIPC9AB0JH+rRYGioQ2BgYGi4Q2BgACDwvQEgcEfwtf8jATMNTv8xCQp0aAkCnEN0YBBMDU0K4BdoB2AA4Cxgt2n/B/vRAB0JHxIdGx8AKQHQACvw0QAg8L0AAAAgAkDvzauJBQQDAlVVAAAAMABA/w8AAKqqAAAAAAAA
-    pc_init: 0x1
-    pc_uninit: 0x35
-    pc_program_page: 0xab
-    pc_erase_sector: 0x4b
-    data_section_offset: 0x104
-    flash_properties:
-      address_range:
-        start: 0x8080000
-        end: 0x8080200
-      page_size: 0x100
-      erased_byte_value: 0x0
-      program_page_timeout: 0x1f4
-      erase_sector_timeout: 0x1f4
-      sectors:
-        - size: 0x200
-          address: 0x0
-  - name: stm32l05_6x_eeprom
-    description: STM32L0 2 KByte Data EEPROM
-    cores:
-      - main
-    default: false
-    instructions: ASoB0AIqE9E3SIFpDyISAhFDgWE1ScFgNUnBYMBpwAIG1DVIM0kBYAYhQWAzSYFgACBwRwEoAdACKATRKkhBaAEiEUNBYAAgcEfwtf8hATElTP8wAApiaAACTQAqQ2JgYmgQJzpDYmAlSiNLACYGYADgGmCmafYH+9GmaTYFNg8G0KBpDyEJAghDoGEBIPC9AB0JH+rRYGioQ2BgYGi4Q2BgACDwvQEgcEfwtf8jATMNTv8xCQp0aAkCnEN0YBBMDU0K4BdoB2AA4Cxgt2n/B/vRAB0JHxIdGx8AKQHQACvw0QAg8L0AAAAgAkDvzauJBQQDAlVVAAAAMABA/w8AAKqqAAAAAAAA
-    pc_init: 0x1
-    pc_uninit: 0x35
-    pc_program_page: 0xab
-    pc_erase_sector: 0x4b
-    data_section_offset: 0x104
-    flash_properties:
-      address_range:
-        start: 0x8080000
-        end: 0x8080800
-      page_size: 0x100
-      erased_byte_value: 0x0
-      program_page_timeout: 0x1f4
-      erase_sector_timeout: 0x1f4
-      sectors:
-        - size: 0x800
-          address: 0x0
-  - name: stm32l03_4x_eeprom
-    description: STM32L0 1KB Data EEPROM
-    cores:
-      - main
-    default: false
-    instructions: ASoB0AIqE9E3SIFpDyISAhFDgWE1ScFgNUnBYMBpwAIG1DVIM0kBYAYhQWAzSYFgACBwRwEoAdACKATRKkhBaAEiEUNBYAAgcEfwtf8hATElTP8wAApiaAACTQAqQ2JgYmgQJzpDYmAlSiNLACYGYADgGmCmafYH+9GmaTYFNg8G0KBpDyEJAghDoGEBIPC9AB0JH+rRYGioQ2BgYGi4Q2BgACDwvQEgcEfwtf8jATMNTv8xCQp0aAkCnEN0YBBMDU0K4BdoB2AA4Cxgt2n/B/vRAB0JHxIdGx8AKQHQACvw0QAg8L0AAAAgAkDvzauJBQQDAlVVAAAAMABA/w8AAKqqAAAAAAAA
-    pc_init: 0x1
-    pc_uninit: 0x35
-    pc_program_page: 0xab
-    pc_erase_sector: 0x4b
-    data_section_offset: 0x104
-    flash_properties:
-      address_range:
-        start: 0x8080000
-        end: 0x8080400
-      page_size: 0x100
-      erased_byte_value: 0x0
-      program_page_timeout: 0x1f4
-      erase_sector_timeout: 0x1f4
-      sectors:
-        - size: 0x400
-          address: 0x0
-  - name: stm32l07_8x_eeprom
-    description: STM32L0 2 KByte Data EEPROM
-    cores:
-      - main
-    default: false
-    instructions: ASoB0AIqE9E3SIFpDyISAhFDgWE1ScFgNUnBYMBpwAIG1DVIM0kBYAYhQWAzSYFgACBwRwEoAdACKATRKkhBaAEiEUNBYAAgcEfwtf8hATElTP8wAApiaAACTQAqQ2JgYmgQJzpDYmAlSiNLACYGYADgGmCmafYH+9GmaTYFNg8G0KBpDyEJAghDoGEBIPC9AB0JH+rRYGioQ2BgYGi4Q2BgACDwvQEgcEfwtf8jATMNTv8xCQp0aAkCnEN0YBBMDU0K4BdoB2AA4Cxgt2n/B/vRAB0JHxIdGx8AKQHQACvw0QAg8L0AAAAgAkDvzauJBQQDAlVVAAAAMABA/w8AAKqqAAAAAAAA
-    pc_init: 0x1
-    pc_uninit: 0x35
-    pc_program_page: 0xab
-    pc_erase_sector: 0x4b
-    data_section_offset: 0x104
-    flash_properties:
-      address_range:
-        start: 0x8080000
-        end: 0x8081800
-      page_size: 0x100
-      erased_byte_value: 0x0
-      program_page_timeout: 0x1f4
-      erase_sector_timeout: 0x1f4
-      sectors:
-        - size: 0xc00
-          address: 0x0
-        - size: 0xc00
-          address: 0xc00
-  - name: stm32l0xx_32
-    description: STM32L0 32KB Flash
-    cores:
-      - main
-    default: true
-    instructions: ASoB0AIqF9E7SIFpDyISAhFDgWE5ScFgOUnBYDlJAWE5SQFhwGnAAgbUOUg3SQFgBiFBYDdJgWAAIHBHASgB0AIoCNEsSEFoAiIRQ0FgQWgBIhFDQWAAIHBHMLUmSUpoTBUiQ0pgSmgIJSpDSmAAIgJgKUgmSgDgEGCLadsH+9FIaKBDSGBIaKhDSGAAIDC9ASBwR/C1GEwAIyUVCCY/MYkJjEYk4GFoKUNhYGFoMUNhYEAhgMqAwAkfACn60RZJp2n/BwLQEk85YPnnoWkJBQkPBtCgaQ8hCQIIQ6BhASDwvWFoqUNhYGFosUNhYFscnEXY2AAg8L0AIAJA782riQUEAwK/rp2MFhUUE1VVAAAAMABA/w8AAKqqAAAAAAAA
-    pc_init: 0x1
-    pc_uninit: 0x3d
-    pc_program_page: 0x95
-    pc_erase_sector: 0x5b
-    data_section_offset: 0x11c
-    flash_properties:
-      address_range:
-        start: 0x8000000
-        end: 0x8008000
-      page_size: 0x400
-      erased_byte_value: 0x0
-      program_page_timeout: 0x1f4
-      erase_sector_timeout: 0x1f4
-      sectors:
-        - size: 0x80
-          address: 0x0
-  - name: stm32l0xx_128
-    description: STM32L0 128KB Flash
-    cores:
-      - main
-    default: true
-    instructions: ASoB0AIqF9E7SIFpDyISAhFDgWE5ScFgOUnBYDlJAWE5SQFhwGnAAgbUOUg3SQFgBiFBYDdJgWAAIHBHASgB0AIoCNEsSEFoAiIRQ0FgQWgBIhFDQWAAIHBHMLUmSUpoTBUiQ0pgSmgIJSpDSmAAIgJgKUgmSgDgEGCLadsH+9FIaKBDSGBIaKhDSGAAIDC9ASBwR/C1GEwAIyUVCCY/MYkJjEYk4GFoKUNhYGFoMUNhYEAhgMqAwAkfACn60RZJp2n/BwLQEk85YPnnoWkJBQkPBtCgaQ8hCQIIQ6BhASDwvWFoqUNhYGFosUNhYFscnEXY2AAg8L0AIAJA782riQUEAwK/rp2MFhUUE1VVAAAAMABA/w8AAKqqAAAAAAAA
-    pc_init: 0x1
-    pc_uninit: 0x3d
-    pc_program_page: 0x95
-    pc_erase_sector: 0x5b
-    data_section_offset: 0x11c
-    flash_properties:
-      address_range:
-        start: 0x8000000
-        end: 0x8020000
-      page_size: 0x400
-      erased_byte_value: 0x0
-      program_page_timeout: 0x1f4
-      erase_sector_timeout: 0x1f4
-      sectors:
-        - size: 0x80
-          address: 0x0
-  - name: stm32l0xx_8
-    description: STM32L0 8KB Flash
-    cores:
-      - main
-    default: true
-    instructions: ASoB0AIqF9E7SIFpDyISAhFDgWE5ScFgOUnBYDlJAWE5SQFhwGnAAgbUOUg3SQFgBiFBYDdJgWAAIHBHASgB0AIoCNEsSEFoAiIRQ0FgQWgBIhFDQWAAIHBHMLUmSUpoTBUiQ0pgSmgIJSpDSmAAIgJgKUgmSgDgEGCLadsH+9FIaKBDSGBIaKhDSGAAIDC9ASBwR/C1GEwAIyUVCCY/MYkJjEYk4GFoKUNhYGFoMUNhYEAhgMqAwAkfACn60RZJp2n/BwLQEk85YPnnoWkJBQkPBtCgaQ8hCQIIQ6BhASDwvWFoqUNhYGFosUNhYFscnEXY2AAg8L0AIAJA782riQUEAwK/rp2MFhUUE1VVAAAAMABA/w8AAKqqAAAAAAAA
-    pc_init: 0x1
-    pc_uninit: 0x3d
-    pc_program_page: 0x95
-    pc_erase_sector: 0x5b
-    data_section_offset: 0x11c
-    flash_properties:
-      address_range:
-        start: 0x8000000
-        end: 0x8002000
-      page_size: 0x400
-      erased_byte_value: 0x0
-      program_page_timeout: 0x1f4
-      erase_sector_timeout: 0x1f4
-      sectors:
-        - size: 0x80
-          address: 0x0
-  - name: stm32l010x6_8_eeprom
-    description: STM32L010 256 Byte Data EEPROM
-    cores:
-      - main
-    default: false
-    instructions: ASoB0AIqE9E3SIFpDyISAhFDgWE1ScFgNUnBYMBpwAIG1DVIM0kBYAYhQWAzSYFgACBwRwEoAdACKATRKkhBaAEiEUNBYAAgcEfwtf8hATElTP8wAApiaAACTQAqQ2JgYmgQJzpDYmAlSiNLACYGYADgGmCmafYH+9GmaTYFNg8G0KBpDyEJAghDoGEBIPC9AB0JH+rRYGioQ2BgYGi4Q2BgACDwvQEgcEfwtf8jATMNTv8xCQp0aAkCnEN0YBBMDU0K4BdoB2AA4Cxgt2n/B/vRAB0JHxIdGx8AKQHQACvw0QAg8L0AAAAgAkDvzauJBQQDAlVVAAAAMABA/w8AAKqqAAAAAAAA
-    pc_init: 0x1
-    pc_uninit: 0x35
-    pc_program_page: 0xab
-    pc_erase_sector: 0x4b
-    data_section_offset: 0x104
-    flash_properties:
-      address_range:
-        start: 0x8080000
-        end: 0x8080100
-      page_size: 0x100
-      erased_byte_value: 0x0
-      program_page_timeout: 0x1f4
-      erase_sector_timeout: 0x1f4
-      sectors:
-        - size: 0x100
-          address: 0x0
-  - name: stm32l07x_64_eeprom
-    description: STM32L0 2 KByte Data EEPROM
-    cores:
-      - main
-    default: false
-    instructions: ASoB0AIqE9E3SIFpDyISAhFDgWE1ScFgNUnBYMBpwAIG1DVIM0kBYAYhQWAzSYFgACBwRwEoAdACKATRKkhBaAEiEUNBYAAgcEfwtf8hATElTP8wAApiaAACTQAqQ2JgYmgQJzpDYmAlSiNLACYGYADgGmCmafYH+9GmaTYFNg8G0KBpDyEJAghDoGEBIPC9AB0JH+rRYGioQ2BgYGi4Q2BgACDwvQEgcEfwtf8jATMNTv8xCQp0aAkCnEN0YBBMDU0K4BdoB2AA4Cxgt2n/B/vRAB0JHxIdGx8AKQHQACvw0QAg8L0AAAAgAkDvzauJBQQDAlVVAAAAMABA/w8AAKqqAAAAAAAA
-    pc_init: 0x1
-    pc_uninit: 0x35
-    pc_program_page: 0xab
-    pc_erase_sector: 0x4b
-    data_section_offset: 0x104
-    flash_properties:
-      address_range:
-        start: 0x8080c00
-        end: 0x8081800
-      page_size: 0x100
-      erased_byte_value: 0x0
-      program_page_timeout: 0x1f4
-      erase_sector_timeout: 0x1f4
-      sectors:
-        - size: 0xc00
-          address: 0x0
-  - name: stm32l0xx_opt
-    description: STM32L0xx Flash Options
-    cores:
-      - main
-    default: false
-    instructions: ASoB0AIqF9E/SIFpDyISAhFDgWE9ScFgPUnBYD1JQWE9SUFhwGnAAgbUPUg7SQFgBiFBYDtJgWAAIHBHASgB0AIoCNEwSEFoBCIRQ0FgQWgBIhFDQWAAIHBHNEgySQFgM0lBYDNJgWCBYCdIMkksSgDgEWCDadsH+9GBaQkFCQ8G0IFpDyISAhFDgWEBIHBHACBwRwAgcEcBIHBH8LUmTR9OGUwUIQdoE2ifQgLQA2AA4DVgo2nbB/vRo2kbBRsPBtCgaQ8hCQIIQ6BhASDwvQAdCR8SHQAp5dEAIPC98LUVTA9NCE4UIQNoF2i7QgnRAOAsYLNp2wf70QAdCR8SHQAp8dHwvQAAACACQO/Nq4kFBAMCyNnq+ycmJSRVVQAAADAAQP8PAACqAFX/AAD4H3CAj38AAP//qqoAAAAAAAA=
-    pc_init: 0x1
-    pc_uninit: 0x3d
-    pc_program_page: 0x9d
-    pc_erase_sector: 0x95
-    pc_erase_all: 0x5b
-    data_section_offset: 0x13c
-    flash_properties:
-      address_range:
-        start: 0x1ff80000
-        end: 0x1ff80020
-      page_size: 0xc
-      erased_byte_value: 0xff
-      program_page_timeout: 0xbb8
-      erase_sector_timeout: 0xbb8
-      sectors:
-        - size: 0x14
-          address: 0x0
-  - name: stm32l010x4_eeprom
-    description: STM32L010 128 Byte Data EEPROM
-    cores:
-      - main
-    default: false
-    instructions: ASoB0AIqE9E3SIFpDyISAhFDgWE1ScFgNUnBYMBpwAIG1DVIM0kBYAYhQWAzSYFgACBwRwEoAdACKATRKkhBaAEiEUNBYAAgcEfwtf8hATElTP8wAApiaAACTQAqQ2JgYmgQJzpDYmAlSiNLACYGYADgGmCmafYH+9GmaTYFNg8G0KBpDyEJAghDoGEBIPC9AB0JH+rRYGioQ2BgYGi4Q2BgACDwvQEgcEfwtf8jATMNTv8xCQp0aAkCnEN0YBBMDU0K4BdoB2AA4Cxgt2n/B/vRAB0JHxIdGx8AKQHQACvw0QAg8L0AAAAgAkDvzauJBQQDAlVVAAAAMABA/w8AAKqqAAAAAAAA
-    pc_init: 0x1
-    pc_uninit: 0x35
-    pc_program_page: 0xab
-    pc_erase_sector: 0x4b
-    data_section_offset: 0x104
-    flash_properties:
-      address_range:
-        start: 0x8080000
-        end: 0x8080080
-      page_size: 0x80
-      erased_byte_value: 0x0
-      program_page_timeout: 0x1f4
-      erase_sector_timeout: 0x1f4
-      sectors:
-        - size: 0x80
-          address: 0x0
-  - name: stm32l0xx_64
-    description: 'STM32L0 64KB Flash '
-    cores:
-      - main
-    default: true
-    instructions: ASoB0AIqF9E7SIFpDyISAhFDgWE5ScFgOUnBYDlJAWE5SQFhwGnAAgbUOUg3SQFgBiFBYDdJgWAAIHBHASgB0AIoCNEsSEFoAiIRQ0FgQWgBIhFDQWAAIHBHMLUmSUpoTBUiQ0pgSmgIJSpDSmAAIgJgKUgmSgDgEGCLadsH+9FIaKBDSGBIaKhDSGAAIDC9ASBwR/C1GEwAIyUVCCY/MYkJjEYk4GFoKUNhYGFoMUNhYEAhgMqAwAkfACn60RZJp2n/BwLQEk85YPnnoWkJBQkPBtCgaQ8hCQIIQ6BhASDwvWFoqUNhYGFosUNhYFscnEXY2AAg8L0AIAJA782riQUEAwK/rp2MFhUUE1VVAAAAMABA/w8AAKqqAAAAAAAA
-    pc_init: 0x1
-    pc_uninit: 0x3d
-    pc_program_page: 0x95
-    pc_erase_sector: 0x5b
-    data_section_offset: 0x11c
-    flash_properties:
-      address_range:
-        start: 0x8000000
-        end: 0x8010000
-      page_size: 0x400
-      erased_byte_value: 0x0
-      program_page_timeout: 0x1f4
-      erase_sector_timeout: 0x1f4
-      sectors:
-        - size: 0x80
-          address: 0x0
+- name: stm32l0xx_16
+  description: STM32L0 16KB Flash
+  default: true
+  instructions: ASoB0AIqF9E7SIFpDyISAhFDgWE5ScFgOUnBYDlJAWE5SQFhwGnAAgbUOUg3SQFgBiFBYDdJgWAAIHBHASgB0AIoCNEsSEFoAiIRQ0FgQWgBIhFDQWAAIHBHMLUmSUpoTBUiQ0pgSmgIJSpDSmAAIgJgKUgmSgDgEGCLadsH+9FIaKBDSGBIaKhDSGAAIDC9ASBwR/C1GEwAIyUVCCY/MYkJjEYk4GFoKUNhYGFoMUNhYEAhgMqAwAkfACn60RZJp2n/BwLQEk85YPnnoWkJBQkPBtCgaQ8hCQIIQ6BhASDwvWFoqUNhYGFosUNhYFscnEXY2AAg8L0AIAJA782riQUEAwK/rp2MFhUUE1VVAAAAMABA/w8AAKqqAAAAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x3d
+  pc_program_page: 0x95
+  pc_erase_sector: 0x5b
+  data_section_offset: 0x11c
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0x8004000
+    page_size: 0x400
+    erased_byte_value: 0x0
+    program_page_timeout: 500
+    erase_sector_timeout: 500
+    sectors:
+    - size: 0x80
+      address: 0x0
+  cores:
+  - main
+- name: stm32l01_2x_eeprom
+  description: STM32L0 512 Byte Data EEPROM
+  instructions: ASoB0AIqE9E3SIFpDyISAhFDgWE1ScFgNUnBYMBpwAIG1DVIM0kBYAYhQWAzSYFgACBwRwEoAdACKATRKkhBaAEiEUNBYAAgcEfwtf8hATElTP8wAApiaAACTQAqQ2JgYmgQJzpDYmAlSiNLACYGYADgGmCmafYH+9GmaTYFNg8G0KBpDyEJAghDoGEBIPC9AB0JH+rRYGioQ2BgYGi4Q2BgACDwvQEgcEfwtf8jATMNTv8xCQp0aAkCnEN0YBBMDU0K4BdoB2AA4Cxgt2n/B/vRAB0JHxIdGx8AKQHQACvw0QAg8L0AAAAgAkDvzauJBQQDAlVVAAAAMABA/w8AAKqqAAAAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x35
+  pc_program_page: 0xab
+  pc_erase_sector: 0x4b
+  data_section_offset: 0x104
+  flash_properties:
+    address_range:
+      start: 0x8080000
+      end: 0x8080200
+    page_size: 0x100
+    erased_byte_value: 0x0
+    program_page_timeout: 500
+    erase_sector_timeout: 500
+    sectors:
+    - size: 0x200
+      address: 0x0
+  cores:
+  - main
+- name: stm32l0xx_192
+  description: 'STM32L0 192KB Flash '
+  default: true
+  instructions: ASoB0AIqF9E7SIFpDyISAhFDgWE5ScFgOUnBYDlJAWE5SQFhwGnAAgbUOUg3SQFgBiFBYDdJgWAAIHBHASgB0AIoCNEsSEFoAiIRQ0FgQWgBIhFDQWAAIHBHMLUmSUpoTBUiQ0pgSmgIJSpDSmAAIgJgKUgmSgDgEGCLadsH+9FIaKBDSGBIaKhDSGAAIDC9ASBwR/C1GEwAIyUVCCY/MYkJjEYk4GFoKUNhYGFoMUNhYEAhgMqAwAkfACn60RZJp2n/BwLQEk85YPnnoWkJBQkPBtCgaQ8hCQIIQ6BhASDwvWFoqUNhYGFosUNhYFscnEXY2AAg8L0AIAJA782riQUEAwK/rp2MFhUUE1VVAAAAMABA/w8AAKqqAAAAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x3d
+  pc_program_page: 0x95
+  pc_erase_sector: 0x5b
+  data_section_offset: 0x11c
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0x8030000
+    page_size: 0x400
+    erased_byte_value: 0x0
+    program_page_timeout: 500
+    erase_sector_timeout: 500
+    sectors:
+    - size: 0x80
+      address: 0x0
+  cores:
+  - main
+- name: stm32l010xb_eeprom
+  description: STM32L010 512 Byte Data EEPROM
+  instructions: ASoB0AIqE9E3SIFpDyISAhFDgWE1ScFgNUnBYMBpwAIG1DVIM0kBYAYhQWAzSYFgACBwRwEoAdACKATRKkhBaAEiEUNBYAAgcEfwtf8hATElTP8wAApiaAACTQAqQ2JgYmgQJzpDYmAlSiNLACYGYADgGmCmafYH+9GmaTYFNg8G0KBpDyEJAghDoGEBIPC9AB0JH+rRYGioQ2BgYGi4Q2BgACDwvQEgcEfwtf8jATMNTv8xCQp0aAkCnEN0YBBMDU0K4BdoB2AA4Cxgt2n/B/vRAB0JHxIdGx8AKQHQACvw0QAg8L0AAAAgAkDvzauJBQQDAlVVAAAAMABA/w8AAKqqAAAAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x35
+  pc_program_page: 0xab
+  pc_erase_sector: 0x4b
+  data_section_offset: 0x104
+  flash_properties:
+    address_range:
+      start: 0x8080000
+      end: 0x8080200
+    page_size: 0x100
+    erased_byte_value: 0x0
+    program_page_timeout: 500
+    erase_sector_timeout: 500
+    sectors:
+    - size: 0x200
+      address: 0x0
+  cores:
+  - main
+- name: stm32l05_6x_eeprom
+  description: STM32L0 2 KByte Data EEPROM
+  instructions: ASoB0AIqE9E3SIFpDyISAhFDgWE1ScFgNUnBYMBpwAIG1DVIM0kBYAYhQWAzSYFgACBwRwEoAdACKATRKkhBaAEiEUNBYAAgcEfwtf8hATElTP8wAApiaAACTQAqQ2JgYmgQJzpDYmAlSiNLACYGYADgGmCmafYH+9GmaTYFNg8G0KBpDyEJAghDoGEBIPC9AB0JH+rRYGioQ2BgYGi4Q2BgACDwvQEgcEfwtf8jATMNTv8xCQp0aAkCnEN0YBBMDU0K4BdoB2AA4Cxgt2n/B/vRAB0JHxIdGx8AKQHQACvw0QAg8L0AAAAgAkDvzauJBQQDAlVVAAAAMABA/w8AAKqqAAAAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x35
+  pc_program_page: 0xab
+  pc_erase_sector: 0x4b
+  data_section_offset: 0x104
+  flash_properties:
+    address_range:
+      start: 0x8080000
+      end: 0x8080800
+    page_size: 0x100
+    erased_byte_value: 0x0
+    program_page_timeout: 500
+    erase_sector_timeout: 500
+    sectors:
+    - size: 0x800
+      address: 0x0
+  cores:
+  - main
+- name: stm32l03_4x_eeprom
+  description: STM32L0 1KB Data EEPROM
+  instructions: ASoB0AIqE9E3SIFpDyISAhFDgWE1ScFgNUnBYMBpwAIG1DVIM0kBYAYhQWAzSYFgACBwRwEoAdACKATRKkhBaAEiEUNBYAAgcEfwtf8hATElTP8wAApiaAACTQAqQ2JgYmgQJzpDYmAlSiNLACYGYADgGmCmafYH+9GmaTYFNg8G0KBpDyEJAghDoGEBIPC9AB0JH+rRYGioQ2BgYGi4Q2BgACDwvQEgcEfwtf8jATMNTv8xCQp0aAkCnEN0YBBMDU0K4BdoB2AA4Cxgt2n/B/vRAB0JHxIdGx8AKQHQACvw0QAg8L0AAAAgAkDvzauJBQQDAlVVAAAAMABA/w8AAKqqAAAAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x35
+  pc_program_page: 0xab
+  pc_erase_sector: 0x4b
+  data_section_offset: 0x104
+  flash_properties:
+    address_range:
+      start: 0x8080000
+      end: 0x8080400
+    page_size: 0x100
+    erased_byte_value: 0x0
+    program_page_timeout: 500
+    erase_sector_timeout: 500
+    sectors:
+    - size: 0x400
+      address: 0x0
+  cores:
+  - main
+- name: stm32l07_8x_eeprom
+  description: STM32L0 2 KByte Data EEPROM
+  instructions: ASoB0AIqE9E3SIFpDyISAhFDgWE1ScFgNUnBYMBpwAIG1DVIM0kBYAYhQWAzSYFgACBwRwEoAdACKATRKkhBaAEiEUNBYAAgcEfwtf8hATElTP8wAApiaAACTQAqQ2JgYmgQJzpDYmAlSiNLACYGYADgGmCmafYH+9GmaTYFNg8G0KBpDyEJAghDoGEBIPC9AB0JH+rRYGioQ2BgYGi4Q2BgACDwvQEgcEfwtf8jATMNTv8xCQp0aAkCnEN0YBBMDU0K4BdoB2AA4Cxgt2n/B/vRAB0JHxIdGx8AKQHQACvw0QAg8L0AAAAgAkDvzauJBQQDAlVVAAAAMABA/w8AAKqqAAAAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x35
+  pc_program_page: 0xab
+  pc_erase_sector: 0x4b
+  data_section_offset: 0x104
+  flash_properties:
+    address_range:
+      start: 0x8080000
+      end: 0x8081800
+    page_size: 0x100
+    erased_byte_value: 0x0
+    program_page_timeout: 500
+    erase_sector_timeout: 500
+    sectors:
+    - size: 0xc00
+      address: 0x0
+    - size: 0xc00
+      address: 0xc00
+  cores:
+  - main
+- name: stm32l0xx_32
+  description: STM32L0 32KB Flash
+  default: true
+  instructions: ASoB0AIqF9E7SIFpDyISAhFDgWE5ScFgOUnBYDlJAWE5SQFhwGnAAgbUOUg3SQFgBiFBYDdJgWAAIHBHASgB0AIoCNEsSEFoAiIRQ0FgQWgBIhFDQWAAIHBHMLUmSUpoTBUiQ0pgSmgIJSpDSmAAIgJgKUgmSgDgEGCLadsH+9FIaKBDSGBIaKhDSGAAIDC9ASBwR/C1GEwAIyUVCCY/MYkJjEYk4GFoKUNhYGFoMUNhYEAhgMqAwAkfACn60RZJp2n/BwLQEk85YPnnoWkJBQkPBtCgaQ8hCQIIQ6BhASDwvWFoqUNhYGFosUNhYFscnEXY2AAg8L0AIAJA782riQUEAwK/rp2MFhUUE1VVAAAAMABA/w8AAKqqAAAAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x3d
+  pc_program_page: 0x95
+  pc_erase_sector: 0x5b
+  data_section_offset: 0x11c
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0x8008000
+    page_size: 0x400
+    erased_byte_value: 0x0
+    program_page_timeout: 500
+    erase_sector_timeout: 500
+    sectors:
+    - size: 0x80
+      address: 0x0
+  cores:
+  - main
+- name: stm32l0xx_128
+  description: STM32L0 128KB Flash
+  default: true
+  instructions: ASoB0AIqF9E7SIFpDyISAhFDgWE5ScFgOUnBYDlJAWE5SQFhwGnAAgbUOUg3SQFgBiFBYDdJgWAAIHBHASgB0AIoCNEsSEFoAiIRQ0FgQWgBIhFDQWAAIHBHMLUmSUpoTBUiQ0pgSmgIJSpDSmAAIgJgKUgmSgDgEGCLadsH+9FIaKBDSGBIaKhDSGAAIDC9ASBwR/C1GEwAIyUVCCY/MYkJjEYk4GFoKUNhYGFoMUNhYEAhgMqAwAkfACn60RZJp2n/BwLQEk85YPnnoWkJBQkPBtCgaQ8hCQIIQ6BhASDwvWFoqUNhYGFosUNhYFscnEXY2AAg8L0AIAJA782riQUEAwK/rp2MFhUUE1VVAAAAMABA/w8AAKqqAAAAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x3d
+  pc_program_page: 0x95
+  pc_erase_sector: 0x5b
+  data_section_offset: 0x11c
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0x8020000
+    page_size: 0x400
+    erased_byte_value: 0x0
+    program_page_timeout: 500
+    erase_sector_timeout: 500
+    sectors:
+    - size: 0x80
+      address: 0x0
+  cores:
+  - main
+- name: stm32l0xx_8
+  description: STM32L0 8KB Flash
+  default: true
+  instructions: ASoB0AIqF9E7SIFpDyISAhFDgWE5ScFgOUnBYDlJAWE5SQFhwGnAAgbUOUg3SQFgBiFBYDdJgWAAIHBHASgB0AIoCNEsSEFoAiIRQ0FgQWgBIhFDQWAAIHBHMLUmSUpoTBUiQ0pgSmgIJSpDSmAAIgJgKUgmSgDgEGCLadsH+9FIaKBDSGBIaKhDSGAAIDC9ASBwR/C1GEwAIyUVCCY/MYkJjEYk4GFoKUNhYGFoMUNhYEAhgMqAwAkfACn60RZJp2n/BwLQEk85YPnnoWkJBQkPBtCgaQ8hCQIIQ6BhASDwvWFoqUNhYGFosUNhYFscnEXY2AAg8L0AIAJA782riQUEAwK/rp2MFhUUE1VVAAAAMABA/w8AAKqqAAAAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x3d
+  pc_program_page: 0x95
+  pc_erase_sector: 0x5b
+  data_section_offset: 0x11c
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0x8002000
+    page_size: 0x400
+    erased_byte_value: 0x0
+    program_page_timeout: 500
+    erase_sector_timeout: 500
+    sectors:
+    - size: 0x80
+      address: 0x0
+  cores:
+  - main
+- name: stm32l010x6_8_eeprom
+  description: STM32L010 256 Byte Data EEPROM
+  instructions: ASoB0AIqE9E3SIFpDyISAhFDgWE1ScFgNUnBYMBpwAIG1DVIM0kBYAYhQWAzSYFgACBwRwEoAdACKATRKkhBaAEiEUNBYAAgcEfwtf8hATElTP8wAApiaAACTQAqQ2JgYmgQJzpDYmAlSiNLACYGYADgGmCmafYH+9GmaTYFNg8G0KBpDyEJAghDoGEBIPC9AB0JH+rRYGioQ2BgYGi4Q2BgACDwvQEgcEfwtf8jATMNTv8xCQp0aAkCnEN0YBBMDU0K4BdoB2AA4Cxgt2n/B/vRAB0JHxIdGx8AKQHQACvw0QAg8L0AAAAgAkDvzauJBQQDAlVVAAAAMABA/w8AAKqqAAAAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x35
+  pc_program_page: 0xab
+  pc_erase_sector: 0x4b
+  data_section_offset: 0x104
+  flash_properties:
+    address_range:
+      start: 0x8080000
+      end: 0x8080100
+    page_size: 0x100
+    erased_byte_value: 0x0
+    program_page_timeout: 500
+    erase_sector_timeout: 500
+    sectors:
+    - size: 0x100
+      address: 0x0
+  cores:
+  - main
+- name: stm32l07x_64_eeprom
+  description: STM32L0 2 KByte Data EEPROM
+  instructions: ASoB0AIqE9E3SIFpDyISAhFDgWE1ScFgNUnBYMBpwAIG1DVIM0kBYAYhQWAzSYFgACBwRwEoAdACKATRKkhBaAEiEUNBYAAgcEfwtf8hATElTP8wAApiaAACTQAqQ2JgYmgQJzpDYmAlSiNLACYGYADgGmCmafYH+9GmaTYFNg8G0KBpDyEJAghDoGEBIPC9AB0JH+rRYGioQ2BgYGi4Q2BgACDwvQEgcEfwtf8jATMNTv8xCQp0aAkCnEN0YBBMDU0K4BdoB2AA4Cxgt2n/B/vRAB0JHxIdGx8AKQHQACvw0QAg8L0AAAAgAkDvzauJBQQDAlVVAAAAMABA/w8AAKqqAAAAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x35
+  pc_program_page: 0xab
+  pc_erase_sector: 0x4b
+  data_section_offset: 0x104
+  flash_properties:
+    address_range:
+      start: 0x8080c00
+      end: 0x8081800
+    page_size: 0x100
+    erased_byte_value: 0x0
+    program_page_timeout: 500
+    erase_sector_timeout: 500
+    sectors:
+    - size: 0xc00
+      address: 0x0
+  cores:
+  - main
+- name: stm32l0xx_opt
+  description: STM32L0xx Flash Options
+  instructions: ASoB0AIqF9E/SIFpDyISAhFDgWE9ScFgPUnBYD1JQWE9SUFhwGnAAgbUPUg7SQFgBiFBYDtJgWAAIHBHASgB0AIoCNEwSEFoBCIRQ0FgQWgBIhFDQWAAIHBHNEgySQFgM0lBYDNJgWCBYCdIMkksSgDgEWCDadsH+9GBaQkFCQ8G0IFpDyISAhFDgWEBIHBHACBwRwAgcEcBIHBH8LUmTR9OGUwUIQdoE2ifQgLQA2AA4DVgo2nbB/vRo2kbBRsPBtCgaQ8hCQIIQ6BhASDwvQAdCR8SHQAp5dEAIPC98LUVTA9NCE4UIQNoF2i7QgnRAOAsYLNp2wf70QAdCR8SHQAp8dHwvQAAACACQO/Nq4kFBAMCyNnq+ycmJSRVVQAAADAAQP8PAACqAFX/AAD4H3CAj38AAP//qqoAAAAAAAA=
+  pc_init: 0x1
+  pc_uninit: 0x3d
+  pc_program_page: 0x9d
+  pc_erase_sector: 0x95
+  pc_erase_all: 0x5b
+  data_section_offset: 0x13c
+  flash_properties:
+    address_range:
+      start: 0x1ff80000
+      end: 0x1ff80020
+    page_size: 0xc
+    erased_byte_value: 0xff
+    program_page_timeout: 3000
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x14
+      address: 0x0
+  cores:
+  - main
+- name: stm32l010x4_eeprom
+  description: STM32L010 128 Byte Data EEPROM
+  instructions: ASoB0AIqE9E3SIFpDyISAhFDgWE1ScFgNUnBYMBpwAIG1DVIM0kBYAYhQWAzSYFgACBwRwEoAdACKATRKkhBaAEiEUNBYAAgcEfwtf8hATElTP8wAApiaAACTQAqQ2JgYmgQJzpDYmAlSiNLACYGYADgGmCmafYH+9GmaTYFNg8G0KBpDyEJAghDoGEBIPC9AB0JH+rRYGioQ2BgYGi4Q2BgACDwvQEgcEfwtf8jATMNTv8xCQp0aAkCnEN0YBBMDU0K4BdoB2AA4Cxgt2n/B/vRAB0JHxIdGx8AKQHQACvw0QAg8L0AAAAgAkDvzauJBQQDAlVVAAAAMABA/w8AAKqqAAAAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x35
+  pc_program_page: 0xab
+  pc_erase_sector: 0x4b
+  data_section_offset: 0x104
+  flash_properties:
+    address_range:
+      start: 0x8080000
+      end: 0x8080080
+    page_size: 0x80
+    erased_byte_value: 0x0
+    program_page_timeout: 500
+    erase_sector_timeout: 500
+    sectors:
+    - size: 0x80
+      address: 0x0
+  cores:
+  - main
+- name: stm32l0xx_64
+  description: 'STM32L0 64KB Flash '
+  default: true
+  instructions: ASoB0AIqF9E7SIFpDyISAhFDgWE5ScFgOUnBYDlJAWE5SQFhwGnAAgbUOUg3SQFgBiFBYDdJgWAAIHBHASgB0AIoCNEsSEFoAiIRQ0FgQWgBIhFDQWAAIHBHMLUmSUpoTBUiQ0pgSmgIJSpDSmAAIgJgKUgmSgDgEGCLadsH+9FIaKBDSGBIaKhDSGAAIDC9ASBwR/C1GEwAIyUVCCY/MYkJjEYk4GFoKUNhYGFoMUNhYEAhgMqAwAkfACn60RZJp2n/BwLQEk85YPnnoWkJBQkPBtCgaQ8hCQIIQ6BhASDwvWFoqUNhYGFosUNhYFscnEXY2AAg8L0AIAJA782riQUEAwK/rp2MFhUUE1VVAAAAMABA/w8AAKqqAAAAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x3d
+  pc_program_page: 0x95
+  pc_erase_sector: 0x5b
+  data_section_offset: 0x11c
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0x8010000
+    page_size: 0x400
+    erased_byte_value: 0x0
+    program_page_timeout: 500
+    erase_sector_timeout: 500
+    sectors:
+    - size: 0x80
+      address: 0x0
+  cores:
+  - main

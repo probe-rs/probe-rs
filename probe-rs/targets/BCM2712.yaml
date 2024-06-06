@@ -1,50 +1,45 @@
 name: BCM2712
 manufacturer:
-  cc: 0x01
-  id: 0x3F
+  id: 0x3f
+  cc: 0x1
 variants:
-  - name: RaspberryPi5B
+- name: RaspberryPi5B
+  cores:
+  - name: core0
+    type: armv8a
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+      debug_base: 0x80010000
+      cti_base: 0x80020000
+  - name: core1
+    type: armv8a
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+      debug_base: 0x80110000
+      cti_base: 0x80120000
+  - name: core2
+    type: armv8a
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+      debug_base: 0x80210000
+      cti_base: 0x80220000
+  - name: core3
+    type: armv8a
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+      debug_base: 0x80310000
+      cti_base: 0x80320000
+  memory_map:
+  - !Ram
+    range:
+      start: 0x0
+      end: 0x3b400000
     cores:
-      - name: core0
-        type: armv8a
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-            debug_base: 0x80010000
-            cti_base: 0x80020000
-      - name: core1
-        type: armv8a
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-            debug_base: 0x80110000
-            cti_base: 0x80120000
-      - name: core2
-        type: armv8a
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-            debug_base: 0x80210000
-            cti_base: 0x80220000
-      - name: core3
-        type: armv8a
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-            debug_base: 0x80310000
-            cti_base: 0x80320000
-    memory_map:
-      - !Ram
-          range:
-            start: 0x00000000
-            end: 0x3b400000
-          is_boot_memory: false
-          cores:
-            - core0
-            - core1
-            - core2
-            - core3
+    - core0
+    - core1
+    - core2
+    - core3
