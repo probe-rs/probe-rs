@@ -15,7 +15,7 @@ pub enum RW {
 /// Contains information about requested access from host debugger.
 #[allow(non_snake_case)]
 #[derive(Clone, Debug)]
-pub struct InnerTransferRequest {
+struct InnerTransferRequest {
     /// 0 = Debug PortType (DP), 1 = Access PortType (AP).
     pub APnDP: PortType,
     /// 0 = Write Register, 1 = Read Register.
@@ -138,18 +138,37 @@ impl InnerTransferResponse {
 pub struct TransferRequest {
     /// Zero based device index of the selected JTAG device. For SWD mode the value is ignored.
     pub dap_index: u8,
-    /// Number of transfers: 1 .. 255. For each transfer a Transfer Request BYTE is sent. Depending on the request an additional Transfer Data WORD is sent.
-    pub transfer_count: u8,
-    pub transfers: Vec<InnerTransferRequest>,
+    transfers: Vec<InnerTransferRequest>,
 }
 
 impl TransferRequest {
-    pub fn new(transfers: &[InnerTransferRequest]) -> Self {
+    pub fn empty() -> Self {
         Self {
             dap_index: 0,
-            transfer_count: transfers.len() as u8,
-            transfers: transfers.into(),
+            transfers: vec![],
         }
+    }
+
+    pub fn read(port: PortType, addr: u8) -> Self {
+        let mut req = Self::empty();
+        req.add_read(port, addr);
+        req
+    }
+
+    pub fn write(port: PortType, addr: u8, data: u32) -> Self {
+        let mut req = Self::empty();
+        req.add_write(port, addr, data);
+        req
+    }
+
+    pub fn add_read(&mut self, port: PortType, addr: u8) {
+        self.transfers
+            .push(InnerTransferRequest::new(port, RW::R, addr, None));
+    }
+
+    pub fn add_write(&mut self, port: PortType, addr: u8, data: u32) {
+        self.transfers
+            .push(InnerTransferRequest::new(port, RW::W, addr, Some(data)));
     }
 }
 
@@ -164,7 +183,7 @@ impl Request for TransferRequest {
         buffer[0] = self.dap_index;
         size += 1;
 
-        buffer[1] = self.transfer_count;
+        buffer[1] = self.transfers.len() as u8;
         size += 1;
 
         for transfer in self.transfers.iter() {
