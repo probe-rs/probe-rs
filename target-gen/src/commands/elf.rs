@@ -153,8 +153,12 @@ pub fn serialize_to_yaml_string(family: &ChipFamily) -> Result<String> {
             || reader_line.ends_with(": {}")
             || reader_line.ends_with(": false")
         {
-            // Skip the line
-            continue;
+            // Some fields have default-looking, but significant values that we want to keep.
+            let exceptions = ["rtt_scan_ranges: []"];
+            if !exceptions.contains(&reader_line.trim()) {
+                // Skip the line
+                continue;
+            }
         }
 
         let mut reader_line = Cow::Borrowed(reader_line);
