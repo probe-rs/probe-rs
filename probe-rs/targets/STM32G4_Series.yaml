@@ -29,7 +29,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g43x-4x_32
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G431C6Ux
@@ -56,7 +56,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g43x-4x_32
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G431C8Tx
@@ -83,7 +83,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g43x-4x_64
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G431C8Ux
@@ -110,7 +110,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g43x-4x_64
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G431CBTx
@@ -218,7 +218,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g43x-4x_32
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G431K6Ux
@@ -245,7 +245,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g43x-4x_32
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G431K8Tx
@@ -272,7 +272,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g43x-4x_64
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G431K8Ux
@@ -299,7 +299,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g43x-4x_64
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G431KBTx
@@ -380,7 +380,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g43x-4x_32
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G431M8Tx
@@ -407,7 +407,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g43x-4x_64
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G431MBTx
@@ -461,7 +461,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g43x-4x_32
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G431R6Tx
@@ -488,7 +488,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g43x-4x_32
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G431R8Ix
@@ -515,7 +515,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g43x-4x_64
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G431R8Tx
@@ -542,7 +542,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g43x-4x_64
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G431RBIx
@@ -623,7 +623,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g43x-4x_32
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G431V8Tx
@@ -650,7 +650,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g43x-4x_64
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G431VBTx
@@ -704,7 +704,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g43x-4x_128
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G441CBUx
@@ -731,7 +731,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g43x-4x_128
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G441CBYx
@@ -758,7 +758,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g43x-4x_128
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G441KBTx
@@ -785,7 +785,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g43x-4x_128
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G441KBUx
@@ -812,7 +812,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g43x-4x_128
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G441MBTx
@@ -839,7 +839,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g43x-4x_128
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G441RBIx
@@ -866,7 +866,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g43x-4x_128
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G441RBTx
@@ -893,7 +893,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g43x-4x_128
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G441VBTx
@@ -920,7 +920,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g43x-4x_128
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G471CCTx
@@ -947,7 +947,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_256
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G471CCUx
@@ -974,7 +974,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_256
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G471CETx
@@ -1055,7 +1055,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_256
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G471METx
@@ -1136,7 +1136,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_256
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G471QETx
@@ -1190,7 +1190,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_256
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G471RETx
@@ -1244,7 +1244,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_256
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G471VCIx
@@ -1271,7 +1271,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_256
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G471VCTx
@@ -1298,7 +1298,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_256
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G471VEHx
@@ -1406,7 +1406,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_128
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G473CBUx
@@ -1433,7 +1433,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_128
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G473CCTx
@@ -1460,7 +1460,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_256
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G473CCUx
@@ -1487,7 +1487,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_256
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G473CETx
@@ -1568,7 +1568,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_128
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G473MCTx
@@ -1595,7 +1595,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_256
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G473METx
@@ -1676,7 +1676,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_128
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G473PCIx
@@ -1703,7 +1703,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_256
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G473PEIx
@@ -1757,7 +1757,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_128
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G473QCTx
@@ -1784,7 +1784,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_256
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G473QETx
@@ -1838,7 +1838,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_128
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G473RCTx
@@ -1865,7 +1865,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_256
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G473RETx
@@ -1919,7 +1919,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_128
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G473VBIx
@@ -1946,7 +1946,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_128
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G473VBTx
@@ -1973,7 +1973,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_128
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G473VCHx
@@ -2000,7 +2000,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_256
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G473VCIx
@@ -2027,7 +2027,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_256
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G473VCTx
@@ -2054,7 +2054,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_256
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G473VEHx
@@ -2162,7 +2162,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_128
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G474CBUx
@@ -2189,7 +2189,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_128
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G474CCTx
@@ -2216,7 +2216,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_256
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G474CCUx
@@ -2243,7 +2243,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_256
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G474CETx
@@ -2324,7 +2324,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_128
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G474MCTx
@@ -2351,7 +2351,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_256
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G474METx
@@ -2432,7 +2432,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_128
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G474PCIx
@@ -2459,7 +2459,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_256
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G474PEIx
@@ -2513,7 +2513,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_128
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G474QCTx
@@ -2540,7 +2540,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_256
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G474QETx
@@ -2594,7 +2594,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_128
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G474RCTx
@@ -2621,7 +2621,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_256
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G474RETx
@@ -2675,7 +2675,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_128
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G474VBIx
@@ -2702,7 +2702,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_128
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G474VBTx
@@ -2729,7 +2729,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_128
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G474VCHx
@@ -2756,7 +2756,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_256
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G474VCIx
@@ -2783,7 +2783,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_256
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G474VCTx
@@ -2810,7 +2810,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g47x-8x_256
+  - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G474VEHx
@@ -3458,7 +3458,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g49x-ax_256
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G491CCUx
@@ -3485,7 +3485,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g49x-ax_256
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G491CETx
@@ -3512,7 +3512,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g49x-ax_512
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G491CEUx
@@ -3539,7 +3539,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g49x-ax_512
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G491KCUx
@@ -3566,7 +3566,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g49x-ax_256
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G491KEUx
@@ -3593,7 +3593,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g49x-ax_512
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G491MCSx
@@ -3620,7 +3620,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g49x-ax_256
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G491MCTx
@@ -3647,7 +3647,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g49x-ax_256
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G491MESx
@@ -3674,7 +3674,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g49x-ax_512
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G491METx
@@ -3701,7 +3701,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g49x-ax_512
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G491RCIx
@@ -3728,7 +3728,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g49x-ax_256
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G491RCTx
@@ -3755,7 +3755,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g49x-ax_256
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G491REIx
@@ -3782,7 +3782,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g49x-ax_512
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G491RETx
@@ -3809,7 +3809,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g49x-ax_512
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G491REYx
@@ -3836,7 +3836,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g49x-ax_512
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G491VCTx
@@ -3863,7 +3863,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g49x-ax_256
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G491VETx
@@ -3890,7 +3890,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g49x-ax_512
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G4A1CETx
@@ -3917,7 +3917,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g49x-ax_512
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G4A1CEUx
@@ -3944,7 +3944,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g49x-ax_512
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G4A1KEUx
@@ -3971,7 +3971,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g49x-ax_512
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G4A1MESx
@@ -3998,7 +3998,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g49x-ax_512
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G4A1METx
@@ -4025,7 +4025,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g49x-ax_512
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G4A1REIx
@@ -4052,7 +4052,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g49x-ax_512
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G4A1RETx
@@ -4079,7 +4079,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g49x-ax_512
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G4A1REYx
@@ -4106,7 +4106,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g49x-ax_512
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G4A1VETx
@@ -4133,7 +4133,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g49x-ax_512
+  - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32GBK1CBTx
@@ -4160,11 +4160,11 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g43x-4x_128
+  - stm32g47x-8x_512
   - mt25ql512abb_stm32g474e-eval
 flash_algorithms:
-- name: stm32g43x-4x_32
-  description: STM32G43x-4x 32 KB Flash
+- name: stm32g47x-8x_512
+  description: STM32G47x-8x 512 KB Flash
   default: true
   instructions: cLVgTV5JqWBfSalgKWnJA/zUXk5ORDBgXUgAiAAEgAlwYEAIsGAA8Jb4T/QAZAEoBNEA8J/4ASgA0GQA9GAoasADCNRTSEXyVVEBYAYhQWBA9v9xgWAAIHC9SkhBaUHwAEFBYb/zT48AIHBHASBwR0RISUkBYcETQWFBaUH0gDFBYb/zT48BackD/NQAIHBHcLUFRgDwX/g8TgEoTkQK0QDwaPgBKAbRsWgwaAFEqUIB2AEkAOAAJADwTfgBKBvQcGhAHgVA6AouSTNKCmECIwPrwABA6sQgSGFIaUD0gDBIYb/zT48IacAD/NQIaRBAAdAKYQEgcL0A8Dz4ASgE0HBoQB4FQCgL3uewaNnnMLUcS8kdIE0h8AcBHWEBJFxhEeAUaARgVGhEYL/zT48caeQD/NQcaSxCAtAdYQEgML0IMAg5CDIAKevRWGkg8AEAWGEAIDC9EUgAaMDzCwCw9Y1vBdCg9YBgeTgB0AEgcEcAIHBHA0gAasDzgFBwRwAAIwFnRQAgAkCrie/NBAAAAOB1/x8AMABA+kMBAAAgBOAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
   load_address: 0x20000020
@@ -4177,7 +4177,7 @@ flash_algorithms:
   flash_properties:
     address_range:
       start: 0x8000000
-      end: 0x8008000
+      end: 0x8080000
     page_size: 0x400
     erased_byte_value: 0xff
     program_page_timeout: 400
@@ -4227,72 +4227,6 @@ flash_algorithms:
     sectors:
     - size: 0x20000
       address: 0x0
-- name: stm32g43x-4x_64
-  description: STM32G43x-4x 64 KB Flash
-  default: true
-  instructions: cLVgTV5JqWBfSalgKWnJA/zUXk5ORDBgXUgAiAAEgAlwYEAIsGAA8Jb4T/QAZAEoBNEA8J/4ASgA0GQA9GAoasADCNRTSEXyVVEBYAYhQWBA9v9xgWAAIHC9SkhBaUHwAEFBYb/zT48AIHBHASBwR0RISUkBYcETQWFBaUH0gDFBYb/zT48BackD/NQAIHBHcLUFRgDwX/g8TgEoTkQK0QDwaPgBKAbRsWgwaAFEqUIB2AEkAOAAJADwTfgBKBvQcGhAHgVA6AouSTNKCmECIwPrwABA6sQgSGFIaUD0gDBIYb/zT48IacAD/NQIaRBAAdAKYQEgcL0A8Dz4ASgE0HBoQB4FQCgL3uewaNnnMLUcS8kdIE0h8AcBHWEBJFxhEeAUaARgVGhEYL/zT48caeQD/NQcaSxCAtAdYQEgML0IMAg5CDIAKevRWGkg8AEAWGEAIDC9EUgAaMDzCwCw9Y1vBdCg9YBgeTgB0AEgcEcAIHBHA0gAasDzgFBwRwAAIwFnRQAgAkCrie/NBAAAAOB1/x8AMABA+kMBAAAgBOAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
-  load_address: 0x20000020
-  pc_init: 0x1
-  pc_uninit: 0x5b
-  pc_program_page: 0x10f
-  pc_erase_sector: 0x91
-  pc_erase_all: 0x71
-  data_section_offset: 0x1a0
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8010000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 400
-    erase_sector_timeout: 400
-    sectors:
-    - size: 0x800
-      address: 0x0
-- name: stm32g43x-4x_128
-  description: STM32G43x-4x 128 KB Flash
-  default: true
-  instructions: cLVgTV5JqWBfSalgKWnJA/zUXk5ORDBgXUgAiAAEgAlwYEAIsGAA8Jb4T/QAZAEoBNEA8J/4ASgA0GQA9GAoasADCNRTSEXyVVEBYAYhQWBA9v9xgWAAIHC9SkhBaUHwAEFBYb/zT48AIHBHASBwR0RISUkBYcETQWFBaUH0gDFBYb/zT48BackD/NQAIHBHcLUFRgDwX/g8TgEoTkQK0QDwaPgBKAbRsWgwaAFEqUIB2AEkAOAAJADwTfgBKBvQcGhAHgVA6AouSTNKCmECIwPrwABA6sQgSGFIaUD0gDBIYb/zT48IacAD/NQIaRBAAdAKYQEgcL0A8Dz4ASgE0HBoQB4FQCgL3uewaNnnMLUcS8kdIE0h8AcBHWEBJFxhEeAUaARgVGhEYL/zT48caeQD/NQcaSxCAtAdYQEgML0IMAg5CDIAKevRWGkg8AEAWGEAIDC9EUgAaMDzCwCw9Y1vBdCg9YBgeTgB0AEgcEcAIHBHA0gAasDzgFBwRwAAIwFnRQAgAkCrie/NBAAAAOB1/x8AMABA+kMBAAAgBOAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
-  load_address: 0x20000020
-  pc_init: 0x1
-  pc_uninit: 0x5b
-  pc_program_page: 0x10f
-  pc_erase_sector: 0x91
-  pc_erase_all: 0x71
-  data_section_offset: 0x1a0
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8020000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 400
-    erase_sector_timeout: 400
-    sectors:
-    - size: 0x800
-      address: 0x0
-- name: stm32g47x-8x_256
-  description: STM32G47x-8x 256 KB Flash
-  default: true
-  instructions: cLVgTV5JqWBfSalgKWnJA/zUXk5ORDBgXUgAiAAEgAlwYEAIsGAA8Jb4T/QAZAEoBNEA8J/4ASgA0GQA9GAoasADCNRTSEXyVVEBYAYhQWBA9v9xgWAAIHC9SkhBaUHwAEFBYb/zT48AIHBHASBwR0RISUkBYcETQWFBaUH0gDFBYb/zT48BackD/NQAIHBHcLUFRgDwX/g8TgEoTkQK0QDwaPgBKAbRsWgwaAFEqUIB2AEkAOAAJADwTfgBKBvQcGhAHgVA6AouSTNKCmECIwPrwABA6sQgSGFIaUD0gDBIYb/zT48IacAD/NQIaRBAAdAKYQEgcL0A8Dz4ASgE0HBoQB4FQCgL3uewaNnnMLUcS8kdIE0h8AcBHWEBJFxhEeAUaARgVGhEYL/zT48caeQD/NQcaSxCAtAdYQEgML0IMAg5CDIAKevRWGkg8AEAWGEAIDC9EUgAaMDzCwCw9Y1vBdCg9YBgeTgB0AEgcEcAIHBHA0gAasDzgFBwRwAAIwFnRQAgAkCrie/NBAAAAOB1/x8AMABA+kMBAAAgBOAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
-  load_address: 0x20000020
-  pc_init: 0x1
-  pc_uninit: 0x5b
-  pc_program_page: 0x10f
-  pc_erase_sector: 0x91
-  pc_erase_all: 0x71
-  data_section_offset: 0x1a0
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8040000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 400
-    erase_sector_timeout: 400
-    sectors:
-    - size: 0x800
-      address: 0x0
 - name: stm32g4xx_db_opt
   description: STM32G4xx dual bank Flash Options
   instructions: l0iWSYFgl0mBYJdJwWCXScFgAWnJA/zUAGrAAwjUlEhF8lVRAWAGIUFgQPb/cYFgACBwR4pIQWlB8ABBQWG/80+PT/AAYUFhv/NPj0FpCQH81E/wgEFBYb/zT48AIHBHASBwR35Ig0oCYYNJAWJJFUFigkuDYm/0fwPDYgNjgEsDZ0Fkf0mBZG/0/gHBZAFlfUlBZ0/0ADFBYb/zT48BackD/NQBaRFCAtACYQEgcEcAIHBHACBwRy3p+E3S6QI60ukEYdNGl4gVi7L4HODS+ADA0vggoM34AKDS6QlCYEjf+JCBwPgQgMD4IMC/skdiYk//QztAg2IL8P8Tw2IG8P8TA2NeS9tDGUABZ6myQWQf+o7xgWTd+ACgCvD/EcFkBPD/EQFlWEnJQwpAQmdP9AAxQWG/80+PSvaqIUxKAOARYANp2wP71AFpEeoIDwbQAWlB6ggBAWEBIL3o+I0AIPvnLen3TdLpAjGLRtLpBRTS6Qdl0ukAx9/45ICiRtL4EODS6QlC2PgggOBFCdHf+NDA3PgkgE/qCEi46wdPAtBAHL3o/o3c+Chw3/jQgG/qCAgH6ggHA+oIA59CAdCAHO/n3PgsMAPw/xcL8P8Tn0IB0MAc5efc+DAwA/D/Fw7w/xOfQgHQAB3b59z4cDAkT/9DO0A5QItCAdBAHdHn3PhEEAsEs+sKTwHQgB3J59z4SBAJBLHrBk8B0MAdwefc+EwQBfD/EwHw/xGZQgHQCDC359z4UBAE8P8TAfD/EZlCAdAJMK3n3Ph0EAkGsesCbwHQCjCl5wGZCESi5yMBZ0UAIAJAq4nvzTsqGQh/bl1MADAAQPpDAQCq+O//AAD/fwD+/v8AgP9/AP/+/wAAAAAAAAAAAAAAAAAAAAAAAAAA
@@ -4313,94 +4247,6 @@ flash_algorithms:
     erase_sector_timeout: 3000
     sectors:
     - size: 0x54
-      address: 0x0
-- name: stm32g47x-8x_512
-  description: STM32G47x-8x 512 KB Flash
-  default: true
-  instructions: cLVgTV5JqWBfSalgKWnJA/zUXk5ORDBgXUgAiAAEgAlwYEAIsGAA8Jb4T/QAZAEoBNEA8J/4ASgA0GQA9GAoasADCNRTSEXyVVEBYAYhQWBA9v9xgWAAIHC9SkhBaUHwAEFBYb/zT48AIHBHASBwR0RISUkBYcETQWFBaUH0gDFBYb/zT48BackD/NQAIHBHcLUFRgDwX/g8TgEoTkQK0QDwaPgBKAbRsWgwaAFEqUIB2AEkAOAAJADwTfgBKBvQcGhAHgVA6AouSTNKCmECIwPrwABA6sQgSGFIaUD0gDBIYb/zT48IacAD/NQIaRBAAdAKYQEgcL0A8Dz4ASgE0HBoQB4FQCgL3uewaNnnMLUcS8kdIE0h8AcBHWEBJFxhEeAUaARgVGhEYL/zT48caeQD/NQcaSxCAtAdYQEgML0IMAg5CDIAKevRWGkg8AEAWGEAIDC9EUgAaMDzCwCw9Y1vBdCg9YBgeTgB0AEgcEcAIHBHA0gAasDzgFBwRwAAIwFnRQAgAkCrie/NBAAAAOB1/x8AMABA+kMBAAAgBOAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
-  load_address: 0x20000020
-  pc_init: 0x1
-  pc_uninit: 0x5b
-  pc_program_page: 0x10f
-  pc_erase_sector: 0x91
-  pc_erase_all: 0x71
-  data_section_offset: 0x1a0
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8080000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 400
-    erase_sector_timeout: 400
-    sectors:
-    - size: 0x800
-      address: 0x0
-- name: stm32g47x-8x_128
-  description: STM32G47x-8x 128 KB Flash
-  default: true
-  instructions: cLVgTV5JqWBfSalgKWnJA/zUXk5ORDBgXUgAiAAEgAlwYEAIsGAA8Jb4T/QAZAEoBNEA8J/4ASgA0GQA9GAoasADCNRTSEXyVVEBYAYhQWBA9v9xgWAAIHC9SkhBaUHwAEFBYb/zT48AIHBHASBwR0RISUkBYcETQWFBaUH0gDFBYb/zT48BackD/NQAIHBHcLUFRgDwX/g8TgEoTkQK0QDwaPgBKAbRsWgwaAFEqUIB2AEkAOAAJADwTfgBKBvQcGhAHgVA6AouSTNKCmECIwPrwABA6sQgSGFIaUD0gDBIYb/zT48IacAD/NQIaRBAAdAKYQEgcL0A8Dz4ASgE0HBoQB4FQCgL3uewaNnnMLUcS8kdIE0h8AcBHWEBJFxhEeAUaARgVGhEYL/zT48caeQD/NQcaSxCAtAdYQEgML0IMAg5CDIAKevRWGkg8AEAWGEAIDC9EUgAaMDzCwCw9Y1vBdCg9YBgeTgB0AEgcEcAIHBHA0gAasDzgFBwRwAAIwFnRQAgAkCrie/NBAAAAOB1/x8AMABA+kMBAAAgBOAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
-  load_address: 0x20000020
-  pc_init: 0x1
-  pc_uninit: 0x5b
-  pc_program_page: 0x10f
-  pc_erase_sector: 0x91
-  pc_erase_all: 0x71
-  data_section_offset: 0x1a0
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8020000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 400
-    erase_sector_timeout: 400
-    sectors:
-    - size: 0x800
-      address: 0x0
-- name: stm32g49x-ax_256
-  description: STM32G49x-Ax 256 KB Flash
-  default: true
-  instructions: cLVgTV5JqWBfSalgKWnJA/zUXk5ORDBgXUgAiAAEgAlwYEAIsGAA8Jb4T/QAZAEoBNEA8J/4ASgA0GQA9GAoasADCNRTSEXyVVEBYAYhQWBA9v9xgWAAIHC9SkhBaUHwAEFBYb/zT48AIHBHASBwR0RISUkBYcETQWFBaUH0gDFBYb/zT48BackD/NQAIHBHcLUFRgDwX/g8TgEoTkQK0QDwaPgBKAbRsWgwaAFEqUIB2AEkAOAAJADwTfgBKBvQcGhAHgVA6AouSTNKCmECIwPrwABA6sQgSGFIaUD0gDBIYb/zT48IacAD/NQIaRBAAdAKYQEgcL0A8Dz4ASgE0HBoQB4FQCgL3uewaNnnMLUcS8kdIE0h8AcBHWEBJFxhEeAUaARgVGhEYL/zT48caeQD/NQcaSxCAtAdYQEgML0IMAg5CDIAKevRWGkg8AEAWGEAIDC9EUgAaMDzCwCw9Y1vBdCg9YBgeTgB0AEgcEcAIHBHA0gAasDzgFBwRwAAIwFnRQAgAkCrie/NBAAAAOB1/x8AMABA+kMBAAAgBOAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
-  load_address: 0x20000020
-  pc_init: 0x1
-  pc_uninit: 0x5b
-  pc_program_page: 0x10f
-  pc_erase_sector: 0x91
-  pc_erase_all: 0x71
-  data_section_offset: 0x1a0
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8040000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 400
-    erase_sector_timeout: 400
-    sectors:
-    - size: 0x800
-      address: 0x0
-- name: stm32g49x-ax_512
-  description: STM32G49x-Ax 512 KB Flash
-  default: true
-  instructions: cLVgTV5JqWBfSalgKWnJA/zUXk5ORDBgXUgAiAAEgAlwYEAIsGAA8Jb4T/QAZAEoBNEA8J/4ASgA0GQA9GAoasADCNRTSEXyVVEBYAYhQWBA9v9xgWAAIHC9SkhBaUHwAEFBYb/zT48AIHBHASBwR0RISUkBYcETQWFBaUH0gDFBYb/zT48BackD/NQAIHBHcLUFRgDwX/g8TgEoTkQK0QDwaPgBKAbRsWgwaAFEqUIB2AEkAOAAJADwTfgBKBvQcGhAHgVA6AouSTNKCmECIwPrwABA6sQgSGFIaUD0gDBIYb/zT48IacAD/NQIaRBAAdAKYQEgcL0A8Dz4ASgE0HBoQB4FQCgL3uewaNnnMLUcS8kdIE0h8AcBHWEBJFxhEeAUaARgVGhEYL/zT48caeQD/NQcaSxCAtAdYQEgML0IMAg5CDIAKevRWGkg8AEAWGEAIDC9EUgAaMDzCwCw9Y1vBdCg9YBgeTgB0AEgcEcAIHBHA0gAasDzgFBwRwAAIwFnRQAgAkCrie/NBAAAAOB1/x8AMABA+kMBAAAgBOAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
-  load_address: 0x20000020
-  pc_init: 0x1
-  pc_uninit: 0x5b
-  pc_program_page: 0x10f
-  pc_erase_sector: 0x91
-  pc_erase_all: 0x71
-  data_section_offset: 0x1a0
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8080000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 400
-    erase_sector_timeout: 400
-    sectors:
-    - size: 0x800
       address: 0x0
 # The stm32g4xx_128 algorithm is from an older release of the STM32G4 target pack.
 # We re-added it here because it was reported that the latest target pack is broken

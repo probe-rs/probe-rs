@@ -34,7 +34,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F722ICTx
   cores:
   - name: main
@@ -66,7 +66,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F722IEKx
   cores:
   - name: main
@@ -98,7 +98,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F722IETx
   cores:
   - name: main
@@ -130,7 +130,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F722RCTx
   cores:
   - name: main
@@ -162,7 +162,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F722RETx
   cores:
   - name: main
@@ -194,7 +194,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F722VCTx
   cores:
   - name: main
@@ -226,7 +226,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F722VETx
   cores:
   - name: main
@@ -258,7 +258,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F722ZCTx
   cores:
   - name: main
@@ -290,7 +290,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F722ZETx
   cores:
   - name: main
@@ -322,7 +322,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F723ICKx
   cores:
   - name: main
@@ -354,7 +354,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F723ICTx
   cores:
   - name: main
@@ -386,7 +386,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F723IEKx
   cores:
   - name: main
@@ -418,7 +418,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F723IETx
   cores:
   - name: main
@@ -450,7 +450,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F723VEYx
   cores:
   - name: main
@@ -482,7 +482,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F723ZCIx
   cores:
   - name: main
@@ -514,7 +514,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F723ZCTx
   cores:
   - name: main
@@ -546,7 +546,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F723ZEIx
   cores:
   - name: main
@@ -578,7 +578,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F723ZETx
   cores:
   - name: main
@@ -610,7 +610,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F730I8Kx
   cores:
   - name: main
@@ -642,7 +642,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F730R8Tx
   cores:
   - name: main
@@ -674,7 +674,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F730V8Tx
   cores:
   - name: main
@@ -706,7 +706,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F730Z8Tx
   cores:
   - name: main
@@ -738,7 +738,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F732IEKx
   cores:
   - name: main
@@ -770,7 +770,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F732IETx
   cores:
   - name: main
@@ -802,7 +802,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F732RETx
   cores:
   - name: main
@@ -834,7 +834,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F732VETx
   cores:
   - name: main
@@ -866,7 +866,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F732ZETx
   cores:
   - name: main
@@ -898,7 +898,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F733IEKx
   cores:
   - name: main
@@ -930,7 +930,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F733IETx
   cores:
   - name: main
@@ -962,7 +962,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F733VETx
   cores:
   - name: main
@@ -994,7 +994,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F733VEYx
   cores:
   - name: main
@@ -1026,7 +1026,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F733ZEKx
   cores:
   - name: main
@@ -1058,7 +1058,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F733ZETx
   cores:
   - name: main
@@ -1090,7 +1090,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F745IEKx
   cores:
   - name: main
@@ -1113,7 +1113,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f74x_75x_opt
   - stm32f7xx_otp
@@ -1122,7 +1122,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F745IETx
   cores:
   - name: main
@@ -1145,7 +1145,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f74x_75x_opt
   - stm32f7xx_otp
@@ -1154,7 +1154,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F745IGKx
   cores:
   - name: main
@@ -1177,7 +1177,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f74x_75x_opt
   - stm32f7xx_otp
@@ -1186,7 +1186,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F745IGTx
   cores:
   - name: main
@@ -1209,7 +1209,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f74x_75x_opt
   - stm32f7xx_otp
@@ -1218,7 +1218,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F745VEHx
   cores:
   - name: main
@@ -1241,7 +1241,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f74x_75x_opt
   - stm32f7xx_otp
@@ -1250,7 +1250,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F745VETx
   cores:
   - name: main
@@ -1273,7 +1273,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f74x_75x_opt
   - stm32f7xx_otp
@@ -1282,7 +1282,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F745VGHx
   cores:
   - name: main
@@ -1305,7 +1305,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f74x_75x_opt
   - stm32f7xx_otp
@@ -1314,7 +1314,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F745VGTx
   cores:
   - name: main
@@ -1337,7 +1337,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f74x_75x_opt
   - stm32f7xx_otp
@@ -1346,7 +1346,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F745ZETx
   cores:
   - name: main
@@ -1369,7 +1369,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f74x_75x_opt
   - stm32f7xx_otp
@@ -1378,7 +1378,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F745ZGTx
   cores:
   - name: main
@@ -1401,7 +1401,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f74x_75x_opt
   - stm32f7xx_otp
@@ -1410,7 +1410,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F746BETx
   cores:
   - name: main
@@ -1433,7 +1433,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f74x_75x_opt
   - stm32f7xx_otp
@@ -1442,7 +1442,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F746BGTx
   cores:
   - name: main
@@ -1465,7 +1465,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f74x_75x_opt
   - stm32f7xx_otp
@@ -1474,7 +1474,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F746IEKx
   cores:
   - name: main
@@ -1497,7 +1497,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f74x_75x_opt
   - stm32f7xx_otp
@@ -1506,7 +1506,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F746IETx
   cores:
   - name: main
@@ -1529,7 +1529,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f74x_75x_opt
   - stm32f7xx_otp
@@ -1538,7 +1538,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F746IGKx
   cores:
   - name: main
@@ -1561,7 +1561,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f74x_75x_opt
   - stm32f7xx_otp
@@ -1570,7 +1570,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F746IGTx
   cores:
   - name: main
@@ -1593,7 +1593,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f74x_75x_opt
   - stm32f7xx_otp
@@ -1602,7 +1602,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F746NEHx
   cores:
   - name: main
@@ -1625,7 +1625,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f74x_75x_opt
   - stm32f7xx_otp
@@ -1634,7 +1634,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F746NGHx
   cores:
   - name: main
@@ -1657,7 +1657,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f74x_75x_opt
   - stm32f7xx_otp
@@ -1666,7 +1666,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F746VEHx
   cores:
   - name: main
@@ -1689,7 +1689,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f74x_75x_opt
   - stm32f7xx_otp
@@ -1698,7 +1698,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F746VETx
   cores:
   - name: main
@@ -1721,7 +1721,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f74x_75x_opt
   - stm32f7xx_otp
@@ -1730,7 +1730,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F746VGHx
   cores:
   - name: main
@@ -1753,7 +1753,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f74x_75x_opt
   - stm32f7xx_otp
@@ -1762,7 +1762,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F746VGTx
   cores:
   - name: main
@@ -1785,7 +1785,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f74x_75x_opt
   - stm32f7xx_otp
@@ -1794,7 +1794,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F746ZETx
   cores:
   - name: main
@@ -1817,7 +1817,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f74x_75x_opt
   - stm32f7xx_otp
@@ -1826,7 +1826,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F746ZEYx
   cores:
   - name: main
@@ -1849,7 +1849,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f74x_75x_opt
   - stm32f7xx_otp
@@ -1858,7 +1858,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F746ZGTx
   cores:
   - name: main
@@ -1881,7 +1881,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f74x_75x_opt
   - stm32f7xx_otp
@@ -1890,7 +1890,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F746ZGYx
   cores:
   - name: main
@@ -1913,7 +1913,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f74x_75x_opt
   - stm32f7xx_otp
@@ -1922,7 +1922,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F750N8Hx
   cores:
   - name: main
@@ -1954,7 +1954,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F750V8Tx
   cores:
   - name: main
@@ -1986,7 +1986,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F750Z8Tx
   cores:
   - name: main
@@ -2018,7 +2018,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F756BGTx
   cores:
   - name: main
@@ -2041,7 +2041,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f74x_75x_opt
   - stm32f7xx_otp
@@ -2050,7 +2050,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F756IGKx
   cores:
   - name: main
@@ -2073,7 +2073,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f74x_75x_opt
   - stm32f7xx_otp
@@ -2082,7 +2082,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F756IGTx
   cores:
   - name: main
@@ -2105,7 +2105,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f74x_75x_opt
   - stm32f7xx_otp
@@ -2114,7 +2114,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F756NGHx
   cores:
   - name: main
@@ -2137,7 +2137,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f74x_75x_opt
   - stm32f7xx_otp
@@ -2146,7 +2146,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F756VGHx
   cores:
   - name: main
@@ -2169,7 +2169,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f74x_75x_opt
   - stm32f7xx_otp
@@ -2178,7 +2178,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F756VGTx
   cores:
   - name: main
@@ -2201,7 +2201,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f74x_75x_opt
   - stm32f7xx_otp
@@ -2210,7 +2210,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F756ZGTx
   cores:
   - name: main
@@ -2233,7 +2233,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f74x_75x_opt
   - stm32f7xx_otp
@@ -2242,7 +2242,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F756ZGYx
   cores:
   - name: main
@@ -2265,7 +2265,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f74x_75x_opt
   - stm32f7xx_otp
@@ -2274,7 +2274,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F765BGTx
   cores:
   - name: main
@@ -2297,7 +2297,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f7x_1024dual
   - stm32f7xtcm_1024dual
@@ -2308,7 +2308,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F765BITx
   cores:
   - name: main
@@ -2342,7 +2342,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F765IGKx
   cores:
   - name: main
@@ -2365,7 +2365,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f7x_1024dual
   - stm32f7xtcm_1024dual
@@ -2376,7 +2376,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F765IGTx
   cores:
   - name: main
@@ -2399,7 +2399,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f7x_1024dual
   - stm32f7xtcm_1024dual
@@ -2410,7 +2410,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F765IIKx
   cores:
   - name: main
@@ -2444,7 +2444,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F765IITx
   cores:
   - name: main
@@ -2478,7 +2478,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F765NGHx
   cores:
   - name: main
@@ -2501,7 +2501,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f7x_1024dual
   - stm32f7xtcm_1024dual
@@ -2512,7 +2512,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F765NIHx
   cores:
   - name: main
@@ -2546,7 +2546,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F765VGTx
   cores:
   - name: main
@@ -2569,7 +2569,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f7x_1024dual
   - stm32f7xtcm_1024dual
@@ -2580,7 +2580,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F765VITx
   cores:
   - name: main
@@ -2614,7 +2614,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F765ZGTx
   cores:
   - name: main
@@ -2637,7 +2637,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f7x_1024dual
   - stm32f7xtcm_1024dual
@@ -2648,7 +2648,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F765ZITx
   cores:
   - name: main
@@ -2682,7 +2682,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F767BGTx
   cores:
   - name: main
@@ -2705,7 +2705,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f7x_1024dual
   - stm32f7xtcm_1024dual
@@ -2716,7 +2716,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F767BITx
   cores:
   - name: main
@@ -2750,7 +2750,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F767IGKx
   cores:
   - name: main
@@ -2773,7 +2773,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f7x_1024dual
   - stm32f7xtcm_1024dual
@@ -2784,7 +2784,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F767IGTx
   cores:
   - name: main
@@ -2807,7 +2807,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f7x_1024dual
   - stm32f7xtcm_1024dual
@@ -2818,7 +2818,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F767IIKx
   cores:
   - name: main
@@ -2852,7 +2852,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F767IITx
   cores:
   - name: main
@@ -2886,7 +2886,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F767NGHx
   cores:
   - name: main
@@ -2909,7 +2909,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f7x_1024dual
   - stm32f7xtcm_1024dual
@@ -2920,7 +2920,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F767NIHx
   cores:
   - name: main
@@ -2954,7 +2954,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F767VGTx
   cores:
   - name: main
@@ -2977,7 +2977,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f7x_1024dual
   - stm32f7xtcm_1024dual
@@ -2988,7 +2988,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F767VITx
   cores:
   - name: main
@@ -3022,7 +3022,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F767ZGTx
   cores:
   - name: main
@@ -3045,7 +3045,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f7x_1024dual
   - stm32f7xtcm_1024dual
@@ -3056,7 +3056,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F767ZITx
   cores:
   - name: main
@@ -3090,7 +3090,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F768AIYx
   cores:
   - name: main
@@ -3124,7 +3124,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F769AGYx
   cores:
   - name: main
@@ -3147,7 +3147,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7x_1024dual
   - stm32f7xtcm_1024
   - stm32f7xtcm_1024dual
@@ -3158,7 +3158,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F769AIYx
   cores:
   - name: main
@@ -3192,7 +3192,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F769BGTx
   cores:
   - name: main
@@ -3215,7 +3215,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f7x_1024dual
   - stm32f7xtcm_1024dual
@@ -3226,7 +3226,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F769BITx
   cores:
   - name: main
@@ -3260,7 +3260,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F769IGTx
   cores:
   - name: main
@@ -3283,7 +3283,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f7x_1024dual
   - stm32f7xtcm_1024dual
@@ -3294,7 +3294,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F769IITx
   cores:
   - name: main
@@ -3328,7 +3328,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F769NGHx
   cores:
   - name: main
@@ -3351,7 +3351,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f7x_1024
+  - stm32f7x_2048
   - stm32f7xtcm_1024
   - stm32f7x_1024dual
   - stm32f7xtcm_1024dual
@@ -3362,7 +3362,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F769NIHx
   cores:
   - name: main
@@ -3396,7 +3396,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F777BITx
   cores:
   - name: main
@@ -3430,7 +3430,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F777IIKx
   cores:
   - name: main
@@ -3464,7 +3464,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F777IITx
   cores:
   - name: main
@@ -3498,7 +3498,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F777NIHx
   cores:
   - name: main
@@ -3532,7 +3532,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F777VITx
   cores:
   - name: main
@@ -3566,7 +3566,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F777ZITx
   cores:
   - name: main
@@ -3600,7 +3600,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F778AIYx
   cores:
   - name: main
@@ -3634,7 +3634,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F779AIYx
   cores:
   - name: main
@@ -3668,7 +3668,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F779BITx
   cores:
   - name: main
@@ -3702,7 +3702,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F779IITx
   cores:
   - name: main
@@ -3736,7 +3736,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 - name: STM32F779NIHx
   cores:
   - name: main
@@ -3770,7 +3770,7 @@ variants:
   - stm32f77x_qspi_micron
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
-  - stm32f723e_qspi_macronix
+  - stm32f769i_qspi_macronix
 flash_algorithms:
 - name: stm32f7x_64_axi
   description: STM32F7xx 64k AXI Flash
@@ -3981,8 +3981,8 @@ flash_algorithms:
       address: 0x0
   cores:
   - main
-- name: stm32f7x_1024
-  description: STM32F7x 1MB Flash
+- name: stm32f7x_2048
+  description: STM32F7x 2MB Flash
   default: true
   instructions: v/NPj3BHwALADUAoAtOACQAdcEcgKALTQAnAHHBHwAhwR0lIR0lBYEhJQWAAIQFgwWjwIhFDwWBAaYAGBtRFSENJAWAGIUFgQ0mBYAAgcEc9SAFpQgURQwFhACBwRxC1OUgBaQQkIUMBYQFpogMRQwFhOkk3SgDgEWDDaNsD+9QBaaFDAWEAIBC9MLX/97v/LUnKaPAjGkPKYAIkDGEKacAGAA4CQwphCGniAxBDCGG/80+PKUgnSgDgEGDNaO0D+9QIaaBDCGHIaAAGAA8D0MhoGEPIYAEgML3wtRpMyRyJCOVoiQDwIx1D5WAAIyNhASf/BhlNIeAjaRlOM0MjYcYC9gr2GRNoM2C/80+PEU4A4DVg42jbA/vUI2lbCFsAI2HjaBsGGw8F0OBo8CEIQ+BgASDwvQAdCR8SHQAp29EAIPC9IwFnRQA8AkCrie/NVVUAAAAwAED/DwAAqqoAAAECAAAAAAAA
   pc_init: 0x23
@@ -3994,7 +3994,7 @@ flash_algorithms:
   flash_properties:
     address_range:
       start: 0x8000000
-      end: 0x8100000
+      end: 0x8200000
     page_size: 0x400
     erased_byte_value: 0xff
     program_page_timeout: 1000
@@ -4096,33 +4096,6 @@ flash_algorithms:
       address: 0x90000
     - size: 0x20000
       address: 0xa0000
-  cores:
-  - main
-- name: stm32f7x_2048
-  description: STM32F7x 2MB Flash
-  default: true
-  instructions: v/NPj3BHwALADUAoAtOACQAdcEcgKALTQAnAHHBHwAhwR0lIR0lBYEhJQWAAIQFgwWjwIhFDwWBAaYAGBtRFSENJAWAGIUFgQ0mBYAAgcEc9SAFpQgURQwFhACBwRxC1OUgBaQQkIUMBYQFpogMRQwFhOkk3SgDgEWDDaNsD+9QBaaFDAWEAIBC9MLX/97v/LUnKaPAjGkPKYAIkDGEKacAGAA4CQwphCGniAxBDCGG/80+PKUgnSgDgEGDNaO0D+9QIaaBDCGHIaAAGAA8D0MhoGEPIYAEgML3wtRpMyRyJCOVoiQDwIx1D5WAAIyNhASf/BhlNIeAjaRlOM0MjYcYC9gr2GRNoM2C/80+PEU4A4DVg42jbA/vUI2lbCFsAI2HjaBsGGw8F0OBo8CEIQ+BgASDwvQAdCR8SHQAp29EAIPC9IwFnRQA8AkCrie/NVVUAAAAwAED/DwAAqqoAAAECAAAAAAAA
-  pc_init: 0x23
-  pc_uninit: 0x51
-  pc_program_page: 0xdb
-  pc_erase_sector: 0x8b
-  pc_erase_all: 0x5f
-  data_section_offset: 0x164
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8200000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 1000
-    erase_sector_timeout: 6000
-    sectors:
-    - size: 0x8000
-      address: 0x0
-    - size: 0x20000
-      address: 0x20000
-    - size: 0x40000
-      address: 0x40000
   cores:
   - main
 - name: stm32f7x_2048dual
@@ -4349,28 +4322,6 @@ flash_algorithms:
   - main
 - name: stm32f769i_qspi_macronix
   description: MX25L51245G_STM32F769I-DISCO
-  instructions: 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
-  pc_init: 0x7a1
-  pc_uninit: 0x99b
-  pc_program_page: 0x9af
-  pc_erase_sector: 0x98d
-  pc_erase_all: 0x9a5
-  data_section_offset: 0x1284
-  flash_properties:
-    address_range:
-      start: 0x90000000
-      end: 0x94000000
-    page_size: 0x100
-    erased_byte_value: 0xff
-    program_page_timeout: 3000
-    erase_sector_timeout: 3000
-    sectors:
-    - size: 0x10000
-      address: 0x0
-  cores:
-  - main
-- name: stm32f723e_qspi_macronix
-  description: MX25L51245G_STM32F723E-DISCO
   instructions: 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
   pc_init: 0x7a1
   pc_uninit: 0x99b
