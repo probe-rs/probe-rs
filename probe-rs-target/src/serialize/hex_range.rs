@@ -5,7 +5,7 @@ pub fn serialize<S>(memory_range: &Range<u64>, serializer: S) -> Result<S::Ok, S
 where
     S: Serializer,
 {
-    // We serialize the range as hex strings when generating human-readable formats such as YAML,
+    // We serialize the range as hex strings when generating human-readable formats such as YAML
     let check_for_human_readable = serializer.is_human_readable();
     let mut state = serializer.serialize_struct("Range", 2)?;
     if check_for_human_readable {

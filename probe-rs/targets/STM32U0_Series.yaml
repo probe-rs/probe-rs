@@ -8,7 +8,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -40,7 +40,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -72,7 +72,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -104,7 +104,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -136,7 +136,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -168,7 +168,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -200,7 +200,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -232,7 +232,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -264,7 +264,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -296,7 +296,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -328,7 +328,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -360,7 +360,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -392,7 +392,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -424,7 +424,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -456,7 +456,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -488,7 +488,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -520,7 +520,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -541,7 +541,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -552,7 +552,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -573,7 +573,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -584,7 +584,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -605,7 +605,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -616,7 +616,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -637,7 +637,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -648,7 +648,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -669,7 +669,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -680,7 +680,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -701,7 +701,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -712,7 +712,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -733,7 +733,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -744,7 +744,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -765,7 +765,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -776,7 +776,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -797,7 +797,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -808,7 +808,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -829,7 +829,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -840,7 +840,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -861,7 +861,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -872,7 +872,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -893,7 +893,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -904,7 +904,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -925,7 +925,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -936,7 +936,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -957,7 +957,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -968,7 +968,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -989,7 +989,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -1000,7 +1000,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -1021,7 +1021,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -1032,7 +1032,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -1053,7 +1053,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -1064,7 +1064,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -1085,7 +1085,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -1096,7 +1096,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -1117,7 +1117,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -1128,7 +1128,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -1149,7 +1149,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -1160,7 +1160,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -1181,7 +1181,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -1192,7 +1192,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -1213,7 +1213,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -1224,7 +1224,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -1245,7 +1245,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -1256,7 +1256,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -1277,7 +1277,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -1288,7 +1288,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -1309,7 +1309,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -1320,7 +1320,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -1341,7 +1341,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -1352,7 +1352,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -1373,7 +1373,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -1384,7 +1384,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -1405,7 +1405,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -1416,7 +1416,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -1437,7 +1437,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -1448,7 +1448,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -1469,7 +1469,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -1480,7 +1480,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -1501,7 +1501,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -1512,7 +1512,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -1533,7 +1533,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:

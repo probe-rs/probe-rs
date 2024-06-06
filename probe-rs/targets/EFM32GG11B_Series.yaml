@@ -1,7 +1,7 @@
 name: EFM32GG11B Series
 manufacturer:
-  cc: 0x02
   id: 0x21
+  cc: 0x2
 generated_from_pack: true
 pack_file_release: 4.2.0
 variants:
@@ -11,7 +11,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -36,7 +36,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -61,7 +61,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -86,7 +86,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -111,7 +111,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -136,7 +136,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -161,7 +161,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -186,7 +186,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -211,7 +211,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -236,7 +236,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -261,7 +261,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -286,7 +286,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -311,7 +311,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -336,7 +336,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -361,7 +361,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -386,7 +386,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -411,7 +411,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -436,7 +436,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -461,7 +461,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -486,7 +486,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -511,7 +511,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -536,7 +536,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -561,7 +561,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -586,7 +586,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -611,7 +611,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -636,7 +636,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -661,7 +661,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -686,7 +686,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -711,7 +711,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -736,7 +736,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -761,7 +761,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -786,7 +786,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -811,7 +811,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -836,7 +836,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -861,7 +861,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -886,7 +886,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -911,7 +911,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -936,7 +936,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -961,7 +961,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -986,7 +986,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -1011,7 +1011,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -1036,7 +1036,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -1061,7 +1061,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -1086,7 +1086,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -1111,7 +1111,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -1136,7 +1136,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -1161,7 +1161,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -1186,7 +1186,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -1211,7 +1211,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -1236,7 +1236,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -1261,7 +1261,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -1286,7 +1286,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -1311,7 +1311,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -1336,7 +1336,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -1361,7 +1361,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -1386,7 +1386,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -1411,7 +1411,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -1436,7 +1436,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -1461,7 +1461,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -1486,7 +1486,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1

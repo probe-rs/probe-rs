@@ -11,7 +11,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -38,7 +38,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -65,7 +65,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -92,7 +92,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -119,7 +119,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -146,7 +146,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -173,7 +173,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -200,7 +200,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -227,7 +227,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -254,7 +254,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -281,7 +281,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -308,7 +308,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -335,7 +335,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -362,7 +362,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -389,7 +389,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -416,7 +416,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -443,7 +443,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -470,7 +470,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -497,7 +497,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -524,7 +524,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -551,7 +551,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -578,7 +578,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -605,7 +605,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -632,7 +632,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -659,7 +659,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -686,7 +686,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -713,7 +713,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -740,7 +740,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -767,7 +767,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -794,7 +794,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -821,7 +821,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -848,7 +848,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -875,7 +875,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -902,7 +902,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -929,7 +929,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -956,7 +956,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -983,7 +983,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -1010,7 +1010,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -1037,7 +1037,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -1064,7 +1064,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -1091,7 +1091,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -1118,7 +1118,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -1145,7 +1145,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -1172,7 +1172,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -1199,7 +1199,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -1226,7 +1226,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -1253,7 +1253,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -1280,7 +1280,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -1307,7 +1307,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -1334,7 +1334,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -1361,7 +1361,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -1388,7 +1388,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -1415,7 +1415,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -1442,7 +1442,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -1469,7 +1469,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -1496,7 +1496,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -1523,7 +1523,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -1550,7 +1550,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -1577,7 +1577,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -1604,7 +1604,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -1631,7 +1631,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -1658,7 +1658,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -1685,7 +1685,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -1712,7 +1712,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -1739,7 +1739,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -1766,7 +1766,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -1793,7 +1793,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -1820,7 +1820,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -1847,7 +1847,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -1874,7 +1874,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -1901,7 +1901,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -1928,7 +1928,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -1955,7 +1955,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -1982,7 +1982,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -2009,7 +2009,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -2036,7 +2036,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -2063,7 +2063,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -2090,7 +2090,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -2117,7 +2117,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -2144,7 +2144,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -2171,7 +2171,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -2198,7 +2198,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -2225,7 +2225,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -2252,7 +2252,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -2279,7 +2279,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -2306,7 +2306,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -2333,7 +2333,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -2360,7 +2360,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -2387,7 +2387,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -2414,7 +2414,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -2441,7 +2441,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -2468,7 +2468,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -2495,7 +2495,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -2522,7 +2522,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -2549,7 +2549,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -2576,7 +2576,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -2603,7 +2603,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -2630,7 +2630,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -2657,7 +2657,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -2684,7 +2684,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -2711,7 +2711,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -2738,7 +2738,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -2765,7 +2765,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -2792,7 +2792,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -2819,7 +2819,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -2846,7 +2846,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -2873,7 +2873,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -2900,7 +2900,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -2927,7 +2927,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -2954,7 +2954,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -2981,7 +2981,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -3008,7 +3008,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -3035,7 +3035,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -3062,7 +3062,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -3089,7 +3089,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -3116,7 +3116,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -3143,7 +3143,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -3170,7 +3170,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -3197,7 +3197,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -3224,7 +3224,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -3251,7 +3251,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -3278,7 +3278,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -3305,7 +3305,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -3332,7 +3332,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -3359,7 +3359,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -3386,7 +3386,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -3413,7 +3413,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -3440,7 +3440,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -3467,7 +3467,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -3494,7 +3494,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -3521,7 +3521,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -3548,7 +3548,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -3575,7 +3575,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -3602,7 +3602,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -3629,7 +3629,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -3656,7 +3656,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -3683,7 +3683,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -3710,7 +3710,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -3737,7 +3737,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -3764,7 +3764,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -3791,7 +3791,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -3818,7 +3818,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -3845,7 +3845,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -3872,7 +3872,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -3899,7 +3899,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -3926,7 +3926,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -3953,7 +3953,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -3980,7 +3980,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -4007,7 +4007,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -4034,7 +4034,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -4061,7 +4061,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -4088,7 +4088,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -4115,7 +4115,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -4142,7 +4142,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -4409,8 +4409,6 @@ flash_algorithms:
 # for which we have a confirmed report that the latest flash algorithms are broken.
 - name: stm32g4xx_128
   description: STM32G4xx 128 Flash
-  cores:
-    - main
   default: true
   instructions: ELUDRnZId0ygYHdIoGAgRgBqwLKqKBfQdEjgYHRI4GAgRgBqIPD/ACBiIEYAakDwqgAgYiBGQGlA9AAwYGEgRkBpQPAAYGBhAL9mSABpAPSAMAAo+dEQvQFGYkhAaUDwAEBgSlBhACBwRwNGASBwRwPgTPL7MFtJCGFaSABpAPSAMAAo9dEEIFZJSGEIRkBpQPSAMEhhAL9SSABpAPSAMAAo+dFPSABpRPL6MQhAILEIRkxJCGEBIHBHSkhAaSDwBABISUhhACD25wFGTPL7MERLGGEYRkBpQPACAFhhRUhIRABogUIJ08oKgDoC8H8CGEZAaUD0AGBYYQfgwfPGIjhIQGkg9ABgNktYYTVIQGkg9H5wM0tYYRhGQGlA6sIAWGEYRkBpQPSAMFhhAL8tSABpAPSAMAAo+dEAvylIAGkA9IAwACj50SZIAGlE8vozGEAgsRhGI0sYYQEgcEchSEBpIPACAB9LWGEAIPbnELUDRsgdIPAHAQC/GkgAaQD0gDAAKPnRTPL7MBZMIGEgRkBpQPABAGBhGOAQaBhgUGhYYAC/D0gAaQD0gDAAKPnRCDMIMgg5C0gAaQDwAQAosUTy+jAHTCBhASAQvQAp5NEESEBpIPABAAJMYGEAIPTnIwFnRQAgAkCrie/NOyoZCH9uXUwEAAAAAAAAAAAABAgAAAAAAAAAAA==
   pc_init: 0x1
@@ -4425,8 +4423,10 @@ flash_algorithms:
       end: 0x8020000
     page_size: 0x400
     erased_byte_value: 0xff
-    program_page_timeout: 0x190
-    erase_sector_timeout: 0x190
+    program_page_timeout: 400
+    erase_sector_timeout: 400
     sectors:
-      - size: 0x800
-        address: 0x0
+    - size: 0x800
+      address: 0x0
+  cores:
+  - main

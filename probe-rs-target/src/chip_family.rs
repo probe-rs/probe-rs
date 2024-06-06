@@ -1,3 +1,4 @@
+use crate::serialize::hex_jep106_option;
 use crate::CoreAccessOptions;
 
 use super::chip::Chip;
@@ -180,6 +181,7 @@ pub struct ChipFamily {
     /// E.g. `nRF52832`.
     pub name: String,
     /// The JEP106 code of the manufacturer.
+    #[serde(serialize_with = "hex_jep106_option")]
     pub manufacturer: Option<JEP106Code>,
     /// The `target-gen` process will set this to `true`.
     /// Please change this to `false` if this file is modified from the generated, or is a manually created target description.
