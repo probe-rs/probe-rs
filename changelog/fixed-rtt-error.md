@@ -1,0 +1,1 @@
+Fixed some cases where probe-rs would print "RTT control block corrupted".
