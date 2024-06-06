@@ -105,7 +105,7 @@ enum TargetGen {
         test_start_sector_address: Option<u64>,
     },
     /// Loads and updates target description from YAML files.
-    Refresh {
+    Reformat {
         /// The path of the YAML definition file or folder.
         yaml_path: PathBuf,
     },
@@ -161,7 +161,7 @@ async fn main() -> Result<()> {
             definition_export_path.as_path(),
             test_start_sector_address,
         )?,
-        TargetGen::Refresh { yaml_path } => {
+        TargetGen::Reformat { yaml_path } => {
             if yaml_path.is_dir() {
                 let entries = std::fs::read_dir(&yaml_path).context(format!(
                     "Failed to read directory '{}'.",
