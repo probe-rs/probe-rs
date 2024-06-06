@@ -220,7 +220,7 @@ impl Channel {
 
         let size = info.size_of_buffer();
 
-        Ok(Some(Channel {
+        let this = Channel {
             number,
             core_id: core.id(),
             ptr,
@@ -228,7 +228,14 @@ impl Channel {
             buffer_ptr,
             size,
             info,
-        }))
+        };
+
+        // It's possible that the channel is not initialized with the magic string written last.
+        // We call read_pointers to validate that the channel pointers are in an expected range.
+        // This should at least catch most cases where the control block is partially initialized.
+        this.read_pointers(core, "")?;
+
+        Ok(Some(this))
     }
 
     /// Validate that the Core id of a request is the same as the Core id against which the Channel was created.
