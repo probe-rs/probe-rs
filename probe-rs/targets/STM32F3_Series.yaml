@@ -1222,7 +1222,7 @@ variants:
     name: IRAM1
     range:
       start: 0x20000000
-      end: 0x2000c000
+      end: 0x2000a000
     cores:
     - main
   - !Ram
@@ -1255,7 +1255,7 @@ variants:
     name: IRAM1
     range:
       start: 0x20000000
-      end: 0x2000c000
+      end: 0x2000a000
     cores:
     - main
   - !Ram
