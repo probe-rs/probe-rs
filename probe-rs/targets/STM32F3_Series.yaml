@@ -225,7 +225,7 @@ variants:
     name: IRAM1
     range:
       start: 0x20000000
-      end: 0x20003000
+      end: 0x20004000
     cores:
     - main
   - !Nvm
@@ -303,7 +303,7 @@ variants:
     name: IRAM1
     range:
       start: 0x20000000
-      end: 0x20006000
+      end: 0x20008000
     cores:
     - main
   - !Nvm
@@ -329,7 +329,7 @@ variants:
     name: IRAM1
     range:
       start: 0x20000000
-      end: 0x20008000
+      end: 0x2000a000
     cores:
     - main
   - !Nvm
@@ -355,7 +355,7 @@ variants:
     name: IRAM1
     range:
       start: 0x20000000
-      end: 0x20003000
+      end: 0x20004000
     cores:
     - main
   - !Nvm
@@ -407,7 +407,7 @@ variants:
     name: IRAM1
     range:
       start: 0x20000000
-      end: 0x20003000
+      end: 0x20004000
     cores:
     - main
   - !Nvm
@@ -459,7 +459,7 @@ variants:
     name: IRAM1
     range:
       start: 0x20000000
-      end: 0x20006000
+      end: 0x20008000
     cores:
     - main
   - !Nvm
@@ -485,7 +485,7 @@ variants:
     name: IRAM1
     range:
       start: 0x20000000
-      end: 0x20008000
+      end: 0x2000a000
     cores:
     - main
   - !Nvm
@@ -563,7 +563,7 @@ variants:
     name: IRAM1
     range:
       start: 0x20000000
-      end: 0x20006000
+      end: 0x20008000
     cores:
     - main
   - !Nvm
@@ -589,7 +589,7 @@ variants:
     name: IRAM1
     range:
       start: 0x20000000
-      end: 0x20008000
+      end: 0x2000a000
     cores:
     - main
   - !Nvm
@@ -615,7 +615,7 @@ variants:
     name: IRAM1
     range:
       start: 0x20000000
-      end: 0x20008000
+      end: 0x2000a000
     cores:
     - main
   - !Nvm
