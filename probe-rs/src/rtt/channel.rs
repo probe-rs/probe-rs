@@ -263,14 +263,7 @@ impl Channel {
         self.validate_core_id(core)?;
         let flags = self.info.read_flags(core, self.ptr)?;
 
-        match flags & 0x3 {
-            0 => Ok(ChannelMode::NoBlockSkip),
-            1 => Ok(ChannelMode::NoBlockTrim),
-            2 => Ok(ChannelMode::BlockIfFull),
-            _ => Err(Error::ControlBlockCorrupted(String::from(
-                "The channel mode flags are invalid",
-            ))),
-        }
+        ChannelMode::try_from(flags)
     }
 
     /// Changes the channel mode on the target to the specified mode.
@@ -280,7 +273,7 @@ impl Channel {
         self.validate_core_id(core)?;
         let flags = self.info.read_flags(core, self.ptr)?;
 
-        let new_flags = (flags & !3) | (mode as u64);
+        let new_flags = ChannelMode::set(mode, flags);
         self.info.write_flags(core, self.ptr, new_flags)?;
 
         Ok(())
@@ -289,7 +282,7 @@ impl Channel {
     fn read_pointers(&self, core: &mut Core, channel_kind: &str) -> Result<(u64, u64), Error> {
         self.validate_core_id(core)?;
 
-        let (write, read): (u64, u64) = self.info.read_buffer_offsets(core, self.ptr)?;
+        let (write, read) = self.info.read_buffer_offsets(core, self.ptr)?;
 
         let validate = |which, value| {
             if value >= self.size {
@@ -552,4 +545,26 @@ pub enum ChannelMode {
     /// section, using this mode can cause the application to freeze if the buffer becomes full and
     /// is not read by the host.
     BlockIfFull = 2,
+}
+
+impl ChannelMode {
+    fn set(self, flags: u64) -> u64 {
+        (flags & !3) | (self as u64)
+    }
+}
+
+impl TryFrom<u64> for ChannelMode {
+    type Error = Error;
+
+    fn try_from(value: u64) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(ChannelMode::NoBlockSkip),
+            1 => Ok(ChannelMode::NoBlockTrim),
+            2 => Ok(ChannelMode::BlockIfFull),
+            _ => Err(Error::ControlBlockCorrupted(format!(
+                "The channel mode flags are invalid: {}",
+                value
+            ))),
+        }
+    }
 }
