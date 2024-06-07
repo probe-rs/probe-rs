@@ -240,19 +240,49 @@ impl Channel {
 
     /// Validate that the Core id of a request is the same as the Core id against which the Channel was created.
     pub(crate) fn validate_core_id(&self, core: &mut Core) -> Result<(), Error> {
-        if core.id() == self.core_id {
-            Ok(())
-        } else {
-            Err(Error::IncorrectCoreSpecified(self.core_id, core.id()))
+        if core.id() != self.core_id {
+            return Err(Error::IncorrectCoreSpecified(self.core_id, core.id()));
         }
+
+        Ok(())
     }
 
     pub fn name(&self) -> Option<&str> {
-        self.name.as_ref().map(|s| s.as_ref())
+        self.name.as_deref()
     }
 
     pub fn buffer_size(&self) -> usize {
         self.size as usize
+    }
+
+    /// Reads the current channel mode from the target and returns its.
+    ///
+    /// See [`ChannelMode`] for more information on what the modes mean.
+    pub fn mode(&self, core: &mut Core) -> Result<ChannelMode, Error> {
+        self.validate_core_id(core)?;
+        let flags = self.info.read_flags(core, self.ptr)?;
+
+        match flags & 0x3 {
+            0 => Ok(ChannelMode::NoBlockSkip),
+            1 => Ok(ChannelMode::NoBlockTrim),
+            2 => Ok(ChannelMode::BlockIfFull),
+            _ => Err(Error::ControlBlockCorrupted(String::from(
+                "The channel mode flags are invalid",
+            ))),
+        }
+    }
+
+    /// Changes the channel mode on the target to the specified mode.
+    ///
+    /// See [`ChannelMode`] for more information on what the modes mean.
+    pub fn set_mode(&self, core: &mut Core, mode: ChannelMode) -> Result<(), Error> {
+        self.validate_core_id(core)?;
+        let flags = self.info.read_flags(core, self.ptr)?;
+
+        let new_flags = (flags & !3) | (mode as u64);
+        self.info.write_flags(core, self.ptr, new_flags)?;
+
+        Ok(())
     }
 
     fn read_pointers(&self, core: &mut Core, channel_kind: &str) -> Result<(u64, u64), Error> {
@@ -305,35 +335,17 @@ impl UpChannel {
     ///
     /// See [`ChannelMode`] for more information on what the modes mean.
     pub fn mode(&self, core: &mut Core) -> Result<ChannelMode, Error> {
-        self.0.validate_core_id(core)?;
-
-        let flags = self.0.info.read_flags(core, self.0.ptr)?;
-
-        match flags & 0x3 {
-            0 => Ok(ChannelMode::NoBlockSkip),
-            1 => Ok(ChannelMode::NoBlockTrim),
-            2 => Ok(ChannelMode::BlockIfFull),
-            _ => Err(Error::ControlBlockCorrupted(String::from(
-                "The channel mode flags are invalid",
-            ))),
-        }
+        self.0.mode(core)
     }
 
     /// Changes the channel mode on the target to the specified mode.
     ///
     /// See [`ChannelMode`] for more information on what the modes mean.
     pub fn set_mode(&self, core: &mut Core, mode: ChannelMode) -> Result<(), Error> {
-        self.0.validate_core_id(core)?;
-        let flags = self.0.info.read_flags(core, self.0.ptr)?;
-
-        let new_flags = (flags & !3) | (mode as u64);
-        self.0.info.write_flags(core, self.0.ptr, new_flags)?;
-
-        Ok(())
+        self.0.set_mode(core, mode)
     }
 
     fn read_core(&self, core: &mut Core, mut buf: &mut [u8]) -> Result<(u64, usize), Error> {
-        self.0.validate_core_id(core)?;
         let (write, mut read) = self.0.read_pointers(core, "up ")?;
 
         let mut total = 0;
@@ -367,7 +379,6 @@ impl UpChannel {
     /// This method will not block waiting for data in the target buffer, and may read less bytes
     /// than would fit in `buf`.
     pub fn read(&self, core: &mut Core, buf: &mut [u8]) -> Result<usize, Error> {
-        self.0.validate_core_id(core)?;
         let (read, total) = self.read_core(core, buf)?;
 
         if total > 0 {
@@ -384,17 +395,14 @@ impl UpChannel {
     /// The difference from [`read`](UpChannel::read) is that this does not discard the data in the
     /// buffer.
     pub fn peek(&self, core: &mut Core, buf: &mut [u8]) -> Result<usize, Error> {
-        self.0.validate_core_id(core)?;
         Ok(self.read_core(core, buf)?.1)
     }
 
     /// Calculates amount of contiguous data available for reading
     fn readable_contiguous(&self, write: u64, read: u64) -> usize {
-        (if read > write {
-            self.0.size - read
-        } else {
-            write - read
-        }) as usize
+        let end = if read > write { self.0.size } else { write };
+
+        (end - read) as usize
     }
 }
 
@@ -407,6 +415,7 @@ impl RttChannel for UpChannel {
     fn name(&self) -> Option<&str> {
         self.0.name()
     }
+
     fn buffer_size(&self) -> usize {
         self.0.buffer_size()
     }
@@ -438,13 +447,7 @@ impl DownChannel {
     /// This method will not block waiting for space to become available in the channel buffer, and
     /// may not write all of `buf`.
     pub fn write(&self, core: &mut Core, mut buf: &[u8]) -> Result<usize, Error> {
-        self.0.validate_core_id(core)?;
         let (mut write, read) = self.0.read_pointers(core, "down ")?;
-
-        if self.writable_contiguous(write, read) == 0 {
-            // Buffer is full - do nothing.
-            return Ok(0);
-        }
 
         let mut total = 0;
 
@@ -497,6 +500,7 @@ impl RttChannel for DownChannel {
     fn name(&self) -> Option<&str> {
         self.0.name()
     }
+
     fn buffer_size(&self) -> usize {
         self.0.buffer_size()
     }
@@ -509,14 +513,13 @@ fn read_c_string(
     ptr: u64,
 ) -> Result<Option<String>, Error> {
     // Find out which memory range contains the pointer
-    let range = memory_map
+    let Some(range) = memory_map
         .iter()
         .filter(|r| r.is_ram() || r.is_nvm())
         .find(|r| r.contains(ptr))
-        .map(|r| r.address_range());
-
-    // If the pointer is not within any valid range, return None.
-    let Some(range) = range else {
+        .map(|r| r.address_range())
+    else {
+        // If the pointer is not within any valid range, return None.
         return Ok(None);
     };
 
@@ -524,15 +527,12 @@ fn read_c_string(
     let mut bytes = vec![0u8; min(128, (range.end - ptr) as usize)];
     core.read(ptr, bytes.as_mut())?;
 
+    // If the bytes read contain a null, return the preceding part as a string, otherwise None.
     let return_value = bytes
         .iter()
         .position(|&b| b == 0)
         .map(|p| String::from_utf8_lossy(&bytes[..p]).into_owned());
-    tracing::debug!(
-        "probe-rs-rtt::Channel::read_c_string() result = {:?}",
-        return_value
-    );
-    // If the bytes read contain a null, return the preceding part as a string, otherwise None.
+    tracing::trace!("read_c_string() result = {:?}", return_value);
     Ok(return_value)
 }
 
