@@ -234,6 +234,7 @@ impl Channel {
         // We call read_pointers to validate that the channel pointers are in an expected range.
         // This should at least catch most cases where the control block is partially initialized.
         this.read_pointers(core, "")?;
+        this.mode(core)?;
 
         Ok(Some(this))
     }
