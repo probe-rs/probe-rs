@@ -800,6 +800,13 @@ variants:
       end: 0x20003000
     cores:
     - main
+  - !Ram
+    name: CCM SRAM
+    range:
+      start: 0x10000000
+      end: 0x10001000
+    cores:
+    - main
   - !Nvm
     name: IROM1
     range:
@@ -824,6 +831,13 @@ variants:
     range:
       start: 0x20000000
       end: 0x20003000
+    cores:
+    - main
+  - !Ram
+    name: CCM SRAM
+    range:
+      start: 0x10000000
+      end: 0x10001000
     cores:
     - main
   - !Nvm
@@ -853,7 +867,7 @@ variants:
     cores:
     - main
   - !Ram
-    name: IRAM2
+    name: CCM SRAM
     range:
       start: 0x10000000
       end: 0x10002000
@@ -886,7 +900,7 @@ variants:
     cores:
     - main
   - !Ram
-    name: IRAM2
+    name: CCM SRAM
     range:
       start: 0x10000000
       end: 0x10002000
@@ -918,6 +932,13 @@ variants:
       end: 0x20003000
     cores:
     - main
+  - !Ram
+    name: CCM SRAM
+    range:
+      start: 0x10000000
+      end: 0x10001000
+    cores:
+    - main
   - !Nvm
     name: IROM1
     range:
@@ -942,6 +963,13 @@ variants:
     range:
       start: 0x20000000
       end: 0x20003000
+    cores:
+    - main
+  - !Ram
+    name: CCM SRAM
+    range:
+      start: 0x10000000
+      end: 0x10001000
     cores:
     - main
   - !Nvm
@@ -970,6 +998,13 @@ variants:
       end: 0x20003000
     cores:
     - main
+  - !Ram
+    name: CCM SRAM
+    range:
+      start: 0x10000000
+      end: 0x10001000
+    cores:
+    - main
   - !Nvm
     name: IROM1
     range:
@@ -994,6 +1029,13 @@ variants:
     range:
       start: 0x20000000
       end: 0x20003000
+    cores:
+    - main
+  - !Ram
+    name: CCM SRAM
+    range:
+      start: 0x10000000
+      end: 0x10001000
     cores:
     - main
   - !Nvm
@@ -1022,6 +1064,13 @@ variants:
       end: 0x20003000
     cores:
     - main
+  - !Ram
+    name: CCM SRAM
+    range:
+      start: 0x10000000
+      end: 0x10001000
+    cores:
+    - main
   - !Nvm
     name: IROM1
     range:
@@ -1046,6 +1095,13 @@ variants:
     range:
       start: 0x20000000
       end: 0x20003000
+    cores:
+    - main
+  - !Ram
+    name: CCM SRAM
+    range:
+      start: 0x10000000
+      end: 0x10001000
     cores:
     - main
   - !Nvm
@@ -1075,7 +1131,7 @@ variants:
     cores:
     - main
   - !Ram
-    name: IRAM2
+    name: CCM SRAM
     range:
       start: 0x10000000
       end: 0x10002000
@@ -1108,7 +1164,7 @@ variants:
     cores:
     - main
   - !Ram
-    name: IRAM2
+    name: CCM SRAM
     range:
       start: 0x10000000
       end: 0x10002000
@@ -1140,6 +1196,13 @@ variants:
       end: 0x20010000
     cores:
     - main
+  - !Ram
+    name: CCM SRAM
+    range:
+      start: 0x10000000
+      end: 0x10004000
+    cores:
+    - main
   - !Nvm
     name: IROM1
     range:
@@ -1164,6 +1227,13 @@ variants:
     range:
       start: 0x20000000
       end: 0x20010000
+    cores:
+    - main
+  - !Ram
+    name: CCM SRAM
+    range:
+      start: 0x10000000
+      end: 0x10004000
     cores:
     - main
   - !Nvm
@@ -1193,7 +1263,7 @@ variants:
     cores:
     - main
   - !Ram
-    name: IRAM2
+    name: CCM SRAM
     range:
       start: 0x10000000
       end: 0x10002000
@@ -1226,7 +1296,7 @@ variants:
     cores:
     - main
   - !Ram
-    name: IRAM2
+    name: CCM SRAM
     range:
       start: 0x10000000
       end: 0x10002000
@@ -1259,7 +1329,7 @@ variants:
     cores:
     - main
   - !Ram
-    name: IRAM2
+    name: CCM SRAM
     range:
       start: 0x10000000
       end: 0x10002000
@@ -1291,6 +1361,13 @@ variants:
       end: 0x20010000
     cores:
     - main
+  - !Ram
+    name: CCM SRAM
+    range:
+      start: 0x10000000
+      end: 0x10004000
+    cores:
+    - main
   - !Nvm
     name: IROM1
     range:
@@ -1315,6 +1392,13 @@ variants:
     range:
       start: 0x20000000
       end: 0x20010000
+    cores:
+    - main
+  - !Ram
+    name: CCM SRAM
+    range:
+      start: 0x10000000
+      end: 0x10004000
     cores:
     - main
   - !Nvm
@@ -1343,6 +1427,13 @@ variants:
       end: 0x20010000
     cores:
     - main
+  - !Ram
+    name: CCM SRAM
+    range:
+      start: 0x10000000
+      end: 0x10004000
+    cores:
+    - main
   - !Nvm
     name: IROM1
     range:
@@ -1367,6 +1458,13 @@ variants:
     range:
       start: 0x20000000
       end: 0x20010000
+    cores:
+    - main
+  - !Ram
+    name: CCM SRAM
+    range:
+      start: 0x10000000
+      end: 0x10004000
     cores:
     - main
   - !Nvm
@@ -1395,6 +1493,13 @@ variants:
       end: 0x20010000
     cores:
     - main
+  - !Ram
+    name: CCM SRAM
+    range:
+      start: 0x10000000
+      end: 0x10004000
+    cores:
+    - main
   - !Nvm
     name: IROM1
     range:
@@ -1421,6 +1526,13 @@ variants:
       end: 0x20010000
     cores:
     - main
+  - !Ram
+    name: CCM SRAM
+    range:
+      start: 0x10000000
+      end: 0x10004000
+    cores:
+    - main
   - !Nvm
     name: IROM1
     range:
@@ -1445,6 +1557,13 @@ variants:
     range:
       start: 0x20000000
       end: 0x20010000
+    cores:
+    - main
+  - !Ram
+    name: CCM SRAM
+    range:
+      start: 0x10000000
+      end: 0x10004000
     cores:
     - main
   - !Nvm
@@ -1549,6 +1668,13 @@ variants:
     range:
       start: 0x20000000
       end: 0x20003000
+    cores:
+    - main
+  - !Ram
+    name: CCM SRAM
+    range:
+      start: 0x10000000
+      end: 0x10001000
     cores:
     - main
   - !Nvm
@@ -1973,6 +2099,13 @@ variants:
       end: 0x2000a000
     cores:
     - main
+  - !Ram
+    name: CCM SRAM
+    range:
+      start: 0x10000000
+      end: 0x10002000
+    cores:
+    - main
   - !Nvm
     name: IROM1
     range:
@@ -1999,6 +2132,13 @@ variants:
       end: 0x2000a000
     cores:
     - main
+  - !Ram
+    name: CCM SRAM
+    range:
+      start: 0x10000000
+      end: 0x10002000
+    cores:
+    - main
   - !Nvm
     name: IROM1
     range:
@@ -2023,6 +2163,13 @@ variants:
     range:
       start: 0x20000000
       end: 0x2000a000
+    cores:
+    - main
+  - !Ram
+    name: CCM SRAM
+    range:
+      start: 0x10000000
+      end: 0x10002000
     cores:
     - main
   - !Nvm
