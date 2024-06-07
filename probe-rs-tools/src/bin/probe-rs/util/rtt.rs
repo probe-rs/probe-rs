@@ -25,7 +25,7 @@ pub fn get_target_core_id(session: &mut Session, elf_file: impl AsRef<Path>) -> 
         let mut file = File::open(elf_file).ok()?;
         let address = RttActiveTarget::get_rtt_symbol(&mut file)?;
 
-        tracing::debug!("RTT symbol found at 0x{:08x}", address);
+        tracing::debug!("RTT symbol found at {address:#010x}");
 
         let target_memory = session
             .target()
@@ -43,7 +43,7 @@ pub fn get_target_core_id(session: &mut Session, elf_file: impl AsRef<Path>) -> 
             .iter()
             .position(|core| core.name == *core_name)?;
 
-        tracing::debug!("RTT symbol is in core {}", core_id);
+        tracing::debug!("RTT symbol is in core {core_id}");
 
         Some(core_id)
     };
@@ -53,7 +53,7 @@ pub fn get_target_core_id(session: &mut Session, elf_file: impl AsRef<Path>) -> 
 /// Try to find the RTT control block in the ELF file and attach to it.
 ///
 /// This function can return `Ok(None)` to indicate that RTT is not available on the target.
-fn attach_to_rtt(
+fn try_attach_to_rtt_once(
     core: &mut Core,
     memory_map: &[MemoryRegion],
     rtt_region: &ScanRegion,
@@ -663,17 +663,15 @@ impl fmt::Debug for RttBuffer {
 }
 
 fn try_attach_to_rtt_inner(
-    mut attach: impl FnMut(&[MemoryRegion], &ScanRegion) -> Result<Option<Rtt>>,
+    mut try_attach_once: impl FnMut() -> Result<Option<Rtt>>,
     timeout: Duration,
-    memory_map: &[MemoryRegion],
-    rtt_region: &ScanRegion,
 ) -> Result<Option<Rtt>> {
     let t = Instant::now();
     let mut attempt = 1;
     loop {
         tracing::debug!("Initializing RTT (attempt {attempt})...");
 
-        match attach(memory_map, rtt_region) {
+        match try_attach_once() {
             Err(_) if t.elapsed() < timeout => {
                 attempt += 1;
                 tracing::debug!("Failed to initialize RTT. Retrying until timeout.");
@@ -696,10 +694,8 @@ pub fn try_attach_to_rtt(
     rtt_region: &ScanRegion,
 ) -> Result<Option<Rtt>> {
     try_attach_to_rtt_inner(
-        |memory_map, rtt_region| attach_to_rtt(core, memory_map, rtt_region),
+        || try_attach_to_rtt_once(core, memory_map, rtt_region),
         timeout,
-        memory_map,
-        rtt_region,
     )
 }
 
@@ -712,13 +708,11 @@ pub fn try_attach_to_rtt_shared(
     rtt_region: &ScanRegion,
 ) -> Result<Option<Rtt>> {
     try_attach_to_rtt_inner(
-        |memory_map, rtt_region| {
+        || {
             let mut session_handle = session.lock();
             let mut core = session_handle.core(core_id)?;
-            attach_to_rtt(&mut core, memory_map, rtt_region)
+            try_attach_to_rtt_once(&mut core, memory_map, rtt_region)
         },
         timeout,
-        memory_map,
-        rtt_region,
     )
 }
