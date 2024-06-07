@@ -669,26 +669,18 @@ fn try_attach_to_rtt_inner(
     rtt_region: &ScanRegion,
 ) -> Result<Option<Rtt>> {
     let t = Instant::now();
-    let mut rtt_init_attempt = 1;
-    let mut last_error = None;
-    while t.elapsed() < timeout {
-        tracing::debug!("Initializing RTT (attempt {})...", rtt_init_attempt);
-        rtt_init_attempt += 1;
+    let mut attempt = 1;
+    loop {
+        tracing::debug!("Initializing RTT (attempt {attempt})...");
 
         match attach(memory_map, rtt_region) {
-            Ok(rtt) => return Ok(rtt),
-            Err(e) => last_error = Some(e),
+            Err(_) if t.elapsed() < timeout => {
+                attempt += 1;
+                tracing::debug!("Failed to initialize RTT. Retrying until timeout.");
+                thread::sleep(Duration::from_millis(50));
+            }
+            result => return result,
         }
-
-        tracing::debug!("Failed to initialize RTT. Retrying until timeout.");
-        thread::sleep(Duration::from_millis(10));
-    }
-
-    // Timeout
-    if let Some(err) = last_error {
-        Err(err)
-    } else {
-        Err(anyhow!("Error setting up RTT"))
     }
 }
 
