@@ -2,8 +2,6 @@ name: STM32F3 Series
 manufacturer:
   id: 0x20
   cc: 0x0
-generated_from_pack: true
-pack_file_release: 2.2.2
 variants:
 - name: STM32F301C6Tx
   cores:
