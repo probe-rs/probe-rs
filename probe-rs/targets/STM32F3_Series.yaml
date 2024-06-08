@@ -11,21 +11,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -37,21 +39,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -63,21 +67,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -89,21 +95,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -115,21 +123,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -141,21 +151,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -167,21 +179,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -193,21 +207,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -219,21 +235,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -245,21 +263,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -271,21 +291,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -297,21 +319,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20008000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -323,21 +347,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x2000a000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -349,21 +375,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -375,21 +403,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -401,21 +431,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -427,21 +459,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -453,21 +487,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20008000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -479,21 +515,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x2000a000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -505,21 +543,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8060000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20010000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8060000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_512
   - stm32f3xx_opt
@@ -531,21 +571,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20010000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_512
   - stm32f3xx_opt
@@ -557,21 +599,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20008000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -583,21 +627,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x2000a000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -609,21 +655,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x2000a000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -635,21 +683,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8060000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20010000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8060000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_512
   - stm32f3xx_opt
@@ -661,21 +711,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8060000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20010000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8060000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_512
   - stm32f3xx_opt
@@ -687,21 +739,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20010000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_512
   - stm32f3xx_opt
@@ -713,21 +767,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20010000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_512
   - stm32f3xx_opt
@@ -739,21 +795,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8060000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20010000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8060000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_512
   - stm32f3xx_opt
@@ -765,21 +823,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20010000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_512
   - stm32f3xx_opt
@@ -791,28 +851,31 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
+  - !Nvm
+    name: BANK_1
     range:
-      start: 0x20000000
-      end: 0x20003000
+      start: 0x8000000
+      end: 0x8008000
     cores:
     - main
+    access:
+      boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
-  - !Nvm
-    name: IROM1
+    access:
+  - !Ram
+    name: SRAM
     range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
+      start: 0x20000000
+      end: 0x20003000
     cores:
     - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -824,28 +887,31 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
+  - !Nvm
+    name: BANK_1
     range:
-      start: 0x20000000
-      end: 0x20003000
+      start: 0x8000000
+      end: 0x8010000
     cores:
     - main
+    access:
+      boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
-  - !Nvm
-    name: IROM1
+    access:
+  - !Ram
+    name: SRAM
     range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
+      start: 0x20000000
+      end: 0x20003000
     cores:
     - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -857,28 +923,31 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
+  - !Nvm
+    name: BANK_1
     range:
-      start: 0x20000000
-      end: 0x20008000
+      start: 0x8000000
+      end: 0x8020000
     cores:
     - main
+    access:
+      boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10002000
     cores:
     - main
-  - !Nvm
-    name: IROM1
+    access:
+  - !Ram
+    name: SRAM
     range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
+      start: 0x20000000
+      end: 0x20008000
     cores:
     - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -890,28 +959,31 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
+  - !Nvm
+    name: BANK_1
     range:
-      start: 0x20000000
-      end: 0x2000a000
+      start: 0x8000000
+      end: 0x8040000
     cores:
     - main
+    access:
+      boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10002000
     cores:
     - main
-  - !Nvm
-    name: IROM1
+    access:
+  - !Ram
+    name: SRAM
     range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
+      start: 0x20000000
+      end: 0x2000a000
     cores:
     - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -923,28 +995,31 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
+  - !Nvm
+    name: BANK_1
     range:
-      start: 0x20000000
-      end: 0x20003000
+      start: 0x8000000
+      end: 0x8008000
     cores:
     - main
+    access:
+      boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
-  - !Nvm
-    name: IROM1
+    access:
+  - !Ram
+    name: SRAM
     range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
+      start: 0x20000000
+      end: 0x20003000
     cores:
     - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -956,28 +1031,31 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
+  - !Nvm
+    name: BANK_1
     range:
-      start: 0x20000000
-      end: 0x20003000
+      start: 0x8000000
+      end: 0x8008000
     cores:
     - main
+    access:
+      boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
-  - !Nvm
-    name: IROM1
+    access:
+  - !Ram
+    name: SRAM
     range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
+      start: 0x20000000
+      end: 0x20003000
     cores:
     - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -989,28 +1067,31 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
+  - !Nvm
+    name: BANK_1
     range:
-      start: 0x20000000
-      end: 0x20003000
+      start: 0x8000000
+      end: 0x8010000
     cores:
     - main
+    access:
+      boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
-  - !Nvm
-    name: IROM1
+    access:
+  - !Ram
+    name: SRAM
     range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
+      start: 0x20000000
+      end: 0x20003000
     cores:
     - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -1022,28 +1103,31 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
+  - !Nvm
+    name: BANK_1
     range:
-      start: 0x20000000
-      end: 0x20003000
+      start: 0x8000000
+      end: 0x8010000
     cores:
     - main
+    access:
+      boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
-  - !Nvm
-    name: IROM1
+    access:
+  - !Ram
+    name: SRAM
     range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
+      start: 0x20000000
+      end: 0x20003000
     cores:
     - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -1055,28 +1139,31 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
+  - !Nvm
+    name: BANK_1
     range:
-      start: 0x20000000
-      end: 0x20003000
+      start: 0x8000000
+      end: 0x8008000
     cores:
     - main
+    access:
+      boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
-  - !Nvm
-    name: IROM1
+    access:
+  - !Ram
+    name: SRAM
     range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
+      start: 0x20000000
+      end: 0x20003000
     cores:
     - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -1088,28 +1175,31 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
+  - !Nvm
+    name: BANK_1
     range:
-      start: 0x20000000
-      end: 0x20003000
+      start: 0x8000000
+      end: 0x8010000
     cores:
     - main
+    access:
+      boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
-  - !Nvm
-    name: IROM1
+    access:
+  - !Ram
+    name: SRAM
     range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
+      start: 0x20000000
+      end: 0x20003000
     cores:
     - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -1121,28 +1211,31 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
+  - !Nvm
+    name: BANK_1
     range:
-      start: 0x20000000
-      end: 0x20008000
+      start: 0x8000000
+      end: 0x8020000
     cores:
     - main
+    access:
+      boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10002000
     cores:
     - main
-  - !Nvm
-    name: IROM1
+    access:
+  - !Ram
+    name: SRAM
     range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
+      start: 0x20000000
+      end: 0x20008000
     cores:
     - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -1154,28 +1247,31 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
+  - !Nvm
+    name: BANK_1
     range:
-      start: 0x20000000
-      end: 0x2000a000
+      start: 0x8000000
+      end: 0x8040000
     cores:
     - main
+    access:
+      boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10002000
     cores:
     - main
-  - !Nvm
-    name: IROM1
+    access:
+  - !Ram
+    name: SRAM
     range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
+      start: 0x20000000
+      end: 0x2000a000
     cores:
     - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -1187,28 +1283,31 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
+  - !Nvm
+    name: BANK_1
     range:
-      start: 0x20000000
-      end: 0x20010000
+      start: 0x8000000
+      end: 0x8060000
     cores:
     - main
+    access:
+      boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10004000
     cores:
     - main
-  - !Nvm
-    name: IROM1
+    access:
+  - !Ram
+    name: SRAM
     range:
-      start: 0x8000000
-      end: 0x8060000
-    is_boot_memory: true
+      start: 0x20000000
+      end: 0x20010000
     cores:
     - main
+    access:
   flash_algorithms:
   - stm32f3xx_512
   - stm32f3xx_opt
@@ -1220,28 +1319,31 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
+  - !Nvm
+    name: BANK_1
     range:
-      start: 0x20000000
-      end: 0x20010000
+      start: 0x8000000
+      end: 0x8080000
     cores:
     - main
+    access:
+      boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10004000
     cores:
     - main
-  - !Nvm
-    name: IROM1
+    access:
+  - !Ram
+    name: SRAM
     range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
+      start: 0x20000000
+      end: 0x20010000
     cores:
     - main
+    access:
   flash_algorithms:
   - stm32f3xx_512
   - stm32f3xx_opt
@@ -1253,28 +1355,31 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
+  - !Nvm
+    name: BANK_1
     range:
-      start: 0x20000000
-      end: 0x20008000
+      start: 0x8000000
+      end: 0x8020000
     cores:
     - main
+    access:
+      boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10002000
     cores:
     - main
-  - !Nvm
-    name: IROM1
+    access:
+  - !Ram
+    name: SRAM
     range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
+      start: 0x20000000
+      end: 0x20008000
     cores:
     - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -1286,28 +1391,31 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
+  - !Nvm
+    name: BANK_1
     range:
-      start: 0x20000000
-      end: 0x2000a000
+      start: 0x8000000
+      end: 0x8040000
     cores:
     - main
+    access:
+      boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10002000
     cores:
     - main
-  - !Nvm
-    name: IROM1
+    access:
+  - !Ram
+    name: SRAM
     range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
+      start: 0x20000000
+      end: 0x2000a000
     cores:
     - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -1319,28 +1427,31 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
+  - !Nvm
+    name: BANK_1
     range:
-      start: 0x20000000
-      end: 0x2000a000
+      start: 0x8000000
+      end: 0x8040000
     cores:
     - main
+    access:
+      boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10002000
     cores:
     - main
-  - !Nvm
-    name: IROM1
+    access:
+  - !Ram
+    name: SRAM
     range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
+      start: 0x20000000
+      end: 0x2000a000
     cores:
     - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -1352,28 +1463,31 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
+  - !Nvm
+    name: BANK_1
     range:
-      start: 0x20000000
-      end: 0x20010000
+      start: 0x8000000
+      end: 0x8060000
     cores:
     - main
+    access:
+      boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10004000
     cores:
     - main
-  - !Nvm
-    name: IROM1
+    access:
+  - !Ram
+    name: SRAM
     range:
-      start: 0x8000000
-      end: 0x8060000
-    is_boot_memory: true
+      start: 0x20000000
+      end: 0x20010000
     cores:
     - main
+    access:
   flash_algorithms:
   - stm32f3xx_512
   - stm32f3xx_opt
@@ -1385,28 +1499,31 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
+  - !Nvm
+    name: BANK_1
     range:
-      start: 0x20000000
-      end: 0x20010000
+      start: 0x8000000
+      end: 0x8060000
     cores:
     - main
+    access:
+      boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10004000
     cores:
     - main
-  - !Nvm
-    name: IROM1
+    access:
+  - !Ram
+    name: SRAM
     range:
-      start: 0x8000000
-      end: 0x8060000
-    is_boot_memory: true
+      start: 0x20000000
+      end: 0x20010000
     cores:
     - main
+    access:
   flash_algorithms:
   - stm32f3xx_512
   - stm32f3xx_opt
@@ -1418,28 +1535,31 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
+  - !Nvm
+    name: BANK_1
     range:
-      start: 0x20000000
-      end: 0x20010000
+      start: 0x8000000
+      end: 0x8080000
     cores:
     - main
+    access:
+      boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10004000
     cores:
     - main
-  - !Nvm
-    name: IROM1
+    access:
+  - !Ram
+    name: SRAM
     range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
+      start: 0x20000000
+      end: 0x20010000
     cores:
     - main
+    access:
   flash_algorithms:
   - stm32f3xx_512
   - stm32f3xx_opt
@@ -1451,28 +1571,31 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
+  - !Nvm
+    name: BANK_1
     range:
-      start: 0x20000000
-      end: 0x20010000
+      start: 0x8000000
+      end: 0x8080000
     cores:
     - main
+    access:
+      boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10004000
     cores:
     - main
-  - !Nvm
-    name: IROM1
+    access:
+  - !Ram
+    name: SRAM
     range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
+      start: 0x20000000
+      end: 0x20010000
     cores:
     - main
+    access:
   flash_algorithms:
   - stm32f3xx_512
   - stm32f3xx_opt
@@ -1484,28 +1607,31 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
+  - !Nvm
+    name: BANK_1
     range:
-      start: 0x20000000
-      end: 0x20010000
+      start: 0x8000000
+      end: 0x8080000
     cores:
     - main
+    access:
+      boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10004000
     cores:
     - main
-  - !Nvm
-    name: IROM1
+    access:
+  - !Ram
+    name: SRAM
     range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
+      start: 0x20000000
+      end: 0x20010000
     cores:
     - main
+    access:
   flash_algorithms:
   - stm32f3xx_512
   - stm32f3xx_opt
@@ -1517,28 +1643,31 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
+  - !Nvm
+    name: BANK_1
     range:
-      start: 0x20000000
-      end: 0x20010000
+      start: 0x8000000
+      end: 0x8060000
     cores:
     - main
+    access:
+      boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10004000
     cores:
     - main
-  - !Nvm
-    name: IROM1
+    access:
+  - !Ram
+    name: SRAM
     range:
-      start: 0x8000000
-      end: 0x8060000
-    is_boot_memory: true
+      start: 0x20000000
+      end: 0x20010000
     cores:
     - main
+    access:
   flash_algorithms:
   - stm32f3xx_512
   - stm32f3xx_opt
@@ -1550,28 +1679,31 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
+  - !Nvm
+    name: BANK_1
     range:
-      start: 0x20000000
-      end: 0x20010000
+      start: 0x8000000
+      end: 0x8080000
     cores:
     - main
+    access:
+      boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10004000
     cores:
     - main
-  - !Nvm
-    name: IROM1
+    access:
+  - !Ram
+    name: SRAM
     range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
+      start: 0x20000000
+      end: 0x20010000
     cores:
     - main
+    access:
   flash_algorithms:
   - stm32f3xx_512
   - stm32f3xx_opt
@@ -1583,21 +1715,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -1609,21 +1743,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -1635,21 +1771,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -1661,28 +1799,31 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
+  - !Nvm
+    name: BANK_1
     range:
-      start: 0x20000000
-      end: 0x20003000
+      start: 0x8000000
+      end: 0x8010000
     cores:
     - main
+    access:
+      boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
-  - !Nvm
-    name: IROM1
+    access:
+  - !Ram
+    name: SRAM
     range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
+      start: 0x20000000
+      end: 0x20003000
     cores:
     - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -1694,28 +1835,31 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
+  - !Nvm
+    name: BANK_1
     range:
-      start: 0x20000000
-      end: 0x20003000
+      start: 0x8000000
+      end: 0x8004000
     cores:
     - main
+    access:
+      boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
-  - !Nvm
-    name: IROM1
+    access:
+  - !Ram
+    name: SRAM
     range:
-      start: 0x8000000
-      end: 0x8004000
-    is_boot_memory: true
+      start: 0x20000000
+      end: 0x20003000
     cores:
     - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -1727,28 +1871,31 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
+  - !Nvm
+    name: BANK_1
     range:
-      start: 0x20000000
-      end: 0x20003000
+      start: 0x8000000
+      end: 0x8008000
     cores:
     - main
+    access:
+      boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
-  - !Nvm
-    name: IROM1
+    access:
+  - !Ram
+    name: SRAM
     range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
+      start: 0x20000000
+      end: 0x20003000
     cores:
     - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -1760,28 +1907,31 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
+  - !Nvm
+    name: BANK_1
     range:
-      start: 0x20000000
-      end: 0x20003000
+      start: 0x8000000
+      end: 0x8010000
     cores:
     - main
+    access:
+      boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
-  - !Nvm
-    name: IROM1
+    access:
+  - !Ram
+    name: SRAM
     range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
+      start: 0x20000000
+      end: 0x20003000
     cores:
     - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -1793,28 +1943,31 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
+  - !Nvm
+    name: BANK_1
     range:
-      start: 0x20000000
-      end: 0x20003000
+      start: 0x8000000
+      end: 0x8010000
     cores:
     - main
+    access:
+      boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
-  - !Nvm
-    name: IROM1
+    access:
+  - !Ram
+    name: SRAM
     range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
+      start: 0x20000000
+      end: 0x20003000
     cores:
     - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -1826,28 +1979,31 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
+  - !Nvm
+    name: BANK_1
     range:
-      start: 0x20000000
-      end: 0x20003000
+      start: 0x8000000
+      end: 0x8004000
     cores:
     - main
+    access:
+      boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
-  - !Nvm
-    name: IROM1
+    access:
+  - !Ram
+    name: SRAM
     range:
-      start: 0x8000000
-      end: 0x8004000
-    is_boot_memory: true
+      start: 0x20000000
+      end: 0x20003000
     cores:
     - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -1859,28 +2015,31 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
+  - !Nvm
+    name: BANK_1
     range:
-      start: 0x20000000
-      end: 0x20003000
+      start: 0x8000000
+      end: 0x8004000
     cores:
     - main
+    access:
+      boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
-  - !Nvm
-    name: IROM1
+    access:
+  - !Ram
+    name: SRAM
     range:
-      start: 0x8000000
-      end: 0x8004000
-    is_boot_memory: true
+      start: 0x20000000
+      end: 0x20003000
     cores:
     - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -1892,28 +2051,31 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
+  - !Nvm
+    name: BANK_1
     range:
-      start: 0x20000000
-      end: 0x20003000
+      start: 0x8000000
+      end: 0x8008000
     cores:
     - main
+    access:
+      boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
-  - !Nvm
-    name: IROM1
+    access:
+  - !Ram
+    name: SRAM
     range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
+      start: 0x20000000
+      end: 0x20003000
     cores:
     - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -1925,28 +2087,31 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
+  - !Nvm
+    name: BANK_1
     range:
-      start: 0x20000000
-      end: 0x20003000
+      start: 0x8000000
+      end: 0x8008000
     cores:
     - main
+    access:
+      boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
-  - !Nvm
-    name: IROM1
+    access:
+  - !Ram
+    name: SRAM
     range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
+      start: 0x20000000
+      end: 0x20003000
     cores:
     - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -1958,28 +2123,31 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
+  - !Nvm
+    name: BANK_1
     range:
-      start: 0x20000000
-      end: 0x20003000
+      start: 0x8000000
+      end: 0x8010000
     cores:
     - main
+    access:
+      boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
-  - !Nvm
-    name: IROM1
+    access:
+  - !Ram
+    name: SRAM
     range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
+      start: 0x20000000
+      end: 0x20003000
     cores:
     - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -1991,28 +2159,31 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
+  - !Nvm
+    name: BANK_1
     range:
-      start: 0x20000000
-      end: 0x20003000
+      start: 0x8000000
+      end: 0x8010000
     cores:
     - main
+    access:
+      boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
-  - !Nvm
-    name: IROM1
+    access:
+  - !Ram
+    name: SRAM
     range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
+      start: 0x20000000
+      end: 0x20003000
     cores:
     - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -2024,28 +2195,31 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
+  - !Nvm
+    name: BANK_1
     range:
-      start: 0x20000000
-      end: 0x20003000
+      start: 0x8000000
+      end: 0x8008000
     cores:
     - main
+    access:
+      boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
-  - !Nvm
-    name: IROM1
+    access:
+  - !Ram
+    name: SRAM
     range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
+      start: 0x20000000
+      end: 0x20003000
     cores:
     - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -2057,28 +2231,31 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
+  - !Nvm
+    name: BANK_1
     range:
-      start: 0x20000000
-      end: 0x20003000
+      start: 0x8000000
+      end: 0x8010000
     cores:
     - main
+    access:
+      boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
-  - !Nvm
-    name: IROM1
+    access:
+  - !Ram
+    name: SRAM
     range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
+      start: 0x20000000
+      end: 0x20003000
     cores:
     - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -2090,28 +2267,31 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
+  - !Nvm
+    name: BANK_1
     range:
-      start: 0x20000000
-      end: 0x2000a000
+      start: 0x8000000
+      end: 0x8040000
     cores:
     - main
+    access:
+      boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10002000
     cores:
     - main
-  - !Nvm
-    name: IROM1
+    access:
+  - !Ram
+    name: SRAM
     range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
+      start: 0x20000000
+      end: 0x2000a000
     cores:
     - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -2123,28 +2303,31 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
+  - !Nvm
+    name: BANK_1
     range:
-      start: 0x20000000
-      end: 0x2000a000
+      start: 0x8000000
+      end: 0x8040000
     cores:
     - main
+    access:
+      boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10002000
     cores:
     - main
-  - !Nvm
-    name: IROM1
+    access:
+  - !Ram
+    name: SRAM
     range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
+      start: 0x20000000
+      end: 0x2000a000
     cores:
     - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -2156,28 +2339,31 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
+  - !Nvm
+    name: BANK_1
     range:
-      start: 0x20000000
-      end: 0x2000a000
+      start: 0x8000000
+      end: 0x8040000
     cores:
     - main
+    access:
+      boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10002000
     cores:
     - main
-  - !Nvm
-    name: IROM1
+    access:
+  - !Ram
+    name: SRAM
     range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
+      start: 0x20000000
+      end: 0x2000a000
     cores:
     - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -2189,21 +2375,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -2215,21 +2403,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20006000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -2241,21 +2431,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20008000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -2267,21 +2459,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -2293,21 +2487,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20006000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -2319,21 +2515,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20008000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -2345,21 +2543,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -2371,21 +2571,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -2397,21 +2599,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20006000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -2423,21 +2627,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20006000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -2449,21 +2655,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20008000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -2475,21 +2683,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20008000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -2501,21 +2711,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20008000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -2527,21 +2739,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20008000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -2553,21 +2767,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20008000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -2579,21 +2795,23 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20008000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_256
   - stm32f3xx_opt
@@ -2605,21 +2823,31 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
-    name: IRAM1
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10004000
+    cores:
+    - main
+    access:
+  - !Ram
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20010000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
-    cores:
-    - main
+    access:
   flash_algorithms:
   - stm32f3xx_512
   - stm32f3xx_opt
