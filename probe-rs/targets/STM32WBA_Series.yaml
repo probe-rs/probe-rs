@@ -13,19 +13,20 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
+    cores:
+    - main
+    access:
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20018000
     cores:
     - main
   flash_algorithms:
@@ -51,9 +52,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32wbax_1m_0800
   - stm32wbax_1m_0c00
@@ -65,19 +67,20 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
+    cores:
+    - main
+    access:
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20020000
     cores:
     - main
   flash_algorithms:
@@ -103,9 +106,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32wbax_1m_0800
   - stm32wbax_1m_0c00
@@ -129,9 +133,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32wbax_1m_0800
   - stm32wbax_1m_0c00
