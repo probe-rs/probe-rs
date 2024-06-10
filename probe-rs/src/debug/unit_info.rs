@@ -76,16 +76,16 @@ impl UnitInfo {
             };
 
             let mut functions = vec![die];
-            tracing::debug!(
+            tracing::trace!(
                 "Found DIE: name={:?}",
                 functions[0].function_name(debug_info)
             );
 
-            tracing::debug!("Checking for inlined functions");
+            tracing::trace!("Checking for inlined functions");
             let inlined_functions =
                 self.find_inlined_functions(debug_info, address, current.offset())?;
 
-            tracing::debug!(
+            tracing::trace!(
                 "{} inlined functions for address {}",
                 inlined_functions.len(),
                 address

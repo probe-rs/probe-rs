@@ -257,8 +257,17 @@ pub(crate) fn raw_exception(
 pub(crate) fn calling_frame_registers(
     memory: &mut dyn MemoryInterface,
     stackframe_registers: &crate::debug::DebugRegisters,
-    _raw_exception: u32,
+    raw_exception: u32,
 ) -> Result<crate::debug::DebugRegisters, crate::Error> {
+    let mut calling_frame_registers = stackframe_registers.clone();
+    if raw_exception == 1 {
+        // Apply the reset value to the return address register, then exit early.
+        calling_frame_registers
+            .get_register_mut_by_role(&RegisterRole::ReturnAddress)?
+            .value = Some(RegisterValue::U32(0xFFFF_FFFF));
+        return Ok(calling_frame_registers);
+    }
+
     let exception_context_address: u32 =
         stackframe_registers.get_register_value_by_role(&RegisterRole::StackPointer)? as u32;
 
@@ -269,7 +278,6 @@ pub(crate) fn calling_frame_registers(
         &mut calling_stack_registers,
     )?;
 
-    let mut calling_frame_registers = stackframe_registers.clone();
     for (i, register_role) in EXCEPTION_STACK_REGISTERS.iter().enumerate() {
         calling_frame_registers
             .get_register_mut_by_role(register_role)?

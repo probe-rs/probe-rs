@@ -4,7 +4,7 @@ use super::{
     instruction::Instruction,
     VerifiedBreakpoint,
 };
-use crate::debug::{ColumnType, SourceLocation};
+use crate::debug::{halting::instruction::InstructionRole, ColumnType, SourceLocation};
 use gimli::LineSequence;
 use std::{
     self,
@@ -264,48 +264,115 @@ impl<'debug_info> Sequence<'debug_info> {
     }
 
     /// See [`VerifiedBreakpoint::for_address()`].
-    // TODO: We need tests for the various scenarios below.
+    /// Note: The sequence was created for the same address, so we know the address lives
+    /// in this range.
+    /// - When we have an exact match on a known instruction, we will return it.
+    /// - If the address lies in the prologue of a sequence, we will return the
+    ///   first halt location in the sequence.
+    /// - If he address lies between known instruction addresses then we will attempt to find
+    ///   the "closest preceding halt location address".
+    ///   - This will be done conservatively, constraining the result to halt locations that
+    ///     are known to be part of the same sequence, and which will not be bypassed because
+    ///     of branching inside the sequence.
+    ///   - If this is not possible, we will return `None`, rather than mislead the calling code.
     pub(crate) fn haltpoint_for_address(&self, address: u64) -> Option<VerifiedBreakpoint> {
         tracing::trace!("Looking for halt instruction at address={address:#010x}");
 
-        let Some(block) = self
+        let mut halt_instruction = None;
+
+        // Cycle through increasing degrees of "looseness" in the search for the halt instruction.
+
+        // First look for blocks that contain the address.
+        if let Some(block) = self
             .blocks
             .iter()
             .find(|block| block.contains_address(address))
-        else {
-            tracing::trace!(
-                "No valid breakpoint for address={address:#010x}(exact match), in: {self:?}"
-            );
-            return None;
+        {
+            // Try a match on a known "halt friendly" instruction.
+            if let Some(instruction) = block.instructions.iter().find(|instruction| {
+                instruction.address == address && instruction.role.is_halt_location()
+            }) {
+                tracing::trace!("Found match for instruction @{address:#010x}, in: {self:?}");
+                halt_instruction = Some(instruction);
+            }
+
+            // - If the address is in the prologue, use the first (post prologue) halt location in the sequence.
+            //   - The first (post prologue) halt location may be in the next (steps_to) block.
+            // - If the block contains the address, but there is no exact match, or
+            //   if the block contains the address and there is an exact match which is not
+            //   a halting address, then we will use the previous halt instruction.
+            if halt_instruction.is_none() {
+                let prologue_check = block.instructions.iter();
+                let mut last_known_halt_instruction = None;
+                for (position, instruction) in prologue_check.enumerate() {
+                    if instruction.role == InstructionRole::PrologueHaltPoint {
+                        if position + 1 == block.instructions.len() {
+                            if let Some(step_to_address) = block.steps_to {
+                                // The prologue is the last instruction in the block.
+                                return self.haltpoint_for_address(step_to_address);
+                            } else {
+                                // We have no way of knowing where this steps to.
+                                break;
+                            }
+                        }
+                        continue;
+                    } else if instruction.role.is_halt_location() {
+                        if address <= instruction.address {
+                            last_known_halt_instruction = Some(instruction);
+                            continue;
+                        } else if address > instruction.address
+                            && last_known_halt_instruction.is_some()
+                        {
+                            // The address was between two halt locations.
+                            break;
+                        } else {
+                            // The address was in the prologue.
+                            halt_instruction = Some(instruction);
+                            break;
+                        }
+                    }
+                }
+                if halt_instruction.is_none() && last_known_halt_instruction.is_some() {
+                    halt_instruction = last_known_halt_instruction;
+                }
+            }
         };
 
-        // Cycle through increasing degrees of "looseness" in the search for the halt instruction.
-        let halt_instruction = if let Some(instruction) =
-            block.instructions.iter().find(|instruction| {
-                instruction.address >= address && instruction.role.is_halt_location()
-            }) {
-            // We found a matching halt location in the current block.
-            Some(instruction)
-        } else {
-            // Look for the next halt instruction in any blocks that we know are linked.
-            let mut halt_instruction = None;
-            let mut linked_address = block.steps_to;
-            while let Some(linked_block) = self.blocks.iter().find(|next_block| {
-                linked_address.is_some()
-                    && linked_address
-                        .map(|linked_address| next_block.contains_address(linked_address))
+        if halt_instruction.is_none() {
+            // If there is no block that contains the address, find the last block
+            // that might contain the address, and use the last instruction in that block.
+            let mut blocks = self.blocks.iter().peekable();
+            while let Some(block) = blocks.next() {
+                if block
+                    .included_addresses()
+                    .map(|range| *range.end() < address)
+                    .unwrap_or(false)
+                    && blocks
+                        .peek()
+                        .map(|next_block| {
+                            next_block
+                                .included_addresses()
+                                .map(|range| *range.start() >= address)
+                                .unwrap_or(false)
+                        })
                         .unwrap_or(false)
-            }) {
-                linked_address = linked_block.steps_to;
-                if let Some(instruction) = linked_block.instructions.iter().find(|instruction| {
-                    instruction.address >= address && instruction.role.is_halt_location()
-                }) {
-                    halt_instruction = Some(instruction);
+                {
+                    halt_instruction = block.instructions.last();
                     break;
                 }
             }
-            halt_instruction
-        };
+        }
+
+        if halt_instruction.is_none() {
+            // If the address is in range of the sequence (exclusive Range),
+            // but after the last instruction in the last block (inclusive Range),
+            // then we will use the last halt instruction in the sequence.
+            if let Some(last_halt_instruction) = self.last_halt_instruction {
+                if address >= last_halt_instruction {
+                    return self.haltpoint_for_address(last_halt_instruction);
+                }
+            }
+        }
 
         if let Some(breakpoint) = halt_instruction.and_then(|instruction| {
             SourceLocation::from_instruction(self.debug_info, self.program_unit, instruction).map(

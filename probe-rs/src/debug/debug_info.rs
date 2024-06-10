@@ -19,9 +19,7 @@ use gimli::{
 };
 use object::read::{Object, ObjectSection};
 use probe_rs_target::InstructionSet;
-use std::{
-    borrow, cmp::Ordering, num::NonZeroU64, ops::ControlFlow, path::Path, rc::Rc, str::from_utf8,
-};
+use std::{borrow, ops::ControlFlow, path::Path, rc::Rc, str::from_utf8};
 use typed_path::{TypedPath, TypedPathBuf};
 
 pub(crate) type GimliReader = gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>;
@@ -109,7 +107,7 @@ impl DebugInfo {
 
     /// Try get the [`SourceLocation`] for a given address.
     pub fn get_source_location(&self, address: u64) -> Option<SourceLocation> {
-        VerifiedBreakpoint::for_address(self, address)
+        VerifiedBreakpoint::breakpoint_at_address(self, address)
             .map(|breakpoint| breakpoint.source_location)
             .ok()
     }
@@ -323,7 +321,8 @@ impl DebugInfo {
                     next_function.function_name(self)
                 );
 
-                let inlined_caller_source_location = next_function.inline_call_location(self);
+                let inlined_caller_source_location =
+                    next_function.inline_call_location(self, address);
 
                 tracing::debug!("UNWIND: Call site: {inlined_caller_source_location:?}");
 
@@ -427,7 +426,70 @@ impl DebugInfo {
     /// Note: In addition to populating the `StackFrame`s, this function will also
     ///   populate the `DebugInfo::VariableCache` with `Variable`s for available Registers
     ///   as well as static and function variables.
-    /// TODO: Separate logic for stackframe creation and cache population
+    /// TODO: Separate logic for stackframe creation and cache population.
+    ///
+    /// To help understand how the unwind works, consider this graphical
+    /// representation of the stack layout for three functions
+    /// (X, Y, and Z) that call each other in sequence.
+    /// This is generic enough to apply to both ARM and RISC-V calling conventions.
+    /// Both architectures use a stack that grows downwards, towards lower addresses.
+    /// The differences in the architectures is handled in the implementation.
+    ///
+    /// ```text
+    /// High Memory
+    /// |-----------------| <- CFA of X, FP of X, SP before X's prologue
+    /// |  Return address | <- Return address of X (saved by X)
+    /// |-----------------|
+    /// |  Callee-saved   | <- Callee-saved registers for X (saved by X)
+    /// |-----------------|
+    /// |  Local Vars of X|
+    /// |-----------------|
+    /// |                 | <- X calls Y
+    /// |-----------------| <- CFA of Y, FP of Y, SP before Y's prologue
+    /// |  Return address | <- Return address of Y (saved by Y)
+    /// |-----------------|
+    /// |  Callee-saved   | <- Callee-saved registers for Y (saved by Y)
+    /// |-----------------|
+    /// |  Local Vars of Y|
+    /// |-----------------|
+    /// |                 | <- Y calls Z
+    /// |-----------------| <- CFA of Z, FP of Z, SP before Z's prologue
+    /// |  Return address | <- Return address of Z (saved by Z)
+    /// |-----------------|
+    /// |  Callee-saved   | <- Callee-saved registers for Z (saved by Z)
+    /// |-----------------|
+    /// |  Local Vars of Z|
+    /// |-----------------|
+    /// Low Memory
+    /// ```
+    //
+    /// In this diagram:
+    /// - CFA (Canonical Frame Address) is the value of the stack pointer (SP) at the call site in the previous frame
+    ///   (before the function prologue).
+    /// - FP (Frame Pointer) is a fixed point within the stack frame that enables access to function parameters and
+    ///   local variables.
+    /// - SP (Stack Pointer) points to the top of the current stack frame.
+    /// - PC (Program Counter) holds the address of the instruction being executed. It's saved as the return address
+    ///   when a function call is made.
+    /// - Callee-saved are the callee-saved registers. These are typically saved on the stack
+    ///   by the function itself (or the compiler that implements the architecture calling standard).
+    /// - Local Vars is the space for local variables and temporary data.
+    ///
+    /// We use available DWARF data to decode the stack layout and recover the saved registers.
+    /// However, the DWARF data may not always be complete, in which case we will attempt to unwind
+    /// the stack with the following assumptions:
+    /// - SP of X = FP of Y = CFA of Y.(see diagram above).
+    ///   - The SP of the calling function (X in this case) points to the top of its stack frame at the time of the
+    ///     function call.
+    ///   - The FP of the called function (Y in this case) is typically set to the SP of the calling function at the
+    ///     time of the function call, so it points to the base of its own stack frame.
+    ///   - The CFA of the called function (Y in this case) is a reference point from which we can recover the saved
+    ///     registers, including the return address. In many calling conventions, this is set to the SP of the
+    ///     calling function at the time of the function call, which is the same as the FP of the called function.
+    /// - The PC (program counter) of X is the return address saved by Y.
+    ///   - When function X calls function Y, the next instruction to be executed in function X (after Y returns)
+    ///     is saved as the return address on the stack. This saved return address is essentially the PC of function X
+    ///     at the time Y was called.
     pub fn unwind(
         &self,
         core: &mut impl MemoryInterface,
@@ -578,8 +640,18 @@ impl DebugInfo {
             if let Some(exception_frame) = exception_frame {
                 unwind_registers = exception_frame.registers.clone();
                 stack_frames.push(exception_frame);
-                // We have everything we need to unwind the next frame in the stack.
-                continue 'unwind;
+                // Check LR values to determine if we can continue unwinding.
+                if unwind_registers
+                    .get_return_address()
+                    .map(|lr| lr.is_zero() || lr.is_max_value())
+                    .unwrap_or(true)
+                {
+                    tracing::trace!("UNWIND: Stack unwind complete - Reached the 'Reset' value of the LR register.");
+                    break;
+                } else {
+                    // We have everything we need to unwind the next frame in the stack.
+                    continue 'unwind;
+                }
             } else {
                 // Check LR values to determine if we can continue unwinding.
                 if unwind_registers
@@ -609,6 +681,12 @@ impl DebugInfo {
                         if unwind_canonical_frame_address.is_none() {
                             unwind_canonical_frame_address =
                                 determine_cfa(&unwind_registers, unwind_info).ok().flatten();
+                        }
+                        // If it is still None, we will not be able to continue unwinding.
+                        // This often happens when we have a halt point inside a prologue, and
+                        // and the registers have not been initialized yet.
+                        if unwind_canonical_frame_address.is_none() {
+                            break 'unwind;
                         }
                         unwind_info
                     }
@@ -740,7 +818,7 @@ impl DebugInfo {
                 .map(|c| c.to_string())
                 .unwrap_or_else(|| "-".to_owned())
         );
-        VerifiedBreakpoint::for_source_location(self, path, line, column)
+        VerifiedBreakpoint::breakpoint_at_source(self, path, line, column)
     }
 
     /// Get the path for an entry in a line program header, using the compilation unit's directory and file entries.
@@ -903,14 +981,6 @@ impl DebugInfo {
     }
 }
 
-/// Uses the [`TypedPathBuf::normalize`] function to normalize both paths before comparing them
-// pub(crate) fn canonical_path_eq(
-//     primary_path: &TypedPathBuf,
-//     secondary_path: &TypedPathBuf,
-// ) -> bool {
-//     primary_path.normalize() == secondary_path.normalize()
-// }
-
 /// Get a handle to the [`gimli::UnwindTableRow`] for this call frame, so that we can reference it to unwind register values.
 pub fn get_unwind_info<'a>(
     unwind_context: &'a mut UnwindContext<GimliReaderOffset>,
@@ -979,7 +1049,7 @@ pub fn determine_cfa<R: gimli::ReaderOffset>(
                 *offset,
                 unwind_registers.get_address_size_bytes(),
             );
-            tracing::trace!(
+            tracing::debug!(
                 "UNWIND - CFA : {:#010x}\tRule: {:?}",
                 unwind_cfa,
                 unwind_info.cfa()
@@ -1022,7 +1092,20 @@ pub fn unwind_register(
                     .core_register
                     .register_has_role(RegisterRole::FramePointer) =>
                 {
-                    register_rule_string = "FP=CFA (dwarf Undefined)".to_string();
+                    // The frame_size can be calculated as the difference between the CFA of the current
+                    // function and the CFA of the caller function.
+                    // This is because the CFA of the caller function is usually the value
+                    // of the stack pointer at the point where the current function was called,
+                    // which is right after the current function's stack frame.
+                    // let previous_sp = callee_frame_registers
+                    //     .get_register_value_by_role(&RegisterRole::StackPointer)
+                    //     .ok()
+                    //     .flatten();
+                    // let frame_size =
+                    register_rule_string = format!(
+                        "FP=(SP+frame_size)({:#010x}+{:#04x}={:#010x}) (dwarf Undefined)",
+                        0, 0, 0
+                    );
                     unwind_cfa.map(|unwind_cfa| {
                         if fp.is_u32() {
                             RegisterValue::U32(unwind_cfa as u32)
@@ -1880,7 +1963,12 @@ mod test {
 
         // Using YAML output because it is easier to read than the default snapshot output,
         // and also because they provide better diffs.
-        insta::assert_yaml_snapshot!(snapshot_name, stack_frames);
+        // Redacting the source location address to make the snapshots more stable.
+        insta::with_settings!(
+            {filters=>vec![(r"source_location:[\n\s].*address:.*\n",
+            "source_location:\n")]},
+            {insta::assert_yaml_snapshot!(snapshot_name, stack_frames);}
+        )
     }
 
     #[test_case("RP2040_full_unwind"; "Armv6-m using RP2040")]
@@ -1916,6 +2004,11 @@ mod test {
         );
         // Using YAML output because it is easier to read than the default snapshot output,
         // and also because they provide better diffs.
-        insta::assert_yaml_snapshot!(snapshot_name, static_variables);
+        // Redacting the source location address to make the snapshots more stable.
+        insta::with_settings!(
+            {filters=>vec![(r"source_location:[\n\s].*address:.*\n",
+            "source_location:\n")]},
+            {insta::assert_yaml_snapshot!(snapshot_name, static_variables);}
+        )
     }
 }

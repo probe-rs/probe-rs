@@ -82,9 +82,13 @@ impl Block {
             // that it is worth keeping them separate.
             #[allow(clippy::if_same_then_else)]
             // End the prologue block, if the next instruction is not a prologue instruction.
-            if instruction.role == InstructionRole::Prologue
+            if (instruction.role == InstructionRole::PrologueHaltPoint
+                || instruction.role == InstructionRole::PrologueOther)
                 && next_instruction
-                    .map(|ni| ni.role != InstructionRole::Prologue)
+                    .map(|ni| {
+                        ni.role != InstructionRole::PrologueHaltPoint
+                            && ni.role != InstructionRole::PrologueOther
+                    })
                     .unwrap_or(true)
             {
                 block.instructions.push(*instruction);
@@ -154,6 +158,9 @@ impl Block {
     }
 
     /// The range of addresses that the block covers is 'inclusive' on both ends.
+    /// We use a strict approach here, because we cannot know that the next instruction
+    /// in a sequence (following the last instruction in a block) will be the next instruction
+    /// executed by the processor.
     pub(crate) fn included_addresses(&self) -> Option<RangeInclusive<u64>> {
         self.instructions
             .first()

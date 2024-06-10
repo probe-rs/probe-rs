@@ -166,6 +166,7 @@ impl<'abbrev, 'unit> FunctionDie<'abbrev, 'unit> {
     pub(crate) fn inline_call_location(
         &self,
         debug_info: &super::DebugInfo,
+        address: u64,
     ) -> Option<SourceLocation> {
         if !self.is_inline() {
             return None;
@@ -186,6 +187,7 @@ impl<'abbrev, 'unit> FunctionDie<'abbrev, 'unit> {
                     Some(c) => ColumnType::Column(c),
                 });
         Some(SourceLocation {
+            address,
             line,
             column,
             file: Some(file),

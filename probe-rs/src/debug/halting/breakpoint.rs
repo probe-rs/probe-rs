@@ -26,7 +26,7 @@ impl VerifiedBreakpoint {
     /// Return the first valid breakpoint location of the statement that is greater than OR equal to `address`.
     /// e.g., if the `address` is the current program counter, then the return value will be the next valid halt address
     /// in the current sequence, where the address is part of the sequence, and will NOT be bypassed because of branching.
-    pub(crate) fn for_address(
+    pub(crate) fn breakpoint_at_address(
         debug_info: &DebugInfo,
         address: u64,
     ) -> Result<VerifiedBreakpoint, DebugError> {
@@ -62,7 +62,7 @@ impl VerifiedBreakpoint {
     ///   - Failing an exact match, a match on file/line only.
     ///   - Failing that, a match on file only, where the line number is the "next" available instruction,
     ///     on the next available line of the specified file.
-    pub(crate) fn for_source_location(
+    pub(crate) fn breakpoint_at_source(
         debug_info: &DebugInfo,
         path: &TypedPathBuf,
         line: u64,
@@ -80,7 +80,7 @@ impl VerifiedBreakpoint {
         }
         // If we get here, we need a "best effort" approach to find the next line in the file with a valid haltpoint.
         if let Some(verified_breakpoint) =
-            VerifiedBreakpoint::for_next_line_after_line(debug_info, &line_sequences_for_path, line)
+            VerifiedBreakpoint::breakpoint_at_next_line(debug_info, &line_sequences_for_path, line)
         {
             return Ok(verified_breakpoint);
         }
@@ -89,7 +89,7 @@ impl VerifiedBreakpoint {
         Err(DebugError::Other(anyhow::anyhow!("No valid breakpoint information found for file: {}, line: {line:?}, column: {column:?}", path.to_path().display())))
     }
 
-    fn for_next_line_after_line(
+    fn breakpoint_at_next_line(
         debug_info: &DebugInfo,
         file_sequences: &[(Sequence, Option<u64>)],
         line: u64,
@@ -113,7 +113,7 @@ impl VerifiedBreakpoint {
             .iter()
             .find(|instruction| instruction.line > NonZeroU64::new(line))
             .and_then(|instruction| {
-                VerifiedBreakpoint::for_address(debug_info, instruction.address).ok()
+                VerifiedBreakpoint::breakpoint_at_address(debug_info, instruction.address).ok()
             })
         {
             tracing::warn!("Suggesting a closely matching breakpoint: {matching_breakpoint:?}");

@@ -14,10 +14,13 @@ use instruction::Instruction;
 pub use stepping::Stepping;
 use typed_path::TypedPathBuf;
 
-/// A specific location in source code.
+/// A specific location in source code, represented by an instruction address and source file information.
+/// Not all instructions have a known (from debug info) source location.
 /// Each unique line, column, file and directory combination is a unique source location.
 #[derive(Clone, Default, PartialEq, Eq, Serialize)]
 pub struct SourceLocation {
+    /// The address of the instruction in target memory.
+    pub address: u64,
     /// The line number in the source file with zero based indexing.
     pub line: Option<u64>,
     /// The column number in the source file with zero based indexing.
@@ -54,6 +57,7 @@ impl SourceLocation {
         debug_info
             .find_file_and_directory(&program_unit.unit, instruction.file_index)
             .map(|(file, directory)| SourceLocation {
+                address: instruction.address,
                 line: instruction.line.map(std::num::NonZeroU64::get),
                 column: Some(instruction.column),
                 file,
