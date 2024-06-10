@@ -847,7 +847,7 @@ impl DebugInfo {
                 .map(|c| c.to_string())
                 .unwrap_or_else(|| "-".to_owned())
         );
-        VerifiedBreakpoint::for_source_location(self, path, line, column)
+        VerifiedBreakpoint::breakpoint_at_source(self, path, line, column)
     }
 
     /// Get the path for an entry in a line program header, using the compilation unit's directory and file entries.
@@ -1085,7 +1085,7 @@ pub fn determine_cfa<R: gimli::ReaderOffset>(
                 *offset,
                 unwind_registers.get_address_size_bytes(),
             );
-            tracing::trace!(
+            tracing::debug!(
                 "UNWIND - CFA : {:#010x}\tRule: {:?}",
                 unwind_cfa,
                 unwind_info.cfa()
@@ -2037,7 +2037,12 @@ mod test {
 
         // Using YAML output because it is easier to read than the default snapshot output,
         // and also because they provide better diffs.
-        insta::assert_yaml_snapshot!(snapshot_name, stack_frames);
+        // Redacting the source location address to make the snapshots more stable.
+        insta::with_settings!(
+            {filters=>vec![(r"source_location:[\n\s].*address:.*\n",
+            "source_location:\n")]},
+            {insta::assert_yaml_snapshot!(snapshot_name, stack_frames);}
+        )
     }
 
     #[test_case("RP2040_full_unwind"; "Armv6-m using RP2040")]
@@ -2071,7 +2076,12 @@ mod test {
         );
         // Using YAML output because it is easier to read than the default snapshot output,
         // and also because they provide better diffs.
-        insta::assert_yaml_snapshot!(snapshot_name, static_variables);
+        // Redacting the source location address to make the snapshots more stable.
+        insta::with_settings!(
+            {filters=>vec![(r"source_location:[\n\s].*address:.*\n",
+            "source_location:\n")]},
+            {insta::assert_yaml_snapshot!(snapshot_name, static_variables);}
+        )
     }
 
     fn coredump_path(base: String) -> PathBuf {

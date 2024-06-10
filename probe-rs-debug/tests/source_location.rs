@@ -88,6 +88,7 @@ fn source_location() {
     for (addr, line, col) in TEST_DATA.iter() {
         assert_eq!(
             Some(SourceLocation {
+                address: *addr,
                 line: Some(*line),
                 column: Some(*col),
                 path: path.clone(),

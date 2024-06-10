@@ -209,6 +209,7 @@ pub(crate) fn calling_frame_registers(
     memory: &mut dyn MemoryInterface,
     stackframe_registers: &DebugRegisters,
 ) -> Result<DebugRegisters, Error> {
+    let mut calling_frame_registers = stackframe_registers.clone();
     let exception_context_address: u32 =
         stackframe_registers.get_register_value_by_role(&RegisterRole::StackPointer)? as u32;
 
@@ -219,7 +220,6 @@ pub(crate) fn calling_frame_registers(
         &mut calling_stack_registers,
     )?;
 
-    let mut calling_frame_registers = stackframe_registers.clone();
     for (i, register_role) in EXCEPTION_STACK_REGISTERS.iter().enumerate() {
         calling_frame_registers
             .get_register_mut_by_role(register_role)?

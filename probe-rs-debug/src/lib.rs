@@ -7,7 +7,7 @@
 pub mod debug_info;
 /// References to the DIE (debug information entry) of functions.
 pub mod function_die;
-/// Identifying haltpoints for debug stepping and breakpoints.
+/// Identifying source locations and instruction addresses for debug unwind, stepping and breakpoints.
 pub(crate) mod halting;
 /// Programming languages
 pub(crate) mod language;

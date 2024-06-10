@@ -7,12 +7,15 @@ use std::{
 #[derive(Debug, Copy, Clone, PartialEq)]
 /// The role of instruction, as defined by [`gimli::LineRow`] attributes and relative position in the sequence.
 pub(crate) enum InstructionRole {
-    /// We need to keep track of source lines that signal function signatures,
-    /// even if their program lines are not valid halt locations.
-    Prologue,
+    /// We need to keep track of source lines that signal function signatures.
+    PrologueHaltPoint,
+    /// In the prologue, but not a valid haltpoint.
+    PrologueOther,
     /// An instruction where we can set a breakpoint and expect the processor to halt.
     HaltPoint,
-    /// The last instruction before the function returns.
+    /// The last instruction before a function exits. See DWARF's Section 6.2.2 `epilogue_begin`.
+    /// This will always be the last instruction in a `Block`, but provides more meaning in the context of
+    /// a `Block`'s interaction in a `Sequence`.
     EpilogueBegin,
     /// Any other instruction that is not part of the prologue or epilogue, and is not a haltpoint.
     /// We keep track of these for stepping purposes, so that we can identify adjacent haltpoints.
@@ -25,7 +28,9 @@ impl InstructionRole {
     pub(crate) fn is_halt_location(&self) -> bool {
         matches!(
             self,
-            InstructionRole::HaltPoint | InstructionRole::EpilogueBegin
+            InstructionRole::PrologueHaltPoint
+                | InstructionRole::HaltPoint
+                | InstructionRole::EpilogueBegin
         )
     }
 }
@@ -74,7 +79,11 @@ impl Instruction {
             line: instruction_line,
             column: row.column().into(),
             role: if !prologue_completed {
-                InstructionRole::Prologue
+                if row.is_stmt() {
+                    InstructionRole::PrologueHaltPoint
+                } else {
+                    InstructionRole::PrologueOther
+                }
             } else if row.is_stmt() {
                 // This type may be later changed during further processing.
                 InstructionRole::HaltPoint

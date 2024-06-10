@@ -45,7 +45,7 @@ pub struct StackFrame {
     /// - Complex variables and pointers will have additional children.
     ///   - This structure is recursive until a base type is encountered.
     pub local_variables: Option<VariableCache>,
-    /// The value of the stack pointer just before the CALL instruction in the parent function.
+    /// The value of the value of the stack pointer at the call site in the previous frame.
     pub canonical_frame_address: Option<u64>,
 }
 

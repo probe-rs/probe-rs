@@ -167,6 +167,7 @@ impl<'a> FunctionDie<'a> {
     pub(crate) fn inline_call_location(
         &self,
         debug_info: &super::DebugInfo,
+        address: u64,
     ) -> Option<SourceLocation> {
         if !self.is_inline() {
             return None;
@@ -189,6 +190,7 @@ impl<'a> FunctionDie<'a> {
         let address = self.low_pc();
 
         Some(SourceLocation {
+            address,
             line,
             column,
             path,
