@@ -8,6 +8,7 @@ use probe_rs_target::Chip;
 
 use crate::config::DebugSequence;
 
+pub mod cypress;
 pub mod espressif;
 pub mod infineon;
 pub mod microchip;
@@ -33,6 +34,7 @@ static VENDORS: Lazy<Mutex<Vec<Box<dyn Vendor>>>> = Lazy::new(|| {
         Box::new(nordicsemi::NordicSemi),
         Box::new(nxp::Nxp),
         Box::new(st::St),
+        Box::new(cypress::Cypress),
     ];
 
     Mutex::new(vendors)
