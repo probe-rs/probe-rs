@@ -1,0 +1,1 @@
+Fixed a problem with semihosting on ARM targets affecting embedded-test.
