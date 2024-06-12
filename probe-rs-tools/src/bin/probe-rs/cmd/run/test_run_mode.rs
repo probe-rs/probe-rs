@@ -3,7 +3,6 @@ use anyhow::{anyhow, Result};
 use libtest_mimic::{Arguments, Failed, FormatSetting, Trial};
 use probe_rs::{BreakpointCause, Core, HaltReason, SemihostingCommand, Session};
 use serde::Deserialize;
-use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -255,7 +254,7 @@ impl TestRunMode {
                     if outcome == TestOutcome::Panic {
                         print_stacktrace(
                             core,
-                            Path::new(session_and_runloop.run_loop.path.as_str()),
+                            &session_and_runloop.run_loop.path,
                             &mut std::io::stderr(),
                         )?;
                     }
