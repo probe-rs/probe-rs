@@ -5353,6 +5353,7 @@ flash_algorithms:
   pc_erase_sector: 0x13f
   pc_erase_all: 0xfb
   data_section_offset: 0x26c
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8000000
@@ -5373,6 +5374,7 @@ flash_algorithms:
   pc_erase_sector: 0x163
   pc_erase_all: 0x10d
   data_section_offset: 0x26c
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x1ffff800
@@ -5393,6 +5395,7 @@ flash_algorithms:
   pc_erase_sector: 0x1b1
   pc_erase_all: 0x15b
   data_section_offset: 0x2d0
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8400000
@@ -5413,6 +5416,7 @@ flash_algorithms:
   pc_erase_sector: 0x1c1
   pc_erase_all: 0x16b
   data_section_offset: 0x2dc
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8400000
@@ -5433,6 +5437,7 @@ flash_algorithms:
   pc_erase_sector: 0x1b1
   pc_erase_all: 0x15b
   data_section_offset: 0x2d0
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8400000
@@ -5453,6 +5458,7 @@ flash_algorithms:
   pc_erase_sector: 0x1c1
   pc_erase_all: 0x16b
   data_section_offset: 0x2dc
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8400000
@@ -5474,6 +5480,7 @@ flash_algorithms:
   pc_erase_sector: 0x13f
   pc_erase_all: 0xfb
   data_section_offset: 0x26c
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8000000
@@ -5495,6 +5502,7 @@ flash_algorithms:
   pc_erase_sector: 0x191
   pc_erase_all: 0x10d
   data_section_offset: 0x378
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8000000
@@ -5516,6 +5524,7 @@ flash_algorithms:
   pc_erase_sector: 0x173
   pc_erase_all: 0x13f
   data_section_offset: 0x298
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8000000
@@ -5536,6 +5545,7 @@ flash_algorithms:
   pc_erase_sector: 0x173
   pc_erase_all: 0x13f
   data_section_offset: 0x298
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x1fffa400
@@ -5556,6 +5566,7 @@ flash_algorithms:
   pc_erase_sector: 0x1af
   pc_erase_all: 0x153
   data_section_offset: 0x2ac
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x1ffff800
@@ -5577,6 +5588,7 @@ flash_algorithms:
   pc_erase_sector: 0x173
   pc_erase_all: 0x13f
   data_section_offset: 0x298
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8000000
@@ -5598,6 +5610,7 @@ flash_algorithms:
   pc_erase_sector: 0x173
   pc_erase_all: 0x13f
   data_section_offset: 0x298
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8000000
@@ -5618,6 +5631,7 @@ flash_algorithms:
   pc_erase_sector: 0x173
   pc_erase_all: 0x13f
   data_section_offset: 0x298
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x1fffa400
@@ -5638,6 +5652,7 @@ flash_algorithms:
   pc_erase_sector: 0x1af
   pc_erase_all: 0x153
   data_section_offset: 0x2ac
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x1ffff800
@@ -5659,6 +5674,7 @@ flash_algorithms:
   pc_erase_sector: 0x173
   pc_erase_all: 0x13f
   data_section_offset: 0x298
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8000000
@@ -5680,6 +5696,7 @@ flash_algorithms:
   pc_erase_sector: 0x18b
   pc_erase_all: 0x147
   data_section_offset: 0x26c
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8000000
@@ -5700,6 +5717,7 @@ flash_algorithms:
   pc_erase_sector: 0x1ab
   pc_erase_all: 0x159
   data_section_offset: 0x290
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x1ffff800
@@ -5720,6 +5738,7 @@ flash_algorithms:
   pc_erase_sector: 0x1fd
   pc_erase_all: 0x1a7
   data_section_offset: 0x324
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8400000
@@ -5740,6 +5759,7 @@ flash_algorithms:
   pc_erase_sector: 0x1fd
   pc_erase_all: 0x1a7
   data_section_offset: 0x324
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8400000
@@ -5761,6 +5781,7 @@ flash_algorithms:
   pc_erase_sector: 0x18b
   pc_erase_all: 0x147
   data_section_offset: 0x26c
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8000000
@@ -5782,6 +5803,7 @@ flash_algorithms:
   pc_erase_sector: 0x1dd
   pc_erase_all: 0x159
   data_section_offset: 0x378
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8000000
@@ -5803,6 +5825,7 @@ flash_algorithms:
   pc_erase_sector: 0x13f
   pc_erase_all: 0xfb
   data_section_offset: 0x26c
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8000000
@@ -5823,6 +5846,7 @@ flash_algorithms:
   pc_erase_sector: 0x163
   pc_erase_all: 0x10d
   data_section_offset: 0x26c
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x1ffff800
@@ -5843,6 +5867,7 @@ flash_algorithms:
   pc_erase_sector: 0x1b1
   pc_erase_all: 0x15b
   data_section_offset: 0x2d0
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8400000
@@ -5863,6 +5888,7 @@ flash_algorithms:
   pc_erase_sector: 0x1c1
   pc_erase_all: 0x16b
   data_section_offset: 0x2dc
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8400000
@@ -5883,6 +5909,7 @@ flash_algorithms:
   pc_erase_sector: 0x1b1
   pc_erase_all: 0x15b
   data_section_offset: 0x2d0
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8400000
@@ -5903,6 +5930,7 @@ flash_algorithms:
   pc_erase_sector: 0x1c1
   pc_erase_all: 0x16b
   data_section_offset: 0x2dc
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8400000
@@ -5924,6 +5952,7 @@ flash_algorithms:
   pc_erase_sector: 0x13f
   pc_erase_all: 0xfb
   data_section_offset: 0x26c
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8000000
@@ -5945,6 +5974,7 @@ flash_algorithms:
   pc_erase_sector: 0x191
   pc_erase_all: 0x10d
   data_section_offset: 0x378
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8000000
@@ -5966,6 +5996,7 @@ flash_algorithms:
   pc_erase_sector: 0x13f
   pc_erase_all: 0xfb
   data_section_offset: 0x26c
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8000000
@@ -5986,6 +6017,7 @@ flash_algorithms:
   pc_erase_sector: 0x163
   pc_erase_all: 0x10d
   data_section_offset: 0x26c
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x1ffff800
@@ -6006,6 +6038,7 @@ flash_algorithms:
   pc_erase_sector: 0x1b1
   pc_erase_all: 0x15b
   data_section_offset: 0x2d0
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8400000
@@ -6026,6 +6059,7 @@ flash_algorithms:
   pc_erase_sector: 0x1c1
   pc_erase_all: 0x16b
   data_section_offset: 0x2dc
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8400000
@@ -6046,6 +6080,7 @@ flash_algorithms:
   pc_erase_sector: 0x1b1
   pc_erase_all: 0x15b
   data_section_offset: 0x2d0
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8400000
@@ -6066,6 +6101,7 @@ flash_algorithms:
   pc_erase_sector: 0x1c1
   pc_erase_all: 0x16b
   data_section_offset: 0x2dc
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8400000
@@ -6087,6 +6123,7 @@ flash_algorithms:
   pc_erase_sector: 0x191
   pc_erase_all: 0x10d
   data_section_offset: 0x378
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8000000
@@ -6108,6 +6145,7 @@ flash_algorithms:
   pc_erase_sector: 0x13f
   pc_erase_all: 0xfb
   data_section_offset: 0x26c
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8000000
@@ -6129,6 +6167,7 @@ flash_algorithms:
   pc_erase_sector: 0x121
   pc_erase_all: 0xdd
   data_section_offset: 0x254
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8000000
@@ -6149,6 +6188,7 @@ flash_algorithms:
   pc_erase_sector: 0x141
   pc_erase_all: 0xef
   data_section_offset: 0x250
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x1ffff800
@@ -6169,6 +6209,7 @@ flash_algorithms:
   pc_erase_sector: 0x13d
   pc_erase_all: 0x1b3
   data_section_offset: 0x2e4
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8400000
@@ -6189,6 +6230,7 @@ flash_algorithms:
   pc_erase_sector: 0x13d
   pc_erase_all: 0x1b3
   data_section_offset: 0x2e8
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8400000
@@ -6209,6 +6251,7 @@ flash_algorithms:
   pc_erase_sector: 0x13d
   pc_erase_all: 0x1b3
   data_section_offset: 0x2e8
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8400000
@@ -6229,6 +6272,7 @@ flash_algorithms:
   pc_erase_sector: 0x13d
   pc_erase_all: 0x1b3
   data_section_offset: 0x2e8
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8400000
@@ -6249,6 +6293,7 @@ flash_algorithms:
   pc_erase_sector: 0x13d
   pc_erase_all: 0x1b3
   data_section_offset: 0x2e8
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8400000
@@ -6269,6 +6314,7 @@ flash_algorithms:
   pc_erase_sector: 0x14d
   pc_erase_all: 0x1c3
   data_section_offset: 0x2f0
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8400000
@@ -6289,6 +6335,7 @@ flash_algorithms:
   pc_erase_sector: 0x14d
   pc_erase_all: 0x1c3
   data_section_offset: 0x2f4
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8400000
@@ -6309,6 +6356,7 @@ flash_algorithms:
   pc_erase_sector: 0x14d
   pc_erase_all: 0x1c3
   data_section_offset: 0x2f4
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8400000
@@ -6329,6 +6377,7 @@ flash_algorithms:
   pc_erase_sector: 0x14d
   pc_erase_all: 0x1c3
   data_section_offset: 0x2f4
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8400000
@@ -6349,6 +6398,7 @@ flash_algorithms:
   pc_erase_sector: 0x14d
   pc_erase_all: 0x1c3
   data_section_offset: 0x2f4
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8400000
@@ -6369,6 +6419,7 @@ flash_algorithms:
   pc_erase_sector: 0x13d
   pc_erase_all: 0x1b3
   data_section_offset: 0x2e4
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8400000
@@ -6389,6 +6440,7 @@ flash_algorithms:
   pc_erase_sector: 0x13d
   pc_erase_all: 0x1b3
   data_section_offset: 0x2e8
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8400000
@@ -6409,6 +6461,7 @@ flash_algorithms:
   pc_erase_sector: 0x13d
   pc_erase_all: 0x1b3
   data_section_offset: 0x2e8
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8400000
@@ -6429,6 +6482,7 @@ flash_algorithms:
   pc_erase_sector: 0x13d
   pc_erase_all: 0x1b3
   data_section_offset: 0x2e8
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8400000
@@ -6449,6 +6503,7 @@ flash_algorithms:
   pc_erase_sector: 0x13d
   pc_erase_all: 0x1b3
   data_section_offset: 0x2e8
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8400000
@@ -6469,6 +6524,7 @@ flash_algorithms:
   pc_erase_sector: 0x14d
   pc_erase_all: 0x1c3
   data_section_offset: 0x2f0
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8400000
@@ -6489,6 +6545,7 @@ flash_algorithms:
   pc_erase_sector: 0x14d
   pc_erase_all: 0x1c3
   data_section_offset: 0x2f4
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8400000
@@ -6509,6 +6566,7 @@ flash_algorithms:
   pc_erase_sector: 0x14d
   pc_erase_all: 0x1c3
   data_section_offset: 0x2f4
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8400000
@@ -6529,6 +6587,7 @@ flash_algorithms:
   pc_erase_sector: 0x14d
   pc_erase_all: 0x1c3
   data_section_offset: 0x2f4
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8400000
@@ -6549,6 +6608,7 @@ flash_algorithms:
   pc_erase_sector: 0x14d
   pc_erase_all: 0x1c3
   data_section_offset: 0x2f4
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8400000
@@ -6570,6 +6630,7 @@ flash_algorithms:
   pc_erase_sector: 0x121
   pc_erase_all: 0xdd
   data_section_offset: 0x254
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8000000
@@ -6591,6 +6652,7 @@ flash_algorithms:
   pc_erase_sector: 0x121
   pc_erase_all: 0xdd
   data_section_offset: 0x254
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8000000
@@ -6612,6 +6674,7 @@ flash_algorithms:
   pc_erase_sector: 0x1b1
   pc_erase_all: 0xe3
   data_section_offset: 0x2d8
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8000000
@@ -6632,6 +6695,7 @@ flash_algorithms:
   pc_erase_sector: 0x189
   pc_erase_all: 0xe3
   data_section_offset: 0x298
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x1fffac00
@@ -6652,6 +6716,7 @@ flash_algorithms:
   pc_erase_sector: 0x13f
   pc_erase_all: 0xf5
   data_section_offset: 0x218
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x1ffff800
@@ -6673,6 +6738,7 @@ flash_algorithms:
   pc_erase_sector: 0x1b1
   pc_erase_all: 0xe3
   data_section_offset: 0x2d8
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8000000
@@ -6694,6 +6760,7 @@ flash_algorithms:
   pc_erase_sector: 0x1b1
   pc_erase_all: 0xe3
   data_section_offset: 0x2d8
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8000000
@@ -6715,6 +6782,7 @@ flash_algorithms:
   pc_erase_sector: 0x1b1
   pc_erase_all: 0xe3
   data_section_offset: 0x2d8
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8000000
@@ -6735,6 +6803,7 @@ flash_algorithms:
   pc_erase_sector: 0x189
   pc_erase_all: 0xe3
   data_section_offset: 0x298
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x1fffe400
@@ -6755,6 +6824,7 @@ flash_algorithms:
   pc_erase_sector: 0x13f
   pc_erase_all: 0xf5
   data_section_offset: 0x218
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x1ffff800
@@ -6776,6 +6846,7 @@ flash_algorithms:
   pc_erase_sector: 0x1b1
   pc_erase_all: 0xe3
   data_section_offset: 0x2d8
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8000000
@@ -6796,6 +6867,7 @@ flash_algorithms:
   pc_erase_sector: 0x189
   pc_erase_all: 0xe3
   data_section_offset: 0x298
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x1fffe400
@@ -6816,6 +6888,7 @@ flash_algorithms:
   pc_erase_sector: 0x13f
   pc_erase_all: 0xf5
   data_section_offset: 0x218
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x1ffff800
@@ -6837,6 +6910,7 @@ flash_algorithms:
   pc_erase_sector: 0x1b1
   pc_erase_all: 0xe3
   data_section_offset: 0x2d8
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8000000
@@ -6858,6 +6932,7 @@ flash_algorithms:
   pc_erase_sector: 0x1b1
   pc_erase_all: 0xe3
   data_section_offset: 0x2d8
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8000000
@@ -6879,6 +6954,7 @@ flash_algorithms:
   pc_erase_sector: 0x153
   pc_erase_all: 0x11f
   data_section_offset: 0x278
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8000000
@@ -6899,6 +6975,7 @@ flash_algorithms:
   pc_erase_sector: 0x153
   pc_erase_all: 0x11f
   data_section_offset: 0x278
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x1fffa400
@@ -6919,6 +6996,7 @@ flash_algorithms:
   pc_erase_sector: 0x18f
   pc_erase_all: 0x133
   data_section_offset: 0x28c
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x1ffff800
@@ -6940,6 +7018,7 @@ flash_algorithms:
   pc_erase_sector: 0x153
   pc_erase_all: 0x11f
   data_section_offset: 0x278
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8000000
@@ -6961,6 +7040,7 @@ flash_algorithms:
   pc_erase_sector: 0x153
   pc_erase_all: 0x11f
   data_section_offset: 0x278
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8000000
@@ -6982,6 +7062,7 @@ flash_algorithms:
   pc_erase_sector: 0x1e9
   pc_erase_all: 0x109
   data_section_offset: 0x30c
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8000000
@@ -7002,6 +7083,7 @@ flash_algorithms:
   pc_erase_sector: 0x1bf
   pc_erase_all: 0x109
   data_section_offset: 0x2cc
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x1fffe400
@@ -7022,6 +7104,7 @@ flash_algorithms:
   pc_erase_sector: 0x169
   pc_erase_all: 0x11b
   data_section_offset: 0x240
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x1ffff800
@@ -7043,6 +7126,7 @@ flash_algorithms:
   pc_erase_sector: 0x1e9
   pc_erase_all: 0x109
   data_section_offset: 0x30c
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8000000
@@ -7064,6 +7148,7 @@ flash_algorithms:
   pc_erase_sector: 0x12d
   pc_erase_all: 0xf9
   data_section_offset: 0x254
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8000000
@@ -7084,6 +7169,7 @@ flash_algorithms:
   pc_erase_sector: 0x175
   pc_erase_all: 0x119
   data_section_offset: 0x2a0
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x1fffc000
@@ -7105,6 +7191,7 @@ flash_algorithms:
   pc_erase_sector: 0x12d
   pc_erase_all: 0xf9
   data_section_offset: 0x254
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8000000
@@ -7126,6 +7213,7 @@ flash_algorithms:
   pc_erase_sector: 0x179
   pc_erase_all: 0x115
   data_section_offset: 0x378
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8000000
@@ -7147,6 +7235,7 @@ flash_algorithms:
   pc_erase_sector: 0x179
   pc_erase_all: 0x115
   data_section_offset: 0x374
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8000000
@@ -7167,6 +7256,7 @@ flash_algorithms:
   pc_erase_sector: 0x175
   pc_erase_all: 0x119
   data_section_offset: 0x2a0
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x1fffc000
@@ -7188,6 +7278,7 @@ flash_algorithms:
   pc_erase_sector: 0x12d
   pc_erase_all: 0xf9
   data_section_offset: 0x254
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8000000
@@ -7208,6 +7299,7 @@ flash_algorithms:
   pc_erase_sector: 0x175
   pc_erase_all: 0x119
   data_section_offset: 0x2a0
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x1fffc000
@@ -7229,6 +7321,7 @@ flash_algorithms:
   pc_erase_sector: 0x12d
   pc_erase_all: 0xf9
   data_section_offset: 0x254
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8000000
@@ -7250,6 +7343,7 @@ flash_algorithms:
   pc_erase_sector: 0x179
   pc_erase_all: 0x115
   data_section_offset: 0x378
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8000000
@@ -7271,6 +7365,7 @@ flash_algorithms:
   pc_erase_sector: 0x179
   pc_erase_all: 0x115
   data_section_offset: 0x374
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8000000
@@ -7291,6 +7386,7 @@ flash_algorithms:
   pc_erase_sector: 0x175
   pc_erase_all: 0x119
   data_section_offset: 0x2a0
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x1fffc000
@@ -7312,6 +7408,7 @@ flash_algorithms:
   pc_erase_sector: 0x1b1
   pc_erase_all: 0xe3
   data_section_offset: 0x2d8
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x8000000
@@ -7332,6 +7429,7 @@ flash_algorithms:
   pc_erase_sector: 0x189
   pc_erase_all: 0xe3
   data_section_offset: 0x298
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x1fffac00
@@ -7352,6 +7450,7 @@ flash_algorithms:
   pc_erase_sector: 0x13f
   pc_erase_all: 0xf5
   data_section_offset: 0x218
+  data_load_address: 0x20001800
   flash_properties:
     address_range:
       start: 0x1ffff800
