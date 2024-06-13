@@ -1,146 +1,133 @@
 name: RP2040
 manufacturer:
   id: 0x13
-  cc: 0x09
+  cc: 0x9
 variants:
-  - name: RP2040
+- name: RP2040
+  cores:
+  - name: core0
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x1002927
+  - name: core1
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x11002927
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20042000
     cores:
-      - name: core0
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x1002927
-      - name: core1
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x11002927
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20042000
-          is_boot_memory: false
-          cores:
-            - core0
-            - core1
-      - !Ram
-          range:
-            start: 0x21000000
-            end: 0x21010000
-          is_boot_memory: false
-          cores:
-            - core0
-            - core1
-      - !Ram
-          range:
-            start: 0x21010000
-            end: 0x21020000
-          is_boot_memory: false
-          cores:
-            - core0
-            - core1
-      - !Ram
-          range:
-            start: 0x21020000
-            end: 0x21030000
-          is_boot_memory: false
-          cores:
-            - core0
-            - core1
-      - !Ram
-          range:
-            start: 0x21030000
-            end: 0x21040000
-          is_boot_memory: false
-          cores:
-            - core0
-            - core1
-      - !Nvm
-          range:
-            start: 0x10000000
-            end: 0x18000000
-          is_boot_memory: true
-          cores:
-            - core0
-            - core1
-    flash_algorithms:
-      - algo
-  - name: RP2040_SELFDEBUG
+    - core0
+    - core1
+  - !Ram
+    range:
+      start: 0x21000000
+      end: 0x21010000
     cores:
-      - name: core0
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20042000
-          is_boot_memory: false
-          cores:
-            - core0
-      - !Ram
-          range:
-            start: 0x21000000
-            end: 0x21010000
-          is_boot_memory: false
-          cores:
-            - core0
-      - !Ram
-          range:
-            start: 0x21010000
-            end: 0x21020000
-          is_boot_memory: false
-          cores:
-            - core0
-      - !Ram
-          range:
-            start: 0x21020000
-            end: 0x21030000
-          is_boot_memory: false
-          cores:
-            - core0
-      - !Ram
-          range:
-            start: 0x21030000
-            end: 0x21040000
-          is_boot_memory: false
-          cores:
-            - core0
-      - !Nvm
-          range:
-            start: 0x10000000
-            end: 0x18000000
-          is_boot_memory: true
-          cores:
-            - core0
-    flash_algorithms:
-      - algo
+    - core0
+    - core1
+  - !Ram
+    range:
+      start: 0x21010000
+      end: 0x21020000
+    cores:
+    - core0
+    - core1
+  - !Ram
+    range:
+      start: 0x21020000
+      end: 0x21030000
+    cores:
+    - core0
+    - core1
+  - !Ram
+    range:
+      start: 0x21030000
+      end: 0x21040000
+    cores:
+    - core0
+    - core1
+  - !Nvm
+    range:
+      start: 0x10000000
+      end: 0x18000000
+    is_boot_memory: true
+    cores:
+    - core0
+    - core1
+  flash_algorithms:
+  - algo
+- name: RP2040_SELFDEBUG
+  cores:
+  - name: core0
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20042000
+    cores:
+    - core0
+  - !Ram
+    range:
+      start: 0x21000000
+      end: 0x21010000
+    cores:
+    - core0
+  - !Ram
+    range:
+      start: 0x21010000
+      end: 0x21020000
+    cores:
+    - core0
+  - !Ram
+    range:
+      start: 0x21020000
+      end: 0x21030000
+    cores:
+    - core0
+  - !Ram
+    range:
+      start: 0x21030000
+      end: 0x21040000
+    cores:
+    - core0
+  - !Nvm
+    range:
+      start: 0x10000000
+      end: 0x18000000
+    is_boot_memory: true
+    cores:
+    - core0
+  flash_algorithms:
+  - algo
 flash_algorithms:
-  - name: algo
-    description: algo
-    cores:
-      - core0
-    default: true
-    instructions: 8LWFsB5MfEQgeAEoAdEA8Dv4ASAEkCBwFU4wRvcwAPCJ+AOUBEYTT7gcAPCD+AVGMEYA8H/4ApAPSADwe/gBkA5IAPB3+AZGOEYA8HP4B0agR6hHC0h4RDDAApkBYAGZBDDCwASYA5kIcAAgBbDwvVJFAABDWAAAUlAAAEZDAABeAQAA9gAAALC1CEx8RCB4ASgI0QZNfUQoaYBHaGmARwAgIHCwvQEgsL3ARtgAAAC2AAAABUh4RAB4ACgB0QEgcEcBSHBHwEbQcAAArgAAABC1Ckl5RAl4ASkM0Q8hCQdAGAdJeUSMaAEiEQMSBNgjoEcAIBC9ASAQvcBGkAAAAGgAAAAQtQtGCEl5RAl4ASkK0Q8hCQdAGAVJeUTMaBFGGkagRwAgEL0BIBC9WgAAADIAAACAshQhCYiJHkqIACoE0AkdgkL50QiIcEf+3tTUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANTU1A==
-    pc_init: 0x1
-    pc_uninit: 0x89
-    pc_program_page: 0x105
-    pc_erase_sector: 0xd1
-    data_section_offset: 0x0
-    flash_properties:
-      address_range:
-        start: 0x10000000
-        end: 0x18000000
-      page_size: 0x1000
-      erased_byte_value: 0xff
-      program_page_timeout: 0x3e8
-      erase_sector_timeout: 0xbb8
-      sectors:
-        - size: 0x1000
-          address: 0x0
+- name: algo
+  description: algo
+  default: true
+  instructions: 8LWFsB5MfEQgeAEoAdEA8Dv4ASAEkCBwFU4wRvcwAPCJ+AOUBEYTT7gcAPCD+AVGMEYA8H/4ApAPSADwe/gBkA5IAPB3+AZGOEYA8HP4B0agR6hHC0h4RDDAApkBYAGZBDDCwASYA5kIcAAgBbDwvVJFAABDWAAAUlAAAEZDAABeAQAA9gAAALC1CEx8RCB4ASgI0QZNfUQoaYBHaGmARwAgIHCwvQEgsL3ARtgAAAC2AAAABUh4RAB4ACgB0QEgcEcBSHBHwEbQcAAArgAAABC1Ckl5RAl4ASkM0Q8hCQdAGAdJeUSMaAEiEQMSBNgjoEcAIBC9ASAQvcBGkAAAAGgAAAAQtQtGCEl5RAl4ASkK0Q8hCQdAGAVJeUTMaBFGGkagRwAgEL0BIBC9WgAAADIAAACAshQhCYiJHkqIACoE0AkdgkL50QiIcEf+3tTUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANTU1A==
+  pc_init: 0x1
+  pc_uninit: 0x89
+  pc_program_page: 0x105
+  pc_erase_sector: 0xd1
+  data_section_offset: 0x0
+  flash_properties:
+    address_range:
+      start: 0x10000000
+      end: 0x18000000
+    page_size: 0x1000
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+  cores:
+  - core0

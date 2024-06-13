@@ -1,14 +1,15 @@
 use indicatif::MultiProgress;
 use once_cell::sync::Lazy;
+use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
-use std::{fs::File, path::Path, sync::RwLock};
+use std::{fs::File, path::Path};
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{
     fmt::format::FmtSpan, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer,
 };
 
 /// Stores the progress bar for the logging facility.
-static PROGRESS_BAR: Lazy<RwLock<Option<MultiProgress>>> = Lazy::new(|| RwLock::new(None));
+static PROGRESS_BAR: Lazy<Mutex<Option<MultiProgress>>> = Lazy::new(|| Mutex::new(None));
 
 pub struct FileLoggerGuard<'a> {
     _append_guard: WorkerGuard,
@@ -146,42 +147,40 @@ pub fn setup_logging(
 
 /// Sets the currently displayed progress bar of the CLI.
 pub fn set_progress_bar(progress: MultiProgress) {
-    let mut guard = PROGRESS_BAR.write().unwrap();
-    *guard = Some(progress);
+    *PROGRESS_BAR.lock() = Some(progress);
 }
 
 /// Disables the currently displayed progress bar of the CLI.
 pub fn clear_progress_bar() {
-    let mut guard = PROGRESS_BAR.write().unwrap();
-    *guard = None;
+    *PROGRESS_BAR.lock() = None;
 }
 
 /// Writes an error to stderr.
 /// This function respects the progress bars of the CLI that might be displayed and displays the message above it if any are.
 pub fn eprintln(message: impl AsRef<str>) {
-    if let Ok(guard) = PROGRESS_BAR.try_write() {
-        match guard.as_ref() {
+    fn inner(message: &str) {
+        let locked = PROGRESS_BAR.lock();
+        match locked.as_ref() {
             Some(pb) => {
-                let _ = pb.println(message.as_ref());
+                let _ = pb.println(message);
             }
-            _ => eprintln!("{}", message.as_ref()),
+            None => eprintln!("{message}"),
         }
-    } else {
-        eprintln!("{}", message.as_ref());
     }
+    inner(message.as_ref())
 }
 
 /// Writes a message to stdout with a newline at the end.
 /// This function respects the progress bars of the CLI that might be displayed and displays the message above it if any are.
 pub fn println(message: impl AsRef<str>) {
-    if let Ok(guard) = PROGRESS_BAR.try_write() {
-        match guard.as_ref() {
+    fn inner(message: &str) {
+        let locked = PROGRESS_BAR.lock();
+        match locked.as_ref() {
             Some(pb) => {
-                let _ = pb.println(message.as_ref());
+                let _ = pb.println(message);
             }
-            _ => println!("{}", message.as_ref()),
+            None => println!("{message}"),
         }
-    } else {
-        println!("{}", message.as_ref());
     }
+    inner(message.as_ref())
 }

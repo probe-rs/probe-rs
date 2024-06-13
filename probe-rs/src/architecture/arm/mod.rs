@@ -29,43 +29,51 @@ pub use traits::*;
 
 /// ARM-specific errors
 #[derive(Debug, thiserror::Error)]
-#[error("An ARM specific error occurred.")]
 pub enum ArmError {
     /// The operation requires a specific architecture.
-    #[error("The operation requires one of the following architectures: {0:?}")]
+    #[error("The operation requires one of the following architectures: {0:?}.")]
     ArchitectureRequired(&'static [&'static str]),
+
     /// A timeout occurred during an operation
     #[error("Timeout occurred during operation.")]
     Timeout,
+
     /// The address is too large for the 32 bit address space.
     #[error("Address is not in 32 bit address space.")]
     AddressOutOf32BitAddressSpace,
+
     /// The current target device is not an ARM device.
     #[error("Target device is not an ARM device.")]
     NoArmTarget,
+
     /// Error using a specific AP.
-    #[error("Error using access port")]
+    #[error("Error using access port.")]
     AccessPort {
         /// Address of the access port
         address: ApAddress,
         /// Source of the error.
         source: AccessPortError,
     },
+
     /// An error occurred while using a debug port.
     #[error("Error using a debug port.")]
     DebugPort(#[from] DebugPortError),
+
     /// The core has to be halted for the operation, but was not.
-    #[error("The core needs to be halted for this operation but was not.")]
+    #[error("The core needs to be halted for this operation but was not")]
     CoreNotHalted,
-    /// Performing certain operations (e.g device unlock or Chip-Erase) can leave the device in a state
-    /// that requires a probe re-attach to resolve.
-    #[error("Probe and device internal state mismatch. A probe re-attach is required")]
+
+    /// Performing certain operations (e.g device unlock or Chip-Erase) can leave the device in a
+    /// state that requires a probe re-attach to resolve.
+    #[error("Probe and device internal state mismatch. A probe re-attach is required.")]
     ReAttachRequired,
+
     /// An operation was not performed because the required permissions were not given.
     ///
     /// This can for example happen when the core is locked and needs to be erased to be unlocked.
-    /// Then the correct permission needs to be given to automatically unlock the core to prevent accidental erases.
-    #[error("An operation could not be performed because it lacked the permission to do so: {0}")]
+    /// Then the correct permission needs to be given to automatically unlock the core to prevent
+    /// accidental erases.
+    #[error("An operation could not be performed because it lacked the permission to do so: {0}.")]
     MissingPermissions(String),
 
     /// An error occurred in the communication with an access port or debug port.
@@ -78,18 +86,23 @@ pub enum ArmError {
 
     /// The given register address to perform an access on was not memory aligned.
     /// Make sure it is aligned to the size of the access (`address & access_size == 0`).
-    #[error("Failed to access address 0x{address:08x} as it is not aligned to the requirement of {alignment} bytes for this platform and API call.")]
+    #[error(
+        "Failed to access address 0x{address:08x} as it is not aligned to \
+        the requirement of {alignment} bytes for this platform and API call."
+    )]
     MemoryNotAligned {
         /// The address of the register.
         address: u64,
         /// The required alignment in bytes (address increments).
         alignment: usize,
     },
+
     /// A region outside of the AP address space was accessed.
-    #[error("Out of bounds access")]
+    #[error("Out of bounds access.")]
     OutOfBounds,
+
     /// The requested memory transfer width is not supported on the current core.
-    #[error("{0} bit is not a supported memory transfer width on the current core")]
+    #[error("{0} bit is not a supported memory transfer width on the current core.")]
     UnsupportedTransferWidth(usize),
 
     /// The AP with the specified address does not exist.
@@ -97,38 +110,50 @@ pub enum ArmError {
     ApDoesNotExist(ApAddress),
 
     /// The AP has the wrong type for the operation.
+    #[error("Wrong AP type.")]
     WrongApType,
 
     /// It is not possible to create a breakpoint a the given address.
-    #[error("Unable to create a breakpoint at address {0:#010X}. Hardware breakpoints are only supported at addresses < 0x2000'0000.")]
+    #[error(
+        "Unable to create a breakpoint at address {0:#010X}. \
+        Hardware breakpoints are only supported at addresses < 0x2000_0000."
+    )]
     UnsupportedBreakpointAddress(u32),
 
+    #[error("Armv8a specific error.")]
     /// ARMv8a specific error occurred.
     Armv8a(#[from] Armv8aError),
 
     /// ARMv7a specific error occurred.
+    #[error("Armv7a specific error.")]
     Armv7a(#[from] Armv7aError),
 
     /// Error occurred in a debug sequence.
+    #[error("Error occurred in a debug sequence.")]
     DebugSequence(#[from] ArmDebugSequenceError),
 
     /// Tracing has not been configured.
+    #[error("Tracing has not been configured.")]
     TracingUnconfigured,
 
     /// Error parsing a register.
+    #[error("Error parsing a registere.")]
     RegisterParse(#[from] RegisterParseError),
 
     /// Error reading ROM table.
+    #[error("Error reading ROM table.")]
     RomTable(#[source] RomTableError),
 
     /// Failed to erase chip
+    #[error("Chip erase failed.")]
     ChipEraseFailed,
 
     /// The operation requires a specific extension.
-    #[error("The operation requires the following extension(s): {0:?}")]
+    #[error("The operation requires the following extension(s): {0:?}.")]
     ExtensionRequired(&'static [&'static str]),
 
-    /// Any other error occurred.
+    /// Some other error occurred.
+    #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
 

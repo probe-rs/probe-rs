@@ -174,6 +174,11 @@ pub trait CoreInterface: MemoryInterface {
     fn disable_vector_catch(&mut self, _condition: VectorCatchCondition) -> Result<(), Error> {
         Err(Error::NotImplemented("vector catch"))
     }
+
+    /// Check if the integer size is 64-bit
+    fn is_64_bit(&self) -> bool {
+        false
+    }
 }
 
 impl<'probe> MemoryInterface for Core<'probe> {
@@ -359,16 +364,11 @@ impl ExceptionInterface for UnimplementedExceptionHandler {
 
 /// Creates a new exception interface for the [`CoreType`] at hand.
 pub fn exception_handler_for_core(core_type: CoreType) -> Box<dyn ExceptionInterface> {
+    use crate::architecture::arm::core::exception_handling::{armv6m, armv7m, armv8m};
     match core_type {
-        CoreType::Armv6m => Box::new(
-            crate::architecture::arm::core::exception_handling::armv6m::ArmV6MExceptionHandler {},
-        ),
-        CoreType::Armv7m | CoreType::Armv7em => Box::new(
-            crate::architecture::arm::core::exception_handling::armv7m::ArmV7MExceptionHandler {},
-        ),
-        CoreType::Armv8m => Box::new(
-            crate::architecture::arm::core::exception_handling::armv8m::ArmV8MExceptionHandler,
-        ),
+        CoreType::Armv6m => Box::new(armv6m::ArmV6MExceptionHandler),
+        CoreType::Armv7m | CoreType::Armv7em => Box::new(armv7m::ArmV7MExceptionHandler),
+        CoreType::Armv8m => Box::new(armv8m::ArmV8MExceptionHandler),
         CoreType::Armv7a | CoreType::Armv8a | CoreType::Riscv | CoreType::Xtensa => {
             Box::new(UnimplementedExceptionHandler)
         }
@@ -424,52 +424,10 @@ impl<'probe> Core<'probe> {
         target: &Target,
         core_type: CoreType,
     ) -> CombinedCoreState {
-        let specific_state = SpecificCoreState::from_core_type(core_type);
-
-        match options {
-            CoreAccessOptions::Arm(options) => {
-                let DebugSequence::Arm(sequence) = target.debug_sequence.clone() else {
-                    panic!(
-                        "Mismatch between sequence and core kind. This is a bug, please report it."
-                    );
-                };
-
-                let core_state = CoreState::new(ResolvedCoreOptions::Arm { sequence, options });
-
-                CombinedCoreState {
-                    id,
-                    core_state,
-                    specific_state,
-                }
-            }
-            CoreAccessOptions::Riscv(options) => {
-                let DebugSequence::Riscv(sequence) = target.debug_sequence.clone() else {
-                    panic!(
-                        "Mismatch between sequence and core kind. This is a bug, please report it."
-                    );
-                };
-
-                let core_state = CoreState::new(ResolvedCoreOptions::Riscv { sequence, options });
-                CombinedCoreState {
-                    id,
-                    core_state,
-                    specific_state,
-                }
-            }
-            CoreAccessOptions::Xtensa(options) => {
-                let DebugSequence::Xtensa(sequence) = target.debug_sequence.clone() else {
-                    panic!(
-                        "Mismatch between sequence and core kind. This is a bug, please report it."
-                    );
-                };
-
-                let core_state = CoreState::new(ResolvedCoreOptions::Xtensa { sequence, options });
-                CombinedCoreState {
-                    id,
-                    core_state,
-                    specific_state,
-                }
-            }
+        CombinedCoreState {
+            id,
+            core_state: CoreState::new(ResolvedCoreOptions::new(target, options)),
+            specific_state: SpecificCoreState::from_core_type(core_type),
         }
     }
 
@@ -529,7 +487,7 @@ impl<'probe> Core<'probe> {
     }
 
     /// Returns the current status of the core.
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(level = "trace", skip(self))]
     pub fn status(&mut self) -> Result<CoreStatus, Error> {
         self.inner.status()
     }
@@ -803,6 +761,11 @@ impl<'probe> Core<'probe> {
             floating_point_register_count: Some(floating_point_register_count),
         })
     }
+
+    /// Check if the integer size is 64-bit
+    pub fn is_64_bit(&self) -> bool {
+        self.inner.is_64_bit()
+    }
 }
 
 impl<'probe> CoreInterface for Core<'probe> {
@@ -928,6 +891,10 @@ impl<'probe> CoreInterface for Core<'probe> {
     fn debug_core_stop(&mut self) -> Result<(), Error> {
         self.debug_core_stop()
     }
+
+    fn is_64_bit(&self) -> bool {
+        self.is_64_bit()
+    }
 }
 
 pub enum ResolvedCoreOptions {
@@ -944,7 +911,25 @@ pub enum ResolvedCoreOptions {
         options: XtensaCoreAccessOptions,
     },
 }
+
 impl ResolvedCoreOptions {
+    fn new(target: &Target, options: CoreAccessOptions) -> Self {
+        match (options, target.debug_sequence.clone()) {
+            (CoreAccessOptions::Arm(options), DebugSequence::Arm(sequence)) => {
+                Self::Arm { sequence, options }
+            }
+            (CoreAccessOptions::Riscv(options), DebugSequence::Riscv(sequence)) => {
+                Self::Riscv { sequence, options }
+            }
+            (CoreAccessOptions::Xtensa(options), DebugSequence::Xtensa(sequence)) => {
+                Self::Xtensa { sequence, options }
+            }
+            _ => unreachable!(
+                "Mismatch between core kind and access options. This is a bug, please report it."
+            ),
+        }
+    }
+
     fn interface_idx(&self) -> usize {
         match self {
             Self::Arm { .. } => 0, // TODO

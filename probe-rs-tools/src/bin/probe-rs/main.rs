@@ -1,4 +1,5 @@
 mod cmd;
+mod report;
 mod util;
 
 use std::cmp::Reverse;
@@ -10,9 +11,11 @@ use std::{ffi::OsString, path::PathBuf};
 
 use anyhow::{Context, Result};
 use clap::Parser;
+use colored::Colorize;
 use itertools::Itertools;
 use probe_rs::flashing::{BinOptions, Format, IdfOptions};
 use probe_rs::{probe::list::Lister, Target};
+use report::Report;
 use serde::Serialize;
 use serde::{de::Error, Deserialize, Deserializer};
 use serde_json::Value;
@@ -40,6 +43,17 @@ struct Cli {
     /// Enable logging to the default folder. This option is ignored if `--log-file` is specified.
     #[clap(long, global = true, help_heading = "LOG CONFIGURATION")]
     log_to_folder: bool,
+    #[clap(
+        long,
+        short,
+        global = true,
+        help_heading = "LOG CONFIGURATION",
+        value_name = "PATH",
+        require_equals = true,
+        num_args = 0..=1,
+        default_missing_value = "./report.zip"
+    )]
+    report: Option<PathBuf>,
     #[clap(subcommand)]
     subcommand: Subcommand,
 }
@@ -82,6 +96,7 @@ enum Subcommand {
     Read(cmd::read::Cmd),
     Write(cmd::write::Cmd),
     Complete(cmd::complete::Cmd),
+    Mi(cmd::mi::Cmd),
 }
 
 /// Shared options for core selection, shared between commands
@@ -268,7 +283,8 @@ fn main() -> Result<()> {
 
     let log_path = if let Some(location) = matches.log_file {
         Some(location)
-    } else if matches.log_to_folder {
+    } else if matches.log_to_folder || matches.report.is_some() {
+        // We always log if we create a report.
         let location =
             default_logfile_location().context("Unable to determine default log file location.")?;
         prune_logs(
@@ -289,7 +305,8 @@ fn main() -> Result<()> {
 
     let _logger_guard = setup_logging(log_path.as_deref(), None);
 
-    match matches.subcommand {
+    let mut elf = None;
+    let result = match matches.subcommand {
         Subcommand::DapServer { .. } => unreachable!(), // handled above.
         Subcommand::List(cmd) => cmd.run(&lister),
         Subcommand::Info(cmd) => cmd.run(&lister),
@@ -297,8 +314,14 @@ fn main() -> Result<()> {
         Subcommand::Reset(cmd) => cmd.run(&lister),
         Subcommand::Debug(cmd) => cmd.run(&lister),
         Subcommand::Download(cmd) => cmd.run(&lister),
-        Subcommand::Run(cmd) => cmd.run(&lister, true, utc_offset),
-        Subcommand::Attach(cmd) => cmd.run(&lister, utc_offset),
+        Subcommand::Run(cmd) => {
+            elf = Some(cmd.shared_options.path.clone());
+            cmd.run(&lister, true, utc_offset)
+        }
+        Subcommand::Attach(cmd) => {
+            elf = Some(cmd.run.shared_options.path.clone());
+            cmd.run(&lister, utc_offset)
+        }
         Subcommand::Erase(cmd) => cmd.run(&lister),
         Subcommand::Trace(cmd) => cmd.run(&lister),
         Subcommand::Itm(cmd) => cmd.run(&lister),
@@ -308,6 +331,49 @@ fn main() -> Result<()> {
         Subcommand::Read(cmd) => cmd.run(&lister),
         Subcommand::Write(cmd) => cmd.run(&lister),
         Subcommand::Complete(cmd) => cmd.run(&lister),
+        Subcommand::Mi(cmd) => cmd.run(),
+    };
+
+    compile_report(result, matches.report, elf, log_path.clone())
+}
+
+fn compile_report(
+    result: Result<()>,
+    path: Option<PathBuf>,
+    elf: Option<PathBuf>,
+    log_path: Option<PathBuf>,
+) -> Result<()> {
+    if let Err(error) = result {
+        if let Some(path) = path {
+            let command = std::env::args_os();
+            let report = Report::new(command, error, elf, log_path)?;
+
+            report.zip(&path)?;
+            eprintln!(
+                "{}",
+                format!(
+                    "The compiled report has been written to {}.",
+                    path.display()
+                )
+                .blue()
+            );
+            eprintln!("{}", "Please upload it with your issue on Github.".blue());
+            eprintln!(
+                "{}",
+                "You can create an issue by following this URL:".blue()
+            );
+            let base = "https://github.com/probe-rs/probe-rs/issues/new";
+            let meta = format!("```json\n{}\n```", serde_json::to_string_pretty(&report)?);
+            let body = urlencoding::encode(&meta);
+            let error = format!("{:#}", report.error);
+            let title = urlencoding::encode(&error);
+            eprintln!("{base}?labels=bug&title={title}&body={body}");
+            Ok(())
+        } else {
+            Err(error)
+        }
+    } else {
+        Ok(())
     }
 }
 

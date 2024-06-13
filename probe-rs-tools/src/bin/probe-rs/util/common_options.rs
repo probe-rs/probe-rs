@@ -1,5 +1,6 @@
 use std::{
     fs::File,
+    io::Write,
     path::{Path, PathBuf},
 };
 
@@ -79,6 +80,14 @@ pub struct ProbeOptions {
     /// Protocol used to connect to chip. Possible options: [swd, jtag]
     #[arg(long, env = "PROBE_RS_PROTOCOL", help_heading = "PROBE CONFIGURATION")]
     pub protocol: Option<WireProtocol>,
+
+    /// Disable interactive probe selection
+    #[arg(
+        long,
+        env = "PROBE_RS_NON_INTERACTIVE",
+        help_heading = "PROBE CONFIGURATION"
+    )]
+    pub non_interactive: bool,
 
     /// Use this flag to select a specific probe in the list.
     ///
@@ -185,6 +194,46 @@ impl LoadedProbeOptions {
         Ok(target)
     }
 
+    /// Allow for a stdin selection of the given probes
+    fn interactive_probe_select(
+        list: &[DebugProbeInfo],
+    ) -> Result<&DebugProbeInfo, OperationError> {
+        println!("Available Probes:");
+        for (i, probe_info) in list.iter().enumerate() {
+            println!("{i}: {probe_info}");
+        }
+
+        print!("Selection: ");
+        std::io::stdout().flush().unwrap();
+
+        let mut input = String::new();
+        std::io::stdin()
+            .read_line(&mut input)
+            .expect("Expect input for probe selection");
+
+        let probe_idx = input
+            .trim()
+            .parse::<usize>()
+            .map_err(OperationError::ParseProbeIndex)?;
+
+        list.get(probe_idx).ok_or(OperationError::NoProbesFound)
+    }
+
+    /// Selects a probe from a list of probes.
+    /// If there is only one probe, it will be selected automatically.
+    /// If there are multiple probes, the user will be prompted to select one unless
+    /// started in non-interactive mode.
+    fn select_probe(lister: &Lister, non_interactive: bool) -> Result<Probe, OperationError> {
+        let list = lister.list_all();
+        let selected = match list.len() {
+            0 | 1 => list.first().ok_or(OperationError::NoProbesFound),
+            _ if non_interactive => Err(OperationError::MultipleProbesFound { list }),
+            _ => Self::interactive_probe_select(&list),
+        };
+
+        selected.and_then(|probe_info| Ok(lister.open(probe_info)?))
+    }
+
     /// Attaches to specified probe and configures it.
     pub fn attach_probe(&self, lister: &Lister) -> Result<Probe, OperationError> {
         let mut probe = if self.0.dry_run {
@@ -192,25 +241,10 @@ impl LoadedProbeOptions {
         } else {
             // If we got a probe selector as an argument, open the probe
             // matching the selector if possible.
-            let probe = match &self.0.probe {
-                Some(selector) => lister.open(selector),
-                None => {
-                    // Only automatically select a probe if there is
-                    // only a single probe detected.
-                    let list = lister.list_all();
-                    if list.len() > 1 {
-                        return Err(OperationError::MultipleProbesFound { list });
-                    }
-
-                    let Some(info) = list.first() else {
-                        return Err(OperationError::NoProbesFound);
-                    };
-
-                    lister.open(info)
-                }
-            };
-
-            probe.map_err(OperationError::FailedToOpenProbe)?
+            match &self.0.probe {
+                Some(selector) => lister.open(selector)?,
+                None => Self::select_probe(lister, self.0.non_interactive)?,
+            }
         };
 
         if let Some(protocol) = self.0.protocol {
@@ -415,6 +449,7 @@ CARGO BUILD OPTIONS:
 pub enum OperationError {
     #[error("No connected probes were found.")]
     NoProbesFound,
+
     #[error("Failed to open the ELF file '{path}' for flashing.")]
     #[allow(dead_code)]
     FailedToOpenElf {
@@ -422,81 +457,86 @@ pub enum OperationError {
         source: std::io::Error,
         path: PathBuf,
     },
+
     #[error("Failed to load the ELF data.")]
     #[allow(dead_code)]
     FailedToLoadElfData(#[source] FileDownloadError),
+
     #[error("Failed to open the debug probe.")]
-    FailedToOpenProbe(#[source] DebugProbeError),
+    FailedToOpenProbe(#[from] DebugProbeError),
+
     #[error("{} probes were found: {}", .list.len(), print_list(.list))]
     MultipleProbesFound { list: Vec<DebugProbeInfo> },
+
     #[error("The flashing procedure failed for '{path}'.")]
     FlashingFailed {
-        #[source]
         source: FlashError,
         target: Box<Target>, // Box to reduce enum size
         target_spec: Option<String>,
         path: PathBuf,
     },
+
     #[error("Failed to open the chip description '{path}'.")]
     ChipDescriptionNotFound {
-        #[source]
         source: std::io::Error,
         path: PathBuf,
     },
+
     #[error("Failed to parse the chip description '{path}'.")]
     FailedChipDescriptionParsing {
-        #[source]
         source: RegistryError,
         path: PathBuf,
     },
+
     #[error("Failed to change the working directory to '{path}'.")]
     FailedToChangeWorkingDirectory {
-        #[source]
         source: std::io::Error,
         path: PathBuf,
     },
+
     #[error("Failed to build the cargo project at '{path}'.")]
     FailedToBuildExternalCargoProject {
-        #[source]
         source: ArtifactError,
         path: PathBuf,
     },
+
     #[error("Failed to build the cargo project.")]
     FailedToBuildCargoProject(#[source] ArtifactError),
+
     #[error("The chip '{name}' was not found in the database.")]
-    ChipNotFound {
-        #[source]
-        source: RegistryError,
-        name: String,
-    },
+    ChipNotFound { source: RegistryError, name: String },
+
     #[error("The protocol '{protocol}' could not be selected.")]
     FailedToSelectProtocol {
-        #[source]
         source: DebugProbeError,
         protocol: WireProtocol,
     },
+
     #[error("The protocol speed could not be set to '{speed}' kHz.")]
-    FailedToSelectProtocolSpeed {
-        #[source]
-        source: DebugProbeError,
-        speed: u32,
-    },
+    FailedToSelectProtocolSpeed { source: DebugProbeError, speed: u32 },
+
     #[error("Connecting to the chip was unsuccessful.")]
     AttachingFailed {
-        #[source]
         source: probe_rs::Error,
         connect_under_reset: bool,
     },
+
     #[error("Failed to get a handle to the first core.")]
     AttachingToCoreFailed(#[source] probe_rs::Error),
+
     #[error("The reset of the target failed.")]
     TargetResetFailed(#[source] probe_rs::Error),
+
     #[error("The target could not be reset and halted.")]
     TargetResetHaltFailed(#[source] probe_rs::Error),
+
     #[error("Failed to write to file")]
     IOError(#[source] std::io::Error),
+
     #[error("Failed to parse CLI arguments.")]
     CliArgument(#[from] clap::Error),
+    #[error("Failed to parse interactive probe index selection")]
+    ParseProbeIndex(#[source] std::num::ParseIntError),
 }
 
 /// Used in errors it can print a list of items.

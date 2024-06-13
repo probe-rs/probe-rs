@@ -206,7 +206,7 @@ impl SessionData {
     ///   - The first time we have entered halted status, to ensure the buffers are drained. After that, for as long as we remain in halted state, we don't need to check RTT again.
     ///
     /// Return a Vec of [`CoreStatus`] (one entry per core) after this process has completed, as well as a boolean indicating whether we should consider a short delay before the next poll.
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "trace", skip_all)]
     pub(crate) fn poll_cores<P: ProtocolAdapter>(
         &mut self,
         session_config: &SessionConfig,
@@ -299,6 +299,26 @@ impl SessionData {
             status_of_cores.push(current_core_status);
         }
         Ok((status_of_cores, suggest_delay_required))
+    }
+
+    pub(crate) fn clean_up(&mut self, session_config: &SessionConfig) -> Result<(), DebuggerError> {
+        for core_config in session_config.core_configs.iter() {
+            if core_config.rtt_config.enabled {
+                let Ok(mut target_core) = self.attach_core(core_config.core_index) else {
+                    tracing::debug!(
+                        "Failed to attach to target core #{}. Cannot clean up.",
+                        core_config.core_index
+                    );
+                    continue;
+                };
+
+                if let Some(core_rtt) = &mut target_core.core_data.rtt_connection {
+                    core_rtt.clean_up(&mut target_core.core)?;
+                }
+            }
+        }
+
+        Ok(())
     }
 }
 

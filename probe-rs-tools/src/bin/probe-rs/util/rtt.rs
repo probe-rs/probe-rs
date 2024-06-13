@@ -99,10 +99,6 @@ pub struct RttConfig {
     #[serde(default, rename = "rttEnabled")]
     pub enabled: bool,
 
-    /// The default format string to use for decoding defmt logs.
-    #[serde(default, rename = "defmtLogFormat")]
-    pub log_format: Option<String>,
-
     /// Configure data_format and show_timestamps for select channels
     #[serde(default = "Vec::new", rename = "rttChannelFormats")]
     pub channels: Vec<RttChannelConfig>,
@@ -118,7 +114,7 @@ impl RttConfig {
 }
 
 /// The User specified configuration for each active RTT Channel.
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RttChannelConfig {
     pub channel_number: Option<usize>,
@@ -130,26 +126,29 @@ pub struct RttChannelConfig {
     pub mode: Option<ChannelMode>,
 
     #[serde(default = "default_show_timestamps")]
-    /// Control the inclusion of timestamps for DataFormat::String.
+    /// Controls the inclusion of timestamps for [`DataFormat::String`] and [`DataFormat::Defmt`].
     pub show_timestamps: bool,
 
     #[serde(default)]
-    /// Control the inclusion of source location information for DataFormat::Defmt.
+    /// Controls the inclusion of source location information for DataFormat::Defmt.
     pub show_location: bool,
 
     #[serde(default)]
-    /// Control the output format for DataFormat::Defmt.
-    pub defmt_log_format: Option<String>,
+    /// Controls the output format for DataFormat::Defmt.
+    pub log_format: Option<String>,
 }
 
-/// The User specified configuration for each active RTT Channel. The configuration is passed via a
-/// DAP Client configuration (`launch.json`). If no configuration is specified, the defaults will be
-/// `DataFormat::String` and `show_timestamps=false`.
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct RttDownChannelConfig {
-    pub channel_number: Option<usize>,
-    pub operating_mode: Option<String>,
+impl Default for RttChannelConfig {
+    fn default() -> Self {
+        RttChannelConfig {
+            channel_number: Default::default(),
+            data_format: Default::default(),
+            mode: Default::default(),
+            show_timestamps: default_show_timestamps(),
+            show_location: Default::default(),
+            log_format: Default::default(),
+        }
+    }
 }
 
 pub enum ChannelDataFormat {
@@ -339,13 +338,16 @@ pub struct RttActiveUpChannel {
     pub channel_name: String,
     pub data_format: ChannelDataFormat,
     rtt_buffer: RttBuffer,
+
+    /// If set, the original mode of the channel before we changed it. Upon exit we should do
+    /// our best to restore the original mode.
+    original_mode: Option<ChannelMode>,
 }
 
 impl RttActiveUpChannel {
     pub fn new(
         core: &mut Core,
         up_channel: UpChannel,
-        rtt_config: &RttConfig,
         channel_config: &RttChannelConfig,
         timestamp_offset: UtcOffset,
         defmt_state: Option<&DefmtState>,
@@ -371,13 +373,8 @@ impl RttActiveUpChannel {
 
                 // Format options:
                 // 1. Custom format for the channel
-                // 2. Custom default format
-                // 3. Default with optional timestamp and location
-                let format = if let Some(format) = channel_config
-                    .defmt_log_format
-                    .as_deref()
-                    .or(rtt_config.log_format.as_deref())
-                {
+                // 2. Default with optional timestamp and location
+                let format = if let Some(format) = channel_config.log_format.as_deref() {
                     FormatterFormat::Custom(format)
                 } else {
                     FormatterFormat::Default {
@@ -388,7 +385,7 @@ impl RttActiveUpChannel {
                 ChannelDataFormat::Defmt {
                     formatter: Formatter::new(FormatterConfig {
                         format,
-                        is_timestamp_available: has_timestamp,
+                        is_timestamp_available: has_timestamp && channel_config.show_timestamps,
                     }),
                     cwd: std::env::current_dir().unwrap(),
                 }
@@ -406,6 +403,7 @@ impl RttActiveUpChannel {
                 )
             });
 
+        let mut original_mode = None;
         if let Some(mode) = channel_config.mode.or(
             // Try not to corrupt the byte stream if using defmt
             if matches!(data_format, ChannelDataFormat::Defmt { .. }) {
@@ -414,6 +412,7 @@ impl RttActiveUpChannel {
                 None
             },
         ) {
+            original_mode = Some(up_channel.mode(core)?);
             up_channel.set_mode(core, mode)?;
         }
 
@@ -422,6 +421,7 @@ impl RttActiveUpChannel {
             up_channel,
             channel_name,
             data_format,
+            original_mode,
         })
     }
 
@@ -433,17 +433,16 @@ impl RttActiveUpChannel {
     /// Processes all the new data into the channel internal buffer and returns the number of bytes that was read.
     pub fn poll_rtt(&mut self, core: &mut Core) -> Option<usize> {
         // Retry loop, in case the probe is temporarily unavailable, e.g. user pressed the `reset` button.
-        for _loop_count in 0..10 {
+        const RETRY_COUNT: usize = 10;
+        for loop_count in 1..=RETRY_COUNT {
             match self.up_channel.read(core, self.rtt_buffer.0.as_mut()) {
                 Ok(0) => return None,
                 Ok(count) => return Some(count),
-                Err(probe_rs::rtt::Error::Probe(_)) => {
-                    std::thread::sleep(std::time::Duration::from_millis(50));
-                }
-                Err(err) => {
+                Err(err) if loop_count == RETRY_COUNT => {
                     tracing::error!("\nError reading from RTT: {}", err);
                     return None;
                 }
+                _ => std::thread::sleep(std::time::Duration::from_millis(50)),
             }
         }
 
@@ -467,6 +466,14 @@ impl RttActiveUpChannel {
 
         self.data_format
             .process(self.number(), buffer, defmt_state, collector)
+    }
+
+    /// Clean up temporary changes made to the channel.
+    pub fn clean_up(&mut self, core: &mut Core) -> Result<()> {
+        if let Some(mode) = self.original_mode.take() {
+            self.up_channel.set_mode(core, mode)?;
+        }
+        Ok(())
     }
 }
 
@@ -566,7 +573,6 @@ impl RttActiveTarget {
                 RttActiveUpChannel::new(
                     core,
                     channel,
-                    rtt_config,
                     &channel_config,
                     timestamp_offset,
                     defmt_state.as_ref(),
@@ -628,6 +634,14 @@ impl RttActiveTarget {
         let defmt_state = self.defmt_state.as_ref();
         for channel in self.active_up_channels.values_mut() {
             channel.poll_process_rtt_data(core, defmt_state, collector)?;
+        }
+        Ok(())
+    }
+
+    /// Clean up temporary changes made to the channels.
+    pub fn clean_up(&mut self, core: &mut Core) -> Result<()> {
+        for channel in self.active_up_channels.values_mut() {
+            channel.clean_up(core)?;
         }
         Ok(())
     }

@@ -2,809 +2,802 @@ name: STM32WB Series
 generated_from_pack: true
 pack_file_release: 1.4.0
 variants:
-  - name: STM32WB10CCUx
+- name: STM32WB10CCUx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
-    memory_map:
-      - !Ram
-        name: SRAM1
-        range:
-          start: 0x20000000
-          end: 0x20003000
-        cores:
-          - main
-      - !Ram
-        name: SRAM2
-        range:
-          start: 0x20030000
-          end: 0x20039000
-        cores:
-          - main
-      - !Nvm
-        name: Main_Flash
-        range:
-          start: 0x8000000
-          end: 0x8050000
-        is_boot_memory: true
-        cores:
-          - main
-    flash_algorithms:
-      - stm32wb1x_320_m4
-  - name: STM32WB15CCUx
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20030000
+      end: 0x20039000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
-    memory_map:
-      - !Ram
-        name: SRAM1
-        range:
-          start: 0x20000000
-          end: 0x20003000
-        cores:
-          - main
-      - !Ram
-        name: SRAM2
-        range:
-          start: 0x20030000
-          end: 0x20039000
-        cores:
-          - main
-      - !Nvm
-        name: Main_Flash
-        range:
-          start: 0x8000000
-          end: 0x8050000
-        is_boot_memory: true
-        cores:
-          - main
-    flash_algorithms:
-      - stm32wb1x_320_m4
-  - name: STM32WB15CCUxE
+    - main
+  - !Nvm
+    name: Main_Flash
+    range:
+      start: 0x8000000
+      end: 0x8050000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv7em
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
-    memory_map:
-      - !Ram
-        name: SRAM1
-        range:
-          start: 0x20000000
-          end: 0x20003000
-        cores:
-          - main
-      - !Ram
-        name: SRAM2
-        range:
-          start: 0x20030000
-          end: 0x20039000
-        cores:
-          - main
-      - !Nvm
-        name: Main_Flash
-        range:
-          start: 0x8000000
-          end: 0x8050000
-        is_boot_memory: true
-        cores:
-          - main
-    flash_algorithms:
-      - stm32wb1x_320_m4
-  - name: STM32WB15CCYx
+    - main
+  flash_algorithms:
+  - stm32wb1x_320_m4
+- name: STM32WB15CCUx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
-    memory_map:
-      - !Ram
-        name: SRAM1
-        range:
-          start: 0x20000000
-          end: 0x20003000
-        cores:
-          - main
-      - !Ram
-        name: SRAM2
-        range:
-          start: 0x20030000
-          end: 0x20039000
-        cores:
-          - main
-      - !Nvm
-        name: Main_Flash
-        range:
-          start: 0x8000000
-          end: 0x8050000
-        is_boot_memory: true
-        cores:
-          - main
-    flash_algorithms:
-      - stm32wb1x_320_m4
-  - name: STM32WB1MMCHx
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20030000
+      end: 0x20039000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
-    memory_map:
-      - !Ram
-        name: SRAM1
-        range:
-          start: 0x20000000
-          end: 0x20003000
-        cores:
-          - main
-      - !Ram
-        name: SRAM2
-        range:
-          start: 0x20030000
-          end: 0x20039000
-        cores:
-          - main
-      - !Nvm
-        name: Main_Flash
-        range:
-          start: 0x8000000
-          end: 0x8050000
-        is_boot_memory: true
-        cores:
-          - main
-    flash_algorithms:
-      - stm32wb1x_320_m4
-  - name: STM32WB30CEUxA
+    - main
+  - !Nvm
+    name: Main_Flash
+    range:
+      start: 0x8000000
+      end: 0x8050000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv7em
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
-    memory_map:
-      - !Ram
-        name: SRAM1
-        range:
-          start: 0x20000000
-          end: 0x20008000
-        cores:
-          - main
-      - !Nvm
-        name: Main_Flash
-        range:
-          start: 0x8000000
-          end: 0x8080000
-        is_boot_memory: true
-        cores:
-          - main
-    flash_algorithms:
-      - stm32wb3x_512_m4
-  - name: STM32WB35CCUxA
+    - main
+  flash_algorithms:
+  - stm32wb1x_320_m4
+- name: STM32WB15CCUxE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
-    memory_map:
-      - !Ram
-        name: SRAM1
-        range:
-          start: 0x20000000
-          end: 0x20008000
-        cores:
-          - main
-      - !Nvm
-        name: Main_Flash
-        range:
-          start: 0x8000000
-          end: 0x8040000
-        is_boot_memory: true
-        cores:
-          - main
-    flash_algorithms:
-      - stm32wb3x_256_m4
-  - name: STM32WB35CEUxA
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20030000
+      end: 0x20039000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
-    memory_map:
-      - !Ram
-        name: SRAM1
-        range:
-          start: 0x20000000
-          end: 0x20008000
-        cores:
-          - main
-      - !Nvm
-        name: Main_Flash
-        range:
-          start: 0x8000000
-          end: 0x8080000
-        is_boot_memory: true
-        cores:
-          - main
-    flash_algorithms:
-      - stm32wb3x_512_m4
-  - name: STM32WB50CGUx
+    - main
+  - !Nvm
+    name: Main_Flash
+    range:
+      start: 0x8000000
+      end: 0x8050000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv7em
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
-    memory_map:
-      - !Ram
-        name: SRAM1
-        range:
-          start: 0x20000000
-          end: 0x20010000
-        cores:
-          - main
-      - !Nvm
-        name: Main_Flash
-        range:
-          start: 0x8000000
-          end: 0x8100000
-        is_boot_memory: true
-        cores:
-          - main
-    flash_algorithms:
-      - stm32wb5x_m4_1024
-  - name: STM32WB55CCUx
+    - main
+  flash_algorithms:
+  - stm32wb1x_320_m4
+- name: STM32WB15CCYx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
-    memory_map:
-      - !Ram
-        name: SRAM1
-        range:
-          start: 0x20000000
-          end: 0x20010000
-        cores:
-          - main
-      - !Nvm
-        name: Main_Flash
-        range:
-          start: 0x8000000
-          end: 0x8040000
-        is_boot_memory: true
-        cores:
-          - main
-    flash_algorithms:
-      - stm32wb5x_m4_256
-      - stm32wb55x_35x_m4_opt
-  - name: STM32WB55CEUx
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20030000
+      end: 0x20039000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
-    memory_map:
-      - !Ram
-        name: SRAM1
-        range:
-          start: 0x20000000
-          end: 0x20030000
-        cores:
-          - main
-      - !Nvm
-        name: Main_Flash
-        range:
-          start: 0x8000000
-          end: 0x8080000
-        is_boot_memory: true
-        cores:
-          - main
-    flash_algorithms:
-      - stm32wb5x_m4_512
-      - stm32wb55x_35x_m4_opt
-  - name: STM32WB55CGUx
+    - main
+  - !Nvm
+    name: Main_Flash
+    range:
+      start: 0x8000000
+      end: 0x8050000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv7em
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
-    memory_map:
-      - !Ram
-        name: SRAM1
-        range:
-          start: 0x20000000
-          end: 0x20030000
-        cores:
-          - main
-      - !Nvm
-        name: Main_Flash
-        range:
-          start: 0x8000000
-          end: 0x8100000
-        is_boot_memory: true
-        cores:
-          - main
-    flash_algorithms:
-      - stm32wb5x_m4_1024
-      - stm32wb55x_35x_m4_opt
-  - name: STM32WB55RCVx
+    - main
+  flash_algorithms:
+  - stm32wb1x_320_m4
+- name: STM32WB1MMCHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
-    memory_map:
-      - !Ram
-        name: SRAM1
-        range:
-          start: 0x20000000
-          end: 0x20010000
-        cores:
-          - main
-      - !Nvm
-        name: Main_Flash
-        range:
-          start: 0x8000000
-          end: 0x8040000
-        is_boot_memory: true
-        cores:
-          - main
-    flash_algorithms:
-      - stm32wb5x_m4_256
-      - stm32wb55x_35x_m4_opt
-  - name: STM32WB55REVx
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20030000
+      end: 0x20039000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
-    memory_map:
-      - !Ram
-        name: SRAM1
-        range:
-          start: 0x20000000
-          end: 0x20030000
-        cores:
-          - main
-      - !Nvm
-        name: Main_Flash
-        range:
-          start: 0x8000000
-          end: 0x8080000
-        is_boot_memory: true
-        cores:
-          - main
-    flash_algorithms:
-      - stm32wb5x_m4_512
-      - stm32wb55x_35x_m4_opt
-  - name: STM32WB55RGVx
+    - main
+  - !Nvm
+    name: Main_Flash
+    range:
+      start: 0x8000000
+      end: 0x8050000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv7em
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
-    memory_map:
-      - !Ram
-        name: SRAM1
-        range:
-          start: 0x20000000
-          end: 0x20030000
-        cores:
-          - main
-      - !Nvm
-        name: Main_Flash
-        range:
-          start: 0x8000000
-          end: 0x8100000
-        is_boot_memory: true
-        cores:
-          - main
-    flash_algorithms:
-      - stm32wb5x_m4_1024
-      - stm32wb55x_35x_m4_opt
-  - name: STM32WB55VCQx
+    - main
+  flash_algorithms:
+  - stm32wb1x_320_m4
+- name: STM32WB30CEUxA
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
-    memory_map:
-      - !Ram
-        name: SRAM1
-        range:
-          start: 0x20000000
-          end: 0x20010000
-        cores:
-          - main
-      - !Nvm
-        name: Main_Flash
-        range:
-          start: 0x8000000
-          end: 0x8040000
-        is_boot_memory: true
-        cores:
-          - main
-    flash_algorithms:
-      - stm32wb5x_m4_256
-      - stm32wb55x_35x_m4_opt
-  - name: STM32WB55VCYx
+    - main
+  - !Nvm
+    name: Main_Flash
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv7em
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
-    memory_map:
-      - !Ram
-        name: SRAM1
-        range:
-          start: 0x20000000
-          end: 0x20010000
-        cores:
-          - main
-      - !Nvm
-        name: Main_Flash
-        range:
-          start: 0x8000000
-          end: 0x8040000
-        is_boot_memory: true
-        cores:
-          - main
-    flash_algorithms:
-      - stm32wb5x_m4_256
-      - stm32wb55x_35x_m4_opt
-  - name: STM32WB55VEQx
+    - main
+  flash_algorithms:
+  - stm32wb3x_512_m4
+- name: STM32WB35CCUxA
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
-    memory_map:
-      - !Ram
-        name: SRAM1
-        range:
-          start: 0x20000000
-          end: 0x20030000
-        cores:
-          - main
-      - !Nvm
-        name: Main_Flash
-        range:
-          start: 0x8000000
-          end: 0x8080000
-        is_boot_memory: true
-        cores:
-          - main
-    flash_algorithms:
-      - stm32wb5x_m4_512
-      - stm32wb55x_35x_m4_opt
-  - name: STM32WB55VEYx
+    - main
+  - !Nvm
+    name: Main_Flash
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv7em
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
-    memory_map:
-      - !Ram
-        name: SRAM1
-        range:
-          start: 0x20000000
-          end: 0x20030000
-        cores:
-          - main
-      - !Nvm
-        name: Main_Flash
-        range:
-          start: 0x8000000
-          end: 0x8080000
-        is_boot_memory: true
-        cores:
-          - main
-    flash_algorithms:
-      - stm32wb5x_m4_512
-      - stm32wb55x_35x_m4_opt
-  - name: STM32WB55VGQx
+    - main
+  flash_algorithms:
+  - stm32wb3x_256_m4
+- name: STM32WB35CEUxA
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
-    memory_map:
-      - !Ram
-        name: SRAM1
-        range:
-          start: 0x20000000
-          end: 0x20030000
-        cores:
-          - main
-      - !Nvm
-        name: Main_Flash
-        range:
-          start: 0x8000000
-          end: 0x8100000
-        is_boot_memory: true
-        cores:
-          - main
-    flash_algorithms:
-      - stm32wb5x_m4_1024
-      - stm32wb55x_35x_m4_opt
-  - name: STM32WB55VGYx
+    - main
+  - !Nvm
+    name: Main_Flash
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv7em
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
-    memory_map:
-      - !Ram
-        name: SRAM1
-        range:
-          start: 0x20000000
-          end: 0x20030000
-        cores:
-          - main
-      - !Nvm
-        name: Main_Flash
-        range:
-          start: 0x8000000
-          end: 0x8100000
-        is_boot_memory: true
-        cores:
-          - main
-    flash_algorithms:
-      - stm32wb5x_m4_1024
-      - stm32wb55x_35x_m4_opt
-  - name: STM32WB55VYYx
+    - main
+  flash_algorithms:
+  - stm32wb3x_512_m4
+- name: STM32WB50CGUx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
-    memory_map:
-      - !Ram
-        name: SRAM1
-        range:
-          start: 0x20000000
-          end: 0x20030000
-        cores:
-          - main
-      - !Nvm
-        name: Main_Flash
-        range:
-          start: 0x8000000
-          end: 0x80a0000
-        is_boot_memory: true
-        cores:
-          - main
-    flash_algorithms:
-      - stm32wb5x_m4_640
-      - stm32wb55x_35x_m4_opt
-  - name: STM32WB5MMGHx
+    - main
+  - !Nvm
+    name: Main_Flash
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv7em
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
-    memory_map:
-      - !Ram
-        name: SRAM1
-        range:
-          start: 0x20000000
-          end: 0x20030000
-        cores:
-          - main
-      - !Nvm
-        name: Main_Flash
-        range:
-          start: 0x8000000
-          end: 0x8100000
-        is_boot_memory: true
-        cores:
-          - main
-    flash_algorithms:
-      - stm32wb5x_m4_1024
+    - main
+  flash_algorithms:
+  - stm32wb5x_m4_1024
+- name: STM32WB55CCUx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: Main_Flash
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32wb5x_m4_256
+  - stm32wb55x_35x_m4_opt
+- name: STM32WB55CEUx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Nvm
+    name: Main_Flash
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32wb5x_m4_512
+  - stm32wb55x_35x_m4_opt
+- name: STM32WB55CGUx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Nvm
+    name: Main_Flash
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32wb5x_m4_1024
+  - stm32wb55x_35x_m4_opt
+- name: STM32WB55RCVx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: Main_Flash
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32wb5x_m4_256
+  - stm32wb55x_35x_m4_opt
+- name: STM32WB55REVx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Nvm
+    name: Main_Flash
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32wb5x_m4_512
+  - stm32wb55x_35x_m4_opt
+- name: STM32WB55RGVx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Nvm
+    name: Main_Flash
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32wb5x_m4_1024
+  - stm32wb55x_35x_m4_opt
+- name: STM32WB55VCQx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: Main_Flash
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32wb5x_m4_256
+  - stm32wb55x_35x_m4_opt
+- name: STM32WB55VCYx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: Main_Flash
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32wb5x_m4_256
+  - stm32wb55x_35x_m4_opt
+- name: STM32WB55VEQx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Nvm
+    name: Main_Flash
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32wb5x_m4_512
+  - stm32wb55x_35x_m4_opt
+- name: STM32WB55VEYx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Nvm
+    name: Main_Flash
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32wb5x_m4_512
+  - stm32wb55x_35x_m4_opt
+- name: STM32WB55VGQx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Nvm
+    name: Main_Flash
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32wb5x_m4_1024
+  - stm32wb55x_35x_m4_opt
+- name: STM32WB55VGYx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Nvm
+    name: Main_Flash
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32wb5x_m4_1024
+  - stm32wb55x_35x_m4_opt
+- name: STM32WB55VYYx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Nvm
+    name: Main_Flash
+    range:
+      start: 0x8000000
+      end: 0x80a0000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32wb5x_m4_640
+  - stm32wb55x_35x_m4_opt
+- name: STM32WB5MMGHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Nvm
+    name: Main_Flash
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - stm32wb5x_m4_1024
 flash_algorithms:
-  - name: stm32wb1x_320_m4
-    description: STM32WB1x_M4 320 Flash
-    default: true
-    instructions: QLpwR8C6cEdP6jAAcEcAAHK2kUhBaQApA9qQSYFgkEmBYABqwAMQ1I5ISvaqIQFgSRABYAYhQWBA9v9xgWDIEIlJCGB/IAkfCGBitgAgcEeBSEFpQfAAQUFhACBwRxC1crZ9SUTy+jIKYUH2+HQE6hAjSGmgQ0hhCGnAA/zUCGkAA/zUCGlAA/zUSGlD8AIDGENIYUhpQPSAMEhhAL8AvwhpwAP81AhpQAP81AhpAAP81EhpIPACAEhhCGkQQgLQCmEBIBC9T/AAYABoQBwD0QhoQPSAMAhgYrYAIBC9MLVytl1IAWpfSssFSvaqIRDVkPiAAF1JT/AAZAHrwCUE4CBG//es/wT1AGSsQvjZIeARYANp2wP71ANpRPL6NCNDA2FDaUPwBANDYUNpQ/SAM0NhAOARYANp2wP71EFpIfAEAUFhAWkhQgTQAWkhQwFhASAwvWK2ACAwvS3p8E2IsHK2SvaqKt/4/LA7TgHgy/gAoDNp2wP61ETy+jc3YU/wAQ7G+BTg7EZU4Mb4FOAIKRPTE2gDYFNoQ2AAvwC/VEZbRgDgHGA1ae0D+9QzaTtCO9EIMAg5CDI84AAjBOAS+AFLTPgjQFsci0L40wAj/yTB8QgFBOAD6wEIWxxM+ChAnUL42N3pABMB6wMhApsDnBsEA+sEYxlEAJHd6QQTAesDIQabB5wbBAPrBGMZRAGRAJkBYAGZQWAAvwC/ACEzadsD/NQzaTtCBNA3YQEgCLC96PCNACmo0XBpIPABAHBhT/AAYABoQBwD0DBoIPSAMDBgYrYAIOrnAEAAWCMBZ0Wrie/NADAAQAQsAEAA+P8HAAAAAA==
-    load_address: 0x20000020
-    pc_init: 0x11
-    pc_uninit: 0x51
-    pc_program_page: 0x15b
-    pc_erase_sector: 0x5f
-    pc_erase_all: 0xdf
-    data_section_offset: 0x270
-    flash_properties:
-      address_range:
-        start: 0x8000000
-        end: 0x8050000
-      page_size: 0x400
-      erased_byte_value: 0xff
-      program_page_timeout: 400
-      erase_sector_timeout: 400
-      sectors:
-        - size: 0x800
-          address: 0x0
-
-  - name: stm32wb3x_512_m4
-    description: STM32WB3_M4 512 Flash
-    default: true
-    instructions: QLpwR8C6cEeQSUAKCEBwR7/zT49wR3K2jUhBaQApA9qMSYFgjEmBYABqwAMN1IxIikkBYEkQAWAGIUFgiUmBYIlIyRBBYH8hAWBitgAgcEd/SEFpQgQRQ0FhACBwR3C1crb/99H/ekkKadID/NQKaVID/NQKaRID/NQLaXtKE0MLYUtpcUzkQyNAS2FMaQIjGEMEQ0xhSGncAyBDSGFvSG9NAOAoYA5p9gP71EhpmENIYQhpEEIE0AhpEEMIYQEgcL0BIMAGAGhAHALRCGggQwhgYrYAIHC9cLVytlxIAWpfSssFXUkR1VlIYUmAMAB4ASQAA0UY5AaWFAPgIEb/967/pBmsQvnZH+ARYANp2wP71ARpVUscQwRhRWkEJCVDRWFFaaYDNUNFYQDgEWAFae0D+9RBaaFDQWEBaRlCBNABaRlDAWEBIHC9YrYAIHC98LWIsHK2PksC4EFNP0wsYBxp5AP51EFMHGEBJFxhWuA3TAEjY2EIKRXTE2gDYFNoQ2C/80+PNUw1TTFLAOAsYB5p9gP71BtpNEwjQj3RCDAIOQgyP+AAI25GBOAUeJ0AUhx0UVsci0L40wAj/yQIJW0aA+BfGL8A9FFbHJ1C+dgBmwCZGwLLGAKZA5wJBCQGCRlZGACRBZsEmRsCyxgGmQecCQQkBgkZWRgBkQCZAWABmUFgv/NPjxFLACEcaeQD/NQcaRVLHEIF0A1JE0gIYQEgCLDwvQApotEJSEFpSQhJAEFhQQMJaEkcBNABaAEiEgSRQwFgYrYAIOrn+B8AAABAAFgjAWdFq4nvzaqqAAAAMABA/w8AAAAsAED6QwAAAPD/BwAAAAA=
-    load_address: 0x20000020
-    pc_init: 0x17
-    pc_uninit: 0x51
-    pc_program_page: 0x151
-    pc_erase_sector: 0x5f
-    pc_erase_all: 0xd9
-    data_section_offset: 0x274
-    flash_properties:
-      address_range:
-        start: 0x8000000
-        end: 0x8080000
-      page_size: 0x400
-      erased_byte_value: 0xff
-      program_page_timeout: 400
-      erase_sector_timeout: 400
-      sectors:
-        - size: 0x1000
-          address: 0x0
-
-  - name: stm32wb3x_256_m4
-    description: STM32WB3_M4 256 Flash
-    default: true
-    instructions: QLpwR8C6cEeQSUAKCEBwR7/zT49wR3K2jUhBaQApA9qMSYFgjEmBYABqwAMN1IxIikkBYEkQAWAGIUFgiUmBYIlIyRBBYH8hAWBitgAgcEd/SEFpQgQRQ0FhACBwR3C1crb/99H/ekkKadID/NQKaVID/NQKaRID/NQLaXtKE0MLYUtpcUzkQyNAS2FMaQIjGEMEQ0xhSGncAyBDSGFvSG9NAOAoYA5p9gP71EhpmENIYQhpEEIE0AhpEEMIYQEgcL0BIMAGAGhAHALRCGggQwhgYrYAIHC9cLVytlxIAWpfSssFXUkR1VlIYUmAMAB4ASQAA0UY5AaWFAPgIEb/967/pBmsQvnZH+ARYANp2wP71ARpVUscQwRhRWkEJCVDRWFFaaYDNUNFYQDgEWAFae0D+9RBaaFDQWEBaRlCBNABaRlDAWEBIHC9YrYAIHC98LWIsHK2PksC4EFNP0wsYBxp5AP51EFMHGEBJFxhWuA3TAEjY2EIKRXTE2gDYFNoQ2C/80+PNUw1TTFLAOAsYB5p9gP71BtpNEwjQj3RCDAIOQgyP+AAI25GBOAUeJ0AUhx0UVsci0L40wAj/yQIJW0aA+BfGL8A9FFbHJ1C+dgBmwCZGwLLGAKZA5wJBCQGCRlZGACRBZsEmRsCyxgGmQecCQQkBgkZWRgBkQCZAWABmUFgv/NPjxFLACEcaeQD/NQcaRVLHEIF0A1JE0gIYQEgCLDwvQApotEJSEFpSQhJAEFhQQMJaEkcBNABaAEiEgSRQwFgYrYAIOrn+B8AAABAAFgjAWdFq4nvzaqqAAAAMABA/w8AAAAsAED6QwAAAPD/BwAAAAA=
-    load_address: 0x20000020
-    pc_init: 0x17
-    pc_uninit: 0x51
-    pc_program_page: 0x151
-    pc_erase_sector: 0x5f
-    pc_erase_all: 0xd9
-    data_section_offset: 0x274
-    flash_properties:
-      address_range:
-        start: 0x8000000
-        end: 0x8040000
-      page_size: 0x400
-      erased_byte_value: 0xff
-      program_page_timeout: 400
-      erase_sector_timeout: 400
-      sectors:
-        - size: 0x1000
-          address: 0x0
-
-  - name: stm32wb5x_m4_1024
-    description: STM32WB5x_M4_1024 Flash
-    default: true
-    instructions: QLpwR8C6cEdP6jAAcEcAAMDzTCBwR7/zT49wR3K2kkhBaQApA9qRSYFgkUmBYABqwAMQ1I9ISvaqIQFgSRABYAYhQWBA9v9xgWDIEIpJCGB/IAkfCGBitgAgcEeCSEFpQfAAQUFhACBwRxC1crbA80wifUgBackD/NQBaUkD/NQBaQkD/NQBaUTy+jQhQwFhQWlB9vhzmUNBYUFpQvACAhFDQWFBaUH0gDFBYUr2qiFwSgDgEWADadsD+9RBaSHwAgFBYQFpIUIE0AFpIUMBYQEgEL1P8ABhCWhJHAPRAWhB9IAxAWBitgAgEL0wtXK2XUgBal9KywVK9qohENWQ+IAAXklP8ABkAesANQTgIEb/96v/BPWAVKxC+Nkh4BFgA2nbA/vUA2lE8vo0I0MDYUNpQ/AEA0NhQ2lD9IAzQ2EA4BFgA2nbA/vUQWkh8AQBQWEBaSFCBNABaSFDAWEBIDC9YrYAIDC9LenwTYiwcrZK9qoq3/j8sDtOAeDL+ACgM2nbA/rURPL6NzdhT/ABDsb4FODsRlTgxvgU4AgpE9MTaANgU2hDYL/zT49URltGAOAcYDVp7QP71DNpO0I70QgwCDkIMjzgACME4BL4AUtM+CNAWxyLQvjTACP/JMHxCAUE4APrAQhbHEz4KECdQvjY3ekAEwHrAyECmwOcGwQD6wRjGUQAkd3pBBMB6wMhBpsHnBsEA+sEYxlEAZEAmQFgAZlBYL/zT48AITNp2wP81DNpO0IE0DdhASAIsL3o8I0AKajRcGkg8AEAcGFP8ABgAGhAHAPQMGgg9IAwMGBitgAg6ucAAABAAFgjAWdFq4nvzQAwAEAELABAAPD/BwAAAAA=
-    load_address: 0x20000020
-    pc_init: 0x1d
-    pc_uninit: 0x5d
-    pc_program_page: 0x169
-    pc_erase_sector: 0x6b
-    pc_erase_all: 0xed
-    data_section_offset: 0x280
-    flash_properties:
-      address_range:
-        start: 0x8000000
-        end: 0x8100000
-      page_size: 0x400
-      erased_byte_value: 0xff
-      program_page_timeout: 400
-      erase_sector_timeout: 400
-      sectors:
-        - size: 0x1000
-          address: 0x0
-
-  - name: stm32wb5x_m4_256
-    description: STM32WB5x_M4_256 Flash
-    default: true
-    instructions: QLpwR8C6cEdP6jAAcEcAAMDzTCBwR7/zT49wR3K2kkhBaQApA9qRSYFgkUmBYABqwAMQ1I9ISvaqIQFgSRABYAYhQWBA9v9xgWDIEIpJCGB/IAkfCGBitgAgcEeCSEFpQfAAQUFhACBwRxC1crbA80wifUgBackD/NQBaUkD/NQBaQkD/NQBaUTy+jQhQwFhQWlB9vhzmUNBYUFpQvACAhFDQWFBaUH0gDFBYUr2qiFwSgDgEWADadsD+9RBaSHwAgFBYQFpIUIE0AFpIUMBYQEgEL1P8ABhCWhJHAPRAWhB9IAxAWBitgAgEL0wtXK2XUgBal9KywVK9qohENWQ+IAAXklP8ABkAesANQTgIEb/96v/BPWAVKxC+Nkh4BFgA2nbA/vUA2lE8vo0I0MDYUNpQ/AEA0NhQ2lD9IAzQ2EA4BFgA2nbA/vUQWkh8AQBQWEBaSFCBNABaSFDAWEBIDC9YrYAIDC9LenwTYiwcrZK9qoq3/j8sDtOAeDL+ACgM2nbA/rURPL6NzdhT/ABDsb4FODsRlTgxvgU4AgpE9MTaANgU2hDYL/zT49URltGAOAcYDVp7QP71DNpO0I70QgwCDkIMjzgACME4BL4AUtM+CNAWxyLQvjTACP/JMHxCAUE4APrAQhbHEz4KECdQvjY3ekAEwHrAyECmwOcGwQD6wRjGUQAkd3pBBMB6wMhBpsHnBsEA+sEYxlEAZEAmQFgAZlBYL/zT48AITNp2wP81DNpO0IE0DdhASAIsL3o8I0AKajRcGkg8AEAcGFP8ABgAGhAHAPQMGgg9IAwMGBitgAg6ucAAABAAFgjAWdFq4nvzQAwAEAELABAAPD/BwAAAAA=
-    load_address: 0x20000020
-    pc_init: 0x1d
-    pc_uninit: 0x5d
-    pc_program_page: 0x169
-    pc_erase_sector: 0x6b
-    pc_erase_all: 0xed
-    data_section_offset: 0x280
-    flash_properties:
-      address_range:
-        start: 0x8000000
-        end: 0x8040000
-      page_size: 0x400
-      erased_byte_value: 0xff
-      program_page_timeout: 400
-      erase_sector_timeout: 400
-      sectors:
-        - size: 0x1000
-          address: 0x0
-
-  - name: stm32wb55x_35x_m4_opt
-    description: STM32WB55x/35x Flash Options
-    instructions: RPIQAMX2AAABackDQ/IAAcTyAAEH1EXyVVIKYAYiSmBA9v9yimBA8iMSxPJnUkD4CCxI9qsSzPbvUkD4CCy/80+PAmjSAxLUQvY7IsD2GQJA+AQsRvZ/YsT2XUJA+AQsv/NPjwJo0gMV1AAgcEdK9qoiCmADaNsD5tUKYANo2wNCvwpgA2hf6sMz3dUKYANo2wPu1NjnSvaqIgpgA2jbA+PVCmADaNsDQr8KYANoX+rDM9rVCmADaNsD7tTV5wC/RPIQAMX2AABP8IBBQWC/80+PAWjJA0PyAAHE8gABCdRP8ABCQmC/80+PAmjSAxXUACBwR0r2qiIKYANo2wPv1QpgA2jbA0K/CmADaF/qwzPm1QpgA2jbA+7U4edK9qoiCmADaNsD49UKYANo2wNCvwpgA2hf6sMz2tUKYANo2wPu1NXnACBwR0TyEABP8qoSxfYAAEzy+jzD9v9SwPgAwAJhQPL/Ek/wAENCYYNh/yPDYQNiQmIAIoJiTPIAAs/2/3LCYk/0ADJCYL/zT48CaNIDCdQBaBHqDA8PvwAgTPL6MQFgASBwR0PyAALE8gACSvaqIxNgAWjJA+vVE2ABaMkDQr8TYAFoX+rBMeLVE2ABaMkD7tTd5wAgcEct6fBNhLARfBBoAJERfUf2/2wCkRF+FXkDkVF+VnnXepL4DICS+A7gkvgSoJL4FbABkc72j3wTf1F/EokM6gAMRPIQAMX2AABM8vo0ReoGJk/2AGVC6gdiT/YAZwRgTPCAVM/2/3XH9v93RPThBC5DOkMEYUZhgmFI6g5CQvD/IsJhAJpD6gEhQuoKQkLw/yICYgKaQuoLIipDQmIDmgGfQuoHIipDgmKl9XhSEUPBYk/0ADG/80+PQWC/80+PAWjJAw3UAWhM8voyEUIg0AFoTPL6MhFDAWABIASwvejwjUPyAAHE8gABSvaqIwtgAmjSA+fVC2ACaNIDQr8LYAJoX+rCMt7VC2ACaNID7tTZ5wAgBLC96PCNELVI8gAMwfb/fNL4AOC/80+P3PgAMI7qAw5H9v9jzvaPcx7qAw8YvxC9kvgE4Nz4CDBUeW/zXyNk8wguc0UcvwEwEL2y+Ajg1Hrc+BAwTuoEZGNAQPL/FMjyAAQjQhy/AjAQvZL4DOCUe9z4GDBO6gREP/qD86NCHL8DMBC9kvgQ4JR83PggME7qBEQ/+oPzo0IcvwQwEL1UfZL4FODc+CgwJAIE9IB0b/NfI3REo0IcvwUwEL1UfpL4GODc+DAwJAIE9IB0b/NfI3REo0IcvwYwEL0Tf1J/3PhoQBICAvR8Um/znzQaRJRCHL8HMBC9CEQQvQAAAAA=
-    load_address: 0x20000020
-    pc_init: 0x1
-    pc_uninit: 0xc1
-    pc_program_page: 0x1dd
-    pc_erase_sector: 0x1d9
-    pc_erase_all: 0x149
-    data_section_offset: 0x3e8
-    flash_properties:
-      address_range:
-        start: 0x1fff8000
-        end: 0x1fff8020
-      page_size: 0x20
-      erased_byte_value: 0xff
-      program_page_timeout: 3000
-      erase_sector_timeout: 3000
-      sectors:
-        - size: 0x20
-          address: 0x0
-
-  - name: stm32wb5x_m4_512
-    description: STM32WB5x_M4_512 Flash
-    default: true
-    instructions: QLpwR8C6cEdP6jAAcEcAAMDzTCBwR7/zT49wR3K2kkhBaQApA9qRSYFgkUmBYABqwAMQ1I9ISvaqIQFgSRABYAYhQWBA9v9xgWDIEIpJCGB/IAkfCGBitgAgcEeCSEFpQfAAQUFhACBwRxC1crbA80wifUgBackD/NQBaUkD/NQBaQkD/NQBaUTy+jQhQwFhQWlB9vhzmUNBYUFpQvACAhFDQWFBaUH0gDFBYUr2qiFwSgDgEWADadsD+9RBaSHwAgFBYQFpIUIE0AFpIUMBYQEgEL1P8ABhCWhJHAPRAWhB9IAxAWBitgAgEL0wtXK2XUgBal9KywVK9qohENWQ+IAAXklP8ABkAesANQTgIEb/96v/BPWAVKxC+Nkh4BFgA2nbA/vUA2lE8vo0I0MDYUNpQ/AEA0NhQ2lD9IAzQ2EA4BFgA2nbA/vUQWkh8AQBQWEBaSFCBNABaSFDAWEBIDC9YrYAIDC9LenwTYiwcrZK9qoq3/j8sDtOAeDL+ACgM2nbA/rURPL6NzdhT/ABDsb4FODsRlTgxvgU4AgpE9MTaANgU2hDYL/zT49URltGAOAcYDVp7QP71DNpO0I70QgwCDkIMjzgACME4BL4AUtM+CNAWxyLQvjTACP/JMHxCAUE4APrAQhbHEz4KECdQvjY3ekAEwHrAyECmwOcGwQD6wRjGUQAkd3pBBMB6wMhBpsHnBsEA+sEYxlEAZEAmQFgAZlBYL/zT48AITNp2wP81DNpO0IE0DdhASAIsL3o8I0AKajRcGkg8AEAcGFP8ABgAGhAHAPQMGgg9IAwMGBitgAg6ucAAABAAFgjAWdFq4nvzQAwAEAELABAAPD/BwAAAAA=
-    load_address: 0x20000020
-    pc_init: 0x1d
-    pc_uninit: 0x5d
-    pc_program_page: 0x169
-    pc_erase_sector: 0x6b
-    pc_erase_all: 0xed
-    data_section_offset: 0x280
-    flash_properties:
-      address_range:
-        start: 0x8000000
-        end: 0x8080000
-      page_size: 0x400
-      erased_byte_value: 0xff
-      program_page_timeout: 400
-      erase_sector_timeout: 400
-      sectors:
-        - size: 0x1000
-          address: 0x0
-
-  - name: stm32wb5x_m4_640
-    description: STM32WB5x_M4_640 Flash
-    default: true
-    instructions: QLpwR8C6cEdP6jAAcEcAAMDzTCBwR7/zT49wR3K2kkhBaQApA9qRSYFgkUmBYABqwAMQ1I9ISvaqIQFgSRABYAYhQWBA9v9xgWDIEIpJCGB/IAkfCGBitgAgcEeCSEFpQfAAQUFhACBwRxC1crbA80wifUgBackD/NQBaUkD/NQBaQkD/NQBaUTy+jQhQwFhQWlB9vhzmUNBYUFpQvACAhFDQWFBaUH0gDFBYUr2qiFwSgDgEWADadsD+9RBaSHwAgFBYQFpIUIE0AFpIUMBYQEgEL1P8ABhCWhJHAPRAWhB9IAxAWBitgAgEL0wtXK2XUgBal9KywVK9qohENWQ+IAAXklP8ABkAesANQTgIEb/96v/BPWAVKxC+Nkh4BFgA2nbA/vUA2lE8vo0I0MDYUNpQ/AEA0NhQ2lD9IAzQ2EA4BFgA2nbA/vUQWkh8AQBQWEBaSFCBNABaSFDAWEBIDC9YrYAIDC9LenwTYiwcrZK9qoq3/j8sDtOAeDL+ACgM2nbA/rURPL6NzdhT/ABDsb4FODsRlTgxvgU4AgpE9MTaANgU2hDYL/zT49URltGAOAcYDVp7QP71DNpO0I70QgwCDkIMjzgACME4BL4AUtM+CNAWxyLQvjTACP/JMHxCAUE4APrAQhbHEz4KECdQvjY3ekAEwHrAyECmwOcGwQD6wRjGUQAkd3pBBMB6wMhBpsHnBsEA+sEYxlEAZEAmQFgAZlBYL/zT48AITNp2wP81DNpO0IE0DdhASAIsL3o8I0AKajRcGkg8AEAcGFP8ABgAGhAHAPQMGgg9IAwMGBitgAg6ucAAABAAFgjAWdFq4nvzQAwAEAELABAAPD/BwAAAAA=
-    load_address: 0x20000020
-    pc_init: 0x1d
-    pc_uninit: 0x5d
-    pc_program_page: 0x169
-    pc_erase_sector: 0x6b
-    pc_erase_all: 0xed
-    data_section_offset: 0x280
-    flash_properties:
-      address_range:
-        start: 0x8000000
-        end: 0x80a0000
-      page_size: 0x400
-      erased_byte_value: 0xff
-      program_page_timeout: 400
-      erase_sector_timeout: 400
-      sectors:
-        - size: 0x1000
-          address: 0x0
+- name: stm32wb1x_320_m4
+  description: STM32WB1x_M4 320 Flash
+  default: true
+  instructions: QLpwR8C6cEdP6jAAcEcAAHK2kUhBaQApA9qQSYFgkEmBYABqwAMQ1I5ISvaqIQFgSRABYAYhQWBA9v9xgWDIEIlJCGB/IAkfCGBitgAgcEeBSEFpQfAAQUFhACBwRxC1crZ9SUTy+jIKYUH2+HQE6hAjSGmgQ0hhCGnAA/zUCGkAA/zUCGlAA/zUSGlD8AIDGENIYUhpQPSAMEhhAL8AvwhpwAP81AhpQAP81AhpAAP81EhpIPACAEhhCGkQQgLQCmEBIBC9T/AAYABoQBwD0QhoQPSAMAhgYrYAIBC9MLVytl1IAWpfSssFSvaqIRDVkPiAAF1JT/AAZAHrwCUE4CBG//es/wT1AGSsQvjZIeARYANp2wP71ANpRPL6NCNDA2FDaUPwBANDYUNpQ/SAM0NhAOARYANp2wP71EFpIfAEAUFhAWkhQgTQAWkhQwFhASAwvWK2ACAwvS3p8E2IsHK2SvaqKt/4/LA7TgHgy/gAoDNp2wP61ETy+jc3YU/wAQ7G+BTg7EZU4Mb4FOAIKRPTE2gDYFNoQ2AAvwC/VEZbRgDgHGA1ae0D+9QzaTtCO9EIMAg5CDI84AAjBOAS+AFLTPgjQFsci0L40wAj/yTB8QgFBOAD6wEIWxxM+ChAnUL42N3pABMB6wMhApsDnBsEA+sEYxlEAJHd6QQTAesDIQabB5wbBAPrBGMZRAGRAJkBYAGZQWAAvwC/ACEzadsD/NQzaTtCBNA3YQEgCLC96PCNACmo0XBpIPABAHBhT/AAYABoQBwD0DBoIPSAMDBgYrYAIOrnAEAAWCMBZ0Wrie/NADAAQAQsAEAA+P8HAAAAAA==
+  load_address: 0x20000020
+  pc_init: 0x11
+  pc_uninit: 0x51
+  pc_program_page: 0x15b
+  pc_erase_sector: 0x5f
+  pc_erase_all: 0xdf
+  data_section_offset: 0x270
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0x8050000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 400
+    erase_sector_timeout: 400
+    sectors:
+    - size: 0x800
+      address: 0x0
+- name: stm32wb3x_512_m4
+  description: STM32WB3_M4 512 Flash
+  default: true
+  instructions: QLpwR8C6cEeQSUAKCEBwR7/zT49wR3K2jUhBaQApA9qMSYFgjEmBYABqwAMN1IxIikkBYEkQAWAGIUFgiUmBYIlIyRBBYH8hAWBitgAgcEd/SEFpQgQRQ0FhACBwR3C1crb/99H/ekkKadID/NQKaVID/NQKaRID/NQLaXtKE0MLYUtpcUzkQyNAS2FMaQIjGEMEQ0xhSGncAyBDSGFvSG9NAOAoYA5p9gP71EhpmENIYQhpEEIE0AhpEEMIYQEgcL0BIMAGAGhAHALRCGggQwhgYrYAIHC9cLVytlxIAWpfSssFXUkR1VlIYUmAMAB4ASQAA0UY5AaWFAPgIEb/967/pBmsQvnZH+ARYANp2wP71ARpVUscQwRhRWkEJCVDRWFFaaYDNUNFYQDgEWAFae0D+9RBaaFDQWEBaRlCBNABaRlDAWEBIHC9YrYAIHC98LWIsHK2PksC4EFNP0wsYBxp5AP51EFMHGEBJFxhWuA3TAEjY2EIKRXTE2gDYFNoQ2C/80+PNUw1TTFLAOAsYB5p9gP71BtpNEwjQj3RCDAIOQgyP+AAI25GBOAUeJ0AUhx0UVsci0L40wAj/yQIJW0aA+BfGL8A9FFbHJ1C+dgBmwCZGwLLGAKZA5wJBCQGCRlZGACRBZsEmRsCyxgGmQecCQQkBgkZWRgBkQCZAWABmUFgv/NPjxFLACEcaeQD/NQcaRVLHEIF0A1JE0gIYQEgCLDwvQApotEJSEFpSQhJAEFhQQMJaEkcBNABaAEiEgSRQwFgYrYAIOrn+B8AAABAAFgjAWdFq4nvzaqqAAAAMABA/w8AAAAsAED6QwAAAPD/BwAAAAA=
+  load_address: 0x20000020
+  pc_init: 0x17
+  pc_uninit: 0x51
+  pc_program_page: 0x151
+  pc_erase_sector: 0x5f
+  pc_erase_all: 0xd9
+  data_section_offset: 0x274
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0x8080000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 400
+    erase_sector_timeout: 400
+    sectors:
+    - size: 0x1000
+      address: 0x0
+- name: stm32wb3x_256_m4
+  description: STM32WB3_M4 256 Flash
+  default: true
+  instructions: QLpwR8C6cEeQSUAKCEBwR7/zT49wR3K2jUhBaQApA9qMSYFgjEmBYABqwAMN1IxIikkBYEkQAWAGIUFgiUmBYIlIyRBBYH8hAWBitgAgcEd/SEFpQgQRQ0FhACBwR3C1crb/99H/ekkKadID/NQKaVID/NQKaRID/NQLaXtKE0MLYUtpcUzkQyNAS2FMaQIjGEMEQ0xhSGncAyBDSGFvSG9NAOAoYA5p9gP71EhpmENIYQhpEEIE0AhpEEMIYQEgcL0BIMAGAGhAHALRCGggQwhgYrYAIHC9cLVytlxIAWpfSssFXUkR1VlIYUmAMAB4ASQAA0UY5AaWFAPgIEb/967/pBmsQvnZH+ARYANp2wP71ARpVUscQwRhRWkEJCVDRWFFaaYDNUNFYQDgEWAFae0D+9RBaaFDQWEBaRlCBNABaRlDAWEBIHC9YrYAIHC98LWIsHK2PksC4EFNP0wsYBxp5AP51EFMHGEBJFxhWuA3TAEjY2EIKRXTE2gDYFNoQ2C/80+PNUw1TTFLAOAsYB5p9gP71BtpNEwjQj3RCDAIOQgyP+AAI25GBOAUeJ0AUhx0UVsci0L40wAj/yQIJW0aA+BfGL8A9FFbHJ1C+dgBmwCZGwLLGAKZA5wJBCQGCRlZGACRBZsEmRsCyxgGmQecCQQkBgkZWRgBkQCZAWABmUFgv/NPjxFLACEcaeQD/NQcaRVLHEIF0A1JE0gIYQEgCLDwvQApotEJSEFpSQhJAEFhQQMJaEkcBNABaAEiEgSRQwFgYrYAIOrn+B8AAABAAFgjAWdFq4nvzaqqAAAAMABA/w8AAAAsAED6QwAAAPD/BwAAAAA=
+  load_address: 0x20000020
+  pc_init: 0x17
+  pc_uninit: 0x51
+  pc_program_page: 0x151
+  pc_erase_sector: 0x5f
+  pc_erase_all: 0xd9
+  data_section_offset: 0x274
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0x8040000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 400
+    erase_sector_timeout: 400
+    sectors:
+    - size: 0x1000
+      address: 0x0
+- name: stm32wb5x_m4_1024
+  description: STM32WB5x_M4_1024 Flash
+  default: true
+  instructions: QLpwR8C6cEdP6jAAcEcAAMDzTCBwR7/zT49wR3K2kkhBaQApA9qRSYFgkUmBYABqwAMQ1I9ISvaqIQFgSRABYAYhQWBA9v9xgWDIEIpJCGB/IAkfCGBitgAgcEeCSEFpQfAAQUFhACBwRxC1crbA80wifUgBackD/NQBaUkD/NQBaQkD/NQBaUTy+jQhQwFhQWlB9vhzmUNBYUFpQvACAhFDQWFBaUH0gDFBYUr2qiFwSgDgEWADadsD+9RBaSHwAgFBYQFpIUIE0AFpIUMBYQEgEL1P8ABhCWhJHAPRAWhB9IAxAWBitgAgEL0wtXK2XUgBal9KywVK9qohENWQ+IAAXklP8ABkAesANQTgIEb/96v/BPWAVKxC+Nkh4BFgA2nbA/vUA2lE8vo0I0MDYUNpQ/AEA0NhQ2lD9IAzQ2EA4BFgA2nbA/vUQWkh8AQBQWEBaSFCBNABaSFDAWEBIDC9YrYAIDC9LenwTYiwcrZK9qoq3/j8sDtOAeDL+ACgM2nbA/rURPL6NzdhT/ABDsb4FODsRlTgxvgU4AgpE9MTaANgU2hDYL/zT49URltGAOAcYDVp7QP71DNpO0I70QgwCDkIMjzgACME4BL4AUtM+CNAWxyLQvjTACP/JMHxCAUE4APrAQhbHEz4KECdQvjY3ekAEwHrAyECmwOcGwQD6wRjGUQAkd3pBBMB6wMhBpsHnBsEA+sEYxlEAZEAmQFgAZlBYL/zT48AITNp2wP81DNpO0IE0DdhASAIsL3o8I0AKajRcGkg8AEAcGFP8ABgAGhAHAPQMGgg9IAwMGBitgAg6ucAAABAAFgjAWdFq4nvzQAwAEAELABAAPD/BwAAAAA=
+  load_address: 0x20000020
+  pc_init: 0x1d
+  pc_uninit: 0x5d
+  pc_program_page: 0x169
+  pc_erase_sector: 0x6b
+  pc_erase_all: 0xed
+  data_section_offset: 0x280
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0x8100000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 400
+    erase_sector_timeout: 400
+    sectors:
+    - size: 0x1000
+      address: 0x0
+- name: stm32wb5x_m4_256
+  description: STM32WB5x_M4_256 Flash
+  default: true
+  instructions: QLpwR8C6cEdP6jAAcEcAAMDzTCBwR7/zT49wR3K2kkhBaQApA9qRSYFgkUmBYABqwAMQ1I9ISvaqIQFgSRABYAYhQWBA9v9xgWDIEIpJCGB/IAkfCGBitgAgcEeCSEFpQfAAQUFhACBwRxC1crbA80wifUgBackD/NQBaUkD/NQBaQkD/NQBaUTy+jQhQwFhQWlB9vhzmUNBYUFpQvACAhFDQWFBaUH0gDFBYUr2qiFwSgDgEWADadsD+9RBaSHwAgFBYQFpIUIE0AFpIUMBYQEgEL1P8ABhCWhJHAPRAWhB9IAxAWBitgAgEL0wtXK2XUgBal9KywVK9qohENWQ+IAAXklP8ABkAesANQTgIEb/96v/BPWAVKxC+Nkh4BFgA2nbA/vUA2lE8vo0I0MDYUNpQ/AEA0NhQ2lD9IAzQ2EA4BFgA2nbA/vUQWkh8AQBQWEBaSFCBNABaSFDAWEBIDC9YrYAIDC9LenwTYiwcrZK9qoq3/j8sDtOAeDL+ACgM2nbA/rURPL6NzdhT/ABDsb4FODsRlTgxvgU4AgpE9MTaANgU2hDYL/zT49URltGAOAcYDVp7QP71DNpO0I70QgwCDkIMjzgACME4BL4AUtM+CNAWxyLQvjTACP/JMHxCAUE4APrAQhbHEz4KECdQvjY3ekAEwHrAyECmwOcGwQD6wRjGUQAkd3pBBMB6wMhBpsHnBsEA+sEYxlEAZEAmQFgAZlBYL/zT48AITNp2wP81DNpO0IE0DdhASAIsL3o8I0AKajRcGkg8AEAcGFP8ABgAGhAHAPQMGgg9IAwMGBitgAg6ucAAABAAFgjAWdFq4nvzQAwAEAELABAAPD/BwAAAAA=
+  load_address: 0x20000020
+  pc_init: 0x1d
+  pc_uninit: 0x5d
+  pc_program_page: 0x169
+  pc_erase_sector: 0x6b
+  pc_erase_all: 0xed
+  data_section_offset: 0x280
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0x8040000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 400
+    erase_sector_timeout: 400
+    sectors:
+    - size: 0x1000
+      address: 0x0
+- name: stm32wb55x_35x_m4_opt
+  description: STM32WB55x/35x Flash Options
+  instructions: RPIQAMX2AAABackDQ/IAAcTyAAEH1EXyVVIKYAYiSmBA9v9yimBA8iMSxPJnUkD4CCxI9qsSzPbvUkD4CCy/80+PAmjSAxLUQvY7IsD2GQJA+AQsRvZ/YsT2XUJA+AQsv/NPjwJo0gMV1AAgcEdK9qoiCmADaNsD5tUKYANo2wNCvwpgA2hf6sMz3dUKYANo2wPu1NjnSvaqIgpgA2jbA+PVCmADaNsDQr8KYANoX+rDM9rVCmADaNsD7tTV5wC/RPIQAMX2AABP8IBBQWC/80+PAWjJA0PyAAHE8gABCdRP8ABCQmC/80+PAmjSAxXUACBwR0r2qiIKYANo2wPv1QpgA2jbA0K/CmADaF/qwzPm1QpgA2jbA+7U4edK9qoiCmADaNsD49UKYANo2wNCvwpgA2hf6sMz2tUKYANo2wPu1NXnACBwR0TyEABP8qoSxfYAAEzy+jzD9v9SwPgAwAJhQPL/Ek/wAENCYYNh/yPDYQNiQmIAIoJiTPIAAs/2/3LCYk/0ADJCYL/zT48CaNIDCdQBaBHqDA8PvwAgTPL6MQFgASBwR0PyAALE8gACSvaqIxNgAWjJA+vVE2ABaMkDQr8TYAFoX+rBMeLVE2ABaMkD7tTd5wAgcEct6fBNhLARfBBoAJERfUf2/2wCkRF+FXkDkVF+VnnXepL4DICS+A7gkvgSoJL4FbABkc72j3wTf1F/EokM6gAMRPIQAMX2AABM8vo0ReoGJk/2AGVC6gdiT/YAZwRgTPCAVM/2/3XH9v93RPThBC5DOkMEYUZhgmFI6g5CQvD/IsJhAJpD6gEhQuoKQkLw/yICYgKaQuoLIipDQmIDmgGfQuoHIipDgmKl9XhSEUPBYk/0ADG/80+PQWC/80+PAWjJAw3UAWhM8voyEUIg0AFoTPL6MhFDAWABIASwvejwjUPyAAHE8gABSvaqIwtgAmjSA+fVC2ACaNIDQr8LYAJoX+rCMt7VC2ACaNID7tTZ5wAgBLC96PCNELVI8gAMwfb/fNL4AOC/80+P3PgAMI7qAw5H9v9jzvaPcx7qAw8YvxC9kvgE4Nz4CDBUeW/zXyNk8wguc0UcvwEwEL2y+Ajg1Hrc+BAwTuoEZGNAQPL/FMjyAAQjQhy/AjAQvZL4DOCUe9z4GDBO6gREP/qD86NCHL8DMBC9kvgQ4JR83PggME7qBEQ/+oPzo0IcvwQwEL1UfZL4FODc+CgwJAIE9IB0b/NfI3REo0IcvwUwEL1UfpL4GODc+DAwJAIE9IB0b/NfI3REo0IcvwYwEL0Tf1J/3PhoQBICAvR8Um/znzQaRJRCHL8HMBC9CEQQvQAAAAA=
+  load_address: 0x20000020
+  pc_init: 0x1
+  pc_uninit: 0xc1
+  pc_program_page: 0x1dd
+  pc_erase_sector: 0x1d9
+  pc_erase_all: 0x149
+  data_section_offset: 0x3e8
+  flash_properties:
+    address_range:
+      start: 0x1fff8000
+      end: 0x1fff8020
+    page_size: 0x20
+    erased_byte_value: 0xff
+    program_page_timeout: 3000
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x20
+      address: 0x0
+- name: stm32wb5x_m4_512
+  description: STM32WB5x_M4_512 Flash
+  default: true
+  instructions: QLpwR8C6cEdP6jAAcEcAAMDzTCBwR7/zT49wR3K2kkhBaQApA9qRSYFgkUmBYABqwAMQ1I9ISvaqIQFgSRABYAYhQWBA9v9xgWDIEIpJCGB/IAkfCGBitgAgcEeCSEFpQfAAQUFhACBwRxC1crbA80wifUgBackD/NQBaUkD/NQBaQkD/NQBaUTy+jQhQwFhQWlB9vhzmUNBYUFpQvACAhFDQWFBaUH0gDFBYUr2qiFwSgDgEWADadsD+9RBaSHwAgFBYQFpIUIE0AFpIUMBYQEgEL1P8ABhCWhJHAPRAWhB9IAxAWBitgAgEL0wtXK2XUgBal9KywVK9qohENWQ+IAAXklP8ABkAesANQTgIEb/96v/BPWAVKxC+Nkh4BFgA2nbA/vUA2lE8vo0I0MDYUNpQ/AEA0NhQ2lD9IAzQ2EA4BFgA2nbA/vUQWkh8AQBQWEBaSFCBNABaSFDAWEBIDC9YrYAIDC9LenwTYiwcrZK9qoq3/j8sDtOAeDL+ACgM2nbA/rURPL6NzdhT/ABDsb4FODsRlTgxvgU4AgpE9MTaANgU2hDYL/zT49URltGAOAcYDVp7QP71DNpO0I70QgwCDkIMjzgACME4BL4AUtM+CNAWxyLQvjTACP/JMHxCAUE4APrAQhbHEz4KECdQvjY3ekAEwHrAyECmwOcGwQD6wRjGUQAkd3pBBMB6wMhBpsHnBsEA+sEYxlEAZEAmQFgAZlBYL/zT48AITNp2wP81DNpO0IE0DdhASAIsL3o8I0AKajRcGkg8AEAcGFP8ABgAGhAHAPQMGgg9IAwMGBitgAg6ucAAABAAFgjAWdFq4nvzQAwAEAELABAAPD/BwAAAAA=
+  load_address: 0x20000020
+  pc_init: 0x1d
+  pc_uninit: 0x5d
+  pc_program_page: 0x169
+  pc_erase_sector: 0x6b
+  pc_erase_all: 0xed
+  data_section_offset: 0x280
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0x8080000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 400
+    erase_sector_timeout: 400
+    sectors:
+    - size: 0x1000
+      address: 0x0
+- name: stm32wb5x_m4_640
+  description: STM32WB5x_M4_640 Flash
+  default: true
+  instructions: QLpwR8C6cEdP6jAAcEcAAMDzTCBwR7/zT49wR3K2kkhBaQApA9qRSYFgkUmBYABqwAMQ1I9ISvaqIQFgSRABYAYhQWBA9v9xgWDIEIpJCGB/IAkfCGBitgAgcEeCSEFpQfAAQUFhACBwRxC1crbA80wifUgBackD/NQBaUkD/NQBaQkD/NQBaUTy+jQhQwFhQWlB9vhzmUNBYUFpQvACAhFDQWFBaUH0gDFBYUr2qiFwSgDgEWADadsD+9RBaSHwAgFBYQFpIUIE0AFpIUMBYQEgEL1P8ABhCWhJHAPRAWhB9IAxAWBitgAgEL0wtXK2XUgBal9KywVK9qohENWQ+IAAXklP8ABkAesANQTgIEb/96v/BPWAVKxC+Nkh4BFgA2nbA/vUA2lE8vo0I0MDYUNpQ/AEA0NhQ2lD9IAzQ2EA4BFgA2nbA/vUQWkh8AQBQWEBaSFCBNABaSFDAWEBIDC9YrYAIDC9LenwTYiwcrZK9qoq3/j8sDtOAeDL+ACgM2nbA/rURPL6NzdhT/ABDsb4FODsRlTgxvgU4AgpE9MTaANgU2hDYL/zT49URltGAOAcYDVp7QP71DNpO0I70QgwCDkIMjzgACME4BL4AUtM+CNAWxyLQvjTACP/JMHxCAUE4APrAQhbHEz4KECdQvjY3ekAEwHrAyECmwOcGwQD6wRjGUQAkd3pBBMB6wMhBpsHnBsEA+sEYxlEAZEAmQFgAZlBYL/zT48AITNp2wP81DNpO0IE0DdhASAIsL3o8I0AKajRcGkg8AEAcGFP8ABgAGhAHAPQMGgg9IAwMGBitgAg6ucAAABAAFgjAWdFq4nvzQAwAEAELABAAPD/BwAAAAA=
+  load_address: 0x20000020
+  pc_init: 0x1d
+  pc_uninit: 0x5d
+  pc_program_page: 0x169
+  pc_erase_sector: 0x6b
+  pc_erase_all: 0xed
+  data_section_offset: 0x280
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0x80a0000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 400
+    erase_sector_timeout: 400
+    sectors:
+    - size: 0x1000
+      address: 0x0

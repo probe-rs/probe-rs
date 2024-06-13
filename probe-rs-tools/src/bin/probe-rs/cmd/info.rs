@@ -9,7 +9,10 @@ use probe_rs::{
             armv6m::Demcr,
             component::Scs,
             dp::{DebugPortId, DebugPortVersion, MinDpSupport, DLPIDR, DPIDR, TARGETID},
-            memory::{Component, CoresightComponent, PeripheralType},
+            memory::{
+                romtable::{PeripheralID, RomTable},
+                Component, ComponentId, CoresightComponent, PeripheralType,
+            },
             sequences::DefaultArmSequence,
             ApAddress, ApInformation, ArmProbeInterface, DpAddress, MemoryApInformation, Register,
         },
@@ -377,16 +380,28 @@ fn coresight_component_tree(
 ) -> Result<Tree<String>> {
     let tree = match &component {
         Component::GenericVerificationComponent(_) => Tree::new("Generic".to_string()),
-        Component::Class1RomTable(_, table) => {
-            let mut rom_table = Tree::new("ROM Table (Class 1)".to_string());
+        Component::Class1RomTable(id, table) => {
+            let peripheral_id = id.peripheral_id();
+
+            let root = if let Some(part) = peripheral_id.determine_part() {
+                format!("{} (ROM Table, Class 1)", part.name())
+            } else {
+                match peripheral_id.designer() {
+                    Some(designer) => format!("ROM Table (Class 1), Designer: {designer}"),
+                    None => "ROM Table (Class 1)".to_string(),
+                }
+            };
+
+            let mut tree = Tree::new(root);
+            process_vendor_rom_tables(interface, id, table, access_port, &mut tree)?;
 
             for entry in table.entries() {
                 let component = entry.component().clone();
 
-                rom_table.push(coresight_component_tree(interface, component, access_port)?);
+                tree.push(coresight_component_tree(interface, component, access_port)?);
             }
 
-            rom_table
+            tree
         }
         Component::CoresightComponent(id) => {
             let peripheral_id = id.peripheral_id();
@@ -399,14 +414,15 @@ fn coresight_component_tree(
                     peripheral_id.part(),
                     peripheral_id.dev_type(),
                     peripheral_id.arch_id(),
-                    peripheral_id
-                        .jep106()
-                        .and_then(|j| j.get())
+                    peripheral_id.designer()
                         .unwrap_or("<unknown>"),
                 )
             };
 
-            Tree::new(component_description)
+            let mut tree = Tree::new(component_description);
+            process_component_entry(&mut tree, interface, peripheral_id, &component, access_port)?;
+
+            tree
         }
 
         Component::PeripheralTestBlock(_) => Tree::new("Peripheral test block".to_string()),
@@ -420,14 +436,7 @@ fn coresight_component_tree(
             };
 
             let mut tree = Tree::new(desc);
-
-            if peripheral_id.is_of_type(PeripheralType::Scs) {
-                let cc = &CoresightComponent::new(component, access_port);
-                let scs = &mut Scs::new(interface, cc);
-                let cpu_tree = cpu_info_tree(scs)?;
-
-                tree.push(cpu_tree);
-            }
+            process_component_entry(&mut tree, interface, peripheral_id, &component, access_port)?;
 
             tree
         }
@@ -440,21 +449,69 @@ fn coresight_component_tree(
     Ok(tree)
 }
 
+/// Processes information from/around manufacturer-specific ROM tables and adds them to the tree.
+///
+/// Some manufacturer-specific ROM tables contain more than just entries. This function tries
+/// to make sense of these tables.
+fn process_vendor_rom_tables(
+    interface: &mut dyn ArmProbeInterface,
+    id: &ComponentId,
+    _table: &RomTable,
+    access_port: MemoryAp,
+    tree: &mut Tree<String>,
+) -> Result<()> {
+    let peripheral_id = id.peripheral_id();
+    let Some(part_info) = peripheral_id.determine_part() else {
+        return Ok(());
+    };
+
+    if part_info.peripheral_type() == PeripheralType::Custom && part_info.name() == "Atmel DSU" {
+        use probe_rs::vendor::microchip::sequences::atsam::DsuDid;
+
+        // Read and parse the DID register
+        let did = DsuDid(
+            interface
+                .memory_interface(access_port)?
+                .read_word_32(DsuDid::ADDRESS)?,
+        );
+
+        tree.push(format!("Atmel device (DID = {:#010x})", did.0));
+    }
+
+    Ok(())
+}
+
+/// Processes ROM table entries and adds them to the tree.
+fn process_component_entry(
+    tree: &mut Tree<String>,
+    interface: &mut dyn ArmProbeInterface,
+    peripheral_id: &PeripheralID,
+    component: &Component,
+    access_port: MemoryAp,
+) -> Result<()> {
+    let Some(part) = peripheral_id.determine_part() else {
+        return Ok(());
+    };
+
+    if part.peripheral_type() == PeripheralType::Scs {
+        let cc = &CoresightComponent::new(component.clone(), access_port);
+        let scs = &mut Scs::new(interface, cc);
+        let cpu_tree = cpu_info_tree(scs)?;
+
+        tree.push(cpu_tree);
+    }
+
+    Ok(())
+}
+
 fn cpu_info_tree(scs: &mut Scs) -> Result<Tree<String>> {
     let mut tree = Tree::new("CPUID".into());
 
     let cpuid = scs.cpuid()?;
 
-    let implementer = cpuid.implementer();
-    let implementer = if implementer == 0x41 {
-        "ARM Ltd".into()
-    } else {
-        implementer.to_string()
-    };
-
-    tree.push(format!("IMPLEMENTER: {implementer}"));
+    tree.push(format!("IMPLEMENTER: {}", cpuid.implementer_name()));
     tree.push(format!("VARIANT: {}", cpuid.variant()));
-    tree.push(format!("PARTNO: {}", cpuid.partno()));
+    tree.push(format!("PARTNO: {}", cpuid.part_name()));
     tree.push(format!("REVISION: {}", cpuid.revision()));
 
     Ok(tree)

@@ -39,7 +39,8 @@ halt_afterwards = false
 chip_descriptions = []
 # The default log level to be used. Possible values are one of:
 #   "OFF", "ERROR", "WARN", "INFO", "DEBUG", "TRACE"
-log_level = "WARN"
+#   If not set, the `RUST_LOG` environment variable will be used.
+# log_level = "WARN"
 # Use this flag to assert the nreset & ntrst pins during attaching the probe to the chip.
 connect_under_reset = false
 
@@ -66,8 +67,9 @@ log_path = "./logs"
 #              * Defmt  - Format output on the host, see https://defmt.ferrous-systems.com/
 #              * BinaryLE - Display as raw hex
 # show_location (Optional) - Whether to show the location of defmt messages in the UI.
-# show_timestamps (Optional) - Whether to show the timestamps of String messages in the UI.
+# show_timestamps (Optional) - Whether to show the timestamps of String and Defmt messages in the UI, if available.
 # socket   (Optional) - Server socket address (for optional external frontend or endpoint).
+# log_format (Optional) - Control the output format for `format = Defmt`.
 up_channels = [
     # { channel = 0, mode = "BlockIfFull", format = "Defmt", show_location = true },
     # { channel = 1, mode = "BlockIfFull", format = "String", show_timestamps = false, socket = "127.0.0.1:12345" },

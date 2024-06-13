@@ -4,7 +4,7 @@ mod rttui;
 
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
-use colored::*;
+use colored::Colorize;
 use parking_lot::FairMutex;
 use probe_rs::gdb_server::GdbInstanceConfiguration;
 use probe_rs::probe::list::Lister;
@@ -182,6 +182,7 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
         chip,
         chip_description_path: None,
         protocol: Some(config.probe.protocol),
+        non_interactive: false,
         probe: selector,
         speed: config.probe.speed,
         connect_under_reset: config.general.connect_under_reset,
@@ -202,7 +203,7 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
                                             \
                     You can also set the [default.probe] config attribute \
                     (in your Embed.toml) to select which probe to use. \
-                    For usage examples see https://github.com/probe-rs/cargo-embed/blob/master/src/config/default.toml .",
+                    For usage examples see https://github.com/probe-rs/probe-rs/blob/master/probe-rs-tools/src/bin/probe-rs/cmd/cargo_embed/config/default.toml .",
                     list.iter().enumerate().fold(String::new(), |mut s, (num, link)| { let _ = writeln!(s, "[{num}]: {link}"); s })));
         }
         Err(OperationError::AttachingFailed {
@@ -315,7 +316,6 @@ fn run_rttui_app(
     // Transform channel configurations
     let mut rtt_config = RttConfig {
         enabled: true,
-        log_format: None,
         channels: vec![],
     };
 
@@ -336,10 +336,10 @@ fn run_rttui_app(
             show_location: channel_config
                 .show_location
                 .unwrap_or(default_channel_config.show_location),
-            defmt_log_format: channel_config
-                .defmt_log_format
+            log_format: channel_config
+                .log_format
                 .clone()
-                .or_else(|| default_channel_config.defmt_log_format.clone()),
+                .or_else(|| default_channel_config.log_format.clone()),
             mode: channel_config.mode.or(default_channel_config.mode),
         };
         if rtt_channel_config.data_format == DataFormat::Defmt {
@@ -357,11 +357,7 @@ fn run_rttui_app(
             // Set up channel defaults, we don't read from it anyway.
             rtt_config.channels.push(RttChannelConfig {
                 channel_number: Some(channel_config.channel),
-                data_format: DataFormat::String,
-                show_timestamps: false,
-                show_location: false,
-                defmt_log_format: None,
-                mode: None,
+                ..Default::default()
             });
         }
     }
@@ -431,7 +427,7 @@ fn run_rttui_app(
 
             if app.handle_event(&mut core) {
                 logging::println("Shutting down.");
-                return Ok(());
+                break;
             }
 
             app.poll_rtt(&mut core)?;
@@ -439,6 +435,12 @@ fn run_rttui_app(
 
         std::thread::sleep(Duration::from_millis(10));
     }
+
+    let mut session_handle = session.lock();
+    let mut core = session_handle.core(core_id)?;
+    app.clean_up(&mut core)?;
+
+    Ok(())
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -457,7 +459,7 @@ fn attach_to_rtt_shared(
     // fall back to the caller-provided scan regions.
     let elf = fs::read(elf_file)?;
     let scan_region = if let Some(address) = RttActiveTarget::get_rtt_symbol_from_bytes(&elf) {
-        ScanRegion::Exact(address as u32)
+        ScanRegion::Exact(address)
     } else {
         rtt_region.clone()
     };

@@ -1,7 +1,5 @@
 //! All the interface bits for RISC-V.
 
-#![allow(clippy::inconsistent_digit_grouping)]
-
 use crate::{
     architecture::riscv::sequences::RiscvDebugSequence,
     core::{

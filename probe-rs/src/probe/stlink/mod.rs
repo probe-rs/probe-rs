@@ -815,7 +815,7 @@ impl<D: StLinkUsb> StLink<D> {
         Ok(buf)
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(level = "trace", skip(self))]
     fn get_last_rw_status(&mut self) -> Result<(), StlinkError> {
         let mut receive_buffer = [0u8; 12];
 
@@ -889,7 +889,8 @@ impl<D: StLinkUsb> StLink<D> {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self, data, apsel), fields(ap=apsel, length= data.len()))]
+    // Limit log verbosity to "trace", to avoid spamming the log with read/write operations.
+    #[tracing::instrument(level="trace", skip(self, data, apsel), fields(ap=apsel, length= data.len()))]
     fn read_mem_32bit(
         &mut self,
         address: u32,
@@ -938,12 +939,12 @@ impl<D: StLinkUsb> StLink<D> {
             self.get_last_rw_status()
         })?;
 
-        tracing::debug!("Read ok");
+        tracing::trace!("Read ok");
 
         Ok(())
     }
 
-    #[tracing::instrument(skip(self, data, apsel), fields(ap=apsel, length= data.len()))]
+    #[tracing::instrument(level="trace", skip(self, data, apsel), fields(ap=apsel, length= data.len()))]
     fn read_mem_16bit(
         &mut self,
         address: u32,
@@ -987,7 +988,7 @@ impl<D: StLinkUsb> StLink<D> {
             self.get_last_rw_status()
         })?;
 
-        tracing::debug!("Read ok");
+        tracing::trace!("Read ok");
 
         Ok(())
     }
@@ -1024,7 +1025,7 @@ impl<D: StLinkUsb> StLink<D> {
 
         let mut receive_buffer = vec![0u8; buffer_len];
 
-        tracing::debug!("Read mem 8 bit, address={:08x}, length={}", address, length);
+        tracing::trace!("Read mem 8 bit, address={:08x}, length={}", address, length);
 
         let addbytes = address.to_le_bytes();
         let lenbytes = length.to_le_bytes();
@@ -1350,7 +1351,7 @@ struct UninitializedStLink {
 }
 
 impl UninitializedArmProbe for UninitializedStLink {
-    #[tracing::instrument(skip(self, _sequence))]
+    #[tracing::instrument(level = "trace", skip(self, _sequence))]
     fn initialize(
         self: Box<Self>,
         _sequence: Arc<dyn ArmDebugSequence>,
@@ -1570,7 +1571,7 @@ impl SwdSequence for StlinkArmDebug {
     fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), DebugProbeError> {
         // This is not supported for ST-Links, unfortunately.
         Err(DebugProbeError::CommandNotSupportedByProbe {
-            command_name: "swj_seqeuence",
+            command_name: "swj_sequence",
         })
     }
 

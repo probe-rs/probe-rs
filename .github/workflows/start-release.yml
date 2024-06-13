@@ -65,7 +65,7 @@ jobs:
 
       - name: Bump versions
         run: |
-          cargo release version ${{ inputs.version }} --execute --verbose --no-confirm --allow-branch ${BRANCH_NAME}
+          cargo release version ${{ inputs.version }} --exclude probe-rs-mi --execute --verbose --no-confirm --allow-branch ${BRANCH_NAME}
           cargo release replace --execute --verbose --no-confirm
           cargo release hook --execute --verbose --no-confirm
           cargo release commit --execute --verbose --no-confirm --sign-commit

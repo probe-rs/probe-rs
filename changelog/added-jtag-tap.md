@@ -1,1 +1,0 @@
-Added the option to select which JTAG TAP a given RISC-V or Xtensa core belongs to.

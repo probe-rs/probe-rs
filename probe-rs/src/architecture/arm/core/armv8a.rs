@@ -1464,6 +1464,10 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
 
         Ok(())
     }
+
+    fn is_64_bit(&self) -> bool {
+        self.state.is_64_bit
+    }
 }
 
 impl<'probe> MemoryInterface for Armv8a<'probe> {

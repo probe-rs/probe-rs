@@ -1,1 +1,0 @@
-ATSAMD devices should no longer fail to reset after a chip erase.

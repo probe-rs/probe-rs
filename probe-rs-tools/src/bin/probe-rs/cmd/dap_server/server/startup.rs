@@ -35,30 +35,42 @@ pub fn debug(
     lister: &Lister,
     addr: std::net::SocketAddr,
     single_session: bool,
-    log_info_message: &str,
+    log_file: Option<&Path>,
     timestamp_offset: UtcOffset,
 ) -> Result<()> {
-    let mut debugger = Debugger::new(timestamp_offset);
+    let mut debugger = Debugger::new(timestamp_offset, log_file)?;
 
-    log_to_console_and_tracing("Starting as a DAP Protocol server");
-
-    // Tell the user if (and where) RUST_LOG messages are written.
-    log_to_console_and_tracing(log_info_message);
+    let old_hook = std::panic::take_hook();
+    let logger = debugger.debug_logger.clone();
+    std::panic::set_hook(Box::new(move |panic_info| {
+        // Flush logs before printing panic.
+        _ = logger.flush();
+        old_hook(panic_info);
+    }));
 
     loop {
         let listener = TcpListener::bind(addr)?;
 
-        log_to_console_and_tracing(&format!("Listening for requests on port {}", addr.port()));
+        debugger
+            .debug_logger
+            .log_to_console(&format!("Listening for requests on port {}", addr.port()))?;
+
+        if !single_session {
+            // When running as a server from the command line, we want startup logs to go to the stderr.
+            debugger.debug_logger.flush()?;
+        }
 
         listener.set_nonblocking(false)?;
 
         match listener.accept() {
             Ok((socket, addr)) => {
                 socket.set_nonblocking(true).with_context(|| {
-                    format!("Failed to negotiate non-blocking socket with request from :{addr}")
+                    format!("Failed to negotiate non-blocking socket with request from: {addr}")
                 })?;
 
-                log_to_console_and_tracing(&format!("..Starting session from   :{addr}"));
+                debugger
+                    .debug_logger
+                    .log_to_console(&format!("Starting debug session from: {addr}"))?;
 
                 let reader = socket
                     .try_clone()
@@ -66,25 +78,19 @@ pub fn debug(
                 let writer = socket;
 
                 let dap_adapter = DapAdapter::new(reader, writer);
-                let debug_adapter = DebugAdapter::new(dap_adapter);
+                let mut debug_adapter = DebugAdapter::new(dap_adapter);
 
-                // TODO: If we can find a way to not consume the `debug_adapter` here, we could
-                // clean up the error handling in the VSCode extension - to NOT rely on `stderr`.
-                match debugger.debug_session(debug_adapter, log_info_message, lister) {
-                    Err(error) => {
-                        // We no longer have a reference to the `debug_adapter`, so errors need
-                        // special handling to ensure they are displayed to the user.
-                        // By adding the keyword `ERROR`, we ensure the VSCode extension will
-                        // pick up the message from the stderr stream and display it to the user.
-                        // If we don't do this, the user will have no indication of why the session ended.
-                        log_to_console_and_tracing(&format!(
-                            "ERROR: probe-rs-debugger session ended: {error}"
-                        ));
-                    }
-                    Ok(()) => {
-                        log_to_console_and_tracing(&format!("....Closing session from  :{addr}"));
-                    }
-                }
+                // Flush any pending log messages to the debug adapter Console Log.
+                debugger.debug_logger.flush_to_dap(&mut debug_adapter)?;
+
+                let end_message = match debugger.debug_session(debug_adapter, lister) {
+                    // We no longer have a reference to the `debug_adapter`, so errors need
+                    // special handling to ensure they are displayed to the user.
+                    Err(error) => format!("Session ended: {error}"),
+                    Ok(()) => format!("Closing debug session from: {addr}"),
+                };
+                debugger.debug_logger.log_to_console(&end_message)?;
+
                 // Terminate after a single debug session. This is the behavour expected by VSCode
                 // if it started probe-rs as a child process.
                 if single_session {
@@ -98,18 +104,16 @@ pub fn debug(
                 );
             }
         }
+        debugger.debug_logger.flush()?;
     }
-    log_to_console_and_tracing("CONSOLE: DAP Protocol server exiting");
+
+    debugger
+        .debug_logger
+        .log_to_console("DAP Protocol server exiting")?;
+
+    debugger.debug_logger.flush()?;
 
     Ok(())
-}
-
-/// All eprintln! messages are picked up by the VSCode extension and displayed in the debug console.
-/// We send these to stderr, in addition to logging them, so that they will show up, irrespective of
-/// the RUST_LOG level filters.
-fn log_to_console_and_tracing(message: &str) {
-    eprintln!("probe-rs-debug: {}", &message);
-    tracing::info!("{}", &message);
 }
 
 /// Try to get the timestamp of a file.

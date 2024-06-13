@@ -1750,6 +1750,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         }
     }
 
+    #[tracing::instrument(level = "trace", skip_all)]
     pub fn send_event<S: Serialize>(
         &mut self,
         event_type: &str,

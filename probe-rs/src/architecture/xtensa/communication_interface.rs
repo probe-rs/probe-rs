@@ -207,12 +207,6 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         }
         tracing::debug!("Core halted");
 
-        // Force a low INTLEVEL to allow halting on debug exceptions
-        // TODO: do this only if we set a breakpoint or watchpoint or single step
-        let mut ps = self.read_register::<ProgramStatus>()?;
-        ps.set_intlevel(1);
-        self.schedule_write_register(ps)?;
-
         Ok(())
     }
 

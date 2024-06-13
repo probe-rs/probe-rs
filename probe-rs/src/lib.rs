@@ -70,9 +70,9 @@
 #[macro_use]
 extern crate serde;
 
-/// All the interface bits for the different architectures.
 pub mod architecture;
 pub mod config;
+pub mod vendor;
 
 mod core;
 pub mod debug;

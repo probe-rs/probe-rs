@@ -1,94 +1,99 @@
 name: esp32s3
 manufacturer:
-  cc: 0x0C
   id: 0x12
+  cc: 0xc
 variants:
-  - name: esp32s3
-    jtag:
-      scan_chain:
-        - name: cpu0
-          ir_len: 5
-        - name: cpu1
-          ir_len: 5
-    default_binary_format: idf
+- name: esp32s3
+  cores:
+  - name: cpu0
+    type: xtensa
+    core_access_options: !Xtensa
+      jtag_tap: 0
+  memory_map:
+  - !Nvm
+    range:
+      start: 0x0
+      end: 0x4000000
+    is_boot_memory: true
     cores:
-      - name: cpu0
-        type: xtensa
-        core_access_options:
-          !Xtensa
-            jtag_tap: 0
-    memory_map:
-      - !Nvm
-        range:
-          start: 0x0
-          end: 0x4000000
-        is_boot_memory: true
-        cores:
-          - cpu0
-      - !Ram # Data bus for internal SRAM 1
-        range:
-          start: 0x3FC88000
-          end: 0x3FCF0000
-        cores:
-          - cpu0
-      - !Ram # Data bus for internal SRAM 2
-        range:
-          start: 0x3FCF0000
-          end: 0x3FD00000
-        cores:
-          - cpu0
-      - !Ram # Instruction bus for internal SRAM 1
-        range:
-          start: 0x40370000
-          end: 0x40378000
-        cores:
-          - cpu0
-      - !Ram # Instruction bus for internal SRAM 2
-        range:
-          start: 0x40378000
-          end: 0x403E0000
-        cores:
-          - cpu0
-      - !Nvm # External instruction bus
-        range:
-          start: 0x42000000
-          end: 0x44000000
-        is_alias: true
-        cores:
-          - cpu0
-      - !Nvm # External Data Bus
-        range:
-          start: 0x3C000000
-          end: 0x3E000000
-        is_alias: true
-        cores:
-          - cpu0
-    flash_algorithms:
-      - esp32s3-flashloader
+    - cpu0
+  - !Ram
+    name: SRAM1 Data bus
+    range:
+      start: 0x3fc88000
+      end: 0x3fcf0000
+    cores:
+    - cpu0
+  - !Ram
+    name: SRAM2 Data bus
+    range:
+      start: 0x3fcf0000
+      end: 0x3fd00000
+    cores:
+    - cpu0
+  - !Ram
+    name: SRAM1 Instruction bus
+    range:
+      start: 0x40370000
+      end: 0x40378000
+    cores:
+    - cpu0
+  - !Ram
+    name: SRAM2 Instruction bus
+    range:
+      start: 0x40378000
+      end: 0x403e0000
+    cores:
+    - cpu0
+  - !Nvm
+    name: External instruction bus
+    range:
+      start: 0x42000000
+      end: 0x44000000
+    cores:
+    - cpu0
+    is_alias: true
+  - !Nvm
+    name: External data bus
+    range:
+      start: 0x3c000000
+      end: 0x3e000000
+    cores:
+    - cpu0
+    is_alias: true
+  flash_algorithms:
+  - esp32s3-flashloader
+  jtag:
+    scan_chain:
+    - name: cpu0
+      ir_len: 5
+    - name: cpu1
+      ir_len: 5
+  default_binary_format: idf
 flash_algorithms:
-  - name: esp32s3-flashloader
-    description: A flasher loader for the esp32s3.
-    default: true
-    instructions: dB8AQOwKAEAEAMs/9KrLP/iqyz/8qss/AKvLPwAAyz/u/8CqAADLP+7/wKoICgBAAADLP+7/wKqcCQBAAADLP+7/wKr4qss/yAY4QPyqyz8Aq8s/BADLP/Sqyz8AgAAA9CrLPygIAEBg8P//AADLP+7/wKrIBjhAXAoAQPSqyz/4qss//KrLP/Qqyz8UCgBAAADNPxH//20CfQONBJUEAC0G8EEAAAAAEfr/bQIVBwAtBvBBAAAAABH2/9UIAC0G8EEAABHz/20CfQONBJUJAC0G8EEAAAAAEe7/bQJVGgAtBvBBAAAAADZBAIHF/+AIAAwCgcT/vQLgCACBw/8pCIHD/ykIgcL/fPmZCIHC/ykIgcH/KQiBwf+Rwf+ZCB3wNkEAgcD/iAiRwP+XmBEcCAAIQCCgkYG9/+AIAC0KHfAirBcd8AAAADZBAIG5/4gIkbn/l5gJgbj/4AgALQod8CKsFx3wAAAANqEAgbT/iAiRtP+XmAwMO7CEEBaYACKsEx3wIqwXHfBRr/+IBXGw/2Gy/5Gt/wwKqSGZQScYQ7lx4AkA9kMEIqwUHfCCBAOSBAKiBACyBAEpBcGk/9gh2QyAuxGgqyAAmRGQmiCAiAGAiSCJB4Gf/9kI2QYyw/xLRLhxiAcWmAgwKGMgmMCZBwwahzMBvQq5cTGY/3GZ/4GV/4lhgZj/iVGCrBaJEXz4iTEWEgamGl4pgYgGqHGpoYCTwJmRqQF66MLBIPLBJKhhvQTdB4hR4AgAmIGXsgaIBqgRRgQAiAa4kbqIiQaaRJAiwFghFkoAXQo3mLSIQeAIAI0KrQWYMYcpppF//5ooHfAirBUd8IKoMIqKoJ8xgCkQHfA2YQBhef+IBpF5/5eYJoF4/+AIAAwUSQEMVzF2/wwFiAFAiBAWOAGiwQC9B+ADABbK/sYBAKKsF8YAAK0FWQYtCh3wADZBAJFs/3gJgWz/iAhha/9YBgwCKQkW5wBaqLFp/4Fp/80H4AgALQpah4kGHfAAAA==
-    pc_init: 0x94
-    pc_uninit: 0xd8
-    pc_program_page: 0xc4
-    pc_erase_sector: 0xa8
-    pc_erase_all: 0xb8
-    data_section_offset: 0x403806f8
-    load_address: 0x40380400
-    data_load_address: 0x3FCC0000
-    transfer_encoding: miniz
-    flash_properties:
-      address_range:
-        start: 0x0
-        end: 0x40000000
-      page_size: 0x4000
-      erased_byte_value: 0xff
-      program_page_timeout: 1000
-      erase_sector_timeout: 2000
-      sectors:
-        - size: 0x10000
-          address: 0x0
-    cores:
-      - cpu0
+- name: esp32s3-flashloader
+  description: A flasher loader for the esp32s3.
+  default: true
+  instructions: dB8AQOwKAEAEAMs/9KrLP/iqyz/8qss/AKvLPwAAyz/u/8CqAADLP+7/wKoICgBAAADLP+7/wKqcCQBAAADLP+7/wKr4qss/yAY4QPyqyz8Aq8s/BADLP/Sqyz8AgAAA9CrLPygIAEBg8P//AADLP+7/wKrIBjhAXAoAQPSqyz/4qss//KrLP/Qqyz8UCgBAAADNPxH//20CfQONBJUEAC0G8EEAAAAAEfr/bQIVBwAtBvBBAAAAABH2/9UIAC0G8EEAABHz/20CfQONBJUJAC0G8EEAAAAAEe7/bQJVGgAtBvBBAAAAADZBAIHF/+AIAAwCgcT/vQLgCACBw/8pCIHD/ykIgcL/fPmZCIHC/ykIgcH/KQiBwf+Rwf+ZCB3wNkEAgcD/iAiRwP+XmBEcCAAIQCCgkYG9/+AIAC0KHfAirBcd8AAAADZBAIG5/4gIkbn/l5gJgbj/4AgALQod8CKsFx3wAAAANqEAgbT/iAiRtP+XmAwMO7CEEBaYACKsEx3wIqwXHfBRr/+IBXGw/2Gy/5Gt/wwKqSGZQScYQ7lx4AkA9kMEIqwUHfCCBAOSBAKiBACyBAEpBcGk/9gh2QyAuxGgqyAAmRGQmiCAiAGAiSCJB4Gf/9kI2QYyw/xLRLhxiAcWmAgwKGMgmMCZBwwahzMBvQq5cTGY/3GZ/4GV/4lhgZj/iVGCrBaJEXz4iTEWEgamGl4pgYgGqHGpoYCTwJmRqQF66MLBIPLBJKhhvQTdB4hR4AgAmIGXsgaIBqgRRgQAiAa4kbqIiQaaRJAiwFghFkoAXQo3mLSIQeAIAI0KrQWYMYcpppF//5ooHfAirBUd8IKoMIqKoJ8xgCkQHfA2YQBhef+IBpF5/5eYJoF4/+AIAAwUSQEMVzF2/wwFiAFAiBAWOAGiwQC9B+ADABbK/sYBAKKsF8YAAK0FWQYtCh3wADZBAJFs/3gJgWz/iAhha/9YBgwCKQkW5wBaqLFp/4Fp/80H4AgALQpah4kGHfAAAA==
+  load_address: 0x40380400
+  data_load_address: 0x3fcc0000
+  pc_init: 0x94
+  pc_uninit: 0xd8
+  pc_program_page: 0xc4
+  pc_erase_sector: 0xa8
+  pc_erase_all: 0xb8
+  data_section_offset: 0x403806f8
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x40000000
+    page_size: 0x4000
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 2000
+    sectors:
+    - size: 0x10000
+      address: 0x0
+  cores:
+  - cpu0
+  transfer_encoding: miniz

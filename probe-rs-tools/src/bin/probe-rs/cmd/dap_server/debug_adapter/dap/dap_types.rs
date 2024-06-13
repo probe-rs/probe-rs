@@ -1,17 +1,13 @@
-// Ignore clippy warning in the `schemafy!` output
-#![allow(clippy::derive_partial_eq_without_eq)]
-
 // use crate::dap_types2 as debugserver_types;
 use crate::cmd::dap_server::DebuggerError;
 use crate::util::rtt;
 use num_traits::Num;
 use parse_int::parse;
-use schemafy::schemafy;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 
 // Convert the MSDAP `debugAdaptor.json` file into Rust types.
-schemafy!(root: debugserver_types "src/bin/probe-rs/cmd/dap_server/debug_adapter/dap/debugProtocol.json");
+schemafy::schemafy!(root: debugserver_types "src/bin/probe-rs/cmd/dap_server/debug_adapter/dap/debugProtocol.json");
 
 /// Memory addresses come in as strings, but we want to use them as u64s.
 pub struct MemoryAddress(pub u64);

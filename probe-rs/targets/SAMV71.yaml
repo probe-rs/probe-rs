@@ -1,692 +1,691 @@
 name: SAMV71
 manufacturer:
-  id: 0x1F
+  id: 0x1f
   cc: 0x0
 variants:
-  - name: ATSAMV71J19
+- name: ATSAMV71J19
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20400000
+      end: 0x20440000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
-    memory_map:
-      - !Ram
-        name: IRAM1
-        range:
-          start: 0x20400000
-          end: 0x20440000
-        cores:
-          - main
-      - !Nvm
-        name: IROM1
-        range:
-          start: 0x400000
-          end: 0x480000
-        is_boot_memory: true
-        cores:
-          - main
-      - !Generic
-        name: IROM2
-        range:
-          start: 0x800000
-          end: 0x804000
-        cores:
-          - main
-    flash_algorithms:
-      - atsamv7x_512
-      - atsamv7x_gpnvm
-  - name: ATSAMV71J19B
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x400000
+      end: 0x480000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv7em
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
-    memory_map:
-      - !Ram
-        name: IRAM1
-        range:
-          start: 0x20400000
-          end: 0x20440000
-        cores:
-          - main
-      - !Nvm
-        name: IROM1
-        range:
-          start: 0x400000
-          end: 0x480000
-        is_boot_memory: true
-        cores:
-          - main
-      - !Generic
-        name: IROM2
-        range:
-          start: 0x800000
-          end: 0x804000
-        cores:
-          - main
-    flash_algorithms:
-      - atsamv7x_512
-      - atsamv7x_gpnvm
-  - name: ATSAMV71J20
+    - main
+  - !Generic
+    name: IROM2
+    range:
+      start: 0x800000
+      end: 0x804000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
-    memory_map:
-      - !Ram
-        name: IRAM1
-        range:
-          start: 0x20400000
-          end: 0x20460000
-        cores:
-          - main
-      - !Nvm
-        name: IROM1
-        range:
-          start: 0x400000
-          end: 0x500000
-        is_boot_memory: true
-        cores:
-          - main
-      - !Generic
-        name: IROM2
-        range:
-          start: 0x800000
-          end: 0x804000
-        cores:
-          - main
-    flash_algorithms:
-      - atsamv7x_1024
-      - atsamv7x_gpnvm
-  - name: ATSAMV71J20B
+    - main
+  flash_algorithms:
+  - atsamv7x_512
+  - atsamv7x_gpnvm
+- name: ATSAMV71J19B
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20400000
+      end: 0x20440000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
-    memory_map:
-      - !Ram
-        name: IRAM1
-        range:
-          start: 0x20400000
-          end: 0x20460000
-        cores:
-          - main
-      - !Nvm
-        name: IROM1
-        range:
-          start: 0x400000
-          end: 0x500000
-        is_boot_memory: true
-        cores:
-          - main
-      - !Generic
-        name: IROM2
-        range:
-          start: 0x800000
-          end: 0x804000
-        cores:
-          - main
-    flash_algorithms:
-      - atsamv7x_1024
-      - atsamv7x_gpnvm
-  - name: ATSAMV71J21
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x400000
+      end: 0x480000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv7em
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
-    memory_map:
-      - !Ram
-        name: IRAM1
-        range:
-          start: 0x20400000
-          end: 0x20460000
-        cores:
-          - main
-      - !Nvm
-        name: IROM1
-        range:
-          start: 0x400000
-          end: 0x600000
-        is_boot_memory: true
-        cores:
-          - main
-      - !Generic
-        name: IROM2
-        range:
-          start: 0x800000
-          end: 0x804000
-        cores:
-          - main
-    flash_algorithms:
-      - atsamv7x_2048
-      - atsamv7x_gpnvm
-  - name: ATSAMV71J21B
+    - main
+  - !Generic
+    name: IROM2
+    range:
+      start: 0x800000
+      end: 0x804000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
-    memory_map:
-      - !Ram
-        name: IRAM1
-        range:
-          start: 0x20400000
-          end: 0x20460000
-        cores:
-          - main
-      - !Nvm
-        name: IROM1
-        range:
-          start: 0x400000
-          end: 0x600000
-        is_boot_memory: true
-        cores:
-          - main
-      - !Generic
-        name: IROM2
-        range:
-          start: 0x800000
-          end: 0x804000
-        cores:
-          - main
-    flash_algorithms:
-      - atsamv7x_2048
-      - atsamv7x_gpnvm
-  - name: ATSAMV71N19
+    - main
+  flash_algorithms:
+  - atsamv7x_512
+  - atsamv7x_gpnvm
+- name: ATSAMV71J20
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20400000
+      end: 0x20460000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
-    memory_map:
-      - !Ram
-        name: IRAM1
-        range:
-          start: 0x20400000
-          end: 0x20440000
-        cores:
-          - main
-      - !Nvm
-        name: IROM1
-        range:
-          start: 0x400000
-          end: 0x480000
-        is_boot_memory: true
-        cores:
-          - main
-      - !Generic
-        name: IROM2
-        range:
-          start: 0x800000
-          end: 0x804000
-        cores:
-          - main
-    flash_algorithms:
-      - atsamv7x_512
-      - atsamv7x_gpnvm
-  - name: ATSAMV71N19B
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x400000
+      end: 0x500000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv7em
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
-    memory_map:
-      - !Ram
-        name: IRAM1
-        range:
-          start: 0x20400000
-          end: 0x20440000
-        cores:
-          - main
-      - !Nvm
-        name: IROM1
-        range:
-          start: 0x400000
-          end: 0x480000
-        is_boot_memory: true
-        cores:
-          - main
-      - !Generic
-        name: IROM2
-        range:
-          start: 0x800000
-          end: 0x804000
-        cores:
-          - main
-    flash_algorithms:
-      - atsamv7x_512
-      - atsamv7x_gpnvm
-  - name: ATSAMV71N20
+    - main
+  - !Generic
+    name: IROM2
+    range:
+      start: 0x800000
+      end: 0x804000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
-    memory_map:
-      - !Ram
-        name: IRAM1
-        range:
-          start: 0x20400000
-          end: 0x20460000
-        cores:
-          - main
-      - !Nvm
-        name: IROM1
-        range:
-          start: 0x400000
-          end: 0x500000
-        is_boot_memory: true
-        cores:
-          - main
-      - !Generic
-        name: IROM2
-        range:
-          start: 0x800000
-          end: 0x804000
-        cores:
-          - main
-    flash_algorithms:
-      - atsamv7x_1024
-      - atsamv7x_gpnvm
-  - name: ATSAMV71N20B
+    - main
+  flash_algorithms:
+  - atsamv7x_1024
+  - atsamv7x_gpnvm
+- name: ATSAMV71J20B
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20400000
+      end: 0x20460000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
-    memory_map:
-      - !Ram
-        name: IRAM1
-        range:
-          start: 0x20400000
-          end: 0x20460000
-        cores:
-          - main
-      - !Nvm
-        name: IROM1
-        range:
-          start: 0x400000
-          end: 0x500000
-        is_boot_memory: true
-        cores:
-          - main
-      - !Generic
-        name: IROM2
-        range:
-          start: 0x800000
-          end: 0x804000
-        cores:
-          - main
-    flash_algorithms:
-      - atsamv7x_1024
-      - atsamv7x_gpnvm
-  - name: ATSAMV71N21
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x400000
+      end: 0x500000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv7em
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
-    memory_map:
-      - !Ram
-        name: IRAM1
-        range:
-          start: 0x20400000
-          end: 0x20460000
-        cores:
-          - main
-      - !Nvm
-        name: IROM1
-        range:
-          start: 0x400000
-          end: 0x600000
-        is_boot_memory: true
-        cores:
-          - main
-      - !Generic
-        name: IROM2
-        range:
-          start: 0x800000
-          end: 0x804000
-        cores:
-          - main
-    flash_algorithms:
-      - atsamv7x_2048
-      - atsamv7x_gpnvm
-  - name: ATSAMV71N21B
+    - main
+  - !Generic
+    name: IROM2
+    range:
+      start: 0x800000
+      end: 0x804000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
-    memory_map:
-      - !Ram
-        name: IRAM1
-        range:
-          start: 0x20400000
-          end: 0x20460000
-        cores:
-          - main
-      - !Nvm
-        name: IROM1
-        range:
-          start: 0x400000
-          end: 0x600000
-        is_boot_memory: true
-        cores:
-          - main
-      - !Generic
-        name: IROM2
-        range:
-          start: 0x800000
-          end: 0x804000
-        cores:
-          - main
-    flash_algorithms:
-      - atsamv7x_2048
-      - atsamv7x_gpnvm
-  - name: ATSAMV71Q19
+    - main
+  flash_algorithms:
+  - atsamv7x_1024
+  - atsamv7x_gpnvm
+- name: ATSAMV71J21
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20400000
+      end: 0x20460000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
-    memory_map:
-      - !Ram
-        name: IRAM1
-        range:
-          start: 0x20400000
-          end: 0x20440000
-        cores:
-          - main
-      - !Nvm
-        name: IROM1
-        range:
-          start: 0x400000
-          end: 0x480000
-        is_boot_memory: true
-        cores:
-          - main
-      - !Generic
-        name: IROM2
-        range:
-          start: 0x800000
-          end: 0x804000
-        cores:
-          - main
-    flash_algorithms:
-      - atsamv7x_512
-      - atsamv7x_gpnvm
-  - name: ATSAMV71Q19B
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x400000
+      end: 0x600000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv7em
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
-    memory_map:
-      - !Ram
-        name: IRAM1
-        range:
-          start: 0x20400000
-          end: 0x20440000
-        cores:
-          - main
-      - !Nvm
-        name: IROM1
-        range:
-          start: 0x400000
-          end: 0x480000
-        is_boot_memory: true
-        cores:
-          - main
-      - !Generic
-        name: IROM2
-        range:
-          start: 0x800000
-          end: 0x804000
-        cores:
-          - main
-    flash_algorithms:
-      - atsamv7x_512
-      - atsamv7x_gpnvm
-  - name: ATSAMV71Q20
+    - main
+  - !Generic
+    name: IROM2
+    range:
+      start: 0x800000
+      end: 0x804000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
-    memory_map:
-      - !Ram
-        name: IRAM1
-        range:
-          start: 0x20400000
-          end: 0x20460000
-        cores:
-          - main
-      - !Nvm
-        name: IROM1
-        range:
-          start: 0x400000
-          end: 0x500000
-        is_boot_memory: true
-        cores:
-          - main
-      - !Generic
-        name: IROM2
-        range:
-          start: 0x800000
-          end: 0x804000
-        cores:
-          - main
-    flash_algorithms:
-      - atsamv7x_1024
-      - atsamv7x_gpnvm
-  - name: ATSAMV71Q20B
+    - main
+  flash_algorithms:
+  - atsamv7x_2048
+  - atsamv7x_gpnvm
+- name: ATSAMV71J21B
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20400000
+      end: 0x20460000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
-    memory_map:
-      - !Ram
-        name: IRAM1
-        range:
-          start: 0x20400000
-          end: 0x20460000
-        cores:
-          - main
-      - !Nvm
-        name: IROM1
-        range:
-          start: 0x400000
-          end: 0x500000
-        is_boot_memory: true
-        cores:
-          - main
-      - !Generic
-        name: IROM2
-        range:
-          start: 0x800000
-          end: 0x804000
-        cores:
-          - main
-    flash_algorithms:
-      - atsamv7x_1024
-      - atsamv7x_gpnvm
-  - name: ATSAMV71Q21
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x400000
+      end: 0x600000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv7em
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
-    memory_map:
-      - !Ram
-        name: IRAM1
-        range:
-          start: 0x20400000
-          end: 0x20460000
-        cores:
-          - main
-      - !Nvm
-        name: IROM1
-        range:
-          start: 0x400000
-          end: 0x600000
-        is_boot_memory: true
-        cores:
-          - main
-      - !Generic
-        name: IROM2
-        range:
-          start: 0x800000
-          end: 0x804000
-        cores:
-          - main
-    flash_algorithms:
-      - atsamv7x_2048
-      - atsamv7x_gpnvm
-  - name: ATSAMV71Q21B
+    - main
+  - !Generic
+    name: IROM2
+    range:
+      start: 0x800000
+      end: 0x804000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
-    memory_map:
-      - !Ram
-        name: IRAM1
-        range:
-          start: 0x20400000
-          end: 0x20460000
-        cores:
-          - main
-      - !Nvm
-        name: IROM1
-        range:
-          start: 0x400000
-          end: 0x600000
-        is_boot_memory: true
-        cores:
-          - main
-      - !Generic
-        name: IROM2
-        range:
-          start: 0x800000
-          end: 0x804000
-        cores:
-          - main
-    flash_algorithms:
-      - atsamv7x_2048
-      - atsamv7x_gpnvm
+    - main
+  flash_algorithms:
+  - atsamv7x_2048
+  - atsamv7x_gpnvm
+- name: ATSAMV71N19
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20400000
+      end: 0x20440000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x400000
+      end: 0x480000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: IROM2
+    range:
+      start: 0x800000
+      end: 0x804000
+    cores:
+    - main
+  flash_algorithms:
+  - atsamv7x_512
+  - atsamv7x_gpnvm
+- name: ATSAMV71N19B
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20400000
+      end: 0x20440000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x400000
+      end: 0x480000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: IROM2
+    range:
+      start: 0x800000
+      end: 0x804000
+    cores:
+    - main
+  flash_algorithms:
+  - atsamv7x_512
+  - atsamv7x_gpnvm
+- name: ATSAMV71N20
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20400000
+      end: 0x20460000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x400000
+      end: 0x500000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: IROM2
+    range:
+      start: 0x800000
+      end: 0x804000
+    cores:
+    - main
+  flash_algorithms:
+  - atsamv7x_1024
+  - atsamv7x_gpnvm
+- name: ATSAMV71N20B
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20400000
+      end: 0x20460000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x400000
+      end: 0x500000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: IROM2
+    range:
+      start: 0x800000
+      end: 0x804000
+    cores:
+    - main
+  flash_algorithms:
+  - atsamv7x_1024
+  - atsamv7x_gpnvm
+- name: ATSAMV71N21
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20400000
+      end: 0x20460000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x400000
+      end: 0x600000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: IROM2
+    range:
+      start: 0x800000
+      end: 0x804000
+    cores:
+    - main
+  flash_algorithms:
+  - atsamv7x_2048
+  - atsamv7x_gpnvm
+- name: ATSAMV71N21B
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20400000
+      end: 0x20460000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x400000
+      end: 0x600000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: IROM2
+    range:
+      start: 0x800000
+      end: 0x804000
+    cores:
+    - main
+  flash_algorithms:
+  - atsamv7x_2048
+  - atsamv7x_gpnvm
+- name: ATSAMV71Q19
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20400000
+      end: 0x20440000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x400000
+      end: 0x480000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: IROM2
+    range:
+      start: 0x800000
+      end: 0x804000
+    cores:
+    - main
+  flash_algorithms:
+  - atsamv7x_512
+  - atsamv7x_gpnvm
+- name: ATSAMV71Q19B
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20400000
+      end: 0x20440000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x400000
+      end: 0x480000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: IROM2
+    range:
+      start: 0x800000
+      end: 0x804000
+    cores:
+    - main
+  flash_algorithms:
+  - atsamv7x_512
+  - atsamv7x_gpnvm
+- name: ATSAMV71Q20
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20400000
+      end: 0x20460000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x400000
+      end: 0x500000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: IROM2
+    range:
+      start: 0x800000
+      end: 0x804000
+    cores:
+    - main
+  flash_algorithms:
+  - atsamv7x_1024
+  - atsamv7x_gpnvm
+- name: ATSAMV71Q20B
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20400000
+      end: 0x20460000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x400000
+      end: 0x500000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: IROM2
+    range:
+      start: 0x800000
+      end: 0x804000
+    cores:
+    - main
+  flash_algorithms:
+  - atsamv7x_1024
+  - atsamv7x_gpnvm
+- name: ATSAMV71Q21
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20400000
+      end: 0x20460000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x400000
+      end: 0x600000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: IROM2
+    range:
+      start: 0x800000
+      end: 0x804000
+    cores:
+    - main
+  flash_algorithms:
+  - atsamv7x_2048
+  - atsamv7x_gpnvm
+- name: ATSAMV71Q21B
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20400000
+      end: 0x20460000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x400000
+      end: 0x600000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: IROM2
+    range:
+      start: 0x800000
+      end: 0x804000
+    cores:
+    - main
+  flash_algorithms:
+  - atsamv7x_2048
+  - atsamv7x_gpnvm
 flash_algorithms:
-  - name: atsamv7x_512
-    description: ATSAMV7x 512kB Flash
-    cores:
-      - main
-    default: true
-    instructions: YEkwtUlECGBgSV9ICGBP9HBgXknkOQhgT/QAQFxJCGBbSbAxCGBcS1pIGGBaSrQ6EGgg8AMAQBwQYFdIfDgBaAkH/NURaCHwcAERYAFoCQf81VFMxDwhaFBNKUMhYAFoiQP81SFoTU0h8HABGDUpQyFgIWgh8IBxQfRcESFgAWjJA/zVEWgh8AMBSRwRYAFoCQf81QEhEWABaAkH/NU9SEAcGGAAIDC9AigU0TdKPEjgOhBgEB0BaMkH/NAzSdg5CWiJBwfUNkn+MRFgAOAAvwFoyQf70C1JK0hAHAhgACBwRy9IKUkIOOA5CGAIHQDgAL8BaMkH+9AAIHBHIUojSUpE5DkSaIAaQAog8AMAgByCsiNIAB9A6gIgSGAA4AC/iGjAB/vQHkiAH0DqAiBIYADgAL+IaMAH+9CIaBDwDgAA0AEgcEcPSTC1SUQPS+Q7CWhBGkwKWRUgygkfIMD70Q9JoLIMOUHqACBYYADgAL+YaMAH+9CYaBDwDgAA0AEgML0AAAQAAAAAQ0ZF5AwOQFQYDkAAQ01Q5AYOQAgANwANAABaAAAAAAAAAAA=
-    pc_init: 0x1
-    pc_uninit: 0xa9
-    pc_program_page: 0x147
-    pc_erase_sector: 0xfd
-    pc_erase_all: 0xe3
-    data_section_offset: 0x1a4
-    flash_properties:
-      address_range:
-        start: 0x400000
-        end: 0x480000
-      page_size: 0x200
-      erased_byte_value: 0xff
-      program_page_timeout: 100
-      erase_sector_timeout: 1000
-      sectors:
-        - size: 0x2000
-          address: 0x0
-  - name: atsamv7x_1024
-    description: ATSAMV7x 1024kB Flash
-    cores:
-      - main
-    default: true
-    instructions: YEkwtUlECGBgSV9ICGBP9HBgXknkOQhgT/QAQFxJCGBbSbAxCGBcS1pIGGBaSrQ6EGgg8AMAQBwQYFdIfDgBaAkH/NURaCHwcAERYAFoCQf81VFMxDwhaFBNKUMhYAFoiQP81SFoTU0h8HABGDUpQyFgIWgh8IBxQfRcESFgAWjJA/zVEWgh8AMBSRwRYAFoCQf81QEhEWABaAkH/NU9SEAcGGAAIDC9AigU0TdKPEjgOhBgEB0BaMkH/NAzSdg5CWiJBwfUNkn+MRFgAOAAvwFoyQf70C1JK0hAHAhgACBwRy9IKUkIOOA5CGAIHQDgAL8BaMkH+9AAIHBHIUojSUpE5DkSaIAaQAog8AMAgByCsiNIAB9A6gIgSGAA4AC/iGjAB/vQHkiAH0DqAiBIYADgAL+IaMAH+9CIaBDwDgAA0AEgcEcPSTC1SUQPS+Q7CWhBGkwKWRUgygkfIMD70Q9JoLIMOUHqACBYYADgAL+YaMAH+9CYaBDwDgAA0AEgML0AAAQAAAAAQ0ZF5AwOQFQYDkAAQ01Q5AYOQAgANwANAABaAAAAAAAAAAA=
-    pc_init: 0x1
-    pc_uninit: 0xa9
-    pc_program_page: 0x147
-    pc_erase_sector: 0xfd
-    pc_erase_all: 0xe3
-    data_section_offset: 0x1a4
-    flash_properties:
-      address_range:
-        start: 0x400000
-        end: 0x500000
-      page_size: 0x200
-      erased_byte_value: 0xff
-      program_page_timeout: 100
-      erase_sector_timeout: 1000
-      sectors:
-        - size: 0x2000
-          address: 0x0
-  - name: atsamv7x_2048
-    description: ATSAMV7x 2048kB Flash
-    cores:
-      - main
-    default: true
-    instructions: YEkwtUlECGBgSV9ICGBP9HBgXknkOQhgT/QAQFxJCGBbSbAxCGBcS1pIGGBaSrQ6EGgg8AMAQBwQYFdIfDgBaAkH/NURaCHwcAERYAFoCQf81VFMxDwhaFBNKUMhYAFoiQP81SFoTU0h8HABGDUpQyFgIWgh8IBxQfRcESFgAWjJA/zVEWgh8AMBSRwRYAFoCQf81QEhEWABaAkH/NU9SEAcGGAAIDC9AigU0TdKPEjgOhBgEB0BaMkH/NAzSdg5CWiJBwfUNkn+MRFgAOAAvwFoyQf70C1JK0hAHAhgACBwRy9IKUkIOOA5CGAIHQDgAL8BaMkH+9AAIHBHIUojSUpE5DkSaIAaQAog8AMAgByCsiNIAB9A6gIgSGAA4AC/iGjAB/vQHkiAH0DqAiBIYADgAL+IaMAH+9CIaBDwDgAA0AEgcEcPSTC1SUQPS+Q7CWhBGkwKWRUgygkfIMD70Q9JoLIMOUHqACBYYADgAL+YaMAH+9CYaBDwDgAA0AEgML0AAAQAAAAAQ0ZF5AwOQFQYDkAAQ01Q5AYOQAgANwANAABaAAAAAAAAAAA=
-    pc_init: 0x1
-    pc_uninit: 0xa9
-    pc_program_page: 0x147
-    pc_erase_sector: 0xfd
-    pc_erase_all: 0xe3
-    data_section_offset: 0x1a4
-    flash_properties:
-      address_range:
-        start: 0x400000
-        end: 0x600000
-      page_size: 0x200
-      erased_byte_value: 0xff
-      program_page_timeout: 100
-      erase_sector_timeout: 1000
-      sectors:
-        - size: 0x2000
-          address: 0x0
-  - name: atsamv7x_gpnvm
-    description: ATSAMV7x GPNVM bits
-    cores:
-      - main
-    default: false
-    instructions: gkkwtUlECGCCSYFICGBP9HBggEnkOQhgT/QAQH5JCGB9SbAxCGB+S3xIGGB8SrQ6EGgg8AMAQBwQYHlIfDgBaAkH/NURaCHwcAERYAFoCQf81XNMxDwhaHJNKUMhYAFoiQP81SFob00h8HABGDUpQyFgIWgh8IBxQfRcESFgAWjJA/zVEWgh8AMBSRwRYAFoCQf81QEhEWABaAkH/NVfSEAcGGAAIDC9WklZSEAcCGAAIHBHACBwRwAgcEdTSlVJSkTkORJogBpACiDwAwCAHIKyVUhA6gIgSGAA4AC/iGjAB/vQUEiAHkDqAiBIYADgAL+IaMAH+9CIaBDwDgAA0AEgcEcwtUhJEGhCSgkd4DoRYBMdGWjJB/zQPknYOQloxAe068F/DNDEBwLQPkykHAHgPUzkHBRgAOAAvxxo5Af70ADwAgQB8AIFrEIL0IQHAdU2TAHgNUxkHBRgAOAAvxxo5Af70ADwgAQB8IAFrEIL0AQGAdUuTAHgLUxkHBRgAOAAvxxo5Af70AD0gHQB9IBxjEIL0MAFAdUmSAHgJUhAHBBgAOAAvxhowAf70AAgML0wtRxLF0wbHRJo4DwjYCMdHGjkB/zQEkvYOxto1Ae068N/BtEC8AIEA/ACBaxCAdBAHDC9AvCABAPwgAWsQgHQwB0wvQL0gHID9IBzmkIB0AgwML0IRDC9AAAEAAAAAENGReQMDkBUGA5AAENNUOQGDkAIADcACQAAWgsBAFoLBwBaCwgAWgAAAAAAAAAA
-    pc_init: 0x1
-    pc_uninit: 0xa9
-    pc_program_page: 0x105
-    pc_erase_sector: 0xbd
-    pc_erase_all: 0xb9
-    data_section_offset: 0x238
-    flash_properties:
-      address_range:
-        start: 0x1ffffff0
-        end: 0x20000000
-      page_size: 0x10
-      erased_byte_value: 0xff
-      program_page_timeout: 100
-      erase_sector_timeout: 1000
-      sectors:
-        - size: 0x10
-          address: 0x0
+- name: atsamv7x_512
+  description: ATSAMV7x 512kB Flash
+  default: true
+  instructions: YEkwtUlECGBgSV9ICGBP9HBgXknkOQhgT/QAQFxJCGBbSbAxCGBcS1pIGGBaSrQ6EGgg8AMAQBwQYFdIfDgBaAkH/NURaCHwcAERYAFoCQf81VFMxDwhaFBNKUMhYAFoiQP81SFoTU0h8HABGDUpQyFgIWgh8IBxQfRcESFgAWjJA/zVEWgh8AMBSRwRYAFoCQf81QEhEWABaAkH/NU9SEAcGGAAIDC9AigU0TdKPEjgOhBgEB0BaMkH/NAzSdg5CWiJBwfUNkn+MRFgAOAAvwFoyQf70C1JK0hAHAhgACBwRy9IKUkIOOA5CGAIHQDgAL8BaMkH+9AAIHBHIUojSUpE5DkSaIAaQAog8AMAgByCsiNIAB9A6gIgSGAA4AC/iGjAB/vQHkiAH0DqAiBIYADgAL+IaMAH+9CIaBDwDgAA0AEgcEcPSTC1SUQPS+Q7CWhBGkwKWRUgygkfIMD70Q9JoLIMOUHqACBYYADgAL+YaMAH+9CYaBDwDgAA0AEgML0AAAQAAAAAQ0ZF5AwOQFQYDkAAQ01Q5AYOQAgANwANAABaAAAAAAAAAAA=
+  pc_init: 0x1
+  pc_uninit: 0xa9
+  pc_program_page: 0x147
+  pc_erase_sector: 0xfd
+  pc_erase_all: 0xe3
+  data_section_offset: 0x1a4
+  flash_properties:
+    address_range:
+      start: 0x400000
+      end: 0x480000
+    page_size: 0x200
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x2000
+      address: 0x0
+  cores:
+  - main
+- name: atsamv7x_1024
+  description: ATSAMV7x 1024kB Flash
+  default: true
+  instructions: YEkwtUlECGBgSV9ICGBP9HBgXknkOQhgT/QAQFxJCGBbSbAxCGBcS1pIGGBaSrQ6EGgg8AMAQBwQYFdIfDgBaAkH/NURaCHwcAERYAFoCQf81VFMxDwhaFBNKUMhYAFoiQP81SFoTU0h8HABGDUpQyFgIWgh8IBxQfRcESFgAWjJA/zVEWgh8AMBSRwRYAFoCQf81QEhEWABaAkH/NU9SEAcGGAAIDC9AigU0TdKPEjgOhBgEB0BaMkH/NAzSdg5CWiJBwfUNkn+MRFgAOAAvwFoyQf70C1JK0hAHAhgACBwRy9IKUkIOOA5CGAIHQDgAL8BaMkH+9AAIHBHIUojSUpE5DkSaIAaQAog8AMAgByCsiNIAB9A6gIgSGAA4AC/iGjAB/vQHkiAH0DqAiBIYADgAL+IaMAH+9CIaBDwDgAA0AEgcEcPSTC1SUQPS+Q7CWhBGkwKWRUgygkfIMD70Q9JoLIMOUHqACBYYADgAL+YaMAH+9CYaBDwDgAA0AEgML0AAAQAAAAAQ0ZF5AwOQFQYDkAAQ01Q5AYOQAgANwANAABaAAAAAAAAAAA=
+  pc_init: 0x1
+  pc_uninit: 0xa9
+  pc_program_page: 0x147
+  pc_erase_sector: 0xfd
+  pc_erase_all: 0xe3
+  data_section_offset: 0x1a4
+  flash_properties:
+    address_range:
+      start: 0x400000
+      end: 0x500000
+    page_size: 0x200
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x2000
+      address: 0x0
+  cores:
+  - main
+- name: atsamv7x_2048
+  description: ATSAMV7x 2048kB Flash
+  default: true
+  instructions: YEkwtUlECGBgSV9ICGBP9HBgXknkOQhgT/QAQFxJCGBbSbAxCGBcS1pIGGBaSrQ6EGgg8AMAQBwQYFdIfDgBaAkH/NURaCHwcAERYAFoCQf81VFMxDwhaFBNKUMhYAFoiQP81SFoTU0h8HABGDUpQyFgIWgh8IBxQfRcESFgAWjJA/zVEWgh8AMBSRwRYAFoCQf81QEhEWABaAkH/NU9SEAcGGAAIDC9AigU0TdKPEjgOhBgEB0BaMkH/NAzSdg5CWiJBwfUNkn+MRFgAOAAvwFoyQf70C1JK0hAHAhgACBwRy9IKUkIOOA5CGAIHQDgAL8BaMkH+9AAIHBHIUojSUpE5DkSaIAaQAog8AMAgByCsiNIAB9A6gIgSGAA4AC/iGjAB/vQHkiAH0DqAiBIYADgAL+IaMAH+9CIaBDwDgAA0AEgcEcPSTC1SUQPS+Q7CWhBGkwKWRUgygkfIMD70Q9JoLIMOUHqACBYYADgAL+YaMAH+9CYaBDwDgAA0AEgML0AAAQAAAAAQ0ZF5AwOQFQYDkAAQ01Q5AYOQAgANwANAABaAAAAAAAAAAA=
+  pc_init: 0x1
+  pc_uninit: 0xa9
+  pc_program_page: 0x147
+  pc_erase_sector: 0xfd
+  pc_erase_all: 0xe3
+  data_section_offset: 0x1a4
+  flash_properties:
+    address_range:
+      start: 0x400000
+      end: 0x600000
+    page_size: 0x200
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x2000
+      address: 0x0
+  cores:
+  - main
+- name: atsamv7x_gpnvm
+  description: ATSAMV7x GPNVM bits
+  instructions: gkkwtUlECGCCSYFICGBP9HBggEnkOQhgT/QAQH5JCGB9SbAxCGB+S3xIGGB8SrQ6EGgg8AMAQBwQYHlIfDgBaAkH/NURaCHwcAERYAFoCQf81XNMxDwhaHJNKUMhYAFoiQP81SFob00h8HABGDUpQyFgIWgh8IBxQfRcESFgAWjJA/zVEWgh8AMBSRwRYAFoCQf81QEhEWABaAkH/NVfSEAcGGAAIDC9WklZSEAcCGAAIHBHACBwRwAgcEdTSlVJSkTkORJogBpACiDwAwCAHIKyVUhA6gIgSGAA4AC/iGjAB/vQUEiAHkDqAiBIYADgAL+IaMAH+9CIaBDwDgAA0AEgcEcwtUhJEGhCSgkd4DoRYBMdGWjJB/zQPknYOQloxAe068F/DNDEBwLQPkykHAHgPUzkHBRgAOAAvxxo5Af70ADwAgQB8AIFrEIL0IQHAdU2TAHgNUxkHBRgAOAAvxxo5Af70ADwgAQB8IAFrEIL0AQGAdUuTAHgLUxkHBRgAOAAvxxo5Af70AD0gHQB9IBxjEIL0MAFAdUmSAHgJUhAHBBgAOAAvxhowAf70AAgML0wtRxLF0wbHRJo4DwjYCMdHGjkB/zQEkvYOxto1Ae068N/BtEC8AIEA/ACBaxCAdBAHDC9AvCABAPwgAWsQgHQwB0wvQL0gHID9IBzmkIB0AgwML0IRDC9AAAEAAAAAENGReQMDkBUGA5AAENNUOQGDkAIADcACQAAWgsBAFoLBwBaCwgAWgAAAAAAAAAA
+  pc_init: 0x1
+  pc_uninit: 0xa9
+  pc_program_page: 0x105
+  pc_erase_sector: 0xbd
+  pc_erase_all: 0xb9
+  data_section_offset: 0x238
+  flash_properties:
+    address_range:
+      start: 0x1ffffff0
+      end: 0x20000000
+    page_size: 0x10
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x10
+      address: 0x0
+  cores:
+  - main

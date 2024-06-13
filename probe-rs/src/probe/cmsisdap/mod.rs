@@ -47,8 +47,7 @@ use commands::{
     swo,
     transfer::{
         configure::{ConfigureRequest, ConfigureResponse},
-        Ack, InnerTransferRequest, TransferBlockRequest, TransferBlockResponse, TransferRequest,
-        RW,
+        Ack, TransferBlockRequest, TransferBlockResponse, TransferRequest,
     },
     CmsisDapDevice, Status,
 };
@@ -418,12 +417,7 @@ impl CmsisDap {
     fn read_ctrl_register(&mut self) -> Result<Ctrl, ArmError> {
         let response = commands::send_command(
             &mut self.device,
-            TransferRequest::new(&[InnerTransferRequest::new(
-                PortType::DebugPort,
-                RW::R,
-                Ctrl::ADDRESS,
-                None,
-            )]),
+            TransferRequest::read(PortType::DebugPort, Ctrl::ADDRESS),
         )
         .map_err(CmsisDapError::from)
         .map_err(DebugProbeError::from)?;
@@ -456,6 +450,31 @@ impl CmsisDap {
         }
     }
 
+    fn write_abort(&mut self, abort: Abort) -> Result<(), ArmError> {
+        let response = commands::send_command(
+            &mut self.device,
+            TransferRequest::write(PortType::DebugPort, Abort::ADDRESS, abort.into()),
+        )
+        .map_err(CmsisDapError::from)
+        .map_err(DebugProbeError::from)?;
+
+        // We can assume that the single transfer is always executed,
+        // no need to check here.
+
+        if response.last_transfer_response.protocol_error {
+            // TODO: What does this protocol error mean exactly?
+            //       Should be verified in CMSIS-DAP spec
+            Err(DapError::SwdProtocol.into())
+        } else {
+            match response.last_transfer_response.ack {
+                Ack::Ok => Ok(()),
+                Ack::Wait => Err(DapError::WaitResponse.into()),
+                Ack::Fault => Err(DapError::FaultResponse.into()),
+                Ack::NoAck => Err(DapError::NoAcknowledge.into()),
+            }
+        }
+    }
+
     /// Immediately send whatever is in our batch if it is not empty.
     ///
     /// If the last transfer was a read, result is Some with the read value.
@@ -465,37 +484,38 @@ impl CmsisDap {
     /// raised if necessary.
     #[tracing::instrument(skip(self))]
     fn process_batch(&mut self) -> Result<Option<u32>, ArmError> {
-        if self.batch.is_empty() {
+        let mut batch = std::mem::take(&mut self.batch);
+        if batch.is_empty() {
             return Ok(None);
         }
-
-        let mut batch = std::mem::take(&mut self.batch);
 
         tracing::debug!("{} items in batch", batch.len());
 
         for retry in (0..5).rev() {
             tracing::debug!("Attempting batch of {} items", batch.len());
+            if batch.is_empty() {
+                break;
+            }
 
-            let transfers: Vec<InnerTransferRequest> = batch
-                .iter()
-                .map(|command| match *command {
-                    BatchCommand::Read(port, addr) => {
-                        InnerTransferRequest::new(port, RW::R, addr as u8, None)
+            let mut transfers = TransferRequest::empty();
+            for command in batch.iter().copied() {
+                match command {
+                    BatchCommand::Read(port, register) => {
+                        transfers.add_read(port, register as u8);
                     }
-                    BatchCommand::Write(port, addr, data) => {
-                        InnerTransferRequest::new(port, RW::W, addr as u8, Some(data))
+                    BatchCommand::Write(port, register, value) => {
+                        transfers.add_write(port, register as u8, value);
                     }
-                })
-                .collect();
+                }
+            }
 
-            let response =
-                commands::send_command(&mut self.device, TransferRequest::new(&transfers))
-                    .map_err(CmsisDapError::from)
-                    .map_err(DebugProbeError::from)?;
+            let response = commands::send_command(&mut self.device, transfers)
+                .map_err(CmsisDapError::from)
+                .map_err(DebugProbeError::from)?;
 
-            let count = response.transfer_count as usize;
+            let count = response.transfers.len();
 
-            tracing::debug!("{:?} of batch of {} items executed", count, batch.len());
+            tracing::debug!("{} of batch of {} items executed", count, batch.len());
 
             if response.last_transfer_response.protocol_error {
                 if count > 0 {
@@ -508,10 +528,10 @@ impl CmsisDap {
             match response.last_transfer_response.ack {
                 Ack::Ok => {
                     tracing::trace!("Transfer status: ACK");
-                    return Ok(response.transfers[response.transfers.len() - 1].data);
+                    return Ok(response.transfers[count - 1].data);
                 }
                 Ack::NoAck => {
-                    tracing::trace!(
+                    tracing::debug!(
                         "Transfer status for batch item {}/{}: NACK",
                         count,
                         batch.len()
@@ -520,7 +540,7 @@ impl CmsisDap {
                     return Err(DapError::NoAcknowledge.into());
                 }
                 Ack::Fault => {
-                    tracing::trace!(
+                    tracing::debug!(
                         "Transfer status for batch item {}/{}: FAULT",
                         count,
                         batch.len()
@@ -534,35 +554,30 @@ impl CmsisDap {
                     tracing::trace!("Ctrl/Stat register value is: {:?}", ctrl);
 
                     if ctrl.sticky_err() {
-                        let mut abort = Abort(0);
-
                         // Clear sticky error flags.
-                        abort.set_stkerrclr(ctrl.sticky_err());
-
-                        RawDapAccess::raw_write_register(
-                            self,
-                            PortType::DebugPort,
-                            Abort::ADDRESS,
-                            abort.into(),
-                        )?;
+                        self.write_abort({
+                            let mut abort = Abort(0);
+                            abort.set_stkerrclr(ctrl.sticky_err());
+                            abort
+                        })?;
                     }
 
-                    tracing::trace!("draining {:?} and retries left {:?}", count, retry);
-                    batch.drain(0..count);
-                    continue;
+                    let successful = count.saturating_sub(1);
+                    tracing::trace!("draining {:?} and retries left {:?}", successful, retry);
+                    batch.drain(0..successful);
                 }
                 Ack::Wait => {
-                    tracing::trace!("wait",);
+                    tracing::debug!(
+                        "Transfer status for batch item {}/{}: WAIT",
+                        count,
+                        batch.len()
+                    );
 
-                    let mut abort = Abort(0);
-                    abort.set_dapabort(true);
-
-                    RawDapAccess::raw_write_register(
-                        self,
-                        PortType::DebugPort,
-                        Abort::ADDRESS,
-                        abort.into(),
-                    )?;
+                    self.write_abort({
+                        let mut abort = Abort(0);
+                        abort.set_dapabort(true);
+                        abort
+                    })?;
 
                     return Err(DapError::WaitResponse.into());
                 }

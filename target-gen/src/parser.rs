@@ -1,7 +1,6 @@
 use crate::flash_device::FlashDevice;
 use anyhow::{anyhow, Context, Result};
-use probe_rs::config::{FlashProperties, RawFlashAlgorithm, SectorDescription};
-use probe_rs_target::MemoryRange;
+use probe_rs_target::{FlashProperties, MemoryRange, RawFlashAlgorithm, SectorDescription};
 
 /// Extract a chunk of data from an ELF binary.
 ///

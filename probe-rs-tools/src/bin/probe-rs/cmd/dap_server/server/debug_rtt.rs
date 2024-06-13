@@ -31,6 +31,12 @@ impl RttConnection {
         }
         at_least_one_channel_had_data
     }
+
+    /// Clean up the RTT connection, restoring the state changes that we made.
+    pub fn clean_up(&mut self, target_core: &mut Core) -> Result<(), DebuggerError> {
+        self.target_rtt.clean_up(target_core)?;
+        Ok(())
+    }
 }
 
 pub(crate) struct DebuggerRttChannel {

@@ -23,8 +23,7 @@
 //!
 
 mod chip_info;
-mod registry;
-pub mod sequences;
+pub(crate) mod registry;
 mod target;
 
 pub use probe_rs_target::{

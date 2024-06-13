@@ -1,78 +1,83 @@
 name: esp32c2
 manufacturer:
-  cc: 0x0C
   id: 0x12
+  cc: 0xc
 variants:
-  - name: esp32c2
-    jtag:
-      scan_chain:
-        - name: main
-          ir_len: 5
-    default_binary_format: idf
+- name: esp32c2
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+  memory_map:
+  - !Nvm
+    name: 16 Mb Max addressable Flash
+    range:
+      start: 0x0
+      end: 0x1000000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: riscv
-        core_access_options: !Riscv {}
-    memory_map:
-      - !Nvm # 16 Mb Max addressable Flash size (see Section 3.2 - Features of TRM)
-        range:
-          start: 0x0
-          end: 0x1000000
-        is_boot_memory: true
-        cores:
-          - main
-      - !Ram # Instruction bus for internal SRAM 1  (see Table 3.1 - Internal Memory Address Mapping of TRM)
-        range:
-          start: 0x40380000
-          end: 0x403c0000
-        cores:
-          - main
-      - !Ram # Data bus for internal SRAM 1  (see Table 3.1 - Internal Memory Address Mapping of TRM)
-        range:
-          start: 0x3fca0000
-          end: 0x3fce0000
-        cores:
-          - main
-      - !Nvm # External instruction bus (see Table 3.2 - External Memory Address Mapping of TRM)
-        range:
-          start: 0x42000000
-          end: 0x42400000
-        is_alias: true
-        cores:
-          - main
-      - !Nvm # External Data Bus (see Table 3.2 - External Memory Address Mapping of TRM)
-        range:
-          start: 0x3c000000
-          end: 0x3c400000
-        is_alias: true
-        cores:
-          - main
-    flash_algorithms:
-      - esp32c2-flashloader
+    - main
+  - !Ram
+    name: SRAM1 Instruction bus
+    range:
+      start: 0x40380000
+      end: 0x403c0000
+    cores:
+    - main
+  - !Ram
+    name: SRAM1 Data bus
+    range:
+      start: 0x3fca0000
+      end: 0x3fce0000
+    cores:
+    - main
+  - !Nvm
+    name: External instruction bus
+    range:
+      start: 0x42000000
+      end: 0x42400000
+    cores:
+    - main
+    is_alias: true
+  - !Nvm
+    name: External data bus
+    range:
+      start: 0x3c000000
+      end: 0x3c400000
+    cores:
+    - main
+    is_alias: true
+  flash_algorithms:
+  - esp32c2-flashloader
+  jtag:
+    scan_chain:
+    - name: main
+      ir_len: 5
+  default_binary_format: idf
 flash_algorithms:
-  - name: esp32c2-flashloader
-    description: A flash loader for the esp32c2.
-    default: true
-    instructions: QREGxpcAAADngAADAUWyQEEBgoAXAwAAZwDjBRcDAABnAGMHFwMAAGcAwwgXAwAAZwDjHUERBsYBRYFFl0DH/+eAwBM3Bcs/IyIFALe1yz8jqgWufVYjrMWuI64FriOgBbC3BcGquRUMwQFFskBBAYKAtwXLP4xBNwbBqjkWY5fFAEGBF0PH/2cAAwsTBXDBgoA3Bcs/CEG3BcGquRVjFrUAF0PH/2cA4wYTBXDBgoB5cQbWItQm0krQTs5SzFbKWshexrcGyz+UQq6JKoQ3BcGqkwXl/hMFcMFjmLYAMoqTdTYAEwUwwYHNslAiVJJUAlnySWJK0kpCS7JLRWGCgLe0yz8DpYSvYwmFBJcAAADngIAUkUUTBUDB4+i5/ANFCgCDRRoAA0Y6AINGKgARCvEZYgbCBqIFTY1VjlGNt7XLPyOsha4jrgWuI6ClsDcFyz8jIgUAI6oFrgOlBLBRzaqEY2M1Ac6EswWVQDe7yz8jILuwBUQNSWPjqQAFSaFrNzXLP5MKRa+3Ccs/kQkTtRQAkyUUAE2NJeUmwgMnS68zhetAKsRWl1AAPABOhdKF1oZKiJdAx//ngIDzkkVj97QAAyVLrxMEYMEZqCqEIkUDJkuvjYwumjKVIyqrrhnA4xd1+5cAAADngAAH41EF+hMFBYATBQWGzb0TBVDB9bUTBQSDfYRhjc21QREGxjcFyz8MQTcFwaoTBuX+EwVwwWOXxQKXAAAA54AAAwVFKsQDRYEABYkBySgAlUWXQMf/54BA8XXVtwXLPyOgBQCyQEEBgoBBEQbGIsQmwkrAt7TLPwOpxK8DpESvA6WEryOqBK4BzEqVtzXLP5OFRa8ihpdAx//ngIDrEaABRUqUI66ErrJAIkSSRAJJQQGCgAAA
-    pc_init: 0x0
-    pc_uninit: 0x2c
-    pc_program_page: 0x24
-    pc_erase_sector: 0x14
-    pc_erase_all: 0x1c
-    data_section_offset: 0x4038c2a0
-    load_address: 0x4038C000
-    data_load_address: 0x403A0000
-    transfer_encoding: miniz
-    flash_properties:
-      address_range:
-        start: 0x0
-        end: 0x1000000
-      page_size: 0x4000
-      erased_byte_value: 0xff
-      program_page_timeout: 1000
-      erase_sector_timeout: 2000
-      sectors:
-        - size: 0x10000
-          address: 0x0
-    cores:
-      - main
+- name: esp32c2-flashloader
+  description: A flash loader for the esp32c2.
+  default: true
+  instructions: QREGxpcAAADngAADAUWyQEEBgoAXAwAAZwDjBRcDAABnAGMHFwMAAGcAwwgXAwAAZwDjHUERBsYBRYFFl0DH/+eAwBM3Bcs/IyIFALe1yz8jqgWufVYjrMWuI64FriOgBbC3BcGquRUMwQFFskBBAYKAtwXLP4xBNwbBqjkWY5fFAEGBF0PH/2cAAwsTBXDBgoA3Bcs/CEG3BcGquRVjFrUAF0PH/2cA4wYTBXDBgoB5cQbWItQm0krQTs5SzFbKWshexrcGyz+UQq6JKoQ3BcGqkwXl/hMFcMFjmLYAMoqTdTYAEwUwwYHNslAiVJJUAlnySWJK0kpCS7JLRWGCgLe0yz8DpYSvYwmFBJcAAADngIAUkUUTBUDB4+i5/ANFCgCDRRoAA0Y6AINGKgARCvEZYgbCBqIFTY1VjlGNt7XLPyOsha4jrgWuI6ClsDcFyz8jIgUAI6oFrgOlBLBRzaqEY2M1Ac6EswWVQDe7yz8jILuwBUQNSWPjqQAFSaFrNzXLP5MKRa+3Ccs/kQkTtRQAkyUUAE2NJeUmwgMnS68zhetAKsRWl1AAPABOhdKF1oZKiJdAx//ngIDzkkVj97QAAyVLrxMEYMEZqCqEIkUDJkuvjYwumjKVIyqrrhnA4xd1+5cAAADngAAH41EF+hMFBYATBQWGzb0TBVDB9bUTBQSDfYRhjc21QREGxjcFyz8MQTcFwaoTBuX+EwVwwWOXxQKXAAAA54AAAwVFKsQDRYEABYkBySgAlUWXQMf/54BA8XXVtwXLPyOgBQCyQEEBgoBBEQbGIsQmwkrAt7TLPwOpxK8DpESvA6WEryOqBK4BzEqVtzXLP5OFRa8ihpdAx//ngIDrEaABRUqUI66ErrJAIkSSRAJJQQGCgAAA
+  load_address: 0x4038c000
+  data_load_address: 0x403a0000
+  pc_init: 0x0
+  pc_uninit: 0x2c
+  pc_program_page: 0x24
+  pc_erase_sector: 0x14
+  pc_erase_all: 0x1c
+  data_section_offset: 0x4038c2a0
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x1000000
+    page_size: 0x4000
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 2000
+    sectors:
+    - size: 0x10000
+      address: 0x0
+  cores:
+  - main
+  transfer_encoding: miniz

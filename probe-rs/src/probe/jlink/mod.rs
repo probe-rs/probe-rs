@@ -1,7 +1,5 @@
 //! Support for J-Link Debug probes
 
-#[macro_use]
-mod macros;
 mod bits;
 pub mod capabilities;
 mod error;
@@ -377,10 +375,8 @@ impl JLink {
     fn fill_capabilities(&mut self) -> Result<(), JlinkError> {
         self.write_cmd(&[Command::GetCaps as u8])?;
 
-        let mut buf = [0; 4];
-        self.read(&mut buf)?;
+        let caps = self.read_u32().map(Capabilities::from_raw_legacy)?;
 
-        let mut caps = Capabilities::from_raw_legacy(u32::from_le_bytes(buf));
         debug!("legacy caps: {:?}", caps);
 
         // If the `GET_CAPS_EX` capability is set, use the extended capability command to fetch
@@ -388,9 +384,7 @@ impl JLink {
         if caps.contains(Capability::GetCapsEx) {
             self.write_cmd(&[Command::GetCapsEx as u8])?;
 
-            let mut buf = [0; 32];
-            self.read(&mut buf)?;
-            let real_caps = Capabilities::from_raw_ex(buf);
+            let real_caps = self.read_n::<32>().map(Capabilities::from_raw_ex)?;
             if !real_caps.contains_all(caps) {
                 return Err(JlinkError::Other(format!(
                     "ext. caps are not a superset of legacy caps (legacy: {:?}, ex: {:?})",
@@ -398,12 +392,12 @@ impl JLink {
                 )));
             }
             debug!("extended caps: {:?}", real_caps);
-            caps = real_caps;
+            self.caps = real_caps;
         } else {
             debug!("extended caps not supported");
+            self.caps = caps;
         }
 
-        self.caps = caps;
         Ok(())
     }
 
@@ -418,11 +412,8 @@ impl JLink {
 
         self.write_cmd(&[Command::SelectIf as u8, 0xFF])?;
 
-        let mut buf = [0; 4];
-        self.read(&mut buf)?;
+        self.interfaces = self.read_u32().map(Interfaces::from_bits_warn)?;
 
-        let intfs = Interfaces::from_bits_warn(u32::from_le_bytes(buf));
-        self.interfaces = intfs;
         Ok(())
     }
 
@@ -456,6 +447,20 @@ impl JLink {
         trace!("read {} bytes: {:x?}", buf.len(), buf);
 
         Ok(())
+    }
+
+    fn read_n<const N: usize>(&self) -> Result<[u8; N], JlinkError> {
+        let mut buf = [0; N];
+        self.read(&mut buf)?;
+        Ok(buf)
+    }
+
+    fn read_u16(&self) -> Result<u16, JlinkError> {
+        self.read_n::<2>().map(u16::from_le_bytes)
+    }
+
+    fn read_u32(&self) -> Result<u32, JlinkError> {
+        self.read_n::<4>().map(u32::from_le_bytes)
     }
 
     fn require_capability(&self, cap: Capability) -> Result<(), JlinkError> {
@@ -495,19 +500,14 @@ impl JLink {
 
         self.write_cmd(&[Command::GetMaxMemBlock as u8])?;
 
-        let mut buf = [0; 4];
-        self.read(&mut buf)?;
-
-        Ok(u32::from_le_bytes(buf))
+        self.read_u32()
     }
 
     /// Reads the firmware version string from the device.
     fn read_firmware_version(&self) -> Result<String, JlinkError> {
         self.write_cmd(&[Command::Version as u8])?;
 
-        let mut buf = [0; 2];
-        self.read(&mut buf)?;
-        let num_bytes = u16::from_le_bytes(buf);
+        let num_bytes = self.read_u16()?;
         let mut buf = vec![0; num_bytes as usize];
         self.read(&mut buf)?;
 
@@ -530,10 +530,7 @@ impl JLink {
 
         self.write_cmd(&[Command::GetHwVersion as u8])?;
 
-        let mut buf = [0; 4];
-        self.read(&mut buf)?;
-
-        Ok(HardwareVersion::from_u32(u32::from_le_bytes(buf)))
+        self.read_u32().map(HardwareVersion::from_u32)
     }
 
     /// Selects the interface to use for talking to the target MCU.
@@ -553,11 +550,10 @@ impl JLink {
 
         self.require_interface_supported(intf)?;
 
-        self.write_cmd(&[Command::SelectIf as u8, intf.as_u8()])?;
+        self.write_cmd(&[Command::SelectIf as u8, intf as u8])?;
 
         // Returns the previous interface, ignore it
-        let mut buf = [0; 4];
-        self.read(&mut buf)?;
+        let _ = self.read_u32()?;
 
         self.interface = intf;
 
@@ -600,8 +596,7 @@ impl JLink {
     fn read_target_voltage(&self) -> Result<u16, JlinkError> {
         self.write_cmd(&[Command::GetState as u8])?;
 
-        let mut buf = [0; 8];
-        self.read(&mut buf)?;
+        let buf = self.read_n::<8>()?;
 
         let voltage = [buf[0], buf[1]];
         Ok(u16::from_le_bytes(voltage))
@@ -779,8 +774,7 @@ impl JLink {
 
     /// Enable/Disable the Target Power Supply of the probe.
     ///
-    /// This is not available on all probes.
-    /// This is avialable on some J-Links
+    /// This is not available on all J-Links.
     pub fn set_kickstart_power(&mut self, enable: bool) -> Result<(), JlinkError> {
         self.require_capability(Capability::SetKsPower)?;
         self.write_cmd(&[Command::SetKsPower as u8, if enable { 1 } else { 0 }])
@@ -1206,12 +1200,7 @@ fn list_jlink_devices() -> Vec<DebugProbeInfo> {
         .filter(is_jlink)
         .map(|info| {
             DebugProbeInfo::new(
-                format!(
-                    "J-Link{}",
-                    info.product_string()
-                        .map(|p| format!(" ({p})"))
-                        .unwrap_or_default()
-                ),
+                info.product_string().unwrap_or("J-Link").to_string(),
                 info.vendor_id(),
                 info.product_id(),
                 info.serial_number().map(|s| s.to_string()),

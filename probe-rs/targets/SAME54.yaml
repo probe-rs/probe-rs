@@ -1,150 +1,142 @@
 name: SAME54
 manufacturer:
-  id: 0x1F
+  id: 0x1f
   cc: 0x0
 variants:
-  - name: ATSAME54N19A
+- name: ATSAME54N19A
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20030000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20030000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x0
-            end: 0x80000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - atsame54_512
-  - name: ATSAME54N20A
+    - main
+  - !Nvm
+    range:
+      start: 0x0
+      end: 0x80000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20040000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x0
-            end: 0x100000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - atsame54_1024
-  - name: ATSAME54P19A
+    - main
+  flash_algorithms:
+  - atsame54_512
+- name: ATSAME54N20A
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20040000
     cores:
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20030000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x0
-            end: 0x80000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - atsame54_512
-  - name: ATSAME54P20A
+    - main
+  - !Nvm
+    range:
+      start: 0x0
+      end: 0x100000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20040000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x0
-            end: 0x100000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - atsame54_1024
+    - main
+  flash_algorithms:
+  - atsame54_1024
+- name: ATSAME54P19A
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x0
+      end: 0x80000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - atsame54_512
+- name: ATSAME54P20A
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x0
+      end: 0x100000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - atsame54_1024
 flash_algorithms:
-  - name: atsame54_512
-    description: ATSAME54 512kB Flash
-    cores:
-      - main
-    default: true
-    instructions: ASGJB4prUgcB1SFKCmDPIiBJEgIKgE4iCoIfSUlECGAAIHBHACBwRxpJSGEbSoqASorSB/zQSGEYSBE4iIBIisAH/NAIik4hCEAA0AEgcEcwtRJLD0zbHKOAY4rbB/zQyRyJCANGiQAC4CDKCR8gwwAp+tFgYQlIDziggGCKwAf80CCKTiEIQADQASAwvQAAIgABAABAAEEEAAAAEqUAAAAAAAAAAAAA
-    pc_init: 0x1
-    pc_uninit: 0x25
-    pc_program_page: 0x51
-    pc_erase_sector: 0x29
-    data_section_offset: 0xa0
-    flash_properties:
-      address_range:
-        start: 0x0
-        end: 0x80000
-      page_size: 0x200
-      erased_byte_value: 0xff
-      program_page_timeout: 0x64
-      erase_sector_timeout: 0x3e8
-      sectors:
-        - size: 0x2000
-          address: 0x0
-  - name: atsame54_1024
-    description: ATSAME54 1024kB Flash
-    cores:
-      - main
-    default: true
-    instructions: ASGJB4prUgcB1SFKCmDPIiBJEgIKgE4iCoIfSUlECGAAIHBHACBwRxpJSGEbSoqASorSB/zQSGEYSBE4iIBIisAH/NAIik4hCEAA0AEgcEcwtRJLD0zbHKOAY4rbB/zQyRyJCANGiQAC4CDKCR8gwwAp+tFgYQlIDziggGCKwAf80CCKTiEIQADQASAwvQAAIgABAABAAEEEAAAAEqUAAAAAAAAAAAAA
-    pc_init: 0x1
-    pc_uninit: 0x25
-    pc_program_page: 0x51
-    pc_erase_sector: 0x29
-    data_section_offset: 0xa0
-    flash_properties:
-      address_range:
-        start: 0x0
-        end: 0x100000
-      page_size: 0x200
-      erased_byte_value: 0xff
-      program_page_timeout: 0x64
-      erase_sector_timeout: 0x3e8
-      sectors:
-        - size: 0x2000
-          address: 0x0
+- name: atsame54_512
+  description: ATSAME54 512kB Flash
+  default: true
+  instructions: ASGJB4prUgcB1SFKCmDPIiBJEgIKgE4iCoIfSUlECGAAIHBHACBwRxpJSGEbSoqASorSB/zQSGEYSBE4iIBIisAH/NAIik4hCEAA0AEgcEcwtRJLD0zbHKOAY4rbB/zQyRyJCANGiQAC4CDKCR8gwwAp+tFgYQlIDziggGCKwAf80CCKTiEIQADQASAwvQAAIgABAABAAEEEAAAAEqUAAAAAAAAAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x25
+  pc_program_page: 0x51
+  pc_erase_sector: 0x29
+  data_section_offset: 0xa0
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x80000
+    page_size: 0x200
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x2000
+      address: 0x0
+  cores:
+  - main
+- name: atsame54_1024
+  description: ATSAME54 1024kB Flash
+  default: true
+  instructions: ASGJB4prUgcB1SFKCmDPIiBJEgIKgE4iCoIfSUlECGAAIHBHACBwRxpJSGEbSoqASorSB/zQSGEYSBE4iIBIisAH/NAIik4hCEAA0AEgcEcwtRJLD0zbHKOAY4rbB/zQyRyJCANGiQAC4CDKCR8gwwAp+tFgYQlIDziggGCKwAf80CCKTiEIQADQASAwvQAAIgABAABAAEEEAAAAEqUAAAAAAAAAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x25
+  pc_program_page: 0x51
+  pc_erase_sector: 0x29
+  data_section_offset: 0xa0
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x100000
+    page_size: 0x200
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x2000
+      address: 0x0
+  cores:
+  - main

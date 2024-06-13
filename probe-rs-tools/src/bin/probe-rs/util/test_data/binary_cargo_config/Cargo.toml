@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 panic-halt = "0.2.0"
-cortex-m-rt = "0.7.4"
+cortex-m-rt = "0.7.3"
 
 # This package is not part of the probe-rs workspace
 [workspace]

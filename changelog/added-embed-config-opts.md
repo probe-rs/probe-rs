@@ -1,1 +1,0 @@
-Added `verify` and `disable_double_buffering` options to Embed.toml

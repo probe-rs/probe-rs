@@ -1,6 +1,5 @@
 // Bad things happen to the VSCode debug extenison and debug_adapter if we panic at the wrong time.
 #![warn(clippy::unwrap_used, clippy::panic, clippy::expect_used)]
-// Uses Schemafy to generate DAP types from Json
 mod debug_adapter;
 mod peripherals;
 mod server;
@@ -15,17 +14,10 @@ use probe_rs::{
 };
 use server::startup::debug;
 use std::{
-    fs::File,
-    io::stderr,
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::Path,
 };
 use time::UtcOffset;
-use tracing::metadata::LevelFilter;
-use tracing_subscriber::{
-    fmt::format::FmtSpan, prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt,
-    EnvFilter, Layer,
-};
 
 use crate::util::common_options::OperationError;
 
@@ -100,60 +92,6 @@ pub fn run(
     time_offset: UtcOffset,
     log_file: Option<&Path>,
 ) -> Result<()> {
-    let log_info_message = setup_logging(log_file)?;
     let addr = SocketAddr::new(cmd.ip, cmd.port);
-
-    debug(
-        lister,
-        addr,
-        cmd.single_session,
-        &log_info_message,
-        time_offset,
-    )
-}
-
-/// Setup logging, according to the following rules.
-/// 1. If the RUST_LOG environment variable is set, use it as a `LevelFilter` to configure a subscriber that logs to a file in the system's application data directory.
-/// 2. Irrespective of the RUST_LOG environment variable, configure a subscribe that will write with `LevelFilter::ERROR` to stderr, because these errors are picked up and reported to the user by the VSCode extension.
-///
-/// Determining the local time for logging purposes can fail, so it needs to be given as a parameter here.
-fn setup_logging(log_file: Option<&Path>) -> Result<String, anyhow::Error> {
-    // We want to always log errors to stderr, but not to the log file.
-    let stderr_subscriber = tracing_subscriber::fmt::layer()
-        .compact()
-        .with_ansi(false)
-        .without_time()
-        .with_writer(stderr)
-        .with_filter(LevelFilter::ERROR);
-
-    match log_file {
-        Some(log_path) => {
-            let log_file = File::create(log_path)?;
-
-            // The log file will respect the RUST_LOG environment variable as a filter.
-            let file_subscriber = tracing_subscriber::fmt::layer()
-                .json()
-                .with_file(true)
-                .with_line_number(true)
-                .with_span_events(FmtSpan::FULL)
-                .with_writer(log_file)
-                .with_filter(EnvFilter::from_default_env());
-
-            tracing_subscriber::registry()
-                .with(stderr_subscriber)
-                .with(file_subscriber)
-                .init();
-
-            Ok(format!(
-                "Log output will be written to: {:?}",
-                log_path.display()
-            ))
-        }
-        None => {
-            tracing_subscriber::registry()
-                .with(stderr_subscriber)
-                .init();
-            Ok("No logging data will be written because the RUST_LOG environment variable is not set.".to_string())
-        }
-    }
+    debug(lister, addr, cmd.single_session, log_file, time_offset)
 }

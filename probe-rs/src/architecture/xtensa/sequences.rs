@@ -34,7 +34,7 @@ pub trait XtensaDebugSequence: Send + Sync + Debug {
         // Make sure the CPU is in a known state and is able to run code we download.
         interface.write_register({
             let mut ps = ProgramStatus(0);
-            ps.set_intlevel(1);
+            ps.set_intlevel(0);
             ps.set_user_mode(true);
             ps.set_woe(true);
             ps

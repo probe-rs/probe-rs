@@ -6,13 +6,14 @@ use crate::cmd::dap_server::{
     server::configuration::ConsoleLog,
     DebuggerError,
 };
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use serde::Serialize;
 use std::{
     collections::{BTreeMap, HashMap},
     io::{BufRead, BufReader, Read, Write},
     str,
 };
+use tracing::instrument;
 
 pub trait ProtocolAdapter {
     /// Listen for a request. This call should be non-blocking, and if not request is available, it should
@@ -70,7 +71,6 @@ where
     }
 
     fn log_to_console(&mut self, message: impl Into<String>) -> bool {
-        tracing::debug!("log_to_console");
         let event_body = match serde_json::to_value(OutputEventBody {
             output: format!("{}\n", message.into()),
             category: Some("console".to_owned()),
@@ -170,15 +170,8 @@ where
             );
         }
 
-        match self.send_raw_response(&encoded_resp) {
-            Ok(_) => {}
-            Err(error) => {
-                // If we can't send the response, we can't do much about it, so best to terminate the session with an error.
-                let message = format!("Unexpected Error while sending response: {error:?}");
-                tracing::error!("{message}");
-                return Err(anyhow::anyhow!(message));
-            }
-        }
+        self.send_raw_response(&encoded_resp)
+            .context("Unexpected Error while sending response.")?;
 
         if response_is_ok {
             match self.console_log_level() {
@@ -222,6 +215,7 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
         }
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn send_data(&mut self, raw_data: &[u8]) -> Result<(), std::io::Error> {
         let mut response_body = raw_data;
 
@@ -395,6 +389,7 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
         self.listen_for_request_and_respond()
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn send_event<S: Serialize>(
         &mut self,
         event_type: &str,
@@ -409,14 +404,9 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
 
         let encoded_event = serde_json::to_vec(&new_event)?;
 
-        let result = match self.send_data(&encoded_event) {
-            Ok(_) => Ok(()),
-            Err(error) => {
-                let message = format!("Unexpected Error while sending event: {error:?}");
-                tracing::error!("{message}");
-                Err(error)
-            }
-        };
+        let result = self
+            .send_data(&encoded_event)
+            .context("Unexpected Error while sending event.");
 
         if new_event.event != "output" {
             // This would result in an endless loop.
@@ -431,7 +421,7 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
             }
         }
 
-        result.map_err(|e| e.into())
+        result
     }
 
     fn set_console_log_level(&mut self, log_level: ConsoleLog) {

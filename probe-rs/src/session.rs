@@ -190,8 +190,7 @@ impl Session {
         };
 
         if AttachMethod::UnderReset == attach_method {
-            let span = tracing::debug_span!("Asserting hardware assert");
-            let _enter = span.enter();
+            let _span = tracing::debug_span!("Asserting hardware reset").entered();
 
             if let Some(dap_probe) = probe.try_as_dap_probe() {
                 sequence_handle.reset_hardware_assert(dap_probe)?;
@@ -446,8 +445,9 @@ impl Session {
         let mut resume_state = vec![];
         for (core, _) in self.list_cores() {
             let mut c = self.core(core)?;
-            tracing::info!("Core status: {:?}", c.status()?);
-            if !c.core_halted()? {
+            let status = c.status()?;
+            tracing::info!("Core status: {:?}", status);
+            if !status.is_halted() {
                 tracing::info!("Halting core...");
                 resume_state.push(core);
                 c.halt(Duration::from_millis(100))?;
@@ -486,7 +486,8 @@ impl Session {
     ///
     /// The idea behind this is: You need the smallest common denominator which you can share between threads. Since you sometimes need the [Core], sometimes the [Probe] or sometimes the [Target], the [Session] is the only common ground and the only handle you should actively store in your code.
     ///
-    #[tracing::instrument(skip(self), name = "attach_to_core")]
+    // By design, this is called frequently in a session, therefore we limit tracing level to "trace" to avoid spamming the logs.
+    #[tracing::instrument(level = "trace", skip(self), name = "attach_to_core")]
     pub fn core(&mut self, core_index: usize) -> Result<Core<'_>, Error> {
         let combined_state = self
             .cores
@@ -777,7 +778,11 @@ impl Session {
 }
 
 // This test ensures that [Session] is fully [Send] + [Sync].
-static_assertions::assert_impl_all!(Session: Send);
+const _: fn() = || {
+    fn assert_impl_all<T: ?Sized + Send>() {}
+
+    assert_impl_all::<Session>();
+};
 
 // TODO tiwalun: Enable again, after rework of Session::new is done.
 impl Drop for Session {

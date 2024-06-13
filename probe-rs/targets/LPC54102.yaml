@@ -1,0 +1,241 @@
+name: LPC54102
+generated_from_pack: true
+pack_file_release: 12.0.1
+variants:
+- name: LPC54102J256BD64
+  cores:
+  # - name: cm0plus
+  #   type: armv6m
+  #   core_access_options: !Arm
+  #     ap: 1
+  #     psel: 0
+  - name: cm4
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM0
+    range:
+      start: 0x2000000
+      end: 0x2010000
+    cores:
+    # - cm0plus
+    - cm4
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x2010000
+      end: 0x2018000
+    cores:
+    # - cm0plus
+    - cm4
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x3400000
+      end: 0x3402000
+    cores:
+    # - cm0plus
+    - cm4
+  - !Nvm
+    name: PROGRAM_FLASH
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    # - cm0plus
+    - cm4
+  flash_algorithms:
+  - lpc5410x_256
+- name: LPC54102J256UK49
+  cores:
+  # - name: cm0plus
+  #   type: armv6m
+  #   core_access_options: !Arm
+  #     ap: 1
+  #     psel: 0
+  - name: cm4
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM0
+    range:
+      start: 0x2000000
+      end: 0x2010000
+    cores:
+    # - cm0plus
+    - cm4
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x2010000
+      end: 0x2018000
+    cores:
+    # - cm0plus
+    - cm4
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x3400000
+      end: 0x3402000
+    cores:
+    # - cm0plus
+    - cm4
+  - !Nvm
+    name: PROGRAM_FLASH
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    # - cm0plus
+    - cm4
+  flash_algorithms:
+  - lpc5410x_256
+- name: LPC54102J512BD64
+  cores:
+  # - name: cm0plus
+  #   type: armv6m
+  #   core_access_options: !Arm
+  #     ap: 1
+  #     psel: 0
+  - name: cm4
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM0
+    range:
+      start: 0x2000000
+      end: 0x2010000
+    cores:
+    # - cm0plus
+    - cm4
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x2010000
+      end: 0x2018000
+    cores:
+    # - cm0plus
+    - cm4
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x3400000
+      end: 0x3402000
+    cores:
+    # - cm0plus
+    - cm4
+  - !Nvm
+    name: PROGRAM_FLASH
+    range:
+      start: 0x0
+      end: 0x80000
+    is_boot_memory: true
+    cores:
+    # - cm0plus
+    - cm4
+  flash_algorithms:
+  - lpc5410x_512
+- name: LPC54102J512UK49
+  cores:
+  # - name: cm0plus
+  #   type: armv6m
+  #   core_access_options: !Arm
+  #     ap: 1
+  #     psel: 0
+  - name: cm4
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM0
+    range:
+      start: 0x2000000
+      end: 0x2010000
+    cores:
+    # - cm0plus
+    - cm4
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x2010000
+      end: 0x2018000
+    cores:
+    # - cm0plus
+    - cm4
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x3400000
+      end: 0x3402000
+    cores:
+    # - cm0plus
+    - cm4
+  - !Nvm
+    name: PROGRAM_FLASH
+    range:
+      start: 0x0
+      end: 0x80000
+    is_boot_memory: true
+    cores:
+    # - cm0plus
+    - cm4
+  flash_algorithms:
+  - lpc5410x_512
+flash_algorithms:
+- name: lpc5410x_256
+  description: LPC5410x IAP 256kB Flash
+  default: true
+  instructions: wAtwR0hJR0hJRAhgR0gAIQFgQWBFSQEggDEIYAIgQQcIcAAgcEcAIHBH+LVATDIgTEQhRgAlByZhxBQxPEg9T0hEDDwAkbhHYGkAKA3RNCBhxDVISEQAaCBgNUgMPEhEAJm4R2BpACgA0AEg+L34tS9NxAsyIE1EEcUpRgwxLEgsTixgD0ZIRAg9sEdoaQAoDtE0IBHFJEgsYEhEAGhoYCNIOUZIRAg9sEdoaQAoANABIPi9+LUURgYADtEDzGJoQBghaIkYQBihaEAY4WhAGCFpQBhAQmBhCDwVTfALTUQyIWhgKWCoYClGFDERTyhGAJG4R2hpACgR0TMgrGBBxQEggAJoYAhISEQAaKhgCEgIPUhEAJm4R2hpACgA0AEg+L0AAOAuAAAEAAAAgAAAQAgAAAAFAgADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+  load_address: 0x2000020
+  pc_init: 0x5
+  pc_uninit: 0x27
+  pc_program_page: 0xb5
+  pc_erase_sector: 0x6f
+  pc_erase_all: 0x2b
+  data_section_offset: 0x138
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x40000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 300
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x8000
+      address: 0x0
+- name: lpc5410x_512
+  description: LPC5410x IAP 512kB Flash
+  default: true
+  instructions: wAtwR0hJR0hJRAhgR0gAIQFgQWBFSQEggDEIYAIgQQcIcAAgcEcAIHBH+LVATDIgTEQhRgAlDyZhxBQxPEg9T0hEDDwAkbhHYGkAKA3RNCBhxDVISEQAaCBgNUgMPEhEAJm4R2BpACgA0AEg+L34tS9NxAsyIE1EEcUpRgwxLEgsTixgD0ZIRAg9sEdoaQAoDtE0IBHFJEgsYEhEAGhoYCNIOUZIRAg9sEdoaQAoANABIPi9+LUURgYADtEDzGJoQBghaIkYQBihaEAY4WhAGCFpQBhAQmBhCDwVTfALTUQyIWhgKWCoYClGFDERTyhGAJG4R2hpACgR0TMgrGBBxQEggAJoYAhISEQAaKhgCEgIPUhEAJm4R2hpACgA0AEg+L0AAOAuAAAEAAAAgAAAQAgAAAAFAgADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+  load_address: 0x2000020
+  pc_init: 0x5
+  pc_uninit: 0x27
+  pc_program_page: 0xb5
+  pc_erase_sector: 0x6f
+  pc_erase_all: 0x2b
+  data_section_offset: 0x138
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x80000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 300
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x8000
+      address: 0x0

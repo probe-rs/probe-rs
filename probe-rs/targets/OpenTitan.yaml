@@ -1,41 +1,37 @@
 name: OpenTitan
 variants:
-  - name: earlgrey
+- name: earlgrey
+  cores:
+  - name: ibex
+    type: riscv
+    core_access_options: !Riscv
+  memory_map:
+  - !Nvm
+    name: ROM
+    range:
+      start: 0x8000
+      end: 0x10000
+    is_boot_memory: true
     cores:
-      - name: ibex
-        type: riscv
-        core_access_options:
-          !Riscv {}
-    memory_map:
-      - !Nvm
-          name: ROM
-          range:
-            start: 0x00008000
-            end: 0x00010000
-          is_boot_memory: true
-          cores:
-            - ibex
-      - !Nvm
-          name: Flash
-          range:
-            start: 0x20000000
-            end: 0x20100000
-          is_boot_memory: false
-          cores:
-            - ibex
-      - !Ram
-          name: AON Retention SRAM
-          range:
-            start: 0x40600000
-            end: 0x40601000
-          is_boot_memory: false
-          cores:
-            - ibex
-      - !Ram
-          name: Main SRAM
-          range:
-            start: 0x10000000
-            end: 0x10020000
-          is_boot_memory: false
-          cores:
-            - ibex
+    - ibex
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x20000000
+      end: 0x20100000
+    cores:
+    - ibex
+  - !Ram
+    name: AON Retention SRAM
+    range:
+      start: 0x40600000
+      end: 0x40601000
+    cores:
+    - ibex
+  - !Ram
+    name: Main SRAM
+    range:
+      start: 0x10000000
+      end: 0x10020000
+    cores:
+    - ibex

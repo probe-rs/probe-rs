@@ -1,0 +1,1 @@
+Debug sequences are now available at `probe_rs::vendor::<VENDOR>::sequences`

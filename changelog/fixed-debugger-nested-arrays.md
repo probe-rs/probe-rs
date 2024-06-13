@@ -1,1 +1,0 @@
-The debugger can now handle nested arrays in C code

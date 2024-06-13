@@ -6,11 +6,11 @@ use std::time::Instant;
 
 use anyhow::{anyhow, Context, Result};
 use colored::Colorize;
-use probe_rs::flashing::erase_all;
-use probe_rs::MemoryInterface;
 use probe_rs::{
-    flashing::{erase_sectors, DownloadOptions, FlashLoader, FlashProgress},
-    Permissions, Session,
+    flashing::{
+        erase_all, erase_sectors, DownloadOptions, FlashLoader, FlashProgress, ProgressEvent,
+    },
+    MemoryInterface, Permissions, Session,
 };
 use probe_rs_target::{ChipFamily, RawFlashAlgorithm};
 use xshell::{cmd, Shell};
@@ -73,39 +73,36 @@ pub fn cmd_test(
 
             // Register callback to update the progress.
             let t = Rc::new(RefCell::new(Instant::now()));
-            let progress = FlashProgress::new(move |event| {
-                use probe_rs::flashing::ProgressEvent;
-                match event {
-                    ProgressEvent::StartedProgramming { .. } => {
-                        let mut t = t.borrow_mut();
-                        *t = Instant::now();
-                    }
-                    ProgressEvent::StartedErasing => {
-                        let mut t = t.borrow_mut();
-                        *t = Instant::now();
-                    }
-                    ProgressEvent::FailedErasing => {
-                        println!("Failed erasing in {:?}", t.borrow().elapsed());
-                    }
-                    ProgressEvent::FinishedErasing => {
-                        println!("Finished erasing in {:?}", t.borrow().elapsed());
-                    }
-                    ProgressEvent::FailedProgramming => {
-                        println!("Failed programming in {:?}", t.borrow().elapsed());
-                    }
-                    ProgressEvent::FinishedProgramming => {
-                        println!("Finished programming in {:?}", t.borrow().elapsed());
-                    }
-                    ProgressEvent::DiagnosticMessage { message } => {
-                        let prefix = "Message".yellow();
-                        if message.ends_with('\n') {
-                            print!("{prefix}: {message}");
-                        } else {
-                            println!("{prefix}: {message}");
-                        }
-                    }
-                    _ => (),
+            let progress = FlashProgress::new(move |event| match event {
+                ProgressEvent::StartedProgramming { .. } => {
+                    let mut t = t.borrow_mut();
+                    *t = Instant::now();
                 }
+                ProgressEvent::StartedErasing => {
+                    let mut t = t.borrow_mut();
+                    *t = Instant::now();
+                }
+                ProgressEvent::FailedErasing => {
+                    println!("Failed erasing in {:?}", t.borrow().elapsed());
+                }
+                ProgressEvent::FinishedErasing => {
+                    println!("Finished erasing in {:?}", t.borrow().elapsed());
+                }
+                ProgressEvent::FailedProgramming => {
+                    println!("Failed programming in {:?}", t.borrow().elapsed());
+                }
+                ProgressEvent::FinishedProgramming => {
+                    println!("Finished programming in {:?}", t.borrow().elapsed());
+                }
+                ProgressEvent::DiagnosticMessage { message } => {
+                    let prefix = "Message".yellow();
+                    if message.ends_with('\n') {
+                        print!("{prefix}: {message}");
+                    } else {
+                        println!("{prefix}: {message}");
+                    }
+                }
+                _ => (),
             });
 
             let flash_algorithm = if let Some(test_start_sector_address) = test_start_sector_address
@@ -264,9 +261,9 @@ pub fn run_flash_erase(
     erase_type: EraseType,
 ) -> Result<()> {
     if let EraseSectors(start_sector, sectors) = erase_type {
-        erase_sectors(session, Some(progress), start_sector, sectors)?;
+        erase_sectors(session, progress, start_sector, sectors)?;
     } else {
-        erase_all(session, Some(progress))?;
+        erase_all(session, progress)?;
     }
 
     Ok(())

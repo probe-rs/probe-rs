@@ -1,28 +1,25 @@
 name: iMX7ULP
 manufacturer:
-  cc: 0x00
   id: 0x15
+  cc: 0x0
 variants:
-  - name: iMX7ULP
+- name: iMX7ULP
+  cores:
+  - name: core0
+    type: armv7a
+    core_access_options: !Arm
+      ap: 1
+      psel: 0x0
+      debug_base: 0x80030000
+  - name: core1
+    type: armv7em
+    core_access_options: !Arm
+      ap: 3
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x60000000
+      end: 0x80000000
     cores:
-      - name: core0
-        type: armv7a
-        core_access_options:
-          !Arm
-            ap: 0x1
-            psel: 0x0
-            debug_base: 0x80030000
-      - name: core1
-        type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x3
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x60000000
-            end: 0x80000000
-          is_boot_memory: false
-          cores:
-            - core0
+    - core0

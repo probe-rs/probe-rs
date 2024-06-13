@@ -12,9 +12,7 @@ license.workspace = true
 
 description = "A collection of on chip debugging tools to communicate with microchips."
 
-
 default-run = "probe-rs"
-
 
 [dependencies]
 anyhow = { workspace = true }
@@ -26,74 +24,83 @@ num-traits = "0.2"
 scroll = "0.12"
 serde = { version = "1", features = ["derive"] }
 thiserror = { workspace = true }
-tracing = { version = "0.1", features = ["log"] }
+tracing = "0.1"
 typed-path = "0.8"
 # path
 probe-rs-target = { workspace = true }
+probe-rs-mi = { workspace = true }
 
-itertools = { version = "0.12" }
+itertools = "0.13"
 
-# CLI-only
-addr2line = { version = "0.23" }
-byte-unit = { version = "5" }
-bytesize = { version = "1" }
-capstone = { version = "0.12" }
-cargo_metadata = { version = "0.18" }
+
+addr2line = { version = "0.23" } # CLI-only
 clap = { version = "4", features = ["derive", "env"] }
-colored = { version = "2" }
-crossterm = { version = "<= 0.27" }
-defmt-decoder = { version = "=0.3.10", features = [
+itm = { version = "0.9.0-rc.1", default-features = false }
+bytesize = "1"
+capstone = "0.12"
+cargo_metadata = "0.18"
+colored = "2"
+crossterm = "<= 0.27"
+defmt-decoder = { version = "=0.3.11", features = [
     "unstable",
 ] } # pinned because "unstable" has potential for breaking changes
-directories = { version = "5" }
-dunce = { version = "1" }
+directories = "5"
+dunce = "1"
 figment = { version = "0.10", features = ["toml", "json", "yaml", "env"] }
-goblin = { version = "0.8" }
-indicatif = { version = "0.17" }
-insta = { version = "1.38", default-features = false, features = [
-    "yaml",
-    "filters",
+goblin = { version = "0.8", default-features = false, features = [
+    "elf32",
+    "elf64",
+    "endian_fd",
 ] }
-itm = { version = "0.9.0-rc.1", default-features = false }
+indicatif = "0.17"
+insta = { version = "1.38", default-features = false, features = ["yaml"] }
 parse_int = "0.6"
-libtest-mimic = { version = "0.7.2" }
-rand = { version = "0.8" }
-rustyline = { version = "14" }
-sanitize-filename = { version = "0.5" }
-schemafy = { version = "0.6" }
-serde_json = { version = "1.0.116" }
-signal-hook = "0.3"
+libtest-mimic = "0.7.2"
+fastrand = "2.1"
+rustyline = { version = "14", default-features = false, features = [
+    "with-dirs",
+    "with-file-history",
+] }
+sanitize-filename = "0.5"
+schemafy = "0.6"
+serde_json = "1.0.116"
+signal-hook = { version = "0.3", default-features = false }
 svd-parser = { version = "0.14", features = ["expand"] }
-termtree = { version = "0.4" }
-textwrap = { version = "0.16" }
+termtree = "0.4"
+textwrap = { version = "0.16", default-features = false, features = [
+    "unicode-linebreak",
+    "unicode-width",
+] }
 time = { version = "0.3", default-features = false, features = [
-    "alloc",
     "formatting",
-    "large-dates",
     "macros",
     "local-offset",
 ] }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
-tracing-appender = { version = "0.2" }
+tracing-appender = "0.2"
 ratatui = { version = "0.26.2", default-features = false, features = [
     "crossterm",
 ] }
 ansi-parser = "0.9.0"
 
-probe-rs = { version = "0.23.0", path = "../probe-rs", features = [
+probe-rs = { version = "0.24.0", path = "../probe-rs", features = [
     "gdb-server",
 ] }
 parking_lot = "0.12.2"
 cargo-config2 = "0.1.26"
 clap_complete = "4.5.2"
 regex = "1.10.4"
+zip = { version = "2.0.0", default-features = false, features = [
+    "deflate",
+    "time",
+] }
+urlencoding = "2"
 
 [build-dependencies]
-git-version = { version = "0.3" }
+git-version = "0.3"
 
 [dev-dependencies]
 pretty_assertions = "1.4.0"
-
 
 # Set the proper name for the homebrew formula
 [package.metadata.dist]

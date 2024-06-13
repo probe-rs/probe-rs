@@ -1,7 +1,7 @@
 name: GD32E50x Series
 manufacturer:
-  cc: 0x06
   id: 0x48
+  cc: 0x6
 generated_from_pack: true
 pack_file_release: 1.3.2
 variants:
@@ -11,7 +11,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -36,7 +36,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -61,7 +61,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -86,7 +86,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -111,7 +111,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -136,7 +136,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -161,7 +161,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -186,7 +186,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -211,7 +211,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -236,7 +236,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -261,7 +261,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -286,7 +286,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -311,7 +311,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -336,7 +336,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -361,7 +361,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -386,7 +386,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -411,7 +411,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -436,7 +436,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -461,7 +461,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -486,7 +486,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -511,7 +511,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -536,7 +536,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -561,7 +561,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1
@@ -586,7 +586,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: IRAM1

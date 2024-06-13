@@ -3,13 +3,14 @@
 use super::{Chip, ChipFamily, ChipInfo, Core, Target, TargetDescriptionSource};
 use crate::config::CoreType;
 use once_cell::sync::Lazy;
+use parking_lot::{RwLock, RwLockReadGuard};
 use probe_rs_target::{BinaryFormat, CoreAccessOptions, RiscvCoreAccessOptions};
 use std::collections::HashMap;
 use std::io::Read;
-use std::sync::{Arc, Mutex};
+use std::ops::Deref;
 
-static REGISTRY: Lazy<Arc<Mutex<Registry>>> =
-    Lazy::new(|| Arc::new(Mutex::new(Registry::from_builtin_families())));
+static REGISTRY: Lazy<RwLock<Registry>> =
+    Lazy::new(|| RwLock::new(Registry::from_builtin_families()));
 
 /// Error type for all errors which occur when working
 /// with the internal registry of targets.
@@ -122,17 +123,10 @@ struct Registry {
 
 impl Registry {
     fn from_builtin_families() -> Self {
-        #[cfg(feature = "builtin-targets")]
-        let mut families = {
-            const BUILTIN_TARGETS: &[u8] =
-                include_bytes!(concat!(env!("OUT_DIR"), "/targets.bincode"));
+        const BUILTIN_TARGETS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/targets.bincode"));
 
-            bincode::deserialize(BUILTIN_TARGETS)
-                .expect("Failed to deserialize builtin targets. This is a bug")
-        };
-
-        #[cfg(not(feature = "builtin-targets"))]
-        let mut families = vec![];
+        let mut families = bincode::deserialize(BUILTIN_TARGETS)
+            .expect("Failed to deserialize builtin targets. This is a bug");
 
         add_generic_targets(&mut families);
 
@@ -141,10 +135,6 @@ impl Registry {
         // `validate_builtin` as well, to ensure we do not ship broken target definitions.
 
         Self { families }
-    }
-
-    fn families(&self) -> &Vec<ChipFamily> {
-        &self.families
     }
 
     fn get_target_by_name(&self, name: impl AsRef<str>) -> Result<Target, RegistryError> {
@@ -336,7 +326,7 @@ impl Registry {
 
 /// Get a target from the internal registry based on its name.
 pub fn get_target_by_name(name: impl AsRef<str>) -> Result<Target, RegistryError> {
-    REGISTRY.lock().unwrap().get_target_by_name(name)
+    REGISTRY.read_recursive().get_target_by_name(name)
 }
 
 /// Get a target & chip family from the internal registry based on its name.
@@ -344,8 +334,7 @@ pub fn get_target_and_family_by_name(
     name: impl AsRef<str>,
 ) -> Result<(Target, ChipFamily), RegistryError> {
     REGISTRY
-        .lock()
-        .unwrap()
+        .read_recursive()
         .get_target_and_family_by_name(name.as_ref())
 }
 
@@ -354,19 +343,18 @@ pub fn get_targets_by_family_name(
     family_name: impl AsRef<str>,
 ) -> Result<Vec<String>, RegistryError> {
     REGISTRY
-        .lock()
-        .unwrap()
+        .read_recursive()
         .get_targets_by_family_name(family_name.as_ref())
 }
 
 /// Returns targets from the internal registry that match the given name.
 pub fn search_chips(name: impl AsRef<str>) -> Result<Vec<String>, RegistryError> {
-    Ok(REGISTRY.lock().unwrap().search_chips(name.as_ref()))
+    Ok(REGISTRY.read_recursive().search_chips(name.as_ref()))
 }
 
 /// Try to retrieve a target based on [ChipInfo] read from a target.
 pub(crate) fn get_target_by_chip_info(chip_info: ChipInfo) -> Result<Target, RegistryError> {
-    REGISTRY.lock().unwrap().get_target_by_chip_info(chip_info)
+    REGISTRY.read_recursive().get_target_by_chip_info(chip_info)
 }
 
 /// Parse a target description and add the contained targets
@@ -396,13 +384,24 @@ pub fn add_target_from_yaml<R>(yaml_reader: R) -> Result<(), RegistryError>
 where
     R: Read,
 {
-    REGISTRY.lock().unwrap().add_target_from_yaml(yaml_reader)
+    REGISTRY.write().add_target_from_yaml(yaml_reader)
+}
+
+/// Get a list of all families which are contained in the internal
+/// registry.
+///
+/// As opposed to `families()` this function does not clone the families, but using it is
+/// slightly more cumbersome.
+pub fn families_ref() -> impl Deref<Target = [ChipFamily]> {
+    RwLockReadGuard::map(REGISTRY.read_recursive(), |registry| {
+        registry.families.as_slice()
+    })
 }
 
 /// Get a list of all families which are contained in the internal
 /// registry.
 pub fn families() -> Vec<ChipFamily> {
-    REGISTRY.lock().unwrap().families().clone()
+    families_ref().to_vec()
 }
 
 /// See if `name` matches the start of `pattern`, treating any lower-case `x`
@@ -486,7 +485,7 @@ mod tests {
     fn validate_builtin() {
         let registry = Registry::from_builtin_families();
         registry
-            .families()
+            .families
             .iter()
             .map(|family| family.validate())
             .collect::<Result<Vec<_>, _>>()

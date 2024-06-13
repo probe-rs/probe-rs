@@ -1,1 +1,0 @@
-Armv8a: add fast memory access functions for AArch64

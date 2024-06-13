@@ -1,0 +1,1 @@
+The debug stack unwind will continue attempting an unwind when encountering a 0(zero) value for the Link Register (LR).

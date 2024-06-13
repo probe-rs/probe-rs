@@ -671,16 +671,6 @@ impl DebugInfo {
                 stack_frames.push(exception_frame);
                 // We have everything we need to unwind the next frame in the stack.
                 continue 'unwind;
-            } else {
-                // Check LR values to determine if we can continue unwinding.
-                if unwind_registers
-                    .get_return_address()
-                    .map(|lr| lr.is_zero() || lr.is_max_value())
-                    .unwrap_or(true)
-                {
-                    tracing::trace!("UNWIND: Stack unwind complete - Reached the 'Reset' value of the LR register.");
-                    break;
-                }
             };
 
             // PART 2: Setup the registers for the next iteration (a.k.a. unwind previous frame, a.k.a. "callee", in the call stack).
@@ -1844,7 +1834,7 @@ mod test {
             &[0x20003ff8, 0x00000161, 0x00000000, 0x0000013d],
         );
 
-        let exception_handler = Box::new(ArmV7MExceptionHandler {});
+        let exception_handler = Box::new(ArmV7MExceptionHandler);
 
         let frames = debug_info
             .unwind_impl(

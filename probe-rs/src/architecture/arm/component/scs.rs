@@ -41,7 +41,6 @@ mod register {
 
     memory_mapped_bitfield_register! {
         /// B3.2.3 CPUID Base Register
-        #[allow(non_camel_case_types)]
         pub struct CPUID(u32);
         0xD00, "CPUID",
         impl From;
@@ -49,5 +48,38 @@ mod register {
         pub variant, _: 23, 20;
         pub partno, _: 15, 4;
         pub revision, _: 3, 0;
+    }
+
+    impl CPUID {
+        /// Implementer code.
+        pub fn implementer_name(&self) -> String {
+            match self.implementer() {
+                0x41 => String::from("ARM Ltd"),
+                0x49 => String::from("Infineon"),
+                0x72 => String::from("Realtek"),
+                other => format!("{other:#x}"),
+            }
+        }
+
+        pub fn part_name(&self) -> String {
+            match self.implementer() {
+                0x41 => match self.partno() {
+                    0xC20 => String::from("Cortex-M0"),
+                    0xC21 => String::from("Cortex-M1"),
+                    0xC23 => String::from("Cortex-M3"),
+                    0xC24 => String::from("Cortex-M4"),
+                    0xC27 => String::from("Cortex-M7"),
+                    0xC60 => String::from("Cortex-M0+"),
+                    0xD20 => String::from("Cortex-M23"),
+                    0xD21 => String::from("Cortex-M33"),
+                    0xD31 => String::from("Cortex-M35P"),
+                    0xD22 => String::from("Cortex-M55"),
+                    0xD23 => String::from("Cortex-M85"),
+                    0xD24 => String::from("Cortex-M52"),
+                    _ => format!("{:#x}", self.partno()),
+                },
+                _ => format!("{:#x}", self.partno()),
+            }
+        }
     }
 }

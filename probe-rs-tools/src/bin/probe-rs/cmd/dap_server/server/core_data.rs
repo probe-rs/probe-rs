@@ -438,7 +438,7 @@ fn try_attach_rtt(
     let header_address = RttActiveTarget::get_rtt_symbol_from_bytes(&elf)
         .ok_or_else(|| anyhow!("No RTT control block found in ELF file"))?;
 
-    let scan_region = ScanRegion::Exact(header_address as u32);
+    let scan_region = ScanRegion::Exact(header_address);
 
     let memory_regions = core.memory_regions().cloned().collect::<Vec<_>>();
 

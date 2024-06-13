@@ -1,1 +1,0 @@
-It is now possible to `probe-rs erase` ESP32 chips

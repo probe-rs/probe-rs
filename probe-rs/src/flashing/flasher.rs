@@ -1,9 +1,10 @@
-use probe_rs_target::{MemoryRegion, RamRegion, RawFlashAlgorithm};
+use probe_rs_target::{MemoryRegion, RawFlashAlgorithm};
 use tracing::Level;
 
 use super::{FlashAlgorithm, FlashBuilder, FlashError, FlashFill, FlashPage, FlashProgress};
 use crate::config::NvmRegion;
 use crate::flashing::encoder::FlashEncoder;
+use crate::flashing::FlashLayout;
 use crate::memory::MemoryInterface;
 use crate::{core::CoreRegisters, session::Session, Core, InstructionSet};
 use std::{
@@ -62,23 +63,16 @@ impl<'session> Flasher<'session> {
         session: &'session mut Session,
         core_index: usize,
         raw_flash_algorithm: &RawFlashAlgorithm,
-        progress: Option<FlashProgress>,
+        progress: FlashProgress,
     ) -> Result<Self, FlashError> {
         let target = session.target();
-
-        fn filter_ram_region(mm: &MemoryRegion) -> Option<&RamRegion> {
-            match mm {
-                MemoryRegion::Ram(ram) => Some(ram),
-                _ => None,
-            }
-        }
 
         // Find a RAM region from which we can run the algo.
         let mm = &target.memory_map;
         let core_name = &target.cores[core_index].name;
         let ram = mm
             .iter()
-            .filter_map(filter_ram_region)
+            .filter_map(MemoryRegion::as_ram_region)
             .find(|ram| {
                 // If the algorithm has a forced load address, we try to use it.
                 // If not, then follow the CMSIS-Pack spec and use first available RAM region.
@@ -104,7 +98,7 @@ impl<'session> Flasher<'session> {
 
         let data_ram = if let Some(data_load_address) = raw_flash_algorithm.data_load_address {
             mm.iter()
-                .filter_map(filter_ram_region)
+                .filter_map(MemoryRegion::as_ram_region)
                 .find(|ram| {
                     // The RAM must contain the forced load address _and_
                     // be accessible from the core we're going to run the
@@ -130,7 +124,7 @@ impl<'session> Flasher<'session> {
             session,
             core_index,
             flash_algorithm,
-            progress: progress.unwrap_or(FlashProgress::new(|_| {})),
+            progress,
         };
 
         this.load()?;
@@ -180,19 +174,21 @@ impl<'session> Flasher<'session> {
 
         for (offset, (original, read_back)) in algo.instructions.iter().zip(data.iter()).enumerate()
         {
-            if original != read_back {
-                tracing::error!(
-                    "Failed to verify flash algorithm. Data mismatch at address {:#010x}",
-                    algo.load_address + (4 * offset) as u64
-                );
-                tracing::error!("Original instruction: {:#010x}", original);
-                tracing::error!("Readback instruction: {:#010x}", read_back);
-
-                tracing::error!("Original: {:x?}", &algo.instructions);
-                tracing::error!("Readback: {:x?}", &data);
-
-                return Err(FlashError::FlashAlgorithmNotLoaded);
+            if original == read_back {
+                continue;
             }
+
+            tracing::error!(
+                "Failed to verify flash algorithm. Data mismatch at address {:#010x}",
+                algo.load_address + (4 * offset) as u64
+            );
+            tracing::error!("Original instruction: {:#010x}", original);
+            tracing::error!("Readback instruction: {:#010x}", read_back);
+
+            tracing::error!("Original: {:x?}", &algo.instructions);
+            tracing::error!("Readback: {:x?}", &data);
+
+            return Err(FlashError::FlashAlgorithmNotLoaded);
         }
 
         tracing::debug!("RAM contents match flashing algo blob.");
@@ -307,12 +303,7 @@ impl<'session> Flasher<'session> {
     ) -> Result<(), FlashError> {
         tracing::debug!("Starting program procedure.");
         // Convert the list of flash operations into flash sectors and pages.
-        let mut flash_layout = flash_builder.build_sectors_and_pages(
-            region,
-            &self.flash_algorithm,
-            restore_unwritten_bytes,
-        )?;
-        self.progress.initialized(flash_layout.clone());
+        let mut flash_layout = self.flash_layout(region, flash_builder, restore_unwritten_bytes)?;
 
         tracing::debug!("Double Buffering enabled: {:?}", enable_double_buffering);
         tracing::debug!(
@@ -345,7 +336,7 @@ impl<'session> Flasher<'session> {
 
         let flash_encoder = FlashEncoder::new(self.flash_algorithm.transfer_encoding, flash_layout);
 
-        // Skip erase if necessary
+        // Skip erase if necessary (i.e. chip erase was done before)
         if !skip_erasing {
             // Erase all necessary sectors
             self.sector_erase(&flash_encoder)?;
@@ -383,13 +374,8 @@ impl<'session> Flasher<'session> {
 
     /// Programs the pages given in `flash_layout` into the flash.
     fn program_simple(&mut self, flash_encoder: &FlashEncoder) -> Result<(), FlashError> {
-        self.progress.started_programming(
-            flash_encoder
-                .pages()
-                .iter()
-                .map(|p| p.data().len() as u64)
-                .sum(),
-        );
+        self.progress
+            .started_programming(flash_encoder.program_size());
 
         let mut t = Instant::now();
         let result = self.run_program(|active| {
@@ -456,13 +442,8 @@ impl<'session> Flasher<'session> {
     /// fit at least two page buffers. See [Flasher::double_buffering_supported].
     fn program_double_buffer(&mut self, flash_encoder: &FlashEncoder) -> Result<(), FlashError> {
         let mut current_buf = 0;
-        self.progress.started_programming(
-            flash_encoder
-                .pages()
-                .iter()
-                .map(|p| p.data().len() as u64)
-                .sum(),
-        );
+        self.progress
+            .started_programming(flash_encoder.program_size());
 
         let mut t = Instant::now();
         let result = self.run_program(|active| {
@@ -529,6 +510,19 @@ impl<'session> Flasher<'session> {
         }
 
         Ok(())
+    }
+
+    pub(super) fn flash_layout(
+        &self,
+        region: &NvmRegion,
+        flash_builder: &FlashBuilder,
+        restore_unwritten_bytes: bool,
+    ) -> Result<FlashLayout, FlashError> {
+        flash_builder.build_sectors_and_pages(
+            region,
+            &self.flash_algorithm,
+            restore_unwritten_bytes,
+        )
     }
 }
 
@@ -718,7 +712,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
                 let rtt = match crate::rtt::Rtt::attach_region(
                     &mut self.core,
                     &self.memory_map,
-                    &crate::rtt::ScanRegion::Exact(rtt_address as u32),
+                    &crate::rtt::ScanRegion::Exact(rtt_address),
                 ) {
                     Ok(rtt) => Some(rtt),
                     Err(error) => {

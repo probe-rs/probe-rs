@@ -11,7 +11,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 1
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -43,7 +43,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 1
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -75,7 +75,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 1
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -107,7 +107,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 1
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -139,7 +139,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 1
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -171,7 +171,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 1
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1_2
@@ -204,7 +204,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 1
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1_2
@@ -237,7 +237,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 1
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1_2
@@ -270,7 +270,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 1
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1_2
@@ -303,7 +303,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 1
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1_2
@@ -336,7 +336,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 1
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1_2
@@ -369,7 +369,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 1
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1_2
@@ -402,7 +402,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 1
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1_2
@@ -435,7 +435,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 1
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1_2
@@ -468,7 +468,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 1
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1_2
@@ -501,7 +501,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 1
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1_2
@@ -534,7 +534,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 1
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1_2
@@ -567,7 +567,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 1
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1_2
@@ -600,7 +600,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 1
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1_2
@@ -633,7 +633,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 1
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1_2
@@ -666,7 +666,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 1
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1_2
@@ -699,7 +699,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 1
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1_2
@@ -732,7 +732,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 1
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1_2
@@ -765,7 +765,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 1
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1_2
@@ -798,7 +798,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 1
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1_2
@@ -831,7 +831,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 1
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1_2
@@ -864,7 +864,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 1
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1_2
@@ -897,7 +897,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 1
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1_2

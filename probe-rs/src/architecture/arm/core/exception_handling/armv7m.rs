@@ -314,7 +314,7 @@ impl ExceptionReason {
 }
 
 /// Exception handling for cores based on the ARMv7-M and ARMv7-EM architectures.
-pub struct ArmV7MExceptionHandler {}
+pub struct ArmV7MExceptionHandler;
 
 impl ExceptionInterface for ArmV7MExceptionHandler {
     fn exception_details(
