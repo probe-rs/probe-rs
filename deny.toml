@@ -118,6 +118,7 @@ allow = [
     "MIT-0",
     "MPL-2.0",
     "Unicode-DFS-2016",
+    "Unicode-3.0",
     "OpenSSL",
 ]
 # The confidence threshold for detecting a license from license text.
