@@ -914,27 +914,20 @@ pub enum ResolvedCoreOptions {
 
 impl ResolvedCoreOptions {
     fn new(target: &Target, options: CoreAccessOptions) -> Self {
-        match options {
-            CoreAccessOptions::Arm(options) => {
-                if let DebugSequence::Arm(sequence) = target.debug_sequence.clone() {
-                    return ResolvedCoreOptions::Arm { sequence, options };
-                }
+        match (options, target.debug_sequence.clone()) {
+            (CoreAccessOptions::Arm(options), DebugSequence::Arm(sequence)) => {
+                Self::Arm { sequence, options }
             }
-            CoreAccessOptions::Riscv(options) => {
-                if let DebugSequence::Riscv(sequence) = target.debug_sequence.clone() {
-                    return ResolvedCoreOptions::Riscv { sequence, options };
-                }
+            (CoreAccessOptions::Riscv(options), DebugSequence::Riscv(sequence)) => {
+                Self::Riscv { sequence, options }
             }
-            CoreAccessOptions::Xtensa(options) => {
-                if let DebugSequence::Xtensa(sequence) = target.debug_sequence.clone() {
-                    return ResolvedCoreOptions::Xtensa { sequence, options };
-                }
+            (CoreAccessOptions::Xtensa(options), DebugSequence::Xtensa(sequence)) => {
+                Self::Xtensa { sequence, options }
             }
+            _ => unreachable!(
+                "Mismatch between core kind and access options. This is a bug, please report it."
+            ),
         }
-
-        unreachable!(
-            "Mismatch between core kind and access options. This is a bug, please report it."
-        );
     }
 
     fn interface_idx(&self) -> usize {

@@ -290,11 +290,9 @@ impl Rtt {
         let mut offset = up_channels_start as u64;
         for (i, b) in up_channels_buffer.into_iter().enumerate() {
             if let Some(chan) = Channel::from(core, i, memory_map, ptr + offset, b)? {
-                let up_channel = UpChannel(chan);
-                _ = up_channel.mode(core)?;
-                up_channels.push(up_channel);
+                up_channels.push(UpChannel(chan));
             } else {
-                tracing::warn!("Buffer for up channel {} not initialized", i);
+                tracing::warn!("Buffer for up channel {i} not initialized");
             }
             offset += b.size() as u64;
         }
@@ -303,7 +301,7 @@ impl Rtt {
             if let Some(chan) = Channel::from(core, i, memory_map, ptr + offset, b)? {
                 down_channels.push(DownChannel(chan));
             } else {
-                tracing::warn!("Buffer for down channel {} not initialized", i);
+                tracing::warn!("Buffer for down channel {i} not initialized");
             }
             offset += b.size() as u64;
         }
