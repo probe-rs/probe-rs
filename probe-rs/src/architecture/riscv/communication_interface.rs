@@ -665,16 +665,19 @@ impl<'state> RiscvCommunicationInterface<'state> {
         let start = Instant::now();
 
         while start.elapsed() < timeout {
-            let dmstatus: Dmstatus = self.read_dm_register()?;
-
-            tracing::trace!("{:?}", dmstatus);
-
-            if dmstatus.allhalted() {
+            if self.core_halted()? {
                 return Ok(());
             }
         }
 
         Err(RiscvError::Timeout)
+    }
+
+    pub(crate) fn core_halted(&mut self) -> Result<bool, RiscvError> {
+        let dmstatus: Dmstatus = self.read_dm_register()?;
+        tracing::trace!("{:?}", dmstatus);
+
+        Ok(dmstatus.allhalted())
     }
 
     pub(super) fn read_csr(&mut self, address: u16) -> Result<u32, RiscvError> {
@@ -692,6 +695,18 @@ impl<'state> RiscvCommunicationInterface<'state> {
             Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
                 tracing::debug!("Could not read core register {:#x} with abstract command, falling back to program buffer", address);
                 self.read_csr_progbuf(address)
+            }
+            other => other,
+        }
+    }
+
+    pub(super) fn write_csr(&mut self, address: u16, value: u32) -> Result<(), RiscvError> {
+        tracing::debug!("Writing CSR {:#x}", address);
+
+        match self.abstract_cmd_register_write(address, value) {
+            Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
+                tracing::debug!("Could not write core register {:#x} with abstract command, falling back to program buffer", address);
+                self.write_csr_progbuf(address, value)
             }
             other => other,
         }
@@ -2242,3 +2257,14 @@ memory_mapped_bitfield_register! { pub struct Confstrptr0(u32); 0x19, "confstrpt
 memory_mapped_bitfield_register! { pub struct Confstrptr1(u32); 0x1a, "confstrptr1", impl From; }
 memory_mapped_bitfield_register! { pub struct Confstrptr2(u32); 0x1b, "confstrptr2", impl From; }
 memory_mapped_bitfield_register! { pub struct Confstrptr3(u32); 0x1c, "confstrptr3", impl From; }
+
+// TODO: do we want typed registers for these?
+pub(super) struct Csr;
+
+impl Csr {
+    // CSR register addresses
+    pub const TSELECT: u16 = 0x7b0;
+    pub const TDATA1: u16 = 0x7b1;
+    pub const TDATA2: u16 = 0x7b2;
+    pub const TINFO: u16 = 0x7b4;
+}

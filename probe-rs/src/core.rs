@@ -641,7 +641,7 @@ impl<'probe> Core<'probe> {
             .inner
             .hw_breakpoints()?
             .iter()
-            .position(|bp| bp.is_some() && bp.unwrap() == address);
+            .position(|&bp| bp == Some(address));
 
         tracing::debug!(
             "Will clear HW breakpoint    #{} with comparator address    {:#08x}",
