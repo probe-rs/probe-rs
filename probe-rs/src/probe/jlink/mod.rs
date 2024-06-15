@@ -96,13 +96,14 @@ impl ProbeFactory for JLinkFactory {
             .open()
             .map_err(|e| open_error(e, "opening the USB device"))?;
 
-        let configs: Vec<_> = handle.configurations().collect();
+        let mut configs = handle.configurations();
+        let conf = configs.next().unwrap();
 
-        if configs.len() != 1 {
-            warn!("device has {} configurations, expected 1", configs.len());
+        let rest = configs.count();
+        if rest != 0 {
+            warn!("device has {} configurations, expected 1", rest + 1);
         }
 
-        let conf = &configs[0];
         debug!("scanning {} interfaces", conf.interfaces().count());
         trace!("active configuration descriptor: {:#x?}", conf);
 
