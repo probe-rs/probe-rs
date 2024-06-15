@@ -2,6 +2,8 @@ name: STM32F1 Series
 manufacturer:
   id: 0x20
   cc: 0x0
+generated_from_pack: true
+pack_file_release: 2.4.1
 variants:
 - name: STM32F100C4
   cores:
@@ -12,12 +14,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20001000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8004000
@@ -36,12 +40,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20001000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8008000
@@ -60,12 +66,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
@@ -84,12 +92,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -108,12 +118,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20001000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8004000
@@ -132,12 +144,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20001000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8008000
@@ -156,12 +170,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
@@ -180,12 +196,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -204,12 +222,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20006000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8040000
@@ -228,12 +248,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20008000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8060000
@@ -252,12 +274,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20008000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -276,12 +300,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
@@ -300,12 +326,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -324,12 +352,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20006000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8040000
@@ -348,12 +378,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20008000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8060000
@@ -372,12 +404,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20008000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -396,12 +430,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20006000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8040000
@@ -420,12 +456,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20008000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8060000
@@ -444,12 +482,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20008000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -468,12 +508,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20001000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8004000
@@ -492,12 +534,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20001800
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8008000
@@ -516,12 +560,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002800
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
@@ -540,12 +586,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20004000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -564,12 +612,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20001000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8004000
@@ -588,12 +638,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20001800
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8008000
@@ -612,12 +664,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002800
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
@@ -636,12 +690,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20004000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -660,12 +716,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20008000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8040000
@@ -684,12 +742,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x2000c000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8060000
@@ -708,12 +768,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x2000c000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -732,12 +794,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20014000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x80c0000
@@ -756,12 +820,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20014000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -780,12 +846,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20001000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8004000
@@ -804,12 +872,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20001800
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8008000
@@ -828,12 +898,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002800
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
@@ -852,12 +924,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20004000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -876,12 +950,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002800
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
@@ -900,12 +976,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20004000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -924,12 +1002,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20008000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8040000
@@ -948,12 +1028,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x2000c000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8060000
@@ -972,12 +1054,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x2000c000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -996,12 +1080,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20014000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x80c0000
@@ -1020,12 +1106,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20014000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -1044,12 +1132,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20008000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8040000
@@ -1068,12 +1158,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x2000c000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8060000
@@ -1092,12 +1184,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x2000c000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -1116,12 +1210,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20014000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x80c0000
@@ -1140,12 +1236,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20014000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -1164,12 +1262,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20001000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8004000
@@ -1188,12 +1288,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20001800
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8008000
@@ -1212,12 +1314,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002800
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
@@ -1236,12 +1340,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20004000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -1260,12 +1366,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20001000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8004000
@@ -1284,12 +1392,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20001800
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8008000
@@ -1308,12 +1418,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002800
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
@@ -1332,12 +1444,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20004000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -1356,12 +1470,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20001800
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8004000
@@ -1380,12 +1496,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002800
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8008000
@@ -1404,12 +1522,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
@@ -1428,12 +1548,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -1452,12 +1574,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20001800
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8004000
@@ -1476,12 +1600,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002800
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8008000
@@ -1500,12 +1626,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
@@ -1524,12 +1652,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -1548,12 +1678,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x2000c000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8040000
@@ -1572,12 +1704,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20010000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8060000
@@ -1596,12 +1730,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20010000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -1620,12 +1756,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20018000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x80c0000
@@ -1644,12 +1782,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20018000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -1668,12 +1808,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20001800
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8004000
@@ -1692,12 +1834,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002800
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8008000
@@ -1716,12 +1860,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
@@ -1740,12 +1886,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -1764,12 +1912,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
@@ -1788,12 +1938,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -1812,12 +1964,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x2000c000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8040000
@@ -1836,12 +1990,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20010000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8060000
@@ -1860,12 +2016,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20010000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -1884,12 +2042,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20018000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x80c0000
@@ -1908,12 +2068,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20018000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -1932,12 +2094,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x2000c000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8040000
@@ -1956,12 +2120,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20010000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8060000
@@ -1980,12 +2146,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20010000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -2004,12 +2172,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20018000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x80c0000
@@ -2028,12 +2198,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20018000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -2052,12 +2224,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20010000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
@@ -2076,12 +2250,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20010000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -2100,12 +2276,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20010000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8040000
@@ -2124,12 +2302,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20010000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
@@ -2148,12 +2328,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20010000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -2172,12 +2354,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20010000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8040000
@@ -2196,12 +2380,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20010000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -2220,12 +2406,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20010000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8040000
@@ -2244,12 +2432,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20010000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -2268,12 +2458,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20010000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8040000
@@ -2284,29 +2476,6 @@ variants:
   - stm32f10x_512
   - stm32f10x_opt
 flash_algorithms:
-- name: stm32f10x_512
-  description: STM32F10x High-density Flash
-  default: true
-  instructions: ELUDRgAgREwgYERIYGBESGBgIEbAaRDwBA8I0UXyVVBATCBgBiBgYED2/3CgYAAgEL0BRjhIAGlA8IAANkoQYQAgcEc0SABpQPAEADJJCGEIRgBpQPBAAAhhA+BK9qogMEkIYCxIwGgQ8AEP9tEqSABpIPAEAChJCGEAIHBHAUYlSABpQPACACNKEGEQRkFhAGlA8EAAEGED4Er2qiAhShBgHUjAaBDwAQ/20RpIAGkg8AIAGEoQYQAgcEcQtQNGSBwg8AEBIuATSABpQPABABFMIGEQiBiAAL8PSMBoEPABD/rRDEgAaSDwAQAKTCBhIEbAaBDwFA8G0CBGwGhA8BQA4GABIBC9mxySHIkeACna0QAg9+cAAAAgAkAjAWdFq4nvzQAwAEAAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x33
-  pc_program_page: 0xbd
-  pc_erase_sector: 0x7f
-  pc_erase_all: 0x45
-  data_section_offset: 0x128
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8080000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 100
-    erase_sector_timeout: 500
-    sectors:
-    - size: 0x800
-      address: 0x0
-  cores:
-  - main
 - name: stm32f10x_128
   description: STM32F10x Med-density Flash
   default: true
@@ -2328,8 +2497,6 @@ flash_algorithms:
     sectors:
     - size: 0x400
       address: 0x0
-  cores:
-  - main
 - name: stm32f10x_opt
   description: STM32F10x Flash Options
   instructions: ELUDRgAgXkwgYF5IYGBeSGBgXEigYFxIoGAgRsBpEPAEDwjRRfJVUFhMIGAGIGBgQPb/cKBgACAQvQFGUEgAaSD0gHBOShBhEEYAaUDwgAAQYQAgcEdKSABpQPAgAEhJCGEIRgBpQPBAAAhhA+BK9qogRkkIYEJIwGgQ8AEP9tE/SABpIPAgAD1JCGEIRgBpQPAQAAhhRfalID1JCIAD4Er2qiA5SQhgNUjAaBDwAQ/20TNIAGkg8BAAMUkIYQhGwGgQ8BQPBtAIRsBoQPAUAMhgASBwRwAg/OcBRihIAGlA8CAAJkoQYRBGAGlA8EAAEGED4Er2qiAkShBgIEjAaBDwAQ/20R5IAGkg8CAAHEoQYQAgcEcDRgEgcEcQtQNGSBwg8AEBJuAVSABpQPAQABNMIGEQiBiAA+BK9qogE0wgYA9IwGgQ8AEP9tEMSABpIPAQAApMIGEgRsBoEPAUDwbQIEbAaEDwFADgYAEgEL2bHJIciR4AKdbRACD35wAAACACQCMBZ0Wrie/NADAAQAD4/x8AAAAA
@@ -2350,8 +2517,27 @@ flash_algorithms:
     sectors:
     - size: 0x10
       address: 0x0
-  cores:
-  - main
+- name: stm32f10x_512
+  description: STM32F10x High-density Flash
+  default: true
+  instructions: ELUDRgAgREwgYERIYGBESGBgIEbAaRDwBA8I0UXyVVBATCBgBiBgYED2/3CgYAAgEL0BRjhIAGlA8IAANkoQYQAgcEc0SABpQPAEADJJCGEIRgBpQPBAAAhhA+BK9qogMEkIYCxIwGgQ8AEP9tEqSABpIPAEAChJCGEAIHBHAUYlSABpQPACACNKEGEQRkFhAGlA8EAAEGED4Er2qiAhShBgHUjAaBDwAQ/20RpIAGkg8AIAGEoQYQAgcEcQtQNGSBwg8AEBIuATSABpQPABABFMIGEQiBiAAL8PSMBoEPABD/rRDEgAaSDwAQAKTCBhIEbAaBDwFA8G0CBGwGhA8BQA4GABIBC9mxySHIkeACna0QAg9+cAAAAgAkAjAWdFq4nvzQAwAEAAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x33
+  pc_program_page: 0xbd
+  pc_erase_sector: 0x7f
+  pc_erase_all: 0x45
+  data_section_offset: 0x128
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0x8080000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 500
+    sectors:
+    - size: 0x800
+      address: 0x0
 - name: stm32f10x_1024
   description: STM32F10x XL-density Flash
   default: true
@@ -2373,5 +2559,3 @@ flash_algorithms:
     sectors:
     - size: 0x800
       address: 0x0
-  cores:
-  - main
