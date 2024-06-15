@@ -116,18 +116,10 @@ impl ProbeFactory for JLinkFactory {
                 // We detect the proprietary J-Link interface using the vendor-specific class codes
                 // and the endpoint properties
                 if descr.class() == 0xff && descr.subclass() == 0xff && descr.protocol() == 0xff {
-                    if let Some((intf, _, _)) = jlink_intf {
-                        Err(JlinkError::Other(format!(
-                            "found multiple matching USB interfaces ({} and {})",
-                            intf,
-                            descr.interface_number()
-                        )))?;
-                    }
-
                     let endpoints: Vec<_> = descr.endpoints().collect();
                     trace!("endpoint descriptors: {:#x?}", endpoints);
                     if endpoints.len() != 2 {
-                        warn!("vendor-specific interface with {} endpoints, expected 2 (skipping interface)", endpoints.len());
+                        debug!("vendor-specific interface with {} endpoints, expected 2 (skipping interface)", endpoints.len());
                         continue;
                     }
 
@@ -135,11 +127,19 @@ impl ProbeFactory for JLinkFactory {
                         .iter()
                         .all(|ep| ep.transfer_type() == EndpointType::Bulk)
                     {
-                        warn!(
+                        debug!(
                             "encountered non-bulk endpoints, skipping interface: {:#x?}",
                             endpoints
                         );
                         continue;
+                    }
+
+                    if let Some((intf, _, _)) = jlink_intf {
+                        Err(JlinkError::Other(format!(
+                            "found multiple matching USB interfaces ({} and {})",
+                            intf,
+                            descr.interface_number()
+                        )))?;
                     }
 
                     let (read_ep, write_ep) = if endpoints[0].direction() == Direction::In {
