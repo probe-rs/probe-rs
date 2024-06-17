@@ -25,7 +25,7 @@ scroll = "0.12"
 serde = { version = "1", features = ["derive"] }
 thiserror = { workspace = true }
 tracing = "0.1"
-typed-path = "0.8"
+typed-path = "0.9"
 # path
 probe-rs-target = { workspace = true }
 probe-rs-mi = { workspace = true }
