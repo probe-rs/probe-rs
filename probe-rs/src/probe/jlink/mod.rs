@@ -14,6 +14,7 @@ use std::time::{Duration, Instant};
 use bitvec::prelude::*;
 
 use itertools::Itertools;
+use nusb::descriptors::language_id::US_ENGLISH;
 use nusb::transfer::{Direction, EndpointType};
 use nusb::DeviceInfo;
 use probe_rs_target::ScanChainElement;
@@ -107,6 +108,12 @@ impl ProbeFactory for JLinkFactory {
         debug!("scanning {} interfaces", conf.interfaces().count());
         trace!("active configuration descriptor: {:#x?}", conf);
 
+        let language = handle
+            .get_string_descriptor_supported_languages(Duration::from_millis(100))
+            .ok()
+            .and_then(|mut langs| langs.next())
+            .unwrap_or(US_ENGLISH);
+
         let mut jlink_intf = None;
         for intf in conf.interfaces() {
             trace!("interface #{} descriptors:", intf.interface_number());
@@ -135,12 +142,34 @@ impl ProbeFactory for JLinkFactory {
                         continue;
                     }
 
-                    if let Some((intf, _, _)) = jlink_intf {
-                        Err(JlinkError::Other(format!(
-                            "found multiple matching USB interfaces ({} and {})",
-                            intf,
-                            descr.interface_number()
-                        )))?;
+                    let Some(index) = descr.string_index() else {
+                        debug!("interface lacks string descriptor, skipping interface");
+                        continue;
+                    };
+
+                    let Ok(interface_name) =
+                        handle.get_string_descriptor(index, language, Duration::from_millis(100))
+                    else {
+                        debug!(
+                            "failed to read interface name string descriptor, skipping interface"
+                        );
+                        continue;
+                    };
+
+                    if let Some((intf, ref name, _, _)) = jlink_intf {
+                        const EXPECTED_INTERFACE_NAME: &str = "BULK interface";
+                        if interface_name != EXPECTED_INTERFACE_NAME {
+                            // Ignore interfaces with unexpected string descriptors
+                            continue;
+                        }
+
+                        if name == EXPECTED_INTERFACE_NAME {
+                            Err(JlinkError::Other(format!(
+                                "found multiple matching USB interfaces ({} and {})",
+                                intf,
+                                descr.interface_number()
+                            )))?;
+                        }
                     }
 
                     let (read_ep, write_ep) = if endpoints[0].direction() == Direction::In {
@@ -149,13 +178,14 @@ impl ProbeFactory for JLinkFactory {
                         (endpoints[1].address(), endpoints[0].address())
                     };
 
-                    jlink_intf = Some((descr.interface_number(), read_ep, write_ep));
+                    jlink_intf =
+                        Some((descr.interface_number(), interface_name, read_ep, write_ep));
                     debug!("J-Link interface is #{}", descr.interface_number());
                 }
             }
         }
 
-        let Some((intf, read_ep, write_ep)) = jlink_intf else {
+        let Some((intf, _name, read_ep, write_ep)) = jlink_intf else {
             Err(JlinkError::Other(
                 "device is not a J-Link device".to_string(),
             ))?
