@@ -27,7 +27,6 @@ const USB_TIMEOUT: Duration = Duration::from_millis(5000);
 const USB_DEVICE_CLASS: u8 = 0xFF;
 const USB_DEVICE_SUBCLASS: u8 = 0xFF;
 const USB_DEVICE_PROTOCOL: u8 = 0x01;
-const USB_DEVICE_TRANSFER_TYPE: EndpointType = EndpointType::Bulk;
 
 const USB_VID: u16 = 0x303A;
 const USB_PID: u16 = 0x1001;
@@ -87,59 +86,65 @@ impl ProtocolHandler {
 
         let config = device_handle.configurations().next().unwrap();
 
-        tracing::debug!("Active config descriptor: {:?}", &config);
+        tracing::debug!("Active config descriptor: {:?}", config);
 
         let mut found = None;
-
         for interface in config.interfaces() {
-            tracing::trace!("Interface {}", interface.interface_number());
+            let interface_number = interface.interface_number();
+            tracing::trace!("Interface {interface_number}");
+
+            let Some(descriptor) = interface.alt_settings().next() else {
+                continue;
+            };
+
+            if !(descriptor.class() == USB_DEVICE_CLASS
+                && descriptor.subclass() == USB_DEVICE_SUBCLASS
+                && descriptor.protocol() == USB_DEVICE_PROTOCOL)
+            {
+                tracing::debug!(
+                    "Skipping interface {interface_number} because of wrong class/subclass/protocol"
+                );
+                continue;
+            }
 
             let mut ep_out = None;
             let mut ep_in = None;
+            for endpoint in descriptor.endpoints() {
+                let address = endpoint.address();
+                tracing::trace!("Endpoint {address:#04x}");
+                if endpoint.transfer_type() != EndpointType::Bulk {
+                    tracing::debug!("Skipping endpoint {address:#04x}");
+                    continue;
+                }
 
-            let descriptor = interface.alt_settings().next();
-            if let Some(descriptor) = descriptor {
-                if descriptor.class() == USB_DEVICE_CLASS
-                    && descriptor.subclass() == USB_DEVICE_SUBCLASS
-                    && descriptor.protocol() == USB_DEVICE_PROTOCOL
-                {
-                    for endpoint in descriptor.endpoints() {
-                        tracing::trace!("Endpoint {}", endpoint.address());
-                        if endpoint.transfer_type() == USB_DEVICE_TRANSFER_TYPE {
-                            if endpoint.direction() == Direction::In {
-                                ep_in = Some(endpoint.address());
-                            } else {
-                                ep_out = Some(endpoint.address());
-                            }
-                        }
-                    }
+                if endpoint.direction() == Direction::In {
+                    ep_in = Some(address);
+                } else {
+                    ep_out = Some(address);
                 }
             }
 
             if let (Some(ep_in), Some(ep_out)) = (ep_in, ep_out) {
-                tracing::debug!(
-                    "Claiming interface {} with IN EP {} and OUT EP {}.",
-                    interface.interface_number(),
-                    ep_in,
-                    ep_out
-                );
-
-                let iface = device_handle
-                    .claim_interface(interface.interface_number())
-                    .map_err(ProbeCreationError::Usb)?;
-
-                found = Some((iface, ep_in, ep_out));
+                found = Some((interface_number, ep_in, ep_out));
                 break;
             }
         }
 
-        let Some((iface, ep_in, ep_out)) = found else {
+        let Some((interface_number, ep_in, ep_out)) = found else {
             return Err(ProbeCreationError::ProbeSpecific(
                 "USB interface or endpoints could not be found.".into(),
             ));
         };
 
-        let start = std::time::Instant::now();
+        tracing::debug!(
+            "Claiming interface {interface_number} with IN EP {ep_in} and OUT EP {ep_out}."
+        );
+
+        let iface = device_handle
+            .claim_interface(interface_number)
+            .map_err(ProbeCreationError::Usb)?;
+
+        let start = Instant::now();
         let buffer = loop {
             let buffer = device_handle
                 .get_descriptor(
@@ -152,44 +157,47 @@ impl ProtocolHandler {
             if !buffer.is_empty() {
                 break buffer;
             }
-            if Instant::now() - start > USB_TIMEOUT {
+            if start.elapsed() > USB_TIMEOUT {
                 return Err(ProbeCreationError::Other(
                     "Timeout accessing device descriptor",
                 ));
             }
         };
 
-        let mut base_speed_khz = 1000;
-        let mut div_min = 1;
-        let mut div_max = 1;
-
         let protocol_version = buffer[0];
-        tracing::debug!("{:02x?}", &buffer);
-        tracing::debug!("Protocol version: {}", protocol_version);
+        tracing::trace!("Descriptor bytes: {:02x?}", buffer);
+        tracing::debug!("Protocol version: {protocol_version}");
         if protocol_version != JTAG_PROTOCOL_CAPABILITIES_VERSION {
             return Err(ProbeCreationError::ProbeSpecific(
                 "Unknown capabilities descriptor version.".into(),
             ));
         }
 
-        let length = buffer[1] as usize;
+        let mut base_speed_khz = 1000;
+        let mut div_min = 1;
+        let mut div_max = 1;
 
+        let length = buffer[1] as usize;
         let mut p = 2usize;
         while p < length {
-            let typ = buffer[p];
-            let length = buffer[p + 1];
+            let cap_type = buffer[p];
+            let cap_length = buffer[p + 1] as usize;
+            let cap_bytes = &buffer[p..][..cap_length];
 
-            if typ == JTAG_PROTOCOL_CAPABILITIES_SPEED_APB_TYPE {
+            // cap_length includes the type and length bytes, so we need to skip the first 2.
+            let cap_data_bytes = &cap_bytes[2..];
+
+            if cap_type == JTAG_PROTOCOL_CAPABILITIES_SPEED_APB_TYPE {
                 base_speed_khz =
-                    ((((buffer[p + 3] as u16) << 8) | buffer[p + 2] as u16) as u64 * 10 / 2) as u32;
-                div_min = ((buffer[p + 5] as u16) << 8) | buffer[p + 4] as u16;
-                div_max = ((buffer[p + 7] as u16) << 8) | buffer[p + 6] as u16;
-                tracing::info!("Found ESP USB JTAG adapter, base speed is {base_speed_khz}kHz. Available dividers: ({div_min}..{div_max})");
+                    u16::from_le_bytes([cap_data_bytes[0], cap_data_bytes[1]]) as u32 * 10 / 2;
+                div_min = u16::from_le_bytes([cap_data_bytes[2], cap_data_bytes[3]]);
+                div_max = u16::from_le_bytes([cap_data_bytes[4], cap_data_bytes[5]]);
+                tracing::debug!("Found ESP USB JTAG adapter, base speed is {base_speed_khz}kHz. Available dividers: ({div_min}..{div_max})");
             } else {
-                tracing::warn!("Unknown capabilities type {:01X?}", typ);
+                tracing::debug!("Unknown capabilities type {cap_type}");
             }
 
-            p += length as usize;
+            p += cap_bytes.len();
         }
 
         tracing::debug!("Succesfully attached to ESP USB JTAG.");
@@ -455,7 +463,7 @@ impl From<Command> for u8 {
     fn from(command: Command) -> Self {
         match command {
             Command::Clock { cap, tdi, tms } => {
-                (if cap { 4 } else { 0 } | if tms { 2 } else { 0 } | u8::from(tdi))
+                u8::from(cap) << 2 | u8::from(tms) << 1 | u8::from(tdi)
             }
             Command::Reset(srst) => 8 | u8::from(srst),
             Command::Flush => 0xA,
