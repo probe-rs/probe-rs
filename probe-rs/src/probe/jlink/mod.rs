@@ -98,11 +98,15 @@ impl ProbeFactory for JLinkFactory {
             .map_err(|e| open_error(e, "opening the USB device"))?;
 
         let mut configs = handle.configurations();
-        let conf = configs.next().unwrap();
+        let Some(conf) = configs.next() else {
+            // Since the device matches the J-Link VID/PID, it should have at
+            // least one configuration. Otherwise we can't do anything with it.
+            return Err(JlinkError::Other(String::from("Device has no configurations.")).into());
+        };
 
         let rest = configs.count();
         if rest != 0 {
-            warn!("device has {} configurations, expected 1", rest + 1);
+            debug!("device has {} configurations, expected 1", rest + 1);
         }
 
         debug!("scanning {} interfaces", conf.interfaces().count());
