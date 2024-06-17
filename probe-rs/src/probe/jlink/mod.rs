@@ -147,23 +147,29 @@ impl ProbeFactory for JLinkFactory {
                         continue;
                     };
 
+                    // Read `iInterface`. If we only have a single vendor-specific interface,
+                    // we don't care about its value. Otherwise, we'll use it to try to identify
+                    // the actual J-Link interface.
                     let Ok(interface_name) =
                         handle.get_string_descriptor(index, language, Duration::from_millis(100))
                     else {
-                        debug!(
-                            "failed to read interface name string descriptor, skipping interface"
-                        );
+                        debug!("failed to read iInterface string descriptor, skipping interface");
                         continue;
                     };
 
                     if let Some((intf, ref name, _, _)) = jlink_intf {
+                        // We already have a candidate interface, let's see if this one is better
+                        // or we can't distinguish between them.
                         const EXPECTED_INTERFACE_NAME: &str = "BULK interface";
                         if interface_name != EXPECTED_INTERFACE_NAME {
-                            // Ignore interfaces with unexpected string descriptors
+                            // Ignore interfaces with unexpected string descriptors.
                             continue;
                         }
 
                         if name == EXPECTED_INTERFACE_NAME {
+                            // Both interfaces are "BULK interface", we can't
+                            // distinguish between them. This probably indicates a J-Link with
+                            // somehow corrupted or incorrect firmware.
                             Err(JlinkError::Other(format!(
                                 "found multiple matching USB interfaces ({} and {})",
                                 intf,
