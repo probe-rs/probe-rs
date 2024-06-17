@@ -63,7 +63,7 @@ scroll = "0.12"
 svg = "0.17"
 tracing = "0.1"
 uf2-decode = "0.2"
-typed-path = "0.8"
+typed-path = "0.9"
 espflash = { version = "3", default-features = false }
 dunce = "1"
 parse_int = "0.6"
