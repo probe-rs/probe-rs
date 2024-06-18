@@ -1,0 +1,175 @@
+name: HPM5300 Series
+variants:
+- name: HPM5361
+  cores:
+  - name: core0
+    type: riscv
+    core_access_options: !Riscv {}
+  memory_map:
+  - !Ram
+    name: ILM0
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - core0
+  - !Ram
+    name: DLM0
+    range:
+      start: 0x80000
+      end: 0xa0000
+    cores:
+    - core0
+  - !Ram
+    name: AHB_SRAM
+    range:
+      start: 0xf0400000
+      end: 0xf0408000
+    cores:
+    - core0
+  - !Nvm
+    name: XPI0
+    range:
+      start: 0x80000000
+      end: 0x80100000
+    is_boot_memory: true
+    cores:
+    - core0
+  flash_algorithms:
+  - flash-algo-hpm53x1
+- name: HPM5331
+  cores:
+  - name: core0
+    type: riscv
+    core_access_options: !Riscv {}
+  memory_map:
+  - !Ram
+    name: ILM0
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - core0
+  - !Ram
+    name: DLM0
+    range:
+      start: 0x80000
+      end: 0xa0000
+    cores:
+    - core0
+  - !Ram
+    name: AHB_SRAM
+    range:
+      start: 0xf0400000
+      end: 0xf0408000
+    cores:
+    - core0
+  - !Nvm
+    name: XPI0
+    range:
+      start: 0x80000000
+      end: 0x80100000
+    is_boot_memory: true
+    cores:
+    - core0
+  flash_algorithms:
+  - flash-algo-hpm53x1
+- name: HPM5321
+  cores:
+  - name: core0
+    type: riscv
+    core_access_options: !Riscv {}
+  memory_map:
+  - !Ram
+    name: ILM0
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - core0
+  - !Ram
+    name: DLM0
+    range:
+      start: 0x80000
+      end: 0xa0000
+    cores:
+    - core0
+  - !Ram
+    name: AHB_SRAM
+    range:
+      start: 0xf0400000
+      end: 0xf0408000
+    cores:
+    - core0
+  - !Nvm
+    name: XPI0
+    range:
+      start: 0x80000000
+      end: 0x80100000
+    is_boot_memory: true
+    cores:
+    - core0
+  flash_algorithms:
+  - flash-algo-hpm53x1
+- name: HPM5301
+  cores:
+  - name: core0
+    type: riscv
+    core_access_options: !Riscv {}
+  memory_map:
+  - !Ram
+    name: ILM0
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - core0
+  - !Ram
+    name: DLM0
+    range:
+      start: 0x80000
+      end: 0xa0000
+    cores:
+    - core0
+  - !Ram
+    name: AHB_SRAM
+    range:
+      start: 0xf0400000
+      end: 0xf0408000
+    cores:
+    - core0
+  - !Nvm
+    name: XPI0
+    range:
+      start: 0x80000000
+      end: 0x80100000
+    is_boot_memory: true
+    cores:
+    - core0
+  flash_algorithms:
+  - flash-algo-hpm53x1
+flash_algorithms:
+- name: flash-algo-hpm53x1
+  description: flash algorithm for HPM53x1 series
+  default: true
+  instructions: EwEB3CMuESIjLIEiIyqRIiMoISO3BQAABUV9Fo1GI4SlSGN51gy3FQD0A6AFgH1WI6DFgAOgBYEjqMWAI6KlkGgAEwYAEIFFlwAAAOeAIBsjLgEQIywBEDcF+fwJBSMmoRAZRSMooRAFZSMqoRA3BQIgAyVF8XRF0cI3BQDzbABwAjcJAPOCliqEKemyRCMAAQQMCAgSEwbAD5cAAADngOApaAxsAlFGlwAAAOeAACk3BQAAIyiVNpMEBTcThUQADBITBgARlwAAAOeAICcjqiQRNwUAAIVFIwS1SCKFgyDBIwMkgSODJEEjAykBIxMBASSCgJcAAADngEANlwAAAOeAwA63BQAAA8aFSAVFAcYBRSOEBUiCgLcFAACDxYVIncG3BQIgg6VF8ZxRmc+3BQAAE4YFNwMnRhG3BgCAqY6RRTqFgocFRYKAlwAAAOeA4Am3BgAAA8eGSAXLLoi3BQIgg6VF8QOjhQJjAgMCsoa3BQAAE4YFN4MnRhE3BwCAKY+RRT6FwocCgwVFgoCXAAAA54CgBTcFAAADRYVIGc03BQIgAyVF8VxNmcs3BQAAEwYFNwMlRhGRRYKHBUWCgJcAAADngIACQREGxiLEAAiXAAAA54CAAkERBsYixAAIlwAAAOeAgP5BEQbGIsQACJcAAADngID+AaBBEQbGIsQACLJAIkRBARcDAABnAGMMQREGxiLEAAjBRmNr1gazBqBAE/g2ALMDBQFjDAgAqoeuhgPHBgAjgOcAhQeFBuPqd/6ziAUBMwgGQZNyyP+T9TgAs4ZTAKHBY1lQBJOVOAAT84UBk/fI/5BDswWwQBP+hQGRB5hDM1ZmALMVxwHRjSOgswCRA5EHOobj5dP+Maiqhg3iDahjWlAAxoWQQSOgwwCRA5EF4+vT/rOFWAATdjgAEco2lgPHBQAjgOYAhQaFBePqxv6yQCJEQQGCgEERBsYixAAIwUZjZNYEswagQI2KMwfVAJnGqocjgLcAhQfj7ef+FY6Td8b/swb3AGNe8AAT+PUPtwcBAZOHFxCzB/gCHMMRB+Nu1/4NigHmCaiqhhnGNpYjgLYAhQbj7cb+skAiREEBgoBBEQbGIsQACLJAIkRBARcDAABnAKPsAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+  load_address: 0x20
+  pc_init: 0x0
+  pc_uninit: 0x104
+  pc_program_page: 0x152
+  pc_erase_sector: 0x118
+  pc_erase_all: 0x196
+  data_section_offset: 0x468
+  flash_properties:
+    address_range:
+      start: 0x80000000
+      end: 0x80100000
+    page_size: 0x100
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 2000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+  cores:
+  - core0
