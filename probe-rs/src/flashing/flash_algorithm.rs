@@ -160,7 +160,7 @@ impl FlashAlgorithm {
         true
     }
 
-    const FLASH_ALGO_MIN_STACK_SIZE: u32 = 512;
+    const FLASH_ALGO_STACK_SIZE: u32 = 512;
 
     // Header for RISC-V Flash Algorithms
     const RISCV_FLASH_BLOB_HEADER: [u32; 2] = [riscv::assembly::EBREAK, riscv::assembly::EBREAK];
@@ -289,7 +289,7 @@ impl FlashAlgorithm {
 
         let buffer_page_size = raw.flash_properties.page_size as u64;
 
-        let stack_size = raw.stack_size.unwrap_or(Self::FLASH_ALGO_MIN_STACK_SIZE) as u64;
+        let stack_size = raw.stack_size.unwrap_or(Self::FLASH_ALGO_STACK_SIZE) as u64;
         tracing::info!("The flash algorithm will be configured with {stack_size} bytes of stack");
 
         let mut double_buffering = true;
