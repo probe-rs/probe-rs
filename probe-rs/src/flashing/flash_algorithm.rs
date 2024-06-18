@@ -345,16 +345,16 @@ impl FlashAlgorithm {
         let stack_top_addr = stack_bottom + stack_size;
         tracing::info!("Stack top: {:#010x}", stack_top_addr);
 
-        // TODO: we should validate the final layout here.
-
-        let first_buffer_start = data_load_addr;
+        if stack_top_addr > ram_region.range.end {
+            return Err(FlashError::InvalidFlashAlgorithmStackSize);
+        }
 
         // Determine whether we can use double buffering or not by the remaining RAM region size.
         let page_buffers = if double_buffering {
-            let second_buffer_start = first_buffer_start + buffer_page_size;
-            vec![first_buffer_start, second_buffer_start]
+            let second_buffer_start = data_load_addr + buffer_page_size;
+            vec![data_load_addr, second_buffer_start]
         } else {
-            vec![first_buffer_start]
+            vec![data_load_addr]
         };
 
         tracing::debug!("Page buffers: {:#010x?}", page_buffers);
