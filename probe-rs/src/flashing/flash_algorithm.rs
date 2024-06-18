@@ -160,7 +160,7 @@ impl FlashAlgorithm {
         true
     }
 
-    const FLASH_ALGO_MIN_STACK_SIZE: u64 = 512;
+    const FLASH_ALGO_MIN_STACK_SIZE: u32 = 512;
 
     // Header for RISC-V Flash Algorithms
     const RISCV_FLASH_BLOB_HEADER: [u32; 2] = [riscv::assembly::EBREAK, riscv::assembly::EBREAK];
@@ -274,32 +274,11 @@ impl FlashAlgorithm {
             return Err(FlashError::InvalidFlashAlgorithmLoadAddress { address: addr_load });
         }
 
-        // Memory layout when `data_ram_region == ram_region`:
-        //
-        // Single buffering:
-        //
-        // ++-------------+-----------------------+---------------+ <- RAM region end
-        // || Loader code |         Stack         |  Data buffer  |
-        // ++-------------+-----------------------+---------------+
-        // ^- addr_load   ^- code_end             ^- data_start_addr = stack_top_addr
-        //  ^- code_start                         ^---------------^ buffer_page_size
-        //
-        // Double buffering:
-        //
-        // ++-------------+-------+---------------+---------------+ <- RAM region end
-        // || Loader code | Stack | Data buffer 1 | Data buffer 2 |
-        // ++-------------+-------+---------------+---------------+
-        // ^- addr_load           ^- data_start_addr = stack_top_addr
-        //  ^- code_start         ^---------------^---------------^ buffer_page_size (x2)
-        //                ^- code_end
-        //
-        // Configured stack with single buffer fitting:
-        //
-        // ++-------------+----+------------------+---------------+ <- RAM region end
-        // || Loader code |    |      Stack       |  Data buffer  |
-        // ++-------------+----+------------------+---------------+
-        // ^- addr_load   ^- code_end             ^- data_start_addr = stack_top_addr
-        //  ^- code_start                         ^---------------^ buffer_page_size (x1)
+        // Memory layout:
+        // - Header
+        // - Code
+        // - Data
+        // - Stack
 
         let code_start = addr_load + header_size;
         let code_size_bytes = (instructions.len() * size_of::<u32>()) as u64;
@@ -317,35 +296,12 @@ impl FlashAlgorithm {
             0
         };
 
-        // Try to find a stack size that fits with at least one page of data.
-        let stack_size = if let Some(configured_stack) = raw.stack_size {
-            // The user has configured a stack size. Let's use it.
-            let stack_size = configured_stack as u64;
-
-            // Make sure at least one data page fits into RAM.
-            if buffer_page_size_in_instr_region + stack_size > remaining_ram {
-                // The configured stack size is too large. Let's not try to be too clever about it.
-                return Err(FlashError::InvalidFlashAlgorithmStackSize);
-            }
-            stack_size
-        } else {
-            // No stack is specified, let's try to use as much as we can.
-            let required_for_double_buffer =
-                2 * buffer_page_size_in_instr_region + Self::FLASH_ALGO_MIN_STACK_SIZE;
-            let required_for_single_buffer =
-                buffer_page_size_in_instr_region + Self::FLASH_ALGO_MIN_STACK_SIZE;
-
-            if remaining_ram >= required_for_double_buffer {
-                // We have space for two pages of data and a stack.
-                remaining_ram - 2 * buffer_page_size_in_instr_region
-            } else if remaining_ram > required_for_single_buffer {
-                // We have space for one page of data and a stack.
-                remaining_ram - buffer_page_size_in_instr_region
-            } else {
-                // We don't have enough space for a stack
-                return Err(FlashError::InvalidFlashAlgorithmStackSize);
-            }
-        };
+        let stack_size = raw.stack_size.unwrap_or(Self::FLASH_ALGO_MIN_STACK_SIZE) as u64;
+        // Make sure at least one data page fits into RAM.
+        if buffer_page_size_in_instr_region + stack_size > remaining_ram {
+            // The configured stack size is too large. Let's not try to be too clever about it.
+            return Err(FlashError::InvalidFlashAlgorithmStackSize);
+        }
         tracing::info!("The flash algorithm will be configured with {stack_size} bytes of stack");
 
         // We have the stack size, let's lay out the data block(s)
