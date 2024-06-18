@@ -308,7 +308,7 @@ impl FlashAlgorithm {
         let mut ram_for_data = data_ram_region.range.end - data_load_addr;
         if code_end + stack_size > data_load_addr && ram_region == data_ram_region {
             // Stack can only go after the data, so let's reduce the available size.
-            ram_for_data = ram_for_data - stack_size;
+            ram_for_data -= stack_size;
         }
 
         let mut double_buffering = true;
