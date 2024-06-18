@@ -292,30 +292,8 @@ impl FlashAlgorithm {
         let stack_size = raw.stack_size.unwrap_or(Self::FLASH_ALGO_STACK_SIZE) as u64;
         tracing::info!("The flash algorithm will be configured with {stack_size} bytes of stack");
 
-        let mut double_buffering = true;
         let data_load_addr = if ram_region == data_ram_region {
             if let Some(data_load_addr) = raw.data_load_address {
-                // Available memory for data depends on where the stack needs to be placed.
-                let mut ram_for_data = data_ram_region.range.end - data_load_addr;
-                if code_end + stack_size > data_load_addr {
-                    // Stack can only go after the data, so let's reduce the available size.
-                    ram_for_data = ram_for_data - stack_size;
-                }
-
-                // To determine the stack bottom, we need to know if the data is double buffered.
-                double_buffering = if ram_for_data >= 2 * buffer_page_size {
-                    // The data may be double buffered
-                    double_buffering
-                } else if ram_for_data >= buffer_page_size {
-                    // The data is not double buffered. Place the stack at the end of the RAM region.
-                    false
-                } else {
-                    // We can't place data and stack.
-                    // TODO: this should probably be done in the target validation.
-                    // TODO: make the errors a bit more meaningful.
-                    return Err(FlashError::InvalidFlashAlgorithmStackSize);
-                };
-
                 data_load_addr
             } else {
                 // The data is not placed explicitly. We can place it after the code.
@@ -324,6 +302,28 @@ impl FlashAlgorithm {
         } else {
             // The data is in a different region. We can place it at the start of the region.
             data_ram_region.range.start
+        };
+
+        // Available memory for data depends on where the stack needs to be placed.
+        let mut ram_for_data = data_ram_region.range.end - data_load_addr;
+        if code_end + stack_size > data_load_addr && ram_region == data_ram_region {
+            // Stack can only go after the data, so let's reduce the available size.
+            ram_for_data = ram_for_data - stack_size;
+        }
+
+        let mut double_buffering = true;
+        // To determine the stack bottom, we need to know if the data is double buffered.
+        double_buffering = if ram_for_data >= 2 * buffer_page_size {
+            // The data may be double buffered
+            double_buffering
+        } else if ram_for_data >= buffer_page_size {
+            // The data is not double buffered. Place the stack at the end of the RAM region.
+            false
+        } else {
+            // We can't place data and stack.
+            // TODO: this should probably be done in the target validation.
+            // TODO: make the errors a bit more meaningful.
+            return Err(FlashError::InvalidFlashAlgorithmStackSize);
         };
 
         // We need to make sure the blocks don't overlap and we have enough memory.
