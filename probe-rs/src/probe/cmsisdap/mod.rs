@@ -3,19 +3,26 @@ mod commands;
 mod tools;
 
 use crate::{
-    architecture::arm::{
-        communication_interface::{DapProbe, UninitializedArmProbe},
-        dp::{Abort, Ctrl},
-        swo::poll_interval_from_buf_size,
-        ArmCommunicationInterface, ArmError, DapError, Pins, PortType, RawDapAccess, Register,
-        SwoAccess, SwoConfig, SwoMode,
+    architecture::{
+        arm::{
+            communication_interface::{DapProbe, UninitializedArmProbe},
+            dp::{Abort, Ctrl},
+            swo::poll_interval_from_buf_size,
+            ArmCommunicationInterface, ArmError, DapError, Pins, PortType, RawDapAccess, Register,
+            SwoAccess, SwoConfig, SwoMode,
+        },
+        riscv::{communication_interface::RiscvInterfaceBuilder, dtm::jtag_dtm::JtagDtmBuilder},
+        xtensa::communication_interface::{
+            XtensaCommunicationInterface, XtensaDebugInterfaceState,
+        },
     },
     probe::{
         cmsisdap::commands::{
             general::info::{CapabilitiesCommand, PacketCountCommand, SWOTraceBufferSizeCommand},
             CmsisDapError,
         },
-        BatchCommand, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
+        common::{JtagDriverState, RawJtagIo},
+        BatchCommand, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, JTAGAccess,
         JtagChainItem, ProbeFactory, WireProtocol,
     },
     CoreStatus,
@@ -101,6 +108,11 @@ pub struct CmsisDap {
     scan_chain: Option<Vec<ScanChainElement>>,
 
     batch: Vec<BatchCommand>,
+
+    jtag_driver_state: JtagDriverState,
+    jtag_sequences: Vec<JtagSequence>,
+    capture_vec: BitVec<u8, Lsb0>,
+    nocapture_count: usize, // number of bits need capture in jtag_sequences
 }
 
 impl std::fmt::Debug for CmsisDap {
@@ -138,7 +150,6 @@ impl CmsisDap {
             swo_buffer_size = Some(swo_size as usize);
             tracing::debug!("Probe SWO buffer size: {}", swo_size);
         }
-
         Ok(Self {
             device,
             _hw_version: 0,
@@ -154,6 +165,10 @@ impl CmsisDap {
             speed_khz: 1_000,
             scan_chain: None,
             batch: Vec::new(),
+            jtag_driver_state: JtagDriverState::default(),
+            jtag_sequences: Vec::<JtagSequence>::new(),
+            capture_vec: BitVec::new(),
+            nocapture_count: 0,
         })
     }
 
@@ -809,6 +824,8 @@ impl DebugProbe for CmsisDap {
             // to ensure the debug port is ready for JTAG signals,
             // at which point we can interrogate the scan chain
             // and configure the probe with the given IR lengths.
+            self.scan_chain()?;
+            self.select_target(0)?;
         } else {
             self.configure_swd(swd::configure::ConfigureRequest {})?;
         }
@@ -906,6 +923,47 @@ impl DebugProbe for CmsisDap {
 
     fn has_arm_interface(&self) -> bool {
         true
+    }
+
+    fn try_get_riscv_interface_builder<'probe>(
+        &'probe mut self,
+    ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, DebugProbeError> {
+        if self.has_riscv_interface() {
+            Ok(Box::new(JtagDtmBuilder::new(self)))
+        } else {
+            Err(DebugProbeError::InterfaceNotAvailable {
+                interface_name: "RISC-V",
+            })
+        }
+    }
+
+    fn has_riscv_interface(&self) -> bool {
+        if self.capabilities._jtag_implemented {
+            true
+        } else {
+            false
+        }
+    }
+
+    fn try_get_xtensa_interface<'probe>(
+        &'probe mut self,
+        state: &'probe mut XtensaDebugInterfaceState,
+    ) -> Result<XtensaCommunicationInterface<'probe>, DebugProbeError> {
+        if self.has_xtensa_interface() {
+            Ok(XtensaCommunicationInterface::new(self, state))
+        } else {
+            Err(DebugProbeError::InterfaceNotAvailable {
+                interface_name: "RISC-V",
+            })
+        }
+    }
+
+    fn has_xtensa_interface(&self) -> bool {
+        if self.capabilities._jtag_implemented {
+            true
+        } else {
+            false
+        }
     }
 
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
@@ -1218,6 +1276,60 @@ impl SwoAccess for CmsisDap {
     }
 }
 
+impl RawJtagIo for CmsisDap {
+    fn state(&self) -> &JtagDriverState {
+        &self.jtag_driver_state
+    }
+    fn state_mut(&mut self) -> &mut JtagDriverState {
+        &mut self.jtag_driver_state
+    }
+    fn shift_bit(&mut self, tms: bool, tdi: bool, capture: bool) -> Result<(), DebugProbeError> {
+        self.jtag_driver_state.state.update(tms);
+        if let Some(sequence) = self.jtag_sequences.last_mut() {
+            if let Err(_) = sequence.append(tms, tdi, capture) {
+                if self.jtag_sequences.len() == 6 {
+                    let capture = self.send_jtag_sequences(JtagSequenceRequest::new(
+                        self.jtag_sequences.clone(),
+                    )?)?;
+                    let mut result = BitVec::<u8, Lsb0>::from_vec(capture);
+                    result.truncate(self.nocapture_count);
+                    self.capture_vec.extend_from_bitslice(result.as_bitslice());
+                    self.jtag_sequences.clear();
+                    self.nocapture_count = 0;
+                }
+                self.jtag_sequences.push(JtagSequence::new(
+                    1,
+                    capture,
+                    tms,
+                    [u8::from(tdi), 0, 0, 0, 0, 0, 0, 0],
+                )?);
+            }
+        } else {
+            self.jtag_sequences.push(JtagSequence::new(
+                1,
+                capture,
+                tms,
+                [u8::from(tdi), 0, 0, 0, 0, 0, 0, 0],
+            )?);
+        }
+        self.nocapture_count += usize::from(capture);
+        Ok(())
+    }
+    fn read_captured_bits(&mut self) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
+        let mut capture = self.capture_vec.clone();
+        let new_capture =
+            self.send_jtag_sequences(JtagSequenceRequest::new(self.jtag_sequences.clone())?)?;
+        let mut new_capture = BitVec::<u8, Lsb0>::from_vec(new_capture);
+        new_capture.truncate(self.nocapture_count);
+        capture.extend_from_bitslice(new_capture.as_bitslice());
+
+        self.jtag_sequences.clear();
+        self.capture_vec.clear();
+        self.nocapture_count = 0;
+
+        Ok(capture)
+    }
+}
 impl Drop for CmsisDap {
     fn drop(&mut self) {
         tracing::debug!("Detaching from CMSIS-DAP probe");

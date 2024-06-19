@@ -1,0 +1,1 @@
+Add jtag support for daplink, then you can debug riscv mcu with it.

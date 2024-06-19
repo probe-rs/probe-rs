@@ -100,6 +100,16 @@ impl Sequence {
             data,
         })
     }
+
+    pub(crate) fn append(&mut self, tms: bool, tdi: bool, capture: bool) -> Result<(), ()> {
+        if self.tck_cycles < 64 && self.tms == tms && self.tdo_capture == capture {
+            self.data[((self.tck_cycles) / 8) as usize] |= u8::from(tdi) << ((self.tck_cycles) % 8);
+            self.tck_cycles += 1;
+            Ok(())
+        } else {
+            Err(())
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
