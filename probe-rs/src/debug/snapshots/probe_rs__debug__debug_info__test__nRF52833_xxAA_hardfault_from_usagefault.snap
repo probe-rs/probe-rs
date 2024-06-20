@@ -507,7 +507,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 7
       value:
-        U32: 536887096
+        U32: 536887128
     - core_register:
         id: 8
         roles:
@@ -628,7 +628,7 @@ expression: stack_frames
   frame_base: 536887088
   is_inlined: false
   local_variables: ~
-  canonical_frame_address: 536887096
+  canonical_frame_address: 536887128
 - function_name: __udf
   source_location:
     line: 181
@@ -715,7 +715,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 7
       value:
-        U32: 536887096
+        U32: 536887128
     - core_register:
         id: 8
         roles:
@@ -833,7 +833,7 @@ expression: stack_frames
         U32: 0
   pc:
     U32: 1586
-  frame_base: 536887096
+  frame_base: 536887128
   is_inlined: true
   local_variables:
     Child Variables:
@@ -927,7 +927,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 7
       value:
-        U32: 536887096
+        U32: 536887128
     - core_register:
         id: 8
         roles:
@@ -1045,7 +1045,7 @@ expression: stack_frames
         U32: 0
   pc:
     U64: 1586
-  frame_base: 536887096
+  frame_base: 536887128
   is_inlined: false
   local_variables:
     Child Variables:

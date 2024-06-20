@@ -1264,9 +1264,9 @@ expression: stack_frames
   canonical_frame_address: 536886944
 - function_name: enable_systick
   source_location:
-    line: 93
+    line: 90
     column:
-      Column: 9
+      Column: 5
     file: RP2040.rs
     directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
   registers:

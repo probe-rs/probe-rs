@@ -14,10 +14,12 @@ use std::{
 };
 use typed_path::TypedPathBuf;
 
-/// Keep track of all the instruction locations required to satisfy the operations of [`SteppingMode`].
-/// This is a list of target instructions, belonging to a [`gimli::LineSequence`],
-/// and filters it to only user code instructions (no prologue code, and no non-statement instructions),
-/// so that we are left only with what DWARF terms as "recommended breakpoint location".
+/// Keep track of all the instruction locations required to lookup addresses and source locations,
+/// for the purpose of setting breakpoints, stepping through the program, and unwinding the stack.
+/// This is a list of target instructions, belonging to a [`gimli::LineSequence`].
+// TODO: Consider caching information to reduce the cost of repeatedly processing the same information.
+// TODO: Consider disassembling instructions to identify branch targets so that we can "link" sequences together.
+// TODO: Need architecture specific handling for all probe-rs code that relies on PC (Arm vs Risc-V) to normalize "next instruction" vs. "current instruction" behaviour.
 pub(crate) struct Sequence<'debug_info> {
     /// The `address_range.start` is the starting address of the program counter for which this sequence is valid,
     /// and allows us to identify target instruction locations where the program counter lies inside the prologue.
@@ -269,7 +271,7 @@ impl<'debug_info> Sequence<'debug_info> {
     /// - When we have an exact match on a known instruction, we will return it.
     /// - If the address lies in the prologue of a sequence, we will return the
     ///   first halt location in the sequence.
-    /// - If he address lies between known instruction addresses then we will attempt to find
+    /// - If the address lies between known instruction addresses then we will attempt to find
     ///   the "closest preceding halt location address".
     ///   - This will be done conservatively, constraining the result to halt locations that
     ///     are known to be part of the same sequence, and which will not be bypassed because

@@ -75,7 +75,7 @@ Frame:
   column: Some(Column(1))
  frame_base:      Some(20003ff8)
 Frame:
- function:        <unknown function @ 0x000000ce> : ERROR: UNWIND: Tried to unwind `RegisterRule` at CFA = None.
+ function:        <unknown function @ 0x000000ce>
  source_location:
 None
  frame_base:      None

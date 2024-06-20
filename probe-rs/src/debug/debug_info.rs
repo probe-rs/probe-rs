@@ -530,7 +530,7 @@ impl DebugInfo {
             //   - Overwrite the unwind registers with the exception context.
             // - If for some reason we cannot determine the exception context, we silently continue with the rest of the unwind.
             // At worst, the unwind will be able to unwind the stack to the frame of the most recent exception handler.
-            let frame_pc = frame_pc_register_value.try_into().map_err(|error| {
+            let frame_pc =  frame_pc_register_value.try_into().map_err(|error| {
                 let message = format!("Cannot convert register value for program counter to a 64-bit integer value: {error:?}");
                 crate::Error::Register(message)
             })?;
@@ -685,7 +685,9 @@ impl DebugInfo {
                         // If it is still None, we will not be able to continue unwinding.
                         // This often happens when we have a halt point inside a prologue, and
                         // and the registers have not been initialized yet.
-                        if unwind_canonical_frame_address.is_none() {
+                        if unwind_canonical_frame_address.is_none()
+                            || unwind_canonical_frame_address.unwrap_or(0) == 0
+                        {
                             break 'unwind;
                         }
                         unwind_info
