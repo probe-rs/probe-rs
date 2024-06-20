@@ -273,7 +273,7 @@ impl<'debug_info> Sequence<'debug_info> {
     /// - When we have an exact match on a known instruction, we will return it.
     /// - If the address lies in the prologue of a sequence, we will return the
     ///   first halt location in the sequence.
-    /// - If he address lies between known instruction addresses then we will attempt to find
+    /// - If the address lies between known instruction addresses then we will attempt to find
     ///   the "closest preceding halt location address".
     ///   - This will be done conservatively, constraining the result to halt locations that
     ///     are known to be part of the same sequence, and which will not be bypassed because

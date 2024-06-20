@@ -135,20 +135,29 @@ impl Block {
                 block.steps_to = next_instruction.map(|ni| ni.address);
                 break;
             }
-            // When we're not at one of the known boundaries, then we end blocks to conservatively to avoid
+            // When we're not at one of the known boundaries, then we end blocks conservatively to avoid
             // false assumptions about whether two instructions belong in the same block.
-            // Break between instructions that are not in the same file, or not on the same line.
+            // Break between instructions that are not in the same file.
+            else if next_instruction
+                .map(|ni| ni.file_index != instruction.file_index && ni.role.is_halt_location())
+                .unwrap_or(false)
+            {
+                block.instructions.push(*instruction);
+                break;
+            }
+            // Break between consecutive instructions in the same file if
+            // they are both statements with addresses that are not consecutive.
             else if next_instruction
                 .map(|ni| {
-                    (ni.file_index != instruction.file_index || ni.line != instruction.line)
-                        && (instruction.role == InstructionRole::HaltPoint
-                            || instruction.role == InstructionRole::Other)
-                        && ni.role == InstructionRole::HaltPoint
+                    ni.line != instruction.line
+                        && instruction.role.is_halt_location()
+                        && ni.role.is_halt_location()
+                        && ni.address >= instruction.address + 4
                 })
                 .unwrap_or(false)
             {
-                // The next instruction is ...
                 block.instructions.push(*instruction);
+                block.steps_to = next_instruction.map(|ni| ni.address);
                 break;
             }
             // Finally, if this instruction is not deemed part of one of the above boundary conditions,

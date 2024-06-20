@@ -181,8 +181,11 @@ pub(crate) fn raw_exception(stackframe_registers: &DebugRegisters) -> Result<u32
     )
     .exception_number();
     if exception_number == 0
-        && stackframe_registers.get_register_value_by_role(&RegisterRole::ReturnAddress)?
-            == 0xFFFF_FFFF
+        && ExcReturn(
+            stackframe_registers.get_register_value_by_role(&RegisterRole::ReturnAddress)? as u32,
+        )
+        .is_exception_flag()
+            == 0xF
     {
         // Although the exception number is 0, for the purposes of unwind, this is treated as a reset exception.
         // This is because of the timing when the processor resets the exception number from 1 to 0, versus
