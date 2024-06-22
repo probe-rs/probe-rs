@@ -193,7 +193,7 @@ impl<'p> CoreHandle<'p> {
             return Ok(());
         };
 
-        for up_channel in target_rtt.active_up_channels.values() {
+        for up_channel in target_rtt.active_up_channels.iter() {
             debugger_rtt_channels.push(debug_rtt::DebuggerRttChannel {
                 channel_number: up_channel.number(),
                 // This value will eventually be set to true by a VSCode client request "rttWindowOpened"

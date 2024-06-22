@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::fmt::write;
 
 use probe_rs::Core;
@@ -107,23 +106,18 @@ impl Tab {
     pub fn send_input(
         &mut self,
         core: &mut Core,
-        channels: &mut HashMap<usize, RttActiveDownChannel>,
+        channels: &mut [RttActiveDownChannel],
     ) -> anyhow::Result<()> {
         if let Some((channel, input)) = self.down_channel.as_mut() {
-            let channel = channels.get_mut(channel).expect("down channel disappeared");
             input.push('\n');
-            channel.push_rtt(core, input.as_str())?;
+            channels[*channel].push_rtt(core, input.as_str())?;
             input.clear();
         }
 
         Ok(())
     }
 
-    pub fn update_messages(&mut self, width: usize, up_channels: &HashMap<usize, UpChannel>) {
-        let up_channel = up_channels
-            .get(&self.up_channel)
-            .expect("up channel disappeared");
-
+    pub fn update_messages(&mut self, width: usize, up_channels: &[UpChannel]) {
         if self.last_width != width {
             self.last_width = width;
             self.last_processed = 0;
@@ -132,7 +126,7 @@ impl Tab {
         }
 
         let old_message_count = self.messages.len();
-        match &up_channel.data {
+        match &up_channels[self.up_channel].data {
             ChannelData::Strings { messages, .. } => {
                 // We strip ANSI sequences because they interfere with text wrapping.
                 //  - It's not obvious how we could tell defmt_parser to not emit ANSI sequences.

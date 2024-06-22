@@ -12,7 +12,7 @@ use ratatui::{
     widgets::{Block, Borders, List, Paragraph, Tabs},
     Terminal,
 };
-use std::{collections::HashMap, io::Write, rc::Rc};
+use std::{io::Write, rc::Rc};
 use std::{path::PathBuf, sync::mpsc::TryRecvError};
 
 use crate::{
@@ -38,8 +38,8 @@ pub struct App {
 
     defmt_state: Option<DefmtState>,
 
-    down_channels: HashMap<usize, RttActiveDownChannel>,
-    pub(crate) up_channels: HashMap<usize, UpChannel>,
+    down_channels: Vec<RttActiveDownChannel>,
+    pub(crate) up_channels: Vec<UpChannel>,
 }
 
 impl App {
@@ -47,11 +47,11 @@ impl App {
         let mut tab_config = config.rtt.tabs;
 
         // Create channel states
-        let mut up_channels = HashMap::new();
-        let mut down_channels = HashMap::new();
+        let mut up_channels = Vec::new();
+        let mut down_channels = Vec::new();
 
         // Create tab config based on detected channels
-        for up in rtt.active_up_channels.into_values() {
+        for up in rtt.active_up_channels.into_iter() {
             let number = up.number();
             if !tab_config.iter().any(|tab| tab.up_channel == number) {
                 tab_config.push(TabConfig {
@@ -62,18 +62,16 @@ impl App {
                 });
             }
 
-            if up_channels.insert(number, (up, None)).is_some() {
-                return Err(anyhow!("Duplicate up channel configuration: {number}"));
-            }
+            up_channels.push((up, None));
         }
-        for down in rtt.active_down_channels.into_values() {
+        for down in rtt.active_down_channels.into_iter() {
             let number = down.number();
             if !tab_config
                 .iter()
                 .any(|tab| tab.down_channel == Some(number))
             {
                 tab_config.push(TabConfig {
-                    up_channel: if up_channels.contains_key(&number) {
+                    up_channel: if up_channels.len() > number {
                         number
                     } else {
                         0
@@ -84,14 +82,12 @@ impl App {
                 });
             }
 
-            if down_channels.insert(number, down).is_some() {
-                return Err(anyhow!("Duplicate down channel configuration: {number}"));
-            }
+            down_channels.push(down);
         }
 
         // Collect TCP publish addresses
         for up_config in config.rtt.up_channels.iter() {
-            if let Some((_, stream)) = up_channels.get_mut(&up_config.channel) {
+            if let Some((_, stream)) = up_channels.get_mut(up_config.channel) {
                 *stream = up_config.socket;
             }
         }
@@ -102,7 +98,7 @@ impl App {
             if tab.hide {
                 continue;
             }
-            let Some(up_channel) = up_channels.get(&tab.up_channel).map(|(up, _)| up) else {
+            let Some(up_channel) = up_channels.get(tab.up_channel).map(|(up, _)| up) else {
                 tracing::warn!(
                     "Configured up channel {} does not exist, skipping tab",
                     tab.up_channel
@@ -110,7 +106,7 @@ impl App {
                 continue;
             };
 
-            let down_channel = tab.down_channel.and_then(|down| down_channels.get(&down));
+            let down_channel = tab.down_channel.and_then(|down| down_channels.get(down));
             tabs.push(Tab::new(up_channel, down_channel, tab.name));
         }
 
@@ -157,7 +153,7 @@ impl App {
             down_channels,
             up_channels: up_channels
                 .into_iter()
-                .map(|(num, (channel, socket))| (num, UpChannel::new(channel, socket)))
+                .map(|(channel, socket)| UpChannel::new(channel, socket))
                 .collect(),
         })
     }
@@ -230,7 +226,7 @@ impl App {
 
     /// Polls the RTT target for new data on all channels.
     pub fn poll_rtt(&mut self, core: &mut Core) -> Result<()> {
-        for (_, channel) in self.up_channels.iter_mut() {
+        for channel in self.up_channels.iter_mut() {
             channel.poll_rtt(core, self.defmt_state.as_ref())?;
         }
 
@@ -249,7 +245,7 @@ impl App {
             self.save_tab_logs(i, tab);
         }
 
-        for (_, channel) in self.up_channels.iter_mut() {
+        for channel in self.up_channels.iter_mut() {
             channel.clean_up(core)?;
         }
 
@@ -261,10 +257,7 @@ impl App {
             return;
         };
 
-        let up_channel = self
-            .up_channels
-            .get(&tab.up_channel())
-            .expect("up channel disappeared");
+        let up_channel = &self.up_channels[tab.up_channel()];
 
         let extension = match up_channel.data {
             ChannelData::Strings { .. } => "txt",
