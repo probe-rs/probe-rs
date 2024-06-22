@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::fmt::write;
 
 use probe_rs::Core;
@@ -107,7 +107,7 @@ impl Tab {
     pub fn send_input(
         &mut self,
         core: &mut Core,
-        channels: &mut BTreeMap<usize, RttActiveDownChannel>,
+        channels: &mut HashMap<usize, RttActiveDownChannel>,
     ) -> anyhow::Result<()> {
         if let Some((channel, input)) = self.down_channel.as_mut() {
             let channel = channels.get_mut(channel).expect("down channel disappeared");
@@ -119,7 +119,7 @@ impl Tab {
         Ok(())
     }
 
-    pub fn update_messages(&mut self, width: usize, up_channels: &BTreeMap<usize, UpChannel>) {
+    pub fn update_messages(&mut self, width: usize, up_channels: &HashMap<usize, UpChannel>) {
         let up_channel = up_channels
             .get(&self.up_channel)
             .expect("up channel disappeared");

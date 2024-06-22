@@ -12,7 +12,7 @@ use ratatui::{
     widgets::{Block, Borders, List, Paragraph, Tabs},
     Terminal,
 };
-use std::{collections::BTreeMap, io::Write, rc::Rc};
+use std::{collections::HashMap, io::Write, rc::Rc};
 use std::{path::PathBuf, sync::mpsc::TryRecvError};
 
 use crate::{
@@ -38,8 +38,8 @@ pub struct App {
 
     defmt_state: Option<DefmtState>,
 
-    down_channels: BTreeMap<usize, RttActiveDownChannel>,
-    pub(crate) up_channels: BTreeMap<usize, UpChannel>,
+    down_channels: HashMap<usize, RttActiveDownChannel>,
+    pub(crate) up_channels: HashMap<usize, UpChannel>,
 }
 
 impl App {
@@ -47,8 +47,8 @@ impl App {
         let mut tab_config = config.rtt.tabs;
 
         // Create channel states
-        let mut up_channels = BTreeMap::new();
-        let mut down_channels = BTreeMap::new();
+        let mut up_channels = HashMap::new();
+        let mut down_channels = HashMap::new();
 
         // Create tab config based on detected channels
         for up in rtt.active_up_channels.into_values() {
