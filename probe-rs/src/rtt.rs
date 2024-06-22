@@ -398,13 +398,13 @@ impl Rtt {
         self.ptr
     }
 
-    /// Gets a mutable reference to the detected up channels.
-    pub fn up_channels(&mut self) -> &mut Vec<UpChannel> {
+    /// Returns a reference to the detected up channels.
+    pub fn up_channels(&mut self) -> &[UpChannel] {
         &mut self.up_channels
     }
 
-    /// Gets a mutable reference to the detected down channels.
-    pub fn down_channels(&mut self) -> &mut Vec<DownChannel> {
+    /// Returns a reference to the detected down channels.
+    pub fn down_channels(&mut self) -> &[DownChannel] {
         &mut self.down_channels
     }
 
