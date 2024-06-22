@@ -48,9 +48,6 @@
 mod channel;
 pub use channel::*;
 
-pub mod channels;
-pub use channels::Channels;
-
 use crate::{config::MemoryRegion, Core, MemoryInterface};
 use std::borrow::Cow;
 use std::ops::Range;
@@ -90,10 +87,10 @@ pub struct Rtt {
     ptr: u64,
 
     /// The detected up (target to host) channels.
-    pub up_channels: Channels<UpChannel>,
+    pub up_channels: Vec<UpChannel>,
 
     /// The detected down (host to target) channels.
-    pub down_channels: Channels<DownChannel>,
+    pub down_channels: Vec<DownChannel>,
 }
 
 #[repr(C)]
@@ -272,8 +269,8 @@ impl Rtt {
             return Ok(None);
         }
 
-        let mut up_channels = Channels::new();
-        let mut down_channels = Channels::new();
+        let mut up_channels = Vec::new();
+        let mut down_channels = Vec::new();
 
         let channel_buffer_size = rtt_header.channel_buffer_size();
 
@@ -402,13 +399,23 @@ impl Rtt {
     }
 
     /// Gets a mutable reference to the detected up channels.
-    pub fn up_channels(&mut self) -> &mut Channels<UpChannel> {
+    pub fn up_channels(&mut self) -> &mut Vec<UpChannel> {
         &mut self.up_channels
     }
 
     /// Gets a mutable reference to the detected down channels.
-    pub fn down_channels(&mut self) -> &mut Channels<DownChannel> {
+    pub fn down_channels(&mut self) -> &mut Vec<DownChannel> {
         &mut self.down_channels
+    }
+
+    /// Returns a particular up channel.
+    pub fn up_channel(&self, channel: usize) -> Option<&UpChannel> {
+        self.up_channels.get(channel)
+    }
+
+    /// Returns a particular down channel.
+    pub fn down_channel(&self, channel: usize) -> Option<&DownChannel> {
+        self.down_channels.get(channel)
     }
 }
 
@@ -480,8 +487,8 @@ mod test {
         fn rtt(ptr: u32) -> Rtt {
             Rtt {
                 ptr: ptr.into(),
-                up_channels: Channels::new(),
-                down_channels: Channels::new(),
+                up_channels: Vec::new(),
+                down_channels: Vec::new(),
             }
         }
 

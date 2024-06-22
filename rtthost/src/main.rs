@@ -1,4 +1,4 @@
-use probe_rs::rtt::{Channels, Rtt, RttChannel, ScanRegion};
+use probe_rs::rtt::{Rtt, RttChannel, ScanRegion};
 use probe_rs::{config::TargetSelector, probe::DebugProbeInfo};
 use probe_rs::{probe::list::Lister, Permissions};
 
@@ -172,6 +172,7 @@ fn main() -> Result<()> {
             bail!("Error attaching to RTT: {err}");
         }
     };
+    eprintln!("Found control block at {:#010x}", rtt.ptr());
 
     if opts.list {
         println!("Up channels:");
@@ -184,32 +185,26 @@ fn main() -> Result<()> {
     }
 
     let up_channel = if let Some(up) = opts.up {
-        let chan = rtt.up_channels().take(up);
-
-        if chan.is_none() {
+        if up >= rtt.up_channels().len() {
             bail!("Error: up channel {up} does not exist.");
         }
 
-        chan
+        up
     } else {
-        rtt.up_channels().take(0)
+        0
     };
 
     let down_channel = if let Some(down) = opts.down {
-        let chan = rtt.down_channels().take(down);
-
-        if chan.is_none() {
-            bail!("Error: up channel {down} does not exist.");
+        if down >= rtt.down_channels().len() {
+            bail!("Error: down channel {down} does not exist.");
         }
 
-        chan
+        down
     } else {
-        rtt.down_channels().take(0)
+        0
     };
 
-    let stdin = down_channel.as_ref().map(|_| stdin_channel());
-
-    eprintln!("Found control block at 0x{:08x}", rtt.ptr());
+    let stdin = rtt.down_channel(down_channel).map(|_| stdin_channel());
 
     let mut up_buf = [0u8; 1024];
     let mut down_buf = vec![];
@@ -219,7 +214,7 @@ fn main() -> Result<()> {
     }
 
     loop {
-        if let Some(up_channel) = up_channel.as_ref() {
+        if let Some(up_channel) = rtt.up_channel(up_channel) {
             let count = match up_channel.read(&mut core, up_buf.as_mut()) {
                 Ok(count) => count,
                 Err(err) => {
@@ -237,7 +232,7 @@ fn main() -> Result<()> {
             }
         }
 
-        if let (Some(down_channel), Some(stdin)) = (down_channel.as_ref(), &stdin) {
+        if let (Some(down_channel), Some(stdin)) = (rtt.down_channel(down_channel), &stdin) {
             if let Ok(bytes) = stdin.try_recv() {
                 down_buf.extend_from_slice(bytes.as_slice());
             }
@@ -276,7 +271,7 @@ fn list_probes(mut stream: impl std::io::Write, probes: &[DebugProbeInfo]) {
     }
 }
 
-fn list_channels(channels: &Channels<impl RttChannel>) {
+fn list_channels(channels: &[impl RttChannel]) {
     if channels.is_empty() {
         println!("  (none)");
         return;
