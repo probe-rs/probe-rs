@@ -111,8 +111,6 @@ pub struct CmsisDap {
 
     jtag_driver_state: JtagDriverState,
     jtag_sequences: Vec<JtagSequence>,
-    capture_vec: BitVec<u8, Lsb0>,
-    nocapture_count: usize, // number of bits need capture in jtag_sequences
 }
 
 impl std::fmt::Debug for CmsisDap {
@@ -167,8 +165,6 @@ impl CmsisDap {
             batch: Vec::new(),
             jtag_driver_state: JtagDriverState::default(),
             jtag_sequences: Vec::<JtagSequence>::new(),
-            capture_vec: BitVec::new(),
-            nocapture_count: 0,
         })
     }
 
@@ -824,8 +820,11 @@ impl DebugProbe for CmsisDap {
             // to ensure the debug port is ready for JTAG signals,
             // at which point we can interrogate the scan chain
             // and configure the probe with the given IR lengths.
-            self.scan_chain()?;
-            self.select_target(0)?;
+            {
+                // For arm MCU there is no need to do anything, but for riscv it is necessary. Or one day in architecture\riscv code to do the relevant processing, here you can delete.
+                self.scan_chain()?;
+                self.select_target(0)?;
+            }
         } else {
             self.configure_swd(swd::configure::ConfigureRequest {})?;
         }
@@ -938,11 +937,7 @@ impl DebugProbe for CmsisDap {
     }
 
     fn has_riscv_interface(&self) -> bool {
-        if self.capabilities._jtag_implemented {
-            true
-        } else {
-            false
-        }
+        self.capabilities._jtag_implemented
     }
 
     fn try_get_xtensa_interface<'probe>(
@@ -959,11 +954,7 @@ impl DebugProbe for CmsisDap {
     }
 
     fn has_xtensa_interface(&self) -> bool {
-        if self.capabilities._jtag_implemented {
-            true
-        } else {
-            false
-        }
+        self.capabilities._jtag_implemented
     }
 
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
@@ -1286,47 +1277,38 @@ impl RawJtagIo for CmsisDap {
     fn shift_bit(&mut self, tms: bool, tdi: bool, capture: bool) -> Result<(), DebugProbeError> {
         self.jtag_driver_state.state.update(tms);
         if let Some(sequence) = self.jtag_sequences.last_mut() {
-            if let Err(_) = sequence.append(tms, tdi, capture) {
-                if self.jtag_sequences.len() == 6 {
-                    let capture = self.send_jtag_sequences(JtagSequenceRequest::new(
-                        self.jtag_sequences.clone(),
-                    )?)?;
-                    let mut result = BitVec::<u8, Lsb0>::from_vec(capture);
-                    result.truncate(self.nocapture_count);
-                    self.capture_vec.extend_from_bitslice(result.as_bitslice());
-                    self.jtag_sequences.clear();
-                    self.nocapture_count = 0;
-                }
-                self.jtag_sequences.push(JtagSequence::new(
-                    1,
-                    capture,
-                    tms,
-                    [u8::from(tdi), 0, 0, 0, 0, 0, 0, 0],
-                )?);
+            if sequence.append(tms, tdi, capture).is_ok() {
+                return Ok(());
             }
-        } else {
-            self.jtag_sequences.push(JtagSequence::new(
-                1,
-                capture,
-                tms,
-                [u8::from(tdi), 0, 0, 0, 0, 0, 0, 0],
-            )?);
         }
-        self.nocapture_count += usize::from(capture);
+        self.jtag_sequences.push(JtagSequence::new(
+            1,
+            capture,
+            tms,
+            [u8::from(tdi), 0, 0, 0, 0, 0, 0, 0],
+        )?);
         Ok(())
     }
     fn read_captured_bits(&mut self) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
-        let mut capture = self.capture_vec.clone();
-        let new_capture =
-            self.send_jtag_sequences(JtagSequenceRequest::new(self.jtag_sequences.clone())?)?;
-        let mut new_capture = BitVec::<u8, Lsb0>::from_vec(new_capture);
-        new_capture.truncate(self.nocapture_count);
-        capture.extend_from_bitslice(new_capture.as_bitslice());
-
+        let mut capture = BitVec::<u8, Lsb0>::new();
+        // We can transfer up to 255 sequences in one dap jtag-sequence command. But in some riscv chip there is some bug, thus I set up to 3 sequence in once jtag-sequence command transfer.
+        for sequence_slice in self.jtag_sequences.clone().chunks(3 as usize) {
+            let mut batch_sequence = Vec::new();
+            batch_sequence.extend_from_slice(sequence_slice);
+            let capture_count = batch_sequence.iter().map(|x| x.capture_count()).sum();
+            match self.send_jtag_sequences(JtagSequenceRequest::new(batch_sequence)?) {
+                Ok(x) => {
+                    let mut batch_capture = BitVec::<u8, Lsb0>::from_vec(x);
+                    batch_capture.truncate(capture_count);
+                    capture.extend_from_bitslice(batch_capture.as_bitslice());
+                }
+                Err(err) => {
+                    self.jtag_sequences.clear();
+                    return Err(err.into());
+                }
+            }
+        }
         self.jtag_sequences.clear();
-        self.capture_vec.clear();
-        self.nocapture_count = 0;
-
         Ok(capture)
     }
 }

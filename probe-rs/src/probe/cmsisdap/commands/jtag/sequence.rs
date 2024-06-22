@@ -100,7 +100,8 @@ impl Sequence {
             data,
         })
     }
-
+    /// Append one bit sequence a JTAG sequence.
+    /// It will return ok nnly if tms and capture are the same and current tck_cycles less than 64.
     pub(crate) fn append(&mut self, tms: bool, tdi: bool, capture: bool) -> Result<(), ()> {
         if self.tck_cycles < 64 && self.tms == tms && self.tdo_capture == capture {
             self.data[((self.tck_cycles) / 8) as usize] |= u8::from(tdi) << ((self.tck_cycles) % 8);
@@ -108,6 +109,14 @@ impl Sequence {
             Ok(())
         } else {
             Err(())
+        }
+    }
+    // Get how many tdo-bits need to be capture in this sequence.
+    pub(crate) fn capture_count(&self) -> usize {
+        if self.tdo_capture {
+            self.tck_cycles as usize
+        } else {
+            0
         }
     }
 }
