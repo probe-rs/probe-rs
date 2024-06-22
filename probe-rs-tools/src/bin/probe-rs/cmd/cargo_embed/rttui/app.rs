@@ -7,12 +7,12 @@ use crossterm::{
 use probe_rs::Core;
 use ratatui::{
     backend::CrosstermBackend,
-    layout::{Constraint, Direction, Layout},
+    layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     widgets::{Block, Borders, List, Paragraph, Tabs},
     Terminal,
 };
-use std::{collections::BTreeMap, io::Write};
+use std::{collections::BTreeMap, io::Write, rc::Rc};
 use std::{path::PathBuf, sync::mpsc::TryRecvError};
 
 use crate::{
@@ -315,10 +315,7 @@ impl App {
     }
 }
 
-fn layout_chunks(
-    f: &mut ratatui::Frame,
-    has_down_channel: bool,
-) -> std::rc::Rc<[ratatui::prelude::Rect]> {
+fn layout_chunks(f: &mut ratatui::Frame, has_down_channel: bool) -> Rc<[Rect]> {
     let constraints = if has_down_channel {
         &[
             Constraint::Length(1),
@@ -335,12 +332,7 @@ fn layout_chunks(
         .split(f.size())
 }
 
-fn render_tabs(
-    f: &mut ratatui::Frame,
-    chunk: ratatui::prelude::Rect,
-    tabs: &[Tab],
-    current_tab: usize,
-) {
+fn render_tabs(f: &mut ratatui::Frame, chunk: Rect, tabs: &[Tab], current_tab: usize) {
     let tab_names = tabs.iter().map(|t| t.name());
     let tabs = Tabs::new(tab_names)
         .select(current_tab)
