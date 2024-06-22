@@ -202,16 +202,7 @@ impl App {
         };
 
         match event.code {
-            KeyCode::Char('c') if event.modifiers.contains(KeyModifiers::CONTROL) => {
-                clean_up_terminal();
-                let _ = self.terminal.show_cursor();
-
-                for (i, tab) in self.tabs.iter().enumerate() {
-                    self.save_tab_logs(i, tab);
-                }
-
-                return true;
-            }
+            KeyCode::Char('c') if event.modifiers.contains(KeyModifiers::CONTROL) => return true,
             KeyCode::Char('l') if event.modifiers.contains(KeyModifiers::CONTROL) => {
                 self.current_tab_mut().clear();
             }
@@ -250,6 +241,13 @@ impl App {
     }
 
     pub(crate) fn clean_up(&mut self, core: &mut Core) -> Result<()> {
+        clean_up_terminal();
+        let _ = self.terminal.show_cursor();
+
+        for (i, tab) in self.tabs.iter().enumerate() {
+            self.save_tab_logs(i, tab);
+        }
+
         for (_, channel) in self.up_channels.iter_mut() {
             channel.clean_up(core)?;
         }
