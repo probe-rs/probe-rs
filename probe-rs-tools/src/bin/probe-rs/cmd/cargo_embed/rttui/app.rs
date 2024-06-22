@@ -211,60 +211,8 @@ impl App {
                 clean_up_terminal();
                 let _ = self.terminal.show_cursor();
 
-                let Some(path) = &self.history_path else {
-                    return true;
-                };
-
                 for (i, tab) in self.tabs.iter().enumerate() {
-                    let up_channel = self
-                        .up_channels
-                        .get(&tab.up_channel())
-                        .expect("up channel disappeared");
-
-                    let extension = match up_channel.data {
-                        ChannelData::Strings { .. } => "txt",
-                        ChannelData::Binary { .. } => "dat",
-                    };
-                    let name = format!("{}_channel{i}.{extension}", self.logname);
-                    let sanitize_options = sanitize_filename::Options {
-                        replacement: "_",
-                        ..Default::default()
-                    };
-                    let sanitized_name =
-                        sanitize_filename::sanitize_with_options(name, sanitize_options);
-                    let final_path = path.join(sanitized_name);
-
-                    match &up_channel.data {
-                        ChannelData::Strings { messages } => {
-                            let mut file = match std::fs::File::create(&final_path) {
-                                Ok(file) => file,
-                                Err(e) => {
-                                    eprintln!(
-                                        "\nCould not create log file {}: {}",
-                                        final_path.display(),
-                                        e
-                                    );
-                                    continue;
-                                }
-                            };
-                            for line in messages {
-                                if let Err(e) = writeln!(file, "{line}") {
-                                    eprintln!("\nError writing log channel {i}: {e}");
-                                    break;
-                                }
-                            }
-                            // Flush file
-                            if let Err(e) = file.flush() {
-                                eprintln!("Error writing log channel {i}: {e}")
-                            }
-                        }
-
-                        ChannelData::Binary { data } => {
-                            if let Err(e) = std::fs::write(final_path, data) {
-                                eprintln!("Error writing log channel {i}: {e}")
-                            }
-                        }
-                    }
+                    self.save_tab_logs(i, tab);
                 }
 
                 return true;
@@ -312,6 +260,61 @@ impl App {
         }
 
         Ok(())
+    }
+
+    fn save_tab_logs(&self, i: usize, tab: &Tab) {
+        let Some(path) = &self.history_path else {
+            return;
+        };
+
+        let up_channel = self
+            .up_channels
+            .get(&tab.up_channel())
+            .expect("up channel disappeared");
+
+        let extension = match up_channel.data {
+            ChannelData::Strings { .. } => "txt",
+            ChannelData::Binary { .. } => "dat",
+        };
+        let name = format!("{}_channel{i}.{extension}", self.logname);
+        let sanitize_options = sanitize_filename::Options {
+            replacement: "_",
+            ..Default::default()
+        };
+        let sanitized_name = sanitize_filename::sanitize_with_options(name, sanitize_options);
+        let final_path = path.join(sanitized_name);
+
+        match &up_channel.data {
+            ChannelData::Strings { messages } => {
+                let mut file = match std::fs::File::create(&final_path) {
+                    Ok(file) => file,
+                    Err(e) => {
+                        eprintln!(
+                            "\nCould not create log file {}: {}",
+                            final_path.display(),
+                            e
+                        );
+                        return;
+                    }
+                };
+                for line in messages {
+                    if let Err(e) = writeln!(file, "{line}") {
+                        eprintln!("\nError writing log channel {i}: {e}");
+                        break;
+                    }
+                }
+                // Flush file
+                if let Err(e) = file.flush() {
+                    eprintln!("Error writing log channel {i}: {e}")
+                }
+            }
+
+            ChannelData::Binary { data } => {
+                if let Err(e) = std::fs::write(final_path, data) {
+                    eprintln!("Error writing log channel {i}: {e}")
+                }
+            }
+        }
     }
 }
 
