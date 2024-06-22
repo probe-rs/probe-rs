@@ -521,26 +521,22 @@ pub struct DefmtState {
 }
 impl DefmtState {
     pub fn try_from_bytes(buffer: &[u8]) -> Result<Option<Self>> {
-        if let Some(table) = defmt_decoder::Table::parse(buffer)? {
-            let locs = {
-                let locs = table.get_locations(buffer)?;
+        let Some(table) = defmt_decoder::Table::parse(buffer)? else {
+            return Ok(None);
+        };
 
-                if !table.is_empty() && locs.is_empty() {
-                    tracing::warn!("Insufficient DWARF info; compile your program with `debug = 2` to enable location info.");
-                    None
-                } else if table.indices().all(|idx| locs.contains_key(&(idx as u64))) {
-                    Some(locs)
-                } else {
-                    tracing::warn!(
-                        "Location info is incomplete; it will be omitted from the output."
-                    );
-                    None
-                }
-            };
-            Ok(Some(DefmtState { table, locs }))
+        let locs = table.get_locations(buffer)?;
+
+        let locs = if !table.is_empty() && locs.is_empty() {
+            tracing::warn!("Insufficient DWARF info; compile your program with `debug = 2` to enable location info.");
+            None
+        } else if table.indices().all(|idx| locs.contains_key(&(idx as u64))) {
+            Some(locs)
         } else {
-            Ok(None)
-        }
+            tracing::warn!("Location info is incomplete; it will be omitted from the output.");
+            None
+        };
+        Ok(Some(DefmtState { table, locs }))
     }
 }
 

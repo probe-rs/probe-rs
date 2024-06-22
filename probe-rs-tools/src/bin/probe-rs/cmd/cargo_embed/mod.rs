@@ -148,8 +148,6 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
         path.display()
     ));
 
-    let lister = Lister::new();
-
     // If we got a probe selector in the config, open the probe matching the selector if possible.
     let selector = if let Some(selector) = opt.probe {
         Some(selector)
@@ -190,6 +188,7 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
         allow_erase_all: config.flashing.enabled || config.gdb.enabled,
     };
 
+    let lister = Lister::new();
     let (mut session, probe_options) = match probe_options.simple_attach(&lister) {
         Ok((session, probe_options)) => (session, probe_options),
 
@@ -352,14 +351,15 @@ fn run_rttui_app(
         if config
             .rtt
             .up_channel_config(channel_config.channel)
-            .is_none()
+            .is_some()
         {
-            // Set up channel defaults, we don't read from it anyway.
-            rtt_config.channels.push(RttChannelConfig {
-                channel_number: Some(channel_config.channel),
-                ..Default::default()
-            });
+            continue;
         }
+        // Set up channel defaults, we don't read from it anyway.
+        rtt_config.channels.push(RttChannelConfig {
+            channel_number: Some(channel_config.channel),
+            ..Default::default()
+        });
     }
 
     let memory_map = {

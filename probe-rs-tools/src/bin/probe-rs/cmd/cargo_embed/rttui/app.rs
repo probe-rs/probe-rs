@@ -102,15 +102,16 @@ impl App {
             if tab.hide {
                 continue;
             }
-            if let Some(up_channel) = up_channels.get(&tab.up_channel).map(|(up, _)| up) {
-                let down_channel = tab.down_channel.and_then(|down| down_channels.get(&down));
-                tabs.push(Tab::new(up_channel, down_channel, tab.name));
-            } else {
+            let Some(up_channel) = up_channels.get(&tab.up_channel).map(|(up, _)| up) else {
                 tracing::warn!(
                     "Configured up channel {} does not exist, skipping tab",
                     tab.up_channel
                 );
-            }
+                continue;
+            };
+
+            let down_channel = tab.down_channel.and_then(|down| down_channels.get(&down));
+            tabs.push(Tab::new(up_channel, down_channel, tab.name));
         }
 
         // Code farther down relies on tabs being configured and might panic
@@ -135,8 +136,8 @@ impl App {
             //should we create the path on startup or when we write
             match std::fs::create_dir_all(&config.rtt.log_path) {
                 Ok(_) => Some(config.rtt.log_path),
-                Err(_) => {
-                    tracing::warn!("Could not create log directory");
+                Err(error) => {
+                    tracing::warn!("Could not create log directory: {error}");
                     None
                 }
             }
