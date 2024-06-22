@@ -185,7 +185,7 @@ impl App {
                     f.render_widget(input, chunks[2]);
                 }
             })
-            .unwrap();
+            .expect("Failed to render terminal UI");
     }
 
     /// Returns true if the application should exit.
