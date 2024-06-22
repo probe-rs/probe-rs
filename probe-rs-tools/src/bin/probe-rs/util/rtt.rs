@@ -442,7 +442,7 @@ impl RttActiveUpChannel {
                     tracing::error!("\nError reading from RTT: {}", err);
                     return None;
                 }
-                _ => std::thread::sleep(std::time::Duration::from_millis(50)),
+                _ => thread::sleep(Duration::from_millis(50)),
             }
         }
 
