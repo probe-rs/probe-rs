@@ -30,7 +30,7 @@
 //! let mut rtt = Rtt::attach(&mut core, &memory_map)?;
 //!
 //! // Read from a channel
-//! if let Some(input) = rtt.up_channels().take(0) {
+//! if let Some(input) = rtt.up_channel(0) {
 //!     let mut buf = [0u8; 1024];
 //!     let count = input.read(&mut core, &mut buf[..])?;
 //!
@@ -38,7 +38,7 @@
 //! }
 //!
 //! // Write to a channel
-//! if let Some(output) = rtt.down_channels().take(0) {
+//! if let Some(output) = rtt.down_channel(0) {
 //!     output.write(&mut core, b"Hello, computer!\n")?;
 //! }
 //!
