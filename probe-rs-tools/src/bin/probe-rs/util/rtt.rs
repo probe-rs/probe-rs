@@ -554,10 +554,10 @@ impl RttActiveTarget {
         rtt_config: &RttConfig,
         timestamp_offset: UtcOffset,
     ) -> Result<Self> {
-        let mut active_up_channels = Vec::new();
-        let mut active_down_channels = Vec::new();
+        let mut active_up_channels = Vec::with_capacity(rtt.up_channels.len());
 
-        // For each channel configured in the RTT Control Block (`Rtt`), check if there are additional user configuration in a `RttChannelConfig`. If not, apply defaults.
+        // For each channel configured in the RTT Control Block (`Rtt`), check if there are
+        // additional user configuration in a `RttChannelConfig`. If not, apply defaults.
         for channel in rtt.up_channels.into_iter() {
             let channel_config = rtt_config
                 .channel_config(channel.number())
@@ -572,16 +572,18 @@ impl RttActiveTarget {
             )?);
         }
 
-        for channel in rtt.down_channels.into_iter() {
-            active_down_channels.push(RttActiveDownChannel::new(channel));
-        }
-
         // It doesn't make sense to pretend RTT is active, if there are no active up channels
         if active_up_channels.is_empty() {
             return Err(anyhow!(
                 "RTT Initialized correctly, but there were no active channels configured"
             ));
         }
+
+        let active_down_channels = rtt
+            .down_channels
+            .into_iter()
+            .map(RttActiveDownChannel::new)
+            .collect::<Vec<_>>();
 
         Ok(Self {
             active_up_channels,
