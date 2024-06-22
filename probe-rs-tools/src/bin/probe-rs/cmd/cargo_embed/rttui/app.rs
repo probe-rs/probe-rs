@@ -188,23 +188,18 @@ impl App {
             .expect("Failed to render terminal UI");
     }
 
-    /// Returns true if the application should exit.
+    /// Returns `true` if the application should exit.
     pub fn handle_event(&mut self, core: &mut Core) -> bool {
         let event = match self.events.next() {
+            // Ignore key release events emitted by Crossterm on Windows
+            Ok(event) if event.kind != KeyEventKind::Press => return false,
             Ok(event) => event,
             Err(TryRecvError::Empty) => return false,
             Err(TryRecvError::Disconnected) => {
-                tracing::warn!(
-                    "Unable to receive anymore input events from terminal, shutting down."
-                );
+                tracing::warn!("Unable to receive more input events from terminal, shutting down.");
                 return true;
             }
         };
-
-        // Ignore key release events emitted by Crossterm on Windows
-        if event.kind != KeyEventKind::Press {
-            return false;
-        }
 
         match event.code {
             KeyCode::Char('c') if event.modifiers.contains(KeyModifiers::CONTROL) => {
