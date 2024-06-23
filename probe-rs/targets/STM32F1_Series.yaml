@@ -25,7 +25,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f10x_16
+  - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F100C6
   cores:
@@ -121,7 +121,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f10x_16
+  - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F100R6
   cores:
@@ -481,7 +481,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f10x_16
+  - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F101C6
   cores:
@@ -577,7 +577,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f10x_16
+  - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F101R6
   cores:
@@ -793,7 +793,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f10x_16
+  - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F101T6
   cores:
@@ -1177,7 +1177,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f10x_16
+  - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F102C6
   cores:
@@ -1273,7 +1273,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f10x_16
+  - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F102R6
   cores:
@@ -1369,7 +1369,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f10x_16
+  - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F103C6
   cores:
@@ -1465,7 +1465,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f10x_16
+  - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F103R6
   cores:
@@ -1681,7 +1681,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f10x_16
+  - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F103T6
   cores:
@@ -2065,7 +2065,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f10x_cl
+  - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F105RB
   cores:
@@ -2089,7 +2089,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f10x_cl
+  - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F105RC
   cores:
@@ -2113,7 +2113,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f10x_cl
+  - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F105V8
   cores:
@@ -2137,7 +2137,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f10x_cl
+  - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F105VB
   cores:
@@ -2161,7 +2161,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f10x_cl
+  - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F105VC
   cores:
@@ -2185,7 +2185,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f10x_cl
+  - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F107RB
   cores:
@@ -2209,7 +2209,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f10x_cl
+  - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F107RC
   cores:
@@ -2233,7 +2233,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f10x_cl
+  - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F107VB
   cores:
@@ -2257,7 +2257,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f10x_cl
+  - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F107VC
   cores:
@@ -2281,7 +2281,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32f10x_cl
+  - stm32f10x_512
   - stm32f10x_opt
 flash_algorithms:
 - name: stm32f10x_512
@@ -2352,29 +2352,6 @@ flash_algorithms:
       address: 0x0
   cores:
   - main
-- name: stm32f10x_cl
-  description: STM32F10x Connectivity Line Flash
-  default: true
-  instructions: ELUDRgAgREwgYERIYGBESGBgIEbAaRDwBA8I0UXyVVBATCBgBiBgYED2/3CgYAAgEL0BRjhIAGlA8IAANkoQYQAgcEc0SABpQPAEADJJCGEIRgBpQPBAAAhhA+BK9qogMEkIYCxIwGgQ8AEP9tEqSABpIPAEAChJCGEAIHBHAUYlSABpQPACACNKEGEQRkFhAGlA8EAAEGED4Er2qiAhShBgHUjAaBDwAQ/20RpIAGkg8AIAGEoQYQAgcEcQtQNGSBwg8AEBIuATSABpQPABABFMIGEQiBiAAL8PSMBoEPABD/rRDEgAaSDwAQAKTCBhIEbAaBDwFA8G0CBGwGhA8BQA4GABIBC9mxySHIkeACna0QAg9+cAAAAgAkAjAWdFq4nvzQAwAEAAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x33
-  pc_program_page: 0xbd
-  pc_erase_sector: 0x7f
-  pc_erase_all: 0x45
-  data_section_offset: 0x128
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8040000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 100
-    erase_sector_timeout: 500
-    sectors:
-    - size: 0x800
-      address: 0x0
-  cores:
-  - main
 - name: stm32f10x_1024
   description: STM32F10x XL-density Flash
   default: true
@@ -2395,29 +2372,6 @@ flash_algorithms:
     erase_sector_timeout: 500
     sectors:
     - size: 0x800
-      address: 0x0
-  cores:
-  - main
-- name: stm32f10x_16
-  description: STM32F10x Low-density Flash
-  default: true
-  instructions: ELUDRgAgREwgYERIYGBESGBgIEbAaRDwBA8I0UXyVVBATCBgBiBgYED2/3CgYAAgEL0BRjhIAGlA8IAANkoQYQAgcEc0SABpQPAEADJJCGEIRgBpQPBAAAhhA+BK9qogMEkIYCxIwGgQ8AEP9tEqSABpIPAEAChJCGEAIHBHAUYlSABpQPACACNKEGEQRkFhAGlA8EAAEGED4Er2qiAhShBgHUjAaBDwAQ/20RpIAGkg8AIAGEoQYQAgcEcQtQNGSBwg8AEBIuATSABpQPABABFMIGEQiBiAAL8PSMBoEPABD/rRDEgAaSDwAQAKTCBhIEbAaBDwFA8G0CBGwGhA8BQA4GABIBC9mxySHIkeACna0QAg9+cAAAAgAkAjAWdFq4nvzQAwAEAAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x33
-  pc_program_page: 0xbd
-  pc_erase_sector: 0x7f
-  pc_erase_all: 0x45
-  data_section_offset: 0x128
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8004000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 100
-    erase_sector_timeout: 500
-    sectors:
-    - size: 0x400
       address: 0x0
   cores:
   - main

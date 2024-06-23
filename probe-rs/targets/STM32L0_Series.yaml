@@ -25,7 +25,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_32
+  - stm32l0xx_192
   - stm32l010x6_8_eeprom
   - stm32l0xx_opt
 - name: STM32L010F4Px
@@ -50,7 +50,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_16
+  - stm32l0xx_192
   - stm32l010x4_eeprom
   - stm32l0xx_opt
 - name: STM32L010K4Tx
@@ -75,7 +75,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_16
+  - stm32l0xx_192
   - stm32l010x4_eeprom
   - stm32l0xx_opt
 - name: STM32L010K8Tx
@@ -100,7 +100,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_64
+  - stm32l0xx_192
   - stm32l010x6_8_eeprom
   - stm32l0xx_opt
 - name: STM32L010R8Tx
@@ -125,7 +125,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_64
+  - stm32l0xx_192
   - stm32l010x6_8_eeprom
   - stm32l0xx_opt
 - name: STM32L010RBTx
@@ -150,8 +150,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_128
-  - stm32l010xb_eeprom
+  - stm32l0xx_192
+  - stm32l01_2x_eeprom
   - stm32l0xx_opt
 - name: STM32L011D3Px
   cores:
@@ -175,7 +175,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_8
+  - stm32l0xx_192
   - stm32l01_2x_eeprom
   - stm32l0xx_opt
 - name: STM32L011D4Px
@@ -200,7 +200,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_16
+  - stm32l0xx_192
   - stm32l01_2x_eeprom
   - stm32l0xx_opt
 - name: STM32L011E4Yx
@@ -225,7 +225,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_16
+  - stm32l0xx_192
   - stm32l01_2x_eeprom
   - stm32l0xx_opt
 - name: STM32L011F3Px
@@ -250,7 +250,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_8
+  - stm32l0xx_192
   - stm32l01_2x_eeprom
   - stm32l0xx_opt
 - name: STM32L011F3Ux
@@ -275,7 +275,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_8
+  - stm32l0xx_192
   - stm32l01_2x_eeprom
   - stm32l0xx_opt
 - name: STM32L011F4Px
@@ -300,7 +300,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_16
+  - stm32l0xx_192
   - stm32l01_2x_eeprom
   - stm32l0xx_opt
 - name: STM32L011F4Ux
@@ -325,7 +325,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_16
+  - stm32l0xx_192
   - stm32l01_2x_eeprom
   - stm32l0xx_opt
 - name: STM32L011G3Ux
@@ -350,7 +350,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_8
+  - stm32l0xx_192
   - stm32l01_2x_eeprom
   - stm32l0xx_opt
 - name: STM32L011G4Ux
@@ -375,7 +375,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_16
+  - stm32l0xx_192
   - stm32l01_2x_eeprom
   - stm32l0xx_opt
 - name: STM32L011K3Tx
@@ -400,7 +400,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_8
+  - stm32l0xx_192
   - stm32l01_2x_eeprom
   - stm32l0xx_opt
 - name: STM32L011K3Ux
@@ -425,7 +425,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_8
+  - stm32l0xx_192
   - stm32l01_2x_eeprom
   - stm32l0xx_opt
 - name: STM32L011K4Tx
@@ -450,7 +450,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_16
+  - stm32l0xx_192
   - stm32l01_2x_eeprom
   - stm32l0xx_opt
 - name: STM32L011K4Ux
@@ -475,7 +475,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_16
+  - stm32l0xx_192
   - stm32l01_2x_eeprom
   - stm32l0xx_opt
 - name: STM32L021D4Px
@@ -500,7 +500,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_16
+  - stm32l0xx_192
   - stm32l01_2x_eeprom
   - stm32l0xx_opt
 - name: STM32L021F4Px
@@ -525,7 +525,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_16
+  - stm32l0xx_192
   - stm32l01_2x_eeprom
   - stm32l0xx_opt
 - name: STM32L021F4Ux
@@ -550,7 +550,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_16
+  - stm32l0xx_192
   - stm32l01_2x_eeprom
   - stm32l0xx_opt
 - name: STM32L021G4Ux
@@ -575,7 +575,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_16
+  - stm32l0xx_192
   - stm32l01_2x_eeprom
   - stm32l0xx_opt
 - name: STM32L021K4Tx
@@ -600,7 +600,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_16
+  - stm32l0xx_192
   - stm32l01_2x_eeprom
   - stm32l0xx_opt
 - name: STM32L021K4Ux
@@ -625,7 +625,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_16
+  - stm32l0xx_192
   - stm32l01_2x_eeprom
   - stm32l0xx_opt
 - name: STM32L031C4Tx
@@ -650,7 +650,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_16
+  - stm32l0xx_192
   - stm32l03_4x_eeprom
   - stm32l0xx_opt
 - name: STM32L031C6Tx
@@ -675,7 +675,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_32
+  - stm32l0xx_192
   - stm32l03_4x_eeprom
   - stm32l0xx_opt
 - name: STM32L031E4Yx
@@ -700,7 +700,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_16
+  - stm32l0xx_192
   - stm32l03_4x_eeprom
   - stm32l0xx_opt
 - name: STM32L031E6Yx
@@ -725,7 +725,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_32
+  - stm32l0xx_192
   - stm32l03_4x_eeprom
   - stm32l0xx_opt
 - name: STM32L031F4Px
@@ -750,7 +750,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_16
+  - stm32l0xx_192
   - stm32l03_4x_eeprom
   - stm32l0xx_opt
 - name: STM32L031F6Px
@@ -775,7 +775,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_32
+  - stm32l0xx_192
   - stm32l03_4x_eeprom
   - stm32l0xx_opt
 - name: STM32L031G4Ux
@@ -800,7 +800,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_16
+  - stm32l0xx_192
   - stm32l03_4x_eeprom
   - stm32l0xx_opt
 - name: STM32L031G6Ux
@@ -825,7 +825,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_32
+  - stm32l0xx_192
   - stm32l03_4x_eeprom
   - stm32l0xx_opt
 - name: STM32L031G6UxS
@@ -850,7 +850,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_32
+  - stm32l0xx_192
   - stm32l03_4x_eeprom
   - stm32l0xx_opt
 - name: STM32L031K4Tx
@@ -875,7 +875,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_16
+  - stm32l0xx_192
   - stm32l03_4x_eeprom
   - stm32l0xx_opt
 - name: STM32L031K4Ux
@@ -900,7 +900,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_16
+  - stm32l0xx_192
   - stm32l03_4x_eeprom
   - stm32l0xx_opt
 - name: STM32L031K6Tx
@@ -925,7 +925,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_32
+  - stm32l0xx_192
   - stm32l03_4x_eeprom
   - stm32l0xx_opt
 - name: STM32L031K6Ux
@@ -950,7 +950,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_32
+  - stm32l0xx_192
   - stm32l03_4x_eeprom
   - stm32l0xx_opt
 - name: STM32L041C4Tx
@@ -975,7 +975,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_16
+  - stm32l0xx_192
   - stm32l03_4x_eeprom
   - stm32l0xx_opt
 - name: STM32L041C6Tx
@@ -1000,7 +1000,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_32
+  - stm32l0xx_192
   - stm32l03_4x_eeprom
   - stm32l0xx_opt
 - name: STM32L041E6Yx
@@ -1025,7 +1025,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_32
+  - stm32l0xx_192
   - stm32l03_4x_eeprom
   - stm32l0xx_opt
 - name: STM32L041F6Px
@@ -1050,7 +1050,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_32
+  - stm32l0xx_192
   - stm32l03_4x_eeprom
   - stm32l0xx_opt
 - name: STM32L041G6Ux
@@ -1075,7 +1075,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_32
+  - stm32l0xx_192
   - stm32l03_4x_eeprom
   - stm32l0xx_opt
 - name: STM32L041K6Tx
@@ -1100,7 +1100,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_32
+  - stm32l0xx_192
   - stm32l03_4x_eeprom
   - stm32l0xx_opt
 - name: STM32L041K6Ux
@@ -1125,7 +1125,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_32
+  - stm32l0xx_192
   - stm32l03_4x_eeprom
   - stm32l0xx_opt
 - name: STM32L051C6Tx
@@ -1150,7 +1150,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_32
+  - stm32l0xx_192
   - stm32l05_6x_eeprom
   - stm32l0xx_opt
 - name: STM32L051C8Tx
@@ -1175,7 +1175,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_64
+  - stm32l0xx_192
   - stm32l05_6x_eeprom
   - stm32l0xx_opt
 - name: STM32L051K6Tx
@@ -1200,7 +1200,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_32
+  - stm32l0xx_192
   - stm32l05_6x_eeprom
   - stm32l0xx_opt
 - name: STM32L051K6Ux
@@ -1225,7 +1225,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_32
+  - stm32l0xx_192
   - stm32l05_6x_eeprom
   - stm32l0xx_opt
 - name: STM32L051K8Tx
@@ -1250,7 +1250,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_64
+  - stm32l0xx_192
   - stm32l05_6x_eeprom
   - stm32l0xx_opt
 - name: STM32L051K8Ux
@@ -1275,7 +1275,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_64
+  - stm32l0xx_192
   - stm32l05_6x_eeprom
   - stm32l0xx_opt
 - name: STM32L051R6Hx
@@ -1300,7 +1300,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_32
+  - stm32l0xx_192
   - stm32l05_6x_eeprom
   - stm32l0xx_opt
 - name: STM32L051R6Tx
@@ -1325,7 +1325,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_32
+  - stm32l0xx_192
   - stm32l05_6x_eeprom
   - stm32l0xx_opt
 - name: STM32L051R8Hx
@@ -1350,7 +1350,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_64
+  - stm32l0xx_192
   - stm32l05_6x_eeprom
   - stm32l0xx_opt
 - name: STM32L051R8Tx
@@ -1375,7 +1375,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_64
+  - stm32l0xx_192
   - stm32l05_6x_eeprom
   - stm32l0xx_opt
 - name: STM32L051T6Yx
@@ -1400,7 +1400,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_32
+  - stm32l0xx_192
   - stm32l05_6x_eeprom
   - stm32l0xx_opt
 - name: STM32L051T8Yx
@@ -1425,7 +1425,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_64
+  - stm32l0xx_192
   - stm32l05_6x_eeprom
   - stm32l0xx_opt
 - name: STM32L052C6Tx
@@ -1450,7 +1450,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_32
+  - stm32l0xx_192
   - stm32l05_6x_eeprom
   - stm32l0xx_opt
 - name: STM32L052C8Tx
@@ -1475,7 +1475,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_64
+  - stm32l0xx_192
   - stm32l05_6x_eeprom
   - stm32l0xx_opt
 - name: STM32L052K6Tx
@@ -1500,7 +1500,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_32
+  - stm32l0xx_192
   - stm32l05_6x_eeprom
   - stm32l0xx_opt
 - name: STM32L052K6Ux
@@ -1525,7 +1525,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_32
+  - stm32l0xx_192
   - stm32l05_6x_eeprom
   - stm32l0xx_opt
 - name: STM32L052K8Tx
@@ -1550,7 +1550,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_64
+  - stm32l0xx_192
   - stm32l05_6x_eeprom
   - stm32l0xx_opt
 - name: STM32L052K8Ux
@@ -1575,7 +1575,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_64
+  - stm32l0xx_192
   - stm32l05_6x_eeprom
   - stm32l0xx_opt
 - name: STM32L052R6Hx
@@ -1600,7 +1600,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_32
+  - stm32l0xx_192
   - stm32l05_6x_eeprom
   - stm32l0xx_opt
 - name: STM32L052R6Tx
@@ -1625,7 +1625,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_32
+  - stm32l0xx_192
   - stm32l05_6x_eeprom
   - stm32l0xx_opt
 - name: STM32L052R8Hx
@@ -1650,7 +1650,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_64
+  - stm32l0xx_192
   - stm32l05_6x_eeprom
   - stm32l0xx_opt
 - name: STM32L052R8Tx
@@ -1675,7 +1675,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_64
+  - stm32l0xx_192
   - stm32l05_6x_eeprom
   - stm32l0xx_opt
 - name: STM32L052T6Yx
@@ -1700,7 +1700,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_32
+  - stm32l0xx_192
   - stm32l05_6x_eeprom
   - stm32l0xx_opt
 - name: STM32L052T8Yx
@@ -1725,7 +1725,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_64
+  - stm32l0xx_192
   - stm32l05_6x_eeprom
   - stm32l0xx_opt
 - name: STM32L053C6Tx
@@ -1750,7 +1750,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_32
+  - stm32l0xx_192
   - stm32l05_6x_eeprom
   - stm32l0xx_opt
 - name: STM32L053C8Tx
@@ -1775,7 +1775,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_64
+  - stm32l0xx_192
   - stm32l05_6x_eeprom
   - stm32l0xx_opt
 - name: STM32L053R6Hx
@@ -1800,7 +1800,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_32
+  - stm32l0xx_192
   - stm32l05_6x_eeprom
   - stm32l0xx_opt
 - name: STM32L053R6Tx
@@ -1825,7 +1825,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_32
+  - stm32l0xx_192
   - stm32l05_6x_eeprom
   - stm32l0xx_opt
 - name: STM32L053R8Hx
@@ -1850,7 +1850,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_64
+  - stm32l0xx_192
   - stm32l05_6x_eeprom
   - stm32l0xx_opt
 - name: STM32L053R8Tx
@@ -1875,7 +1875,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_64
+  - stm32l0xx_192
   - stm32l05_6x_eeprom
   - stm32l0xx_opt
 - name: STM32L062K8Tx
@@ -1900,7 +1900,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_64
+  - stm32l0xx_192
   - stm32l05_6x_eeprom
   - stm32l0xx_opt
 - name: STM32L062K8Ux
@@ -1925,7 +1925,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_64
+  - stm32l0xx_192
   - stm32l05_6x_eeprom
   - stm32l0xx_opt
 - name: STM32L063C8Tx
@@ -1950,7 +1950,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_64
+  - stm32l0xx_192
   - stm32l05_6x_eeprom
   - stm32l0xx_opt
 - name: STM32L063R8Tx
@@ -1975,7 +1975,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_64
+  - stm32l0xx_192
   - stm32l05_6x_eeprom
   - stm32l0xx_opt
 - name: STM32L071C8Tx
@@ -2000,7 +2000,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_64
+  - stm32l0xx_192
   - stm32l07x_64_eeprom
   - stm32l0xx_opt
 - name: STM32L071CBTx
@@ -2025,7 +2025,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_128
+  - stm32l0xx_192
   - stm32l07_8x_eeprom
   - stm32l0xx_opt
 - name: STM32L071CBYx
@@ -2050,7 +2050,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_128
+  - stm32l0xx_192
   - stm32l07_8x_eeprom
   - stm32l0xx_opt
 - name: STM32L071CZTx
@@ -2125,7 +2125,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_64
+  - stm32l0xx_192
   - stm32l07x_64_eeprom
   - stm32l0xx_opt
 - name: STM32L071KBTx
@@ -2156,7 +2156,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_128
+  - stm32l0xx_192
   - stm32l07_8x_eeprom
   - stm32l0xx_opt
 - name: STM32L071KBUx
@@ -2181,7 +2181,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_128
+  - stm32l0xx_192
   - stm32l07_8x_eeprom
   - stm32l0xx_opt
 - name: STM32L071KZTx
@@ -2256,7 +2256,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_128
+  - stm32l0xx_192
   - stm32l07_8x_eeprom
   - stm32l0xx_opt
 - name: STM32L071RBTx
@@ -2281,7 +2281,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_128
+  - stm32l0xx_192
   - stm32l07_8x_eeprom
   - stm32l0xx_opt
 - name: STM32L071RZHx
@@ -2380,7 +2380,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_64
+  - stm32l0xx_192
   - stm32l07x_64_eeprom
   - stm32l0xx_opt
 - name: STM32L071V8Tx
@@ -2405,7 +2405,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_64
+  - stm32l0xx_192
   - stm32l07x_64_eeprom
   - stm32l0xx_opt
 - name: STM32L071VBIx
@@ -2430,7 +2430,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_128
+  - stm32l0xx_192
   - stm32l07_8x_eeprom
   - stm32l0xx_opt
 - name: STM32L071VBTx
@@ -2455,7 +2455,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_128
+  - stm32l0xx_192
   - stm32l07_8x_eeprom
   - stm32l0xx_opt
 - name: STM32L071VZIx
@@ -2530,7 +2530,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_128
+  - stm32l0xx_192
   - stm32l07_8x_eeprom
   - stm32l0xx_opt
 - name: STM32L072CBYx
@@ -2555,7 +2555,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_128
+  - stm32l0xx_192
   - stm32l07_8x_eeprom
   - stm32l0xx_opt
 - name: STM32L072CZEx
@@ -2655,7 +2655,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_128
+  - stm32l0xx_192
   - stm32l07_8x_eeprom
   - stm32l0xx_opt
 - name: STM32L072KBUx
@@ -2680,7 +2680,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_128
+  - stm32l0xx_192
   - stm32l07_8x_eeprom
   - stm32l0xx_opt
 - name: STM32L072KZTx
@@ -2755,7 +2755,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_128
+  - stm32l0xx_192
   - stm32l07_8x_eeprom
   - stm32l0xx_opt
 - name: STM32L072RBIx
@@ -2780,7 +2780,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_128
+  - stm32l0xx_192
   - stm32l07_8x_eeprom
   - stm32l0xx_opt
 - name: STM32L072RBTx
@@ -2805,7 +2805,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_128
+  - stm32l0xx_192
   - stm32l07_8x_eeprom
   - stm32l0xx_opt
 - name: STM32L072RZHx
@@ -2905,7 +2905,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_64
+  - stm32l0xx_192
   - stm32l07x_64_eeprom
   - stm32l0xx_opt
 - name: STM32L072V8Tx
@@ -2930,7 +2930,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_64
+  - stm32l0xx_192
   - stm32l07x_64_eeprom
   - stm32l0xx_opt
 - name: STM32L072VBIx
@@ -2955,7 +2955,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_128
+  - stm32l0xx_192
   - stm32l07_8x_eeprom
   - stm32l0xx_opt
 - name: STM32L072VBTx
@@ -2980,7 +2980,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_128
+  - stm32l0xx_192
   - stm32l07_8x_eeprom
   - stm32l0xx_opt
 - name: STM32L072VZIx
@@ -3055,7 +3055,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_128
+  - stm32l0xx_192
   - stm32l07_8x_eeprom
   - stm32l0xx_opt
 - name: STM32L073CZTx
@@ -3105,7 +3105,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_128
+  - stm32l0xx_192
   - stm32l07_8x_eeprom
   - stm32l0xx_opt
 - name: STM32L073RBTx
@@ -3130,7 +3130,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_128
+  - stm32l0xx_192
   - stm32l07_8x_eeprom
   - stm32l0xx_opt
 - name: STM32L073RZHx
@@ -3205,7 +3205,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_64
+  - stm32l0xx_192
   - stm32l07x_64_eeprom
   - stm32l0xx_opt
 - name: STM32L073V8Tx
@@ -3230,7 +3230,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_64
+  - stm32l0xx_192
   - stm32l07x_64_eeprom
   - stm32l0xx_opt
 - name: STM32L073VBIx
@@ -3255,7 +3255,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_128
+  - stm32l0xx_192
   - stm32l07_8x_eeprom
   - stm32l0xx_opt
 - name: STM32L073VBTx
@@ -3280,7 +3280,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_128
+  - stm32l0xx_192
   - stm32l07_8x_eeprom
   - stm32l0xx_opt
 - name: STM32L073VZIx
@@ -3455,7 +3455,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_128
+  - stm32l0xx_192
   - stm32l0xx_opt
   - stm32l07_8x_eeprom
 - name: STM32L082KBUx
@@ -3480,7 +3480,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_128
+  - stm32l0xx_192
   - stm32l0xx_opt
   - stm32l07_8x_eeprom
 - name: STM32L082KZTx
@@ -3555,7 +3555,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_128
+  - stm32l0xx_192
   - stm32l07_8x_eeprom
   - stm32l0xx_opt
 - name: STM32L083CZTx
@@ -3605,7 +3605,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_128
+  - stm32l0xx_192
   - stm32l07_8x_eeprom
   - stm32l0xx_opt
 - name: STM32L083RBTx
@@ -3630,7 +3630,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_128
+  - stm32l0xx_192
   - stm32l07_8x_eeprom
   - stm32l0xx_opt
 - name: STM32L083RZHx
@@ -3705,7 +3705,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_64
+  - stm32l0xx_192
   - stm32l07x_64_eeprom
   - stm32l0xx_opt
 - name: STM32L083V8Tx
@@ -3730,7 +3730,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_64
+  - stm32l0xx_192
   - stm32l07x_64_eeprom
   - stm32l0xx_opt
 - name: STM32L083VBIx
@@ -3755,7 +3755,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_128
+  - stm32l0xx_192
   - stm32l07_8x_eeprom
   - stm32l0xx_opt
 - name: STM32L083VBTx
@@ -3780,7 +3780,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l0xx_128
+  - stm32l0xx_192
   - stm32l07_8x_eeprom
   - stm32l0xx_opt
 - name: STM32L083VZIx
@@ -3834,49 +3834,6 @@ variants:
   - stm32l07_8x_eeprom
   - stm32l0xx_opt
 flash_algorithms:
-- name: stm32l0xx_16
-  description: STM32L0 16KB Flash
-  default: true
-  instructions: ASoB0AIqF9E7SIFpDyISAhFDgWE5ScFgOUnBYDlJAWE5SQFhwGnAAgbUOUg3SQFgBiFBYDdJgWAAIHBHASgB0AIoCNEsSEFoAiIRQ0FgQWgBIhFDQWAAIHBHMLUmSUpoTBUiQ0pgSmgIJSpDSmAAIgJgKUgmSgDgEGCLadsH+9FIaKBDSGBIaKhDSGAAIDC9ASBwR/C1GEwAIyUVCCY/MYkJjEYk4GFoKUNhYGFoMUNhYEAhgMqAwAkfACn60RZJp2n/BwLQEk85YPnnoWkJBQkPBtCgaQ8hCQIIQ6BhASDwvWFoqUNhYGFosUNhYFscnEXY2AAg8L0AIAJA782riQUEAwK/rp2MFhUUE1VVAAAAMABA/w8AAKqqAAAAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x3d
-  pc_program_page: 0x95
-  pc_erase_sector: 0x5b
-  data_section_offset: 0x11c
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8004000
-    page_size: 0x400
-    erased_byte_value: 0x0
-    program_page_timeout: 500
-    erase_sector_timeout: 500
-    sectors:
-    - size: 0x80
-      address: 0x0
-  cores:
-  - main
-- name: stm32l01_2x_eeprom
-  description: STM32L0 512 Byte Data EEPROM
-  instructions: ASoB0AIqE9E3SIFpDyISAhFDgWE1ScFgNUnBYMBpwAIG1DVIM0kBYAYhQWAzSYFgACBwRwEoAdACKATRKkhBaAEiEUNBYAAgcEfwtf8hATElTP8wAApiaAACTQAqQ2JgYmgQJzpDYmAlSiNLACYGYADgGmCmafYH+9GmaTYFNg8G0KBpDyEJAghDoGEBIPC9AB0JH+rRYGioQ2BgYGi4Q2BgACDwvQEgcEfwtf8jATMNTv8xCQp0aAkCnEN0YBBMDU0K4BdoB2AA4Cxgt2n/B/vRAB0JHxIdGx8AKQHQACvw0QAg8L0AAAAgAkDvzauJBQQDAlVVAAAAMABA/w8AAKqqAAAAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x35
-  pc_program_page: 0xab
-  pc_erase_sector: 0x4b
-  data_section_offset: 0x104
-  flash_properties:
-    address_range:
-      start: 0x8080000
-      end: 0x8080200
-    page_size: 0x100
-    erased_byte_value: 0x0
-    program_page_timeout: 500
-    erase_sector_timeout: 500
-    sectors:
-    - size: 0x200
-      address: 0x0
-  cores:
-  - main
 - name: stm32l0xx_192
   description: 'STM32L0 192KB Flash '
   default: true
@@ -3899,8 +3856,8 @@ flash_algorithms:
       address: 0x0
   cores:
   - main
-- name: stm32l010xb_eeprom
-  description: STM32L010 512 Byte Data EEPROM
+- name: stm32l01_2x_eeprom
+  description: STM32L0 512 Byte Data EEPROM
   instructions: ASoB0AIqE9E3SIFpDyISAhFDgWE1ScFgNUnBYMBpwAIG1DVIM0kBYAYhQWAzSYFgACBwRwEoAdACKATRKkhBaAEiEUNBYAAgcEfwtf8hATElTP8wAApiaAACTQAqQ2JgYmgQJzpDYmAlSiNLACYGYADgGmCmafYH+9GmaTYFNg8G0KBpDyEJAghDoGEBIPC9AB0JH+rRYGioQ2BgYGi4Q2BgACDwvQEgcEfwtf8jATMNTv8xCQp0aAkCnEN0YBBMDU0K4BdoB2AA4Cxgt2n/B/vRAB0JHxIdGx8AKQHQACvw0QAg8L0AAAAgAkDvzauJBQQDAlVVAAAAMABA/w8AAKqqAAAAAAAA
   pc_init: 0x1
   pc_uninit: 0x35
@@ -3985,72 +3942,6 @@ flash_algorithms:
       address: 0xc00
   cores:
   - main
-- name: stm32l0xx_32
-  description: STM32L0 32KB Flash
-  default: true
-  instructions: ASoB0AIqF9E7SIFpDyISAhFDgWE5ScFgOUnBYDlJAWE5SQFhwGnAAgbUOUg3SQFgBiFBYDdJgWAAIHBHASgB0AIoCNEsSEFoAiIRQ0FgQWgBIhFDQWAAIHBHMLUmSUpoTBUiQ0pgSmgIJSpDSmAAIgJgKUgmSgDgEGCLadsH+9FIaKBDSGBIaKhDSGAAIDC9ASBwR/C1GEwAIyUVCCY/MYkJjEYk4GFoKUNhYGFoMUNhYEAhgMqAwAkfACn60RZJp2n/BwLQEk85YPnnoWkJBQkPBtCgaQ8hCQIIQ6BhASDwvWFoqUNhYGFosUNhYFscnEXY2AAg8L0AIAJA782riQUEAwK/rp2MFhUUE1VVAAAAMABA/w8AAKqqAAAAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x3d
-  pc_program_page: 0x95
-  pc_erase_sector: 0x5b
-  data_section_offset: 0x11c
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8008000
-    page_size: 0x400
-    erased_byte_value: 0x0
-    program_page_timeout: 500
-    erase_sector_timeout: 500
-    sectors:
-    - size: 0x80
-      address: 0x0
-  cores:
-  - main
-- name: stm32l0xx_128
-  description: STM32L0 128KB Flash
-  default: true
-  instructions: ASoB0AIqF9E7SIFpDyISAhFDgWE5ScFgOUnBYDlJAWE5SQFhwGnAAgbUOUg3SQFgBiFBYDdJgWAAIHBHASgB0AIoCNEsSEFoAiIRQ0FgQWgBIhFDQWAAIHBHMLUmSUpoTBUiQ0pgSmgIJSpDSmAAIgJgKUgmSgDgEGCLadsH+9FIaKBDSGBIaKhDSGAAIDC9ASBwR/C1GEwAIyUVCCY/MYkJjEYk4GFoKUNhYGFoMUNhYEAhgMqAwAkfACn60RZJp2n/BwLQEk85YPnnoWkJBQkPBtCgaQ8hCQIIQ6BhASDwvWFoqUNhYGFosUNhYFscnEXY2AAg8L0AIAJA782riQUEAwK/rp2MFhUUE1VVAAAAMABA/w8AAKqqAAAAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x3d
-  pc_program_page: 0x95
-  pc_erase_sector: 0x5b
-  data_section_offset: 0x11c
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8020000
-    page_size: 0x400
-    erased_byte_value: 0x0
-    program_page_timeout: 500
-    erase_sector_timeout: 500
-    sectors:
-    - size: 0x80
-      address: 0x0
-  cores:
-  - main
-- name: stm32l0xx_8
-  description: STM32L0 8KB Flash
-  default: true
-  instructions: ASoB0AIqF9E7SIFpDyISAhFDgWE5ScFgOUnBYDlJAWE5SQFhwGnAAgbUOUg3SQFgBiFBYDdJgWAAIHBHASgB0AIoCNEsSEFoAiIRQ0FgQWgBIhFDQWAAIHBHMLUmSUpoTBUiQ0pgSmgIJSpDSmAAIgJgKUgmSgDgEGCLadsH+9FIaKBDSGBIaKhDSGAAIDC9ASBwR/C1GEwAIyUVCCY/MYkJjEYk4GFoKUNhYGFoMUNhYEAhgMqAwAkfACn60RZJp2n/BwLQEk85YPnnoWkJBQkPBtCgaQ8hCQIIQ6BhASDwvWFoqUNhYGFosUNhYFscnEXY2AAg8L0AIAJA782riQUEAwK/rp2MFhUUE1VVAAAAMABA/w8AAKqqAAAAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x3d
-  pc_program_page: 0x95
-  pc_erase_sector: 0x5b
-  data_section_offset: 0x11c
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8002000
-    page_size: 0x400
-    erased_byte_value: 0x0
-    program_page_timeout: 500
-    erase_sector_timeout: 500
-    sectors:
-    - size: 0x80
-      address: 0x0
-  cores:
-  - main
 - name: stm32l010x6_8_eeprom
   description: STM32L010 256 Byte Data EEPROM
   instructions: ASoB0AIqE9E3SIFpDyISAhFDgWE1ScFgNUnBYMBpwAIG1DVIM0kBYAYhQWAzSYFgACBwRwEoAdACKATRKkhBaAEiEUNBYAAgcEfwtf8hATElTP8wAApiaAACTQAqQ2JgYmgQJzpDYmAlSiNLACYGYADgGmCmafYH+9GmaTYFNg8G0KBpDyEJAghDoGEBIPC9AB0JH+rRYGioQ2BgYGi4Q2BgACDwvQEgcEfwtf8jATMNTv8xCQp0aAkCnEN0YBBMDU0K4BdoB2AA4Cxgt2n/B/vRAB0JHxIdGx8AKQHQACvw0QAg8L0AAAAgAkDvzauJBQQDAlVVAAAAMABA/w8AAKqqAAAAAAAA
@@ -4128,28 +4019,6 @@ flash_algorithms:
       start: 0x8080000
       end: 0x8080080
     page_size: 0x80
-    erased_byte_value: 0x0
-    program_page_timeout: 500
-    erase_sector_timeout: 500
-    sectors:
-    - size: 0x80
-      address: 0x0
-  cores:
-  - main
-- name: stm32l0xx_64
-  description: 'STM32L0 64KB Flash '
-  default: true
-  instructions: ASoB0AIqF9E7SIFpDyISAhFDgWE5ScFgOUnBYDlJAWE5SQFhwGnAAgbUOUg3SQFgBiFBYDdJgWAAIHBHASgB0AIoCNEsSEFoAiIRQ0FgQWgBIhFDQWAAIHBHMLUmSUpoTBUiQ0pgSmgIJSpDSmAAIgJgKUgmSgDgEGCLadsH+9FIaKBDSGBIaKhDSGAAIDC9ASBwR/C1GEwAIyUVCCY/MYkJjEYk4GFoKUNhYGFoMUNhYEAhgMqAwAkfACn60RZJp2n/BwLQEk85YPnnoWkJBQkPBtCgaQ8hCQIIQ6BhASDwvWFoqUNhYGFosUNhYFscnEXY2AAg8L0AIAJA782riQUEAwK/rp2MFhUUE1VVAAAAMABA/w8AAKqqAAAAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x3d
-  pc_program_page: 0x95
-  pc_erase_sector: 0x5b
-  data_section_offset: 0x11c
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8010000
-    page_size: 0x400
     erased_byte_value: 0x0
     program_page_timeout: 500
     erase_sector_timeout: 500

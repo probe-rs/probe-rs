@@ -34,7 +34,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsamv7x_512
+  - atsamv7x_2048
   - atsamv7x_gpnvm
 - name: ATSAMV71J19B
   cores:
@@ -67,7 +67,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsamv7x_512
+  - atsamv7x_2048
   - atsamv7x_gpnvm
 - name: ATSAMV71J20
   cores:
@@ -100,7 +100,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsamv7x_1024
+  - atsamv7x_2048
   - atsamv7x_gpnvm
 - name: ATSAMV71J20B
   cores:
@@ -133,7 +133,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsamv7x_1024
+  - atsamv7x_2048
   - atsamv7x_gpnvm
 - name: ATSAMV71J21
   cores:
@@ -232,7 +232,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsamv7x_512
+  - atsamv7x_2048
   - atsamv7x_gpnvm
 - name: ATSAMV71N19B
   cores:
@@ -265,7 +265,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsamv7x_512
+  - atsamv7x_2048
   - atsamv7x_gpnvm
 - name: ATSAMV71N20
   cores:
@@ -298,7 +298,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsamv7x_1024
+  - atsamv7x_2048
   - atsamv7x_gpnvm
 - name: ATSAMV71N20B
   cores:
@@ -331,7 +331,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsamv7x_1024
+  - atsamv7x_2048
   - atsamv7x_gpnvm
 - name: ATSAMV71N21
   cores:
@@ -430,7 +430,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsamv7x_512
+  - atsamv7x_2048
   - atsamv7x_gpnvm
 - name: ATSAMV71Q19B
   cores:
@@ -463,7 +463,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsamv7x_512
+  - atsamv7x_2048
   - atsamv7x_gpnvm
 - name: ATSAMV71Q20
   cores:
@@ -496,7 +496,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsamv7x_1024
+  - atsamv7x_2048
   - atsamv7x_gpnvm
 - name: ATSAMV71Q20B
   cores:
@@ -529,7 +529,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsamv7x_1024
+  - atsamv7x_2048
   - atsamv7x_gpnvm
 - name: ATSAMV71Q21
   cores:
@@ -598,52 +598,6 @@ variants:
   - atsamv7x_2048
   - atsamv7x_gpnvm
 flash_algorithms:
-- name: atsamv7x_512
-  description: ATSAMV7x 512kB Flash
-  default: true
-  instructions: YEkwtUlECGBgSV9ICGBP9HBgXknkOQhgT/QAQFxJCGBbSbAxCGBcS1pIGGBaSrQ6EGgg8AMAQBwQYFdIfDgBaAkH/NURaCHwcAERYAFoCQf81VFMxDwhaFBNKUMhYAFoiQP81SFoTU0h8HABGDUpQyFgIWgh8IBxQfRcESFgAWjJA/zVEWgh8AMBSRwRYAFoCQf81QEhEWABaAkH/NU9SEAcGGAAIDC9AigU0TdKPEjgOhBgEB0BaMkH/NAzSdg5CWiJBwfUNkn+MRFgAOAAvwFoyQf70C1JK0hAHAhgACBwRy9IKUkIOOA5CGAIHQDgAL8BaMkH+9AAIHBHIUojSUpE5DkSaIAaQAog8AMAgByCsiNIAB9A6gIgSGAA4AC/iGjAB/vQHkiAH0DqAiBIYADgAL+IaMAH+9CIaBDwDgAA0AEgcEcPSTC1SUQPS+Q7CWhBGkwKWRUgygkfIMD70Q9JoLIMOUHqACBYYADgAL+YaMAH+9CYaBDwDgAA0AEgML0AAAQAAAAAQ0ZF5AwOQFQYDkAAQ01Q5AYOQAgANwANAABaAAAAAAAAAAA=
-  pc_init: 0x1
-  pc_uninit: 0xa9
-  pc_program_page: 0x147
-  pc_erase_sector: 0xfd
-  pc_erase_all: 0xe3
-  data_section_offset: 0x1a4
-  flash_properties:
-    address_range:
-      start: 0x400000
-      end: 0x480000
-    page_size: 0x200
-    erased_byte_value: 0xff
-    program_page_timeout: 100
-    erase_sector_timeout: 1000
-    sectors:
-    - size: 0x2000
-      address: 0x0
-  cores:
-  - main
-- name: atsamv7x_1024
-  description: ATSAMV7x 1024kB Flash
-  default: true
-  instructions: YEkwtUlECGBgSV9ICGBP9HBgXknkOQhgT/QAQFxJCGBbSbAxCGBcS1pIGGBaSrQ6EGgg8AMAQBwQYFdIfDgBaAkH/NURaCHwcAERYAFoCQf81VFMxDwhaFBNKUMhYAFoiQP81SFoTU0h8HABGDUpQyFgIWgh8IBxQfRcESFgAWjJA/zVEWgh8AMBSRwRYAFoCQf81QEhEWABaAkH/NU9SEAcGGAAIDC9AigU0TdKPEjgOhBgEB0BaMkH/NAzSdg5CWiJBwfUNkn+MRFgAOAAvwFoyQf70C1JK0hAHAhgACBwRy9IKUkIOOA5CGAIHQDgAL8BaMkH+9AAIHBHIUojSUpE5DkSaIAaQAog8AMAgByCsiNIAB9A6gIgSGAA4AC/iGjAB/vQHkiAH0DqAiBIYADgAL+IaMAH+9CIaBDwDgAA0AEgcEcPSTC1SUQPS+Q7CWhBGkwKWRUgygkfIMD70Q9JoLIMOUHqACBYYADgAL+YaMAH+9CYaBDwDgAA0AEgML0AAAQAAAAAQ0ZF5AwOQFQYDkAAQ01Q5AYOQAgANwANAABaAAAAAAAAAAA=
-  pc_init: 0x1
-  pc_uninit: 0xa9
-  pc_program_page: 0x147
-  pc_erase_sector: 0xfd
-  pc_erase_all: 0xe3
-  data_section_offset: 0x1a4
-  flash_properties:
-    address_range:
-      start: 0x400000
-      end: 0x500000
-    page_size: 0x200
-    erased_byte_value: 0xff
-    program_page_timeout: 100
-    erase_sector_timeout: 1000
-    sectors:
-    - size: 0x2000
-      address: 0x0
-  cores:
-  - main
 - name: atsamv7x_2048
   description: ATSAMV7x 2048kB Flash
   default: true

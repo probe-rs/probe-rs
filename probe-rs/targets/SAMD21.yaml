@@ -72,7 +72,7 @@ variants:
     - main
   flash_algorithms:
   - atsamd21_32
-  - atsamd21_32_eeprom
+  - atsamd21_128_eeprom
 - name: ATSAMD21E15CU
   cores:
   - name: main
@@ -96,7 +96,7 @@ variants:
     - main
   flash_algorithms:
   - atsamd21_32
-  - atsamd21_32_eeprom
+  - atsamd21_128_eeprom
 - name: ATSAMD21E15L
   cores:
   - name: main
@@ -120,7 +120,7 @@ variants:
     - main
   flash_algorithms:
   - atsamd21_32
-  - atsamd21_32_eeprom
+  - atsamd21_128_eeprom
 - name: ATSAMD21E16A
   cores:
   - name: main
@@ -144,7 +144,7 @@ variants:
     - main
   flash_algorithms:
   - atsamd21_64
-  - atsamd21_64_eeprom
+  - atsamd21_128_eeprom
 - name: ATSAMD21E16B
   cores:
   - name: main
@@ -168,7 +168,7 @@ variants:
     - main
   flash_algorithms:
   - atsamd21_64
-  - atsamd21_64_eeprom
+  - atsamd21_128_eeprom
 - name: ATSAMD21E16BU
   cores:
   - name: main
@@ -192,7 +192,7 @@ variants:
     - main
   flash_algorithms:
   - atsamd21_64
-  - atsamd21_64_eeprom
+  - atsamd21_128_eeprom
 - name: ATSAMD21E16CU
   cores:
   - name: main
@@ -216,7 +216,7 @@ variants:
     - main
   flash_algorithms:
   - atsamd21_64
-  - atsamd21_64_eeprom
+  - atsamd21_128_eeprom
 - name: ATSAMD21E16L
   cores:
   - name: main
@@ -240,7 +240,7 @@ variants:
     - main
   flash_algorithms:
   - atsamd21_64
-  - atsamd21_64_eeprom
+  - atsamd21_128_eeprom
 - name: ATSAMD21E17A
   cores:
   - name: main
@@ -405,7 +405,7 @@ variants:
     - main
   flash_algorithms:
   - atsamd21_32
-  - atsamd21_32_eeprom
+  - atsamd21_128_eeprom
 - name: ATSAMD21G15L
   cores:
   - name: main
@@ -429,7 +429,7 @@ variants:
     - main
   flash_algorithms:
   - atsamd21_32
-  - atsamd21_32_eeprom
+  - atsamd21_128_eeprom
 - name: ATSAMD21G16A
   cores:
   - name: main
@@ -476,7 +476,7 @@ variants:
     - main
   flash_algorithms:
   - atsamd21_64
-  - atsamd21_64_eeprom
+  - atsamd21_128_eeprom
 - name: ATSAMD21G16L
   cores:
   - name: main
@@ -500,7 +500,7 @@ variants:
     - main
   flash_algorithms:
   - atsamd21_64
-  - atsamd21_64_eeprom
+  - atsamd21_128_eeprom
 - name: ATSAMD21G17A
   cores:
   - name: main
@@ -687,7 +687,7 @@ variants:
     - main
   flash_algorithms:
   - atsamd21_32
-  - atsamd21_32_eeprom
+  - atsamd21_128_eeprom
 - name: ATSAMD21J16A
   cores:
   - name: main
@@ -734,7 +734,7 @@ variants:
     - main
   flash_algorithms:
   - atsamd21_64
-  - atsamd21_64_eeprom
+  - atsamd21_128_eeprom
 - name: ATSAMD21J17A
   cores:
   - name: main
@@ -828,8 +828,8 @@ flash_algorithms:
       address: 0x0
   cores:
   - main
-- name: atsamd21_32_eeprom
-  description: ATSAMD21 1kB Data EEPROM
+- name: atsamd21_128_eeprom
+  description: ATSAMD21 4kB Data EEPROM
   default: true
   instructions: QSEJBgpoUgcB1QQiCmAcShpJUWAbSUlECGAAIHBHACBwR0EIFkjBYRdJAYABfckH/NAAfYAHAdUBIHBHACBwRxC1EUwOSyo0HIAcfeQH/NDJHIkIiQAC4BDKCR8QwAAp+tEJSIAcGIAYfcAH/NAYfYAHAdUBIBC9ACAQvZ4ABAAAQABBBAAAABqlAAAAAAAAAAAAAA==
   pc_init: 0x1
@@ -840,7 +840,7 @@ flash_algorithms:
   flash_properties:
     address_range:
       start: 0x400000
-      end: 0x400400
+      end: 0x401000
     page_size: 0x40
     erased_byte_value: 0xff
     program_page_timeout: 100
@@ -872,28 +872,6 @@ flash_algorithms:
       address: 0x0
   cores:
   - main
-- name: atsamd21_64_eeprom
-  description: ATSAMD21 2kB Data EEPROM
-  default: true
-  instructions: QSEJBgpoUgcB1QQiCmAcShpJUWAbSUlECGAAIHBHACBwR0EIFkjBYRdJAYABfckH/NAAfYAHAdUBIHBHACBwRxC1EUwOSyo0HIAcfeQH/NDJHIkIiQAC4BDKCR8QwAAp+tEJSIAcGIAYfcAH/NAYfYAHAdUBIBC9ACAQvZ4ABAAAQABBBAAAABqlAAAAAAAAAAAAAA==
-  pc_init: 0x1
-  pc_uninit: 0x1f
-  pc_program_page: 0x41
-  pc_erase_sector: 0x23
-  data_section_offset: 0x8c
-  flash_properties:
-    address_range:
-      start: 0x400000
-      end: 0x400800
-    page_size: 0x40
-    erased_byte_value: 0xff
-    program_page_timeout: 100
-    erase_sector_timeout: 1000
-    sectors:
-    - size: 0x100
-      address: 0x0
-  cores:
-  - main
 - name: atsamd21_128
   description: ATSAMD21 128kB Flash
   default: true
@@ -913,28 +891,6 @@ flash_algorithms:
     erase_sector_timeout: 1000
     sectors:
     - size: 0x2000
-      address: 0x0
-  cores:
-  - main
-- name: atsamd21_128_eeprom
-  description: ATSAMD21 4kB Data EEPROM
-  default: true
-  instructions: QSEJBgpoUgcB1QQiCmAcShpJUWAbSUlECGAAIHBHACBwR0EIFkjBYRdJAYABfckH/NAAfYAHAdUBIHBHACBwRxC1EUwOSyo0HIAcfeQH/NDJHIkIiQAC4BDKCR8QwAAp+tEJSIAcGIAYfcAH/NAYfYAHAdUBIBC9ACAQvZ4ABAAAQABBBAAAABqlAAAAAAAAAAAAAA==
-  pc_init: 0x1
-  pc_uninit: 0x1f
-  pc_program_page: 0x41
-  pc_erase_sector: 0x23
-  data_section_offset: 0x8c
-  flash_properties:
-    address_range:
-      start: 0x400000
-      end: 0x401000
-    page_size: 0x40
-    erased_byte_value: 0xff
-    program_page_timeout: 100
-    erase_sector_timeout: 1000
-    sectors:
-    - size: 0x100
       address: 0x0
   cores:
   - main

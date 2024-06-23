@@ -29,7 +29,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_32
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x0_sb_opt
   - stm32g0x0_db_opt
@@ -57,7 +57,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_64
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x0_sb_opt
   - stm32g0x0_db_opt
@@ -85,7 +85,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_32
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x0_sb_opt
   - stm32g0x0_db_opt
@@ -113,7 +113,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_32
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x0_sb_opt
   - stm32g0x0_db_opt
@@ -141,7 +141,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_32
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x0_sb_opt
   - stm32g0x0_db_opt
@@ -169,7 +169,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_64
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x0_sb_opt
   - stm32g0x0_db_opt
@@ -197,7 +197,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_16
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -225,7 +225,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_16
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -253,7 +253,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_32
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -281,7 +281,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_32
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -309,7 +309,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_64
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -337,7 +337,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_64
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -365,7 +365,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_16
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -393,7 +393,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_32
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -421,7 +421,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_64
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -449,7 +449,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_16
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -477,7 +477,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_32
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -505,7 +505,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_64
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -533,7 +533,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_16
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -561,7 +561,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_32
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -589,7 +589,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_16
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -617,7 +617,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_16
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -645,7 +645,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_32
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -673,7 +673,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_32
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -701,7 +701,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_64
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -729,7 +729,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_64
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -757,7 +757,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_64
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -785,7 +785,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_32
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -813,7 +813,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_32
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -841,7 +841,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_64
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -869,7 +869,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_64
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -897,7 +897,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_32
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -925,7 +925,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_64
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -953,7 +953,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_32
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -981,7 +981,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_64
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -1009,7 +1009,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_32
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -1037,7 +1037,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_32
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -1065,7 +1065,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_32
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -1093,7 +1093,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_64
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -1121,7 +1121,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_64
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -1149,7 +1149,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_64
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -1177,7 +1177,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_32
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x0_sb_opt
   - stm32g0x0_db_opt
@@ -1205,7 +1205,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_64
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x0_sb_opt
   - stm32g0x0_db_opt
@@ -1233,7 +1233,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_32
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x0_sb_opt
   - stm32g0x0_db_opt
@@ -1261,7 +1261,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_32
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x0_sb_opt
   - stm32g0x0_db_opt
@@ -1289,7 +1289,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_64
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x0_sb_opt
   - stm32g0x0_db_opt
@@ -1317,7 +1317,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_32
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -1345,7 +1345,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_32
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -1373,7 +1373,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_64
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -1401,7 +1401,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_64
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -1429,7 +1429,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_32
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -1457,7 +1457,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_64
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -1485,7 +1485,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_64
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -1513,7 +1513,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_32
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -1541,7 +1541,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_64
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -1569,7 +1569,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_32
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -1597,7 +1597,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_32
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -1625,7 +1625,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_64
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -1653,7 +1653,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_64
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -1681,7 +1681,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_32
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -1709,7 +1709,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_32
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -1737,7 +1737,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_64
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -1765,7 +1765,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_64
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -1793,7 +1793,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_32
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -1821,7 +1821,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_64
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -1849,7 +1849,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_64
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -1877,7 +1877,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_32
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -1905,7 +1905,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_64
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -1933,7 +1933,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_32
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -1961,7 +1961,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_32
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -1989,7 +1989,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_64
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -2017,7 +2017,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_64
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -2045,7 +2045,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_128
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x0_sb_opt
   - stm32g0x0_db_opt
@@ -2073,7 +2073,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_128
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x0_sb_opt
   - stm32g0x0_db_opt
@@ -2101,7 +2101,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_128
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x0_sb_opt
   - stm32g0x0_db_opt
@@ -2129,7 +2129,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_64
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -2157,7 +2157,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_64
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -2185,7 +2185,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_128
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -2213,7 +2213,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_128
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -2241,7 +2241,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_128
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -2269,7 +2269,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_64
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -2297,7 +2297,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_64
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -2325,7 +2325,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_128
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -2353,7 +2353,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_128
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -2381,7 +2381,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_64
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -2409,7 +2409,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_64
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -2437,7 +2437,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_64
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -2465,7 +2465,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_64
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -2493,7 +2493,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_128
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -2521,7 +2521,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_128
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -2549,7 +2549,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_128
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -2577,7 +2577,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_128
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -2605,7 +2605,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_64
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -2633,7 +2633,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_128
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -2661,7 +2661,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_128
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -2689,7 +2689,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_128
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -2717,7 +2717,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_128
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -2745,7 +2745,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_128
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -2773,7 +2773,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_128
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -2801,7 +2801,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_128
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -2829,7 +2829,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_128
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -2857,7 +2857,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_128
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -2885,7 +2885,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_128
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -2913,7 +2913,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_128
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -2941,7 +2941,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_128
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -2969,7 +2969,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_128
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -3109,7 +3109,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_128
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -3137,7 +3137,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_128
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -3165,7 +3165,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_128
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -3193,7 +3193,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_128
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -3221,7 +3221,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0bx_256
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -3249,7 +3249,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0bx_256
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -3277,7 +3277,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0bx_256
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -3305,7 +3305,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0bx_256
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -3445,7 +3445,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_128
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -3473,7 +3473,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_128
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -3501,7 +3501,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_128
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -3529,7 +3529,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_128
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -3557,7 +3557,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0bx_256
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -3585,7 +3585,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0bx_256
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -3613,7 +3613,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0bx_256
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -3641,7 +3641,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0bx_256
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -3781,7 +3781,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_128
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -3809,7 +3809,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0bx_256
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -3893,7 +3893,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_128
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -3921,7 +3921,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_128
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -3949,7 +3949,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_128
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -3977,7 +3977,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0bx_256
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -4005,7 +4005,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0bx_256
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -4033,7 +4033,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0bx_256
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -4145,7 +4145,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_128
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -4173,7 +4173,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0xx_128
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -4201,7 +4201,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0bx_256
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -4229,7 +4229,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0bx_256
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -4313,7 +4313,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0bx_256
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -4341,7 +4341,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0bx_256
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -4369,7 +4369,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0bx_256
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -4397,7 +4397,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0bx_256
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -4537,7 +4537,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0bx_256
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -4565,7 +4565,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0bx_256
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -4593,7 +4593,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0bx_256
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -4621,7 +4621,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0bx_256
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -4761,7 +4761,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0bx_256
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -4845,7 +4845,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0bx_256
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -4873,7 +4873,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0bx_256
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -4901,7 +4901,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0bx_256
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -5013,7 +5013,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0bx_256
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -5041,7 +5041,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g0bx_256
+  - stm32g0bx_512
   - stm32g0xx_otp
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
@@ -5102,8 +5102,8 @@ variants:
   - stm32g0x1_sb_opt
   - stm32g0x1_db_opt
 flash_algorithms:
-- name: stm32g0xx_32
-  description: STM32G0xx 32 KB Flash
+- name: stm32g0bx_512
+  description: STM32G0Bx_512
   default: true
   instructions: crZqSmpJimBqSopgAOAAvwppkgOSD/rRZ0pKRFBgZ0gAjAAEgAmQYEAI0GBkSABoAwVkSBsNGBgf0AooHdAQKBvQASAQYAhqgALADxBhCGrAAwjUXUhcSgJgUhACYAYiQmBbSoJgCGoAAwTUWkhZSUFgfyEBYAAgcEcAIOLnTkhIREBoAWhKSEkcBNABaAEiEgSRQwFgQWkBItIHEUNBYb/zT48AIHBHASBwR0BIS0oCYcETQWFBaQEjGwQZQ0Fhv/NPjwDgAL8BaYkDiQ/60QFpEUIC0AJhASBwRwAgcEcwtTVLASRLRBpo5AQBKgzRGWkBKQLQmWihQgbR3WhZaE0ZhUIB2AEhAOAAIQEqAdCaaAbgGmkBKgLQmmiiQgDR2mguS1IeEEAhSsAKE2HAAEkDgBwIQ1BhUGkBIQkECENQYb/zT48A4AC/EGmAA4AP+tEQaRhAAdATYQEgML0wtckdE0vJCB1NyQAdYQEkXGEU4BRoBGBUaERgv/NPjwDgAL8caaQDpA/60RxpLEIC0B1hASAwvQgwCDkIMgAp6NFYaUAIQABYYQAgML0jAWdFACACQKuJ780EAAAAwHX/HwBYAUCq+///qqoAAAAwAED/DwAA/wEAAAAsAED6wwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
   pc_init: 0x1
@@ -5115,7 +5115,7 @@ flash_algorithms:
   flash_properties:
     address_range:
       start: 0x8000000
-      end: 0x8008000
+      end: 0x8080000
     page_size: 0x400
     erased_byte_value: 0xff
     program_page_timeout: 400
@@ -5182,48 +5182,6 @@ flash_algorithms:
     sectors:
     - size: 0x14
       address: 0x0
-- name: stm32g0xx_64
-  description: STM32G0xx 64 KB Flash
-  default: true
-  instructions: crZqSmpJimBqSopgAOAAvwppkgOSD/rRZ0pKRFBgZ0gAjAAEgAmQYEAI0GBkSABoAwVkSBsNGBgf0AooHdAQKBvQASAQYAhqgALADxBhCGrAAwjUXUhcSgJgUhACYAYiQmBbSoJgCGoAAwTUWkhZSUFgfyEBYAAgcEcAIOLnTkhIREBoAWhKSEkcBNABaAEiEgSRQwFgQWkBItIHEUNBYb/zT48AIHBHASBwR0BIS0oCYcETQWFBaQEjGwQZQ0Fhv/NPjwDgAL8BaYkDiQ/60QFpEUIC0AJhASBwRwAgcEcwtTVLASRLRBpo5AQBKgzRGWkBKQLQmWihQgbR3WhZaE0ZhUIB2AEhAOAAIQEqAdCaaAbgGmkBKgLQmmiiQgDR2mguS1IeEEAhSsAKE2HAAEkDgBwIQ1BhUGkBIQkECENQYb/zT48A4AC/EGmAA4AP+tEQaRhAAdATYQEgML0wtckdE0vJCB1NyQAdYQEkXGEU4BRoBGBUaERgv/NPjwDgAL8caaQDpA/60RxpLEIC0B1hASAwvQgwCDkIMgAp6NFYaUAIQABYYQAgML0jAWdFACACQKuJ780EAAAAwHX/HwBYAUCq+///qqoAAAAwAED/DwAA/wEAAAAsAED6wwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x7f
-  pc_program_page: 0x15f
-  pc_erase_sector: 0xe1
-  pc_erase_all: 0xad
-  data_section_offset: 0x1e0
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8010000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 400
-    erase_sector_timeout: 400
-    sectors:
-    - size: 0x800
-      address: 0x0
-- name: stm32g0xx_16
-  description: STM32G0xx 16 KB Flash
-  default: true
-  instructions: crZqSmpJimBqSopgAOAAvwppkgOSD/rRZ0pKRFBgZ0gAjAAEgAmQYEAI0GBkSABoAwVkSBsNGBgf0AooHdAQKBvQASAQYAhqgALADxBhCGrAAwjUXUhcSgJgUhACYAYiQmBbSoJgCGoAAwTUWkhZSUFgfyEBYAAgcEcAIOLnTkhIREBoAWhKSEkcBNABaAEiEgSRQwFgQWkBItIHEUNBYb/zT48AIHBHASBwR0BIS0oCYcETQWFBaQEjGwQZQ0Fhv/NPjwDgAL8BaYkDiQ/60QFpEUIC0AJhASBwRwAgcEcwtTVLASRLRBpo5AQBKgzRGWkBKQLQmWihQgbR3WhZaE0ZhUIB2AEhAOAAIQEqAdCaaAbgGmkBKgLQmmiiQgDR2mguS1IeEEAhSsAKE2HAAEkDgBwIQ1BhUGkBIQkECENQYb/zT48A4AC/EGmAA4AP+tEQaRhAAdATYQEgML0wtckdE0vJCB1NyQAdYQEkXGEU4BRoBGBUaERgv/NPjwDgAL8caaQDpA/60RxpLEIC0B1hASAwvQgwCDkIMgAp6NFYaUAIQABYYQAgML0jAWdFACACQKuJ780EAAAAwHX/HwBYAUCq+///qqoAAAAwAED/DwAA/wEAAAAsAED6wwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x7f
-  pc_program_page: 0x15f
-  pc_erase_sector: 0xe1
-  pc_erase_all: 0xad
-  data_section_offset: 0x1e0
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8004000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 400
-    erase_sector_timeout: 400
-    sectors:
-    - size: 0x800
-      address: 0x0
 - name: stm32g0x1_sb_opt
   description: STM32G0x1 SB Flash Options
   instructions: v/NPj3BHPkg8SYFgPUmBYD1JwWA9ScFgPUkBYQAgcEcBITdIyQdBYUEEQWEAIHBHASBwRzJINksDYTZJAWL/IcFiAWM0SUFiACKCYkFjgmMrSYAxCmABIUkEQWG/80+PAWnJA/zUQmEBaRlCBNABaRlDAWEBIHBHACBwRwAgcEfwtZeJloq8RheLFWi+RlRok2gRaRpI0mkdTwdhH089QAViH00sQMRiK0ADY2dG+wXbDUNiG0sZQIFi8QXJDUFjd0b5BckNgWMXSQpADEmAMQpgmQtBYb/zT48BackD/NQCaQtJCkIE0AJpCkMCYQEg8L0AIPC9QBhwRwAAIwFnRQAgAkCrie/NOyoZCH9uXUz6wwAAqv7///8BAAD//38/fwB/AP8BAID/APEPAAAAAA==
@@ -5263,67 +5221,4 @@ flash_algorithms:
     erase_sector_timeout: 3000
     sectors:
     - size: 0x38
-      address: 0x0
-- name: stm32g0xx_128
-  description: STM32G0xx 128 KB Flash
-  default: true
-  instructions: crZqSmpJimBqSopgAOAAvwppkgOSD/rRZ0pKRFBgZ0gAjAAEgAmQYEAI0GBkSABoAwVkSBsNGBgf0AooHdAQKBvQASAQYAhqgALADxBhCGrAAwjUXUhcSgJgUhACYAYiQmBbSoJgCGoAAwTUWkhZSUFgfyEBYAAgcEcAIOLnTkhIREBoAWhKSEkcBNABaAEiEgSRQwFgQWkBItIHEUNBYb/zT48AIHBHASBwR0BIS0oCYcETQWFBaQEjGwQZQ0Fhv/NPjwDgAL8BaYkDiQ/60QFpEUIC0AJhASBwRwAgcEcwtTVLASRLRBpo5AQBKgzRGWkBKQLQmWihQgbR3WhZaE0ZhUIB2AEhAOAAIQEqAdCaaAbgGmkBKgLQmmiiQgDR2mguS1IeEEAhSsAKE2HAAEkDgBwIQ1BhUGkBIQkECENQYb/zT48A4AC/EGmAA4AP+tEQaRhAAdATYQEgML0wtckdE0vJCB1NyQAdYQEkXGEU4BRoBGBUaERgv/NPjwDgAL8caaQDpA/60RxpLEIC0B1hASAwvQgwCDkIMgAp6NFYaUAIQABYYQAgML0jAWdFACACQKuJ780EAAAAwHX/HwBYAUCq+///qqoAAAAwAED/DwAA/wEAAAAsAED6wwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x7f
-  pc_program_page: 0x15f
-  pc_erase_sector: 0xe1
-  pc_erase_all: 0xad
-  data_section_offset: 0x1e0
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8020000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 400
-    erase_sector_timeout: 400
-    sectors:
-    - size: 0x800
-      address: 0x0
-- name: stm32g0bx_512
-  description: STM32G0Bx_512
-  default: true
-  instructions: crZqSmpJimBqSopgAOAAvwppkgOSD/rRZ0pKRFBgZ0gAjAAEgAmQYEAI0GBkSABoAwVkSBsNGBgf0AooHdAQKBvQASAQYAhqgALADxBhCGrAAwjUXUhcSgJgUhACYAYiQmBbSoJgCGoAAwTUWkhZSUFgfyEBYAAgcEcAIOLnTkhIREBoAWhKSEkcBNABaAEiEgSRQwFgQWkBItIHEUNBYb/zT48AIHBHASBwR0BIS0oCYcETQWFBaQEjGwQZQ0Fhv/NPjwDgAL8BaYkDiQ/60QFpEUIC0AJhASBwRwAgcEcwtTVLASRLRBpo5AQBKgzRGWkBKQLQmWihQgbR3WhZaE0ZhUIB2AEhAOAAIQEqAdCaaAbgGmkBKgLQmmiiQgDR2mguS1IeEEAhSsAKE2HAAEkDgBwIQ1BhUGkBIQkECENQYb/zT48A4AC/EGmAA4AP+tEQaRhAAdATYQEgML0wtckdE0vJCB1NyQAdYQEkXGEU4BRoBGBUaERgv/NPjwDgAL8caaQDpA/60RxpLEIC0B1hASAwvQgwCDkIMgAp6NFYaUAIQABYYQAgML0jAWdFACACQKuJ780EAAAAwHX/HwBYAUCq+///qqoAAAAwAED/DwAA/wEAAAAsAED6wwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x7f
-  pc_program_page: 0x15f
-  pc_erase_sector: 0xe1
-  pc_erase_all: 0xad
-  data_section_offset: 0x1e0
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8080000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 400
-    erase_sector_timeout: 400
-    sectors:
-    - size: 0x800
-      address: 0x0
-- name: stm32g0bx_256
-  description: STM32G0Bx_256
-  default: true
-  instructions: crZqSmpJimBqSopgAOAAvwppkgOSD/rRZ0pKRFBgZ0gAjAAEgAmQYEAI0GBkSABoAwVkSBsNGBgf0AooHdAQKBvQASAQYAhqgALADxBhCGrAAwjUXUhcSgJgUhACYAYiQmBbSoJgCGoAAwTUWkhZSUFgfyEBYAAgcEcAIOLnTkhIREBoAWhKSEkcBNABaAEiEgSRQwFgQWkBItIHEUNBYb/zT48AIHBHASBwR0BIS0oCYcETQWFBaQEjGwQZQ0Fhv/NPjwDgAL8BaYkDiQ/60QFpEUIC0AJhASBwRwAgcEcwtTVLASRLRBpo5AQBKgzRGWkBKQLQmWihQgbR3WhZaE0ZhUIB2AEhAOAAIQEqAdCaaAbgGmkBKgLQmmiiQgDR2mguS1IeEEAhSsAKE2HAAEkDgBwIQ1BhUGkBIQkECENQYb/zT48A4AC/EGmAA4AP+tEQaRhAAdATYQEgML0wtckdE0vJCB1NyQAdYQEkXGEU4BRoBGBUaERgv/NPjwDgAL8caaQDpA/60RxpLEIC0B1hASAwvQgwCDkIMgAp6NFYaUAIQABYYQAgML0jAWdFACACQKuJ780EAAAAwHX/HwBYAUCq+///qqoAAAAwAED/DwAA/wEAAAAsAED6wwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x7f
-  pc_program_page: 0x15f
-  pc_erase_sector: 0xe1
-  pc_erase_all: 0xad
-  data_section_offset: 0x1e0
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8040000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 400
-    erase_sector_timeout: 400
-    sectors:
-    - size: 0x800
       address: 0x0

@@ -6617,7 +6617,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l4p5xx_512
+  - stm32l4p5xx_1m
   - stm32l4r9i_eval
   - stm32l4r9i_disco_ospi1
   - stm32l4r9i_disco_ospi2
@@ -6752,7 +6752,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l4p5xx_512
+  - stm32l4p5xx_1m
   - stm32l4r9i_eval
   - stm32l4r9i_disco_ospi1
   - stm32l4r9i_disco_ospi2
@@ -6797,7 +6797,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l4p5xx_512
+  - stm32l4p5xx_1m
   - stm32l4r9i_eval
   - stm32l4r9i_disco_ospi1
   - stm32l4r9i_disco_ospi2
@@ -7022,7 +7022,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l4p5xx_512
+  - stm32l4p5xx_1m
   - stm32l4r9i_eval
   - stm32l4r9i_disco_ospi1
   - stm32l4r9i_disco_ospi2
@@ -7157,7 +7157,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l4p5xx_512
+  - stm32l4p5xx_1m
   - stm32l4r9i_eval
   - stm32l4r9i_disco_ospi1
   - stm32l4r9i_disco_ospi2
@@ -7292,7 +7292,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l4p5xx_512
+  - stm32l4p5xx_1m
   - stm32l4r9i_eval
   - stm32l4r9i_disco_ospi1
   - stm32l4r9i_disco_ospi2
@@ -7337,7 +7337,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l4p5xx_512
+  - stm32l4p5xx_1m
   - stm32l4r9i_eval
   - stm32l4r9i_disco_ospi1
   - stm32l4r9i_disco_ospi2
@@ -7562,7 +7562,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32l4p5xx_512
+  - stm32l4p5xx_1m
   - stm32l4r9i_eval
   - stm32l4r9i_disco_ospi1
   - stm32l4r9i_disco_ospi2
@@ -10125,29 +10125,6 @@ flash_algorithms:
     erase_sector_timeout: 400
     sectors:
     - size: 0x800
-      address: 0x0
-  cores:
-  - main
-- name: stm32l4p5xx_512
-  description: STM32L4P5xx_512 Flash
-  default: true
-  instructions: YUkQtV9KimBgSopgCmrSsqoqGNBeSspgXkrKYApqIvD/AgpiCmpC8KoCCmJKaUL0ADJKYUppQvAAYkphv/NPj0ppEgH81App0gP81FJMTEQgYFJIAIgABIAJYGBACKBgAPCK+AEoBNBP9ABQ4GAAIBC9T/SAUPnnQ0hBaUHwAEFBYb/zT48AIHBHASBwRz5ITPL6MQFhwRNBYUFpQfSAMUFhv/NPjwFpyQP81AAgcEdwtQVGAPBg+DdOAShORAbRsWgwaAFEqUIB2AEkAOAAJADwUvgBKHBooPEBAAXqAAUk0GoLKEgBackD/NRM8vozA2ECIQHrwgFB6sQhQWFBaUH0gDFBYb/zT48BackD/NRBaSHwAgFBYUFpIfQAYUFhAWkZQgTQA2EBIHC9KgvZ5wAgcL0wtRRLyR1M8vo1IfAHAR1hASRcYRHgFGgEYFRoRGC/80+PHGnkA/zUHGksQgLQHWEBIDC9CDAIOQgyACnr0QAgWGEwvQNIAGrA84BQcEcAACMBZ0UAIAJAq4nvzTsqGQh/bl1MBAAAAOB1/x8AAAAAAAAAAAAAAAAAAAAAAAAAAA==
-  pc_init: 0x1
-  pc_uninit: 0x79
-  pc_program_page: 0x135
-  pc_erase_sector: 0xb1
-  pc_erase_all: 0x8f
-  data_section_offset: 0x1a0
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8080000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 400
-    erase_sector_timeout: 400
-    sectors:
-    - size: 0x1000
       address: 0x0
   cores:
   - main

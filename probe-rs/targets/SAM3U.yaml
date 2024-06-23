@@ -25,7 +25,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsam3u_64
+  - atsam3u_128
   - atsam3u_gpnvm
 - name: ATSAM3U1E
   cores:
@@ -49,7 +49,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsam3u_64
+  - atsam3u_128
   - atsam3u_gpnvm
 - name: ATSAM3U2C
   cores:
@@ -150,29 +150,6 @@ variants:
   - atsam3u_128_b1
   - atsam3u_gpnvm
 flash_algorithms:
-- name: atsam3u_64
-  description: ATSAM3U 64kB Flash
-  default: true
-  instructions: OklJRAhgDyA5SQACCGA5SQhgASA4ScADSGE5SzdIWGI3SjhIwDoQYjVIgDiBaskH/NARa4kIiQBJHBFjgWoJB/zVASERY4FqCQf81StIQBxYYgAgcEcCKBXRJUgqSUFggWjJB/zQwmiRBwfUJkn+MUFggWjJB/zQkQcE1SNJQWCBaMkH/NAAIHBHH0kYSAg5QWCBaMkH/NAAIHBHACBwRzC1EkwYTUxEJGgRSwQbJAIkDCQCLR8lQ11gnWjtB/zQyRyJCIkAAuAgygkfIMAAKfrRDUgKOARDXGCYaMAH/NCYaEAHgA8A0AEgML0EAAAAAAgOQAAKDkBAEg5AAENNUMAEDkABDzcBDQAAWgwCAFoAAAAAAAAAAA==
-  pc_init: 0x1
-  pc_uninit: 0x57
-  pc_program_page: 0xa1
-  pc_erase_sector: 0x9d
-  pc_erase_all: 0x8b
-  data_section_offset: 0x110
-  flash_properties:
-    address_range:
-      start: 0x80000
-      end: 0x90000
-    page_size: 0x100
-    erased_byte_value: 0xff
-    program_page_timeout: 100
-    erase_sector_timeout: 1000
-    sectors:
-    - size: 0x100
-      address: 0x0
-  cores:
-  - main
 - name: atsam3u_128
   description: ATSAM3U 128kB Flash
   default: true

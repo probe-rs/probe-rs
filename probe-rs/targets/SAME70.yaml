@@ -25,7 +25,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsame7x_512
+  - atsame7x_2048
   - atsame7x_gpnvm
 - name: ATSAME70J19B
   cores:
@@ -49,7 +49,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsame7x_512
+  - atsame7x_2048
   - atsame7x_gpnvm
 - name: ATSAME70J20
   cores:
@@ -73,7 +73,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsame7x_1024
+  - atsame7x_2048
   - atsame7x_gpnvm
 - name: ATSAME70J20B
   cores:
@@ -97,7 +97,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsame7x_1024
+  - atsame7x_2048
   - atsame7x_gpnvm
 - name: ATSAME70J21
   cores:
@@ -169,7 +169,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsame7x_512
+  - atsame7x_2048
   - atsame7x_gpnvm
 - name: ATSAME70N19B
   cores:
@@ -193,7 +193,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsame7x_512
+  - atsame7x_2048
   - atsame7x_gpnvm
 - name: ATSAME70N20
   cores:
@@ -217,7 +217,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsame7x_1024
+  - atsame7x_2048
   - atsame7x_gpnvm
 - name: ATSAME70N20B
   cores:
@@ -241,7 +241,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsame7x_1024
+  - atsame7x_2048
   - atsame7x_gpnvm
 - name: ATSAME70N21
   cores:
@@ -313,7 +313,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsame7x_512
+  - atsame7x_2048
   - atsame7x_gpnvm
 - name: ATSAME70Q19B
   cores:
@@ -337,7 +337,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsame7x_512
+  - atsame7x_2048
   - atsame7x_gpnvm
 - name: ATSAME70Q20
   cores:
@@ -361,7 +361,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsame7x_1024
+  - atsame7x_2048
   - atsame7x_gpnvm
 - name: ATSAME70Q20B
   cores:
@@ -385,7 +385,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsame7x_1024
+  - atsame7x_2048
   - atsame7x_gpnvm
 - name: ATSAME70Q21
   cores:
@@ -436,52 +436,6 @@ variants:
   - atsame7x_2048
   - atsame7x_gpnvm
 flash_algorithms:
-- name: atsame7x_512
-  description: ATSAME7x 512kB Flash
-  default: true
-  instructions: MLVdSUlECGBdSVxISGIPIFtJAALAOQhgASBaScADSGFYScAxSGBZS1dIWGJXSsA6EGuACIAAQBwQY1RIgDiBagkH/NURa3AkoUMRY4FqCQf81RFqTk0pQxFigWqJA/zVEWqhQ0pMGDQhQxFiEWrkBKFDNyQkBCFDEWKBaskD/NURa4kIiQBJHBFjgWoJB/zVASERY4FqCQf81TtIQBxYYgAgML0CKBHRNUg6ScA4QWCBaMkH/NDBaIkHB9Q1Sf4xQWAA4AC/gWjJB/vQK0gsSUAcSGIAIHBHLkkpSAg5wDhBYADgAL+BaMkH+9AAIHBHIUojSUpEEmjAOYAaQAqACIAAgBwABAIKIkgAHxBDSGAA4AC/iGjAB/vQHkiAHwJDSmAA4AC/iGjAB/vQiGgAB0APANABIHBHMLUPSRBLSUQJaMA7QRpMClkVIMoJHyDAACn60SAED0kACgw5CENYYADgAL+YaMAH+9CYaAAHQA8A0AEgML0AAAQAAAAAQ0ZFwAwOQEAYDkAAQ01QwAYOQAgANwANAABaAAAAAAAAAAA=
-  pc_init: 0x1
-  pc_uninit: 0xa5
-  pc_program_page: 0x139
-  pc_erase_sector: 0xf1
-  pc_erase_all: 0xd9
-  data_section_offset: 0x198
-  flash_properties:
-    address_range:
-      start: 0x400000
-      end: 0x480000
-    page_size: 0x200
-    erased_byte_value: 0xff
-    program_page_timeout: 100
-    erase_sector_timeout: 1000
-    sectors:
-    - size: 0x2000
-      address: 0x0
-  cores:
-  - main
-- name: atsame7x_1024
-  description: ATSAME7x 1024kB Flash
-  default: true
-  instructions: MLVdSUlECGBdSVxISGIPIFtJAALAOQhgASBaScADSGFYScAxSGBZS1dIWGJXSsA6EGuACIAAQBwQY1RIgDiBagkH/NURa3AkoUMRY4FqCQf81RFqTk0pQxFigWqJA/zVEWqhQ0pMGDQhQxFiEWrkBKFDNyQkBCFDEWKBaskD/NURa4kIiQBJHBFjgWoJB/zVASERY4FqCQf81TtIQBxYYgAgML0CKBHRNUg6ScA4QWCBaMkH/NDBaIkHB9Q1Sf4xQWAA4AC/gWjJB/vQK0gsSUAcSGIAIHBHLkkpSAg5wDhBYADgAL+BaMkH+9AAIHBHIUojSUpEEmjAOYAaQAqACIAAgBwABAIKIkgAHxBDSGAA4AC/iGjAB/vQHkiAHwJDSmAA4AC/iGjAB/vQiGgAB0APANABIHBHMLUPSRBLSUQJaMA7QRpMClkVIMoJHyDAACn60SAED0kACgw5CENYYADgAL+YaMAH+9CYaAAHQA8A0AEgML0AAAQAAAAAQ0ZFwAwOQEAYDkAAQ01QwAYOQAgANwANAABaAAAAAAAAAAA=
-  pc_init: 0x1
-  pc_uninit: 0xa5
-  pc_program_page: 0x139
-  pc_erase_sector: 0xf1
-  pc_erase_all: 0xd9
-  data_section_offset: 0x198
-  flash_properties:
-    address_range:
-      start: 0x400000
-      end: 0x500000
-    page_size: 0x200
-    erased_byte_value: 0xff
-    program_page_timeout: 100
-    erase_sector_timeout: 1000
-    sectors:
-    - size: 0x2000
-      address: 0x0
-  cores:
-  - main
 - name: atsame7x_2048
   description: ATSAME7x 2048kB Flash
   default: true

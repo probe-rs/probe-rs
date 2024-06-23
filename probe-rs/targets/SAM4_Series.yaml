@@ -71,7 +71,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsam4e_512
+  - atsam4e_1024
 - name: ATSAM4E8E
   cores:
   - name: main
@@ -94,7 +94,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsam4e_512
+  - atsam4e_1024
 - name: ATSAM4LC2A
   cores:
   - name: main
@@ -117,7 +117,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsam4l_128
+  - atsam4l_512
 - name: ATSAM4LC2B
   cores:
   - name: main
@@ -140,7 +140,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsam4l_128
+  - atsam4l_512
 - name: ATSAM4LC2C
   cores:
   - name: main
@@ -163,7 +163,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsam4l_128
+  - atsam4l_512
 - name: ATSAM4LC4A
   cores:
   - name: main
@@ -186,7 +186,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsam4l_256
+  - atsam4l_512
 - name: ATSAM4LC4B
   cores:
   - name: main
@@ -209,7 +209,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsam4l_256
+  - atsam4l_512
 - name: ATSAM4LC4C
   cores:
   - name: main
@@ -232,7 +232,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsam4l_256
+  - atsam4l_512
 - name: ATSAM4LC8A
   cores:
   - name: main
@@ -324,7 +324,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsam4l_128
+  - atsam4l_512
 - name: ATSAM4LS2B
   cores:
   - name: main
@@ -347,7 +347,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsam4l_128
+  - atsam4l_512
 - name: ATSAM4LS2C
   cores:
   - name: main
@@ -370,7 +370,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsam4l_128
+  - atsam4l_512
 - name: ATSAM4LS4A
   cores:
   - name: main
@@ -393,7 +393,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsam4l_256
+  - atsam4l_512
 - name: ATSAM4LS4B
   cores:
   - name: main
@@ -416,7 +416,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsam4l_256
+  - atsam4l_512
 - name: ATSAM4LS4C
   cores:
   - name: main
@@ -439,7 +439,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsam4l_256
+  - atsam4l_512
 - name: ATSAM4LS8A
   cores:
   - name: main
@@ -577,7 +577,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsam4n_512
+  - atsam4n_1024
 - name: ATSAM4N8B
   cores:
   - name: main
@@ -600,7 +600,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsam4n_512
+  - atsam4n_1024
 - name: ATSAM4N8C
   cores:
   - name: main
@@ -623,7 +623,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsam4n_512
+  - atsam4n_1024
 - name: ATSAM4S16B
   cores:
   - name: main
@@ -646,7 +646,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsam4s_1024
+  - atsam4n_1024
   - atsam4s_gpnvm
 - name: ATSAM4S16C
   cores:
@@ -670,7 +670,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsam4s_1024
+  - atsam4n_1024
   - atsam4s_gpnvm
 - name: ATSAM4S2A
   cores:
@@ -694,7 +694,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsam4s_128
+  - atsam4n_1024
   - atsam4s_gpnvm
 - name: ATSAM4S2B
   cores:
@@ -718,7 +718,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsam4s_128
+  - atsam4n_1024
   - atsam4s_gpnvm
 - name: ATSAM4S2C
   cores:
@@ -742,7 +742,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsam4s_128
+  - atsam4n_1024
   - atsam4s_gpnvm
 - name: ATSAM4S4A
   cores:
@@ -766,7 +766,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsam4s_256
+  - atsam4n_1024
   - atsam4s_gpnvm
 - name: ATSAM4S4B
   cores:
@@ -790,7 +790,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsam4s_256
+  - atsam4n_1024
   - atsam4s_gpnvm
 - name: ATSAM4S4C
   cores:
@@ -814,7 +814,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsam4s_256
+  - atsam4n_1024
   - atsam4s_gpnvm
 - name: ATSAM4S8B
   cores:
@@ -838,7 +838,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsam4s_512
+  - atsam4n_1024
   - atsam4s_gpnvm
 - name: ATSAM4S8C
   cores:
@@ -862,7 +862,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsam4s_512
+  - atsam4n_1024
   - atsam4s_gpnvm
 - name: ATSAM4SA16B
   cores:
@@ -886,7 +886,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsam4s_1024
+  - atsam4n_1024
   - atsam4s_gpnvm
 - name: ATSAM4SA16C
   cores:
@@ -910,7 +910,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsam4s_1024
+  - atsam4n_1024
   - atsam4s_gpnvm
 - name: ATSAM4SD16B
   cores:
@@ -1030,7 +1030,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - atsam4sp_2048
+  - atsam4sd_2048
 flash_algorithms:
 - name: atsam4e_1024
   description: ATSAM4E 1024kB Flash
@@ -1052,73 +1052,6 @@ flash_algorithms:
     erase_sector_timeout: 1000
     sectors:
     - size: 0x2000
-      address: 0x0
-  cores:
-  - main
-- name: atsam4e_512
-  description: ATSAM4E 512kB Flash
-  default: true
-  instructions: MLVVSUlECGAPIFRJAAIIYAEgU0nAA0hhU0tSSFhiUkrAOhBrgAiAAEAcEGNOSIA4gWoJB/zVEWtwJKFDEWOBagkH/NURaklNKUMRYoFqiQP81RFqoUNFTBg0IUMRYhFq5AShQzckJAQhQxFigWrJA/zVEWuJCIkASRwRY4FqCQf81QEhEWOBagkH/NU1SEAcWGIAIDC9AigV0TBINElBYIFoyQf80MJokQcF1DBJ/jFBYIFoyQf80FEHBNUtSUFggWjJB/zQACBwRylJI0gIOUFggWjJB/zQACBwRx5KH0lKRBJogBpACoAIgACAHAAEAgofSAAfEENIYIhowAf80BtIgB8CQ0pgiGjAB/zQiGgAB0APANABIHBHMLUOTA9LTEQkaAQbyRxkCokIiQAC4CDKCR8gwAAp+tEgBAxJAAoMOQhDWGCYaMAH/NCYaAAHQA8A0AEgML0EAAAAAAoOQEAYDkAAQ01QwAQOQAgANwANAABaDAIAWgAAAAAAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x97
-  pc_program_page: 0x11b
-  pc_erase_sector: 0xdd
-  pc_erase_all: 0xcb
-  data_section_offset: 0x178
-  flash_properties:
-    address_range:
-      start: 0x400000
-      end: 0x480000
-    page_size: 0x200
-    erased_byte_value: 0xff
-    program_page_timeout: 100
-    erase_sector_timeout: 1000
-    sectors:
-    - size: 0x2000
-      address: 0x0
-  cores:
-  - main
-- name: atsam4l_128
-  description: ATSAM4L 128kB Flash
-  default: true
-  instructions: MLU+SQpoVSMbBhpDUghSAApgCmhbABpDUghSAApgOUo3SZFhN0kBIkAxCmEKadIH/NAzSTRMTDmhYTNNgiFAPWlgMUmAMUppkgb81aNhBCIqYEppkgb81SxJSUQIYAAgML0AIHBHKUkQtUlECWhAGkAKAQQKCiZJCkMmSUpgimjSB/zQIksERtseIDQN4AIEEgoaQ0pgimjSB/zQimgSB5IPAdABIBC9QBygQu/TACAQvTC1FUsWTUtEG2jDGlwKFEutHl1gnWjtB/zQyR3JCMkAAuAgygkfIMAAKfrRIAQLSQAKCR8IQ1hgmGjAB/zQmGgAB4APANABIDC9AAwPQFAAAKoACA5AQAAOQAQAAAAFAAClAAAKQAAAAAAAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x63
-  pc_program_page: 0xb3
-  pc_erase_sector: 0x67
-  data_section_offset: 0x118
-  flash_properties:
-    address_range:
-      start: 0x0
-      end: 0x20000
-    page_size: 0x200
-    erased_byte_value: 0xff
-    program_page_timeout: 300
-    erase_sector_timeout: 3000
-    sectors:
-    - size: 0x4000
-      address: 0x0
-  cores:
-  - main
-- name: atsam4l_256
-  description: ATSAM4L 256kB Flash
-  default: true
-  instructions: MLU+SQpoVSMbBhpDUghSAApgCmhbABpDUghSAApgOUo3SZFhN0kBIkAxCmEKadIH/NAzSTRMTDmhYTNNgiFAPWlgMUmAMUppkgb81aNhBCIqYEppkgb81SxJSUQIYAAgML0AIHBHKUkQtUlECWhAGkAKAQQKCiZJCkMmSUpgimjSB/zQIksERtseIDQN4AIEEgoaQ0pgimjSB/zQimgSB5IPAdABIBC9QBygQu/TACAQvTC1FUsWTUtEG2jDGlwKFEutHl1gnWjtB/zQyR3JCMkAAuAgygkfIMAAKfrRIAQLSQAKCR8IQ1hgmGjAB/zQmGgAB4APANABIDC9AAwPQFAAAKoACA5AQAAOQAQAAAAFAAClAAAKQAAAAAAAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x63
-  pc_program_page: 0xb3
-  pc_erase_sector: 0x67
-  data_section_offset: 0x118
-  flash_properties:
-    address_range:
-      start: 0x0
-      end: 0x40000
-    page_size: 0x200
-    erased_byte_value: 0xff
-    program_page_timeout: 300
-    erase_sector_timeout: 3000
-    sectors:
-    - size: 0x4000
       address: 0x0
   cores:
   - main
@@ -1146,121 +1079,6 @@ flash_algorithms:
   - main
 - name: atsam4n_1024
   description: ATSAM4N 1024kB Flash
-  default: true
-  instructions: MLVVSUlECGAPIFRJAAIIYAEgU0nAA0hhU0tSSFhiUkrAOhBrgAiAAEAcEGNOSIA4gWoJB/zVEWtwJKFDEWOBagkH/NURaklNKUMRYoFqiQP81RFqoUNFTBg0IUMRYhFq5AShQzckJAQhQxFigWrJA/zVEWuJCIkASRwRY4FqCQf81QEhEWOBagkH/NU1SEAcWGIAIDC9AigV0TBINElBYIFoyQf80MJokQcF1DBJ/jFBYIFoyQf80FEHBNUtSUFggWjJB/zQACBwRylJI0gIOUFggWjJB/zQACBwRx5KH0lKRBJogBpACoAIgACAHAAEAgofSAAfEENIYIhowAf80BtIgB8CQ0pgiGjAB/zQiGgAB0APANABIHBHMLUOTA9LTEQkaAQbyRxkCokIiQAC4CDKCR8gwAAp+tEgBAxJAAoMOQhDWGCYaMAH/NCYaAAHQA8A0AEgML0EAAAAAAoOQEAUDkAAQ01QwAQOQAgANwANAABaDAIAWgAAAAAAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x97
-  pc_program_page: 0x11b
-  pc_erase_sector: 0xdd
-  pc_erase_all: 0xcb
-  data_section_offset: 0x178
-  flash_properties:
-    address_range:
-      start: 0x400000
-      end: 0x500000
-    page_size: 0x200
-    erased_byte_value: 0xff
-    program_page_timeout: 100
-    erase_sector_timeout: 1000
-    sectors:
-    - size: 0x2000
-      address: 0x0
-  cores:
-  - main
-- name: atsam4n_512
-  description: ATSAM4N 512kB Flash
-  default: true
-  instructions: MLVVSUlECGAPIFRJAAIIYAEgU0nAA0hhU0tSSFhiUkrAOhBrgAiAAEAcEGNOSIA4gWoJB/zVEWtwJKFDEWOBagkH/NURaklNKUMRYoFqiQP81RFqoUNFTBg0IUMRYhFq5AShQzckJAQhQxFigWrJA/zVEWuJCIkASRwRY4FqCQf81QEhEWOBagkH/NU1SEAcWGIAIDC9AigV0TBINElBYIFoyQf80MJokQcF1DBJ/jFBYIFoyQf80FEHBNUtSUFggWjJB/zQACBwRylJI0gIOUFggWjJB/zQACBwRx5KH0lKRBJogBpACoAIgACAHAAEAgofSAAfEENIYIhowAf80BtIgB8CQ0pgiGjAB/zQiGgAB0APANABIHBHMLUOTA9LTEQkaAQbyRxkCokIiQAC4CDKCR8gwAAp+tEgBAxJAAoMOQhDWGCYaMAH/NCYaAAHQA8A0AEgML0EAAAAAAoOQEAUDkAAQ01QwAQOQAgANwANAABaDAIAWgAAAAAAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x97
-  pc_program_page: 0x11b
-  pc_erase_sector: 0xdd
-  pc_erase_all: 0xcb
-  data_section_offset: 0x178
-  flash_properties:
-    address_range:
-      start: 0x400000
-      end: 0x480000
-    page_size: 0x200
-    erased_byte_value: 0xff
-    program_page_timeout: 100
-    erase_sector_timeout: 1000
-    sectors:
-    - size: 0x2000
-      address: 0x0
-  cores:
-  - main
-- name: atsam4s_128
-  description: ATSAM4S 128kB Flash
-  default: true
-  instructions: MLVVSUlECGAPIFRJAAIIYAEgU0nAA0hhU0tSSFhiUkrAOhBrgAiAAEAcEGNOSIA4gWoJB/zVEWtwJKFDEWOBagkH/NURaklNKUMRYoFqiQP81RFqoUNFTBg0IUMRYhFq5AShQzckJAQhQxFigWrJA/zVEWuJCIkASRwRY4FqCQf81QEhEWOBagkH/NU1SEAcWGIAIDC9AigV0TBINElBYIFoyQf80MJokQcF1DBJ/jFBYIFoyQf80FEHBNUtSUFggWjJB/zQACBwRylJI0gIOUFggWjJB/zQACBwRx5KH0lKRBJogBpACoAIgACAHAAEAgofSAAfEENIYIhowAf80BtIgB8CQ0pgiGjAB/zQiGgAB0APANABIHBHMLUOTA9LTEQkaAQbyRxkCokIiQAC4CDKCR8gwAAp+tEgBAxJAAoMOQhDWGCYaMAH/NCYaAAHQA8A0AEgML0EAAAAAAoOQEAUDkAAQ01QwAQOQAgANwANAABaDAIAWgAAAAAAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x97
-  pc_program_page: 0x11b
-  pc_erase_sector: 0xdd
-  pc_erase_all: 0xcb
-  data_section_offset: 0x178
-  flash_properties:
-    address_range:
-      start: 0x400000
-      end: 0x420000
-    page_size: 0x200
-    erased_byte_value: 0xff
-    program_page_timeout: 100
-    erase_sector_timeout: 1000
-    sectors:
-    - size: 0x2000
-      address: 0x0
-  cores:
-  - main
-- name: atsam4s_256
-  description: ATSAM4S 256kB Flash
-  default: true
-  instructions: MLVVSUlECGAPIFRJAAIIYAEgU0nAA0hhU0tSSFhiUkrAOhBrgAiAAEAcEGNOSIA4gWoJB/zVEWtwJKFDEWOBagkH/NURaklNKUMRYoFqiQP81RFqoUNFTBg0IUMRYhFq5AShQzckJAQhQxFigWrJA/zVEWuJCIkASRwRY4FqCQf81QEhEWOBagkH/NU1SEAcWGIAIDC9AigV0TBINElBYIFoyQf80MJokQcF1DBJ/jFBYIFoyQf80FEHBNUtSUFggWjJB/zQACBwRylJI0gIOUFggWjJB/zQACBwRx5KH0lKRBJogBpACoAIgACAHAAEAgofSAAfEENIYIhowAf80BtIgB8CQ0pgiGjAB/zQiGgAB0APANABIHBHMLUOTA9LTEQkaAQbyRxkCokIiQAC4CDKCR8gwAAp+tEgBAxJAAoMOQhDWGCYaMAH/NCYaAAHQA8A0AEgML0EAAAAAAoOQEAUDkAAQ01QwAQOQAgANwANAABaDAIAWgAAAAAAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x97
-  pc_program_page: 0x11b
-  pc_erase_sector: 0xdd
-  pc_erase_all: 0xcb
-  data_section_offset: 0x178
-  flash_properties:
-    address_range:
-      start: 0x400000
-      end: 0x440000
-    page_size: 0x200
-    erased_byte_value: 0xff
-    program_page_timeout: 100
-    erase_sector_timeout: 1000
-    sectors:
-    - size: 0x2000
-      address: 0x0
-  cores:
-  - main
-- name: atsam4s_512
-  description: ATSAM4S 512kB Flash
-  default: true
-  instructions: MLVVSUlECGAPIFRJAAIIYAEgU0nAA0hhU0tSSFhiUkrAOhBrgAiAAEAcEGNOSIA4gWoJB/zVEWtwJKFDEWOBagkH/NURaklNKUMRYoFqiQP81RFqoUNFTBg0IUMRYhFq5AShQzckJAQhQxFigWrJA/zVEWuJCIkASRwRY4FqCQf81QEhEWOBagkH/NU1SEAcWGIAIDC9AigV0TBINElBYIFoyQf80MJokQcF1DBJ/jFBYIFoyQf80FEHBNUtSUFggWjJB/zQACBwRylJI0gIOUFggWjJB/zQACBwRx5KH0lKRBJogBpACoAIgACAHAAEAgofSAAfEENIYIhowAf80BtIgB8CQ0pgiGjAB/zQiGgAB0APANABIHBHMLUOTA9LTEQkaAQbyRxkCokIiQAC4CDKCR8gwAAp+tEgBAxJAAoMOQhDWGCYaMAH/NCYaAAHQA8A0AEgML0EAAAAAAoOQEAUDkAAQ01QwAQOQAgANwANAABaDAIAWgAAAAAAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x97
-  pc_program_page: 0x11b
-  pc_erase_sector: 0xdd
-  pc_erase_all: 0xcb
-  data_section_offset: 0x178
-  flash_properties:
-    address_range:
-      start: 0x400000
-      end: 0x480000
-    page_size: 0x200
-    erased_byte_value: 0xff
-    program_page_timeout: 100
-    erase_sector_timeout: 1000
-    sectors:
-    - size: 0x2000
-      address: 0x0
-  cores:
-  - main
-- name: atsam4s_1024
-  description: ATSAM4S 1024kB Flash
   default: true
   instructions: MLVVSUlECGAPIFRJAAIIYAEgU0nAA0hhU0tSSFhiUkrAOhBrgAiAAEAcEGNOSIA4gWoJB/zVEWtwJKFDEWOBagkH/NURaklNKUMRYoFqiQP81RFqoUNFTBg0IUMRYhFq5AShQzckJAQhQxFigWrJA/zVEWuJCIkASRwRY4FqCQf81QEhEWOBagkH/NU1SEAcWGIAIDC9AigV0TBINElBYIFoyQf80MJokQcF1DBJ/jFBYIFoyQf80FEHBNUtSUFggWjJB/zQACBwRylJI0gIOUFggWjJB/zQACBwRx5KH0lKRBJogBpACoAIgACAHAAEAgofSAAfEENIYIhowAf80BtIgB8CQ0pgiGjAB/zQiGgAB0APANABIHBHMLUOTA9LTEQkaAQbyRxkCokIiQAC4CDKCR8gwAAp+tEgBAxJAAoMOQhDWGCYaMAH/NCYaAAHQA8A0AEgML0EAAAAAAoOQEAUDkAAQ01QwAQOQAgANwANAABaDAIAWgAAAAAAAAAA
   pc_init: 0x1
@@ -1347,29 +1165,6 @@ flash_algorithms:
     erase_sector_timeout: 1000
     sectors:
     - size: 0x10
-      address: 0x0
-  cores:
-  - main
-- name: atsam4sp_2048
-  description: ATSAM4SP 2048kB Flash
-  default: true
-  instructions: MLVhSUlECGAPIGBJAAIIYF9JCGABIF9JwANIYV9LXkhYYl5KwDoQa4AIgABAHBBjWkiAOIFqCQf81RFrcCShQxFjgWoJB/zVEWpVTSlDEWKBaokD/NURaqFDUUwYNCFDEWIRauQEoUM3JCQEIUMRYoFqyQP81RFriQiJAEkcEWOBagkH/NUBIRFjgWoJB/zVQUhAHFhiACAwvQIoFdE7SEBJQWCBaMkH/NDCaJEHBdQ8Sf4xQWCBaMkH/NBRBwTVOUlBYIFoyQf80AAgcEc1Si5ICDpCYIFoyQf80CxIQmCBaMkH/NAAIHBHJ0kBIklECWgSBYsYQRqYQgHSI0gB4CNIiRpJCokIiQCJHAkECgokSQkfEUNBYIFoyQf80CFJiR8KQ0JggWjJB/zQgGgAB0APANABIHBHcLUTSwElS0QbaC0FXhnEGrBCAdIPSwHgD0tkG8kcZAqJCIkAAuAgygkfIMAAKfrRIAQOSQAKDDkIQ1hgmGjAB/zQmGgAB0APANABIHC9AAAEAAAAAAoOQAAMDkBAFA5AAENNUMAEDkAIADcADQAAWgwCAFoAAAAAAAAAAA==
-  pc_init: 0x1
-  pc_uninit: 0x9b
-  pc_program_page: 0x139
-  pc_erase_sector: 0xeb
-  pc_erase_all: 0xcf
-  data_section_offset: 0x1ac
-  flash_properties:
-    address_range:
-      start: 0x400000
-      end: 0x600000
-    page_size: 0x200
-    erased_byte_value: 0xff
-    program_page_timeout: 100
-    erase_sector_timeout: 1000
-    sectors:
-    - size: 0x2000
       address: 0x0
   cores:
   - main
