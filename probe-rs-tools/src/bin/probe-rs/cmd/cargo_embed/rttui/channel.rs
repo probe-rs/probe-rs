@@ -74,4 +74,12 @@ impl UpChannel {
     pub(crate) fn clean_up(&mut self, core: &mut probe_rs::Core<'_>) -> anyhow::Result<()> {
         self.rtt_channel.clean_up(core)
     }
+
+    pub(crate) fn number(&self) -> usize {
+        self.rtt_channel.number()
+    }
+
+    pub(crate) fn channel_name(&self) -> &str {
+        &self.rtt_channel.channel_name
+    }
 }

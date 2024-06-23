@@ -62,7 +62,15 @@ impl App {
                 });
             }
 
-            up_channels.push((up, None));
+            // Is a TCP publish address configured?
+            let stream = config
+                .rtt
+                .up_channels
+                .iter()
+                .find(|up_config| up_config.channel == number)
+                .and_then(|up_config| up_config.socket);
+
+            up_channels.push(UpChannel::new(up, stream));
         }
         for down in rtt.active_down_channels.into_iter() {
             let number = down.number();
@@ -85,20 +93,13 @@ impl App {
             down_channels.push(down);
         }
 
-        // Collect TCP publish addresses
-        for up_config in config.rtt.up_channels.iter() {
-            if let Some((_, stream)) = up_channels.get_mut(up_config.channel) {
-                *stream = up_config.socket;
-            }
-        }
-
         // Create tabs
         let mut tabs = Vec::new();
         for tab in tab_config {
             if tab.hide {
                 continue;
             }
-            let Some(up_channel) = up_channels.get(tab.up_channel).map(|(up, _)| up) else {
+            let Some(up_channel) = up_channels.get(tab.up_channel) else {
                 tracing::warn!(
                     "Configured up channel {} does not exist, skipping tab",
                     tab.up_channel
@@ -151,10 +152,7 @@ impl App {
             defmt_state: rtt.defmt_state,
 
             down_channels,
-            up_channels: up_channels
-                .into_iter()
-                .map(|(channel, socket)| UpChannel::new(channel, socket))
-                .collect(),
+            up_channels,
         })
     }
 

@@ -2,10 +2,7 @@ use std::fmt::write;
 
 use probe_rs::Core;
 
-use crate::{
-    cmd::cargo_embed::rttui::channel::ChannelData,
-    util::rtt::{RttActiveDownChannel, RttActiveUpChannel},
-};
+use crate::{cmd::cargo_embed::rttui::channel::ChannelData, util::rtt::RttActiveDownChannel};
 
 use super::channel::UpChannel;
 
@@ -40,14 +37,14 @@ pub struct Tab {
 
 impl Tab {
     pub fn new(
-        up_channel: &RttActiveUpChannel,
+        up_channel: &UpChannel,
         down_channel: Option<&RttActiveDownChannel>,
         name: Option<String>,
     ) -> Self {
         Self {
             up_channel: up_channel.number(),
             down_channel: down_channel.map(|down| (down.number(), String::new())),
-            name: name.unwrap_or_else(|| up_channel.channel_name.clone()),
+            name: name.unwrap_or_else(|| up_channel.channel_name().to_string()),
             scroll_offset: 0,
             messages: Vec::new(),
             last_processed: 0,
