@@ -1,7 +1,7 @@
 use anyhow::{bail, Context, Result};
 use probe_rs_target::{
-    ArmCoreAccessOptions, Chip, ChipFamily, Core, CoreAccessOptions, CoreType, MemoryRegion,
-    NvmRegion, RamRegion, RawFlashAlgorithm, TargetDescriptionSource,
+    ArmCoreAccessOptions, Chip, ChipFamily, Core, CoreAccessOptions, CoreType, MemoryAccess,
+    MemoryRegion, NvmRegion, RamRegion, RawFlashAlgorithm, TargetDescriptionSource,
 };
 use std::{
     borrow::Cow,
@@ -95,17 +95,20 @@ pub fn cmd_elf(
                 name: "<chip name>".to_owned(),
                 memory_map: vec![
                     MemoryRegion::Nvm(NvmRegion {
-                        is_boot_memory: false,
+                        access: None,
                         range: 0..0x2000,
                         cores: vec!["main".to_owned()],
                         name: None,
                         is_alias: false,
                     }),
                     MemoryRegion::Ram(RamRegion {
-                        is_boot_memory: true,
                         range: 0x1_0000..0x2_0000,
                         cores: vec!["main".to_owned()],
                         name: None,
+                        access: Some(MemoryAccess {
+                            boot: true,
+                            ..Default::default()
+                        }),
                     }),
                 ],
                 flash_algorithms: vec![algorithm_name],

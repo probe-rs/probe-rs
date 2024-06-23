@@ -1,0 +1,1 @@
+Added `MemoryAccess` attributes to `RamRegion`, `NvmRegion` and `GenericRegion`

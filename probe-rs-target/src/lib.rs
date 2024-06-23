@@ -28,6 +28,6 @@ pub use chip_family::{
 pub use flash_algorithm::{RawFlashAlgorithm, TransferEncoding};
 pub use flash_properties::FlashProperties;
 pub use memory::{
-    GenericRegion, MemoryRange, MemoryRegion, NvmRegion, PageInfo, RamRegion, SectorDescription,
-    SectorInfo,
+    GenericRegion, MemoryRange, MemoryRegion, NvmRegion, PageInfo, MemoryAccess, RamRegion,
+    SectorDescription, SectorInfo,
 };

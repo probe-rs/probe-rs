@@ -23,20 +23,22 @@ fn test_stepping(tracker: &TestTracker, core: &mut Core) -> TestResult {
         ));
     }
 
-    let ram_region = core.memory_regions().find_map(MemoryRegion::as_ram_region);
+    let ram_region = core
+        .memory_regions()
+        .filter_map(MemoryRegion::as_ram_region)
+        .filter(|r| r.is_executable())
+        .next();
 
-    let ram_region = if let Some(ram_region) = ram_region {
-        ram_region.clone()
-    } else {
+    let Some(ram_region) = ram_region else {
         return Err(TestFailure::Skipped(
             "No RAM configured for core, unable to test stepping".to_string(),
         ));
     };
 
+    let code_load_address = ram_region.range.start;
+
     core.reset_and_halt(Duration::from_millis(100))
         .into_diagnostic()?;
-
-    let code_load_address = ram_region.range.start;
 
     core.write_8(code_load_address, TEST_CODE)
         .into_diagnostic()?;
