@@ -19,10 +19,8 @@ impl ChannelDataCallbacks for (&mut Option<TcpPublisher>, &mut ChannelData) {
         let ChannelData::Strings { messages } = &mut self.1 else {
             unreachable!()
         };
-        for line in data.split_terminator('\n') {
-            messages.push(line.to_string());
-        }
 
+        messages.push(data);
         Ok(())
     }
 
@@ -34,8 +32,8 @@ impl ChannelDataCallbacks for (&mut Option<TcpPublisher>, &mut ChannelData) {
         let ChannelData::Binary { data } = &mut self.1 else {
             unreachable!()
         };
-        data.extend_from_slice(incoming);
 
+        data.extend_from_slice(incoming);
         Ok(())
     }
 }
