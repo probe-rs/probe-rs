@@ -1,4 +1,8 @@
-use std::fmt::write;
+use std::{
+    cell::{Ref, RefCell},
+    fmt::write,
+    rc::Rc,
+};
 
 use probe_rs::Core;
 
@@ -24,10 +28,9 @@ pub struct TabConfig {
     pub hide: bool,
 }
 
-#[derive(Debug)]
 pub struct Tab {
-    up_channel: usize,
-    down_channel: Option<(usize, String)>,
+    up_channel: Rc<RefCell<UpChannel>>,
+    down_channel: Option<(Rc<RefCell<RttActiveDownChannel>>, String)>,
     name: String,
     scroll_offset: usize,
     messages: Vec<String>,
@@ -37,14 +40,14 @@ pub struct Tab {
 
 impl Tab {
     pub fn new(
-        up_channel: &UpChannel,
-        down_channel: Option<&RttActiveDownChannel>,
+        up_channel: Rc<RefCell<UpChannel>>,
+        down_channel: Option<Rc<RefCell<RttActiveDownChannel>>>,
         name: Option<String>,
     ) -> Self {
         Self {
-            up_channel: up_channel.number(),
-            down_channel: down_channel.map(|down| (down.number(), String::new())),
-            name: name.unwrap_or_else(|| up_channel.channel_name().to_string()),
+            name: name.unwrap_or_else(|| up_channel.borrow().channel_name().to_string()),
+            up_channel,
+            down_channel: down_channel.map(|down| (down, String::new())),
             scroll_offset: 0,
             messages: Vec::new(),
             last_processed: 0,
@@ -64,8 +67,8 @@ impl Tab {
         self.scroll_offset = value;
     }
 
-    pub fn up_channel(&self) -> usize {
-        self.up_channel
+    pub fn up_channel(&self) -> Ref<'_, UpChannel> {
+        self.up_channel.borrow()
     }
 
     pub fn scroll_up(&mut self) {
@@ -100,21 +103,17 @@ impl Tab {
         self.down_channel.as_ref().map(|(_, input)| input.as_str())
     }
 
-    pub fn send_input(
-        &mut self,
-        core: &mut Core,
-        channels: &mut [RttActiveDownChannel],
-    ) -> anyhow::Result<()> {
+    pub fn send_input(&mut self, core: &mut Core) -> anyhow::Result<()> {
         if let Some((channel, input)) = self.down_channel.as_mut() {
             input.push('\n');
-            channels[*channel].push_rtt(core, input.as_str())?;
+            channel.borrow_mut().push_rtt(core, input.as_str())?;
             input.clear();
         }
 
         Ok(())
     }
 
-    pub fn update_messages(&mut self, width: usize, up_channels: &[UpChannel]) {
+    pub fn update_messages(&mut self, width: usize) {
         if self.last_width != width {
             self.last_width = width;
             self.last_processed = 0;
@@ -123,7 +122,7 @@ impl Tab {
         }
 
         let old_message_count = self.messages.len();
-        match &up_channels[self.up_channel].data {
+        match &self.up_channel.borrow().data {
             ChannelData::Strings { messages, .. } => {
                 // We strip ANSI sequences because they interfere with text wrapping.
                 //  - It's not obvious how we could tell defmt_parser to not emit ANSI sequences.

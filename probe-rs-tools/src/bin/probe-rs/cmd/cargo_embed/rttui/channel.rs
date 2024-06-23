@@ -1,5 +1,7 @@
 use std::net::SocketAddr;
 
+use probe_rs::Core;
+
 use crate::{
     cmd::cargo_embed::rttui::tcp::TcpPublisher,
     util::rtt::{ChannelDataCallbacks, DefmtState, RttActiveUpChannel},
@@ -61,7 +63,7 @@ impl UpChannel {
 
     pub fn poll_rtt(
         &mut self,
-        core: &mut probe_rs::Core<'_>,
+        core: &mut Core<'_>,
         defmt_state: Option<&DefmtState>,
     ) -> anyhow::Result<()> {
         self.rtt_channel.poll_process_rtt_data(
@@ -71,12 +73,8 @@ impl UpChannel {
         )
     }
 
-    pub(crate) fn clean_up(&mut self, core: &mut probe_rs::Core<'_>) -> anyhow::Result<()> {
+    pub(crate) fn clean_up(&mut self, core: &mut Core<'_>) -> anyhow::Result<()> {
         self.rtt_channel.clean_up(core)
-    }
-
-    pub(crate) fn number(&self) -> usize {
-        self.rtt_channel.number()
     }
 
     pub(crate) fn channel_name(&self) -> &str {

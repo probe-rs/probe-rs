@@ -12,12 +12,12 @@ use ratatui::{
     widgets::{Block, Borders, List, Paragraph, Tabs},
     Terminal,
 };
-use std::{io::Write, rc::Rc};
+use std::{cell::RefCell, io::Write, rc::Rc};
 use std::{path::PathBuf, sync::mpsc::TryRecvError};
 
 use crate::{
     cmd::cargo_embed::rttui::{channel::ChannelData, tab::TabConfig},
-    util::rtt::{DefmtState, RttActiveDownChannel, RttActiveTarget},
+    util::rtt::{DefmtState, RttActiveTarget},
 };
 
 use super::super::config;
@@ -38,8 +38,7 @@ pub struct App {
 
     defmt_state: Option<DefmtState>,
 
-    down_channels: Vec<RttActiveDownChannel>,
-    pub(crate) up_channels: Vec<UpChannel>,
+    pub(crate) up_channels: Vec<Rc<RefCell<UpChannel>>>,
 }
 
 impl App {
@@ -53,6 +52,8 @@ impl App {
         // Create tab config based on detected channels
         for up in rtt.active_up_channels.into_iter() {
             let number = up.number();
+
+            // Create a default tab config if the user didn't specify one
             if !tab_config.iter().any(|tab| tab.up_channel == number) {
                 tab_config.push(TabConfig {
                     up_channel: number,
@@ -70,7 +71,7 @@ impl App {
                 .find(|up_config| up_config.channel == number)
                 .and_then(|up_config| up_config.socket);
 
-            up_channels.push(UpChannel::new(up, stream));
+            up_channels.push(Rc::new(RefCell::new(UpChannel::new(up, stream))));
         }
         for down in rtt.active_down_channels.into_iter() {
             let number = down.number();
@@ -90,7 +91,7 @@ impl App {
                 });
             }
 
-            down_channels.push(down);
+            down_channels.push(Rc::new(RefCell::new(down)));
         }
 
         // Create tabs
@@ -107,8 +108,10 @@ impl App {
                 continue;
             };
 
-            let down_channel = tab.down_channel.and_then(|down| down_channels.get(down));
-            tabs.push(Tab::new(up_channel, down_channel, tab.name));
+            let down_channel = tab
+                .down_channel
+                .and_then(|down| down_channels.get(down).cloned());
+            tabs.push(Tab::new(up_channel.clone(), down_channel, tab.name));
         }
 
         // Code farther down relies on tabs being configured and might panic
@@ -151,7 +154,6 @@ impl App {
             logname,
             defmt_state: rtt.defmt_state,
 
-            down_channels,
             up_channels,
         })
     }
@@ -168,7 +170,7 @@ impl App {
                 let width = chunks[1].width as usize;
 
                 let current_tab = &mut self.tabs[self.current_tab];
-                current_tab.update_messages(width, &self.up_channels);
+                current_tab.update_messages(width);
 
                 let messages = List::new(current_tab.messages(height))
                     .block(Block::default().borders(Borders::NONE));
@@ -225,14 +227,16 @@ impl App {
     /// Polls the RTT target for new data on all channels.
     pub fn poll_rtt(&mut self, core: &mut Core) -> Result<()> {
         for channel in self.up_channels.iter_mut() {
-            channel.poll_rtt(core, self.defmt_state.as_ref())?;
+            channel
+                .borrow_mut()
+                .poll_rtt(core, self.defmt_state.as_ref())?;
         }
 
         Ok(())
     }
 
     pub fn push_rtt(&mut self, core: &mut Core) {
-        _ = self.tabs[self.current_tab].send_input(core, &mut self.down_channels);
+        _ = self.tabs[self.current_tab].send_input(core);
     }
 
     pub(crate) fn clean_up(&mut self, core: &mut Core) -> Result<()> {
@@ -244,7 +248,7 @@ impl App {
         }
 
         for channel in self.up_channels.iter_mut() {
-            channel.clean_up(core)?;
+            channel.borrow_mut().clean_up(core)?;
         }
 
         Ok(())
@@ -255,7 +259,7 @@ impl App {
             return;
         };
 
-        let up_channel = &self.up_channels[tab.up_channel()];
+        let up_channel = tab.up_channel();
 
         let extension = match up_channel.data {
             ChannelData::Strings { .. } => "txt",
