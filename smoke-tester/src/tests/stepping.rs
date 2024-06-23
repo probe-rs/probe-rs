@@ -26,8 +26,7 @@ fn test_stepping(tracker: &TestTracker, core: &mut Core) -> TestResult {
     let ram_region = core
         .memory_regions()
         .filter_map(MemoryRegion::as_ram_region)
-        .filter(|r| r.is_executable())
-        .next();
+        .find(|r| r.is_executable());
 
     let Some(ram_region) = ram_region else {
         return Err(TestFailure::Skipped(
