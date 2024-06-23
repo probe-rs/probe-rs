@@ -115,6 +115,7 @@ impl Tab {
 
     pub fn update_messages(&mut self, width: usize) {
         if self.last_width != width {
+            // If the width changes, we need to reprocess all messages.
             self.last_width = width;
             self.last_processed = 0;
             self.set_scroll_offset(0);
@@ -131,38 +132,19 @@ impl Tab {
                 //  - We can only interpret the sequences by emitting ratatui span styles, but at
                 // that point we can no longer wrap the text using textwrap.
                 //  - Leaving sequences in the output intact is just a bad experience.
-                fn text_block(output: ansi_parser::Output) -> Option<&str> {
-                    match output {
-                        ansi_parser::Output::TextBlock(text) => Some(text),
-                        _ => None,
-                    }
-                }
-                fn strip_ansi(s: impl AsRef<str>) -> String {
-                    use ansi_parser::AnsiParser;
-                    s.as_ref()
-                        .ansi_parse()
-                        .filter_map(text_block)
-                        .collect::<String>()
+
+                for line in messages.iter().skip(self.last_processed).map(strip_ansi) {
+                    self.messages
+                        .extend(textwrap::wrap(&line, width).into_iter().map(String::from));
                 }
 
-                let new = messages
-                    .iter()
-                    .skip(self.last_processed)
-                    .map(strip_ansi)
-                    .flat_map(|m| {
-                        textwrap::wrap(&m, width)
-                            .into_iter()
-                            .map(|cow| cow.to_string())
-                            .collect::<Vec<_>>()
-                    });
                 self.last_processed = messages.len();
-
-                self.messages.extend(new);
             }
             ChannelData::Binary { data } => {
                 let mut string = self.messages.pop().unwrap_or_default();
 
                 if !data.is_empty() {
+                    // 4 characters per byte (0xAB) + 1 space, except at the end
                     string.reserve(data.len() * 5 - 1);
                 }
 
@@ -176,10 +158,10 @@ impl Tab {
                             let _ = write(&mut output, format_args!("{byte:#04x}"));
                             output
                         });
-                self.last_processed = data.len();
-                let new = textwrap::wrap(&string, width);
 
-                self.messages.extend(new.into_iter().map(String::from));
+                self.messages
+                    .extend(textwrap::wrap(&string, width).into_iter().map(String::from));
+                self.last_processed = data.len();
             }
         };
 
@@ -199,4 +181,21 @@ impl Tab {
             .skip(message_num - (height + self.scroll_offset).min(message_num))
             .take(height)
     }
+}
+
+/// Removes ANSI escape sequences from a string.
+fn strip_ansi(s: impl AsRef<str>) -> String {
+    fn text_block(output: ansi_parser::Output) -> Option<&str> {
+        match output {
+            ansi_parser::Output::TextBlock(text) => Some(text),
+            _ => None,
+        }
+    }
+
+    // TODO: use a cow: if ansi-parser returns a single string, do not allocate
+    use ansi_parser::AnsiParser;
+    s.as_ref()
+        .ansi_parse()
+        .filter_map(text_block)
+        .collect::<String>()
 }
