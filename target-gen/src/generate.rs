@@ -517,7 +517,7 @@ pub(crate) fn get_mem_map(device: &Device, cores: &[probe_rs_target::Core]) -> V
     // Sort by memory type, then by processor name, then by boot memory, then by start address.
     device_memories.sort_by_key(|memory| {
         (
-            memory.memory_type.clone(),
+            memory.memory_type,
             memory.p_name.clone(),
             memory.access.boot,
             memory.memory_start,
