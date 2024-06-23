@@ -15,11 +15,14 @@ const TEST_CODE: &[u8] = include_bytes!("test_arm.bin");
 fn test_stepping(tracker: &TestTracker, core: &mut Core) -> TestResult {
     println!("Testing stepping...");
 
-    if core.architecture() == Architecture::Riscv {
+    if core.architecture() != Architecture::Arm {
         // Not implemented for RISC-V yet
         return Err(TestFailure::UnimplementedForTarget(
             Box::new(tracker.current_target().clone()),
-            "Testing stepping is not implemented for RISC-V yet.".to_string(),
+            format!(
+                "Testing stepping is not implemented for {:?} yet.",
+                core.architecture()
+            ),
         ));
     }
 
