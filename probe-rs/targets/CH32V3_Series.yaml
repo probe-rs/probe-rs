@@ -1,47 +1,47 @@
 name: CH32V3 Series
 variants:
-  - name: CH32V307
+- name: CH32V307
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20010000
     cores:
-      - name: main
-        type: riscv
-        core_access_options: !Riscv
-    memory_map:
-      - !Ram
-        range:
-          start: 0x20000000
-          end: 0x20010000
-        cores:
-          - main
-      - !Nvm
-        range:
-          start: 0x0
-          end: 0x40000
-        is_boot_memory: true
-        cores:
-          - main
-    flash_algorithms:
-      - ch32v3-flash-algo
+    - main
+  - !Nvm
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - ch32v3-flash-algo
 flash_algorithms:
-  - name: ch32v3-flash-algo
-    description: Flash algorithm for the ch32v3xx series
-    default: true
-    instructions: twUAIAPFBU8ZxTclAkAUSZPmBggUyQVFfRaNRiOIpU5jdtYCtwVnRZOFNRI3JgJATMK3lu/Nk4a2mlTCTNJU0rcFACAjiKVOAUWCgAERtwUAIJOFhUwuxCrGAsw3BQAgEwXFQCrIAso3BQAgkwUFTSgAlwAAAOeAgCkAALcFACADxgVPBUURyjcmAkAUSgFFk+YGCBTKI4gFToKAtwUAIAPGBU+qhQVFUcY3BgAILpZjZbYIExUWARnBMoWCgLcF8ACFBbcmAkAFR/0VrcXIRpN3FQLji+f+k3UFAaHttyUCQMhFE3X1/cjFiEm3BgQAVY2IydDJiEkTZQUEiMk3BvAABQaFRn0WHcbIRRN3FQLjC9f+k3UFAZHttyUCQMhFE3X1/cjFkEkBRbcG/P/9FnWOkMmCgAVFgoA3BQAgEwUFP7cFACAThkVE8UWXAAAA54DAHgAAtwYAIAPHBk+qhgVFecs3JwJACEuTdwUIDUXh5xhLQgdjQQcMtwIACLaSY+PSEBP18g8ZwRaFgoA3KAJAgyYIAUFn2Y4jKNgAtwfwAIUHBUf9F73PgybIABP1FgLjCuX+E/UGAT3ltyYCQMhGgUcTdfX9yMYT88X/NwjwAAUIYwUDBjOF8gBjY1UMkwIVAGOPAgqTCEYAcRMDRxYAg0cGAINFJgADRjYAIgddj8IFYgbRjdmNDMFChn0WDcbIRpN1JQD9+ZN1BQGNR0aGzdkRqIVGE4WmALM11QATNhUA0Y3B5YKACUWCgLclAkCISTcGIABRjYjJNwbwAAUGhUZ9FhXGyEUTdxUC4wvX/pN1BQHp+bclAkDIRRN19f3IxZBJAUXBdv0WdY6QyYKABUWCgDcFACATBQU/twUAIBOGRUXxRZcAAADngAAKAAA3BQAgEwUFP7cFACAThkU98UWXAAAA54BACAAANwUAIBMFxUC3BQAgE4ZFRpMFsAKXAAAA54BgBgAAAaCCgLfFuACThfXzTMW3JcfQk4UlSAzFtzU1C5OFRUNMwbd1cg+TheX6DMGCgAERBs43BgAgEwYGTjLENwYAIBMGBk4yxirILsoFRSMcoQAoAJcAAADngOD6AAB5cQbWKtIu1EgQKsYFRSrIAs43BQAgEwUFTirKAsxoALKFlwAAAOeAAPsAAC9ydXN0Yy84MmUxNjA4ZGZhNmUwYjU1NjkyMzI1NTllM2QzODVmZWE1YTkzMTEyL2xpYnJhcnkvY29yZS9zcmMvaXRlci9yYW5nZS5ycwAAhAMAIE4AAACPAQAAAQAAAAAAAAAAAAAAAAAAAGF0dGVtcHQgdG8gYWRkIHdpdGggb3ZlcmZsb3djYWxsZWQgYE9wdGlvbjo6dW53cmFwKClgIG9uIGEgYE5vbmVgIHZhbHVlc3JjL21haW4ucnMAADcEACALAAAATQAAABQAAAA3BAAgCwAAAGUAAAAUAAAANwQAIAsAAABrAAAAQQAAAFRoaXMgYnJhbmNoIGNhbiBvbmx5IGJlIHJlYWNoZWQgaWYgdGhlIGhvc3QgbGlicmFyeSBzZW50IGFuIHVua25vd24gZnVuY3Rpb24gY29kZS4AAHQEACBSAAAANwQAIAsAAAASAAAAAQAAAP4CACAAAAAAAQAAAAADACAA
-    load_address: 0x20000020
-    pc_init: 0x0
-    pc_uninit: 0x7c
-    pc_program_page: 0x156
-    pc_erase_sector: 0x9c
-    data_section_offset: 0x200004f0
-    flash_properties:
-      address_range:
-        start: 0x0
-        end: 0x40000
-      page_size: 0x100
-      erased_byte_value: 0x39 # Note: This is not correct, the erased memory alternates between 0x39 and 0xe3
-      program_page_timeout: 1000
-      erase_sector_timeout: 2000
-      sectors:
-        - size: 0x8000
-          address: 0x0
-    cores:
-      - main
+- name: ch32v3-flash-algo
+  description: Flash algorithm for the ch32v3xx series
+  default: true
+  instructions: twUAIAPFBU8ZxTclAkAUSZPmBggUyQVFfRaNRiOIpU5jdtYCtwVnRZOFNRI3JgJATMK3lu/Nk4a2mlTCTNJU0rcFACAjiKVOAUWCgAERtwUAIJOFhUwuxCrGAsw3BQAgEwXFQCrIAso3BQAgkwUFTSgAlwAAAOeAgCkAALcFACADxgVPBUURyjcmAkAUSgFFk+YGCBTKI4gFToKAtwUAIAPGBU+qhQVFUcY3BgAILpZjZbYIExUWARnBMoWCgLcF8ACFBbcmAkAFR/0VrcXIRpN3FQLji+f+k3UFAaHttyUCQMhFE3X1/cjFiEm3BgQAVY2IydDJiEkTZQUEiMk3BvAABQaFRn0WHcbIRRN3FQLjC9f+k3UFAZHttyUCQMhFE3X1/cjFkEkBRbcG/P/9FnWOkMmCgAVFgoA3BQAgEwUFP7cFACAThkVE8UWXAAAA54DAHgAAtwYAIAPHBk+qhgVFecs3JwJACEuTdwUIDUXh5xhLQgdjQQcMtwIACLaSY+PSEBP18g8ZwRaFgoA3KAJAgyYIAUFn2Y4jKNgAtwfwAIUHBUf9F73PgybIABP1FgLjCuX+E/UGAT3ltyYCQMhGgUcTdfX9yMYT88X/NwjwAAUIYwUDBjOF8gBjY1UMkwIVAGOPAgqTCEYAcRMDRxYAg0cGAINFJgADRjYAIgddj8IFYgbRjdmNDMFChn0WDcbIRpN1JQD9+ZN1BQGNR0aGzdkRqIVGE4WmALM11QATNhUA0Y3B5YKACUWCgLclAkCISTcGIABRjYjJNwbwAAUGhUZ9FhXGyEUTdxUC4wvX/pN1BQHp+bclAkDIRRN19f3IxZBJAUXBdv0WdY6QyYKABUWCgDcFACATBQU/twUAIBOGRUXxRZcAAADngAAKAAA3BQAgEwUFP7cFACAThkU98UWXAAAA54BACAAANwUAIBMFxUC3BQAgE4ZFRpMFsAKXAAAA54BgBgAAAaCCgLfFuACThfXzTMW3JcfQk4UlSAzFtzU1C5OFRUNMwbd1cg+TheX6DMGCgAERBs43BgAgEwYGTjLENwYAIBMGBk4yxirILsoFRSMcoQAoAJcAAADngOD6AAB5cQbWKtIu1EgQKsYFRSrIAs43BQAgEwUFTirKAsxoALKFlwAAAOeAAPsAAC9ydXN0Yy84MmUxNjA4ZGZhNmUwYjU1NjkyMzI1NTllM2QzODVmZWE1YTkzMTEyL2xpYnJhcnkvY29yZS9zcmMvaXRlci9yYW5nZS5ycwAAhAMAIE4AAACPAQAAAQAAAAAAAAAAAAAAAAAAAGF0dGVtcHQgdG8gYWRkIHdpdGggb3ZlcmZsb3djYWxsZWQgYE9wdGlvbjo6dW53cmFwKClgIG9uIGEgYE5vbmVgIHZhbHVlc3JjL21haW4ucnMAADcEACALAAAATQAAABQAAAA3BAAgCwAAAGUAAAAUAAAANwQAIAsAAABrAAAAQQAAAFRoaXMgYnJhbmNoIGNhbiBvbmx5IGJlIHJlYWNoZWQgaWYgdGhlIGhvc3QgbGlicmFyeSBzZW50IGFuIHVua25vd24gZnVuY3Rpb24gY29kZS4AAHQEACBSAAAANwQAIAsAAAASAAAAAQAAAP4CACAAAAAAAQAAAAADACAA
+  load_address: 0x20000020
+  pc_init: 0x0
+  pc_uninit: 0x7c
+  pc_program_page: 0x156
+  pc_erase_sector: 0x9c
+  data_section_offset: 0x200004f0
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x40000
+    page_size: 0x100
+    erased_byte_value: 0x39 # Note: This is not correct, the erased memory alternates between 0x39 and 0xe3
+    program_page_timeout: 1000
+    erase_sector_timeout: 2000
+    sectors:
+    - size: 0x8000
+      address: 0x0
+  cores:
+  - main

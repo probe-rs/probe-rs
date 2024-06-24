@@ -3,6 +3,8 @@ use std::path::Path;
 use std::time::Duration;
 use std::time::Instant;
 
+use addr2line::Loader;
+use anyhow::anyhow;
 use itm::TracePacket;
 use probe_rs::{
     architecture::arm::{
@@ -11,12 +13,6 @@ use probe_rs::{
         DpAddress, SwoConfig,
     },
     probe::list::Lister,
-};
-
-use addr2line::{
-    gimli::{EndianRcSlice, RunTimeEndian},
-    object::{read::File as ObjectFile, Object},
-    Context as ObjectContext, LookupResult,
 };
 
 use crate::util::flash::{build_loader, run_flash_download};
@@ -84,13 +80,22 @@ impl ProfileCmd {
             None,
         )?;
 
-        let bytes = std::fs::read(&self.run.shared_options.path)?;
-        let symbols = Symbols::try_from(&bytes)?;
+        let file_location = self.run.shared_options.path.as_path();
+
+        // The error returned from try_from cannot be converted directly to anyhow::Error unfortunately,
+        // due to a limitation in addr2line.
+        let symbols = Symbols::try_from(file_location).map_err(|e| {
+            anyhow!(
+                "Failed to read symbol data from {}: {}",
+                file_location.display(),
+                e
+            )
+        })?;
 
         if self.flash {
             run_flash_download(
                 &mut session,
-                Path::new(&self.run.shared_options.path),
+                file_location,
                 &self.run.shared_options.download_options,
                 &probe_options,
                 loader,
@@ -179,17 +184,14 @@ impl ProfileCmd {
 }
 
 // Wrapper around addr2line that allows to look up function names
-pub(crate) struct Symbols<'sym> {
-    file: ObjectFile<'sym, &'sym [u8]>,
-    ctx: ObjectContext<EndianRcSlice<RunTimeEndian>>,
+pub(crate) struct Symbols {
+    loader: Loader,
 }
 
-impl<'sym> Symbols<'sym> {
-    pub fn try_from(bytes: &'sym [u8]) -> anyhow::Result<Self> {
-        let file = ObjectFile::parse(bytes)?;
-        let ctx = ObjectContext::new(&file)?;
-
-        Ok(Self { file, ctx })
+impl Symbols {
+    pub fn try_from(path: &Path) -> Result<Self, Box<dyn std::error::Error>> {
+        let loader = Loader::new(path)?;
+        Ok(Self { loader })
     }
 
     /// Returns the name of the function at the given address, if one can be found.
@@ -200,10 +202,7 @@ impl<'sym> Symbols<'sym> {
         //   3. if no function name is found, try to look it up in the object file
         //      directly
         //   4. return a demangled function name, if one was found
-        let mut frames = match self.ctx.find_frames(addr) {
-            LookupResult::Output(result) => result.unwrap(),
-            LookupResult::Load { .. } => unimplemented!(),
-        };
+        let mut frames = self.loader.find_frames(addr).ok()?;
 
         frames
             .next()
@@ -214,19 +213,14 @@ impl<'sym> Symbols<'sym> {
                     .function
                     .and_then(|name| name.demangle().map(|s| s.into_owned()).ok())
             })
-            .or_else(|| {
-                self.file
-                    .symbol_map()
-                    .get(addr)
-                    .map(|sym| sym.name().to_string())
-            })
+            .or_else(|| self.loader.find_symbol(addr).map(|sym| sym.to_string()))
     }
 
     /// Returns the file name and line number of the function at the given address, if one can be.
     pub fn get_location(&self, addr: u64) -> Option<(String, u32)> {
         // Find the location which `addr` is in. If we can dedetermine a file name and
         // line number for this function we will return them both in a tuple.
-        self.ctx.find_location(addr).ok()?.map(|location| {
+        self.loader.find_location(addr).ok()?.map(|location| {
             let file = location.file.map(|f| f.to_string());
             let line = location.line;
 

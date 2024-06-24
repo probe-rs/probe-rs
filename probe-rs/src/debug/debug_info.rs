@@ -1852,7 +1852,7 @@ mod test {
             &[0x20003ff8, 0x00000161, 0x00000000, 0x0000013d],
         );
 
-        let exception_handler = Box::new(ArmV7MExceptionHandler {});
+        let exception_handler = Box::new(ArmV7MExceptionHandler);
 
         let frames = debug_info
             .unwind_impl(

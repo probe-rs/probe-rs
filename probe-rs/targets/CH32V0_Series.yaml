@@ -4,7 +4,7 @@ variants:
   cores:
   - name: main
     type: riscv
-    core_access_options: !Riscv {}
+    core_access_options: !Riscv
   memory_map:
   - !Ram
     range:

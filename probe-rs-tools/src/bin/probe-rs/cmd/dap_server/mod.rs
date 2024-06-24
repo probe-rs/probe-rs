@@ -1,6 +1,5 @@
 // Bad things happen to the VSCode debug extenison and debug_adapter if we panic at the wrong time.
 #![warn(clippy::unwrap_used, clippy::panic, clippy::expect_used)]
-// Uses Schemafy to generate DAP types from Json
 mod debug_adapter;
 mod peripherals;
 mod server;

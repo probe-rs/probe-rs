@@ -8,7 +8,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -33,14 +33,14 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u0xx_32k
+  - stm32u0xx_256k
 - name: STM32U031C6Ux
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -65,14 +65,14 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u0xx_32k
+  - stm32u0xx_256k
 - name: STM32U031C8Tx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -104,7 +104,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -136,7 +136,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -161,14 +161,14 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u0xx_16k
+  - stm32u0xx_256k
 - name: STM32U031F6Px
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -193,14 +193,14 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u0xx_32k
+  - stm32u0xx_256k
 - name: STM32U031F8Px
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -232,7 +232,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -257,14 +257,14 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u0xx_32k
+  - stm32u0xx_256k
 - name: STM32U031G8YxT
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -296,7 +296,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -321,14 +321,14 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u0xx_16k
+  - stm32u0xx_256k
 - name: STM32U031K6Ux
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -353,14 +353,14 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u0xx_32k
+  - stm32u0xx_256k
 - name: STM32U031K8Ux
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -392,7 +392,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -417,14 +417,14 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u0xx_32k
+  - stm32u0xx_256k
 - name: STM32U031R6Tx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -449,14 +449,14 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u0xx_32k
+  - stm32u0xx_256k
 - name: STM32U031R8Ix
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -488,7 +488,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -520,7 +520,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -541,7 +541,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -552,7 +552,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -573,7 +573,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -584,7 +584,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -605,18 +605,18 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
-  - stm32u0xx_128k
+  - stm32u0xx_256k
 - name: STM32U073CBUx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -637,18 +637,18 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
-  - stm32u0xx_128k
+  - stm32u0xx_256k
 - name: STM32U073CCTx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -669,7 +669,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -680,7 +680,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -701,7 +701,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -712,7 +712,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -733,7 +733,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -744,7 +744,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -765,18 +765,18 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
-  - stm32u0xx_128k
+  - stm32u0xx_256k
 - name: STM32U073HCYxT
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -797,7 +797,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -808,7 +808,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -829,7 +829,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -840,7 +840,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -861,18 +861,18 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
-  - stm32u0xx_128k
+  - stm32u0xx_256k
 - name: STM32U073KCUx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -893,7 +893,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -904,7 +904,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -925,7 +925,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -936,7 +936,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -957,7 +957,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -968,7 +968,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -989,18 +989,18 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
-  - stm32u0xx_128k
+  - stm32u0xx_256k
 - name: STM32U073MBTx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -1021,18 +1021,18 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
-  - stm32u0xx_128k
+  - stm32u0xx_256k
 - name: STM32U073MCIx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -1053,7 +1053,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -1064,7 +1064,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -1085,7 +1085,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -1096,7 +1096,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -1117,7 +1117,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -1128,7 +1128,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -1149,7 +1149,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -1160,7 +1160,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -1181,18 +1181,18 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
-  - stm32u0xx_128k
+  - stm32u0xx_256k
 - name: STM32U073RBTx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -1213,18 +1213,18 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
-  - stm32u0xx_128k
+  - stm32u0xx_256k
 - name: STM32U073RCIx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -1245,7 +1245,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -1256,7 +1256,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -1277,7 +1277,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -1288,7 +1288,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -1309,7 +1309,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -1320,7 +1320,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -1341,7 +1341,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -1352,7 +1352,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -1373,7 +1373,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -1384,7 +1384,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -1405,7 +1405,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -1416,7 +1416,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -1437,7 +1437,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -1448,7 +1448,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -1469,7 +1469,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -1480,7 +1480,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -1501,7 +1501,7 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
@@ -1512,7 +1512,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1
@@ -1533,14 +1533,14 @@ variants:
     name: SRAM2
     range:
       start: 0x20008000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:
   - stm32u0xx_256k
 flash_algorithms:
-- name: stm32u0xx_32k
-  description: STM32U0xx_32
+- name: stm32u0xx_256k
+  description: STM32U0xx_256
   default: true
   instructions: ELUDRnK2jEiMTCBhIEYAagEkJAQgQAAoDdGJSIlMIGBAECBgBiBgYIdIoGDAEIdMYGB/ICBggUhAacAPwAcAKATQg0h9TKBggkigYAAgEL0BRnpIQGkBItIHEEN3SlBhACBwRwNGASBwR3K2AL9zSABpASEJBAhAACj40W9IQGkEIQhDbUlIYQhGQGkBIQkECENqSUhhAL9oSABpASEJBAhAACj40WVIAGljSQhAACgE0AhGYUkIYQEgcEdfSEBpBCGIQ11JSGEAIPbnAUZytllIWksYYRhGQGn/I9sAmENWS1hhASDABggaAgoYRkBpAiMTQxhDUUtYYRhGQGkBIxsEGENNS1hhAL9MSABpASMbBBhAACj40UhIAGlGSxhAACgE0BhGRUsYYQEgcEdDSEBpAiOYQ0FLWGEBIMAGAGhAHAAoBtEYRgBoASMbBBhDOksYYAAg6edwtYiwA0ZytsgdwQjJAAC/NEgAaQElLQQoQAAo+NE4SDBNKGEoRkBpASUoQy1NaGE/4AgpD9MQaBhgUGhYYAgzCDIIOQC/J0gAaQElLQQoQAAo+NEh4AAkBeAQeKUAbkZwUVIcZByMQvfTACQF4P8gZRitAG5GcFFkHAggQBqgQvXYAL8XSABpASUtBChAACj40QCYGGBYYAAhEkgAacAHwA8AKAXQDkgOTShhASAIsHC9ACm90QtIQGlACEAACU1oYQEgwAYAaEAcACgG0ChGAGgBJS0EqEMCTShgACDm5/rDAAAAIAJAqqoAAAAwAED/DwAAACwAQCMBZ0Wrie/N/wEAAAAAAAA=
   load_address: 0x20000020
@@ -1553,7 +1553,7 @@ flash_algorithms:
   flash_properties:
     address_range:
       start: 0x8000000
-      end: 0x8008000
+      end: 0x8040000
     page_size: 0x400
     erased_byte_value: 0xff
     program_page_timeout: 400
@@ -1576,72 +1576,6 @@ flash_algorithms:
     address_range:
       start: 0x8000000
       end: 0x8010000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 400
-    erase_sector_timeout: 400
-    sectors:
-    - size: 0x800
-      address: 0x0
-- name: stm32u0xx_16k
-  description: STM32U0xx_16
-  default: true
-  instructions: ELUDRnK2jEiMTCBhIEYAagEkJAQgQAAoDdGJSIlMIGBAECBgBiBgYIdIoGDAEIdMYGB/ICBggUhAacAPwAcAKATQg0h9TKBggkigYAAgEL0BRnpIQGkBItIHEEN3SlBhACBwRwNGASBwR3K2AL9zSABpASEJBAhAACj40W9IQGkEIQhDbUlIYQhGQGkBIQkECENqSUhhAL9oSABpASEJBAhAACj40WVIAGljSQhAACgE0AhGYUkIYQEgcEdfSEBpBCGIQ11JSGEAIPbnAUZytllIWksYYRhGQGn/I9sAmENWS1hhASDABggaAgoYRkBpAiMTQxhDUUtYYRhGQGkBIxsEGENNS1hhAL9MSABpASMbBBhAACj40UhIAGlGSxhAACgE0BhGRUsYYQEgcEdDSEBpAiOYQ0FLWGEBIMAGAGhAHAAoBtEYRgBoASMbBBhDOksYYAAg6edwtYiwA0ZytsgdwQjJAAC/NEgAaQElLQQoQAAo+NE4SDBNKGEoRkBpASUoQy1NaGE/4AgpD9MQaBhgUGhYYAgzCDIIOQC/J0gAaQElLQQoQAAo+NEh4AAkBeAQeKUAbkZwUVIcZByMQvfTACQF4P8gZRitAG5GcFFkHAggQBqgQvXYAL8XSABpASUtBChAACj40QCYGGBYYAAhEkgAacAHwA8AKAXQDkgOTShhASAIsHC9ACm90QtIQGlACEAACU1oYQEgwAYAaEAcACgG0ChGAGgBJS0EqEMCTShgACDm5/rDAAAAIAJAqqoAAAAwAED/DwAAACwAQCMBZ0Wrie/N/wEAAAAAAAA=
-  load_address: 0x20000020
-  pc_init: 0x1
-  pc_uninit: 0x51
-  pc_program_page: 0x159
-  pc_erase_sector: 0xcd
-  pc_erase_all: 0x6b
-  data_section_offset: 0x25c
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8004000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 400
-    erase_sector_timeout: 400
-    sectors:
-    - size: 0x800
-      address: 0x0
-- name: stm32u0xx_128k
-  description: STM32U0xx_128
-  default: true
-  instructions: ELUDRnK2jEiMTCBhIEYAagEkJAQgQAAoDdGJSIlMIGBAECBgBiBgYIdIoGDAEIdMYGB/ICBggUhAacAPwAcAKATQg0h9TKBggkigYAAgEL0BRnpIQGkBItIHEEN3SlBhACBwRwNGASBwR3K2AL9zSABpASEJBAhAACj40W9IQGkEIQhDbUlIYQhGQGkBIQkECENqSUhhAL9oSABpASEJBAhAACj40WVIAGljSQhAACgE0AhGYUkIYQEgcEdfSEBpBCGIQ11JSGEAIPbnAUZytllIWksYYRhGQGn/I9sAmENWS1hhASDABggaAgoYRkBpAiMTQxhDUUtYYRhGQGkBIxsEGENNS1hhAL9MSABpASMbBBhAACj40UhIAGlGSxhAACgE0BhGRUsYYQEgcEdDSEBpAiOYQ0FLWGEBIMAGAGhAHAAoBtEYRgBoASMbBBhDOksYYAAg6edwtYiwA0ZytsgdwQjJAAC/NEgAaQElLQQoQAAo+NE4SDBNKGEoRkBpASUoQy1NaGE/4AgpD9MQaBhgUGhYYAgzCDIIOQC/J0gAaQElLQQoQAAo+NEh4AAkBeAQeKUAbkZwUVIcZByMQvfTACQF4P8gZRitAG5GcFFkHAggQBqgQvXYAL8XSABpASUtBChAACj40QCYGGBYYAAhEkgAacAHwA8AKAXQDkgOTShhASAIsHC9ACm90QtIQGlACEAACU1oYQEgwAYAaEAcACgG0ChGAGgBJS0EqEMCTShgACDm5/rDAAAAIAJAqqoAAAAwAED/DwAAACwAQCMBZ0Wrie/N/wEAAAAAAAA=
-  load_address: 0x20000020
-  pc_init: 0x1
-  pc_uninit: 0x51
-  pc_program_page: 0x159
-  pc_erase_sector: 0xcd
-  pc_erase_all: 0x6b
-  data_section_offset: 0x25c
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8020000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 400
-    erase_sector_timeout: 400
-    sectors:
-    - size: 0x800
-      address: 0x0
-- name: stm32u0xx_256k
-  description: STM32U0xx_256
-  default: true
-  instructions: ELUDRnK2jEiMTCBhIEYAagEkJAQgQAAoDdGJSIlMIGBAECBgBiBgYIdIoGDAEIdMYGB/ICBggUhAacAPwAcAKATQg0h9TKBggkigYAAgEL0BRnpIQGkBItIHEEN3SlBhACBwRwNGASBwR3K2AL9zSABpASEJBAhAACj40W9IQGkEIQhDbUlIYQhGQGkBIQkECENqSUhhAL9oSABpASEJBAhAACj40WVIAGljSQhAACgE0AhGYUkIYQEgcEdfSEBpBCGIQ11JSGEAIPbnAUZytllIWksYYRhGQGn/I9sAmENWS1hhASDABggaAgoYRkBpAiMTQxhDUUtYYRhGQGkBIxsEGENNS1hhAL9MSABpASMbBBhAACj40UhIAGlGSxhAACgE0BhGRUsYYQEgcEdDSEBpAiOYQ0FLWGEBIMAGAGhAHAAoBtEYRgBoASMbBBhDOksYYAAg6edwtYiwA0ZytsgdwQjJAAC/NEgAaQElLQQoQAAo+NE4SDBNKGEoRkBpASUoQy1NaGE/4AgpD9MQaBhgUGhYYAgzCDIIOQC/J0gAaQElLQQoQAAo+NEh4AAkBeAQeKUAbkZwUVIcZByMQvfTACQF4P8gZRitAG5GcFFkHAggQBqgQvXYAL8XSABpASUtBChAACj40QCYGGBYYAAhEkgAacAHwA8AKAXQDkgOTShhASAIsHC9ACm90QtIQGlACEAACU1oYQEgwAYAaEAcACgG0ChGAGgBJS0EqEMCTShgACDm5/rDAAAAIAJAqqoAAAAwAED/DwAAACwAQCMBZ0Wrie/N/wEAAAAAAAA=
-  load_address: 0x20000020
-  pc_init: 0x1
-  pc_uninit: 0x51
-  pc_program_page: 0x159
-  pc_erase_sector: 0xcd
-  pc_erase_all: 0x6b
-  data_section_offset: 0x25c
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8040000
     page_size: 0x400
     erased_byte_value: 0xff
     program_page_timeout: 400

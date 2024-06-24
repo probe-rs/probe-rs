@@ -1,4 +1,5 @@
-use byte_unit::Byte;
+use bytesize::ByteSize;
+use probe_rs::config::MemoryRegion;
 
 #[derive(clap::Parser)]
 pub struct Cmd {
@@ -65,29 +66,14 @@ pub fn print_chip_info(mut output: impl std::io::Write, name: &str) -> anyhow::R
     }
 
     for memory in target.memory_map {
-        match memory {
-            probe_rs::config::MemoryRegion::Ram(region) => writeln!(
-                output,
-                "RAM: {:#010x?} ({:.2})",
-                &region.range,
-                Byte::from_u64(get_range_len(&region.range))
-                    .get_appropriate_unit(byte_unit::UnitType::Binary)
-            )?,
-            probe_rs::config::MemoryRegion::Generic(region) => writeln!(
-                output,
-                "Generic: {:#010x?} ({:.2})",
-                &region.range,
-                Byte::from_u64(get_range_len(&region.range))
-                    .get_appropriate_unit(byte_unit::UnitType::Binary)
-            )?,
-            probe_rs::config::MemoryRegion::Nvm(region) => writeln!(
-                output,
-                "NVM: {:#010x?} ({:.2})",
-                &region.range,
-                Byte::from_u64(get_range_len(&region.range))
-                    .get_appropriate_unit(byte_unit::UnitType::Binary)
-            )?,
+        let range = memory.address_range();
+        let size = ByteSize(get_range_len(&range)).to_string_as(true);
+        let kind = match memory {
+            MemoryRegion::Ram(_) => "RAM",
+            MemoryRegion::Generic(_) => "Generic",
+            MemoryRegion::Nvm(_) => "NVM",
         };
+        writeln!(output, "{kind}: {range:#010x?} ({size})")?
     }
     Ok(())
 }

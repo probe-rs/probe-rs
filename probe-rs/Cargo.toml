@@ -23,21 +23,22 @@ exclude = ["tests/"]
 default = ["builtin-targets"]
 gdb-server = ["dep:gdbstub"]
 
-
 # Enable all built in targets.
 builtin-targets = []
-
 
 # Enable helpers for testing
 test = []
 
 [dependencies]
-anyhow = { workspace = true }
-bincode = "1.3"
+anyhow.workspace = true
+docsplay.workspace = true
+thiserror.workspace = true
+probe-rs-target.workspace = true
+
+bincode = "1"
 bitfield = "0.15"
 bitvec = "1"
-docsplay = { workspace = true }
-gimli = { version = "0.29", default-features = false, features = [
+gimli = { version = "0.30", default-features = false, features = [
     "endian-reader",
     "read",
     "std",
@@ -46,54 +47,49 @@ hidapi = { version = "2", default-features = false, features = [
     "linux-native",
 ] }
 ihex = "3.0"
-itertools = "0.12.1"
+itertools = "0.13"
 jep106 = "0.2"
 once_cell = "1"
 miniz_oxide = "0.7"
-object = { version = "0.35", default-features = false, features = [
+object = { version = "0.36", default-features = false, features = [
     "elf",
     "read_core",
     "std",
 ] }
-paste = "1"
-nusb = { version = "0.1.9" }
-futures-lite = "2"
+nusb = "0.1.9"
+futures-lite = { version = "2", default-features = false }
 async-io = "2"
 scroll = "0.12"
-serde = { version = "1", features = ["derive"] }
-serde_yaml = "0.9"
-static_assertions = "1"
 svg = "0.17"
-thiserror = { workspace = true }
-tracing = { version = "0.1", features = ["log"] }
+tracing = "0.1"
 uf2-decode = "0.2"
-rmp-serde = "1"
-typed-path = "0.8"
-bitflags = "2"
+typed-path = "0.9"
 espflash = { version = "3", default-features = false }
-dunce = { version = "1" }
+dunce = "1"
 parse_int = "0.6"
-parking_lot = { version = "0.12.2" }
+parking_lot = "0.12.2"
 zerocopy = "0.7.32"
 zerocopy-derive = "0.7.32"
 
+serde = { version = "1", features = ["derive"] }
+serde_yaml = "0.9"
+rmp-serde = "1"
+
 # optional
 hexdump = { version = "0.1", optional = true }
-# path
-probe-rs-target = { workspace = true }
 
 # gdb server
 gdbstub = { version = "0.7", optional = true }
 
 [build-dependencies]
-bincode = "1"
-probe-rs-target = { workspace = true }
-serde_yaml = "0.9"
+probe-rs-target.workspace = true
 
+bincode = "1"
+serde_yaml = "0.9"
 
 [dev-dependencies]
 pretty_env_logger = "0.5"
-rand = "0.8"
+fastrand = "2.1"
 serde_json = "1"
 serde = "1"
 clap = { version = "4", features = ["derive"] }
@@ -101,7 +97,7 @@ itm = { version = "0.9.0-rc.1", default-features = false }
 pretty_assertions = "1"
 test-case = "3"
 termtree = "0.4"
-insta = { version = "1.38", features = ["yaml", "filters"] }
+insta = { version = "1.38", default-features = false, features = ["yaml"] }
 
 [[package.metadata.release.pre-release-replacements]]
 file = "../CHANGELOG.md"
@@ -111,9 +107,3 @@ replace = "## [{{version}}]\n\nReleased {{date}}"
 file = "../CHANGELOG.md"
 search = "\\[unreleased\\]: https://github.com/probe-rs/probe-rs/compare/v([a-z0-9.-]+)\\.\\.\\.master"
 replace = "[unreleased]: https://github.com/probe-rs/probe-rs/compare/v{{version}}...master\n[{{version}}]: https://github.com/probe-rs/probe-rs/compare/v$1...v{{version}}"
-
-
-[package.metadata.binstall]
-pkg-url = "{ repo }/releases/download/v{ version }/probe-rs-tools-{ target }-v{ version }{ archive-suffix }"
-bin-dir = "probe-rs-tools-{ target }-v{ version }/{ bin }{ binary-ext }"
-pkg-fmt = "tgz"

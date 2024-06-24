@@ -85,7 +85,7 @@ impl ExceptionReason {
 }
 
 /// Exception handling for cores based on the ARMv6-M architecture.
-pub struct ArmV6MExceptionHandler {}
+pub struct ArmV6MExceptionHandler;
 
 impl ExceptionInterface for ArmV6MExceptionHandler {
     fn exception_details(

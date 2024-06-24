@@ -18,7 +18,7 @@ fn missing_output_directory() {
 #[test]
 fn extract_target_specs() {
     // create a temporary directory
-    let temp = assert_fs::TempDir::new().unwrap();
+    let temp = tempfile::TempDir::new().unwrap();
 
     let mut cmd = Command::cargo_bin("target-gen").unwrap();
 

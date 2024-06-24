@@ -1,14 +1,14 @@
 use anyhow::{bail, Context, Result};
-use probe_rs::CoreType;
 use probe_rs_target::{
-    ArmCoreAccessOptions, Chip, ChipFamily, Core, CoreAccessOptions, MemoryRegion, NvmRegion,
-    RamRegion, TargetDescriptionSource::BuiltIn,
+    ArmCoreAccessOptions, Chip, ChipFamily, Core, CoreAccessOptions, CoreType, MemoryRegion,
+    NvmRegion, RamRegion, RawFlashAlgorithm, TargetDescriptionSource,
 };
 use std::{
+    borrow::Cow,
     collections::HashMap,
     fmt::Write,
     fs::{File, OpenOptions},
-    io::{BufRead, Write as _},
+    io::Write as _,
     path::Path,
 };
 
@@ -114,7 +114,7 @@ pub fn cmd_elf(
                 default_binary_format: None,
             }],
             flash_algorithms: vec![algorithm],
-            source: BuiltIn,
+            source: TargetDescriptionSource::BuiltIn,
         };
 
         let output_yaml = serialize_to_yaml_string(&chip_family)?;
@@ -139,36 +139,103 @@ pub fn cmd_elf(
     Ok(())
 }
 
+fn compact(family: &ChipFamily) -> ChipFamily {
+    let mut out = family.clone();
+
+    compact_flash_algos(&mut out);
+
+    out
+}
+
+fn compact_flash_algos(out: &mut ChipFamily) {
+    fn comparable_algo(algo: &RawFlashAlgorithm) -> RawFlashAlgorithm {
+        let mut algo = algo.clone();
+        algo.flash_properties.address_range.end = 0;
+        algo.description = String::new();
+        algo.name = String::new();
+        algo
+    }
+
+    let mut renames = std::collections::HashMap::<String, String>::new();
+
+    let algos = std::mem::take(&mut out.flash_algorithms);
+    let mut algos = algos.iter();
+    while let Some(algo) = algos.next() {
+        if renames.contains_key(&algo.name) {
+            continue;
+        }
+
+        // Collect renames because the new name may change during looping
+        let mut renamed = vec![algo.name.clone()];
+
+        // Find the algo with the widest address range and replace all others with it.
+        let algo_template = comparable_algo(algo);
+        let mut widest_algo = algo.clone();
+        for algo_b in algos.clone() {
+            if renames.contains_key(&algo_b.name) {
+                continue;
+            }
+
+            if algo_template == comparable_algo(algo_b) {
+                renamed.push(algo_b.name.clone());
+
+                if algo_b.flash_properties.address_range.end
+                    > widest_algo.flash_properties.address_range.end
+                {
+                    widest_algo = algo_b.clone();
+                }
+            }
+        }
+
+        for renamed in renamed {
+            renames.insert(renamed, widest_algo.name.clone());
+        }
+        out.flash_algorithms.push(widest_algo);
+    }
+
+    // Now walk through the target variants' flash algo map and apply the renames
+    for variant in &mut out.variants {
+        for flash_algo in &mut variant.flash_algorithms {
+            if let Some(new_name) = renames.get(flash_algo) {
+                flash_algo.clone_from(new_name);
+            }
+        }
+    }
+}
+
 /// Some optimizations to improve the readability of the `serde_yaml` output:
 /// - If `Option<T>` is `None`, it is serialized as `null` ... we want to omit it.
 /// - If `Vec<T>` is empty, it is serialized as `[]` ... we want to omit it.
 /// - `serde_yaml` serializes hex formatted integers as single quoted strings, e.g. '0x1234' ... we need to remove the single quotes so that it round-trips properly.
 pub fn serialize_to_yaml_string(family: &ChipFamily) -> Result<String> {
-    let yaml_string = serde_yaml::to_string(&family)?;
-    let mut reader = std::io::BufReader::new(yaml_string.as_bytes());
-    let mut reader_line = String::new();
+    let family = compact(family);
+    let raw_yaml_string = serde_yaml::to_string(&family)?;
 
-    let mut yaml_string = String::new();
-    while reader.read_line(&mut reader_line)? > 0 {
-        if reader_line.ends_with(": null\n")
-            || reader_line.ends_with(": []\n")
-            || reader_line.ends_with(": {}\n")
-            || reader_line.ends_with(": false\n")
+    let mut yaml_string = String::with_capacity(raw_yaml_string.len());
+    for reader_line in raw_yaml_string.lines() {
+        if reader_line.ends_with(": null")
+            || reader_line.ends_with(": []")
+            || reader_line.ends_with(": {}")
+            || reader_line.ends_with(": false")
         {
-            // Skip the line
-            reader_line.clear();
-            continue;
+            // Some fields have default-looking, but significant values that we want to keep.
+            let exceptions = ["rtt_scan_ranges: []"];
+            if !exceptions.contains(&reader_line.trim()) {
+                // Skip the line
+                continue;
+            }
         }
 
+        let mut reader_line = Cow::Borrowed(reader_line);
         if (reader_line.contains("'0x") || reader_line.contains("'0X"))
-            && reader_line.ends_with("'\n")
+            && reader_line.ends_with('\'')
         {
             // Remove the single quotes
-            reader_line = reader_line.replace('\'', "");
+            reader_line = reader_line.replace('\'', "").into();
         }
 
         yaml_string.write_str(&reader_line)?;
-        reader_line.clear();
+        yaml_string.push('\n');
     }
 
     Ok(yaml_string)
@@ -200,7 +267,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   default_binary_format: raw
 ";
         assert_eq!(yaml_string, expectation);

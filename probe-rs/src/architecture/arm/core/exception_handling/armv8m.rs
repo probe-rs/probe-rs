@@ -386,9 +386,9 @@ impl ExceptionInterface for ArmV8MExceptionHandler {
     fn calling_frame_registers(
         &self,
         memory_interface: &mut dyn MemoryInterface,
-        stackframe_registers: &crate::debug::DebugRegisters,
+        stackframe_registers: &DebugRegisters,
         _raw_exception: u32,
-    ) -> Result<crate::debug::DebugRegisters, crate::Error> {
+    ) -> Result<DebugRegisters, Error> {
         let mut calling_stack_registers = vec![0u32; EXCEPTION_STACK_REGISTERS.len()];
         let stack_frame_return_address: u32 = get_stack_frame_return_address(stackframe_registers)?;
         let exc_return = ExcReturn(stack_frame_return_address);
@@ -435,10 +435,7 @@ impl ExceptionInterface for ArmV8MExceptionHandler {
         Ok(calling_frame_registers)
     }
 
-    fn raw_exception(
-        &self,
-        stackframe_registers: &crate::debug::DebugRegisters,
-    ) -> Result<u32, Error> {
+    fn raw_exception(&self, stackframe_registers: &DebugRegisters) -> Result<u32, Error> {
         // Load the provided xPSR register as a bitfield.
         let exception_number = Xpsr(
             stackframe_registers
@@ -454,7 +451,7 @@ impl ExceptionInterface for ArmV8MExceptionHandler {
         &self,
         raw_exception: u32,
         memory_interface: &mut dyn MemoryInterface,
-    ) -> Result<String, crate::Error> {
+    ) -> Result<String, Error> {
         ExceptionReason::from(raw_exception).expanded_description(memory_interface)
     }
 
@@ -503,9 +500,7 @@ impl ExceptionInterface for ArmV8MExceptionHandler {
     }
 }
 
-fn get_stack_frame_return_address(
-    stackframe_registers: &crate::debug::DebugRegisters,
-) -> Result<u32, crate::Error> {
+fn get_stack_frame_return_address(stackframe_registers: &DebugRegisters) -> Result<u32, Error> {
     let return_address: u32 = stackframe_registers
         .get_return_address()
         .ok_or_else(|| {

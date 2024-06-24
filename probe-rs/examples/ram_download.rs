@@ -5,8 +5,6 @@ use clap::Parser;
 use std::num::ParseIntError;
 use std::time::{Duration, Instant};
 
-use rand::prelude::*;
-
 use anyhow::{anyhow, Context, Result};
 
 #[derive(clap::Parser)]
@@ -65,11 +63,13 @@ fn main() -> Result<()> {
 
     let data_size_bytes = data_size_words * 4;
 
-    let mut rng = rand::thread_rng();
+    let mut rng = fastrand::Rng::new();
 
     let mut sample_data = vec![0u32; data_size_words];
 
-    rng.fill(&mut sample_data[..]);
+    for out in sample_data.iter_mut() {
+        *out = rng.u32(..);
+    }
 
     core.halt(Duration::from_millis(100))
         .expect("Halting failed");

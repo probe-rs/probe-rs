@@ -77,7 +77,7 @@ impl<'probe, 'memory, 'reader> Iterator for RomTableIterator<'probe, 'memory, 'r
 
     fn next(&mut self) -> Option<Self::Item> {
         let component_address = self.rom_table_reader.base_address + self.offset;
-        tracing::info!("Reading rom table entry at {:08x}", component_address);
+        tracing::debug!("Reading rom table entry at {:#010x}", component_address);
 
         self.offset += 4;
 
@@ -93,14 +93,14 @@ impl<'probe, 'memory, 'reader> Iterator for RomTableIterator<'probe, 'memory, 'r
 
         // End of entries is marked by an all zero entry
         if entry_data[0] == 0 {
-            tracing::info!("Entry consists of all zeroes, stopping.");
+            tracing::debug!("Entry consists of all zeroes, stopping.");
             return None;
         }
 
         let entry_data =
             RomTableEntryRaw::new(self.rom_table_reader.base_address as u32, entry_data[0]);
 
-        tracing::info!("ROM Table Entry: {:#x?}", entry_data);
+        tracing::debug!("ROM Table Entry: {:#x?}", entry_data);
         Some(Ok(entry_data))
     }
 }
@@ -122,7 +122,7 @@ impl RomTable {
         // This is required for the collect down below.
         let mut entries = vec![];
 
-        tracing::info!("Parsing romtable at base_address {:x?}", base_address);
+        tracing::debug!("Parsing romtable at base_address {:#010x}", base_address);
 
         // Read all the raw romtable entries and flatten them.
 
@@ -136,7 +136,7 @@ impl RomTable {
         for raw_entry in reader.into_iter() {
             let entry_base_addr = raw_entry.component_address();
 
-            tracing::info!("Parsing entry at {:x?}", entry_base_addr);
+            tracing::debug!("Parsing entry at {:#010x}", entry_base_addr);
 
             if raw_entry.entry_present {
                 let component = Component::try_parse(memory, u64::from(entry_base_addr))?;
@@ -190,7 +190,7 @@ struct RomTableEntryRaw {
 impl RomTableEntryRaw {
     /// Create a new RomTableEntryRaw from raw ROM table entry data in memory.
     fn new(base_address: u32, raw: u32) -> Self {
-        tracing::debug!("Parsing raw rom table entry: 0x{:05x}", raw);
+        tracing::debug!("Parsing raw rom table entry: {:#07x}", raw);
 
         let address_offset = ((raw >> 12) & 0xf_ff_ff) as i32;
         let power_domain_id = ((raw >> 4) & 0xf) as u8;
@@ -437,21 +437,21 @@ impl Component {
         memory: &'memory mut (dyn ArmProbe + 'probe),
         baseaddr: u64,
     ) -> Result<Component, RomTableError> {
-        tracing::info!("\tReading component data at: {:08x}", baseaddr);
+        tracing::debug!("\tReading component data at: {:#010x}", baseaddr);
 
         let component_id = ComponentInformationReader::new(baseaddr, memory).read_all()?;
 
         // Determine the component class to find out what component we are dealing with.
-        tracing::info!("\tComponent class: {:x?}", component_id.class);
+        tracing::debug!("\tComponent class: {:x?}", component_id.class);
 
         // Determine the peripheral id to find out what peripheral we are dealing with.
-        tracing::info!(
+        tracing::debug!(
             "\tComponent peripheral id: {:x?}",
             component_id.peripheral_id
         );
 
         if let Some(info) = component_id.peripheral_id.determine_part() {
-            tracing::info!("\tComponent is known: {}", info);
+            tracing::debug!("\tComponent is known: {}", info);
         }
 
         let class = match component_id.class {

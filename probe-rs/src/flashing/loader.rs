@@ -16,7 +16,7 @@ use super::{
     IdfOptions,
 };
 use crate::config::DebugSequence;
-use crate::flashing::Format;
+use crate::flashing::{FlashLayout, FlashProgress, Format};
 use crate::memory::MemoryInterface;
 use crate::session::Session;
 use crate::Target;
@@ -363,7 +363,9 @@ impl FlashLoader {
             tracing::warn!("Memory map of flash loader does not match memory map of target!");
         }
 
-        let mut algos: HashMap<(String, String), Vec<NvmRegion>> = HashMap::new();
+        let mut algos: HashMap<(String, usize), Vec<NvmRegion>> = HashMap::new();
+
+        let progress = options.progress.unwrap_or(FlashProgress::new(|_| {}));
 
         // Commit NVM first
 
@@ -397,18 +399,21 @@ impl FlashLoader {
                 continue;
             }
 
-            let algo = Self::get_flash_algorithm_for_region(region, session.target())?;
+            let target = session.target();
+            let algo = Self::get_flash_algorithm_for_region(region, target)?;
+            let core_name = region
+                .cores
+                .first()
+                .ok_or_else(|| FlashError::NoNvmCoreAccess(region.clone()))?
+                .clone();
 
-            let entry = algos
-                .entry((
-                    algo.name.clone(),
-                    region
-                        .cores
-                        .first()
-                        .ok_or_else(|| FlashError::NoNvmCoreAccess(region.clone()))?
-                        .clone(),
-                ))
-                .or_default();
+            let core = target
+                .cores
+                .iter()
+                .position(|c| c.name == core_name)
+                .unwrap();
+
+            let entry = algos.entry((algo.name.clone(), core)).or_default();
             entry.push(region.clone());
 
             tracing::debug!("     -- using algorithm: {}", algo.name);
@@ -417,43 +422,63 @@ impl FlashLoader {
         if options.dry_run {
             tracing::info!("Skipping programming, dry run!");
 
-            if let Some(progress) = options.progress {
-                progress.failed_filling();
-                progress.failed_erasing();
-                progress.failed_programming();
-            }
+            progress.failed_filling();
+            progress.failed_erasing();
+            progress.failed_programming();
 
             return Ok(());
         }
 
-        // Iterate all flash algorithms we need to use.
-        for ((algo_name, core_name), regions) in algos {
-            tracing::debug!("Flashing ranges for algo: {}", algo_name);
+        let mut do_chip_erase = options.do_chip_erase;
+        let mut did_chip_erase = false;
 
+        // No longer needs to be mutable.
+        let algos = algos;
+
+        let mut phases = vec![];
+
+        // Iterate all flash algorithms to initialize a few things.
+        for ((algo_name, core), regions) in algos.iter() {
             // This can't fail, algo_name comes from the target.
-            let algo = session.target().flash_algorithm_by_name(&algo_name);
+            let algo = session.target().flash_algorithm_by_name(algo_name);
             let algo = algo.unwrap().clone();
 
-            let core = session
-                .target()
-                .cores
-                .iter()
-                .position(|c| c.name == core_name)
-                .unwrap();
-            let mut flasher = Flasher::new(session, core, &algo, options.progress.clone())?;
-
-            let mut do_chip_erase = options.do_chip_erase;
-
-            // If the flash algo doesn't support erase all, disable chip erase.
+            let flasher = Flasher::new(session, *core, &algo, progress.clone())?;
+            // If the first flash algo doesn't support erase all, disable chip erase.
+            // TODO: we could sort by support but it's unlikely to make a difference.
             if do_chip_erase && !flasher.is_chip_erase_supported() {
                 do_chip_erase = false;
                 tracing::warn!("Chip erase was the selected method to erase the sectors but this chip does not support chip erases (yet).");
                 tracing::warn!("A manual sector erase will be performed.");
             }
 
+            let mut phase_layout = FlashLayout::default();
+            for region in regions {
+                let layout =
+                    flasher.flash_layout(region, &self.builder, options.keep_unwritten_bytes)?;
+
+                phase_layout.merge_from(layout);
+            }
+            phases.push(phase_layout);
+        }
+
+        progress.initialized(do_chip_erase, options.keep_unwritten_bytes, phases);
+
+        // Iterate all flash algorithms we need to use and do the flashing.
+        for ((algo_name, core), regions) in algos {
+            tracing::debug!("Flashing ranges for algo: {}", algo_name);
+
+            // This can't fail, algo_name comes from the target.
+            let algo = session.target().flash_algorithm_by_name(&algo_name);
+            let algo = algo.unwrap().clone();
+
+            let mut flasher = Flasher::new(session, core, &algo, progress.clone())?;
+
             if do_chip_erase {
                 tracing::debug!("    Doing chip erase...");
                 flasher.run_erase_all()?;
+                do_chip_erase = false;
+                did_chip_erase = true;
             }
 
             let mut do_use_double_buffering = flasher.double_buffering_supported();
@@ -475,7 +500,7 @@ impl FlashLoader {
                     &self.builder,
                     options.keep_unwritten_bytes,
                     do_use_double_buffering,
-                    options.skip_erase || do_chip_erase,
+                    options.skip_erase || did_chip_erase,
                 )?;
             }
         }

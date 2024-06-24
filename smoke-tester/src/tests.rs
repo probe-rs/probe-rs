@@ -76,10 +76,7 @@ fn test_register_write(tracker: &TestTracker, core: &mut Core) -> TestResult {
 fn test_memory_access(tracker: &TestTracker, core: &mut Core) -> TestResult {
     let memory_regions = core
         .memory_regions()
-        .filter_map(|region| match region {
-            MemoryRegion::Ram(ram) => Some(ram),
-            _ => None,
-        })
+        .filter_map(MemoryRegion::as_ram_region)
         .cloned()
         .collect::<Vec<_>>();
 
@@ -164,10 +161,7 @@ fn test_hw_breakpoints(tracker: &TestTracker, core: &mut Core) -> TestResult {
 
     let memory_regions: Vec<_> = core
         .memory_regions()
-        .filter_map(|region| match region {
-            MemoryRegion::Nvm(region) => Some(region),
-            _ => None,
-        })
+        .filter_map(MemoryRegion::as_nvm_region)
         .cloned()
         .collect();
 

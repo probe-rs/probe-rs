@@ -1,0 +1,1 @@
+Fixed a problem where CMSIS-DAP probes may cause a panic.

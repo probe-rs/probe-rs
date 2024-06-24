@@ -92,7 +92,7 @@ impl fmt::Display for BatchCommand {
                 write!(f, "Read(port={port:?}, addr={addr})")
             }
             BatchCommand::Write(port, addr, data) => {
-                write!(f, "Write(port={port:?}, addr={addr}, data=0x{data:08x}")
+                write!(f, "Write(port={port:?}, addr={addr}, data={data:#010x})")
             }
         }
     }

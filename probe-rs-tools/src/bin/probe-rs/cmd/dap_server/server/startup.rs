@@ -40,6 +40,14 @@ pub fn debug(
 ) -> Result<()> {
     let mut debugger = Debugger::new(timestamp_offset, log_file)?;
 
+    let old_hook = std::panic::take_hook();
+    let logger = debugger.debug_logger.clone();
+    std::panic::set_hook(Box::new(move |panic_info| {
+        // Flush logs before printing panic.
+        _ = logger.flush();
+        old_hook(panic_info);
+    }));
+
     loop {
         let listener = TcpListener::bind(addr)?;
 
@@ -57,7 +65,7 @@ pub fn debug(
         match listener.accept() {
             Ok((socket, addr)) => {
                 socket.set_nonblocking(true).with_context(|| {
-                    format!("Failed to negotiate non-blocking socket with request from :{addr}")
+                    format!("Failed to negotiate non-blocking socket with request from: {addr}")
                 })?;
 
                 debugger
@@ -75,20 +83,14 @@ pub fn debug(
                 // Flush any pending log messages to the debug adapter Console Log.
                 debugger.debug_logger.flush_to_dap(&mut debug_adapter)?;
 
-                match debugger.debug_session(debug_adapter, lister) {
-                    Err(error) => {
-                        // We no longer have a reference to the `debug_adapter`, so errors need
-                        // special handling to ensure they are displayed to the user.
-                        debugger
-                            .debug_logger
-                            .log_to_console(&format!("Session ended: {error}"))?;
-                    }
-                    Ok(()) => {
-                        debugger
-                            .debug_logger
-                            .log_to_console(&format!("Closing debug session from  :{addr}"))?;
-                    }
-                }
+                let end_message = match debugger.debug_session(debug_adapter, lister) {
+                    // We no longer have a reference to the `debug_adapter`, so errors need
+                    // special handling to ensure they are displayed to the user.
+                    Err(error) => format!("Session ended: {error}"),
+                    Ok(()) => format!("Closing debug session from: {addr}"),
+                };
+                debugger.debug_logger.log_to_console(&end_message)?;
+
                 // Terminate after a single debug session. This is the behavour expected by VSCode
                 // if it started probe-rs as a child process.
                 if single_session {

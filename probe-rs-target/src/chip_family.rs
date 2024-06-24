@@ -1,3 +1,4 @@
+use crate::serialize::hex_jep106_option;
 use crate::CoreAccessOptions;
 
 use super::chip::Chip;
@@ -52,6 +53,26 @@ impl CoreType {
         matches!(
             self,
             CoreType::Armv6m | CoreType::Armv7em | CoreType::Armv7m | CoreType::Armv8m
+        )
+    }
+
+    fn is_riscv(&self) -> bool {
+        matches!(self, CoreType::Riscv)
+    }
+
+    fn is_xtensa(&self) -> bool {
+        matches!(self, CoreType::Xtensa)
+    }
+
+    fn is_arm(&self) -> bool {
+        matches!(
+            self,
+            CoreType::Armv6m
+                | CoreType::Armv7a
+                | CoreType::Armv7em
+                | CoreType::Armv7m
+                | CoreType::Armv8a
+                | CoreType::Armv8m
         )
     }
 }
@@ -160,6 +181,7 @@ pub struct ChipFamily {
     /// E.g. `nRF52832`.
     pub name: String,
     /// The JEP106 code of the manufacturer.
+    #[serde(serialize_with = "hex_jep106_option")]
     pub manufacturer: Option<JEP106Code>,
     /// The `target-gen` process will set this to `true`.
     /// Please change this to `false` if this file is modified from the generated, or is a manually created target description.
@@ -190,10 +212,37 @@ impl ChipFamily {
     ///
     /// This method should be called right after the [`ChipFamily`] is created!
     pub fn validate(&self) -> Result<(), String> {
-        // We check each variant if it is valid.
-        // If one is not valid, we abort with an appropriate error message.
+        self.reject_duplicate_target_names()?;
+        self.ensure_algorithms_exists()?;
+        self.ensure_at_least_one_core()?;
+        self.reject_incorrect_core_access_options()?;
+        self.validate_memory_regions()?;
+
+        Ok(())
+    }
+
+    /// Rejects target descriptions with duplicate target names. Only one of these targets can
+    /// be selected, so having multiple is probably a mistake.
+    fn reject_duplicate_target_names(&self) -> Result<(), String> {
+        use std::collections::HashSet;
+
+        let mut seen = HashSet::new();
+
+        for chip in &self.variants {
+            if !seen.insert(&chip.name) {
+                return Err(format!(
+                    "Target {} appears multiple times in {}",
+                    chip.name, self.name,
+                ));
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Make sure the algorithms used on the variant actually exist on the family (this is basically a check for typos).
+    fn ensure_algorithms_exists(&self) -> Result<(), String> {
         for variant in &self.variants {
-            // Make sure the algorithms used on the variant actually exist on the family (this is basically a check for typos).
             for algorithm_name in variant.flash_algorithms.iter() {
                 if !self
                     .flash_algorithms
@@ -206,48 +255,65 @@ impl ChipFamily {
                     ));
                 }
             }
+        }
 
-            // Check that there is at least one core.
-            if let Some(core) = variant.cores.first() {
-                // Make sure that the core types (architectures) are not mixed.
-                let architecture = core.core_type.architecture();
-                if variant
-                    .cores
-                    .iter()
-                    .any(|core| core.core_type.architecture() != architecture)
-                {
-                    return Err(format!(
-                        "definition for variant `{}` contains mixed core architectures",
-                        variant.name
-                    ));
-                }
-            } else {
+        Ok(())
+    }
+
+    // Check that there is at least one core.
+    fn ensure_at_least_one_core(&self) -> Result<(), String> {
+        for variant in &self.variants {
+            let Some(core) = variant.cores.first() else {
                 return Err(format!(
-                    "definition for variant `{}` does not contain any cores",
+                    "variant `{}` does not contain any cores",
+                    variant.name
+                ));
+            };
+
+            // Make sure that the core types (architectures) are not mixed.
+            let architecture = core.core_type.architecture();
+            if variant
+                .cores
+                .iter()
+                .any(|core| core.core_type.architecture() != architecture)
+            {
+                return Err(format!(
+                    "variant `{}` contains mixed core architectures",
                     variant.name
                 ));
             }
+        }
 
+        Ok(())
+    }
+
+    fn reject_incorrect_core_access_options(&self) -> Result<(), String> {
+        // We check each variant if it is valid.
+        // If one is not valid, we abort with an appropriate error message.
+        for variant in &self.variants {
             // Core specific validation logic based on type
             for core in variant.cores.iter() {
                 // The core access options must match the core type specified
                 match &core.core_access_options {
+                    CoreAccessOptions::Arm(_) if !core.core_type.is_arm() => {
+                        return Err(format!(
+                            "Arm options don't match core type {:?} on core {}",
+                            core.core_type, core.name
+                        ));
+                    }
+                    CoreAccessOptions::Riscv(_) if !core.core_type.is_riscv() => {
+                        return Err(format!(
+                            "Riscv options don't match core type {:?} on core {}",
+                            core.core_type, core.name
+                        ));
+                    }
+                    CoreAccessOptions::Xtensa(_) if !core.core_type.is_xtensa() => {
+                        return Err(format!(
+                            "Xtensa options don't match core type {:?} on core {}",
+                            core.core_type, core.name
+                        ));
+                    }
                     CoreAccessOptions::Arm(options) => {
-                        if !matches!(
-                            core.core_type,
-                            CoreType::Armv6m
-                                | CoreType::Armv7a
-                                | CoreType::Armv7em
-                                | CoreType::Armv7m
-                                | CoreType::Armv8a
-                                | CoreType::Armv8m
-                        ) {
-                            return Err(format!(
-                                "Arm options don't match core type {:?} on core {}",
-                                core.core_type, core.name
-                            ));
-                        }
-
                         if matches!(core.core_type, CoreType::Armv7a | CoreType::Armv8a)
                             && options.debug_base.is_none()
                         {
@@ -258,30 +324,24 @@ impl ChipFamily {
                             return Err(format!("Core {} requires setting cti_base", core.name));
                         }
                     }
-                    CoreAccessOptions::Riscv(_) => {
-                        if core.core_type != CoreType::Riscv {
-                            return Err(format!(
-                                "Riscv options don't match core type {:?} on core {}",
-                                core.core_type, core.name
-                            ));
-                        }
-                    }
-                    CoreAccessOptions::Xtensa(_) => {
-                        if core.core_type != CoreType::Xtensa {
-                            return Err(format!(
-                                "Xtensa options don't match core type {:?} on core {}",
-                                core.core_type, core.name
-                            ));
-                        }
-                    }
+                    _ => {}
                 }
             }
+        }
 
-            let core_names: Vec<_> = variant.cores.iter().map(|core| &core.name).collect();
+        Ok(())
+    }
+
+    /// Ensures that the memory is assigned to a core, and that all the cores exist
+    fn validate_memory_regions(&self) -> Result<(), String> {
+        for variant in &self.variants {
+            let core_names = variant
+                .cores
+                .iter()
+                .map(|core| &core.name)
+                .collect::<Vec<_>>();
 
             for memory in &variant.memory_map {
-                // Ensure that the memory is assigned to a core, and that all the cores exist
-
                 for core in memory.cores() {
                     if !core_names.contains(&core) {
                         return Err(format!(
@@ -291,12 +351,12 @@ impl ChipFamily {
                     }
                 }
 
-                assert!(
-                    !memory.cores().is_empty(),
-                    "Variant {}, memory region {:?} is not assigned to a core",
-                    variant.name,
-                    memory
-                );
+                if memory.cores().is_empty() {
+                    return Err(format!(
+                        "Variant {}, memory region {:?} is not assigned to a core",
+                        variant.name, memory
+                    ));
+                }
             }
         }
 

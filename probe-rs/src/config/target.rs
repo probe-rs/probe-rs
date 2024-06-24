@@ -1,27 +1,4 @@
-use super::{
-    sequences::{
-        atsam::AtSAM,
-        cc13xx_cc26xx::CC13xxCC26xx,
-        efm32xg2::EFM32xG2,
-        esp32::ESP32,
-        esp32c2::ESP32C2,
-        esp32c3::ESP32C3,
-        esp32c6::ESP32C6,
-        esp32h2::ESP32H2,
-        esp32s2::ESP32S2,
-        esp32s3::ESP32S3,
-        infineon::XMC4000,
-        nrf52::Nrf52,
-        nrf53::Nrf5340,
-        nrf91::Nrf9160,
-        nxp_armv7m::{MIMXRT10xx, MIMXRT11xx},
-        nxp_armv8m::{LPC55Sxx, MIMXRT5xxS},
-        stm32_armv6::{Stm32Armv6, Stm32Armv6Family},
-        stm32_armv7::Stm32Armv7,
-        stm32h7::Stm32h7,
-    },
-    Core, MemoryRegion, RawFlashAlgorithm, RegistryError, TargetDescriptionSource,
-};
+use super::{Core, MemoryRegion, RawFlashAlgorithm, RegistryError, TargetDescriptionSource};
 use crate::architecture::{
     arm::{
         ap::MemoryAp,
@@ -118,78 +95,7 @@ impl Target {
             flash_algorithms.push(algo.clone());
         }
 
-        let debug_sequence = if chip.name.starts_with("MIMXRT10") {
-            DebugSequence::Arm(MIMXRT10xx::create())
-        } else if chip.name.starts_with("MIMXRT11") {
-            DebugSequence::Arm(MIMXRT11xx::create())
-        } else if chip.name.starts_with("MIMXRT5") {
-            DebugSequence::Arm(MIMXRT5xxS::create())
-        } else if chip.name.starts_with("LPC55S16")
-            || chip.name.starts_with("LPC55S26")
-            || chip.name.starts_with("LPC55S28")
-            || chip.name.starts_with("LPC55S66")
-            || chip.name.starts_with("LPC55S69")
-        {
-            DebugSequence::Arm(LPC55Sxx::create())
-        } else if chip.name.starts_with("EFM32PG2")
-            || chip.name.starts_with("EFR32BG2")
-            || chip.name.starts_with("EFR32FG2")
-            || chip.name.starts_with("EFR32MG2")
-            || chip.name.starts_with("EFR32ZG2")
-        {
-            DebugSequence::Arm(EFM32xG2::create())
-        } else if chip.name.starts_with("esp32-") {
-            DebugSequence::Xtensa(ESP32::create(chip))
-        } else if chip.name.eq_ignore_ascii_case("esp32s2") {
-            DebugSequence::Xtensa(ESP32S2::create(chip))
-        } else if chip.name.eq_ignore_ascii_case("esp32s3") {
-            DebugSequence::Xtensa(ESP32S3::create(chip))
-        } else if chip.name.eq_ignore_ascii_case("esp32c2") {
-            DebugSequence::Riscv(ESP32C2::create(chip))
-        } else if chip.name.eq_ignore_ascii_case("esp32c3") {
-            DebugSequence::Riscv(ESP32C3::create(chip))
-        } else if chip.name.eq_ignore_ascii_case("esp32c6") {
-            DebugSequence::Riscv(ESP32C6::create(chip))
-        } else if chip.name.eq_ignore_ascii_case("esp32h2") {
-            DebugSequence::Riscv(ESP32H2::create(chip))
-        } else if chip.name.starts_with("nRF5340") {
-            DebugSequence::Arm(Nrf5340::create())
-        } else if chip.name.starts_with("nRF52") {
-            DebugSequence::Arm(Nrf52::create())
-        } else if chip.name.starts_with("nRF9160") {
-            DebugSequence::Arm(Nrf9160::create())
-        } else if chip.name.starts_with("STM32F0") {
-            DebugSequence::Arm(Stm32Armv6::create(Stm32Armv6Family::F0))
-        } else if chip.name.starts_with("STM32L0") {
-            DebugSequence::Arm(Stm32Armv6::create(Stm32Armv6Family::L0))
-        } else if chip.name.starts_with("STM32G0") {
-            DebugSequence::Arm(Stm32Armv6::create(Stm32Armv6Family::G0))
-        } else if chip.name.starts_with("STM32F1")
-            || chip.name.starts_with("STM32F2")
-            || chip.name.starts_with("STM32F3")
-            || chip.name.starts_with("STM32F4")
-            || chip.name.starts_with("STM32F7")
-            || chip.name.starts_with("STM32G4")
-            || chip.name.starts_with("STM32L1")
-            || chip.name.starts_with("STM32L4")
-            || chip.name.starts_with("STM32WB")
-            || chip.name.starts_with("STM32WL")
-        {
-            DebugSequence::Arm(Stm32Armv7::create())
-        } else if chip.name.starts_with("STM32H7") {
-            DebugSequence::Arm(Stm32h7::create())
-        } else if chip.name.starts_with("ATSAMD1")
-            || chip.name.starts_with("ATSAMD2")
-            || chip.name.starts_with("ATSAMDA")
-            || chip.name.starts_with("ATSAMD5")
-            || chip.name.starts_with("ATSAME5")
-        {
-            DebugSequence::Arm(AtSAM::create())
-        } else if chip.name.starts_with("XMC4") {
-            DebugSequence::Arm(XMC4000::create())
-        } else if chip.name.starts_with("CC13") || chip.name.starts_with("CC26") {
-            DebugSequence::Arm(CC13xxCC26xx::create())
-        } else {
+        let debug_sequence = crate::vendor::try_create_debug_sequence(chip).unwrap_or_else(|| {
             // Default to the architecture of the first core, which is okay if
             // there is no mixed architectures.
             match chip.cores[0].core_type.architecture() {
@@ -197,7 +103,7 @@ impl Target {
                 Architecture::Riscv => DebugSequence::Riscv(DefaultRiscvSequence::create()),
                 Architecture::Xtensa => DebugSequence::Xtensa(DefaultXtensaSequence::create()),
             }
-        };
+        });
 
         tracing::info!("Using sequence {:?}", debug_sequence);
 

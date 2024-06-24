@@ -25,7 +25,7 @@ pub fn get_target_core_id(session: &mut Session, elf_file: impl AsRef<Path>) -> 
         let mut file = File::open(elf_file).ok()?;
         let address = RttActiveTarget::get_rtt_symbol(&mut file)?;
 
-        tracing::debug!("RTT symbol found at 0x{:08x}", address);
+        tracing::debug!("RTT symbol found at {address:#010x}");
 
         let target_memory = session
             .target()
@@ -43,7 +43,7 @@ pub fn get_target_core_id(session: &mut Session, elf_file: impl AsRef<Path>) -> 
             .iter()
             .position(|core| core.name == *core_name)?;
 
-        tracing::debug!("RTT symbol is in core {}", core_id);
+        tracing::debug!("RTT symbol is in core {core_id}");
 
         Some(core_id)
     };
@@ -53,7 +53,7 @@ pub fn get_target_core_id(session: &mut Session, elf_file: impl AsRef<Path>) -> 
 /// Try to find the RTT control block in the ELF file and attach to it.
 ///
 /// This function can return `Ok(None)` to indicate that RTT is not available on the target.
-fn attach_to_rtt(
+fn try_attach_to_rtt_once(
     core: &mut Core,
     memory_map: &[MemoryRegion],
     rtt_region: &ScanRegion,
@@ -114,7 +114,7 @@ impl RttConfig {
 }
 
 /// The User specified configuration for each active RTT Channel.
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RttChannelConfig {
     pub channel_number: Option<usize>,
@@ -136,6 +136,19 @@ pub struct RttChannelConfig {
     #[serde(default)]
     /// Controls the output format for DataFormat::Defmt.
     pub log_format: Option<String>,
+}
+
+impl Default for RttChannelConfig {
+    fn default() -> Self {
+        RttChannelConfig {
+            channel_number: Default::default(),
+            data_format: Default::default(),
+            mode: Default::default(),
+            show_timestamps: default_show_timestamps(),
+            show_location: Default::default(),
+            log_format: Default::default(),
+        }
+    }
 }
 
 pub enum ChannelDataFormat {
@@ -420,17 +433,16 @@ impl RttActiveUpChannel {
     /// Processes all the new data into the channel internal buffer and returns the number of bytes that was read.
     pub fn poll_rtt(&mut self, core: &mut Core) -> Option<usize> {
         // Retry loop, in case the probe is temporarily unavailable, e.g. user pressed the `reset` button.
-        for _loop_count in 0..10 {
+        const RETRY_COUNT: usize = 10;
+        for loop_count in 1..=RETRY_COUNT {
             match self.up_channel.read(core, self.rtt_buffer.0.as_mut()) {
                 Ok(0) => return None,
                 Ok(count) => return Some(count),
-                Err(probe_rs::rtt::Error::Probe(_)) => {
-                    std::thread::sleep(std::time::Duration::from_millis(50));
-                }
-                Err(err) => {
+                Err(err) if loop_count == RETRY_COUNT => {
                     tracing::error!("\nError reading from RTT: {}", err);
                     return None;
                 }
+                _ => std::thread::sleep(std::time::Duration::from_millis(50)),
             }
         }
 
@@ -651,32 +663,22 @@ impl fmt::Debug for RttBuffer {
 }
 
 fn try_attach_to_rtt_inner(
-    mut attach: impl FnMut(&[MemoryRegion], &ScanRegion) -> Result<Option<Rtt>>,
+    mut try_attach_once: impl FnMut() -> Result<Option<Rtt>>,
     timeout: Duration,
-    memory_map: &[MemoryRegion],
-    rtt_region: &ScanRegion,
 ) -> Result<Option<Rtt>> {
     let t = Instant::now();
-    let mut rtt_init_attempt = 1;
-    let mut last_error = None;
-    while t.elapsed() < timeout {
-        tracing::debug!("Initializing RTT (attempt {})...", rtt_init_attempt);
-        rtt_init_attempt += 1;
+    let mut attempt = 1;
+    loop {
+        tracing::debug!("Initializing RTT (attempt {attempt})...");
 
-        match attach(memory_map, rtt_region) {
-            Ok(rtt) => return Ok(rtt),
-            Err(e) => last_error = Some(e),
+        match try_attach_once() {
+            Err(_) if t.elapsed() < timeout => {
+                attempt += 1;
+                tracing::debug!("Failed to initialize RTT. Retrying until timeout.");
+                thread::sleep(Duration::from_millis(50));
+            }
+            result => return result,
         }
-
-        tracing::debug!("Failed to initialize RTT. Retrying until timeout.");
-        thread::sleep(Duration::from_millis(10));
-    }
-
-    // Timeout
-    if let Some(err) = last_error {
-        Err(err)
-    } else {
-        Err(anyhow!("Error setting up RTT"))
     }
 }
 
@@ -692,10 +694,8 @@ pub fn try_attach_to_rtt(
     rtt_region: &ScanRegion,
 ) -> Result<Option<Rtt>> {
     try_attach_to_rtt_inner(
-        |memory_map, rtt_region| attach_to_rtt(core, memory_map, rtt_region),
+        || try_attach_to_rtt_once(core, memory_map, rtt_region),
         timeout,
-        memory_map,
-        rtt_region,
     )
 }
 
@@ -708,13 +708,11 @@ pub fn try_attach_to_rtt_shared(
     rtt_region: &ScanRegion,
 ) -> Result<Option<Rtt>> {
     try_attach_to_rtt_inner(
-        |memory_map, rtt_region| {
+        || {
             let mut session_handle = session.lock();
             let mut core = session_handle.core(core_id)?;
-            attach_to_rtt(&mut core, memory_map, rtt_region)
+            try_attach_to_rtt_once(&mut core, memory_map, rtt_region)
         },
         timeout,
-        memory_map,
-        rtt_region,
     )
 }

@@ -11,7 +11,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -36,7 +36,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -54,14 +54,14 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_16
+  - stm32c0x_32
 - name: STM32C011F4Ux
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -79,14 +79,14 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_16
+  - stm32c0x_32
 - name: STM32C011F6Px
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -111,7 +111,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -136,7 +136,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -154,14 +154,14 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_16
+  - stm32c0x_32
 - name: STM32C011J6Mx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -186,7 +186,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -204,14 +204,14 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_16
+  - stm32c0x_32
 - name: STM32C031C4Ux
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -229,14 +229,14 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_16
+  - stm32c0x_32
 - name: STM32C031C6Tx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -261,7 +261,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -286,7 +286,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -304,14 +304,14 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_16
+  - stm32c0x_32
 - name: STM32C031F6Px
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -336,7 +336,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -354,14 +354,14 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_16
+  - stm32c0x_32
 - name: STM32C031G6Ux
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -386,7 +386,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -404,14 +404,14 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_16
+  - stm32c0x_32
 - name: STM32C031K4Ux
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -429,14 +429,14 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_16
+  - stm32c0x_32
 - name: STM32C031K6Tx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -461,7 +461,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0
+      psel: 0x0
   memory_map:
   - !Ram
     name: SRAM
@@ -495,27 +495,6 @@ flash_algorithms:
     address_range:
       start: 0x8000000
       end: 0x8008000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 400
-    erase_sector_timeout: 400
-    sectors:
-    - size: 0x800
-      address: 0x0
-- name: stm32c0x_16
-  description: STM32C0x_16
-  default: true
-  instructions: crZlSGVJCGEIasADDdRlSGNKAmBSEAJgBiJCYGJKgmBiSNIQQmB/IgJgSGkAKAPaX0iIYF9IiGBitgAgcEdXSEFpggQRQ0FhACBwRwEgcEdytlJIAWnJA/zUQmkEIQpDQmFCaYsDGkNCYQJp0gP81ANpSUoTQgLQAmEBIHBHQmmKQ0JhYrYAIHBHELVytkJKQkkKYUtp/yTkAKNDS2EjBsAYTGkACgIjGEMEQ0xhTGnYAwRDTGEMaeQD/NQMaRRCAtAKYQEgEL1KaZpDSmEBItIGEmhSHALRCmgCQwpgYrYAIBC98LWIsIRGcrbJHcsIKknbAAhpwAP81C9ICGFIaQEkIENIYW1GMuAIKwzTYEYUaARgVGhEYAgwCDKERgg7CGnAA/zUG+AAIATghgAUeEAcrFFSHJhC+NMAJP8nCCDGGgPg4BiAAC9QZBymQvnYCGnAA/zUYEYAmwNgQ2AAIwhpwAcE0AxICGEBIAiw8L0AK8rRSGlACEAASGEBIMAGAGhAHATQCGgBIhIEkEMIYGK2ACDq5wAA+sMAAAAgAkCqqgAAADAAQP8PAAAALABAIwFnRauJ783/AQAAAAAAAA==
-  pc_init: 0x1
-  pc_uninit: 0x3f
-  pc_program_page: 0xe5
-  pc_erase_sector: 0x8b
-  pc_erase_all: 0x51
-  data_section_offset: 0x1bc
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8004000
     page_size: 0x400
     erased_byte_value: 0xff
     program_page_timeout: 400

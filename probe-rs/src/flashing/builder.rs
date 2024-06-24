@@ -98,7 +98,7 @@ impl FlashFill {
 }
 
 /// The built layout of the data in flash.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct FlashLayout {
     sectors: Vec<FlashSector>,
     pages: Vec<FlashPage>,
@@ -107,6 +107,14 @@ pub struct FlashLayout {
 }
 
 impl FlashLayout {
+    /// Merge another flash layout into this one.
+    pub fn merge_from(&mut self, other: FlashLayout) {
+        self.sectors.extend(other.sectors);
+        self.pages.extend(other.pages);
+        self.fills.extend(other.fills);
+        self.data_blocks.extend(other.data_blocks);
+    }
+
     /// List of sectors which are erased during flashing.
     pub fn sectors(&self) -> &[FlashSector] {
         &self.sectors
@@ -271,13 +279,10 @@ impl FlashBuilder {
         flash_algorithm: &FlashAlgorithm,
         include_empty_pages: bool,
     ) -> Result<FlashLayout, FlashError> {
-        let mut sectors: Vec<FlashSector> = Vec::new();
-        let mut pages: Vec<FlashPage> = Vec::new();
-        let mut fills: Vec<FlashFill> = Vec::new();
-        let mut data_blocks: Vec<FlashDataBlockSpan> = Vec::new();
+        let mut layout = FlashLayout::default();
 
         for info in flash_algorithm.iter_sectors() {
-            let range = info.base_address..info.base_address + info.size;
+            let range = info.address_range();
 
             // Ignore the sector if it's outside the NvmRegion.
             if !region.range.contains_range(&range) {
@@ -285,7 +290,7 @@ impl FlashBuilder {
             }
 
             let page = flash_algorithm.page_info(info.base_address).unwrap();
-            let page_range = page.base_address..page.base_address + page.size as u64;
+            let page_range = page.address_range();
             let sector_has_data = self.has_data_in_range(&range);
             let page_has_data = self.has_data_in_range(&page_range);
 
@@ -294,23 +299,22 @@ impl FlashBuilder {
                 continue;
             }
 
-            sectors.push(FlashSector {
+            layout.sectors.push(FlashSector {
                 address: info.base_address,
                 size: info.size,
             })
         }
 
         for info in flash_algorithm.iter_pages() {
-            let page_end = info.base_address + info.size as u64;
-            let range = info.base_address..page_end;
+            let range = info.address_range();
 
             // Ignore the page if it's outside the NvmRegion.
-            if !region.range.contains_range(&range.clone()) {
+            if !region.range.contains_range(&range) {
                 continue;
             }
 
             let sector = flash_algorithm.sector_info(info.base_address).unwrap();
-            let sector_range = sector.base_address..sector.base_address + sector.size;
+            let sector_range = sector.address_range();
             let sector_has_data = self.has_data_in_range(&sector_range);
             let page_has_data = self.has_data_in_range(&range);
 
@@ -332,41 +336,36 @@ impl FlashBuilder {
 
                 // Fill the hole between the previous data block (or page start if there are no blocks) and current block.
                 if address > fill_start_addr {
-                    fills.push(FlashFill {
+                    layout.fills.push(FlashFill {
                         address: fill_start_addr,
                         size: address - fill_start_addr,
-                        page_index: pages.len(),
+                        page_index: layout.pages.len(),
                     });
                 }
                 fill_start_addr = address + data.len() as u64;
             }
 
             // Fill the hole between the last data block (or page start if there are no blocks) and page end.
-            if fill_start_addr < page_end {
-                fills.push(FlashFill {
+            if fill_start_addr < range.end {
+                layout.fills.push(FlashFill {
                     address: fill_start_addr,
-                    size: page_end - fill_start_addr,
-                    page_index: pages.len(),
+                    size: range.end - fill_start_addr,
+                    page_index: layout.pages.len(),
                 });
             }
 
-            pages.push(page);
+            layout.pages.push(page);
         }
 
         for (address, data) in self.data_in_range(&region.range) {
-            data_blocks.push(FlashDataBlockSpan {
+            layout.data_blocks.push(FlashDataBlockSpan {
                 address,
-                size: data.len() as _,
+                size: data.len() as u64,
             });
         }
 
         // Return the finished flash layout.
-        Ok(FlashLayout {
-            sectors,
-            pages,
-            fills,
-            data_blocks,
-        })
+        Ok(layout)
     }
 }
 

@@ -89,31 +89,86 @@ pub fn serialize<S>(bytes: &[u8], serializer: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
 {
-    serializer.serialize_str(base64_engine::STANDARD.encode(bytes).as_str())
+    // Use a separate, more compact representation for binary formats.
+    if serializer.is_human_readable() {
+        Base64::serialize(bytes, serializer)
+    } else {
+        Bytes::serialize(bytes, serializer)
+    }
 }
 
 pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
-    struct Base64Visitor;
+    // Use a separate, more compact representation for binary formats.
+    if deserializer.is_human_readable() {
+        Base64::deserialize(deserializer)
+    } else {
+        Bytes::deserialize(deserializer)
+    }
+}
 
-    impl<'de> serde::de::Visitor<'de> for Base64Visitor {
-        type Value = Vec<u8>;
-
-        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-            write!(formatter, "base64 ASCII text")
-        }
-
-        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-        where
-            E: serde::de::Error,
-        {
-            base64_engine::STANDARD
-                .decode(v)
-                .map_err(serde::de::Error::custom)
-        }
+struct Base64;
+impl Base64 {
+    fn serialize<S>(bytes: &[u8], serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(base64_engine::STANDARD.encode(bytes).as_str())
     }
 
-    deserializer.deserialize_str(Base64Visitor)
+    fn deserialize<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_str(Base64)
+    }
+}
+impl<'de> serde::de::Visitor<'de> for Base64 {
+    type Value = Vec<u8>;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(formatter, "base64 ASCII text")
+    }
+
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        base64_engine::STANDARD
+            .decode(v)
+            .map_err(serde::de::Error::custom)
+    }
+}
+
+struct Bytes;
+impl Bytes {
+    fn serialize<S>(bytes: &[u8], serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_bytes(bytes)
+    }
+
+    fn deserialize<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_bytes(Bytes)
+    }
+}
+impl<'de> serde::de::Visitor<'de> for Bytes {
+    type Value = Vec<u8>;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(formatter, "binary data")
+    }
+
+    fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(v.to_vec())
+    }
 }

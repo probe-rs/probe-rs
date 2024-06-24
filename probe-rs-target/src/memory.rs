@@ -66,6 +66,13 @@ pub struct SectorInfo {
     pub size: u64,
 }
 
+impl SectorInfo {
+    /// Returns the address range of the sector.
+    pub fn address_range(&self) -> Range<u64> {
+        self.base_address..self.base_address + self.size
+    }
+}
+
 /// Information about a group of flash sectors, which
 /// is used as part of the [`FlashProperties`] struct.
 ///
@@ -94,6 +101,13 @@ pub struct PageInfo {
     pub base_address: u64,
     /// Size of the page
     pub size: u32,
+}
+
+impl PageInfo {
+    /// Returns the address range of the sector.
+    pub fn address_range(&self) -> Range<u64> {
+        self.base_address..self.base_address + self.size as u64
+    }
 }
 
 /// Holds information about the entire flash.
@@ -199,6 +213,22 @@ impl MemoryRegion {
             MemoryRegion::Generic(region) => &region.cores,
             MemoryRegion::Nvm(region) => &region.cores,
         }
+    }
+
+    /// Returns `true` if the memory region is [`Ram`].
+    ///
+    /// [`Ram`]: MemoryRegion::Ram
+    #[must_use]
+    pub fn is_ram(&self) -> bool {
+        matches!(self, Self::Ram(..))
+    }
+
+    /// Returns `true` if the memory region is [`Nvm`].
+    ///
+    /// [`Nvm`]: MemoryRegion::Nvm
+    #[must_use]
+    pub fn is_nvm(&self) -> bool {
+        matches!(self, Self::Nvm(..))
     }
 }
 

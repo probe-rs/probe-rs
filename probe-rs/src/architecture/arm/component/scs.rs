@@ -41,7 +41,6 @@ mod register {
 
     memory_mapped_bitfield_register! {
         /// B3.2.3 CPUID Base Register
-        #[allow(non_camel_case_types)]
         pub struct CPUID(u32);
         0xD00, "CPUID",
         impl From;

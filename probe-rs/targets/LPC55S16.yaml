@@ -1,223 +1,124 @@
----
 name: LPC55S16
 manufacturer:
-  cc: 0x00
   id: 0x15
+  cc: 0x0
 variants:
-  - name: LPC55S16JBD100
+- name: LPC55S16JBD100
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20014000
     cores:
-      - name: main
-        type: armv8m
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 536870912
-            end: 536952832
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0
-            end: 229376
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - lpc551xx_256
-      - lpc551xx_s_256
-  - name: LPC55S16JBD64
+    - main
+  - !Nvm
+    range:
+      start: 0x0
+      end: 0x38000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv8m
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 536870912
-            end: 536952832
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0
-            end: 229376
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - lpc551xx_256
-      - lpc551xx_s_256
-  - name: LPC55S16JEV98
+    - main
+  flash_algorithms:
+  - lpc551xx_256
+  - lpc551xx_s_256
+- name: LPC55S16JBD64
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20014000
     cores:
-      - name: main
-        type: armv8m
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 536870912
-            end: 536952832
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0
-            end: 229376
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - lpc551xx_256
-      - lpc551xx_s_256
+    - main
+  - !Nvm
+    range:
+      start: 0x0
+      end: 0x38000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lpc551xx_256
+  - lpc551xx_s_256
+- name: LPC55S16JEV98
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20014000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x0
+      end: 0x38000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - lpc551xx_256
+  - lpc551xx_s_256
 flash_algorithms:
-  - name: lpc551xx_256
-    description: LPC551xx IAP 256kB Flash
-    default: true
-    instructions: gLVA8gQAwPIAAEL24GFJ+AAQQPIAIMXyAAAAIcD4gBDA+IQQwPiAEUf2+3EBYED2BGD/IcXyAADM8t4BAWBP8KBAAiEBcEDyCADA8gAASEQA8HT4ACgYvwEggL0AIHBHgLVA8ggAwPIAAEbybGNIRAAhxvZlM0/0YDIA8GX4ACgYvwEggL0Av4C1IPBwQUDyCADA8gAARvJsY0hExvZlM0/0AEIA8FD4ACgYvwEggL3wtYGwQPIIBxRGDUZBBCDwcEbA8gAHCtFG8mxjCesHADFGxvZlM0/0AEIA8DX4tfUAf5i/T/QAdQnrBwAxRiJGK0YA8C/4ACgYvwEgAbDwvbC1DEYFRiDwcEARRiJGAPBy+AAoCL8lRChGsL2AtQpGIPBwQUDyCADA8gAASEQA8Bf4ACgYvwEggL0AAEXyjAHB8gAxCWgIR0r2TzzB8gA8YEcAv0r2tTzB8gA8YEcAv0r2gTPB8gAzGEcAv0r2pUzB8gA8YEcAv0XyoAPB8gAzG2gYR0XypAHB8gAxCWgIR0XyqAHB8gAxCWgIR0XyrAPB8gAzG2gYR0XytAzB8gA83PgAwGBHAL9F8rgCwfIAMhJoEEdF8rwCwfIAMhJoEEdF8sADwfIAMxtoGEdF8rACwfIAMhJoEEdF8sgMwfIAPNz4AMBgR0DqAQMQtZsHD9EEKg3TEMgIyRIfnEL40CC6GbqIQgHZASAQvU/w/zAQvRqx0wcD0FIcB+AAIBC9EPgBOxH4AUsbGwfREPgBOxH4AUsbGwHRkh7x0RhGEL0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-    pc_init: 1
-    pc_uninit: 93
-    pc_program_page: 177
-    pc_erase_sector: 137
-    pc_erase_all: 97
-    data_section_offset: 592
-    flash_properties:
-      address_range:
-        start: 0
-        end: 262144
-      page_size: 512
-      erased_byte_value: 255
-      program_page_timeout: 300
-      erase_sector_timeout: 3000
-      sectors:
-        - size: 32768
-          address: 0
-    cores:
-      - main
-  - name: lpc551xx_s_256
-    description: LPC551xx S IAP 256kB Flash
-    default: true
-    instructions: gLVA8gQAwPIAAEL24GFJ+AAQQPIAIMXyAAAAIcD4gBDA+IQQwPiAEUf2+3EBYED2BGD/IcXyAADM8t4BAWBP8KBAAiEBcEDyCADA8gAASEQA8HT4ACgYvwEggL0AIHBHgLVA8ggAwPIAAEbybGNIRAAhxvZlM0/0YDIA8GX4ACgYvwEggL0Av4C1IPBwQUDyCADA8gAARvJsY0hExvZlM0/0AEIA8FD4ACgYvwEggL3wtYGwQPIIBxRGDUZBBCDwcEbA8gAHCtFG8mxjCesHADFGxvZlM0/0AEIA8DX4tfUAf5i/T/QAdQnrBwAxRiJGK0YA8C/4ACgYvwEgAbDwvbC1DEYFRiDwcEARRiJGAPBy+AAoCL8lRChGsL2AtQpGIPBwQUDyCADA8gAASEQA8Bf4ACgYvwEggL0AAEXyjAHB8gAxCWgIR0r2TzzB8gA8YEcAv0r2tTzB8gA8YEcAv0r2gTPB8gAzGEcAv0r2pUzB8gA8YEcAv0XyoAPB8gAzG2gYR0XypAHB8gAxCWgIR0XyqAHB8gAxCWgIR0XyrAPB8gAzG2gYR0XytAzB8gA83PgAwGBHAL9F8rgCwfIAMhJoEEdF8rwCwfIAMhJoEEdF8sADwfIAMxtoGEdF8rACwfIAMhJoEEdF8sgMwfIAPNz4AMBgR0DqAQMQtZsHD9EEKg3TEMgIyRIfnEL40CC6GbqIQgHZASAQvU/w/zAQvRqx0wcD0FIcB+AAIBC9EPgBOxH4AUsbGwfREPgBOxH4AUsbGwHRkh7x0RhGEL0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-    pc_init: 1
-    pc_uninit: 93
-    pc_program_page: 177
-    pc_erase_sector: 137
-    pc_erase_all: 97
-    data_section_offset: 592
-    flash_properties:
-      address_range:
-        start: 268435456
-        end: 268697600
-      page_size: 512
-      erased_byte_value: 255
-      program_page_timeout: 300
-      erase_sector_timeout: 3000
-      sectors:
-        - size: 32768
-          address: 0
-    cores:
-      - main
-  - name: lpc551xx_256
-    description: LPC551xx IAP 256kB Flash
-    default: true
-    instructions: gLVA8gQAwPIAAEL24GFJ+AAQQPIAIMXyAAAAIcD4gBDA+IQQwPiAEUf2+3EBYED2BGD/IcXyAADM8t4BAWBP8KBAAiEBcEDyCADA8gAASEQA8HT4ACgYvwEggL0AIHBHgLVA8ggAwPIAAEbybGNIRAAhxvZlM0/0YDIA8GX4ACgYvwEggL0Av4C1IPBwQUDyCADA8gAARvJsY0hExvZlM0/0AEIA8FD4ACgYvwEggL3wtYGwQPIIBxRGDUZBBCDwcEbA8gAHCtFG8mxjCesHADFGxvZlM0/0AEIA8DX4tfUAf5i/T/QAdQnrBwAxRiJGK0YA8C/4ACgYvwEgAbDwvbC1DEYFRiDwcEARRiJGAPBy+AAoCL8lRChGsL2AtQpGIPBwQUDyCADA8gAASEQA8Bf4ACgYvwEggL0AAEXyjAHB8gAxCWgIR0r2TzzB8gA8YEcAv0r2tTzB8gA8YEcAv0r2gTPB8gAzGEcAv0r2pUzB8gA8YEcAv0XyoAPB8gAzG2gYR0XypAHB8gAxCWgIR0XyqAHB8gAxCWgIR0XyrAPB8gAzG2gYR0XytAzB8gA83PgAwGBHAL9F8rgCwfIAMhJoEEdF8rwCwfIAMhJoEEdF8sADwfIAMxtoGEdF8rACwfIAMhJoEEdF8sgMwfIAPNz4AMBgR0DqAQMQtZsHD9EEKg3TEMgIyRIfnEL40CC6GbqIQgHZASAQvU/w/zAQvRqx0wcD0FIcB+AAIBC9EPgBOxH4AUsbGwfREPgBOxH4AUsbGwHRkh7x0RhGEL0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-    pc_init: 1
-    pc_uninit: 93
-    pc_program_page: 177
-    pc_erase_sector: 137
-    pc_erase_all: 97
-    data_section_offset: 592
-    flash_properties:
-      address_range:
-        start: 0
-        end: 262144
-      page_size: 512
-      erased_byte_value: 255
-      program_page_timeout: 300
-      erase_sector_timeout: 3000
-      sectors:
-        - size: 32768
-          address: 0
-    cores:
-      - main
-  - name: lpc551xx_s_256
-    description: LPC551xx S IAP 256kB Flash
-    default: true
-    instructions: gLVA8gQAwPIAAEL24GFJ+AAQQPIAIMXyAAAAIcD4gBDA+IQQwPiAEUf2+3EBYED2BGD/IcXyAADM8t4BAWBP8KBAAiEBcEDyCADA8gAASEQA8HT4ACgYvwEggL0AIHBHgLVA8ggAwPIAAEbybGNIRAAhxvZlM0/0YDIA8GX4ACgYvwEggL0Av4C1IPBwQUDyCADA8gAARvJsY0hExvZlM0/0AEIA8FD4ACgYvwEggL3wtYGwQPIIBxRGDUZBBCDwcEbA8gAHCtFG8mxjCesHADFGxvZlM0/0AEIA8DX4tfUAf5i/T/QAdQnrBwAxRiJGK0YA8C/4ACgYvwEgAbDwvbC1DEYFRiDwcEARRiJGAPBy+AAoCL8lRChGsL2AtQpGIPBwQUDyCADA8gAASEQA8Bf4ACgYvwEggL0AAEXyjAHB8gAxCWgIR0r2TzzB8gA8YEcAv0r2tTzB8gA8YEcAv0r2gTPB8gAzGEcAv0r2pUzB8gA8YEcAv0XyoAPB8gAzG2gYR0XypAHB8gAxCWgIR0XyqAHB8gAxCWgIR0XyrAPB8gAzG2gYR0XytAzB8gA83PgAwGBHAL9F8rgCwfIAMhJoEEdF8rwCwfIAMhJoEEdF8sADwfIAMxtoGEdF8rACwfIAMhJoEEdF8sgMwfIAPNz4AMBgR0DqAQMQtZsHD9EEKg3TEMgIyRIfnEL40CC6GbqIQgHZASAQvU/w/zAQvRqx0wcD0FIcB+AAIBC9EPgBOxH4AUsbGwfREPgBOxH4AUsbGwHRkh7x0RhGEL0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-    pc_init: 1
-    pc_uninit: 93
-    pc_program_page: 177
-    pc_erase_sector: 137
-    pc_erase_all: 97
-    data_section_offset: 592
-    flash_properties:
-      address_range:
-        start: 268435456
-        end: 268697600
-      page_size: 512
-      erased_byte_value: 255
-      program_page_timeout: 300
-      erase_sector_timeout: 3000
-      sectors:
-        - size: 32768
-          address: 0
-    cores:
-      - main
-  - name: lpc551xx_256
-    description: LPC551xx IAP 256kB Flash
-    default: true
-    instructions: gLVA8gQAwPIAAEL24GFJ+AAQQPIAIMXyAAAAIcD4gBDA+IQQwPiAEUf2+3EBYED2BGD/IcXyAADM8t4BAWBP8KBAAiEBcEDyCADA8gAASEQA8HT4ACgYvwEggL0AIHBHgLVA8ggAwPIAAEbybGNIRAAhxvZlM0/0YDIA8GX4ACgYvwEggL0Av4C1IPBwQUDyCADA8gAARvJsY0hExvZlM0/0AEIA8FD4ACgYvwEggL3wtYGwQPIIBxRGDUZBBCDwcEbA8gAHCtFG8mxjCesHADFGxvZlM0/0AEIA8DX4tfUAf5i/T/QAdQnrBwAxRiJGK0YA8C/4ACgYvwEgAbDwvbC1DEYFRiDwcEARRiJGAPBy+AAoCL8lRChGsL2AtQpGIPBwQUDyCADA8gAASEQA8Bf4ACgYvwEggL0AAEXyjAHB8gAxCWgIR0r2TzzB8gA8YEcAv0r2tTzB8gA8YEcAv0r2gTPB8gAzGEcAv0r2pUzB8gA8YEcAv0XyoAPB8gAzG2gYR0XypAHB8gAxCWgIR0XyqAHB8gAxCWgIR0XyrAPB8gAzG2gYR0XytAzB8gA83PgAwGBHAL9F8rgCwfIAMhJoEEdF8rwCwfIAMhJoEEdF8sADwfIAMxtoGEdF8rACwfIAMhJoEEdF8sgMwfIAPNz4AMBgR0DqAQMQtZsHD9EEKg3TEMgIyRIfnEL40CC6GbqIQgHZASAQvU/w/zAQvRqx0wcD0FIcB+AAIBC9EPgBOxH4AUsbGwfREPgBOxH4AUsbGwHRkh7x0RhGEL0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-    pc_init: 1
-    pc_uninit: 93
-    pc_program_page: 177
-    pc_erase_sector: 137
-    pc_erase_all: 97
-    data_section_offset: 592
-    flash_properties:
-      address_range:
-        start: 0
-        end: 262144
-      page_size: 512
-      erased_byte_value: 255
-      program_page_timeout: 300
-      erase_sector_timeout: 3000
-      sectors:
-        - size: 32768
-          address: 0
-    cores:
-      - main
-  - name: lpc551xx_s_256
-    description: LPC551xx S IAP 256kB Flash
-    default: true
-    instructions: gLVA8gQAwPIAAEL24GFJ+AAQQPIAIMXyAAAAIcD4gBDA+IQQwPiAEUf2+3EBYED2BGD/IcXyAADM8t4BAWBP8KBAAiEBcEDyCADA8gAASEQA8HT4ACgYvwEggL0AIHBHgLVA8ggAwPIAAEbybGNIRAAhxvZlM0/0YDIA8GX4ACgYvwEggL0Av4C1IPBwQUDyCADA8gAARvJsY0hExvZlM0/0AEIA8FD4ACgYvwEggL3wtYGwQPIIBxRGDUZBBCDwcEbA8gAHCtFG8mxjCesHADFGxvZlM0/0AEIA8DX4tfUAf5i/T/QAdQnrBwAxRiJGK0YA8C/4ACgYvwEgAbDwvbC1DEYFRiDwcEARRiJGAPBy+AAoCL8lRChGsL2AtQpGIPBwQUDyCADA8gAASEQA8Bf4ACgYvwEggL0AAEXyjAHB8gAxCWgIR0r2TzzB8gA8YEcAv0r2tTzB8gA8YEcAv0r2gTPB8gAzGEcAv0r2pUzB8gA8YEcAv0XyoAPB8gAzG2gYR0XypAHB8gAxCWgIR0XyqAHB8gAxCWgIR0XyrAPB8gAzG2gYR0XytAzB8gA83PgAwGBHAL9F8rgCwfIAMhJoEEdF8rwCwfIAMhJoEEdF8sADwfIAMxtoGEdF8rACwfIAMhJoEEdF8sgMwfIAPNz4AMBgR0DqAQMQtZsHD9EEKg3TEMgIyRIfnEL40CC6GbqIQgHZASAQvU/w/zAQvRqx0wcD0FIcB+AAIBC9EPgBOxH4AUsbGwfREPgBOxH4AUsbGwHRkh7x0RhGEL0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-    pc_init: 1
-    pc_uninit: 93
-    pc_program_page: 177
-    pc_erase_sector: 137
-    pc_erase_all: 97
-    data_section_offset: 592
-    flash_properties:
-      address_range:
-        start: 268435456
-        end: 268697600
-      page_size: 512
-      erased_byte_value: 255
-      program_page_timeout: 300
-      erase_sector_timeout: 3000
-      sectors:
-        - size: 32768
-          address: 0
-    cores:
-      - main
+- name: lpc551xx_256
+  description: LPC551xx IAP 256kB Flash
+  default: true
+  instructions: gLVA8gQAwPIAAEL24GFJ+AAQQPIAIMXyAAAAIcD4gBDA+IQQwPiAEUf2+3EBYED2BGD/IcXyAADM8t4BAWBP8KBAAiEBcEDyCADA8gAASEQA8HT4ACgYvwEggL0AIHBHgLVA8ggAwPIAAEbybGNIRAAhxvZlM0/0YDIA8GX4ACgYvwEggL0Av4C1IPBwQUDyCADA8gAARvJsY0hExvZlM0/0AEIA8FD4ACgYvwEggL3wtYGwQPIIBxRGDUZBBCDwcEbA8gAHCtFG8mxjCesHADFGxvZlM0/0AEIA8DX4tfUAf5i/T/QAdQnrBwAxRiJGK0YA8C/4ACgYvwEgAbDwvbC1DEYFRiDwcEARRiJGAPBy+AAoCL8lRChGsL2AtQpGIPBwQUDyCADA8gAASEQA8Bf4ACgYvwEggL0AAEXyjAHB8gAxCWgIR0r2TzzB8gA8YEcAv0r2tTzB8gA8YEcAv0r2gTPB8gAzGEcAv0r2pUzB8gA8YEcAv0XyoAPB8gAzG2gYR0XypAHB8gAxCWgIR0XyqAHB8gAxCWgIR0XyrAPB8gAzG2gYR0XytAzB8gA83PgAwGBHAL9F8rgCwfIAMhJoEEdF8rwCwfIAMhJoEEdF8sADwfIAMxtoGEdF8rACwfIAMhJoEEdF8sgMwfIAPNz4AMBgR0DqAQMQtZsHD9EEKg3TEMgIyRIfnEL40CC6GbqIQgHZASAQvU/w/zAQvRqx0wcD0FIcB+AAIBC9EPgBOxH4AUsbGwfREPgBOxH4AUsbGwHRkh7x0RhGEL0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x5d
+  pc_program_page: 0xb1
+  pc_erase_sector: 0x89
+  pc_erase_all: 0x61
+  data_section_offset: 0x250
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x40000
+    page_size: 0x200
+    erased_byte_value: 0xff
+    program_page_timeout: 300
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x8000
+      address: 0x0
+  cores:
+  - main
+- name: lpc551xx_s_256
+  description: LPC551xx S IAP 256kB Flash
+  default: true
+  instructions: gLVA8gQAwPIAAEL24GFJ+AAQQPIAIMXyAAAAIcD4gBDA+IQQwPiAEUf2+3EBYED2BGD/IcXyAADM8t4BAWBP8KBAAiEBcEDyCADA8gAASEQA8HT4ACgYvwEggL0AIHBHgLVA8ggAwPIAAEbybGNIRAAhxvZlM0/0YDIA8GX4ACgYvwEggL0Av4C1IPBwQUDyCADA8gAARvJsY0hExvZlM0/0AEIA8FD4ACgYvwEggL3wtYGwQPIIBxRGDUZBBCDwcEbA8gAHCtFG8mxjCesHADFGxvZlM0/0AEIA8DX4tfUAf5i/T/QAdQnrBwAxRiJGK0YA8C/4ACgYvwEgAbDwvbC1DEYFRiDwcEARRiJGAPBy+AAoCL8lRChGsL2AtQpGIPBwQUDyCADA8gAASEQA8Bf4ACgYvwEggL0AAEXyjAHB8gAxCWgIR0r2TzzB8gA8YEcAv0r2tTzB8gA8YEcAv0r2gTPB8gAzGEcAv0r2pUzB8gA8YEcAv0XyoAPB8gAzG2gYR0XypAHB8gAxCWgIR0XyqAHB8gAxCWgIR0XyrAPB8gAzG2gYR0XytAzB8gA83PgAwGBHAL9F8rgCwfIAMhJoEEdF8rwCwfIAMhJoEEdF8sADwfIAMxtoGEdF8rACwfIAMhJoEEdF8sgMwfIAPNz4AMBgR0DqAQMQtZsHD9EEKg3TEMgIyRIfnEL40CC6GbqIQgHZASAQvU/w/zAQvRqx0wcD0FIcB+AAIBC9EPgBOxH4AUsbGwfREPgBOxH4AUsbGwHRkh7x0RhGEL0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x5d
+  pc_program_page: 0xb1
+  pc_erase_sector: 0x89
+  pc_erase_all: 0x61
+  data_section_offset: 0x250
+  flash_properties:
+    address_range:
+      start: 0x10000000
+      end: 0x10040000
+    page_size: 0x200
+    erased_byte_value: 0xff
+    program_page_timeout: 300
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x8000
+      address: 0x0
+  cores:
+  - main

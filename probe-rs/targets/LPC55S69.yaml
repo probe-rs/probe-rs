@@ -1,17 +1,14 @@
 name: LPC55S69
--manufacturer:
-  - cc: 0x00
-  - id: 0x15
 generated_from_pack: true
 pack_file_release: 17.0.0
 variants:
-  - name: LPC55S69JBD100
-    cores:
-      - name: cm33_core0
-        type: armv8m
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
+- name: LPC55S69JBD100
+  cores:
+  - name: cm33_core0
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
     # Connecting to the second core is not supported yet in probe-rs,
     # and trying to connect to it will result in an error.
     #- name: cm33_core1
@@ -19,114 +16,102 @@ variants:
     #  core_access_options: !Arm
     #    ap: 1
     #    psel: 0
-    memory_map:
-      - !Ram
-        name: SRAMX
-        range:
-          start: 0x4000000
-          end: 0x4008000
-        cores:
-          - cm33_core0
-          # - cm33_core1
-      - !Ram
-        name: SRAM
-        range:
-          start: 0x20000000
-          end: 0x20040000
-        cores:
-          - cm33_core0
-          # - cm33_core1
-      - !Ram
-        name: SRAM4
-        range:
-          start: 0x20040000
-          end: 0x20044000
-        cores:
-          - cm33_core0
-          # - cm33_core1
-      - !Ram
-        name: USB_RAM
-        range:
-          start: 0x40100000
-          end: 0x40104000
-        cores:
-          - cm33_core0
-          # - cm33_core1
-      - !Nvm
-        name: PROGRAM_FLASH
-        range:
-          start: 0x0
-          end: 0x9d800
-        is_boot_memory: true
-        cores:
-          - cm33_core0
-          # - cm33_core1
-      - !Generic
-        name: BootROM
-        range:
-          start: 0x3000000
-          end: 0x3020000
-        cores:
-          - cm33_core0
-          # - cm33_core1
-      - !Nvm
-        name: PROGRAM_FLASH_alias
-        range:
-          start: 0x10000000
-          end: 0x1009d800
-        cores:
-          - cm33_core0
-          # - cm33_core1
-      - !Generic
-        name: BootROM_alias
-        range:
-          start: 0x13000000
-          end: 0x13020000
-        cores:
-          - cm33_core0
-          # - cm33_core1
-      - !Generic
-        name: SRAMX_alias
-        range:
-          start: 0x14000000
-          end: 0x14008000
-        cores:
-          - cm33_core0
-          # - cm33_core1
-      - !Generic
-        name: SRAM_alias
-        range:
-          start: 0x30000000
-          end: 0x30040000
-        cores:
-          - cm33_core0
-          # - cm33_core1
-      - !Generic
-        name: SRAM4_alias
-        range:
-          start: 0x30040000
-          end: 0x30044000
-        cores:
-          - cm33_core0
-          # - cm33_core1
-      - !Generic
-        name: USB_RAM_alias
-        range:
-          start: 0x50100000
-          end: 0x50104000
-        cores:
-          - cm33_core0
-          # - cm33_core1
-    flash_algorithms:
-      - lpc55xx_640
-      - lpc55xx_s_640
-  - name: LPC55S69JBD64
+  memory_map:
+  - !Ram
+    name: SRAMX
+    range:
+      start: 0x4000000
+      end: 0x4008000
     cores:
-      - name: cm33_core0
-        type: armv8m
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
+    - cm33_core0
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - cm33_core0
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x20040000
+      end: 0x20044000
+    cores:
+    - cm33_core0
+  - !Ram
+    name: USB_RAM
+    range:
+      start: 0x40100000
+      end: 0x40104000
+    cores:
+    - cm33_core0
+  - !Nvm
+    name: PROGRAM_FLASH
+    range:
+      start: 0x0
+      end: 0x9d800
+    is_boot_memory: true
+    cores:
+    - cm33_core0
+  - !Generic
+    name: BootROM
+    range:
+      start: 0x3000000
+      end: 0x3020000
+    cores:
+    - cm33_core0
+  - !Nvm
+    name: PROGRAM_FLASH_alias
+    range:
+      start: 0x10000000
+      end: 0x1009d800
+    cores:
+    - cm33_core0
+  - !Generic
+    name: BootROM_alias
+    range:
+      start: 0x13000000
+      end: 0x13020000
+    cores:
+    - cm33_core0
+  - !Generic
+    name: SRAMX_alias
+    range:
+      start: 0x14000000
+      end: 0x14008000
+    cores:
+    - cm33_core0
+  - !Generic
+    name: SRAM_alias
+    range:
+      start: 0x30000000
+      end: 0x30040000
+    cores:
+    - cm33_core0
+  - !Generic
+    name: SRAM4_alias
+    range:
+      start: 0x30040000
+      end: 0x30044000
+    cores:
+    - cm33_core0
+  - !Generic
+    name: USB_RAM_alias
+    range:
+      start: 0x50100000
+      end: 0x50104000
+    cores:
+    - cm33_core0
+  flash_algorithms:
+  - lpc55xx_640
+  - lpc55xx_s_640
+- name: LPC55S69JBD64
+  cores:
+  - name: cm33_core0
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
     # Connecting to the second core is not supported yet in probe-rs,
     # and trying to connect to it will result in an error.
     #  - name: cm33_core1
@@ -134,114 +119,102 @@ variants:
     #    core_access_options: !Arm
     #      ap: 1
     #      psel: 0
-    memory_map:
-      - !Ram
-        name: SRAMX
-        range:
-          start: 0x4000000
-          end: 0x4008000
-        cores:
-          - cm33_core0
-          # - cm33_core1
-      - !Ram
-        name: SRAM
-        range:
-          start: 0x20000000
-          end: 0x20040000
-        cores:
-          - cm33_core0
-          # - cm33_core1
-      - !Ram
-        name: SRAM4
-        range:
-          start: 0x20040000
-          end: 0x20044000
-        cores:
-          - cm33_core0
-          # - cm33_core1
-      - !Ram
-        name: USB_RAM
-        range:
-          start: 0x40100000
-          end: 0x40104000
-        cores:
-          - cm33_core0
-          # - cm33_core1
-      - !Nvm
-        name: PROGRAM_FLASH
-        range:
-          start: 0x0
-          end: 0x9d800
-        is_boot_memory: true
-        cores:
-          - cm33_core0
-          # - cm33_core1
-      - !Generic
-        name: BootROM
-        range:
-          start: 0x3000000
-          end: 0x3020000
-        cores:
-          - cm33_core0
-          # - cm33_core1
-      - !Nvm
-        name: PROGRAM_FLASH_alias
-        range:
-          start: 0x10000000
-          end: 0x1009d800
-        cores:
-          - cm33_core0
-          # - cm33_core1
-      - !Generic
-        name: BootROM_alias
-        range:
-          start: 0x13000000
-          end: 0x13020000
-        cores:
-          - cm33_core0
-          # - cm33_core1
-      - !Generic
-        name: SRAMX_alias
-        range:
-          start: 0x14000000
-          end: 0x14008000
-        cores:
-          - cm33_core0
-          # - cm33_core1
-      - !Generic
-        name: SRAM_alias
-        range:
-          start: 0x30000000
-          end: 0x30040000
-        cores:
-          - cm33_core0
-          # - cm33_core1
-      - !Generic
-        name: SRAM4_alias
-        range:
-          start: 0x30040000
-          end: 0x30044000
-        cores:
-          - cm33_core0
-          # - cm33_core1
-      - !Generic
-        name: USB_RAM_alias
-        range:
-          start: 0x50100000
-          end: 0x50104000
-        cores:
-          - cm33_core0
-          # - cm33_core1
-    flash_algorithms:
-      - lpc55xx_640
-      - lpc55xx_s_640
-  - name: LPC55S69JEV98
+  memory_map:
+  - !Ram
+    name: SRAMX
+    range:
+      start: 0x4000000
+      end: 0x4008000
     cores:
-      - name: cm33_core0
-        type: armv8m
-        core_access_options: !Arm
-          ap: 0
-          psel: 0
+    - cm33_core0
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - cm33_core0
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x20040000
+      end: 0x20044000
+    cores:
+    - cm33_core0
+  - !Ram
+    name: USB_RAM
+    range:
+      start: 0x40100000
+      end: 0x40104000
+    cores:
+    - cm33_core0
+  - !Nvm
+    name: PROGRAM_FLASH
+    range:
+      start: 0x0
+      end: 0x9d800
+    is_boot_memory: true
+    cores:
+    - cm33_core0
+  - !Generic
+    name: BootROM
+    range:
+      start: 0x3000000
+      end: 0x3020000
+    cores:
+    - cm33_core0
+  - !Nvm
+    name: PROGRAM_FLASH_alias
+    range:
+      start: 0x10000000
+      end: 0x1009d800
+    cores:
+    - cm33_core0
+  - !Generic
+    name: BootROM_alias
+    range:
+      start: 0x13000000
+      end: 0x13020000
+    cores:
+    - cm33_core0
+  - !Generic
+    name: SRAMX_alias
+    range:
+      start: 0x14000000
+      end: 0x14008000
+    cores:
+    - cm33_core0
+  - !Generic
+    name: SRAM_alias
+    range:
+      start: 0x30000000
+      end: 0x30040000
+    cores:
+    - cm33_core0
+  - !Generic
+    name: SRAM4_alias
+    range:
+      start: 0x30040000
+      end: 0x30044000
+    cores:
+    - cm33_core0
+  - !Generic
+    name: USB_RAM_alias
+    range:
+      start: 0x50100000
+      end: 0x50104000
+    cores:
+    - cm33_core0
+  flash_algorithms:
+  - lpc55xx_640
+  - lpc55xx_s_640
+- name: LPC55S69JEV98
+  cores:
+  - name: cm33_core0
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
     # Connecting to the second core is not supported yet in probe-rs,
     # and trying to connect to it will result in an error.
     # - name: cm33_core1
@@ -249,149 +222,137 @@ variants:
     #   core_access_options: !Arm
     #     ap: 1
     #     psel: 0
-    memory_map:
-      - !Ram
-        name: SRAMX
-        range:
-          start: 0x4000000
-          end: 0x4008000
-        cores:
-          - cm33_core0
-          # - cm33_core1
-      - !Ram
-        name: SRAM
-        range:
-          start: 0x20000000
-          end: 0x20040000
-        cores:
-          - cm33_core0
-          # - cm33_core1
-      - !Ram
-        name: SRAM4
-        range:
-          start: 0x20040000
-          end: 0x20044000
-        cores:
-          - cm33_core0
-          # - cm33_core1
-      - !Ram
-        name: USB_RAM
-        range:
-          start: 0x40100000
-          end: 0x40104000
-        cores:
-          - cm33_core0
-          # - cm33_core1
-      - !Nvm
-        name: PROGRAM_FLASH
-        range:
-          start: 0x0
-          end: 0x9d800
-        is_boot_memory: true
-        cores:
-          - cm33_core0
-          # - cm33_core1
-      - !Generic
-        name: BootROM
-        range:
-          start: 0x3000000
-          end: 0x3020000
-        cores:
-          - cm33_core0
-          # - cm33_core1
-      - !Nvm
-        name: PROGRAM_FLASH_alias
-        range:
-          start: 0x10000000
-          end: 0x1009d800
-        cores:
-          - cm33_core0
-          # - cm33_core1
-      - !Generic
-        name: BootROM_alias
-        range:
-          start: 0x13000000
-          end: 0x13020000
-        cores:
-          - cm33_core0
-          # - cm33_core1
-      - !Generic
-        name: SRAMX_alias
-        range:
-          start: 0x14000000
-          end: 0x14008000
-        cores:
-          - cm33_core0
-          # - cm33_core1
-      - !Generic
-        name: SRAM_alias
-        range:
-          start: 0x30000000
-          end: 0x30040000
-        cores:
-          - cm33_core0
-          # - cm33_core1
-      - !Generic
-        name: SRAM4_alias
-        range:
-          start: 0x30040000
-          end: 0x30044000
-        cores:
-          - cm33_core0
-          # - cm33_core1
-      - !Generic
-        name: USB_RAM_alias
-        range:
-          start: 0x50100000
-          end: 0x50104000
-        cores:
-          - cm33_core0
-          # - cm33_core1
-    flash_algorithms:
-      - lpc55xx_640
-      - lpc55xx_s_640
+  memory_map:
+  - !Ram
+    name: SRAMX
+    range:
+      start: 0x4000000
+      end: 0x4008000
+    cores:
+    - cm33_core0
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - cm33_core0
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x20040000
+      end: 0x20044000
+    cores:
+    - cm33_core0
+  - !Ram
+    name: USB_RAM
+    range:
+      start: 0x40100000
+      end: 0x40104000
+    cores:
+    - cm33_core0
+  - !Nvm
+    name: PROGRAM_FLASH
+    range:
+      start: 0x0
+      end: 0x9d800
+    is_boot_memory: true
+    cores:
+    - cm33_core0
+  - !Generic
+    name: BootROM
+    range:
+      start: 0x3000000
+      end: 0x3020000
+    cores:
+    - cm33_core0
+  - !Nvm
+    name: PROGRAM_FLASH_alias
+    range:
+      start: 0x10000000
+      end: 0x1009d800
+    cores:
+    - cm33_core0
+  - !Generic
+    name: BootROM_alias
+    range:
+      start: 0x13000000
+      end: 0x13020000
+    cores:
+    - cm33_core0
+  - !Generic
+    name: SRAMX_alias
+    range:
+      start: 0x14000000
+      end: 0x14008000
+    cores:
+    - cm33_core0
+  - !Generic
+    name: SRAM_alias
+    range:
+      start: 0x30000000
+      end: 0x30040000
+    cores:
+    - cm33_core0
+  - !Generic
+    name: SRAM4_alias
+    range:
+      start: 0x30040000
+      end: 0x30044000
+    cores:
+    - cm33_core0
+  - !Generic
+    name: USB_RAM_alias
+    range:
+      start: 0x50100000
+      end: 0x50104000
+    cores:
+    - cm33_core0
+  flash_algorithms:
+  - lpc55xx_640
+  - lpc55xx_s_640
 flash_algorithms:
-  - name: lpc55xx_640
-    description: LPC55xx IAP 630kB Flash
-    default: true
-    instructions: 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
-    load_address: 0x20000020
-    pc_init: 0x1
-    pc_uninit: 0x5d
-    pc_program_page: 0xb5
-    pc_erase_sector: 0x8d
-    pc_erase_all: 0x61
-    data_section_offset: 0x604
-    flash_properties:
-      address_range:
-        start: 0x0
-        end: 0x9d800
-      page_size: 0x200
-      erased_byte_value: 0xff
-      program_page_timeout: 300
-      erase_sector_timeout: 3000
-      sectors:
-        - size: 0x200
-          address: 0x0
-  - name: lpc55xx_s_640
-    description: LPC55xx S IAP 630kB Flash
-    default: true
-    instructions: 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
-    load_address: 0x20000020
-    pc_init: 0x1
-    pc_uninit: 0x5d
-    pc_program_page: 0xb5
-    pc_erase_sector: 0x8d
-    pc_erase_all: 0x61
-    data_section_offset: 0x604
-    flash_properties:
-      address_range:
-        start: 0x10000000
-        end: 0x1009d800
-      page_size: 0x200
-      erased_byte_value: 0xff
-      program_page_timeout: 300
-      erase_sector_timeout: 3000
-      sectors:
-        - size: 0x200
-          address: 0x0
+- name: lpc55xx_640
+  description: LPC55xx IAP 630kB Flash
+  default: true
+  instructions: gLVA8gQAwPIAAEL24GFJ+AAQQPIAIMXyAAAAIcD4gBDA+IQQwPiAEUf2+3EBYED2BGD/IcXyAADM8t4BAWBP8KBAAiEBcEDyDADA8gAASEQA8GL4ACgYvwEggL0AIHBHgLVA8gwAwPIAAE32AAJG8mxjSETA8gkCACHG9mUzAPBx+AAoGL8BIIC9AL+AtSDwcEFA8gwAwPIAAEbybGNIRMb2ZTNP9AByAPBc+AAoGL8BIIC9gLULRiDwcEFA8gwAwPIAAEhEs/UAf5i/T/QAcwDwcPgAKBi/ASCAvbC1DEYFRiDwcEARRiJGAPDt+QAoCL8lRChGsL2AtQpGIPBwQUDyDADA8gAASEQA8Hv4ACgYvwEggL0AAEHy9gzB8gA83PgKEIGxQPIIA8DyAAMAIkn4AyCc+AAgSWgDOrL6gvJSCUn4AyAIR0DyhkDA8gAAQPKTQcDyAAF4RHlEbiIA8HP5AL9A8ggMwPIADFn4DMC88QAPC9BB8gAcwfIAPNz4AMC88QAPB9Dc+AjAYEdE8jscwfIAPGBHQPI2QMDyAABA8kNBwPIAAXhEeUR/IgDwS/kAv0DyCAzA8gAMWfgMwLzxAA8L0EHyABzB8gA83PgAwLzxAA8H0Nz4DMBgR0TynRzB8gA8YEdA8uYwwPIAAEDy8zHA8gABeER5RI8iAPAj+QC/QfIAE8HyADMbaAuxG2kYR0DyujDA8gAAQPLHMcDyAAF4RHlElyIA8A35AL9A8ggMwPIADFn4DMC88QAPC9BB8gAcwfIAPNz4AMC88QAPB9Dc+BTAYEdE8n0swfIAPGBHQPJqMMDyAABA8ncxwPIAAXhEeUSrIgDw5fgAv0HyABPB8gAzG2gLsZtpGEdA8j4wwPIAAEDySzHA8gABeER5RLQiAPDP+AC/QfIAEcHyADEJaAmxyWkIR0DyEjDA8gAAQPIfMcDyAAF4RHlEviIA8Ln4AL9B8gARwfIAMQloCbEJaghHQPLmIMDyAABA8vMhwPIAAXhEeUTFIgDwo/gAv0HyABPB8gAzG2gLsVtqGEdA8rogwPIAAEDyxyHA8gABeER5RMwiAPCN+AC/QfIAHMHyADzc+ADAvPEADwLQ3PgswGBHQPKGIMDyAABA8pMhwPIAAXhEeUTTIgDwc/gAv0HyABLB8gAyEmgKsRJrEEdA8logwPIAAEDyZyHA8gABeER5RNoiAPBd+AC/QfIAEsHyADISaAqxUmsQR0DyLiDA8gAAQPI7IcDyAAF4RHlE4SIA8Ef4AL9B8gATwfIAMxtoC7GbaxhHQPICIMDyAABA8g8hwPIAAXhEeUToIgDwMfgAv0HyABLB8gAyEmgKsZJqEEdA8tYQwPIAAEDy4xHA8gABeER5RO8iAPAb+AC/QfIAHMHyADzc+ADAvPEADwLQ3PhAwGBHQPKiEMDyAABA8q8RwPIAAXhEeUT2IgDwAfgAAA61BUYURg5GE6AA8HD4KEYA8G34FqAA8Gr4MEYA8Gf4FaAA8GT4ACGN+AsQCiEN8QoAjfgKEAjglPvx8gH7EkKU+/H0MDIA+AEtACz03ADwTvgA8EH4AAAqKiogYXNzZXJ0aW9uIGZhaWxlZDogAAAsIGZpbGUgACwgbGluZSAAQOoBAxC1mwcP0QQqDdMQyAjJEh+cQvjQILoZuohCAdkBIBC9T/D/MBC9GrHTBwPQUhwH4AAgEL0Q+AE7EfgBSxsbB9EQ+AE7EfgBSxsbAdGSHvHRGEYQvRC1ACAA8B74r/MAgL3oEEABIADwEbgQtQRGAuBkHADwBPggeAAo+dEQvQi1aUaN+AAAAyCrvgi9AUkYIKu+/ucmAAIAELUA8Av4vegQQADwAbhwRwAoAdD/9+6/cEcAABC1ACECoADwE/gBIBC9AABTSUdBQlJUOiBBYm5vcm1hbCB0ZXJtaW5hdGlvbgAAAHC1BUYMRgogAOBtHP/3xf81sSh4ACj40QLgZBz/973/FLEgeAAo+NG96HBACiD/97S/RkxBU0hfQVBJX1RSRUUAaWFwMS9mc2xfaWFwMS5jAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
+  load_address: 0x20000020
+  pc_init: 0x1
+  pc_uninit: 0x5d
+  pc_program_page: 0xb5
+  pc_erase_sector: 0x8d
+  pc_erase_all: 0x61
+  data_section_offset: 0x604
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x9d800
+    page_size: 0x200
+    erased_byte_value: 0xff
+    program_page_timeout: 300
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x200
+      address: 0x0
+- name: lpc55xx_s_640
+  description: LPC55xx S IAP 630kB Flash
+  default: true
+  instructions: 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
+  load_address: 0x20000020
+  pc_init: 0x1
+  pc_uninit: 0x5d
+  pc_program_page: 0xb5
+  pc_erase_sector: 0x8d
+  pc_erase_all: 0x61
+  data_section_offset: 0x604
+  flash_properties:
+    address_range:
+      start: 0x10000000
+      end: 0x1009d800
+    page_size: 0x200
+    erased_byte_value: 0xff
+    program_page_timeout: 300
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x200
+      address: 0x0

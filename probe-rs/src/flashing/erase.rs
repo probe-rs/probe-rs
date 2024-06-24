@@ -11,38 +11,41 @@ use super::FlashProgress;
 ///
 /// The optional progress will only be used to emit RTT messages.
 /// No actual indication for the state of the erase all operation will be given.
-pub fn erase_all(session: &mut Session, progress: Option<FlashProgress>) -> Result<(), FlashError> {
+pub fn erase_all(session: &mut Session, progress: FlashProgress) -> Result<(), FlashError> {
     tracing::debug!("Erasing all...");
 
     let mut algos: HashMap<(String, String), Vec<NvmRegion>> = HashMap::new();
     tracing::debug!("Regions:");
-    for region in &session.target().memory_map {
-        if let MemoryRegion::Nvm(region) = region {
-            if region.is_alias {
-                tracing::debug!("Skipping alias memory region {:#010X?}", region.range);
-                continue;
-            }
-            tracing::debug!(
-                "    region: {:#010X?} ({} bytes)",
-                region.range,
-                region.range.end - region.range.start
-            );
-
-            let algo = FlashLoader::get_flash_algorithm_for_region(region, session.target())?;
-
-            // Get the first core that can access the region
-            let core_name = region
-                .cores
-                .first()
-                .ok_or_else(|| FlashError::NoNvmCoreAccess(region.clone()))?;
-
-            let entry = algos
-                .entry((algo.name.clone(), core_name.clone()))
-                .or_default();
-            entry.push(region.clone());
-
-            tracing::debug!("     -- using algorithm: {}", algo.name);
+    for region in session
+        .target()
+        .memory_map
+        .iter()
+        .filter_map(MemoryRegion::as_nvm_region)
+    {
+        if region.is_alias {
+            tracing::debug!("Skipping alias memory region {:#010x?}", region.range);
+            continue;
         }
+        tracing::debug!(
+            "    region: {:#010x?} ({} bytes)",
+            region.range,
+            region.range.end - region.range.start
+        );
+
+        let algo = FlashLoader::get_flash_algorithm_for_region(region, session.target())?;
+
+        // Get the first core that can access the region
+        let core_name = region
+            .cores
+            .first()
+            .ok_or_else(|| FlashError::NoNvmCoreAccess(region.clone()))?;
+
+        let entry = algos
+            .entry((algo.name.clone(), core_name.clone()))
+            .or_default();
+        entry.push(region.clone());
+
+        tracing::debug!("     -- using algorithm: {}", algo.name);
     }
 
     for ((algo_name, core_name), regions) in algos {
@@ -92,9 +95,10 @@ pub fn erase_all(session: &mut Session, progress: Option<FlashProgress>) -> Resu
 }
 
 /// Erases `sectors` sectors starting from `start_sector` from flash.
+// TODO: currently no progress is reported by anything in this function.
 pub fn erase_sectors(
     session: &mut Session,
-    progress: Option<FlashProgress>,
+    progress: FlashProgress,
     start_sector: usize,
     sectors: usize,
 ) -> Result<(), FlashError> {
@@ -105,33 +109,36 @@ pub fn erase_sectors(
 
     let mut algos: HashMap<(String, String), Vec<NvmRegion>> = HashMap::new();
     tracing::debug!("Regions:");
-    for region in &session.target().memory_map {
-        if let MemoryRegion::Nvm(region) = region {
-            if region.is_alias {
-                tracing::debug!("Skipping alias memory region {:#010X?}", region.range);
-                continue;
-            }
-            tracing::debug!(
-                "    region: {:#010X?} ({} bytes)",
-                region.range,
-                region.range.end - region.range.start
-            );
-
-            let algo = FlashLoader::get_flash_algorithm_for_region(region, session.target())?;
-
-            // Get the first core that can access the region
-            let core_name = region
-                .cores
-                .first()
-                .ok_or_else(|| FlashError::NoNvmCoreAccess(region.clone()))?;
-
-            let entry = algos
-                .entry((algo.name.clone(), core_name.clone()))
-                .or_default();
-            entry.push(region.clone());
-
-            tracing::debug!("     -- using algorithm: {}", algo.name);
+    for region in session
+        .target()
+        .memory_map
+        .iter()
+        .filter_map(MemoryRegion::as_nvm_region)
+    {
+        if region.is_alias {
+            tracing::debug!("Skipping alias memory region {:#010x?}", region.range);
+            continue;
         }
+        tracing::debug!(
+            "    region: {:#010x?} ({} bytes)",
+            region.range,
+            region.range.end - region.range.start
+        );
+
+        let algo = FlashLoader::get_flash_algorithm_for_region(region, session.target())?;
+
+        // Get the first core that can access the region
+        let core_name = region
+            .cores
+            .first()
+            .ok_or_else(|| FlashError::NoNvmCoreAccess(region.clone()))?;
+
+        let entry = algos
+            .entry((algo.name.clone(), core_name.clone()))
+            .or_default();
+        entry.push(region.clone());
+
+        tracing::debug!("     -- using algorithm: {}", algo.name);
     }
 
     for ((algo_name, core_name), regions) in algos {

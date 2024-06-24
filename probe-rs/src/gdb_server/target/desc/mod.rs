@@ -100,26 +100,17 @@ fn gdb_memory_map(session: &mut Session, primary_core_id: usize) -> Result<Strin
         xml_map.push_str(&region_entry);
     } else {
         for region in &session.target().memory_map {
-            let region_entry = match region {
-                MemoryRegion::Ram(ram) => format!(
-                    r#"<memory type="ram" start="{:#x}" length="{:#x}"/>\n"#,
-                    ram.range.start,
-                    ram.range.end - ram.range.start
-                ),
-                MemoryRegion::Generic(region) => format!(
-                    r#"<memory type="rom" start="{:#x}" length="{:#x}"/>\n"#,
-                    region.range.start,
-                    region.range.end - region.range.start
-                ),
-                MemoryRegion::Nvm(region) => {
-                    // TODO: Use flash with block size
-                    format!(
-                        r#"<memory type="rom" start="{:#x}" length="{:#x}"/>\n"#,
-                        region.range.start,
-                        region.range.end - region.range.start
-                    )
-                }
+            let region_kind = match region {
+                MemoryRegion::Ram(_) => "ram",
+                MemoryRegion::Generic(_) => "rom",
+                MemoryRegion::Nvm(_) => "rom",
             };
+            let range = region.address_range();
+            let start = range.start;
+            let length = range.end - range.start;
+            let region_entry = format!(
+                r#"<memory type="{region_kind}" start="{start:#x}" length="{length:#x}"/>\n"#,
+            );
 
             xml_map.push_str(&region_entry);
         }

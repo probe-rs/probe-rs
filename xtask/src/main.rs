@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    fmt::Write as _,
     io::{Cursor, Write},
     path::{Path, PathBuf},
 };
@@ -43,7 +44,15 @@ enum Cli {
         #[arg(long)]
         commit: bool,
     },
-    CheckChangelog,
+    CheckChangelog {
+        /// The number of the PR to check. If set, checks the PR changes, otherwise the local fragments.
+        #[arg(long)]
+        pr: Option<u64>,
+
+        /// Whether to post a comment on the PR if there are issues. Requires `--pr` to be set.
+        #[arg(long, default_value = "false", requires = "pr")]
+        comment_error: bool,
+    },
 }
 
 fn try_main() -> anyhow::Result<()> {
@@ -56,7 +65,7 @@ fn try_main() -> anyhow::Result<()> {
             no_cleanup,
             commit,
         } => assemble_changelog(version, force, no_cleanup, commit)?,
-        Cli::CheckChangelog => check_changelog()?,
+        Cli::CheckChangelog { pr, comment_error } => check_changelog(pr, comment_error)?,
     }
 
     Ok(())
@@ -124,12 +133,78 @@ impl FragmentList {
             invalid_fragments: Vec::new(),
         }
     }
+
+    fn is_ok(&self) -> bool {
+        self.invalid_fragments.is_empty()
+    }
+
+    fn display(&self) -> String {
+        if self.is_ok() {
+            self.ok_message()
+        } else {
+            self.error_message()
+        }
+    }
+
+    fn ok_message(&self) -> String {
+        let mut message = String::new();
+        writeln!(
+            &mut message,
+            "Found {} valid fragments:",
+            self.fragments.len()
+        )
+        .unwrap();
+
+        for (group, fragments) in self.fragments.iter() {
+            if fragments.is_empty() {
+                continue;
+            }
+
+            writeln!(&mut message, " {group}:").unwrap();
+
+            for fragment in fragments {
+                writeln!(
+                    &mut message,
+                    "  - {} (#{}) by @{}",
+                    fragment.path.display(),
+                    fragment.pr_number.as_deref().unwrap_or("<unknown>"),
+                    fragment.author.as_deref().unwrap_or("<unknown>")
+                )
+                .unwrap();
+            }
+        }
+
+        message
+    }
+
+    fn error_message(&self) -> String {
+        let mut message = String::new();
+        message.push_str(
+            "The following changelog fragments \
+            do not match the expected pattern:\n",
+        );
+
+        for invalid_fragment in self.invalid_fragments.iter() {
+            writeln!(&mut message, " - {}", invalid_fragment.display()).unwrap();
+        }
+        message.push('\n');
+
+        message.push_str(
+            "Files should start with one of the categories followed \
+            by a dash, and end with '.md'\n\
+            For example: 'added-foo-bar.md'\n\
+            \n",
+        );
+
+        message.push_str("Valid categories are:\n");
+        for category in CHANGELOG_CATEGORIES {
+            writeln!(&mut message, " - {}", category.to_lowercase()).unwrap();
+        }
+        message
+    }
 }
 
-fn get_changelog_fragments(fragments_dir: &Path) -> Result<FragmentList> {
-    let mut list = FragmentList::new();
-    let github_token = std::env::var("GH_TOKEN").context("GH_TOKEN not set")?;
-
+fn check_local_changelog_fragments(list: &mut FragmentList, fragments_dir: &Path) -> Result<()> {
     let fragment_files = std::fs::read_dir(fragments_dir)
         .with_context(|| format!("Unable to read fragments from {}", fragments_dir.display()))?;
 
@@ -137,51 +212,103 @@ fn get_changelog_fragments(fragments_dir: &Path) -> Result<FragmentList> {
         let file = file?;
         let path = file.path();
 
-        if path.is_file() {
-            let filename = path
-                .file_name()
-                .expect("All files should have a name")
-                .to_str()
-                .with_context(|| format!("Filename {path:?} is not valid UTF-8"))?;
-
-            if filename == (".gitkeep") {
-                continue;
-            }
-
-            let Some((category, _)) = filename.split_once('-') else {
-                // Unable to split filename
-                list.invalid_fragments.push(path);
-                continue;
-            };
-
-            if let Some(fragments) = list.fragments.get_mut(category) {
-                let sh = Shell::new()?;
-                let sha = cmd!(sh, "git blame -l -s {path}").read()?;
-                let sha = sha.split(' ').next().unwrap();
-                println!("fetching PR info for sha: {}", sha);
-
-                let response = cmd!(sh, "curl -L -H 'Accept: application/vnd.github+json' -H 'Authorization: Bearer '{github_token} https://api.github.com/repos/probe-rs/probe-rs/commits/{sha}/pulls").read()?;
-
-                let json = serde_json::from_str::<serde_json::Value>(&response).unwrap();
-
-                fragments.push(Fragment {
-                    pr_number: json[0]["number"].as_i64().map(|n| n.to_string()),
-                    author: json[0]["user"]["login"].as_str().map(|s| s.to_string()),
-                    path: path.clone(),
-                });
-            } else {
-                list.invalid_fragments.push(path);
-            }
+        if !path.is_file() {
+            continue;
         }
+
+        let filename = path
+            .file_name()
+            .expect("All files should have a name")
+            .to_str()
+            .with_context(|| format!("Filename {} is not valid UTF-8", path.display()))?;
+
+        if filename == ".gitkeep" {
+            continue;
+        }
+
+        let Some((category, _)) = filename.split_once('-') else {
+            // Unable to split filename
+            list.invalid_fragments.push(path);
+            continue;
+        };
+
+        let Some(fragments) = list.fragments.get_mut(category) else {
+            // Incorrect caregory
+            list.invalid_fragments.push(path);
+            continue;
+        };
+
+        let sh = Shell::new()?;
+        let sha = cmd!(sh, "git blame -l -s {path}").read()?;
+        let sha = sha.split(' ').next().unwrap();
+        println!("fetching PR info for sha: {sha}");
+
+        let response = cmd!(sh, "gh api -H 'Accept: application/vnd.github+json' -H 'X-GitHub-Api-Version: 2022-11-28' https://api.github.com/repos/probe-rs/probe-rs/commits/{sha}/pulls").read()?;
+
+        let json = serde_json::from_str::<serde_json::Value>(&response).unwrap();
+
+        fragments.push(Fragment {
+            pr_number: json[0]["number"].as_i64().map(|n| n.to_string()),
+            author: json[0]["user"]["login"].as_str().map(|s| s.to_string()),
+            path,
+        });
     }
 
-    Ok(list)
+    println!();
+
+    Ok(())
+}
+
+/// This function is similar to the above, but only checks for new changelog fragments in the PR.
+fn check_new_changelog_fragments(list: &mut FragmentList, info: &PrInfo) -> Result<()> {
+    for file in info
+        .files
+        .iter()
+        .filter(|f| f.path.starts_with(FRAGMENTS_DIR))
+    {
+        let path = file.path.clone();
+
+        let filename = path
+            .file_name()
+            .expect("All files should have a name")
+            .to_str()
+            .with_context(|| format!("Filename {} is not valid UTF-8", path.display()))?;
+
+        let Some((category, _)) = filename.split_once('-') else {
+            // Unable to split filename
+            list.invalid_fragments.push(path);
+            continue;
+        };
+
+        let Some(fragments) = list.fragments.get_mut(category) else {
+            // Incorrect caregory
+            list.invalid_fragments.push(path);
+            continue;
+        };
+
+        fragments.push(Fragment {
+            pr_number: Some(info.number.to_string()),
+            author: Some(info.author.login.clone()),
+            path,
+        });
+    }
+
+    println!();
+
+    Ok(())
 }
 
 #[derive(Debug, serde::Deserialize)]
-struct PrFile {
-    path: PathBuf,
-    additions: usize,
+struct PrInfo {
+    number: u64,
+    author: PrAuthor,
+    labels: Vec<Label>,
+    files: Vec<PrFile>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct PrAuthor {
+    login: String,
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -190,84 +317,103 @@ struct Label {
 }
 
 #[derive(Debug, serde::Deserialize)]
-struct PrInfo {
-    labels: Vec<Label>,
-    files: Vec<PrFile>,
+struct PrFile {
+    path: PathBuf,
+    additions: usize,
 }
 
-fn check_changelog() -> Result<()> {
-    let sh = Shell::new()?;
+impl PrInfo {
+    fn load(pr_number: u64) -> Result<Self> {
+        let sh = Shell::new()?;
 
-    let pr_number = std::env::var("PR").unwrap_or_default();
+        let pr = pr_number.to_string();
+        let info_json = cmd!(sh, "gh pr view {pr} --json labels,files,author,number").read()?;
+        let pr_info = serde_json::from_str::<PrInfo>(&info_json)?;
 
-    if let Ok(info_json) = cmd!(sh, "gh pr view {pr_number} --json labels,files").read() {
-        let info: PrInfo = serde_json::from_str(&info_json)?;
+        Ok(pr_info)
+    }
+}
 
+fn check_changelog(pr_number: Option<u64>, comment_error: bool) -> Result<()> {
+    let mut fragment_list = FragmentList::new();
+
+    if let Some(pr_number) = pr_number {
+        println!("Checking changelog fragments of PR {pr_number}");
+
+        let info = PrInfo::load(pr_number)?;
         if info.labels.iter().any(|l| l.name == "skip-changelog") {
             println!("Skipping changelog check because of 'skip-changelog' label");
             return Ok(());
         }
 
-        if !info
-            .files
-            .iter()
-            .any(|f| f.path.starts_with(FRAGMENTS_DIR) && f.additions > 0)
-        {
-            anyhow::bail!(
-                "No new changelog fragments detected, and 'skip-changelog' label not applied."
-            );
-        }
+        disallow_editing_main_changelog(&info)?;
+        check_new_changelog_fragments(&mut fragment_list, &info)?;
+
+        require_changelog_fragment(&info)?;
     } else {
-        println!("Unable to fetch PR info, just checking fragments.");
+        println!("No PR number, checking local fragments.");
+        check_local_changelog_fragments(&mut fragment_list, Path::new(FRAGMENTS_DIR))?;
     }
 
-    check_fragments()?;
+    print_fragment_list(fragment_list, if comment_error { pr_number } else { None })?;
 
     println!("Everything looks good 👍");
 
     Ok(())
 }
 
-fn check_fragments() -> Result<(), anyhow::Error> {
-    let fragment_list = get_changelog_fragments(Path::new(FRAGMENTS_DIR))?;
-    if !fragment_list.invalid_fragments.is_empty() {
-        println!("The following changelog fragments do not match the expected pattern:");
-        println!();
+fn disallow_editing_main_changelog(info: &PrInfo) -> Result<()> {
+    if info.labels.iter().any(|l| l.name == "release") {
+        // The release PR is allowed to edit the main changelog.
+        return Ok(());
+    }
 
-        for invalid_fragment in fragment_list.invalid_fragments {
-            println!(" - {}", invalid_fragment.display());
-        }
+    if info
+        .files
+        .iter()
+        .any(|f| f.path == Path::new(CHANGELOG_FILE))
+    {
+        let message = format!("Please do not edit {CHANGELOG_FILE} directly. Take a look at [CONTRIBUTING.md](https://github.com/probe-rs/probe-rs/blob/master/CONTRIBUTING.md) for information on changelog fragments instead.");
 
-        println!();
-        println!(
-            "Files should start with one of the categories followed by a dash, and end with '.md'"
+        write_comment(info.number, &message)?;
+        anyhow::bail!("Please do not edit {CHANGELOG_FILE} directly");
+    }
+
+    Ok(())
+}
+
+fn write_comment(pr: u64, message: &str) -> Result<()> {
+    let sh = Shell::new()?;
+    let pr = pr.to_string();
+    cmd!(sh, "gh pr comment {pr} -b {message}")
+        .run()
+        .context("Failed to comment on PR")?;
+
+    Ok(())
+}
+
+fn require_changelog_fragment(info: &PrInfo) -> Result<()> {
+    if !info
+        .files
+        .iter()
+        .any(|f| f.path.starts_with(FRAGMENTS_DIR) && f.additions > 0)
+    {
+        anyhow::bail!(
+            "No new changelog fragments detected, and 'skip-changelog' label not applied."
         );
-        println!("For example: 'added-foo-bar.md'");
-        println!();
-        println!("Valid categories are:");
-        for category in CHANGELOG_CATEGORIES {
-            println!(" - {}", category.to_lowercase());
-        }
-        println!();
+    }
 
-        anyhow::bail!("Invalid changelog fragments found");
-    } else {
-        println!("Found {} valid fragments:", fragment_list.fragments.len());
-        for (group, fragments) in fragment_list.fragments.iter() {
-            if fragments.is_empty() {
-                continue;
-            }
+    Ok(())
+}
 
-            println!(" {group}:");
+/// `pr`: The PR number, if any, to comment on.
+fn print_fragment_list(fragment_list: FragmentList, pr: Option<u64>) -> Result<()> {
+    let message = fragment_list.display();
+    println!("{message}");
 
-            for fragment in fragments {
-                println!(
-                    "  - {} (#{}) by @{}",
-                    fragment.path.display(),
-                    fragment.pr_number.as_deref().unwrap_or("<unknown>"),
-                    fragment.author.as_deref().unwrap_or("<unknown>")
-                );
-            }
+    if !fragment_list.is_ok() {
+        if let Some(pr) = pr {
+            write_comment(pr, &message)?;
         }
     }
 
@@ -291,7 +437,8 @@ fn assemble_changelog(
         anyhow::bail!("Changelog has local changes, aborting.\nUse --force to override.");
     }
 
-    let fragment_list = get_changelog_fragments(Path::new(FRAGMENTS_DIR))?;
+    let mut fragment_list = FragmentList::new();
+    check_local_changelog_fragments(&mut fragment_list, Path::new(FRAGMENTS_DIR))?;
 
     ensure!(
         fragment_list.invalid_fragments.is_empty(),

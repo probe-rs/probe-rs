@@ -1,77 +1,72 @@
----
 name: HC32F005-Series
 variants:
-  - name: HC32F005C6PA
+- name: HC32F005C6PA
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20001000
     cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 536870912
-            end: 536875008
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0
-            end: 32768
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - hc32f005
-  - name: HC32F005C6UA
+    - main
+  - !Nvm
+    range:
+      start: 0x0
+      end: 0x8000
+    is_boot_memory: true
     cores:
-      - name: main
-        type: armv6m
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
-    memory_map:
-      - !Ram
-          range:
-            start: 536870912
-            end: 536875008
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0
-            end: 32768
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - hc32f005
+    - main
+  flash_algorithms:
+  - hc32f005
+- name: HC32F005C6UA
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x0
+      end: 0x8000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - hc32f005
 flash_algorithms:
-  - name: hc32f005
-    description: HC32F005 Flash
-    default: true
-    instructions: QLpwR8C6cEdwtV9MIGiABoUPIdAA8LL4IGgBIQhDIGDgaAAF/NUA8Kn4IGgwIYhDIGAA8KP4AS0E0AItBdADLQrRBeAgaAIhBOAgaAQhAeAgaAghiEMgYADwkPggaP8hwTGIQyBgAPCJ+CBoAyVtAqhDIGAA8IL44GioQ+BgAPB3+EJMICAgYADwcvgXIGBgAPBu+BsgoGAA8Gr4PEjgYADwZvg7SCBhAPBi+BggYGEA8F748CCgYQDwWvh9IMAA4GEAIHC9ACBwR3C1L0wgasAG/NQA8Ez4L0ggYwDwSPggagMhCEMgYgAlLWAgasAG/NQA8D34JWMAIHC9cLUjTAVGIWrIBvzUAPAy+CJIIGMA8C74IGqACIAAgBwgYgAmLmAgasAG/NQA8CL4JmMAIHC997UWRg9GACQA8Bn4E00VSChjAPAU+ChqgAiAAEAcKGIG4ACYMV0BVShqwAb81GQcvEL20wDwA/gAIChj/r0GSApJwWIKScFicEcCSAdJgWAHSYFgcEcAIABAAAACQFBGAADgIgIA//8AAFpaAAClpQAAAAAAAA==
-    pc_init: 9
-    pc_uninit: 199
-    pc_program_page: 307
-    pc_erase_sector: 253
-    pc_erase_all: 203
-    data_section_offset: 420
-    flash_properties:
-      address_range:
-        start: 0
-        end: 32768
-      page_size: 512
-      erased_byte_value: 255
-      program_page_timeout: 100
-      erase_sector_timeout: 3000
-      sectors:
-        - size: 512
-          address: 0
-    cores:
-      - main
+- name: hc32f005
+  description: HC32F005 Flash
+  default: true
+  instructions: QLpwR8C6cEdwtV9MIGiABoUPIdAA8LL4IGgBIQhDIGDgaAAF/NUA8Kn4IGgwIYhDIGAA8KP4AS0E0AItBdADLQrRBeAgaAIhBOAgaAQhAeAgaAghiEMgYADwkPggaP8hwTGIQyBgAPCJ+CBoAyVtAqhDIGAA8IL44GioQ+BgAPB3+EJMICAgYADwcvgXIGBgAPBu+BsgoGAA8Gr4PEjgYADwZvg7SCBhAPBi+BggYGEA8F748CCgYQDwWvh9IMAA4GEAIHC9ACBwR3C1L0wgasAG/NQA8Ez4L0ggYwDwSPggagMhCEMgYgAlLWAgasAG/NQA8D34JWMAIHC9cLUjTAVGIWrIBvzUAPAy+CJIIGMA8C74IGqACIAAgBwgYgAmLmAgasAG/NQA8CL4JmMAIHC997UWRg9GACQA8Bn4E00VSChjAPAU+ChqgAiAAEAcKGIG4ACYMV0BVShqwAb81GQcvEL20wDwA/gAIChj/r0GSApJwWIKScFicEcCSAdJgWAHSYFgcEcAIABAAAACQFBGAADgIgIA//8AAFpaAAClpQAAAAAAAA==
+  pc_init: 0x9
+  pc_uninit: 0xc7
+  pc_program_page: 0x133
+  pc_erase_sector: 0xfd
+  pc_erase_all: 0xcb
+  data_section_offset: 0x1a4
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x8000
+    page_size: 0x200
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x200
+      address: 0x0
+  cores:
+  - main

@@ -21,7 +21,6 @@ use probe_rs::{
             XtensaCommunicationInterface, XtensaDebugInterfaceState,
         },
     },
-    config::sequences::atsam,
     probe::{list::Lister, Probe, WireProtocol},
     MemoryMappedRegister,
 };
@@ -467,7 +466,7 @@ fn process_vendor_rom_tables(
     };
 
     if part_info.peripheral_type() == PeripheralType::Custom && part_info.name() == "Atmel DSU" {
-        use atsam::DsuDid;
+        use probe_rs::vendor::microchip::sequences::atsam::DsuDid;
 
         // Read and parse the DID register
         let did = DsuDid(
