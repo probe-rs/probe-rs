@@ -32,7 +32,7 @@ use probe_rs::{
     },
 };
 use probe_rs_debug::{
-    ColumnType, ObjectRef, Stepping, VariableName, VerifiedBreakpoint,
+    ColumnType, ObjectRef, SourceLocation, Stepping, VariableName,
     stack_frame::StackFrameInfo,
 };
 use serde::{Serialize, de::DeserializeOwned};
@@ -826,23 +826,20 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 requested_breakpoint_column,
                 &args.source,
             ) {
-                Ok(VerifiedBreakpoint {
-                    address,
-                    source_location,
-                }) => Breakpoint {
+                Ok(source_location) => Breakpoint {
                     column: source_location.column.map(|col| match col {
                         ColumnType::LeftEdge => 0_i64,
                         ColumnType::Column(c) => c as i64,
                     }),
                     end_column: None,
                     end_line: None,
-                    id: Some(address as i64),
+                    id: source_location.address.map(|a| a as i64),
                     line: source_location.line.map(|line| line as i64),
-                    message: Some(format!(
-                        "Source breakpoint at memory address: {address:#010X}"
+                    message: source_location.address.map(|a| format!(
+                        "Source breakpoint at memory address: {a:#010X}"
                     )),
                     source: Some(args.source.clone()),
-                    instruction_reference: Some(format!("{address:#010X}")),
+                    instruction_reference: source_location.address.map(|a| format!("{a:#010X}")),
                     offset: None,
                     verified: true,
                     reason: None,

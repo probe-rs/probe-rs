@@ -26,7 +26,7 @@ pub(crate) mod exception_handling;
 
 pub use self::{
     debug_info::*, exception_handling::exception_handler_for_core,
-    halting::{SourceLocation, Stepping, VerifiedBreakpoint}, registers::*,
+    halting::{SourceLocation, Stepping}, registers::*,
     stack_frame::StackFrame, variable::*, variable_cache::VariableCache,
 };
 

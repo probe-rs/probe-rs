@@ -6,7 +6,7 @@ use super::{
     unit_info::UnitInfo,
     variable::*,
 };
-use crate::{SourceLocation, VerifiedBreakpoint, stack_frame::StackFrameInfo, unit_info::RangeExt};
+use crate::{SourceLocation, stack_frame::StackFrameInfo, unit_info::RangeExt};
 use gimli::{
     BaseAddresses, DebugFrame, RunTimeEndian, UnwindContext, UnwindSection, UnwindTableRow,
     read::RegisterRule,
@@ -16,9 +16,7 @@ use probe_rs::{
     CoreRegister, Error, InstructionSet, MemoryInterface, RegisterDataType, RegisterRole,
     RegisterValue, UnwindRule,
 };
-use std::{
-    borrow, cmp::Ordering, num::NonZeroU64, ops::ControlFlow, path::Path, rc::Rc, str::from_utf8,
-};
+use std::{borrow, ops::ControlFlow, path::Path, rc::Rc, str::from_utf8};
 
 pub(crate) type GimliReader = gimli::EndianReader<RunTimeEndian, std::rc::Rc<[u8]>>;
 pub(crate) type GimliReaderOffset =
@@ -118,98 +116,7 @@ impl DebugInfo {
 
     /// Try get the [`SourceLocation`] for a given address.
     pub fn get_source_location(&self, address: u64) -> Option<SourceLocation> {
-        for unit_info in &self.unit_infos {
-            let unit = &unit_info.unit;
-
-            let mut ranges = match self.dwarf.unit_ranges(unit) {
-                Ok(ranges) => ranges,
-                Err(error) => {
-                    tracing::warn!(
-                        "No valid source code ranges found for unit {:?}: {:?}",
-                        unit.dwo_name(),
-                        error
-                    );
-                    continue;
-                }
-            };
-
-            while let Ok(Some(range)) = ranges.next() {
-                if !(range.begin <= address && address < range.end) {
-                    continue;
-                }
-                // Get the DWARF LineProgram.
-                let ilnp = unit.line_program.as_ref()?.clone();
-
-                let (program, sequences) = match ilnp.sequences() {
-                    Ok(value) => value,
-                    Err(error) => {
-                        tracing::warn!(
-                            "No valid source code ranges found for address {}: {:?}",
-                            address,
-                            error
-                        );
-                        continue;
-                    }
-                };
-
-                // Normalize the address.
-                let mut target_seq = None;
-
-                for seq in sequences {
-                    if seq.start <= address && address < seq.end {
-                        target_seq = Some(seq);
-                        break;
-                    }
-                }
-
-                let Some(target_seq) = target_seq.as_ref() else {
-                    continue;
-                };
-
-                let mut previous_row: Option<gimli::LineRow> = None;
-
-                let mut rows = program.resume_from(target_seq);
-
-                while let Ok(Some((_, row))) = rows.next_row() {
-                    match row.address().cmp(&address) {
-                        Ordering::Greater => {
-                            // The address is after the current row, so we use the previous row data.
-                            //
-                            // (If we don't do this, you get the artificial effect where the debugger
-                            // steps to the top of the file when it is stepping out of a function.)
-                            if let Some(previous_row) = previous_row
-                                && let Some(path) =
-                                    self.find_file_and_directory(unit, previous_row.file_index())
-                            {
-                                tracing::debug!("{:#010x} - {:?}", address, previous_row.isa());
-                                return Some(SourceLocation {
-                                    line: previous_row.line().map(NonZeroU64::get),
-                                    column: Some(previous_row.column().into()),
-                                    path,
-                                    address: Some(previous_row.address()),
-                                });
-                            }
-                        }
-                        Ordering::Less => {}
-                        Ordering::Equal => {
-                            if let Some(path) = self.find_file_and_directory(unit, row.file_index())
-                            {
-                                tracing::debug!("{:#010x} - {:?}", address, row.isa());
-
-                                return Some(SourceLocation {
-                                    line: row.line().map(NonZeroU64::get),
-                                    column: Some(row.column().into()),
-                                    path,
-                                    address: Some(row.address()),
-                                });
-                            }
-                        }
-                    }
-                    previous_row = Some(*row);
-                }
-            }
-        }
-        None
+        SourceLocation::breakpoint_at_address(self, address).ok()
     }
 
     /// We do not actually resolve the children of `[VariableName::StaticScope]` automatically,
@@ -838,7 +745,7 @@ impl DebugInfo {
         path: TypedPath,
         line: u64,
         column: Option<u64>,
-    ) -> Result<VerifiedBreakpoint, DebugError> {
+    ) -> Result<SourceLocation, DebugError> {
         tracing::debug!(
             "Looking for breakpoint location for {}:{}:{}",
             path.display(),
@@ -847,7 +754,7 @@ impl DebugInfo {
                 .map(|c| c.to_string())
                 .unwrap_or_else(|| "-".to_owned())
         );
-        VerifiedBreakpoint::breakpoint_at_source(self, path, line, column)
+        SourceLocation::breakpoint_at_source(self, path, line, column)
     }
 
     /// Get the path for an entry in a line program header, using the compilation unit's directory and file entries.
