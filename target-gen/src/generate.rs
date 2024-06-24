@@ -5,7 +5,7 @@ use futures::StreamExt;
 use probe_rs::flashing::FlashAlgorithm;
 use probe_rs_target::{
     Architecture, ArmCoreAccessOptions, Chip, ChipFamily, Core as ProbeCore, CoreAccessOptions,
-    CoreType, GenericRegion, MemoryRegion, NvmRegion, RamRegion, RawFlashAlgorithm,
+    CoreType, GenericRegion, MemoryAccess, MemoryRegion, NvmRegion, RamRegion, RawFlashAlgorithm,
     RiscvCoreAccessOptions, TargetDescriptionSource, XtensaCoreAccessOptions,
 };
 use std::collections::HashMap;
@@ -444,7 +444,7 @@ where
 }
 
 /// A flag to indicate what type of memory this is.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum MemoryType {
     /// A RAM memory.
     Ram,
@@ -457,14 +457,28 @@ enum MemoryType {
 /// A struct to combine essential information from [`cmsis_pack::pdsc::Device::memories`].
 /// This is used to apply the necessary sorting and filtering in creating [`MemoryRegion`]s.
 // The sequence of the fields is important for the sorting by derived natural order.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct DeviceMemory {
     memory_type: MemoryType,
     p_name: Option<String>,
-    is_boot_memory: bool,
     memory_start: u64,
     memory_end: u64,
     name: String,
+    access: MemoryAccess,
+}
+
+impl DeviceMemory {
+    fn access(&self) -> Option<MemoryAccess> {
+        fn is_default(access: &MemoryAccess) -> bool {
+            access == &MemoryAccess::default()
+        }
+
+        if is_default(&self.access) {
+            None
+        } else {
+            Some(self.access)
+        }
+    }
 }
 
 /// Extracts the memory regions in the package.
@@ -491,12 +505,24 @@ pub(crate) fn get_mem_map(device: &Device, cores: &[probe_rs_target::Core]) -> V
             },
             memory_start: memory.start,
             memory_end: memory.start + memory.size,
-            is_boot_memory: memory.startup,
+            access: MemoryAccess {
+                read: memory.access.read,
+                write: memory.access.write,
+                execute: memory.access.execute,
+                boot: memory.startup,
+            },
         })
         .collect();
 
     // Sort by memory type, then by processor name, then by boot memory, then by start address.
-    device_memories.sort();
+    device_memories.sort_by_key(|memory| {
+        (
+            memory.memory_type,
+            memory.p_name.clone(),
+            memory.access.boot,
+            memory.memory_start,
+        )
+    });
 
     let all_cores: Vec<_> = cores.iter().map(|core| core.name.clone()).collect();
 
@@ -518,30 +544,30 @@ pub(crate) fn get_mem_map(device: &Device, cores: &[probe_rs_target::Core]) -> V
         match region.memory_type {
             MemoryType::Ram => {
                 if let Some(MemoryRegion::Ram(existing_region)) = mem_map.iter_mut().find(|existing_region| {
-                        matches!(existing_region, MemoryRegion::Ram(ram_region) if ram_region.name.as_deref() == Some(&region.name))
+                        matches!(existing_region, MemoryRegion::Ram(ram_region) if ram_region.name.as_deref() == Some(&region.name) && ram_region.access == region.access())
                     })
                 {
                     existing_region.cores.extend_from_slice(&cores);
                 } else {
                     mem_map.push(MemoryRegion::Ram(RamRegion {
+                        access: region.access(),
                         name: Some(region.name),
                         range: region.memory_start..region.memory_end,
-                        is_boot_memory: region.is_boot_memory,
                         cores,
                     }));
                 }
             },
             MemoryType::Nvm => {
                 if let Some(MemoryRegion::Nvm(existing_region)) = mem_map.iter_mut().find(|existing_region| {
-                        matches!(existing_region, MemoryRegion::Nvm(nvm_region) if nvm_region.name.as_deref() == Some(&region.name))
+                        matches!(existing_region, MemoryRegion::Nvm(nvm_region) if nvm_region.name.as_deref() == Some(&region.name) && nvm_region.access == region.access())
                     })
                 {
                     existing_region.cores.extend_from_slice(&cores);
                 } else {
                     mem_map.push(MemoryRegion::Nvm(NvmRegion {
+                        access: region.access(),
                         name: Some(region.name),
                         range: region.memory_start..region.memory_end,
-                        is_boot_memory: region.is_boot_memory,
                         cores,
                         is_alias: false,
                     }));
@@ -549,12 +575,13 @@ pub(crate) fn get_mem_map(device: &Device, cores: &[probe_rs_target::Core]) -> V
             },
             MemoryType::Generic => {
                 if let Some(MemoryRegion::Generic(existing_region)) = mem_map.iter_mut().find(|existing_region| {
-                        matches!(existing_region, MemoryRegion::Generic(generic_region) if generic_region.name.as_deref() == Some(&region.name))
+                        matches!(existing_region, MemoryRegion::Generic(generic_region) if generic_region.name.as_deref() == Some(&region.name) && generic_region.access == region.access())
                     })
                 {
                     existing_region.cores.extend_from_slice(&cores);
                 } else {
                     mem_map.push(MemoryRegion::Generic(GenericRegion {
+                        access: region.access(),
                         name: Some(region.name),
                         range: region.memory_start..region.memory_end,
                         cores,

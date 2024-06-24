@@ -371,7 +371,7 @@ impl FlashBuilder {
 
 #[cfg(test)]
 mod tests {
-    use probe_rs_target::{FlashProperties, SectorDescription};
+    use probe_rs_target::{FlashProperties, MemoryAccess, SectorDescription};
 
     use super::*;
 
@@ -395,7 +395,10 @@ mod tests {
 
         let region = NvmRegion {
             name: Some("FLASH".into()),
-            is_boot_memory: true,
+            access: Some(MemoryAccess {
+                boot: true,
+                ..Default::default()
+            }),
             range: 0..1 << 16,
             cores: vec!["main".into()],
             is_alias: false,
@@ -424,7 +427,10 @@ mod tests {
 
         let region = NvmRegion {
             name: Some("FLASH".into()),
-            is_boot_memory: true,
+            access: Some(MemoryAccess {
+                boot: true,
+                ..Default::default()
+            }),
             range: 0..1 << 16,
             cores: vec!["main".into()],
             is_alias: false,
