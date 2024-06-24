@@ -1,1 +1,1 @@
-Add jtag support for daplink, then you can debug riscv mcu with it.
+Add JTAG support for CMSIS-DAP probes.
