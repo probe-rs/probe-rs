@@ -100,8 +100,11 @@ impl Sequence {
             data,
         })
     }
-    /// Append one bit sequence a JTAG sequence.
-    /// It will return ok only if tms and capture are the same and current tck_cycles less than 64.
+    /// Appends one bit to a JTAG sequence.
+    ///
+    /// This function returns an error if the sequence can't be extended with the given parameters. These cases are:
+    /// - A sequence already contains 64 bits and is considered "full".
+    /// - The sequence was created with a different `tms` or `capture` value. Changing these requires creating a new sequence.
     pub(crate) fn append(&mut self, tms: bool, tdi: bool, capture: bool) -> Result<(), ()> {
         if self.tck_cycles < 64 && self.tms == tms && self.tdo_capture == capture {
             self.data[((self.tck_cycles) / 8) as usize] |= u8::from(tdi) << ((self.tck_cycles) % 8);
