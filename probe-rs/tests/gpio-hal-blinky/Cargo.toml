@@ -13,4 +13,4 @@ cortex-m = { version = "0.7", features = [
     "inline-asm",
 ] }
 panic-halt = "0.2.0"
-microbit = "0.14.0"
+microbit = "0.15.0"
