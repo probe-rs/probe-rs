@@ -7,10 +7,7 @@ use super::{
 };
 use crate::{
     core::{ExceptionInterface, RegisterRole, RegisterValue, UnwindRule},
-    debug::{
-        registers, stack_frame::StackFrameInfo, unit_info::RangeExt, SourceLocation,
-        VerifiedBreakpoint,
-    },
+    debug::{registers, stack_frame::StackFrameInfo, unit_info::RangeExt, SourceLocation},
     MemoryInterface,
 };
 use anyhow::anyhow;
@@ -107,9 +104,7 @@ impl DebugInfo {
 
     /// Try get the [`SourceLocation`] for a given address.
     pub fn get_source_location(&self, address: u64) -> Option<SourceLocation> {
-        VerifiedBreakpoint::breakpoint_at_address(self, address)
-            .map(|breakpoint| breakpoint.source_location)
-            .ok()
+        SourceLocation::breakpoint_at_address(self, address).ok()
     }
 
     /// We do not actually resolve the children of `[VariableName::StaticScope]` automatically, and only create the necessary header in the `VariableCache`.
@@ -811,7 +806,7 @@ impl DebugInfo {
         path: &TypedPathBuf,
         line: u64,
         column: Option<u64>,
-    ) -> Result<VerifiedBreakpoint, DebugError> {
+    ) -> Result<SourceLocation, DebugError> {
         tracing::debug!(
             "Looking for breakpoint location for {}:{}:{}",
             path.to_path().display(),
@@ -820,7 +815,7 @@ impl DebugInfo {
                 .map(|c| c.to_string())
                 .unwrap_or_else(|| "-".to_owned())
         );
-        VerifiedBreakpoint::breakpoint_at_source(self, path, line, column)
+        SourceLocation::breakpoint_at_source(self, path, line, column)
     }
 
     /// Get the path for an entry in a line program header, using the compilation unit's directory and file entries.

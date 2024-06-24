@@ -2,7 +2,6 @@ use super::{
     super::{unit_info::UnitInfo, DebugError, DebugInfo},
     block::Block,
     instruction::Instruction,
-    VerifiedBreakpoint,
 };
 use crate::debug::{halting::instruction::InstructionRole, ColumnType, SourceLocation};
 use gimli::LineSequence;
@@ -265,7 +264,7 @@ impl<'debug_info> Sequence<'debug_info> {
         self.blocks.len()
     }
 
-    /// See [`VerifiedBreakpoint::for_address()`].
+    /// See [`SourceLocation::breakpoint_at_address()`].
     /// Note: The sequence was created for the same address, so we know the address lives
     /// in this range.
     /// - When we have an exact match on a known instruction, we will return it.
@@ -277,7 +276,7 @@ impl<'debug_info> Sequence<'debug_info> {
     ///     are known to be part of the same sequence, and which will not be bypassed because
     ///     of branching inside the sequence.
     ///   - If this is not possible, we will return `None`, rather than mislead the calling code.
-    pub(crate) fn haltpoint_for_address(&self, address: u64) -> Option<VerifiedBreakpoint> {
+    pub(crate) fn haltpoint_for_address(&self, address: u64) -> Option<SourceLocation> {
         tracing::trace!("Looking for halt instruction at address={address:#010x}");
 
         let mut halt_instruction = None;
@@ -377,12 +376,7 @@ impl<'debug_info> Sequence<'debug_info> {
         }
 
         if let Some(breakpoint) = halt_instruction.and_then(|instruction| {
-            SourceLocation::from_instruction(self.debug_info, self.program_unit, instruction).map(
-                |source_location| VerifiedBreakpoint {
-                    address: instruction.address,
-                    source_location,
-                },
-            )
+            SourceLocation::from_instruction(self.debug_info, self.program_unit, instruction)
         }) {
             tracing::trace!("Found a matching breakpoint: {breakpoint:?}");
             Some(breakpoint)
@@ -397,7 +391,7 @@ impl<'debug_info> Sequence<'debug_info> {
     // TODO: We need tests for the various scenarios below.
     /// If the current instruction is in a ['Block'], find the next valid halt location in the
     /// next linked block in the sequence.
-    pub(crate) fn haltpoint_for_next_block(&self, address: u64) -> Option<VerifiedBreakpoint> {
+    pub(crate) fn haltpoint_for_next_block(&self, address: u64) -> Option<SourceLocation> {
         tracing::trace!("Looking for next block halt instruction at address={address:#010x}");
 
         let Some(block) = self
@@ -430,12 +424,7 @@ impl<'debug_info> Sequence<'debug_info> {
         }
 
         if let Some(breakpoint) = halt_instruction.and_then(|instruction| {
-            SourceLocation::from_instruction(self.debug_info, self.program_unit, instruction).map(
-                |source_location| VerifiedBreakpoint {
-                    address: instruction.address,
-                    source_location,
-                },
-            )
+            SourceLocation::from_instruction(self.debug_info, self.program_unit, instruction)
         }) {
             tracing::debug!("Found a matching breakpoint: {breakpoint:?}");
             Some(breakpoint)
@@ -447,14 +436,14 @@ impl<'debug_info> Sequence<'debug_info> {
 
     /// Find a valid haltpoint based on either the file plus line plus column, or failing that,
     /// the first available haltpoint that matches the file plus line (any colunn).
-    /// See [`VerifiedBreakpoint::for_source_location()`].
+    /// See [`SourceLocation::for_source_location()`].
     // TODO: We need tests for the various scenarios below.
     pub(crate) fn haltpoint_for_source_location(
         &self,
         matching_file_index: Option<u64>,
         line: u64,
         column: Option<u64>,
-    ) -> Option<VerifiedBreakpoint> {
+    ) -> Option<SourceLocation> {
         tracing::debug!(
             "Looking for a breakpoint for line={line}, column={} in file: {}",
             column.unwrap(),

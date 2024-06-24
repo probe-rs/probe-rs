@@ -28,7 +28,6 @@ use probe_rs::{
     },
     debug::{
         stack_frame::StackFrameInfo, ColumnType, ObjectRef, SourceLocation, Stepping, VariableName,
-        VerifiedBreakpoint,
     },
     Architecture::Riscv,
     CoreStatus, Error, HaltReason, MemoryInterface, RegisterValue,
@@ -881,10 +880,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         requested_breakpoint_column,
                         &args.source,
                     ) {
-                        Ok(VerifiedBreakpoint {
-                            address,
-                            source_location,
-                        }) => created_breakpoints.push(Breakpoint {
+                        Ok(source_location) => created_breakpoints.push(Breakpoint {
                             column: source_location.column.map(|col| match col {
                                 ColumnType::LeftEdge => 0_i64,
                                 ColumnType::Column(c) => c as i64,
@@ -894,10 +890,14 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             id: None,
                             line: source_location.line.map(|line| line as i64),
                             message: Some(format!(
-                                "Source breakpoint at memory address: {address:#010X}"
+                                "Source breakpoint at memory address: {:#010X}",
+                                source_location.address
                             )),
                             source: Some(args.source.clone()),
-                            instruction_reference: Some(format!("{address:#010X}")),
+                            instruction_reference: Some(format!(
+                                "{:#010X}",
+                                source_location.address
+                            )),
                             offset: None,
                             verified: true,
                         }),

@@ -3,7 +3,7 @@ use super::{
     instruction::Instruction,
     line_sequence_for_address,
     sequence::Sequence,
-    VerifiedBreakpoint,
+    SourceLocation,
 };
 use crate::{
     architecture::{
@@ -42,7 +42,7 @@ impl Stepping {
     /// Determine the program counter location where the SteppingMode is aimed, and step to it.
     /// Return the new CoreStatus and program_counter value.
     /// ### Implementation Notes for stepping multiple instructions at a time:
-    /// - This implementation builds on the [VerifiedBreakpoint] implementation, with additional heurstics
+    /// - This implementation builds on the [SourceLocation] implementation, with additional heurstics
     ///   available based on the halted target's stackframe information, to determine suitable target locations
     ///   for stepping.
     /// - If a hardware breakpoint is available, we will set it at the desired location, run to it, and release it.
@@ -86,13 +86,12 @@ impl Stepping {
             step_error
         })?;
         tracing::debug!(
-            "Step ({:20?}):\n\tFrom: {:?}\n\t  To: {:?}\n\t@ {:#010X}",
+            "Step ({:20?}):\n\tFrom: {:?}\n\t  To: {:?}",
             self,
             debug_info
                 .get_source_location(origin_program_counter)
                 .unwrap_or_default(),
-            target_breakpoint.source_location,
-            target_breakpoint.address
+            target_breakpoint
         );
 
         run_to_address(target_breakpoint.address, core, debug_info)
@@ -111,17 +110,14 @@ impl Stepping {
 fn get_step_into_location(
     debug_info: &DebugInfo,
     core: &mut impl CoreInterface,
-) -> Result<VerifiedBreakpoint, DebugError> {
+) -> Result<SourceLocation, DebugError> {
     while let Ok(core_information) = &core.step() {
         let new_sequence = Sequence::from_address(debug_info, core_information.pc)?;
 
         // Once we have reached a new valid haltpoint, we are either at the start of a non-inlined function,
         // or on a new line in the same sequence (stepped over, because there was nothing to step into).
         if let Some(new_halt_location) = new_sequence.haltpoint_for_address(core_information.pc) {
-            return VerifiedBreakpoint::breakpoint_at_address(
-                debug_info,
-                new_halt_location.address,
-            );
+            return SourceLocation::breakpoint_at_address(debug_info, new_halt_location.address);
         }
 
         if let ControlFlow::Break(debug_error) = validate_core_status_after_step(core, debug_info) {
@@ -139,7 +135,7 @@ fn get_step_out_location(
     debug_info: &DebugInfo,
     core: &mut impl CoreInterface,
     program_counter: u64,
-) -> Result<VerifiedBreakpoint, DebugError> {
+) -> Result<SourceLocation, DebugError> {
     // Get the function DIE for the current program counter, and there are inlined functions,
     // use the innermost of those.
     let program_unit = debug_info.compile_unit_info(program_counter)?;
@@ -182,7 +178,7 @@ fn get_step_out_location(
                     "Step Out target: inline function, stepping over call-site: {call_site:?}"
                 );
                 call_site.combined_typed_path().as_ref().map(|path| {
-                    VerifiedBreakpoint::breakpoint_at_source(
+                    SourceLocation::breakpoint_at_source(
                         debug_info,
                         path,
                         call_site.line.unwrap_or(0),
@@ -209,7 +205,7 @@ fn get_step_out_location(
         );
         // Step-out address for non-inlined functions is the first available breakpoint address after the return address.
         if let Ok(target_location_at_return) =
-            VerifiedBreakpoint::breakpoint_at_address(debug_info, return_address)
+            SourceLocation::breakpoint_at_address(debug_info, return_address)
         {
             Ok(target_location_at_return)
         } else {
@@ -241,7 +237,7 @@ fn get_step_out_location(
                 }
 
                 if let Ok(target_location) =
-                    VerifiedBreakpoint::breakpoint_at_address(debug_info, step_result.pc)
+                    SourceLocation::breakpoint_at_address(debug_info, step_result.pc)
                 {
                     return Ok(target_location);
                 }
@@ -266,9 +262,8 @@ fn get_step_over_location(
     debug_info: &DebugInfo,
     core: &mut impl CoreInterface,
     program_counter: u64,
-) -> Result<VerifiedBreakpoint, DebugError> {
-    let current_halt_location =
-        VerifiedBreakpoint::breakpoint_at_address(debug_info, program_counter)?;
+) -> Result<SourceLocation, DebugError> {
+    let current_halt_location = SourceLocation::breakpoint_at_address(debug_info, program_counter)?;
 
     let mut candidate_haltpoints: Vec<Instruction> = Vec::new();
     let Some(sequence) =
@@ -299,7 +294,7 @@ fn get_step_over_location(
     if candidate_haltpoints.is_empty() {
         // We've run out of valid lines in the current sequence, so can just step to the last statement in the sequence.
         let candidate_haltpoint =
-            VerifiedBreakpoint::breakpoint_at_address(debug_info, terminating_address)?;
+            SourceLocation::breakpoint_at_address(debug_info, terminating_address)?;
         if program_counter == candidate_haltpoint.address {
             // We are already at the last statement in the sequence, so we have to attempt a step to the next sequence.
             sequence
@@ -314,7 +309,7 @@ fn get_step_over_location(
         // Now step the target until we hit one of the candidate haltpoints, or some eror occurs.
         let (_, next_line_address) =
             step_to_next_line(&candidate_haltpoints, core, debug_info, terminating_address)?;
-        VerifiedBreakpoint::breakpoint_at_address(debug_info, next_line_address)
+        SourceLocation::breakpoint_at_address(debug_info, next_line_address)
     }
 }
 

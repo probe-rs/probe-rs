@@ -26,7 +26,7 @@ pub mod variable_cache;
 
 pub use self::{
     debug_info::*,
-    halting::{SourceLocation, Stepping, VerifiedBreakpoint},
+    halting::{SourceLocation, Stepping},
     registers::*,
     stack_frame::StackFrame,
     variable::*,
