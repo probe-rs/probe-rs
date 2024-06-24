@@ -948,7 +948,7 @@ impl DebugProbe for CmsisDap {
             Ok(XtensaCommunicationInterface::new(self, state))
         } else {
             Err(DebugProbeError::InterfaceNotAvailable {
-                interface_name: "RISC-V",
+                interface_name: "Xtensa",
             })
         }
     }
