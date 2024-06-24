@@ -101,7 +101,7 @@ itm = { version = "0.9.0-rc.1", default-features = false }
 pretty_assertions = "1"
 test-case = "3"
 test-log = { version = "0.2.16", features = ["trace"] }
-insta = { version = "1.38", default-features = false }
+insta = { version = "1.38", default-features = false, features = ["yaml", "filters"] }
 object = { version = "0.38", default-features = false, features = [
     "elf",
     "read_core",
