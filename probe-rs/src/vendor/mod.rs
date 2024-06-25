@@ -131,6 +131,7 @@ fn try_detect_arm_chip(mut probe: Probe) -> Result<(Probe, Option<Target>), Erro
                 if let Some(found_chip) = found_arm_chip {
                     let vendors = vendors();
                     for vendor in vendors.iter() {
+                        // TODO: only consider families with matching JEP106.
                         if let Some(target_name) =
                             vendor.try_detect_arm_chip(interface.as_mut(), found_chip)?
                         {
@@ -177,6 +178,7 @@ fn try_detect_riscv_chip(probe: &mut Probe) -> Result<Option<Target>, Error> {
                     tracing::debug!("ID code read over JTAG: {idcode:#x}");
                     let vendors = vendors();
                     for vendor in vendors.iter() {
+                        // TODO: only consider families with matching JEP106.
                         if let Some(target_name) =
                             vendor.try_detect_riscv_chip(&mut interface, idcode)?
                         {
@@ -220,6 +222,7 @@ fn try_detect_xtensa_chip(probe: &mut Probe) -> Result<Option<Target>, Error> {
                     tracing::debug!("ID code read over JTAG: {idcode:#x}");
                     let vendors = vendors();
                     for vendor in vendors.iter() {
+                        // TODO: only consider families with matching JEP106.
                         if let Some(target_name) =
                             vendor.try_detect_xtensa_chip(&mut interface, idcode)?
                         {
