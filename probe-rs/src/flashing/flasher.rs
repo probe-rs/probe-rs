@@ -74,6 +74,10 @@ impl<'session> Flasher<'session> {
             .iter()
             .filter_map(MemoryRegion::as_ram_region)
             .find(|ram| {
+                if !ram.is_executable() {
+                    return false;
+                }
+
                 // If the algorithm has a forced load address, we try to use it.
                 // If not, then follow the CMSIS-Pack spec and use first available RAM region.
                 // In theory, it should be the "first listed in the pack", but the process of
@@ -86,7 +90,7 @@ impl<'session> Flasher<'session> {
                     // algorithm on.
                     ram.range.contains(&load_addr) && ram.cores.contains(core_name)
                 } else {
-                    // Any RAM is okay as long as it's accessible to the core;
+                    // Any executable RAM is okay as long as it's accessible to the core;
                     // the algorithm is presumably position-independent.
                     ram.cores.contains(core_name)
                 }
