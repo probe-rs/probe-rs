@@ -311,11 +311,11 @@ impl FlashAlgorithm {
             ram_for_data -= stack_size;
         }
 
-        let mut double_buffering = true;
         // To determine the stack bottom, we need to know if the data is double buffered.
-        double_buffering = if ram_for_data >= 2 * buffer_page_size {
+        let double_buffering = if ram_for_data >= 2 * buffer_page_size {
             // The data may be double buffered
-            double_buffering
+            // TODO: maybe allow disabling in the target description?
+            true
         } else if ram_for_data >= buffer_page_size {
             // The data is not double buffered. Place the stack at the end of the RAM region.
             false
