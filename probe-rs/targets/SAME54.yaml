@@ -2,6 +2,16 @@ name: SAME54
 manufacturer:
   id: 0x1f
   cc: 0x0
+chip_detection:
+ - !AtsamDsu
+    processor: 6
+    family: 3
+    series: 4
+    variants:
+      0x00: ATSAME54P20A
+      0x01: ATSAME54P19A
+      0x02: ATSAME54N20A
+      0x03: ATSAME54N19A
 variants:
 - name: ATSAME54N19A
   cores:

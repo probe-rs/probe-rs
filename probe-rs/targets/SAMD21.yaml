@@ -2,6 +2,45 @@ name: SAMD21
 manufacturer:
   id: 0x1f
   cc: 0x0
+chip_detection:
+ - !AtsamDsu
+    processor: 1
+    family: 0
+    series: 1
+    variants:
+      0x00: ATSAMD21J18A
+      0x01: ATSAMD21J17A
+      0x02: ATSAMD21J16A
+      0x03: ATSAMD21J15A
+      0x05: ATSAMD21G18A
+      0x0F: ATSAMD21G18AU
+      0x06: ATSAMD21G17A
+      0x10: ATSAMD21G17AU
+      0x07: ATSAMD21G16A
+      0x08: ATSAMD21G15A
+      0x0A: ATSAMD21E18A
+      0x0B: ATSAMD21E17A
+      0x0C: ATSAMD21E16A
+      0x0D: ATSAMD21E15A
+      0x20: ATSAMD21J16B
+      0x21: ATSAMD21J15B
+      0x23: ATSAMD21G16B
+      0x24: ATSAMD21G15B
+      0x26: ATSAMD21E16B
+      0x55: ATSAMD21E16BU
+      0x27: ATSAMD21E15B
+      0x56: ATSAMD21E15BU
+      0x57: ATSAMD21G16L
+      0x3E: ATSAMD21E16L
+      0x3F: ATSAMD21E15L
+      0x62: ATSAMD21E16CU
+      0x63: ATSAMD21E15CU
+      0x94: ATSAMD21E17D
+      0x95: ATSAMD21E17DU
+      0x97: ATSAMD21E17L
+      0x93: ATSAMD21G17D
+      0x96: ATSAMD21G17L
+      0x92: ATSAMD21J17D
 variants:
 - name: ATSAMD21E15A
   cores:

@@ -2,6 +2,14 @@ name: nRF53 Series
 manufacturer:
   id: 0x44
   cc: 0x2
+chip_detection:
+ - !NordicFicrInfo
+    part_address: 0x00FF020C # through application core
+    variant_address: 0x00FF0210 # through application core
+    part: 0x5340
+    variants:
+      0x514B4141: nRF5340_xxAA
+      0x434C4141: nRF5340_xxAA
 variants:
 - name: nRF5340_xxAA
   cores:

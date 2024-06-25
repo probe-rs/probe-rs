@@ -77,6 +77,7 @@ pub fn cmd_elf(
             name: "<family name>".to_owned(),
             manufacturer: None,
             generated_from_pack: false,
+            chip_detection: vec![],
             pack_file_release: None,
             variants: vec![Chip {
                 cores: vec![Core {
@@ -256,6 +257,7 @@ mod test {
             name: "Test Family".to_owned(),
             manufacturer: None,
             generated_from_pack: false,
+            chip_detection: vec![],
             pack_file_release: None,
             variants: vec![Chip::generic_arm("Test Chip", CoreType::Armv8m)],
             flash_algorithms: vec![],

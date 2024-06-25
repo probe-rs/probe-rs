@@ -2,6 +2,18 @@ name: SAME51
 manufacturer:
   id: 0x1f
   cc: 0x0
+chip_detection:
+ - !AtsamDsu
+    processor: 6
+    family: 3
+    series: 1
+    variants:
+      0x00: ATSAME51N20A
+      0x01: ATSAME51N19A
+      0x02: ATSAME51J19A
+      0x03: ATSAME51J18A
+      0x04: ATSAME51J20A
+      0x06: ATSAME51G18A
 variants:
 - name: ATSAME51G18A
   cores:
