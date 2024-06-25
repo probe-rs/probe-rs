@@ -70,7 +70,7 @@ chip_detection:
       0x60: nRF51822_xxAB
       0x61: nRF51422_xxAB
       0x63: nRF51422_xxAA
-      0x63: nRF51822_xxAB
+      # 0x63: nRF51822_xxAB # duplicate hwid
       0x64: nRF51822_xxAB
       0x65: nRF51422_xxAB
       0x66: nRF51422_xxAB
