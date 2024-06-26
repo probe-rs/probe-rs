@@ -217,14 +217,27 @@ pub fn serialize_to_yaml_string(family: &ChipFamily) -> Result<String> {
 
     let mut yaml_string = String::with_capacity(raw_yaml_string.len());
     for reader_line in raw_yaml_string.lines() {
+        let trimmed_line = reader_line.trim();
         if reader_line.ends_with(": null")
             || reader_line.ends_with(": []")
             || reader_line.ends_with(": {}")
             || reader_line.ends_with(": false")
         {
             // Some fields have default-looking, but significant values that we want to keep.
-            let exceptions = ["rtt_scan_ranges: []"];
-            if !exceptions.contains(&reader_line.trim()) {
+            let keep_default = [
+                "rtt_scan_ranges: []",
+                "read: false",
+                "write: false",
+                "execute: false",
+            ];
+            if !keep_default.contains(&trimmed_line) {
+                // Skip the line
+                continue;
+            }
+        } else {
+            // Some fields have different default values than the type may indicate.
+            let trim_nondefault = ["read: true", "write: true", "execute: true"];
+            if trim_nondefault.contains(&trimmed_line) {
                 // Skip the line
                 continue;
             }
