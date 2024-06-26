@@ -509,7 +509,7 @@ mod tests {
                 for raw_flash_algo in target.flash_algorithms.iter() {
                     for core in raw_flash_algo.cores.iter() {
                         target
-                            .initialized_flash_algorithm_by_name(&raw_flash_algo.name, &core)
+                            .initialized_flash_algorithm_by_name(&raw_flash_algo.name, core)
                             .unwrap_or_else(|error| {
                                 panic!(
                                     "Failed to initialize flash algorithm ({}, {}, {core}): {}",
