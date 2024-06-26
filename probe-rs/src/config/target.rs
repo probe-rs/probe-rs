@@ -1,14 +1,17 @@
 use super::{Core, MemoryRegion, RawFlashAlgorithm, RegistryError, TargetDescriptionSource};
-use crate::architecture::{
-    arm::{
-        ap::MemoryAp,
-        sequences::{ArmDebugSequence, DefaultArmSequence},
-        ApAddress, DpAddress,
+use crate::flashing::{FlashAlgorithm, FlashLoader};
+use crate::{
+    architecture::{
+        arm::{
+            ap::MemoryAp,
+            sequences::{ArmDebugSequence, DefaultArmSequence},
+            ApAddress, DpAddress,
+        },
+        riscv::sequences::{DefaultRiscvSequence, RiscvDebugSequence},
+        xtensa::sequences::{DefaultXtensaSequence, XtensaDebugSequence},
     },
-    riscv::sequences::{DefaultRiscvSequence, RiscvDebugSequence},
-    xtensa::sequences::{DefaultXtensaSequence, XtensaDebugSequence},
+    flashing::FlashError,
 };
-use crate::flashing::FlashLoader;
 use probe_rs_target::{Architecture, BinaryFormat, ChipFamily, Jtag, MemoryRange};
 use std::sync::Arc;
 
@@ -195,6 +198,72 @@ impl Target {
         self.memory_map
             .iter()
             .find(|region| region.contains(address))
+    }
+
+    pub(crate) fn initialized_flash_algorithm_by_name(
+        &self,
+        algo_name: &str,
+        core_name: &str,
+    ) -> Result<FlashAlgorithm, FlashError> {
+        self.flash_algorithm_by_name(algo_name)
+            .map(|algo| {
+                // Find a RAM region from which we can run the algo.
+                let mm = &self.memory_map;
+                let ram = mm
+                    .iter()
+                    .filter_map(MemoryRegion::as_ram_region)
+                    .find(|ram| {
+                        if !ram.is_executable() {
+                            return false;
+                        }
+
+                        // If the algorithm has a forced load address, we try to use it.
+                        // If not, then follow the CMSIS-Pack spec and use first available RAM region.
+                        // In theory, it should be the "first listed in the pack", but the process of
+                        // reading from the pack files obfuscates the list order, so we will use the first
+                        // one in the target spec, which is the qualifying region with the lowest start saddress.
+                        // - See https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/pdsc_family_pg.html#element_memory .
+                        if let Some(load_addr) = algo.load_address {
+                            // The RAM must contain the forced load address _and_
+                            // be accessible from the core we're going to run the
+                            // algorithm on.
+                            ram.range.contains(&load_addr) && ram.accessible_by(core_name)
+                        } else {
+                            // Any executable RAM is okay as long as it's accessible to the core;
+                            // the algorithm is presumably position-independent.
+                            ram.accessible_by(core_name)
+                        }
+                    })
+                    .ok_or(FlashError::NoRamDefined {
+                        name: self.name.clone(),
+                    })?;
+                tracing::info!("Chosen RAM to run the algo: {:x?}", ram);
+
+                let data_ram = if let Some(data_load_address) = algo.data_load_address {
+                    mm.iter()
+                        .filter_map(MemoryRegion::as_ram_region)
+                        .find(|ram| {
+                            // The RAM must contain the forced load address _and_
+                            // be accessible from the core we're going to run the
+                            // algorithm on.
+                            ram.range.contains(&data_load_address) && ram.accessible_by(core_name)
+                        })
+                        .ok_or(FlashError::NoRamDefined {
+                            name: self.name.clone(),
+                        })?
+                } else {
+                    ram
+                };
+                tracing::info!("Data will be loaded to: {:x?}", data_ram);
+
+                FlashAlgorithm::assemble_from_raw_with_data(algo, ram, data_ram, self)
+            })
+            .unwrap_or_else(|| {
+                Err(FlashError::AlgorithmNotFound {
+                    name: self.name.clone(),
+                    algo_name: algo_name.to_string(),
+                })
+            })
     }
 }
 
