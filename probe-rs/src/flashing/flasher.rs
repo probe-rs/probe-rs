@@ -70,61 +70,9 @@ impl<'session> Flasher<'session> {
     ) -> Result<Self, FlashError> {
         let target = session.target();
 
-        // Find a RAM region from which we can run the algo.
-        let mm = &target.memory_map;
-        let core_name = &target.cores[core_index].name;
-        let ram = mm
-            .iter()
-            .filter_map(MemoryRegion::as_ram_region)
-            .find(|ram| {
-                if !ram.is_executable() {
-                    return false;
-                }
-
-                // If the algorithm has a forced load address, we try to use it.
-                // If not, then follow the CMSIS-Pack spec and use first available RAM region.
-                // In theory, it should be the "first listed in the pack", but the process of
-                // reading from the pack files obfuscates the list order, so we will use the first
-                // one in the target spec, which is the qualifying region with the lowest start saddress.
-                // - See https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/pdsc_family_pg.html#element_memory .
-                if let Some(load_addr) = raw_flash_algorithm.load_address {
-                    // The RAM must contain the forced load address _and_
-                    // be accessible from the core we're going to run the
-                    // algorithm on.
-                    ram.range.contains(&load_addr) && ram.cores.contains(core_name)
-                } else {
-                    // Any executable RAM is okay as long as it's accessible to the core;
-                    // the algorithm is presumably position-independent.
-                    ram.cores.contains(core_name)
-                }
-            })
-            .ok_or(FlashError::NoRamDefined {
-                name: session.target().name.clone(),
-            })?;
-        tracing::info!("Chosen RAM to run the algo: {:x?}", ram);
-
-        let data_ram = if let Some(data_load_address) = raw_flash_algorithm.data_load_address {
-            mm.iter()
-                .filter_map(MemoryRegion::as_ram_region)
-                .find(|ram| {
-                    // The RAM must contain the forced load address _and_
-                    // be accessible from the core we're going to run the
-                    // algorithm on.
-                    ram.range.contains(&data_load_address) && ram.cores.contains(core_name)
-                })
-                .ok_or(FlashError::NoRamDefined {
-                    name: session.target().name.clone(),
-                })?
-        } else {
-            ram
-        };
-        tracing::info!("Data will be loaded to: {:x?}", data_ram);
-
-        let flash_algorithm = FlashAlgorithm::assemble_from_raw_with_data(
-            raw_flash_algorithm,
-            ram,
-            data_ram,
-            target,
+        let flash_algorithm = target.initialized_flash_algorithm_by_name(
+            raw_flash_algorithm.name.as_str(),
+            &target.cores[core_index].name,
         )?;
 
         let mut this = Self {
