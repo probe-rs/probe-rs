@@ -88,7 +88,7 @@ chip_detection:
       0x41414431: nRF52840_xxAA
       0x41414541: nRF52840_xxAA
       0x41414530: nRF52840_xxAA
-      0x41414541: nRF52840_xxAA
+      0x41414641: nRF52840_xxAA
 variants:
 - name: nRF52805_xxAA
   cores:
