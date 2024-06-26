@@ -756,6 +756,7 @@ flash_algorithms:
   pc_erase_sector: 0x6d
   pc_erase_all: 0x2d
   data_section_offset: 0x130
+  stack_size: 256
   flash_properties:
     address_range:
       start: 0x0

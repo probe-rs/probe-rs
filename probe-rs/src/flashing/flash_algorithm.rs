@@ -327,7 +327,7 @@ impl FlashAlgorithm {
             // We can't place data and stack.
             // TODO: this should probably be done in the target validation.
             // TODO: make the errors a bit more meaningful.
-            return Err(FlashError::InvalidFlashAlgorithmStackSize);
+            return Err(FlashError::InvalidFlashAlgorithmStackSize { size: stack_size });
         };
 
         // We need to make sure the blocks don't overlap and we have enough memory.
@@ -350,7 +350,7 @@ impl FlashAlgorithm {
         tracing::info!("Stack top: {:#010x}", stack_top);
 
         if stack_top > ram_region.range.end {
-            return Err(FlashError::InvalidFlashAlgorithmStackSize);
+            return Err(FlashError::InvalidFlashAlgorithmStackSize { size: stack_size });
         }
 
         // Determine whether we can use double buffering or not by the remaining RAM region size.
