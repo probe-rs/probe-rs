@@ -502,10 +502,23 @@ mod tests {
                 family
                     .variants()
                     .iter()
-                    .map(|chip| registry.get_target(family, chip))
+                    .map(|chip| registry.get_target(family, chip).unwrap())
             })
-            .collect::<Result<Vec<_>, _>>()
-            .unwrap();
+            .for_each(|target| {
+                // Walk through the flash algorithms and cores and try to create each one.
+                for raw_flash_algo in target.flash_algorithms.iter() {
+                    for core in raw_flash_algo.cores.iter() {
+                        target
+                            .initialized_flash_algorithm_by_name(&raw_flash_algo.name, &core)
+                            .unwrap_or_else(|error| {
+                                panic!(
+                                    "Failed to initialize flash algorithm ({}, {}, {core}): {}",
+                                    &target.name, &raw_flash_algo.name, error
+                                )
+                            });
+                    }
+                }
+            });
     }
 
     #[test]
