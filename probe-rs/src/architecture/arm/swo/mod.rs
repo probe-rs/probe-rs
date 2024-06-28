@@ -183,8 +183,8 @@ impl<'a> SwoReader<'a> {
 
 impl<'a> std::io::Read for SwoReader<'a> {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        use core::cmp;
         use std::{
+            cmp,
             io::{Error, ErrorKind},
             mem,
         };

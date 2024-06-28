@@ -11,6 +11,7 @@ use probe_rs_target::ChipFamily;
 use std::{
     env::current_dir,
     fs::create_dir,
+    num::ParseIntError,
     path::{Path, PathBuf},
 };
 use tracing_subscriber::{filter::LevelFilter, EnvFilter};
@@ -19,8 +20,6 @@ use crate::commands::{
     elf::{cmd_elf, serialize_to_yaml_string},
     test::cmd_test,
 };
-
-use core::num::ParseIntError;
 
 #[derive(clap::Parser)]
 enum TargetGen {
