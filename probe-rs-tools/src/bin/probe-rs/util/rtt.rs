@@ -150,8 +150,8 @@ impl From<&ChannelDataFormat> for DataFormat {
     }
 }
 
-impl std::fmt::Debug for ChannelDataFormat {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Debug for ChannelDataFormat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ChannelDataFormat::String {
                 timestamp_offset,
@@ -546,11 +546,10 @@ impl RttActiveTarget {
         }
 
         // It doesn't make sense to pretend RTT is active, if there are no active up channels
-        if active_up_channels.is_empty() {
-            return Err(anyhow!(
-                "RTT Initialized correctly, but there were no active channels configured"
-            ));
-        }
+        anyhow::ensure!(
+            !active_up_channels.is_empty(),
+            "RTT Initialized correctly, but there were no active channels configured"
+        );
 
         let active_down_channels = rtt
             .down_channels
