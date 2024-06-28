@@ -10,7 +10,7 @@ pub mod swo;
 use core::panic;
 use std::iter;
 use std::mem::take;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use std::{cmp, fmt};
 
 use bitvec::prelude::*;
@@ -1165,8 +1165,8 @@ impl SwoAccess for JLink {
         Some(SWO_BUFFER_SIZE.into())
     }
 
-    fn read_swo_timeout(&mut self, timeout: std::time::Duration) -> Result<Vec<u8>, ArmError> {
-        let end = std::time::Instant::now() + timeout;
+    fn read_swo_timeout(&mut self, timeout: Duration) -> Result<Vec<u8>, ArmError> {
+        let start = Instant::now();
         let mut buf = vec![0; SWO_BUFFER_SIZE.into()];
 
         let poll_interval = self
@@ -1179,12 +1179,10 @@ impl SwoAccess for JLink {
                 .swo_read(&mut buf)
                 .map_err(|e| ArmError::from(DebugProbeError::ProbeSpecific(Box::new(e))))?;
             bytes.extend(data.as_ref());
-            let now = std::time::Instant::now();
-            if now + poll_interval < end {
-                std::thread::sleep(poll_interval);
-            } else {
+            if start.elapsed() > timeout {
                 break;
             }
+            std::thread::sleep(poll_interval);
         }
         Ok(bytes)
     }

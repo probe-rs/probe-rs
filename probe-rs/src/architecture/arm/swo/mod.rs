@@ -1,5 +1,7 @@
 //! SWO tracing related functions.
 
+use std::time::Duration;
+
 use crate::architecture::arm::communication_interface::ArmProbeInterface;
 
 use super::ArmError;
@@ -118,14 +120,14 @@ pub trait SwoAccess {
     /// Returns a `Vec<u8>` of received SWO bytes since the last `read_swo()` call.
     /// If no data was available, returns an empty Vec.
     fn read_swo(&mut self) -> Result<Vec<u8>, ArmError> {
-        self.read_swo_timeout(std::time::Duration::from_millis(10))
+        self.read_swo_timeout(Duration::from_millis(10))
     }
 
     /// Read SWO data for up to `timeout` duration.
     ///
     /// If no data is received before the timeout, returns an empty Vec.
     /// May return earlier than `timeout` if the receive buffer fills up.
-    fn read_swo_timeout(&mut self, timeout: std::time::Duration) -> Result<Vec<u8>, ArmError>;
+    fn read_swo_timeout(&mut self, timeout: Duration) -> Result<Vec<u8>, ArmError>;
 
     /// Request an estimated best time to wait between polls of `read_swo`.
     ///
@@ -136,7 +138,7 @@ pub trait SwoAccess {
     ///
     /// The default implementation computes an estimated interval based on the buffer
     /// size, mode, and baud rate.
-    fn swo_poll_interval_hint(&mut self, config: &SwoConfig) -> Option<std::time::Duration> {
+    fn swo_poll_interval_hint(&mut self, config: &SwoConfig) -> Option<Duration> {
         match self.swo_buffer_size() {
             Some(size) => poll_interval_from_buf_size(config, size),
             None => None,
@@ -150,10 +152,7 @@ pub trait SwoAccess {
 }
 
 /// Helper function to compute a poll interval from a SwoConfig and SWO buffer size.
-pub(crate) fn poll_interval_from_buf_size(
-    config: &SwoConfig,
-    buf_size: usize,
-) -> Option<std::time::Duration> {
+pub(crate) fn poll_interval_from_buf_size(config: &SwoConfig, buf_size: usize) -> Option<Duration> {
     let time_to_full_ms = match config.mode() {
         // In UART, the output data is at the baud rate with 10 clocks per byte.
         SwoMode::Uart => (1000 * buf_size as u32) / (config.baud() / 10),
@@ -164,7 +163,7 @@ pub(crate) fn poll_interval_from_buf_size(
     };
 
     // Poll frequently enough to catch the buffer at 1/4 full
-    Some(std::time::Duration::from_millis(time_to_full_ms as u64 / 4))
+    Some(Duration::from_millis(time_to_full_ms as u64 / 4))
 }
 
 /// A reader interface to pull SWO data from the underlying driver.

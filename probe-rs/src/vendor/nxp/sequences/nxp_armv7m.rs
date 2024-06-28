@@ -5,6 +5,7 @@ use std::{
         atomic::{AtomicBool, Ordering},
         Arc,
     },
+    thread,
     time::{Duration, Instant},
 };
 
@@ -99,7 +100,7 @@ impl ArmDebugSequence for MIMXRT10xx {
         interface.flush().ok();
 
         // Wait for the reset to finish...
-        std::thread::sleep(Duration::from_millis(100));
+        thread::sleep(Duration::from_millis(100));
 
         let start = Instant::now();
         while start.elapsed() < Duration::from_millis(500) {
@@ -190,7 +191,7 @@ impl MIMXRT11xx {
                 tracing::debug!("Exceeded timeout while waiting for the core to {action}");
                 return Err(ArmError::Timeout);
             }
-            std::thread::sleep(Duration::from_millis(1));
+            thread::sleep(Duration::from_millis(1));
         }
 
         Ok(())
@@ -223,7 +224,7 @@ impl MIMXRT11xx {
                 }
             }
 
-            std::thread::sleep(Duration::from_millis(1));
+            thread::sleep(Duration::from_millis(1));
         }
     }
 

@@ -9,6 +9,7 @@ use crate::memory::MemoryInterface;
 use crate::{core::CoreRegisters, session::Session, Core, InstructionSet};
 use std::{
     fmt::Debug,
+    thread,
     time::{Duration, Instant},
 };
 
@@ -709,7 +710,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
             let now = Instant::now();
             let mut last_error = None;
             while self.rtt.is_none() {
-                std::thread::sleep(Duration::from_millis(1));
+                thread::sleep(Duration::from_millis(1));
                 let rtt = match crate::rtt::Rtt::attach_region(
                     &mut self.core,
                     &crate::rtt::ScanRegion::Exact(rtt_address),
@@ -765,7 +766,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
             // Periodically read RTT.
             self.read_rtt()?;
 
-            std::thread::sleep(Duration::from_millis(1));
+            thread::sleep(Duration::from_millis(1));
         }
 
         if timeout_ocurred {

@@ -443,7 +443,7 @@ impl MIMXRT5xxS {
         // to regain debug control.
 
         // Give bootloader time to do what it needs to do
-        std::thread::sleep(Duration::from_millis(100));
+        thread::sleep(Duration::from_millis(100));
 
         let ap: MemoryAp = probe.ap();
         let dp = ap.ap_address().dp;
@@ -513,11 +513,11 @@ impl MIMXRT5xxS {
             interface.write_word_32(0x40004214, 0x130)?; // full drive and pullup
             interface.write_word_32(0x40102010, 1 << 5)?; // PIO4_5 is an output
             interface.write_word_32(0x40103214, 0)?; // PIO4_5 is driven low
-            std::thread::sleep(Duration::from_millis(100));
+            thread::sleep(Duration::from_millis(100));
 
             interface.write_word_32(0x40102010, 0)?; // PIO4_5 is an input
             interface.flush()?;
-            std::thread::sleep(Duration::from_millis(100));
+            thread::sleep(Duration::from_millis(100));
         } else {
             tracing::trace!("MIMXRT685-EVK FlexSPI flash reset (pulse PIO2_12)");
 
@@ -532,11 +532,11 @@ impl MIMXRT5xxS {
             interface.write_word_32(0x40004130, 0x130)?; // full drive and pullup
             interface.write_word_32(0x40102008, 1 << 12)?; // PIO2_12 is an output
             interface.write_word_32(0x40102288, 1 << 12)?; // PIO2_12 is driven low
-            std::thread::sleep(Duration::from_millis(100));
+            thread::sleep(Duration::from_millis(100));
 
             interface.write_word_32(0x40102208, 1 << 12)?; // PIO2_12 is driven high
             interface.flush()?;
-            std::thread::sleep(Duration::from_millis(100));
+            thread::sleep(Duration::from_millis(100));
         }
 
         Ok(())
@@ -580,12 +580,12 @@ impl MIMXRT5xxS {
 
         // Active DebugMailbox
         interface.write_raw_ap_register(ap_addr, 0x0, 0x00000021)?;
-        std::thread::sleep(Duration::from_millis(30));
+        thread::sleep(Duration::from_millis(30));
         interface.read_raw_ap_register(ap_addr, 0x0)?;
 
         // Enter Debug Session
         interface.write_raw_ap_register(ap_addr, 0x4, 0x00000007)?;
-        std::thread::sleep(Duration::from_millis(30));
+        thread::sleep(Duration::from_millis(30));
         interface.read_raw_ap_register(ap_addr, 0x0)?;
 
         tracing::debug!("entered MIMXRT5xxS debug session");
