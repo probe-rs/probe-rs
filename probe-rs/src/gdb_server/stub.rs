@@ -59,7 +59,7 @@ impl GdbInstanceConfiguration {
         // For example - consider two groups computed above and an input of localhost:1337.
         // Group 1 will bind to localhost:1337
         // Group 2 will bind to localhost:1338
-        let ret = groups
+        groups
             .into_iter()
             .enumerate()
             .map(|(i, (core_type, cores))| GdbInstanceConfiguration {
@@ -67,9 +67,7 @@ impl GdbInstanceConfiguration {
                 cores,
                 socket_addrs: adjust_addrs(&addrs, i),
             })
-            .collect();
-
-        ret
+            .collect()
     }
 }
 
