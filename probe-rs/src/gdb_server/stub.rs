@@ -35,11 +35,12 @@ impl GdbInstanceConfiguration {
     /// Vec with the computed configuration
     pub fn from_session(
         session: &Session,
-        connection_string: Option<impl Into<String>>,
+        connection_string: Option<impl AsRef<str>>,
     ) -> Vec<Self> {
         let connection_string = connection_string
-            .map(|cs| cs.into())
-            .unwrap_or_else(|| CONNECTION_STRING.to_owned());
+            .as_ref()
+            .map(|s| s.as_ref())
+            .unwrap_or(CONNECTION_STRING);
 
         let addrs: Vec<SocketAddr> = connection_string.to_socket_addrs().unwrap().collect();
 
@@ -59,11 +60,11 @@ impl GdbInstanceConfiguration {
         // Group 1 will bind to localhost:1337
         // Group 2 will bind to localhost:1338
         let ret = groups
-            .iter()
+            .into_iter()
             .enumerate()
             .map(|(i, (core_type, cores))| GdbInstanceConfiguration {
-                core_type: *core_type,
-                cores: cores.to_vec(),
+                core_type,
+                cores,
                 socket_addrs: adjust_addrs(&addrs, i),
             })
             .collect();
