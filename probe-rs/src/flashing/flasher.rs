@@ -70,9 +70,10 @@ impl<'session> Flasher<'session> {
     ) -> Result<Self, FlashError> {
         let target = session.target();
 
-        let flash_algorithm = target.initialized_flash_algorithm_by_name(
-            raw_flash_algorithm.name.as_str(),
+        let flash_algorithm = FlashAlgorithm::assemble_from_raw_with_core(
+            raw_flash_algorithm,
             &target.cores[core_index].name,
+            target,
         )?;
 
         let mut this = Self {
