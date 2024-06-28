@@ -1,7 +1,10 @@
 use super::{GdbErrorExt, RuntimeTarget};
 
-use gdbstub::target::ext::breakpoints::{
-    Breakpoints, HwBreakpoint, HwBreakpointOps, HwWatchpointOps, SwBreakpointOps,
+use gdbstub::{
+    arch::Arch,
+    target::ext::breakpoints::{
+        Breakpoints, HwBreakpoint, HwBreakpointOps, HwWatchpointOps, SwBreakpointOps,
+    },
 };
 
 impl Breakpoints for RuntimeTarget<'_> {
@@ -22,7 +25,7 @@ impl HwBreakpoint for RuntimeTarget<'_> {
     fn add_hw_breakpoint(
         &mut self,
         addr: u64,
-        _kind: <Self::Arch as gdbstub::arch::Arch>::BreakpointKind,
+        _kind: <Self::Arch as Arch>::BreakpointKind,
     ) -> gdbstub::target::TargetResult<bool, Self> {
         let mut session = self.session.lock();
 
@@ -38,7 +41,7 @@ impl HwBreakpoint for RuntimeTarget<'_> {
     fn remove_hw_breakpoint(
         &mut self,
         addr: u64,
-        _kind: <Self::Arch as gdbstub::arch::Arch>::BreakpointKind,
+        _kind: <Self::Arch as Arch>::BreakpointKind,
     ) -> gdbstub::target::TargetResult<bool, Self> {
         let mut session = self.session.lock();
 

@@ -36,7 +36,7 @@ impl MonitorCmd for RuntimeTarget<'_> {
                 }
             }
             "reset halt" => {
-                let timeout: Duration = Duration::new(1, 0);
+                let timeout = Duration::from_secs(1);
                 outputln!(out, "Resetting and halting target");
                 match self.session.lock().core(0)?.reset_and_halt(timeout) {
                     Ok(_) => {

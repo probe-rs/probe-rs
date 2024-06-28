@@ -27,8 +27,7 @@ impl MultiThreadBase for RuntimeTarget<'_> {
                 read_register_from_source(&mut core, reg.source()).into_target_result()?;
 
             for _ in 0..bytesize {
-                let byte = value as u8;
-                reg_buffer.push(byte);
+                reg_buffer.push(value as u8);
                 value >>= 8;
             }
         }
@@ -148,8 +147,7 @@ impl SingleRegisterAccess<Tid> for RuntimeTarget<'_> {
             read_register_from_source(&mut core, reg.source()).into_target_result()?;
 
         for buf_entry in buf.iter_mut().take(bytesize) {
-            let byte = value as u8;
-            *buf_entry = byte;
+            *buf_entry = value as u8;
             value >>= 8;
         }
 

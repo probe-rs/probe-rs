@@ -41,13 +41,18 @@ impl<T> GdbErrorExt<T> for Result<T, Error> {
     fn into_target_result_non_fatal(self) -> TargetResult<T, RuntimeTarget<'static>> {
         match self {
             Ok(v) => Ok(v),
-            Err(Error::Arm(e)) => {
-                tracing::debug!("Error: {:#}", e);
+            Err(Error::Arm(error)) => {
+                tracing::debug!("Error: {error:#}");
                 // EIO
                 Err(TargetError::Errno(122))
             }
-            Err(Error::Riscv(e)) => {
-                tracing::debug!("Error: {:#}", e);
+            Err(Error::Riscv(error)) => {
+                tracing::debug!("Error: {error:#}");
+                // EIO
+                Err(TargetError::Errno(122))
+            }
+            Err(Error::Xtensa(error)) => {
+                tracing::debug!("Error: {error:#}");
                 // EIO
                 Err(TargetError::Errno(122))
             }
