@@ -8,14 +8,10 @@ use gdbstub::target::ext::base::multithread::MultiThreadResumeOps;
 use gdbstub::target::ext::base::single_register_access::SingleRegisterAccess;
 use gdbstub::target::ext::base::single_register_access::SingleRegisterAccessOps;
 use gdbstub::target::ext::thread_extra_info::ThreadExtraInfoOps;
-use gdbstub::target::TargetError;
+use gdbstub::target::{TargetError, TargetResult};
 
 impl MultiThreadBase for RuntimeTarget<'_> {
-    fn read_registers(
-        &mut self,
-        regs: &mut RuntimeRegisters,
-        tid: Tid,
-    ) -> gdbstub::target::TargetResult<(), Self> {
+    fn read_registers(&mut self, regs: &mut RuntimeRegisters, tid: Tid) -> TargetResult<(), Self> {
         let mut session = self.session.lock();
         let mut core = session.core(tid.get() - 1).into_target_result()?;
 
@@ -42,11 +38,7 @@ impl MultiThreadBase for RuntimeTarget<'_> {
         Ok(())
     }
 
-    fn write_registers(
-        &mut self,
-        regs: &RuntimeRegisters,
-        tid: Tid,
-    ) -> gdbstub::target::TargetResult<(), Self> {
+    fn write_registers(&mut self, regs: &RuntimeRegisters, tid: Tid) -> TargetResult<(), Self> {
         let mut session = self.session.lock();
         let mut core = session.core(tid.get() - 1).into_target_result()?;
 
@@ -93,7 +85,7 @@ impl MultiThreadBase for RuntimeTarget<'_> {
         start_addr: u64,
         data: &mut [u8],
         tid: Tid,
-    ) -> gdbstub::target::TargetResult<usize, Self> {
+    ) -> TargetResult<usize, Self> {
         let mut session = self.session.lock();
         let mut core = session.core(tid.get() - 1).into_target_result()?;
 
@@ -105,12 +97,7 @@ impl MultiThreadBase for RuntimeTarget<'_> {
             .into_target_result_non_fatal()
     }
 
-    fn write_addrs(
-        &mut self,
-        start_addr: u64,
-        data: &[u8],
-        tid: Tid,
-    ) -> gdbstub::target::TargetResult<(), Self> {
+    fn write_addrs(&mut self, start_addr: u64, data: &[u8], tid: Tid) -> TargetResult<(), Self> {
         let mut session = self.session.lock();
         let mut core = session.core(tid.get() - 1).into_target_result()?;
 
@@ -150,7 +137,7 @@ impl SingleRegisterAccess<Tid> for RuntimeTarget<'_> {
         tid: Tid,
         reg_id: RuntimeRegId,
         buf: &mut [u8],
-    ) -> gdbstub::target::TargetResult<usize, Self> {
+    ) -> TargetResult<usize, Self> {
         let mut session = self.session.lock();
         let mut core = session.core(tid.get() - 1).into_target_result()?;
 
@@ -174,7 +161,7 @@ impl SingleRegisterAccess<Tid> for RuntimeTarget<'_> {
         tid: Tid,
         reg_id: RuntimeRegId,
         val: &[u8],
-    ) -> gdbstub::target::TargetResult<(), Self> {
+    ) -> TargetResult<(), Self> {
         let mut session = self.session.lock();
         let mut core = session.core(tid.get() - 1).into_target_result()?;
 

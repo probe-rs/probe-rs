@@ -65,6 +65,8 @@
 //!
 //! [Probe]: probe::Probe
 #![warn(missing_docs)]
+#![warn(clippy::unnecessary_self_imports)]
+#![warn(clippy::enum_glob_use)]
 #![recursion_limit = "256"]
 
 #[macro_use]

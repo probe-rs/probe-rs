@@ -145,11 +145,11 @@ pub enum DebugModuleVersion {
 impl From<u8> for DebugModuleVersion {
     fn from(raw: u8) -> Self {
         match raw {
-            0 => DebugModuleVersion::NoModule,
-            1 => DebugModuleVersion::Version0_11,
-            2 => DebugModuleVersion::Version0_13,
-            15 => DebugModuleVersion::NonConforming,
-            other => DebugModuleVersion::Unknown(other),
+            0 => Self::NoModule,
+            1 => Self::Version0_11,
+            2 => Self::Version0_13,
+            15 => Self::NonConforming,
+            other => Self::Unknown(other),
         }
     }
 }
