@@ -7,7 +7,6 @@ mod interface;
 mod speed;
 pub mod swo;
 
-use core::panic;
 use std::iter;
 use std::mem::take;
 use std::time::{Duration, Instant};
@@ -1019,9 +1018,10 @@ impl RawProtocolIo for JLink {
     where
         M: IntoIterator<Item = bool>,
     {
-        if self.protocol == WireProtocol::Swd {
-            panic!("Logic error, requested jtag_io when in SWD mode");
-        }
+        assert!(
+            self.protocol != WireProtocol::Swd,
+            "Logic error, requested jtag_io when in SWD mode"
+        );
 
         self.probe_statistics.report_io();
 
@@ -1034,9 +1034,10 @@ impl RawProtocolIo for JLink {
     where
         I: IntoIterator<Item = bool>,
     {
-        if self.protocol == WireProtocol::Swd {
-            panic!("Logic error, requested jtag_io when in SWD mode");
-        }
+        assert!(
+            self.protocol != WireProtocol::Swd,
+            "Logic error, requested jtag_io when in SWD mode"
+        );
 
         self.probe_statistics.report_io();
 
@@ -1150,14 +1151,13 @@ impl SwoAccess for JLink {
     fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ArmError> {
         self.swo_config = Some(*config);
         self.swo_start(SwoMode::Uart, config.baud(), SWO_BUFFER_SIZE.into())
-            .map_err(|e| ArmError::from(DebugProbeError::ProbeSpecific(Box::new(e))))?;
+            .map_err(DebugProbeError::from)?;
         Ok(())
     }
 
     fn disable_swo(&mut self) -> Result<(), ArmError> {
         self.swo_config = None;
-        self.swo_stop()
-            .map_err(|e| ArmError::from(DebugProbeError::ProbeSpecific(Box::new(e))))?;
+        self.swo_stop().map_err(DebugProbeError::from)?;
         Ok(())
     }
 
@@ -1175,9 +1175,7 @@ impl SwoAccess for JLink {
 
         let mut bytes = vec![];
         loop {
-            let data = self
-                .swo_read(&mut buf)
-                .map_err(|e| ArmError::from(DebugProbeError::ProbeSpecific(Box::new(e))))?;
+            let data = self.swo_read(&mut buf).map_err(DebugProbeError::from)?;
             bytes.extend(data.as_ref());
             if start.elapsed() > timeout {
                 break;
