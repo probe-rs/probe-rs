@@ -1,6 +1,6 @@
 use crate::serialize::{hex_range, hex_u_int};
-use core::ops::Range;
 use serde::{Deserialize, Serialize};
+use std::ops::Range;
 
 /// Represents a region in non-volatile memory (e.g. flash or EEPROM).
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

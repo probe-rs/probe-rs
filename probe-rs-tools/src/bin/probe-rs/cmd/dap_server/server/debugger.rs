@@ -981,7 +981,6 @@ mod test {
         server::configuration::{ConsoleLog, CoreConfig, FlashingConfig, SessionConfig},
         test::TestLister,
     };
-    use core::panic;
     use probe_rs::{
         architecture::arm::ApAddress,
         integration::{FakeProbe, Operation},
