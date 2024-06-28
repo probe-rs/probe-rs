@@ -146,13 +146,10 @@ impl From<ObjectRef> for i64 {
 
 impl From<i64> for ObjectRef {
     fn from(value: i64) -> Self {
-        if value < 0 {
-            ObjectRef::Invalid
+        if value > 0 {
+            ObjectRef::Valid(NonZeroU32::try_from(value as u32).unwrap())
         } else {
-            match NonZeroU32::try_from(value as u32) {
-                Ok(v) => ObjectRef::Valid(v),
-                Err(_) => ObjectRef::Invalid,
-            }
+            ObjectRef::Invalid
         }
     }
 }
@@ -177,13 +174,11 @@ pub fn get_object_reference() -> ObjectRef {
 fn extract_file(
     debug_info: &DebugInfo,
     unit: &gimli::Unit<GimliReader>,
-    attribute_value: gimli::AttributeValue<GimliReader>,
+    attribute_value: AttributeValue<GimliReader>,
 ) -> Option<(TypedPathBuf, String)> {
     match attribute_value {
-        gimli::AttributeValue::FileIndex(index) => {
-            if let Some((Some(path), Some(file))) = debug_info
-                .find_file_and_directory(unit, index)
-                .map(|(file, path)| (path, file))
+        AttributeValue::FileIndex(index) => {
+            if let Some((Some(file), Some(path))) = debug_info.find_file_and_directory(unit, index)
             {
                 Some((path, file))
             } else {
@@ -204,24 +199,21 @@ fn extract_file(
 /// If a DW_AT_byte_size attribute exists, return the u64 value, otherwise (including errors) return None
 fn extract_byte_size(node_die: &DebuggingInformationEntry<GimliReader>) -> Option<u64> {
     match node_die.attr(gimli::DW_AT_byte_size) {
-        Ok(optional_byte_size_attr) => match optional_byte_size_attr {
-            Some(byte_size_attr) => match byte_size_attr.value() {
-                gimli::AttributeValue::Udata(byte_size) => Some(byte_size),
-                gimli::AttributeValue::Data1(byte_size) => Some(byte_size as u64),
-                gimli::AttributeValue::Data2(byte_size) => Some(byte_size as u64),
-                gimli::AttributeValue::Data4(byte_size) => Some(byte_size as u64),
-                gimli::AttributeValue::Data8(byte_size) => Some(byte_size),
-                other => {
-                    tracing::warn!("Unimplemented: DW_AT_byte_size value: {:?} ", other);
-                    None
-                }
-            },
-            None => None,
+        Ok(Some(byte_size_attr)) => match byte_size_attr.value() {
+            AttributeValue::Udata(byte_size) => Some(byte_size),
+            AttributeValue::Data1(byte_size) => Some(byte_size as u64),
+            AttributeValue::Data2(byte_size) => Some(byte_size as u64),
+            AttributeValue::Data4(byte_size) => Some(byte_size as u64),
+            AttributeValue::Data8(byte_size) => Some(byte_size),
+            other => {
+                tracing::warn!("Unimplemented: DW_AT_byte_size value: {other:?}");
+                None
+            }
         },
+        Ok(None) => None,
         Err(error) => {
             tracing::warn!(
-                "Failed to extract byte_size: {:?} for debug_entry {:?}",
-                error,
+                "Failed to extract byte_size: {error:?} for debug_entry {:?}",
                 node_die.tag().static_string()
             );
             None
@@ -229,9 +221,9 @@ fn extract_byte_size(node_die: &DebuggingInformationEntry<GimliReader>) -> Optio
     }
 }
 
-fn extract_line(attribute_value: gimli::AttributeValue<GimliReader>) -> Option<u64> {
+fn extract_line(attribute_value: AttributeValue<GimliReader>) -> Option<u64> {
     match attribute_value {
-        gimli::AttributeValue::Udata(line) => Some(line),
+        AttributeValue::Udata(line) => Some(line),
         _ => None,
     }
 }
@@ -248,15 +240,15 @@ pub(crate) fn _print_all_attributes(
     let mut attrs = tag.attrs();
 
     while let Some(attr) = attrs.next().unwrap() {
-        for _ in 0..(print_depth) {
+        for _ in 0..print_depth {
             print!("\t");
         }
         print!("{}: ", attr.name());
 
         match attr.value() {
             AttributeValue::Addr(a) => println!("{a:#010x}"),
-            AttributeValue::DebugStrRef(_) => {
-                let val = dwarf.attr_string(unit, attr.value()).unwrap();
+            AttributeValue::DebugStrRef(str_ref) => {
+                let val = dwarf.string(str_ref).unwrap();
                 println!("{}", std::str::from_utf8(&val).unwrap());
             }
             AttributeValue::Exprloc(e) => {
@@ -265,91 +257,75 @@ pub(crate) fn _print_all_attributes(
                 // go for evaluation
                 let mut result = evaluation.evaluate().unwrap();
 
-                loop {
-                    result = match result {
-                        EvaluationResult::Complete => break,
-                        EvaluationResult::RequiresMemory { address, size, .. } => {
-                            let mut buff = vec![0u8; size as usize];
-                            core.read(address, &mut buff)
-                                .expect("Failed to read memory");
-                            match size {
-                                1 => evaluation
-                                    .resume_with_memory(gimli::Value::U8(buff[0]))
-                                    .unwrap(),
-                                2 => {
-                                    let val = u16::from(buff[0]) << 8 | u16::from(buff[1]);
-                                    evaluation
-                                        .resume_with_memory(gimli::Value::U16(val))
-                                        .unwrap()
-                                }
-                                4 => {
-                                    let val = u32::from(buff[0]) << 24
-                                        | u32::from(buff[1]) << 16
-                                        | u32::from(buff[2]) << 8
-                                        | u32::from(buff[3]);
-                                    evaluation
-                                        .resume_with_memory(gimli::Value::U32(val))
-                                        .unwrap()
-                                }
-                                x => {
-                                    tracing::error!(
-                                        "Requested memory with size {}, which is not supported yet.",
-                                        x
-                                    );
-                                    unimplemented!();
-                                }
-                            }
-                        }
-                        EvaluationResult::RequiresFrameBase => evaluation
-                            .resume_with_frame_base(stackframe_cfa.unwrap())
-                            .unwrap(),
-                        EvaluationResult::RequiresRegister {
-                            register,
-                            base_type,
-                        } => {
-                            let raw_value: u64 = core
-                                .read_core_reg(register.0)
-                                .expect("Failed to read memory");
-
-                            if base_type != gimli::UnitOffset(0) {
-                                unimplemented!(
-                                    "Support for units in RequiresRegister request is not yet implemented."
-                                )
-                            }
-                            evaluation
-                                .resume_with_register(gimli::Value::Generic(raw_value))
-                                .unwrap()
-                        }
-                        EvaluationResult::RequiresRelocatedAddress(address_index) => {
-                            // Use the address_index as an offset from 0, so just pass it into the next step.
-                            evaluation
-                                .resume_with_relocated_address(address_index)
-                                .unwrap()
-                        }
-                        x => {
-                            println!("print_all_attributes {x:?}");
-                            // x
-                            todo!()
-                        }
-                    }
+                while let Some(next) = iterate(result, core, &mut evaluation, stackframe_cfa) {
+                    result = next;
                 }
 
                 let result = evaluation.result();
 
                 println!("Expression: {:x?}", &result[0]);
             }
-            AttributeValue::LocationListsRef(_) => {
-                println!("LocationList");
-            }
-            AttributeValue::DebugLocListsBase(_) => {
-                println!(" LocationList");
-            }
-            AttributeValue::DebugLocListsIndex(_) => {
-                println!(" LocationList");
-            }
-            _ => {
-                println!("print_all_attributes {:?}", attr.value());
-            }
+            AttributeValue::LocationListsRef(_) => println!("LocationList"),
+            AttributeValue::DebugLocListsBase(_) => println!(" LocationList"),
+            AttributeValue::DebugLocListsIndex(_) => println!(" LocationList"),
+            _ => println!("print_all_attributes {:?}", attr.value()),
         }
     }
+}
+
+#[allow(dead_code)]
+fn iterate(
+    result: EvaluationResult<DwarfReader>,
+    core: &mut Core,
+    evaluation: &mut gimli::Evaluation<DwarfReader>,
+    stackframe_cfa: Option<u64>,
+) -> Option<EvaluationResult<DwarfReader>> {
+    let resume_result = match result {
+        EvaluationResult::Complete => return None,
+        EvaluationResult::RequiresMemory { address, size, .. } => {
+            let mut buff = vec![0u8; size as usize];
+            core.read(address, &mut buff)
+                .expect("Failed to read memory");
+
+            let value = match size {
+                1 => gimli::Value::U8(buff[0]),
+                2 => gimli::Value::U16(u16::from_be_bytes([buff[0], buff[1]])),
+                4 => gimli::Value::U32(u32::from_be_bytes([buff[0], buff[1], buff[2], buff[3]])),
+                x => {
+                    unimplemented!("Requested memory with size {x}, which is not supported yet.")
+                }
+            };
+
+            evaluation.resume_with_memory(value)
+        }
+        EvaluationResult::RequiresFrameBase => {
+            evaluation.resume_with_frame_base(stackframe_cfa.unwrap())
+        }
+        EvaluationResult::RequiresRegister {
+            register,
+            base_type,
+        } => {
+            let raw_value = core
+                .read_core_reg::<u64>(register.0)
+                .expect("Failed to read memory");
+
+            if base_type != gimli::UnitOffset(0) {
+                unimplemented!(
+                    "Support for units in RequiresRegister request is not yet implemented."
+                )
+            }
+            evaluation.resume_with_register(gimli::Value::Generic(raw_value))
+        }
+        EvaluationResult::RequiresRelocatedAddress(address_index) => {
+            // Use the address_index as an offset from 0, so just pass it into the next step.
+            evaluation.resume_with_relocated_address(address_index)
+        }
+        x => {
+            println!("print_all_attributes {x:?}");
+            // x
+            todo!()
+        }
+    };
+
+    Some(resume_result.unwrap())
 }
