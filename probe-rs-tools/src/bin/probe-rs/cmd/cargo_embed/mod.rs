@@ -11,7 +11,7 @@ use probe_rs::probe::list::Lister;
 use probe_rs::rtt::{try_attach_to_rtt_shared, Error, ScanRegion};
 use probe_rs::{probe::DebugProbeSelector, Session};
 use std::ffi::OsString;
-use std::fs;
+use std::{fs, thread};
 use std::{
     fs::File,
     io::Write,
@@ -265,7 +265,7 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
         let gdb_connection_string = config.gdb.gdb_connection_string.clone();
         let session = session.clone();
 
-        gdb_thread_handle = Some(std::thread::spawn(move || {
+        gdb_thread_handle = Some(thread::spawn(move || {
             let gdb_connection_string =
                 gdb_connection_string.as_deref().unwrap_or("127.0.0.1:1337");
 
@@ -427,7 +427,7 @@ fn run_rttui_app(
             app.poll_rtt(&mut core)?;
         }
 
-        std::thread::sleep(Duration::from_millis(10));
+        thread::sleep(Duration::from_millis(10));
     }
 
     let mut session_handle = session.lock();

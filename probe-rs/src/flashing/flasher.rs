@@ -695,9 +695,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
             ) {
                 Ok(rtt) => self.rtt = Some(rtt),
                 Err(rtt::Error::NoControlBlockLocation) => {}
-                Err(error) => {
-                    tracing::error!("RTT could not be initialized: {error}");
-                }
+                Err(error) => tracing::error!("RTT could not be initialized: {error}"),
             }
         }
 
