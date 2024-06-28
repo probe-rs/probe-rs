@@ -743,14 +743,12 @@ pub enum DebugPortVersion {
 
 impl From<DebugPortVersion> for u8 {
     fn from(version: DebugPortVersion) -> Self {
-        use DebugPortVersion::*;
-
         match version {
-            DPv0 => 0,
-            DPv1 => 1,
-            DPv2 => 2,
-            DPv3 => 3,
-            Unsupported(val) => val,
+            DebugPortVersion::DPv0 => 0,
+            DebugPortVersion::DPv1 => 1,
+            DebugPortVersion::DPv2 => 2,
+            DebugPortVersion::DPv3 => 3,
+            DebugPortVersion::Unsupported(val) => val,
         }
     }
 }
@@ -766,14 +764,12 @@ impl PartialOrd for DebugPortVersion {
 
 impl Display for DebugPortVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        use DebugPortVersion::*;
-
         match self {
-            DPv0 => write!(f, "DPv0"),
-            DPv1 => write!(f, "DPv1"),
-            DPv2 => write!(f, "DPv2"),
-            DPv3 => write!(f, "DPv3"),
-            Unsupported(version) => write!(f, "<unsupported Debugport Version {version}>"),
+            Self::DPv0 => write!(f, "DPv0"),
+            Self::DPv1 => write!(f, "DPv1"),
+            Self::DPv2 => write!(f, "DPv2"),
+            Self::DPv3 => write!(f, "DPv3"),
+            Self::Unsupported(version) => write!(f, "<unsupported Debugport Version {version}>"),
         }
     }
 }
@@ -781,11 +777,11 @@ impl Display for DebugPortVersion {
 impl From<u8> for DebugPortVersion {
     fn from(value: u8) -> Self {
         match value {
-            0 => DebugPortVersion::DPv0,
-            1 => DebugPortVersion::DPv1,
-            2 => DebugPortVersion::DPv2,
-            3 => DebugPortVersion::DPv3,
-            value => DebugPortVersion::Unsupported(value),
+            0 => Self::DPv0,
+            1 => Self::DPv1,
+            2 => Self::DPv2,
+            3 => Self::DPv3,
+            value => Self::Unsupported(value),
         }
     }
 }

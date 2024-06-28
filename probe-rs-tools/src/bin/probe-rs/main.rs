@@ -1,3 +1,6 @@
+#![warn(clippy::unnecessary_self_imports)]
+#![warn(clippy::enum_glob_use)]
+
 mod cmd;
 mod report;
 mod util;
@@ -191,7 +194,7 @@ fn default_logfile_location() -> Result<PathBuf> {
             ..Default::default()
         },
     );
-    std::fs::create_dir_all(directory).context(format!("{directory:?} could not be created"))?;
+    fs::create_dir_all(directory).context(format!("{directory:?} could not be created"))?;
 
     let log_path = directory.join(logname);
 

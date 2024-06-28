@@ -1,4 +1,4 @@
-use crate::{CoreType, Error, Session};
+use crate::{CoreType, Session};
 use anyhow::Result;
 use parking_lot::FairMutex;
 
@@ -91,7 +91,7 @@ pub fn run<'a>(
         .map(|instance| {
             target::RuntimeTarget::new(session, instance.cores.to_vec(), &instance.socket_addrs[..])
         })
-        .collect::<Result<Vec<target::RuntimeTarget>, Error>>()?;
+        .collect::<Result<Vec<_>, _>>()?;
 
     // Avoid getting stuck in an infinite loop if we have no targets
     if targets.is_empty() {

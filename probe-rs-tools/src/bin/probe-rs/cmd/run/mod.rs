@@ -303,7 +303,7 @@ impl RunLoop {
     fn do_run_until<F, R>(
         &self,
         core: &mut Core,
-        rtta: &mut Option<rtt::RttActiveTarget>,
+        rtta: &mut Option<RttActiveTarget>,
         output_stream: OutputStream,
         timeout: Option<Duration>,
         start: Instant,
@@ -466,7 +466,7 @@ fn print_stacktrace<S: Write + ?Sized>(
 
 /// Poll RTT and print the received buffer.
 fn poll_rtt<S: Write + ?Sized>(
-    rtta: &mut Option<rtt::RttActiveTarget>,
+    rtta: &mut Option<RttActiveTarget>,
     core: &mut Core<'_>,
     out_stream: &mut S,
 ) -> Result<bool, anyhow::Error> {

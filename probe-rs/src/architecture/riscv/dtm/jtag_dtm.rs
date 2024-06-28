@@ -337,23 +337,21 @@ pub enum DmiOperationStatus {
 impl DmiOperationStatus {
     pub fn map_as_err(self) -> Result<(), RiscvError> {
         match self {
-            DmiOperationStatus::Ok => Ok(()),
-            DmiOperationStatus::Reserved => unimplemented!("Reserved."),
-            DmiOperationStatus::OperationFailed => Err(RiscvError::DtmOperationFailed),
-            DmiOperationStatus::RequestInProgress => Err(RiscvError::DtmOperationInProcess),
+            Self::Ok => Ok(()),
+            Self::Reserved => unimplemented!("Reserved."),
+            Self::OperationFailed => Err(RiscvError::DtmOperationFailed),
+            Self::RequestInProgress => Err(RiscvError::DtmOperationInProcess),
         }
     }
 }
 
 impl DmiOperationStatus {
     pub(crate) fn parse(value: u8) -> Option<Self> {
-        use DmiOperationStatus::*;
-
         let status = match value {
-            0 => Ok,
-            1 => Reserved,
-            2 => OperationFailed,
-            3 => RequestInProgress,
+            0 => Self::Ok,
+            1 => Self::Reserved,
+            2 => Self::OperationFailed,
+            3 => Self::RequestInProgress,
             _ => return None,
         };
 

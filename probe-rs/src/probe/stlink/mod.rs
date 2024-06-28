@@ -422,13 +422,11 @@ impl<D: StLinkUsb> StLink<D> {
         self.device
             .write(&[commands::GET_CURRENT_MODE], &[], &mut buf, TIMEOUT)?;
 
-        use Mode::*;
-
         let mode = match buf[0] {
-            0 => Dfu,
-            1 => MassStorage,
-            2 => Jtag,
-            3 => Swim,
+            0 => Mode::Dfu,
+            1 => Mode::MassStorage,
+            2 => Mode::Jtag,
+            3 => Mode::Swim,
             _ => return Err(StlinkError::UnknownMode),
         };
 
