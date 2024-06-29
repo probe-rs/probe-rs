@@ -395,7 +395,19 @@ fn enable_debug_mailbox(
 // all parts in this series. The implementation closely follows the CMSIS Pack
 // structure and its comments for ease of comparison.
 #[derive(Debug)]
-pub struct MIMXRT5xxS {}
+pub struct MIMXRT5xxS {
+    family: MIMXRTFamily,
+}
+
+#[derive(PartialEq, Debug)]
+/// MIMXRT Family Variants
+pub enum MIMXRTFamily {
+    /// MIMXRT5xxS Variants
+    MIMXRT5,
+
+    /// MIMXRT6xxS Variants
+    MIMXRT6,
+}
 
 impl MIMXRT5xxS {
     const DWT_COMP0: u64 = 0xE0001020;
@@ -405,8 +417,8 @@ impl MIMXRT5xxS {
     const FLEXSPI_NOR_FLASH_HEADER_MAGIC: u32 = 0x42464346;
 
     /// Create a sequence handle for the MIMXRT5xxS.
-    pub fn create() -> Arc<dyn ArmDebugSequence> {
-        Arc::new(Self {})
+    pub fn create(family: MIMXRTFamily) -> Arc<dyn ArmDebugSequence> {
+        Arc::new(Self { family })
     }
 
     /// Runtime validation of core type.
@@ -489,22 +501,43 @@ impl MIMXRT5xxS {
     }
 
     fn reset_flash(&self, interface: &mut dyn ArmProbe) -> Result<(), ArmError> {
-        tracing::trace!("MIMXRT595S-EVK FlexSPI flash reset (pulse PIO4_5)");
+        if self.family == MIMXRTFamily::MIMXRT5 {
+            tracing::trace!("MIMXRT595S-EVK FlexSPI flash reset (pulse PIO4_5)");
 
-        // FIXME: We do this by twiddling PIO4_5, which is where the flash
-        // reset pin is connected on MIMX595-EVK, but this code should not
-        // make any assumptions about the evaluation board; how can we
-        // generalize this so that the reset is configurable?
-        interface.write_word_32(0x40001044, 1 << 24)?; // enable GPIO clock
-        interface.write_word_32(0x40000074, 1 << 24)?; // take GPIO out of reset
-        interface.write_word_32(0x40004214, 0x130)?; // full drive and pullup
-        interface.write_word_32(0x40102010, 1 << 5)?; // PIO4_5 is an output
-        interface.write_word_32(0x40103214, 0)?; // PIO4_5 is driven low
-        std::thread::sleep(Duration::from_millis(100));
+            // FIXME: We do this by twiddling PIO4_5, which is where the flash
+            // reset pin is connected on MIMX595-EVK, but this code should not
+            // make any assumptions about the evaluation board; how can we
+            // generalize this so that the reset is configurable?
+            interface.write_word_32(0x40001044, 1 << 24)?; // enable GPIO clock
+            interface.write_word_32(0x40000074, 1 << 24)?; // take GPIO out of reset
+            interface.write_word_32(0x40004214, 0x130)?; // full drive and pullup
+            interface.write_word_32(0x40102010, 1 << 5)?; // PIO4_5 is an output
+            interface.write_word_32(0x40103214, 0)?; // PIO4_5 is driven low
+            std::thread::sleep(Duration::from_millis(100));
 
-        interface.write_word_32(0x40102010, 0)?; // PIO4_5 is an input
-        interface.flush()?;
-        std::thread::sleep(Duration::from_millis(100));
+            interface.write_word_32(0x40102010, 0)?; // PIO4_5 is an input
+            interface.flush()?;
+            std::thread::sleep(Duration::from_millis(100));
+        } else {
+            tracing::trace!("MIMXRT685-EVK FlexSPI flash reset (pulse PIO2_12)");
+
+            // FIXME: We do this by twiddling PIO2_12, which is where the flash
+            // reset pin is connected on MIMX685-EVK, but this code should not
+            // make any assumptions about the evaluation board; how can we
+            // generalize this so that the reset is configurable?
+            //
+            // See MIMX685-EVK schematics page 12 for details.
+            interface.write_word_32(0x40021044, 1 << 2)?; // enable HSGPIO2 clock
+            interface.write_word_32(0x40000074, 1 << 2)?; // take HSGPIO2 out of reset
+            interface.write_word_32(0x40004130, 0x130)?; // full drive and pullup
+            interface.write_word_32(0x40102008, 1 << 12)?; // PIO2_12 is an output
+            interface.write_word_32(0x40102288, 1 << 12)?; // PIO2_12 is driven low
+            std::thread::sleep(Duration::from_millis(100));
+
+            interface.write_word_32(0x40102208, 1 << 12)?; // PIO2_12 is driven high
+            interface.flush()?;
+            std::thread::sleep(Duration::from_millis(100));
+        }
 
         Ok(())
     }
