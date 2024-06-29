@@ -34,7 +34,7 @@ struct CliOptions {
     /// Default is `warn`. Possible choices are [error, warn, info, debug, trace].
     #[arg(value_name = "level", long)]
     pub log: Option<LevelFilter>,
-    /// The path to the file to be flashed.
+    /// The path to the file to be flashed. Setting this will ignore the cargo options.
     #[arg(value_name = "path", long)]
     pub path: Option<PathBuf>,
     /// The work directory from which cargo-flash should operate from.
