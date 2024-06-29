@@ -58,6 +58,9 @@ struct CliOptions {
     /// Work directory for the command.
     #[arg(long)]
     work_dir: Option<PathBuf>,
+    /// The path to the file to be flashed. Setting this will ignore the cargo options.
+    #[arg(value_name = "path", long)]
+    path: Option<PathBuf>,
     #[clap(flatten)]
     cargo_options: CargoOptions,
 }
@@ -126,12 +129,17 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
         probe_rs::config::add_target_from_yaml(file)
             .with_context(|| format!("failed to load the chip description from {cdp}"))?;
     }
+    let image_instr_set;
+    let path = if let Some(path_buf) = &opt.path {
+        image_instr_set = None;
+        path_buf.clone()
+    } else {
+        let cargo_options = opt.cargo_options.to_cargo_options();
+        image_instr_set = target_instruction_set(opt.cargo_options.target.clone());
 
-    let cargo_options = opt.cargo_options.to_cargo_options();
-
-    let artifact = build_artifact(&work_dir, &cargo_options)?;
-
-    let path = artifact.path();
+        // Build the project, and extract the path of the built artifact.
+        build_artifact(&work_dir, &cargo_options)?.path().into()
+    };
 
     // Get the binary name (without extension) from the build artifact path
     let name = path.file_stem().and_then(|f| f.to_str()).ok_or_else(|| {
@@ -222,10 +230,6 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
     };
 
     if config.flashing.enabled {
-        // As opposed to cargo-flash, we do not have the option of suppliying an external image.
-        // This means we can just take the cargo target, if it's set.
-        let image_instr_set = target_instruction_set(opt.cargo_options.target.clone());
-
         let download_options = BinaryDownloadOptions {
             disable_progressbars: opt.disable_progressbars,
             disable_double_buffering: config.flashing.disable_double_buffering,
@@ -234,10 +238,10 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
             verify: config.flashing.verify,
         };
         let format_options = FormatOptions::default();
-        let loader = build_loader(&mut session, path, format_options, image_instr_set)?;
+        let loader = build_loader(&mut session, &path, format_options, image_instr_set)?;
         run_flash_download(
             &mut session,
-            path,
+            &path,
             &download_options,
             &probe_options,
             loader,
@@ -245,7 +249,7 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
         )?;
     }
 
-    let core_id = rtt::get_target_core_id(&mut session, path);
+    let core_id = rtt::get_target_core_id(&mut session, &path);
     if config.reset.enabled {
         let mut core = session.core(core_id)?;
         let halt_timeout = Duration::from_millis(500);
@@ -288,7 +292,7 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
 
     if config.rtt.enabled {
         // GDB is also using the session, so we do not lock on the outside.
-        run_rttui_app(name, &session, core_id, config, path, offset)?;
+        run_rttui_app(name, &session, core_id, config, &path, offset)?;
     }
 
     if let Some(gdb_thread_handle) = gdb_thread_handle {
