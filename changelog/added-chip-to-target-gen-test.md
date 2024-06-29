@@ -1,0 +1,1 @@
+Added `--chip` to `target-gen test`

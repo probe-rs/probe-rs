@@ -310,22 +310,27 @@ impl Registry {
         Target::new(family, &chip.name)
     }
 
-    fn add_target_from_yaml<R>(&mut self, yaml_reader: R) -> Result<(), RegistryError>
+    fn add_target_from_yaml<R>(&mut self, yaml_reader: R) -> Result<String, RegistryError>
     where
         R: Read,
     {
         let family: ChipFamily = serde_yaml::from_reader(yaml_reader)?;
 
-        family
-            .validate()
-            .map_err(|e| RegistryError::InvalidChipFamilyDefinition(Box::new(family.clone()), e))?;
+        if let Err(error) = family.validate() {
+            return Err(RegistryError::InvalidChipFamilyDefinition(
+                Box::new(family),
+                error,
+            ));
+        };
+
+        let family_name = family.name.clone();
 
         self.families
-            .retain(|old_family| !old_family.name.eq_ignore_ascii_case(&family.name));
+            .retain(|old_family| !old_family.name.eq_ignore_ascii_case(&family_name));
 
         self.families.push(family);
 
-        Ok(())
+        Ok(family_name)
     }
 }
 
@@ -385,7 +390,7 @@ pub(crate) fn get_target_by_chip_info(chip_info: ChipInfo) -> Result<Target, Reg
 /// const BUILTIN_TARGET_YAML: &[u8] = include_bytes!("/path/target.yaml");
 /// probe_rs::config::add_target_from_yaml(BUILTIN_TARGET_YAML)?;
 /// ```
-pub fn add_target_from_yaml<R>(yaml_reader: R) -> Result<(), RegistryError>
+pub fn add_target_from_yaml<R>(yaml_reader: R) -> Result<String, RegistryError>
 where
     R: Read,
 {
