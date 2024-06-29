@@ -79,10 +79,10 @@ where
     let mut devices = pdsc.devices.0.into_iter().collect::<Vec<_>>();
     devices.sort_by(|a, b| a.0.cmp(&b.0));
 
-    for (device_name, device) in devices {
-        // Only process this, if this belongs to a supported family.
-        let currently_supported_chip_families = probe_rs::config::families();
+    // Only process this, if this belongs to a supported family.
+    let currently_supported_chip_families = probe_rs::config::families();
 
+    for (device_name, device) in devices {
         if only_supported_familes
             && !currently_supported_chip_families
                 .iter()
