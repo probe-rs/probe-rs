@@ -983,7 +983,7 @@ mod test {
     };
     use core::panic;
     use probe_rs::{
-        architecture::arm::ApAddress,
+        architecture::arm::FullyQualifiedApAddress,
         integration::{FakeProbe, Operation},
         probe::{
             list::Lister, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
@@ -1423,7 +1423,7 @@ mod test {
 
         // Indicate that the core is unlocked
         fake_probe.expect_operation(Operation::ReadRawApRegister {
-            ap: ApAddress::with_default_dp(1),
+            ap: FullyQualifiedApAddress::with_default_dp(1),
             address: 0xC,
             result: 1,
         });
@@ -1486,7 +1486,7 @@ mod test {
 
         // Indicate that the core is unlocked
         fake_probe.expect_operation(Operation::ReadRawApRegister {
-            ap: ApAddress::with_default_dp(1),
+            ap: FullyQualifiedApAddress::with_default_dp(1),
             address: 0xC,
             result: 1,
         });
@@ -1536,7 +1536,7 @@ mod test {
 
         // Indicate that the core is unlocked
         fake_probe.expect_operation(Operation::ReadRawApRegister {
-            ap: ApAddress::with_default_dp(1),
+            ap: FullyQualifiedApAddress::with_default_dp(1),
             address: 0xC,
             result: 1,
         });
@@ -1608,7 +1608,7 @@ mod test {
 
         // Indicate that the core is unlocked
         fake_probe.expect_operation(Operation::ReadRawApRegister {
-            ap: ApAddress::with_default_dp(1),
+            ap: FullyQualifiedApAddress::with_default_dp(1),
             address: 0xC,
             result: 1,
         });
@@ -1678,7 +1678,7 @@ mod test {
 
         // Indicate that the core is unlocked
         fake_probe.expect_operation(Operation::ReadRawApRegister {
-            ap: ApAddress::with_default_dp(1),
+            ap: FullyQualifiedApAddress::with_default_dp(1),
             address: 0xC,
             result: 1,
         });
@@ -1768,7 +1768,7 @@ mod test {
 
         // Indicate that the core is unlocked
         fake_probe.expect_operation(Operation::ReadRawApRegister {
-            ap: ApAddress::with_default_dp(1),
+            ap: FullyQualifiedApAddress::with_default_dp(1),
             address: 0xC,
             result: 1,
         });

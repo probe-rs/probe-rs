@@ -1,6 +1,6 @@
 use anyhow::Result;
 use probe_rs::{
-    architecture::arm::{ApAddress, DpAddress},
+    architecture::arm::{FullyQualifiedApAddress, DpAddress},
     probe::list::Lister,
 };
 
@@ -25,19 +25,19 @@ fn main() -> Result<()> {
     // This is an example on how to do a "recover" operation (erase+unlock a locked chip)
     // on an nRF5340 target.
 
-    const APP_MEM: ApAddress = ApAddress {
+    const APP_MEM: FullyQualifiedApAddress = FullyQualifiedApAddress {
         ap: 0,
         dp: DpAddress::Default,
     };
-    const NET_MEM: ApAddress = ApAddress {
+    const NET_MEM: FullyQualifiedApAddress = FullyQualifiedApAddress {
         ap: 1,
         dp: DpAddress::Default,
     };
-    const APP_CTRL: ApAddress = ApAddress {
+    const APP_CTRL: FullyQualifiedApAddress = FullyQualifiedApAddress {
         ap: 2,
         dp: DpAddress::Default,
     };
-    const NET_CTRL: ApAddress = ApAddress {
+    const NET_CTRL: FullyQualifiedApAddress = FullyQualifiedApAddress {
         ap: 3,
         dp: DpAddress::Default,
     };

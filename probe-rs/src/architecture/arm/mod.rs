@@ -50,7 +50,7 @@ pub enum ArmError {
     #[error("Error using access port.")]
     AccessPort {
         /// Address of the access port
-        address: ApAddress,
+        address: FullyQualifiedApAddress,
         /// Source of the error.
         source: AccessPortError,
     },
@@ -107,7 +107,7 @@ pub enum ArmError {
 
     /// The AP with the specified address does not exist.
     #[error("The AP with address {0:?} does not exist.")]
-    ApDoesNotExist(ApAddress),
+    ApDoesNotExist(FullyQualifiedApAddress),
 
     /// The AP has the wrong type for the operation.
     #[error("Wrong AP type.")]

@@ -16,7 +16,7 @@ use crate::{
         },
         memory::Component,
         sequences::ArmDebugSequence,
-        ApAddress, ApInformation, ArmChipInfo, DapAccess, DpAddress, Pins, SwoAccess, SwoConfig,
+        FullyQualifiedApAddress, ApInformation, ArmChipInfo, DapAccess, DpAddress, Pins, SwoAccess, SwoConfig,
         SwoMode,
     },
     probe::{DebugProbeInfo, DebugProbeSelector, Probe, ProbeFactory},
@@ -1459,7 +1459,7 @@ impl DapAccess for StlinkArmDebug {
         Ok(())
     }
 
-    fn read_raw_ap_register(&mut self, ap: ApAddress, address: u8) -> Result<u32, ArmError> {
+    fn read_raw_ap_register(&mut self, ap: FullyQualifiedApAddress, address: u8) -> Result<u32, ArmError> {
         if ap.dp != DpAddress::Default {
             return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
         }
@@ -1471,7 +1471,7 @@ impl DapAccess for StlinkArmDebug {
 
     fn write_raw_ap_register(
         &mut self,
-        ap: ApAddress,
+        ap: FullyQualifiedApAddress,
         address: u8,
         value: u32,
     ) -> Result<(), ArmError> {
