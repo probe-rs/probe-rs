@@ -103,6 +103,9 @@ enum TargetGen {
         /// The address used as the start of flash memory area to perform test.
         #[clap(long = "test-address", value_parser = parse_u64)]
         test_start_sector_address: Option<u64>,
+        /// The name of the chip to use for the test, if there are multiple to choose from.
+        #[clap(long = "chip")]
+        chip: Option<String>,
     },
     /// Loads and updates target description from YAML files.
     Reformat {
@@ -155,11 +158,13 @@ async fn main() -> Result<()> {
             template_path,
             definition_export_path,
             test_start_sector_address,
+            chip,
         } => cmd_test(
             target_artifact.as_path(),
             template_path.as_path(),
             definition_export_path.as_path(),
             test_start_sector_address,
+            chip,
         )?,
         TargetGen::Reformat { yaml_path } => {
             if yaml_path.is_dir() {

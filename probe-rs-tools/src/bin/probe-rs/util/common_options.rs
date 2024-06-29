@@ -170,10 +170,10 @@ impl LoadedProbeOptions {
                     source: error,
                     path: cdp.clone(),
                 }
-            })
-        } else {
-            Ok(())
+            })?;
         }
+
+        Ok(())
     }
 
     /// Resolves a resultant target selector from passed [ProbeOptions].
