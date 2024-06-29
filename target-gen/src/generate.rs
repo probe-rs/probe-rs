@@ -9,7 +9,6 @@ use probe_rs_target::{
     RiscvCoreAccessOptions, TargetDescriptionSource, XtensaCoreAccessOptions,
 };
 use std::collections::HashMap;
-use std::ffi::OsStr;
 use std::{fs, io::Read, path::Path};
 
 pub(crate) enum Kind<'a, T>
@@ -31,7 +30,7 @@ where
                 let reader = archive.by_name(&path.to_string_lossy())?;
                 reader.bytes().collect::<std::io::Result<Vec<u8>>>()?
             }
-            Kind::Directory(dir) => std::fs::read(dir.join(path))?,
+            Kind::Directory(dir) => fs::read(dir.join(path))?,
         };
 
         Ok(buffer)
@@ -222,32 +221,39 @@ fn core_to_probe_core(value: &Core) -> Result<CoreType, Error> {
     })
 }
 
-// one possible implementation of walking a directory only visiting files
+// Process all `.pdsc` files in the given directory.
 pub(crate) fn visit_dirs(path: &Path, families: &mut Vec<ChipFamily>) -> Result<()> {
-    // If we get a dir, look for all .pdsc files.
-    for entry in fs::read_dir(path)? {
-        let entry = entry?;
-        let entry_path = entry.path();
-
-        if entry_path.is_dir() {
-            visit_dirs(&entry_path, families)?;
-        } else if entry_path.extension() == Some(OsStr::new("pdsc")) {
+    walk_files(path, &mut |path| {
+        if has_extension(path, "pack") {
             log::info!("Found .pdsc file: {}", path.display());
 
-            extract_families::<std::fs::File>(
-                Package::from_path(&entry_path)?,
-                Kind::Directory(path),
-                families,
-                false,
-            )
-            .context(format!(
-                "Failed to process .pdsc file {}.",
-                entry_path.display()
-            ))?;
+            let package = Package::from_path(path)
+                .context(format!("Failed to open .pdsc file {}.", path.display()))?;
+
+            extract_families::<fs::File>(package, Kind::Directory(path), families, false)
+                .context(format!("Failed to process .pdsc file {}.", path.display()))?;
+        }
+
+        Ok(())
+    })
+}
+
+fn walk_files(path: &Path, callback: &mut impl FnMut(&Path) -> Result<()>) -> Result<()> {
+    for entry in fs::read_dir(path)? {
+        let entry_path = entry?.path();
+
+        if entry_path.is_dir() {
+            walk_files(&entry_path, callback)?;
+        } else {
+            callback(&entry_path)?;
         }
     }
 
     Ok(())
+}
+
+fn has_extension(path: &Path, ext: &str) -> bool {
+    path.extension().map_or(false, |e| e == ext)
 }
 
 pub(crate) fn visit_file(path: &Path, families: &mut Vec<ChipFamily>) -> Result<()> {
@@ -421,7 +427,7 @@ where
             )
         })?;
 
-        if outpath.extension() == Some(OsStr::new("pdsc")) {
+        if has_extension(&outpath, "pdsc") {
             // We cannot return the file directly here,
             // because this leads to lifetime problems.
 
