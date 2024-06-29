@@ -6,7 +6,6 @@ use probe_rs::rtt::{DownChannel, Error, Rtt, ScanRegion, UpChannel};
 use probe_rs::{Core, Session};
 use probe_rs_target::MemoryRegion;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::fs::File;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
@@ -442,7 +441,7 @@ impl RttActiveUpChannel {
                     tracing::error!("\nError reading from RTT: {}", err);
                     return None;
                 }
-                _ => std::thread::sleep(std::time::Duration::from_millis(50)),
+                _ => thread::sleep(Duration::from_millis(50)),
             }
         }
 
@@ -509,8 +508,8 @@ impl RttActiveDownChannel {
 /// each of the active channels, and hold essential state information for successful communication.
 #[derive(Debug)]
 pub struct RttActiveTarget {
-    pub active_up_channels: HashMap<usize, RttActiveUpChannel>,
-    pub active_down_channels: HashMap<usize, RttActiveDownChannel>,
+    pub active_up_channels: Vec<RttActiveUpChannel>,
+    pub active_down_channels: Vec<RttActiveDownChannel>,
     pub defmt_state: Option<DefmtState>,
 }
 
@@ -521,26 +520,22 @@ pub struct DefmtState {
 }
 impl DefmtState {
     pub fn try_from_bytes(buffer: &[u8]) -> Result<Option<Self>> {
-        if let Some(table) = defmt_decoder::Table::parse(buffer)? {
-            let locs = {
-                let locs = table.get_locations(buffer)?;
+        let Some(table) = defmt_decoder::Table::parse(buffer)? else {
+            return Ok(None);
+        };
 
-                if !table.is_empty() && locs.is_empty() {
-                    tracing::warn!("Insufficient DWARF info; compile your program with `debug = 2` to enable location info.");
-                    None
-                } else if table.indices().all(|idx| locs.contains_key(&(idx as u64))) {
-                    Some(locs)
-                } else {
-                    tracing::warn!(
-                        "Location info is incomplete; it will be omitted from the output."
-                    );
-                    None
-                }
-            };
-            Ok(Some(DefmtState { table, locs }))
+        let locs = table.get_locations(buffer)?;
+
+        let locs = if !table.is_empty() && locs.is_empty() {
+            tracing::warn!("Insufficient DWARF info; compile your program with `debug = 2` to enable location info.");
+            None
+        } else if table.indices().all(|idx| locs.contains_key(&(idx as u64))) {
+            Some(locs)
         } else {
-            Ok(None)
-        }
+            tracing::warn!("Location info is incomplete; it will be omitted from the output.");
+            None
+        };
+        Ok(Some(DefmtState { table, locs }))
     }
 }
 
@@ -559,29 +554,22 @@ impl RttActiveTarget {
         rtt_config: &RttConfig,
         timestamp_offset: UtcOffset,
     ) -> Result<Self> {
-        let mut active_up_channels = HashMap::new();
-        let mut active_down_channels = HashMap::new();
+        let mut active_up_channels = Vec::with_capacity(rtt.up_channels.len());
 
-        // For each channel configured in the RTT Control Block (`Rtt`), check if there are additional user configuration in a `RttChannelConfig`. If not, apply defaults.
+        // For each channel configured in the RTT Control Block (`Rtt`), check if there are
+        // additional user configuration in a `RttChannelConfig`. If not, apply defaults.
         for channel in rtt.up_channels.into_iter() {
             let channel_config = rtt_config
                 .channel_config(channel.number())
                 .cloned()
                 .unwrap_or_default();
-            active_up_channels.insert(
-                channel.number(),
-                RttActiveUpChannel::new(
-                    core,
-                    channel,
-                    &channel_config,
-                    timestamp_offset,
-                    defmt_state.as_ref(),
-                )?,
-            );
-        }
-
-        for channel in rtt.down_channels.into_iter() {
-            active_down_channels.insert(channel.number(), RttActiveDownChannel::new(channel));
+            active_up_channels.push(RttActiveUpChannel::new(
+                core,
+                channel,
+                &channel_config,
+                timestamp_offset,
+                defmt_state.as_ref(),
+            )?);
         }
 
         // It doesn't make sense to pretend RTT is active, if there are no active up channels
@@ -590,6 +578,12 @@ impl RttActiveTarget {
                 "RTT Initialized correctly, but there were no active channels configured"
             ));
         }
+
+        let active_down_channels = rtt
+            .down_channels
+            .into_iter()
+            .map(RttActiveDownChannel::new)
+            .collect::<Vec<_>>();
 
         Ok(Self {
             active_up_channels,
@@ -632,7 +626,7 @@ impl RttActiveTarget {
         collector: &mut impl ChannelDataCallbacks,
     ) -> Result<()> {
         let defmt_state = self.defmt_state.as_ref();
-        for channel in self.active_up_channels.values_mut() {
+        for channel in self.active_up_channels.iter_mut() {
             channel.poll_process_rtt_data(core, defmt_state, collector)?;
         }
         Ok(())
@@ -640,7 +634,7 @@ impl RttActiveTarget {
 
     /// Clean up temporary changes made to the channels.
     pub fn clean_up(&mut self, core: &mut Core) -> Result<()> {
-        for channel in self.active_up_channels.values_mut() {
+        for channel in self.active_up_channels.iter_mut() {
             channel.clean_up(core)?;
         }
         Ok(())

@@ -59,7 +59,7 @@ impl DebuggerRttChannel {
             return false;
         }
 
-        let Some(rtt_channel) = rtt_target.active_up_channels.get_mut(&self.channel_number) else {
+        let Some(rtt_channel) = rtt_target.active_up_channels.get_mut(self.channel_number) else {
             return false;
         };
 

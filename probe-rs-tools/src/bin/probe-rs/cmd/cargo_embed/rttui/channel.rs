@@ -1,5 +1,7 @@
 use std::net::SocketAddr;
 
+use probe_rs::Core;
+
 use crate::{
     cmd::cargo_embed::rttui::tcp::TcpPublisher,
     util::rtt::{ChannelDataCallbacks, DefmtState, RttActiveUpChannel},
@@ -19,10 +21,8 @@ impl ChannelDataCallbacks for (&mut Option<TcpPublisher>, &mut ChannelData) {
         let ChannelData::Strings { messages } = &mut self.1 else {
             unreachable!()
         };
-        for line in data.split_terminator('\n') {
-            messages.push(line.to_string());
-        }
 
+        messages.push(data);
         Ok(())
     }
 
@@ -34,8 +34,8 @@ impl ChannelDataCallbacks for (&mut Option<TcpPublisher>, &mut ChannelData) {
         let ChannelData::Binary { data } = &mut self.1 else {
             unreachable!()
         };
-        data.extend_from_slice(incoming);
 
+        data.extend_from_slice(incoming);
         Ok(())
     }
 }
@@ -63,7 +63,7 @@ impl UpChannel {
 
     pub fn poll_rtt(
         &mut self,
-        core: &mut probe_rs::Core<'_>,
+        core: &mut Core<'_>,
         defmt_state: Option<&DefmtState>,
     ) -> anyhow::Result<()> {
         self.rtt_channel.poll_process_rtt_data(
@@ -73,7 +73,11 @@ impl UpChannel {
         )
     }
 
-    pub(crate) fn clean_up(&mut self, core: &mut probe_rs::Core<'_>) -> anyhow::Result<()> {
+    pub(crate) fn clean_up(&mut self, core: &mut Core<'_>) -> anyhow::Result<()> {
         self.rtt_channel.clean_up(core)
+    }
+
+    pub(crate) fn channel_name(&self) -> &str {
+        &self.rtt_channel.channel_name
     }
 }
