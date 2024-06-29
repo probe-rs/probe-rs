@@ -75,7 +75,6 @@ where
     T: std::io::Seek + std::io::Read,
 {
     // Forge a definition file for each device in the .pdsc file.
-    let pack_file_release = Some(pdsc.releases.latest_release().version.clone());
     let mut devices = pdsc.devices.0.into_iter().collect::<Vec<_>>();
     devices.sort_by(|a, b| a.0.cmp(&b.0));
 
@@ -106,7 +105,7 @@ where
                 manufacturer: None,
                 generated_from_pack: true,
                 chip_detection: vec![],
-                pack_file_release: pack_file_release.clone(),
+                pack_file_release: Some(pdsc.releases.latest_release().version.clone()),
                 variants: Vec::new(),
                 flash_algorithms: Vec::new(),
                 source: TargetDescriptionSource::BuiltIn,
@@ -116,7 +115,7 @@ where
         };
 
         // Extract the flash algorithm, block & sector size and the erased byte value from the ELF binary.
-        let variant_flash_algorithms = device
+        let flash_algorithm_names = device
             .algorithms
             .iter()
             .filter_map(|flash_algorithm| {
@@ -124,11 +123,12 @@ where
                     Ok(algo) => {
                         // We add this algo directly to the algos of the family if it's not already added.
                         // Make sure we never add an algo twice to save file size.
+                        let algo_name = algo.name.clone();
                         if !family.flash_algorithms.contains(&algo) {
-                            family.flash_algorithms.push(algo.clone());
+                            family.flash_algorithms.push(algo);
                         }
 
-                        Some(algo)
+                        Some(algo_name)
                     }
                     Err(e) => {
                         log::warn!(
@@ -140,11 +140,6 @@ where
                     }
                 }
             })
-            .collect::<Vec<_>>();
-
-        let flash_algorithm_names = variant_flash_algorithms
-            .iter()
-            .map(|fa| fa.name.to_string())
             .collect::<Vec<_>>();
 
         // Sometimes the algos are referenced twice, for example in the multicore H7s
