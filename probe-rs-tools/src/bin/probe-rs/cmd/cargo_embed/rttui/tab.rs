@@ -134,8 +134,18 @@ impl Tab {
                 //  - Leaving sequences in the output intact is just a bad experience.
 
                 for line in messages.iter().skip(self.last_processed).map(strip_ansi) {
+                    // TODO: we shouldn't assume that one message is one complete line. If the
+                    // last line did not end with a newline, we should append to that line instead.
+
+                    // Trim a single newline from the end
+                    let line = if line.ends_with('\n') {
+                        &line[..line.len() - 1]
+                    } else {
+                        &line
+                    };
+
                     self.messages
-                        .extend(textwrap::wrap(&line, width).into_iter().map(String::from));
+                        .extend(textwrap::wrap(line, width).into_iter().map(String::from));
                 }
 
                 self.last_processed = messages.len();
