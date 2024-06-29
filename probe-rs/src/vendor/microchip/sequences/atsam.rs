@@ -9,7 +9,7 @@ use crate::{
             communication_interface::{DapProbe, SwdSequence},
             memory::adi_v5_memory_interface::ArmProbe,
             sequences::{ArmDebugSequence, ArmDebugSequenceError, DebugEraseSequence},
-            ApAddress, ArmError, ArmProbeInterface, DpAddress, Pins,
+            ArmError, ArmProbeInterface, DpAddress, FullyQualifiedApAddress, Pins,
         },
     },
     probe::DebugProbeError,
@@ -534,7 +534,7 @@ impl ArmDebugSequence for AtSAM {
 
 impl DebugEraseSequence for AtSAM {
     fn erase_all(&self, interface: &mut dyn ArmProbeInterface) -> Result<(), ArmError> {
-        let mem_ap = MemoryAp::new(ApAddress {
+        let mem_ap = MemoryAp::new(FullyQualifiedApAddress {
             dp: DpAddress::Default,
             ap: 0,
         });

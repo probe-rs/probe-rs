@@ -14,7 +14,8 @@ use probe_rs::{
                 Component, ComponentId, CoresightComponent, PeripheralType,
             },
             sequences::DefaultArmSequence,
-            ApAddress, ApInformation, ArmProbeInterface, DpAddress, MemoryApInformation, Register,
+            ApInformation, ArmProbeInterface, DpAddress, FullyQualifiedApAddress,
+            MemoryApInformation, Register,
         },
         riscv::communication_interface::RiscvCommunicationInterface,
         xtensa::communication_interface::{
@@ -294,7 +295,7 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result
     let num_access_ports = interface.num_access_ports(dp)?;
 
     for ap_index in 0..num_access_ports {
-        let ap = ApAddress {
+        let ap = FullyQualifiedApAddress {
             ap: ap_index as u8,
             dp,
         };

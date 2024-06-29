@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 use probe_rs::{
-    architecture::arm::{sequences::DefaultArmSequence, ApAddress, DpAddress},
+    architecture::arm::{sequences::DefaultArmSequence, DpAddress, FullyQualifiedApAddress},
     probe::list::Lister,
 };
 
@@ -24,7 +24,7 @@ fn main() -> Result<()> {
         .initialize(DefaultArmSequence::create(), DpAddress::Default)
         .map_err(|(_interface, e)| e)?;
 
-    let port = ApAddress {
+    let port = FullyQualifiedApAddress {
         dp: DpAddress::Default,
         ap: 1,
     };

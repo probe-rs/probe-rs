@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 use probe_rs::{
-    architecture::arm::{ApAddress, DpAddress},
+    architecture::arm::{DpAddress, FullyQualifiedApAddress},
     probe::list::Lister,
 };
 
@@ -24,19 +24,19 @@ fn main() -> Result<()> {
         .initialize_unspecified(DpAddress::Default)
         .unwrap();
 
-    const APP_MEM: ApAddress = ApAddress {
+    const APP_MEM: FullyQualifiedApAddress = FullyQualifiedApAddress {
         ap: 0,
         dp: DpAddress::Default,
     };
-    const NET_MEM: ApAddress = ApAddress {
+    const NET_MEM: FullyQualifiedApAddress = FullyQualifiedApAddress {
         ap: 1,
         dp: DpAddress::Default,
     };
-    const APP_CTRL: ApAddress = ApAddress {
+    const APP_CTRL: FullyQualifiedApAddress = FullyQualifiedApAddress {
         ap: 2,
         dp: DpAddress::Default,
     };
-    const NET_CTRL: ApAddress = ApAddress {
+    const NET_CTRL: FullyQualifiedApAddress = FullyQualifiedApAddress {
         ap: 3,
         dp: DpAddress::Default,
     };

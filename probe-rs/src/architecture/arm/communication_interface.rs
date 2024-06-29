@@ -12,7 +12,8 @@ use super::{
         Component,
     },
     sequences::{ArmDebugSequence, DefaultArmSequence},
-    ApAddress, ArmError, DapAccess, DpAddress, PortType, RawDapAccess, SwoAccess, SwoConfig,
+    ArmError, DapAccess, DpAddress, FullyQualifiedApAddress, PortType, RawDapAccess, SwoAccess,
+    SwoConfig,
 };
 use crate::{
     architecture::arm::ap::DataSize,
@@ -227,7 +228,7 @@ pub enum ApInformation {
     /// Information about an AP with an unknown class.
     Other {
         /// Zero-based port number of the access port. This is used in the debug port to select an AP.
-        address: ApAddress,
+        address: FullyQualifiedApAddress,
         /// Content of the [`IDR`] register describing this AP.
         idr: IDR,
     },
@@ -313,7 +314,7 @@ impl ApInformation {
 #[derive(Debug, Clone)]
 pub struct MemoryApInformation {
     /// Zero-based port number of the access port. This is used in the debug port to select an AP.
-    pub address: ApAddress,
+    pub address: FullyQualifiedApAddress,
 
     /// Some Memory APs only support 32 bit wide access to data, while others
     /// also support other widths. Based on this, 8 bit data access can either
@@ -693,7 +694,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
 
     fn select_ap_and_ap_bank(
         &mut self,
-        ap: ApAddress,
+        ap: FullyQualifiedApAddress,
         ap_register_address: u8,
     ) -> Result<(), ArmError> {
         let dp_state = self.select_dp(ap.dp)?;
@@ -811,7 +812,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
 
     fn read_raw_ap_register(
         &mut self,
-        ap: ApAddress,
+        ap: FullyQualifiedApAddress,
         address: u8,
     ) -> std::result::Result<u32, ArmError> {
         self.select_ap_and_ap_bank(ap, address)?;
@@ -825,7 +826,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
 
     fn read_raw_ap_register_repeated(
         &mut self,
-        ap: ApAddress,
+        ap: FullyQualifiedApAddress,
         address: u8,
         values: &mut [u32],
     ) -> Result<(), ArmError> {
@@ -838,7 +839,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
 
     fn write_raw_ap_register(
         &mut self,
-        ap: ApAddress,
+        ap: FullyQualifiedApAddress,
         address: u8,
         value: u32,
     ) -> Result<(), ArmError> {
@@ -852,7 +853,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
 
     fn write_raw_ap_register_repeated(
         &mut self,
-        ap: ApAddress,
+        ap: FullyQualifiedApAddress,
         address: u8,
         values: &[u32],
     ) -> Result<(), ArmError> {

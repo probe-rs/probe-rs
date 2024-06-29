@@ -3,7 +3,9 @@
 pub(crate) mod mock;
 
 use super::{AccessPort, ApAccess, ApRegister, GenericAp, Register};
-use crate::architecture::arm::{communication_interface::RegisterParseError, ApAddress, ArmError};
+use crate::architecture::arm::{
+    communication_interface::RegisterParseError, ArmError, FullyQualifiedApAddress,
+};
 
 define_ap!(
     /// Memory AP

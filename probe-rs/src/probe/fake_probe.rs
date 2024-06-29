@@ -12,8 +12,8 @@ use crate::{
         },
         memory::adi_v5_memory_interface::{ADIMemoryInterface, ArmProbe},
         sequences::ArmDebugSequence,
-        ApAddress, ArmError, ArmProbeInterface, DapAccess, DpAddress, MemoryApInformation,
-        PortType, RawDapAccess, SwoAccess,
+        ArmError, ArmProbeInterface, DapAccess, DpAddress, FullyQualifiedApAddress,
+        MemoryApInformation, PortType, RawDapAccess, SwoAccess,
     },
     probe::{DebugProbe, DebugProbeError, Probe, WireProtocol},
     Error, MemoryMappedRegister,
@@ -192,7 +192,7 @@ impl ArmProbe for &mut MockCore {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Operation {
     ReadRawApRegister {
-        ap: ApAddress,
+        ap: FullyQualifiedApAddress,
         address: u8,
         result: u32,
     },
@@ -269,7 +269,7 @@ impl FakeProbe {
 
     fn read_raw_ap_register(
         &mut self,
-        expected_ap: ApAddress,
+        expected_ap: FullyQualifiedApAddress,
         expected_address: u8,
     ) -> Result<u32, ArmError> {
         let operation = self.next_operation();
@@ -564,13 +564,17 @@ impl DapAccess for FakeArmInterface<Initialized> {
         todo!()
     }
 
-    fn read_raw_ap_register(&mut self, _ap: ApAddress, _address: u8) -> Result<u32, ArmError> {
+    fn read_raw_ap_register(
+        &mut self,
+        _ap: FullyQualifiedApAddress,
+        _address: u8,
+    ) -> Result<u32, ArmError> {
         self.probe.read_raw_ap_register(_ap, _address)
     }
 
     fn read_raw_ap_register_repeated(
         &mut self,
-        _ap: ApAddress,
+        _ap: FullyQualifiedApAddress,
         _address: u8,
         _values: &mut [u32],
     ) -> Result<(), ArmError> {
@@ -579,7 +583,7 @@ impl DapAccess for FakeArmInterface<Initialized> {
 
     fn write_raw_ap_register(
         &mut self,
-        _ap: ApAddress,
+        _ap: FullyQualifiedApAddress,
         _address: u8,
         _value: u32,
     ) -> Result<(), ArmError> {
@@ -588,7 +592,7 @@ impl DapAccess for FakeArmInterface<Initialized> {
 
     fn write_raw_ap_register_repeated(
         &mut self,
-        _ap: ApAddress,
+        _ap: FullyQualifiedApAddress,
         _address: u8,
         _values: &[u32],
     ) -> Result<(), ArmError> {

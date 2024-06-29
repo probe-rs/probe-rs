@@ -8,7 +8,8 @@ use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::architecture::arm::ArmError;
 use crate::architecture::arm::{
-    communication_interface::Initialized, ApAddress, ArmCommunicationInterface, DapAccess,
+    communication_interface::Initialized, ArmCommunicationInterface, DapAccess,
+    FullyQualifiedApAddress,
 };
 
 /// The sequence handle for the nRF5340.
@@ -23,7 +24,10 @@ impl Nrf5340 {
 }
 
 impl Nrf for Nrf5340 {
-    fn core_aps(&self, memory: &mut dyn ArmProbe) -> Vec<(ApAddress, ApAddress)> {
+    fn core_aps(
+        &self,
+        memory: &mut dyn ArmProbe,
+    ) -> Vec<(FullyQualifiedApAddress, FullyQualifiedApAddress)> {
         let ap_address = memory.ap().ap_address();
 
         let core_aps = [(0, 2), (1, 3)];
@@ -32,11 +36,11 @@ impl Nrf for Nrf5340 {
             .into_iter()
             .map(|(core_ahb_ap, core_ctrl_ap)| {
                 (
-                    ApAddress {
+                    FullyQualifiedApAddress {
                         ap: core_ahb_ap,
                         ..ap_address
                     },
-                    ApAddress {
+                    FullyQualifiedApAddress {
                         ap: core_ctrl_ap,
                         ..ap_address
                     },
@@ -48,8 +52,8 @@ impl Nrf for Nrf5340 {
     fn is_core_unlocked(
         &self,
         arm_interface: &mut ArmCommunicationInterface<Initialized>,
-        ahb_ap_address: ApAddress,
-        _ctrl_ap_address: ApAddress,
+        ahb_ap_address: FullyQualifiedApAddress,
+        _ctrl_ap_address: FullyQualifiedApAddress,
     ) -> Result<bool, ArmError> {
         let csw: CSW = arm_interface
             .read_raw_ap_register(ahb_ap_address, 0x00)?

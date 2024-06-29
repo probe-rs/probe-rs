@@ -6,7 +6,7 @@ use crate::{
         communication_interface::Initialized,
         memory::adi_v5_memory_interface::ArmProbe,
         sequences::{ArmDebugSequence, ArmDebugSequenceError},
-        ApAddress, ArmCommunicationInterface, ArmError, ArmProbeInterface, DapAccess,
+        ArmCommunicationInterface, ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress,
     },
     session::MissingPermissions,
 };
@@ -14,14 +14,17 @@ use std::fmt::Debug;
 
 pub trait Nrf: Sync + Send + Debug {
     /// Returns the ahb_ap and ctrl_ap of every core
-    fn core_aps(&self, interface: &mut dyn ArmProbe) -> Vec<(ApAddress, ApAddress)>;
+    fn core_aps(
+        &self,
+        interface: &mut dyn ArmProbe,
+    ) -> Vec<(FullyQualifiedApAddress, FullyQualifiedApAddress)>;
 
     /// Returns true when the core is unlocked and false when it is locked.
     fn is_core_unlocked(
         &self,
         arm_interface: &mut ArmCommunicationInterface<Initialized>,
-        ahb_ap_address: ApAddress,
-        ctrl_ap_address: ApAddress,
+        ahb_ap_address: FullyQualifiedApAddress,
+        ctrl_ap_address: FullyQualifiedApAddress,
     ) -> Result<bool, ArmError>;
 
     /// Returns true if a network core is present
@@ -42,7 +45,7 @@ const RELEASE_FORCEOFF: u32 = 0;
 /// The `ap_address` must be of the ctrl ap of the core.
 fn unlock_core(
     arm_interface: &mut ArmCommunicationInterface<Initialized>,
-    ap_address: ApAddress,
+    ap_address: FullyQualifiedApAddress,
     permissions: &crate::Permissions,
 ) -> Result<(), ArmError> {
     permissions

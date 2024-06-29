@@ -14,8 +14,8 @@ pub use memory_ap::{
 };
 
 use super::{
-    communication_interface::RegisterParseError, ApAddress, ArmError, DapAccess, DpAddress,
-    Register,
+    communication_interface::RegisterParseError, ArmError, DapAccess, DpAddress,
+    FullyQualifiedApAddress, Register,
 };
 
 /// Some error during AP handling occurred.
@@ -89,7 +89,7 @@ pub trait ApRegister<PORT: AccessPort>: Register + Sized {}
 /// Use the [`define_ap!`] macro to implement this.
 pub trait AccessPort: Clone {
     /// Returns the address of the access port.
-    fn ap_address(&self) -> ApAddress;
+    fn ap_address(&self) -> FullyQualifiedApAddress;
 }
 
 /// A trait to be implemented by access port drivers to implement access port operations.
@@ -241,7 +241,7 @@ where
     AP: ApAccess,
 {
     (0..=255)
-        .map(|ap| GenericAp::new(ApAddress { dp, ap }))
+        .map(|ap| GenericAp::new(FullyQualifiedApAddress { dp, ap }))
         .take_while(|port| access_port_is_valid(debug_port, *port))
         .collect::<Vec<GenericAp>>()
 }
@@ -253,7 +253,7 @@ where
     P: Fn(IDR) -> bool,
 {
     (0..=255)
-        .map(|ap| GenericAp::new(ApAddress { dp, ap }))
+        .map(|ap| GenericAp::new(FullyQualifiedApAddress { dp, ap }))
         .find(|ap| {
             if let Ok(idr) = debug_port.read_ap_register(*ap) {
                 f(idr)

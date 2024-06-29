@@ -3,7 +3,7 @@ use crate::{
         arm::{
             ap::MemoryAp,
             core::{CortexAState, CortexMState},
-            ApAddress, ArmProbeInterface, DpAddress,
+            ArmProbeInterface, DpAddress, FullyQualifiedApAddress,
         },
         riscv::{
             communication_interface::{RiscvCommunicationInterface, RiscvError},
@@ -266,7 +266,7 @@ impl CoreState {
             x => DpAddress::Multidrop(x),
         };
 
-        let ap = ApAddress { dp, ap: options.ap };
+        let ap = FullyQualifiedApAddress { dp, ap: options.ap };
 
         MemoryAp::new(ap)
     }

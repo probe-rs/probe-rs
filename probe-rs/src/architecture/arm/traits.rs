@@ -47,14 +47,14 @@ pub enum DpAddress {
 
 /// Access port address.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub struct ApAddress {
+pub struct FullyQualifiedApAddress {
     /// The address of the debug port this access port belongs to.
     pub dp: DpAddress,
     /// The access port number.
     pub ap: u8,
 }
 
-impl ApAddress {
+impl FullyQualifiedApAddress {
     /// Create a new `ApAddress` belonging to the default debug port.
     pub fn with_default_dp(ap: u8) -> Self {
         Self {
@@ -204,7 +204,11 @@ pub trait DapAccess {
     ///
     /// Highest 4 bits of `addr` are interpreted as the bank number, implementations
     /// will do bank switching if necessary.
-    fn read_raw_ap_register(&mut self, ap: ApAddress, addr: u8) -> Result<u32, ArmError>;
+    fn read_raw_ap_register(
+        &mut self,
+        ap: FullyQualifiedApAddress,
+        addr: u8,
+    ) -> Result<u32, ArmError>;
 
     /// Read multiple values from the same Access Port register.
     ///
@@ -215,7 +219,7 @@ pub trait DapAccess {
     /// will do bank switching if necessary.
     fn read_raw_ap_register_repeated(
         &mut self,
-        ap: ApAddress,
+        ap: FullyQualifiedApAddress,
         addr: u8,
         values: &mut [u32],
     ) -> Result<(), ArmError> {
@@ -231,7 +235,7 @@ pub trait DapAccess {
     /// will do bank switching if necessary.
     fn write_raw_ap_register(
         &mut self,
-        ap: ApAddress,
+        ap: FullyQualifiedApAddress,
         addr: u8,
         value: u32,
     ) -> Result<(), ArmError>;
@@ -245,7 +249,7 @@ pub trait DapAccess {
     /// will do bank switching if necessary.
     fn write_raw_ap_register_repeated(
         &mut self,
-        ap: ApAddress,
+        ap: FullyQualifiedApAddress,
         addr: u8,
         values: &[u32],
     ) -> Result<(), ArmError> {
