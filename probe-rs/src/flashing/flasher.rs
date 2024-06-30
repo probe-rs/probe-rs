@@ -17,39 +17,29 @@ use std::{
 };
 
 pub(super) trait Operation {
-    fn operation() -> u32;
-    fn operation_name() -> &'static str {
-        match Self::operation() {
-            1 => "Erase",
-            2 => "Program",
-            3 => "Verify",
-            _ => "Unknown Operation",
-        }
-    }
+    const OPERATION: u32;
+    const OPERATION_NAME: &'static str;
 }
 
 pub(super) struct Erase;
 
 impl Operation for Erase {
-    fn operation() -> u32 {
-        1
-    }
+    const OPERATION: u32 = 1;
+    const OPERATION_NAME: &'static str = "Erase";
 }
 
 pub(super) struct Program;
 
 impl Operation for Program {
-    fn operation() -> u32 {
-        2
-    }
+    const OPERATION: u32 = 2;
+    const OPERATION_NAME: &'static str = "Program";
 }
 
 pub(super) struct Verify;
 
 impl Operation for Verify {
-    fn operation() -> u32 {
-        3
-    }
+    const OPERATION: u32 = 3;
+    const OPERATION_NAME: &'static str = "Verify";
 }
 
 /// A structure to control the flash of an attached microchip.
@@ -174,7 +164,7 @@ impl<'session> Flasher<'session> {
             .core(self.core_index)
             .map_err(FlashError::Core)?;
 
-        tracing::debug!("Preparing Flasher for operation {}", O::operation_name());
+        tracing::debug!("Preparing Flasher for operation {}", O::OPERATION_NAME);
         let mut flasher = ActiveFlasher::<O> {
             core,
             rtt: None,
@@ -526,7 +516,7 @@ impl<O: Operation> ActiveFlasher<'_, O> {
                         pc: into_reg(pc_init)?,
                         r0: Some(into_reg(address)?),
                         r1: clock.or(Some(0)),
-                        r2: Some(O::operation()),
+                        r2: Some(O::OPERATION),
                         r3: None,
                     },
                     true,
@@ -580,7 +570,7 @@ impl<O: Operation> ActiveFlasher<'_, O> {
                 .call_function_and_wait(
                     &Registers {
                         pc: into_reg(pc_uninit)?,
-                        r0: Some(O::operation()),
+                        r0: Some(O::OPERATION),
                         r1: None,
                         r2: None,
                         r3: None,
