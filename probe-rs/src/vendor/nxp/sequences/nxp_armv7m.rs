@@ -211,7 +211,7 @@ impl MIMXRT11xx {
                 return Err(ArmError::Timeout);
             }
 
-            match interface.read_ap_register(ap) {
+            match interface.read_ap_register(&ap) {
                 Ok(CSW { DeviceEn, .. }) if DeviceEn != 0 => {
                     tracing::debug!("Device enabled after {}ms with {errors} errors and {disables} invalid statuses", start.elapsed().as_millis());
                     return Ok(());

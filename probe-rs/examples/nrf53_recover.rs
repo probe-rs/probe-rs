@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 use probe_rs::{
-    architecture::arm::{DpAddress, FullyQualifiedApAddress},
+    architecture::arm::{ApAddress, DpAddress, FullyQualifiedApAddress},
     probe::list::Lister,
 };
 
@@ -25,19 +25,19 @@ fn main() -> Result<()> {
         .unwrap();
 
     const APP_MEM: FullyQualifiedApAddress = FullyQualifiedApAddress {
-        ap: 0,
+        ap: ApAddress::V1(0),
         dp: DpAddress::Default,
     };
     const NET_MEM: FullyQualifiedApAddress = FullyQualifiedApAddress {
-        ap: 1,
+        ap: ApAddress::V1(1),
         dp: DpAddress::Default,
     };
     const APP_CTRL: FullyQualifiedApAddress = FullyQualifiedApAddress {
-        ap: 2,
+        ap: ApAddress::V1(2),
         dp: DpAddress::Default,
     };
     const NET_CTRL: FullyQualifiedApAddress = FullyQualifiedApAddress {
-        ap: 3,
+        ap: ApAddress::V1(3),
         dp: DpAddress::Default,
     };
 
@@ -45,11 +45,11 @@ fn main() -> Result<()> {
     const ERASEALLSTATUS: u8 = 0x08;
     const IDR: u8 = 0xFC;
 
-    for &ap in &[APP_MEM, NET_MEM, APP_CTRL, NET_CTRL] {
+    for ap in &[APP_MEM, NET_MEM, APP_CTRL, NET_CTRL] {
         println!("IDR {:?} {:x}", ap, iface.read_raw_ap_register(ap, IDR)?);
     }
 
-    for &ap in &[APP_CTRL, NET_CTRL] {
+    for ap in &[APP_CTRL, NET_CTRL] {
         // Start erase
         iface.write_raw_ap_register(ap, ERASEALL, 1)?;
         // Wait for erase done

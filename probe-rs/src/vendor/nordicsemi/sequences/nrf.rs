@@ -23,8 +23,8 @@ pub trait Nrf: Sync + Send + Debug {
     fn is_core_unlocked(
         &self,
         arm_interface: &mut ArmCommunicationInterface<Initialized>,
-        ahb_ap_address: FullyQualifiedApAddress,
-        ctrl_ap_address: FullyQualifiedApAddress,
+        ahb_ap_address: &FullyQualifiedApAddress,
+        ctrl_ap_address: &FullyQualifiedApAddress,
     ) -> Result<bool, ArmError>;
 
     /// Returns true if a network core is present
@@ -45,7 +45,7 @@ const RELEASE_FORCEOFF: u32 = 0;
 /// The `ap_address` must be of the ctrl ap of the core.
 fn unlock_core(
     arm_interface: &mut ArmCommunicationInterface<Initialized>,
-    ap_address: FullyQualifiedApAddress,
+    ap_address: &FullyQualifiedApAddress,
     permissions: &crate::Permissions,
 ) -> Result<(), ArmError> {
     permissions
@@ -82,7 +82,7 @@ impl<T: Nrf> ArmDebugSequence for T {
     fn debug_device_unlock(
         &self,
         interface: &mut dyn ArmProbeInterface,
-        default_ap: MemoryAp,
+        default_ap: &MemoryAp,
         permissions: &crate::Permissions,
     ) -> Result<(), ArmError> {
         let mut interface = interface.memory_interface(default_ap)?;
@@ -92,7 +92,7 @@ impl<T: Nrf> ArmDebugSequence for T {
         // These keys should be queried from the user if required and once that mechanism is implemented
 
         for (core_index, (core_ahb_ap_address, core_ctrl_ap_address)) in
-            self.core_aps(&mut *interface).iter().copied().enumerate()
+            self.core_aps(&mut *interface).iter().enumerate()
         {
             tracing::info!("Checking if core {} is unlocked", core_index);
             if self.is_core_unlocked(

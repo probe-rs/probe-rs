@@ -296,12 +296,12 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result
 
     for ap_index in 0..num_access_ports {
         let ap = FullyQualifiedApAddress {
-            ap: ap_index as u8,
+            ap: probe_rs::architecture::arm::ApAddress::V1(ap_index as u8),
             dp,
         };
         let access_port = GenericAp::new(ap);
 
-        let ap_information = interface.ap_information(access_port)?;
+        let ap_information = interface.ap_information(&access_port)?;
 
         match ap_information {
             ApInformation::MemoryAp(MemoryApInformation {
@@ -313,7 +313,7 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result
                 let mut ap_nodes = Tree::new(format!("{} MemoryAP", address.ap));
 
                 if *device_enabled {
-                    match handle_memory_ap(access_port.into(), *debug_base_address, interface) {
+                    match handle_memory_ap(&access_port.into(), *debug_base_address, interface) {
                         Ok(component_tree) => ap_nodes.push(component_tree),
                         Err(e) => ap_nodes.push(format!("Error during access: {e}")),
                     };
@@ -358,7 +358,7 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result
 }
 
 fn handle_memory_ap(
-    access_port: MemoryAp,
+    access_port: &MemoryAp,
     base_address: u64,
     interface: &mut dyn ArmProbeInterface,
 ) -> Result<Tree<String>, anyhow::Error> {
@@ -377,7 +377,7 @@ fn handle_memory_ap(
 fn coresight_component_tree(
     interface: &mut dyn ArmProbeInterface,
     component: Component,
-    access_port: MemoryAp,
+    access_port: &MemoryAp,
 ) -> Result<Tree<String>> {
     let tree = match &component {
         Component::GenericVerificationComponent(_) => Tree::new("Generic".to_string()),
@@ -458,7 +458,7 @@ fn process_vendor_rom_tables(
     interface: &mut dyn ArmProbeInterface,
     id: &ComponentId,
     _table: &RomTable,
-    access_port: MemoryAp,
+    access_port: &MemoryAp,
     tree: &mut Tree<String>,
 ) -> Result<()> {
     let peripheral_id = id.peripheral_id();
@@ -488,14 +488,14 @@ fn process_component_entry(
     interface: &mut dyn ArmProbeInterface,
     peripheral_id: &PeripheralID,
     component: &Component,
-    access_port: MemoryAp,
+    access_port: &MemoryAp,
 ) -> Result<()> {
     let Some(part) = peripheral_id.determine_part() else {
         return Ok(());
     };
 
     if part.peripheral_type() == PeripheralType::Scs {
-        let cc = &CoresightComponent::new(component.clone(), access_port);
+        let cc = &CoresightComponent::new(component.clone(), access_port.clone());
         let scs = &mut Scs::new(interface, cc);
         let cpu_tree = cpu_info_tree(scs)?;
 

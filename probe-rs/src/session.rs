@@ -220,7 +220,7 @@ impl Session {
 
         // Enable debug mode
         let unlock_res =
-            sequence_handle.debug_device_unlock(&mut *interface, default_memory_ap, &permissions);
+            sequence_handle.debug_device_unlock(&mut *interface, &default_memory_ap, &permissions);
         drop(unlock_span);
 
         match unlock_res {
@@ -246,7 +246,7 @@ impl Session {
                 let reset_hardware_deassert =
                     tracing::debug_span!("reset_hardware_deassert").entered();
 
-                let mut memory_interface = interface.memory_interface(default_memory_ap)?;
+                let mut memory_interface = interface.memory_interface(&default_memory_ap)?;
 
                 // TODO: A timeout here indicates that the reset pin is probably not properly
                 //       connected.

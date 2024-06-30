@@ -238,7 +238,7 @@ impl CoreExt for Core {
                         0 => DpAddress::Default,
                         x => DpAddress::Multidrop(x),
                     },
-                    ap: options.ap,
+                    ap: crate::architecture::arm::ApAddress::V1(options.ap),
                 }))
             }
             probe_rs_target::CoreAccessOptions::Riscv(_) => None,

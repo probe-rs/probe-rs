@@ -21,10 +21,10 @@ impl MemoryAp {
     where
         A: ApAccess,
     {
-        let base_register: BASE = interface.read_ap_register(*self)?;
+        let base_register: BASE = interface.read_ap_register(self)?;
 
         let mut base_address = if BaseaddrFormat::ADIv5 == base_register.Format {
-            let base2: BASE2 = interface.read_ap_register(*self)?;
+            let base2: BASE2 = interface.read_ap_register(self)?;
 
             u64::from(base2.BASEADDR) << 32
         } else {
@@ -39,7 +39,7 @@ impl MemoryAp {
 impl From<GenericAp> for MemoryAp {
     fn from(other: GenericAp) -> Self {
         MemoryAp {
-            address: other.ap_address(),
+            address: other.ap_address().clone(),
         }
     }
 }

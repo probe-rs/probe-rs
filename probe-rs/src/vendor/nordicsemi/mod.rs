@@ -52,7 +52,7 @@ impl Vendor for NordicSemi {
 
         // FIXME: This is a bit shaky but good enough for now.
         let access_port = MemoryAp::new(FullyQualifiedApAddress::with_default_dp(0));
-        let mut memory_interface = probe.memory_interface(access_port)?;
+        let mut memory_interface = probe.memory_interface(&access_port)?;
 
         // Cache to avoid reading the same register multiple times
         let mut register_values: HashMap<u32, u32> = HashMap::new();

@@ -111,7 +111,10 @@ pub fn get_arm_components(
 
     for ap_index in 0..(interface.num_access_ports(dp)? as u8) {
         let ap_information = interface
-            .ap_information(GenericAp::new(FullyQualifiedApAddress { dp, ap: ap_index }))?
+            .ap_information(&GenericAp::new(FullyQualifiedApAddress {
+                dp,
+                ap: crate::architecture::arm::ApAddress::V1(ap_index),
+            }))?
             .clone();
 
         let component = match ap_information {
@@ -125,7 +128,7 @@ pub fn get_arm_components(
                 ..
             }) => {
                 let ap = MemoryAp::new(address);
-                let mut memory = interface.memory_interface(ap)?;
+                let mut memory = interface.memory_interface(&ap)?;
                 let component = Component::try_parse(&mut *memory, debug_base_address)?;
                 Ok(CoresightComponent::new(component, ap))
             }

@@ -269,7 +269,7 @@ impl FakeProbe {
 
     fn read_raw_ap_register(
         &mut self,
-        expected_ap: FullyQualifiedApAddress,
+        expected_ap: &FullyQualifiedApAddress,
         expected_address: u8,
     ) -> Result<u32, ArmError> {
         let operation = self.next_operation();
@@ -280,7 +280,7 @@ impl FakeProbe {
                 address,
                 result,
             }) => {
-                assert_eq!(ap, expected_ap);
+                assert_eq!(&ap, expected_ap);
                 assert_eq!(address, expected_address);
 
                 Ok(result)
@@ -483,10 +483,10 @@ impl UninitializedArmProbe for FakeArmInterface<Uninitialized> {
 impl ArmProbeInterface for FakeArmInterface<Initialized> {
     fn memory_interface(
         &mut self,
-        access_port: MemoryAp,
+        access_port: &MemoryAp,
     ) -> Result<Box<dyn ArmProbe + '_>, ArmError> {
         let ap_information = MemoryApInformation {
-            address: access_port.ap_address(),
+            address: access_port.ap_address().clone(),
             supports_only_32bit_data_size: false,
             debug_base_address: 0xf000_0000,
             supports_hnonsec: false,
@@ -508,7 +508,7 @@ impl ArmProbeInterface for FakeArmInterface<Initialized> {
 
     fn ap_information(
         &mut self,
-        _access_port: crate::architecture::arm::ap::GenericAp,
+        _access_port: &crate::architecture::arm::ap::GenericAp,
     ) -> Result<&crate::architecture::arm::ApInformation, ArmError> {
         todo!()
     }
@@ -566,7 +566,7 @@ impl DapAccess for FakeArmInterface<Initialized> {
 
     fn read_raw_ap_register(
         &mut self,
-        _ap: FullyQualifiedApAddress,
+        _ap: &FullyQualifiedApAddress,
         _address: u8,
     ) -> Result<u32, ArmError> {
         self.probe.read_raw_ap_register(_ap, _address)
@@ -574,7 +574,7 @@ impl DapAccess for FakeArmInterface<Initialized> {
 
     fn read_raw_ap_register_repeated(
         &mut self,
-        _ap: FullyQualifiedApAddress,
+        _ap: &FullyQualifiedApAddress,
         _address: u8,
         _values: &mut [u32],
     ) -> Result<(), ArmError> {
@@ -583,7 +583,7 @@ impl DapAccess for FakeArmInterface<Initialized> {
 
     fn write_raw_ap_register(
         &mut self,
-        _ap: FullyQualifiedApAddress,
+        _ap: &FullyQualifiedApAddress,
         _address: u8,
         _value: u32,
     ) -> Result<(), ArmError> {
@@ -592,7 +592,7 @@ impl DapAccess for FakeArmInterface<Initialized> {
 
     fn write_raw_ap_register_repeated(
         &mut self,
-        _ap: FullyQualifiedApAddress,
+        _ap: &FullyQualifiedApAddress,
         _address: u8,
         _values: &[u32],
     ) -> Result<(), ArmError> {

@@ -45,13 +45,49 @@ pub enum DpAddress {
     Multidrop(u32),
 }
 
+/// Access port v2 address
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum ApV2Address {
+    /// Last node of an APv2 address
+    Leaf(u32),
+    /// Non-terminal node of an APv2 address
+    Node(u32, Box<ApV2Address>),
+}
+
+impl std::fmt::Display for ApV2Address {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ApV2Address::Leaf(v) => write!(f, "{}", v),
+            ApV2Address::Node(v, r) => write!(f, "{}.{}", v, r),
+        }
+    }
+}
+
+/// Access port address
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum ApAddress {
+    /// Access port v1 address
+    V1(u8),
+    /// Access Port v2
+    V2(ApV2Address),
+}
+
+impl std::fmt::Display for ApAddress {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ApAddress::V1(v) => write!(f, "V1({})", v),
+            ApAddress::V2(v) => write!(f, "V2({})", v),
+        }
+    }
+}
+
 /// Access port address.
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct FullyQualifiedApAddress {
     /// The address of the debug port this access port belongs to.
     pub dp: DpAddress,
     /// The access port number.
-    pub ap: u8,
+    pub ap: ApAddress,
 }
 
 impl FullyQualifiedApAddress {
@@ -59,7 +95,16 @@ impl FullyQualifiedApAddress {
     pub fn with_default_dp(ap: u8) -> Self {
         Self {
             dp: DpAddress::Default,
-            ap,
+            ap: ApAddress::V1(ap),
+        }
+    }
+
+    /// Returns the ap address if its version is 1
+    pub fn ap_v1(&self) -> Result<u8, ArmError> {
+        if let ApAddress::V1(ap) = self.ap {
+            Ok(ap)
+        } else {
+            Err(ArmError::WrongApVersion)
         }
     }
 }
@@ -206,7 +251,7 @@ pub trait DapAccess {
     /// will do bank switching if necessary.
     fn read_raw_ap_register(
         &mut self,
-        ap: FullyQualifiedApAddress,
+        ap: &FullyQualifiedApAddress,
         addr: u8,
     ) -> Result<u32, ArmError>;
 
@@ -219,7 +264,7 @@ pub trait DapAccess {
     /// will do bank switching if necessary.
     fn read_raw_ap_register_repeated(
         &mut self,
-        ap: FullyQualifiedApAddress,
+        ap: &FullyQualifiedApAddress,
         addr: u8,
         values: &mut [u32],
     ) -> Result<(), ArmError> {
@@ -235,7 +280,7 @@ pub trait DapAccess {
     /// will do bank switching if necessary.
     fn write_raw_ap_register(
         &mut self,
-        ap: FullyQualifiedApAddress,
+        ap: &FullyQualifiedApAddress,
         addr: u8,
         value: u32,
     ) -> Result<(), ArmError>;
@@ -249,7 +294,7 @@ pub trait DapAccess {
     /// will do bank switching if necessary.
     fn write_raw_ap_register_repeated(
         &mut self,
-        ap: FullyQualifiedApAddress,
+        ap: &FullyQualifiedApAddress,
         addr: u8,
         values: &[u32],
     ) -> Result<(), ArmError> {

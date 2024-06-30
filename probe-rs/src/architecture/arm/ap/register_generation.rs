@@ -62,7 +62,7 @@ macro_rules! define_ap {
         $name:ident
     ) => {
         $(#[$outer])*
-        #[derive(Clone, Copy, Debug)]
+        #[derive(Clone, Debug)]
         pub struct $name {
             address: FullyQualifiedApAddress,
         }
@@ -75,8 +75,8 @@ macro_rules! define_ap {
         }
 
         impl AccessPort for $name {
-            fn ap_address(&self) -> FullyQualifiedApAddress {
-                self.address
+            fn ap_address(&self) -> &FullyQualifiedApAddress {
+                &self.address
             }
         }
     };

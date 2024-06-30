@@ -48,7 +48,7 @@ impl Vendor for Microchip {
         // This device has an Atmel DSU - Read and parse the DSU DID register
         let did = DsuDid(
             interface
-                .memory_interface(access_port)?
+                .memory_interface(&access_port)?
                 .read_word_32(DsuDid::ADDRESS)?,
         );
 

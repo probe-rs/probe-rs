@@ -78,11 +78,11 @@ pub trait ArmProbeInterface: DapAccess + SwdSequence + SwoAccess + Send {
     /// Returns a memory interface to access the target's memory.
     fn memory_interface(
         &mut self,
-        access_port: MemoryAp,
+        access_port: &MemoryAp,
     ) -> Result<Box<dyn ArmProbe + '_>, ArmError>;
 
     /// Returns information about a specific access port.
-    fn ap_information(&mut self, access_port: GenericAp) -> Result<&ApInformation, ArmError>;
+    fn ap_information(&mut self, access_port: &GenericAp) -> Result<&ApInformation, ArmError>;
 
     /// Return the currently connected debug port.
     fn current_debug_port(&self) -> DpAddress;
@@ -243,7 +243,7 @@ impl ApInformation {
     /// Currently, AP specific information is read for Memory APs.
     pub(crate) fn read_from_target<P>(
         probe: &mut P,
-        access_port: GenericAp,
+        access_port: &GenericAp,
     ) -> Result<Self, ArmError>
     where
         P: ApAccess,
@@ -251,7 +251,7 @@ impl ApInformation {
         let idr: IDR = probe.read_ap_register(access_port)?;
 
         if idr.CLASS == ApClass::MemAp {
-            let access_port: MemoryAp = access_port.into();
+            let access_port: &MemoryAp = &access_port.clone().into();
 
             let base_register: BASE = probe.read_ap_register(access_port)?;
 
@@ -292,7 +292,7 @@ impl ApInformation {
             let has_large_data_extension = cfg.LD == 1;
 
             Ok(ApInformation::MemoryAp(MemoryApInformation {
-                address: access_port.ap_address(),
+                address: access_port.ap_address().clone(),
                 supports_only_32bit_data_size: only_32bit_data_size,
                 debug_base_address: base_address,
                 supports_hnonsec,
@@ -302,7 +302,7 @@ impl ApInformation {
             }))
         } else {
             Ok(ApInformation::Other {
-                address: access_port.ap_address(),
+                address: access_port.ap_address().clone(),
                 idr,
             })
         }
@@ -390,15 +390,15 @@ pub trait DapProbe: RawDapAccess + DebugProbe {}
 impl ArmProbeInterface for ArmCommunicationInterface<Initialized> {
     fn memory_interface(
         &mut self,
-        access_port: MemoryAp,
+        access_port: &MemoryAp,
     ) -> Result<Box<dyn ArmProbe + '_>, ArmError> {
         ArmCommunicationInterface::memory_interface(self, access_port)
     }
 
-    fn ap_information(&mut self, access_port: GenericAp) -> Result<&ApInformation, ArmError> {
+    fn ap_information(&mut self, access_port: &GenericAp) -> Result<&ApInformation, ArmError> {
         let info = ArmCommunicationInterface::ap_information(self, access_port)?;
 
-        info.ok_or_else(|| ArmError::ApDoesNotExist(access_port.ap_address()))
+        info.ok_or_else(|| ArmError::ApDoesNotExist(access_port.ap_address().clone()))
     }
 
     fn read_chip_info_from_rom_table(
@@ -547,11 +547,11 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
     /// Tries to obtain a memory interface which can be used to read memory from ARM targets.
     pub fn memory_interface(
         &'interface mut self,
-        access_port: MemoryAp,
+        access_port: &MemoryAp,
     ) -> Result<Box<dyn ArmProbe + 'interface>, ArmError> {
         let info = self
             .ap_information(access_port)?
-            .ok_or_else(|| ArmError::ApDoesNotExist(access_port.ap_address()))?;
+            .ok_or_else(|| ArmError::ApDoesNotExist(access_port.ap_address().clone()))?;
 
         match info {
             ApInformation::MemoryAp(ap_information) => {
@@ -636,7 +636,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
 
             let ap_span = tracing::debug_span!("AP discovery").entered();
             for ap in valid_access_ports(self, dp) {
-                let ap_state = ApInformation::read_from_target(self, ap)?;
+                let ap_state = ApInformation::read_from_target(self, &ap)?;
                 tracing::debug!("AP {:x?}: {:?}", ap, ap_state);
 
                 // note(unwrap): we have inserted the state above, it must exist.
@@ -694,12 +694,12 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
 
     fn select_ap_and_ap_bank(
         &mut self,
-        ap: FullyQualifiedApAddress,
+        ap: &FullyQualifiedApAddress,
         ap_register_address: u8,
     ) -> Result<(), ArmError> {
         let dp_state = self.select_dp(ap.dp)?;
 
-        let port = ap.ap;
+        let port = ap.ap_v1()?;
         let ap_bank = ap_register_address >> 4;
 
         let mut cache_changed = if dp_state.current_apsel != port {
@@ -738,13 +738,13 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
     /// If the AP doesn't exist, None is returned.
     pub(crate) fn ap_information(
         &mut self,
-        access_port: impl AccessPort,
+        access_port: &impl AccessPort,
     ) -> Result<Option<&ApInformation>, ArmError> {
         let addr = access_port.ap_address();
 
         let state = self.select_dp(addr.dp)?;
 
-        Ok(state.ap_information.get(addr.ap as usize))
+        Ok(state.ap_information.get(addr.ap_v1()? as usize))
     }
 
     fn num_access_ports(&mut self, dp: DpAddress) -> Result<usize, ArmError> {
@@ -812,7 +812,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
 
     fn read_raw_ap_register(
         &mut self,
-        ap: FullyQualifiedApAddress,
+        ap: &FullyQualifiedApAddress,
         address: u8,
     ) -> std::result::Result<u32, ArmError> {
         self.select_ap_and_ap_bank(ap, address)?;
@@ -826,7 +826,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
 
     fn read_raw_ap_register_repeated(
         &mut self,
-        ap: FullyQualifiedApAddress,
+        ap: &FullyQualifiedApAddress,
         address: u8,
         values: &mut [u32],
     ) -> Result<(), ArmError> {
@@ -839,7 +839,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
 
     fn write_raw_ap_register(
         &mut self,
-        ap: FullyQualifiedApAddress,
+        ap: &FullyQualifiedApAddress,
         address: u8,
         value: u32,
     ) -> Result<(), ArmError> {
@@ -853,7 +853,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
 
     fn write_raw_ap_register_repeated(
         &mut self,
-        ap: FullyQualifiedApAddress,
+        ap: &FullyQualifiedApAddress,
         address: u8,
         values: &[u32],
     ) -> Result<(), ArmError> {
@@ -898,7 +898,7 @@ impl ArmCommunicationInterface<Initialized> {
             self.write_dp_register(dp, abort)?;
         }
         for access_port in aps {
-            let idr: IDR = self.read_ap_register(access_port)?;
+            let idr: IDR = self.read_ap_register(&access_port)?;
             tracing::debug!("{:#x?}", idr);
 
             if idr.CLASS == ApClass::MemAp {
@@ -906,7 +906,7 @@ impl ArmCommunicationInterface<Initialized> {
 
                 let baseaddr = access_port.base_address(self)?;
 
-                let mut memory = self.memory_interface(access_port)?;
+                let mut memory = self.memory_interface(&access_port)?;
 
                 let component = Component::try_parse(&mut *memory, baseaddr)?;
 

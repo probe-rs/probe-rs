@@ -6,11 +6,11 @@ use super::nrf::Nrf;
 use crate::architecture::arm::ap::AccessPort;
 use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
 use crate::architecture::arm::sequences::ArmDebugSequence;
-use crate::architecture::arm::ArmError;
 use crate::architecture::arm::{
     communication_interface::Initialized, ArmCommunicationInterface, DapAccess,
     FullyQualifiedApAddress,
 };
+use crate::architecture::arm::{ApAddress, ArmError};
 
 /// The sequence handle for the nRF9160.
 #[derive(Debug)]
@@ -28,7 +28,8 @@ impl Nrf for Nrf9160 {
         &self,
         memory: &mut dyn ArmProbe,
     ) -> Vec<(FullyQualifiedApAddress, FullyQualifiedApAddress)> {
-        let ap_address = memory.ap().ap_address();
+        let memory_ap = memory.ap();
+        let ap_address = memory_ap.ap_address();
 
         let core_aps = [(0, 4)];
 
@@ -37,12 +38,12 @@ impl Nrf for Nrf9160 {
             .map(|(core_ahb_ap, core_ctrl_ap)| {
                 (
                     FullyQualifiedApAddress {
-                        ap: core_ahb_ap,
-                        ..ap_address
+                        ap: ApAddress::V1(core_ahb_ap),
+                        ..ap_address.clone()
                     },
                     FullyQualifiedApAddress {
-                        ap: core_ctrl_ap,
-                        ..ap_address
+                        ap: ApAddress::V1(core_ctrl_ap),
+                        ..ap_address.clone()
                     },
                 )
             })
@@ -52,8 +53,8 @@ impl Nrf for Nrf9160 {
     fn is_core_unlocked(
         &self,
         arm_interface: &mut ArmCommunicationInterface<Initialized>,
-        _ahb_ap_address: FullyQualifiedApAddress,
-        ctrl_ap_address: FullyQualifiedApAddress,
+        _ahb_ap_address: &FullyQualifiedApAddress,
+        ctrl_ap_address: &FullyQualifiedApAddress,
     ) -> Result<bool, ArmError> {
         let approtect_status = arm_interface.read_raw_ap_register(ctrl_ap_address, 0x00C)?;
         Ok(approtect_status != 0)

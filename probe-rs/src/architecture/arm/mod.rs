@@ -109,6 +109,10 @@ pub enum ArmError {
     #[error("The AP with address {0:?} does not exist.")]
     ApDoesNotExist(FullyQualifiedApAddress),
 
+    /// The AP has the wrong version for the operation.
+    #[error("Wrong AP version.")]
+    WrongApVersion,
+
     /// The AP has the wrong type for the operation.
     #[error("Wrong AP type.")]
     WrongApType,
@@ -159,9 +163,9 @@ pub enum ArmError {
 
 impl ArmError {
     /// Constructs [`ArmError::MemoryNotAligned`] from the address and the required alignment.
-    pub fn from_access_port(err: AccessPortError, ap: impl AccessPort) -> Self {
+    pub fn from_access_port(err: AccessPortError, ap: &impl AccessPort) -> Self {
         ArmError::AccessPort {
-            address: ap.ap_address(),
+            address: ap.ap_address().clone(),
             source: err,
         }
     }

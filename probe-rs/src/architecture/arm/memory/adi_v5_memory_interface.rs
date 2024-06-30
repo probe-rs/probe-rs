@@ -217,7 +217,7 @@ where
         interface: &'interface mut AP,
         ap_information: MemoryApInformation,
     ) -> Result<ADIMemoryInterface<'interface, AP>, AccessPortError> {
-        let address = ap_information.address;
+        let address = ap_information.address.clone();
         Ok(Self {
             interface,
             ap_information,
@@ -304,9 +304,9 @@ where
         AP: ApAccess,
     {
         self.interface
-            .read_ap_register(self.memory_ap)
+            .read_ap_register(&self.memory_ap)
             .map_err(AccessPortError::register_read_error::<R, _>)
-            .map_err(|error| ArmError::from_access_port(error, self.memory_ap))
+            .map_err(|error| ArmError::from_access_port(error, &self.memory_ap))
     }
 
     /// Read multiple 32 bit values from the DRW register on the given AP.
@@ -321,9 +321,9 @@ where
             Ok(())
         } else {
             self.interface
-                .read_ap_register_repeated(self.memory_ap, DRW { data: 0 }, values)
+                .read_ap_register_repeated(&self.memory_ap, DRW { data: 0 }, values)
                 .map_err(AccessPortError::register_read_error::<DRW, _>)
-                .map_err(|err| ArmError::from_access_port(err, self.memory_ap))
+                .map_err(|err| ArmError::from_access_port(err, &self.memory_ap))
         }
     }
 
@@ -334,9 +334,9 @@ where
         AP: ApAccess,
     {
         self.interface
-            .write_ap_register(self.memory_ap, register)
+            .write_ap_register(&self.memory_ap, register)
             .map_err(AccessPortError::register_write_error::<R, _>)
-            .map_err(|e| ArmError::from_access_port(e, self.memory_ap))
+            .map_err(|e| ArmError::from_access_port(e, &self.memory_ap))
     }
 
     /// Write multiple 32 bit values to the DRW register on the given AP.
@@ -349,9 +349,9 @@ where
             self.write_ap_register(DRW { data: values[0] })
         } else {
             self.interface
-                .write_ap_register_repeated(self.memory_ap, DRW { data: 0 }, values)
+                .write_ap_register_repeated(&self.memory_ap, DRW { data: 0 }, values)
                 .map_err(AccessPortError::register_write_error::<DRW, _>)
-                .map_err(|e| ArmError::from_access_port(e, self.memory_ap))
+                .map_err(|e| ArmError::from_access_port(e, &self.memory_ap))
         }
     }
 
@@ -839,7 +839,7 @@ where
 
     /// Returns the underlying [`ApAddress`].
     fn ap(&mut self) -> MemoryAp {
-        self.memory_ap
+        self.memory_ap.clone()
     }
 
     fn get_arm_communication_interface(
@@ -864,7 +864,7 @@ mod tests {
 
     const DUMMY_AP: MemoryAp = MemoryAp::new(FullyQualifiedApAddress {
         dp: DpAddress::Default,
-        ap: 0,
+        ap: crate::architecture::arm::traits::ApAddress::V1(0),
     });
 
     impl<'interface> ADIMemoryInterface<'interface, MockMemoryAp> {
@@ -873,7 +873,7 @@ mod tests {
             mock: &'interface mut MockMemoryAp,
         ) -> ADIMemoryInterface<'interface, MockMemoryAp> {
             let ap_information = MemoryApInformation {
-                address: DUMMY_AP.ap_address(),
+                address: DUMMY_AP.ap_address().clone(),
                 supports_only_32bit_data_size: false,
                 supports_hnonsec: false,
                 debug_base_address: 0xf000_0000,

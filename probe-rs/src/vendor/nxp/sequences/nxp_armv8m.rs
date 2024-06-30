@@ -275,7 +275,7 @@ fn wait_for_stop_after_reset(memory: &mut dyn ArmProbe) -> Result<(), ArmError> 
     let ap = memory.ap();
     let interface = memory.get_arm_communication_interface()?;
 
-    let ap0_csw: CSW = interface.read_ap_register(ap)?;
+    let ap0_csw: CSW = interface.read_ap_register(&ap)?;
 
     let ap0_disabled = ap0_csw.DeviceEn == 0;
 
@@ -326,9 +326,12 @@ fn enable_debug_mailbox(
 ) -> Result<(), ArmError> {
     tracing::info!("LPC55xx connect script start");
 
-    let ap = FullyQualifiedApAddress { dp, ap: 2 };
+    let ap = FullyQualifiedApAddress {
+        dp,
+        ap: crate::architecture::arm::ApAddress::V1(2),
+    };
 
-    let status: IDR = interface.read_ap_register(GenericAp::new(ap))?;
+    let status: IDR = interface.read_ap_register(&GenericAp::new(ap.clone()))?;
 
     tracing::info!("APIDR: {:?}", status);
     tracing::info!("APIDR: 0x{:08X}", u32::from(status));
@@ -338,22 +341,22 @@ fn enable_debug_mailbox(
     tracing::info!("DPIDR: 0x{:08X}", status);
 
     // Active DebugMailbox
-    interface.write_raw_ap_register(ap, 0x0, 0x0000_0021)?;
+    interface.write_raw_ap_register(&ap, 0x0, 0x0000_0021)?;
     interface.flush()?;
 
     // DAP_Delay(30000)
     thread::sleep(Duration::from_millis(30));
 
-    let _ = interface.read_raw_ap_register(ap, 0)?;
+    let _ = interface.read_raw_ap_register(&ap, 0)?;
 
     // Enter Debug session
-    interface.write_raw_ap_register(ap, 0x4, 0x0000_0007)?;
+    interface.write_raw_ap_register(&ap, 0x4, 0x0000_0007)?;
     interface.flush()?;
 
     // DAP_Delay(30000)
     thread::sleep(Duration::from_millis(30));
 
-    let _ = interface.read_raw_ap_register(ap, 8)?;
+    let _ = interface.read_raw_ap_register(&ap, 8)?;
 
     tracing::info!("LPC55xx connect srcipt end");
     Ok(())
@@ -448,13 +451,13 @@ impl MIMXRT5xxS {
         let ap: MemoryAp = probe.ap();
         let dp = ap.ap_address().dp;
         let start = Instant::now();
-        while !self.csw_debug_ready(probe.get_arm_communication_interface()?, ap)?
+        while !self.csw_debug_ready(probe.get_arm_communication_interface()?, &ap)?
             && start.elapsed() < Duration::from_millis(300)
         {
             // Wait for either condition
         }
         let enabled_mailbox =
-            self.enable_debug_mailbox(probe.get_arm_communication_interface()?, dp, ap)?;
+            self.enable_debug_mailbox(probe.get_arm_communication_interface()?, dp, &ap)?;
 
         // Halt the core in case it didn't stop at a breakpiont.
         tracing::trace!("halting MIMXRT5xxS Cortex-M33 core");
@@ -467,7 +470,7 @@ impl MIMXRT5xxS {
 
         if enabled_mailbox {
             // We'll double-check now to make sure we're in a reasonable state.
-            if !self.csw_debug_ready(probe.get_arm_communication_interface()?, ap)? {
+            if !self.csw_debug_ready(probe.get_arm_communication_interface()?, &ap)? {
                 tracing::warn!("MIMXRT5xxS is still not ready to debug, even after using DebugMailbox to activate session");
             }
         }
@@ -545,7 +548,7 @@ impl MIMXRT5xxS {
     fn csw_debug_ready(
         &self,
         interface: &mut ArmCommunicationInterface<Initialized>,
-        ap: MemoryAp,
+        ap: &MemoryAp,
     ) -> Result<bool, ArmError> {
         let csw = interface.read_raw_ap_register(ap.ap_address(), 0x00)?;
 
@@ -562,7 +565,7 @@ impl MIMXRT5xxS {
         &self,
         interface: &mut ArmCommunicationInterface<Initialized>,
         dp: DpAddress,
-        mem_ap: MemoryAp,
+        mem_ap: &MemoryAp,
     ) -> Result<bool, ArmError> {
         // Check AHB-AP CSW DbgStatus to decide if need enable DebugMailbox
         if self.csw_debug_ready(interface, mem_ap)? {
@@ -572,7 +575,10 @@ impl MIMXRT5xxS {
 
         tracing::debug!("enabling MIMXRT5xxS DebugMailbox");
 
-        let ap_addr = FullyQualifiedApAddress { dp, ap: 2 };
+        let ap_addr = &FullyQualifiedApAddress {
+            dp,
+            ap: crate::architecture::arm::ApAddress::V1(2),
+        };
 
         // CMSIS Pack implementation reads APIDR and DPIDR and passes each
         // to the "Message" function, but otherwise does nothing with those
@@ -642,9 +648,12 @@ impl ArmDebugSequence for MIMXRT5xxS {
             // Clear WDATAERR, STICKYORUN, STICKYCMP, and STICKYERR bits of CTRL/STAT Register by write to ABORT register
             interface.write_raw_dp_register(dp, SW_DP_ABORT, 0x0000001E)?;
 
-            let ap = FullyQualifiedApAddress { dp, ap: 0 };
+            let ap = FullyQualifiedApAddress {
+                dp,
+                ap: crate::architecture::arm::ApAddress::V1(0),
+            };
             let mem_ap = MemoryAp::new(ap);
-            self.enable_debug_mailbox(interface, dp, mem_ap)?;
+            self.enable_debug_mailbox(interface, dp, &mem_ap)?;
         }
 
         tracing::trace!("MIMXRT5xxS debug port start was successful");
