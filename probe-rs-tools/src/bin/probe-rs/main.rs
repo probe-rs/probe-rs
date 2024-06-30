@@ -1,6 +1,3 @@
-#![warn(clippy::unnecessary_self_imports)]
-#![warn(clippy::enum_glob_use)]
-
 mod cmd;
 mod report;
 mod util;

@@ -1,5 +1,3 @@
-#![warn(missing_docs)]
-
 //! Target specific configuration
 //!
 //! For debugging and flashing different chips, called *target* in probe-rs, some
