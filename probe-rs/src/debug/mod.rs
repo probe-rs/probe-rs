@@ -32,6 +32,7 @@ pub use self::{
 use crate::{core::Core, MemoryInterface};
 
 use gimli::{AttributeValue, DebuggingInformationEntry, EvaluationResult};
+use serde::Serialize;
 use typed_path::TypedPathBuf;
 
 use std::{

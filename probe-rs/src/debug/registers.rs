@@ -4,6 +4,8 @@ use crate::{
     core::{RegisterDataType, RegisterId, RegisterRole, RegisterValue},
     CoreInterface, CoreRegister, Error,
 };
+use serde::Serialize;
+
 /// Stores the relevant information from [`crate::core::CoreRegister`] for use in debug operations,
 /// as well as additional information required during debug.
 #[derive(Debug, Clone, PartialEq, Serialize)]

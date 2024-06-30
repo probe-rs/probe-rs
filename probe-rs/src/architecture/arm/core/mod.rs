@@ -1,5 +1,7 @@
 //! The different ARM core implementations with all constants and custom handling.
 
+use serde::{Deserialize, Serialize};
+
 use crate::{
     core::{BreakpointCause, RegisterValue},
     memory_mapped_bitfield_register, CoreStatus, HaltReason, SemihostingCommand,
