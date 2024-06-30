@@ -23,6 +23,7 @@ pub fn cmd_test(
     definition_export_path: &Path,
     test_start_sector_address: Option<u64>,
     chip: Option<String>,
+    name: Option<String>,
 ) -> Result<()> {
     ensure_is_file(target_artifact)?;
     ensure_is_file(template_path)?;
@@ -48,7 +49,7 @@ pub fn cmd_test(
         true,
         Some(definition_export_path),
         true,
-        None,
+        name,
     )?;
 
     if let Err(error) = generate_debug_info(target_artifact) {

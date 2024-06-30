@@ -106,6 +106,9 @@ enum TargetGen {
         /// The name of the chip to use for the test, if there are multiple to choose from.
         #[clap(long = "chip")]
         chip: Option<String>,
+        /// Name of the flash algorithm to test
+        #[clap(long = "name", short = 'n')]
+        name: Option<String>,
     },
     /// Loads and updates target description from YAML files.
     Reformat {
@@ -159,12 +162,14 @@ async fn main() -> Result<()> {
             definition_export_path,
             test_start_sector_address,
             chip,
+            name,
         } => cmd_test(
             target_artifact.as_path(),
             template_path.as_path(),
             definition_export_path.as_path(),
             test_start_sector_address,
             chip,
+            name,
         )?,
         TargetGen::Reformat { yaml_path } => {
             if yaml_path.is_dir() {
