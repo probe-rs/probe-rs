@@ -29,9 +29,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7rx_64k
   - mx66uw1g45g_stm32h7s78-dk
@@ -64,9 +65,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7rx_64k
   - mx66uw1g45g_stm32h7s78-dk
@@ -99,9 +101,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7rx_64k
   - mx66uw1g45g_stm32h7s78-dk
@@ -134,9 +137,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7rx_64k
   - mx66uw1g45g_stm32h7s78-dk
@@ -169,9 +173,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7rx_64k
   - mx66uw1g45g_stm32h7s78-dk
@@ -204,9 +209,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7rx_64k
   - mx66uw1g45g_stm32h7s78-dk
@@ -239,9 +245,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7rx_64k
   - mx66uw1g45g_stm32h7s78-dk
@@ -274,9 +281,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7rx_64k
   - mx66uw1g45g_stm32h7s78-dk
@@ -309,9 +317,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7rx_64k
   - mx66uw1g45g_stm32h7s78-dk
@@ -344,9 +353,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7rx_64k
   - mx66uw1g45g_stm32h7s78-dk
@@ -379,9 +389,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7rx_64k
   - mx66uw1g45g_stm32h7s78-dk
@@ -414,9 +425,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7rx_64k
   - mx66uw1g45g_stm32h7s78-dk
@@ -449,9 +461,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7rx_64k
   - mx66uw1g45g_stm32h7s78-dk
@@ -484,9 +497,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7rx_64k
   - mx66uw1g45g_stm32h7s78-dk
@@ -519,9 +533,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7rx_64k
   - mx66uw1g45g_stm32h7s78-dk
@@ -554,9 +569,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7rx_64k
   - mx66uw1g45g_stm32h7s78-dk
@@ -589,9 +605,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7rx_64k
   - mx66uw1g45g_stm32h7s78-dk
@@ -624,9 +641,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7rx_64k
   - mx66uw1g45g_stm32h7s78-dk
@@ -659,9 +677,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7rx_64k
   - mx66uw1g45g_stm32h7s78-dk
@@ -694,9 +713,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7rx_64k
   - mx66uw1g45g_stm32h7s78-dk
@@ -729,9 +749,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7rx_64k
   - mx66uw1g45g_stm32h7s78-dk
@@ -764,9 +785,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7rx_64k
   - mx66uw1g45g_stm32h7s78-dk
@@ -799,9 +821,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7rx_64k
   - mx66uw1g45g_stm32h7s78-dk
@@ -834,9 +857,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7rx_64k
   - mx66uw1g45g_stm32h7s78-dk
@@ -869,9 +893,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7rx_64k
   - mx66uw1g45g_stm32h7s78-dk
@@ -904,9 +929,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7rx_64k
   - mx66uw1g45g_stm32h7s78-dk
@@ -939,9 +965,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7rx_64k
   - mx66uw1g45g_stm32h7s78-dk
@@ -974,9 +1001,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7rx_64k
   - mx66uw1g45g_stm32h7s78-dk
@@ -1009,9 +1037,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7rx_64k
   - mx66uw1g45g_stm32h7s78-dk
@@ -1044,9 +1073,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7rx_64k
   - mx66uw1g45g_stm32h7s78-dk
@@ -1079,9 +1109,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7rx_64k
   - mx66uw1g45g_stm32h7s78-dk
@@ -1114,9 +1145,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7rx_64k
   - mx66uw1g45g_stm32h7s78-dk
@@ -1149,9 +1181,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7rx_64k
   - mx66uw1g45g_stm32h7s78-dk
@@ -1184,9 +1217,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7rx_64k
   - mx66uw1g45g_stm32h7s78-dk

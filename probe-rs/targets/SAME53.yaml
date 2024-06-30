@@ -3,16 +3,16 @@ manufacturer:
   id: 0x1f
   cc: 0x0
 chip_detection:
- - !AtsamDsu
-    processor: 6
-    family: 3
-    series: 3
-    variants:
-      0x02: ATSAME53N20A
-      0x03: ATSAME53N19A
-      0x04: ATSAME53J20A
-      0x05: ATSAME53J19A
-      0x06: ATSAME53J18A
+- !AtsamDsu
+  processor: 6
+  family: 3
+  series: 3
+  variants:
+    2: ATSAME53N20A
+    5: ATSAME53J19A
+    3: ATSAME53N19A
+    6: ATSAME53J18A
+    4: ATSAME53J20A
 variants:
 - name: ATSAME53J18A
   cores:
@@ -32,9 +32,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsame53_1024
 - name: ATSAME53J19A
@@ -55,9 +56,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsame53_1024
 - name: ATSAME53J20A
@@ -78,9 +80,10 @@ variants:
     range:
       start: 0x0
       end: 0x100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsame53_1024
 - name: ATSAME53N19A
@@ -101,9 +104,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsame53_1024
 - name: ATSAME53N20A
@@ -124,9 +128,10 @@ variants:
     range:
       start: 0x0
       end: 0x100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsame53_1024
 flash_algorithms:

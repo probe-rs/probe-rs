@@ -4,7 +4,7 @@ variants:
   cores:
   - name: core0
     type: riscv
-    core_access_options: !Riscv {}
+    core_access_options: !Riscv
   memory_map:
   - !Ram
     name: ILM0
@@ -32,16 +32,17 @@ variants:
     range:
       start: 0x80000000
       end: 0x80100000
-    is_boot_memory: true
     cores:
     - core0
+    access:
+      boot: true
   flash_algorithms:
   - flash-algo-hpm53x1
 - name: HPM5331
   cores:
   - name: core0
     type: riscv
-    core_access_options: !Riscv {}
+    core_access_options: !Riscv
   memory_map:
   - !Ram
     name: ILM0
@@ -69,16 +70,17 @@ variants:
     range:
       start: 0x80000000
       end: 0x80100000
-    is_boot_memory: true
     cores:
     - core0
+    access:
+      boot: true
   flash_algorithms:
   - flash-algo-hpm53x1
 - name: HPM5321
   cores:
   - name: core0
     type: riscv
-    core_access_options: !Riscv {}
+    core_access_options: !Riscv
   memory_map:
   - !Ram
     name: ILM0
@@ -106,16 +108,17 @@ variants:
     range:
       start: 0x80000000
       end: 0x80100000
-    is_boot_memory: true
     cores:
     - core0
+    access:
+      boot: true
   flash_algorithms:
   - flash-algo-hpm53x1
 - name: HPM5301
   cores:
   - name: core0
     type: riscv
-    core_access_options: !Riscv {}
+    core_access_options: !Riscv
   memory_map:
   - !Ram
     name: ILM0
@@ -143,9 +146,10 @@ variants:
     range:
       start: 0x80000000
       end: 0x80100000
-    is_boot_memory: true
     cores:
     - core0
+    access:
+      boot: true
   flash_algorithms:
   - flash-algo-hpm53x1
 flash_algorithms:

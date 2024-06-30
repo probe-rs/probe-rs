@@ -55,3 +55,4 @@ parse_int = "0.6"
 assert_cmd = "2.0.14"
 predicates = "3.1.0"
 tempfile = "3.0"
+insta = { version = "1.38", default-features = false, features = ["yaml"] }

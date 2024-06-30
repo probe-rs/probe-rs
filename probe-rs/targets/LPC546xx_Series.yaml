@@ -21,9 +21,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc5460x_256
   - lpc5460x_mt25ql128
@@ -45,9 +46,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc5460x_256
   - lpc5460x_mt25ql128
@@ -69,9 +71,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc5460x_256
   - lpc5460x_mt25ql128
@@ -93,9 +96,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc5460x_512
   - lpc5460x_mt25ql128
@@ -117,9 +121,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc5460x_512
   - lpc5460x_mt25ql128
@@ -141,9 +146,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc5460x_512
   - lpc5460x_mt25ql128
@@ -165,9 +171,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc5460x_256
   - lpc5460x_mt25ql128
@@ -189,9 +196,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc5460x_256
   - lpc5460x_mt25ql128
@@ -213,9 +221,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc5460x_256
   - lpc5460x_mt25ql128
@@ -237,9 +246,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc5460x_512
   - lpc5460x_mt25ql128
@@ -261,9 +271,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc5460x_512
   - lpc5460x_mt25ql128
@@ -285,9 +296,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc5460x_512
   - lpc5460x_mt25ql128
@@ -309,9 +321,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc5460x_256
   - lpc5460x_mt25ql128
@@ -333,9 +346,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc5460x_256
   - lpc5460x_mt25ql128
@@ -357,9 +371,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc5460x_512
   - lpc5460x_mt25ql128
@@ -381,9 +396,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc5460x_512
   - lpc5460x_mt25ql128
@@ -405,9 +421,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc5460x_512
   - lpc5460x_mt25ql128
@@ -429,9 +446,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc5460x_256
   - lpc5460x_mt25ql128
@@ -453,9 +471,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc5460x_512
   - lpc5460x_mt25ql128
@@ -477,9 +496,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc5460x_512
   - lpc5460x_mt25ql128
@@ -501,9 +521,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc5460x_512
   - lpc5460x_mt25ql128
@@ -525,9 +546,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc5460x_512
   - lpc5460x_mt25ql128
@@ -549,9 +571,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc5460x_512
   - lpc5460x_mt25ql128
@@ -573,9 +596,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc5460x_512
   - lpc5462x_w25q128jvfm

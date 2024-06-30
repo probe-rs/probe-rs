@@ -176,6 +176,7 @@ impl InstructionSet {
 /// This struct is usually read from a target description
 /// file.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ChipFamily {
     /// This is the name of the chip family in base form.
     /// E.g. `nRF52832`.

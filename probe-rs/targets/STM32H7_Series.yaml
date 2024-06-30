@@ -46,9 +46,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -106,9 +107,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -166,9 +168,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -226,9 +229,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -286,9 +290,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -346,9 +351,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -406,9 +412,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -466,9 +473,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -526,9 +534,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -586,9 +595,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -646,9 +656,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -706,9 +717,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -766,9 +778,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -826,9 +839,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -886,9 +900,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -946,9 +961,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -1006,9 +1022,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -1066,9 +1083,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -1126,9 +1144,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -1186,9 +1205,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -1246,9 +1266,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -1306,9 +1327,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -1366,9 +1388,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -1426,9 +1449,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -1486,9 +1510,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -1546,9 +1571,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -1606,9 +1632,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -1666,9 +1693,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -1726,9 +1754,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -1786,9 +1815,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -1846,9 +1876,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -1906,9 +1937,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -1966,9 +1998,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -2026,9 +2059,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -2086,9 +2120,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -2146,9 +2181,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -2206,9 +2242,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -2266,9 +2303,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -2326,9 +2364,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -2386,9 +2425,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -2446,9 +2486,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -2506,9 +2547,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h72x-73x_1024
   - stm32h7b3i_eval_fmc-nor
@@ -2573,17 +2615,19 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank2
     range:
       start: 0x8100000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -2648,9 +2692,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -2715,17 +2760,19 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank2
     range:
       start: 0x8100000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -2790,9 +2837,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -2857,17 +2905,19 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank2
     range:
       start: 0x8100000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -2932,17 +2982,19 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank2
     range:
       start: 0x8100000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -3007,9 +3059,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -3074,9 +3127,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -3141,17 +3195,19 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank2
     range:
       start: 0x8100000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -3216,17 +3272,19 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank2
     range:
       start: 0x8100000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -3291,9 +3349,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -3358,9 +3417,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -3425,17 +3485,19 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank2
     range:
       start: 0x8100000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -3500,9 +3562,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -3567,17 +3630,19 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank2
     range:
       start: 0x8100000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -3642,9 +3707,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -3702,17 +3768,19 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank2
     range:
       start: 0x8100000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -3770,9 +3838,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -3830,17 +3899,19 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank2
     range:
       start: 0x8100000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -3898,9 +3969,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -3958,17 +4030,19 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank2
     range:
       start: 0x8100000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -4026,17 +4100,19 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank2
     range:
       start: 0x8100000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -4094,9 +4170,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -4154,9 +4231,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -4214,17 +4292,19 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank2
     range:
       start: 0x8100000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -4282,17 +4362,19 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank2
     range:
       start: 0x8100000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -4350,9 +4432,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -4410,9 +4493,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -4470,17 +4554,19 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank2
     range:
       start: 0x8100000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -4538,9 +4624,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -4598,17 +4685,19 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank2
     range:
       start: 0x8100000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -4666,9 +4755,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -4731,17 +4821,19 @@ variants:
     range:
       start: 0x8100000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - cm4
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank1
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - cm7
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -4804,17 +4896,19 @@ variants:
     range:
       start: 0x8100000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - cm4
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank1
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - cm7
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -4877,17 +4971,19 @@ variants:
     range:
       start: 0x8100000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - cm4
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank1
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - cm7
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -4950,17 +5046,19 @@ variants:
     range:
       start: 0x8100000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - cm4
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank1
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - cm7
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -5023,17 +5121,19 @@ variants:
     range:
       start: 0x8100000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - cm4
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank1
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - cm7
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -5096,17 +5196,19 @@ variants:
     range:
       start: 0x8100000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - cm4
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank1
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - cm7
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -5169,17 +5271,19 @@ variants:
     range:
       start: 0x8100000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - cm4
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank1
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - cm7
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -5242,17 +5346,19 @@ variants:
     range:
       start: 0x8100000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - cm4
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank1
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - cm7
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -5315,17 +5421,19 @@ variants:
     range:
       start: 0x8100000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - cm4
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank1
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - cm7
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -5388,17 +5496,19 @@ variants:
     range:
       start: 0x8100000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - cm4
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank1
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - cm7
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -5461,17 +5571,19 @@ variants:
     range:
       start: 0x8100000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - cm4
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank1
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - cm7
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -5534,17 +5646,19 @@ variants:
     range:
       start: 0x8100000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - cm4
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank1
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - cm7
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -5607,17 +5721,19 @@ variants:
     range:
       start: 0x8100000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - cm4
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank1
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - cm7
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -5680,17 +5796,19 @@ variants:
     range:
       start: 0x8100000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - cm4
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank1
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - cm7
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -5753,17 +5871,19 @@ variants:
     range:
       start: 0x8100000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - cm4
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank1
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - cm7
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -5826,17 +5946,19 @@ variants:
     range:
       start: 0x8100000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - cm4
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank1
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - cm7
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -5899,17 +6021,19 @@ variants:
     range:
       start: 0x8100000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - cm4
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank1
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - cm7
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -5972,17 +6096,19 @@ variants:
     range:
       start: 0x8100000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - cm4
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank1
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - cm7
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -6045,17 +6171,19 @@ variants:
     range:
       start: 0x8100000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - cm4
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank1
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - cm7
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -6113,9 +6241,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -6173,9 +6302,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -6233,9 +6363,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -6293,9 +6424,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -6353,9 +6485,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -6413,9 +6546,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -6473,9 +6607,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -6533,9 +6668,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -6593,9 +6729,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -6653,9 +6790,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -6713,9 +6851,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -6773,9 +6912,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -6833,9 +6973,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -6905,17 +7046,19 @@ variants:
     range:
       start: 0x8100000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - cm4
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank1
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - cm7
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -6985,17 +7128,19 @@ variants:
     range:
       start: 0x8100000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - cm4
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank1
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - cm7
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -7065,17 +7210,19 @@ variants:
     range:
       start: 0x8100000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - cm4
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank1
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - cm7
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -7145,17 +7292,19 @@ variants:
     range:
       start: 0x8100000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - cm4
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank1
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - cm7
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -7225,17 +7374,19 @@ variants:
     range:
       start: 0x8100000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - cm4
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank1
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - cm7
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -7305,17 +7456,19 @@ variants:
     range:
       start: 0x8100000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - cm4
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank1
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - cm7
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -7385,17 +7538,19 @@ variants:
     range:
       start: 0x8100000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - cm4
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank1
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - cm7
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -7465,17 +7620,19 @@ variants:
     range:
       start: 0x8100000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - cm4
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank1
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - cm7
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -7545,17 +7702,19 @@ variants:
     range:
       start: 0x8100000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - cm4
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank1
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - cm7
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -7625,17 +7784,19 @@ variants:
     range:
       start: 0x8100000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - cm4
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank1
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - cm7
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -7693,17 +7854,19 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank2
     range:
       start: 0x8100000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -7761,9 +7924,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -7821,17 +7985,19 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank2
     range:
       start: 0x8100000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -7889,17 +8055,19 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank2
     range:
       start: 0x8100000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -7957,17 +8125,19 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank2
     range:
       start: 0x8100000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -8025,17 +8195,19 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank2
     range:
       start: 0x8100000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -8093,9 +8265,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -8153,9 +8326,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -8213,9 +8387,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -8273,9 +8448,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -8333,17 +8509,19 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank2
     range:
       start: 0x8100000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -8401,9 +8579,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -8461,17 +8640,19 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank2
     range:
       start: 0x8100000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -8529,9 +8710,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -8589,9 +8771,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -8649,17 +8832,19 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank2
     range:
       start: 0x8100000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -8717,9 +8902,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -8777,17 +8963,19 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank2
     range:
       start: 0x8100000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -8845,17 +9033,19 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank2
     range:
       start: 0x8100000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -8913,17 +9103,19 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank2
     range:
       start: 0x8100000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -8981,17 +9173,19 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank2
     range:
       start: 0x8100000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -9049,9 +9243,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -9109,9 +9304,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -9169,9 +9365,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -9229,9 +9426,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -9289,17 +9487,19 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank2
     range:
       start: 0x8100000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -9357,17 +9557,19 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Nvm
     name: FLASH_Bank2
     range:
       start: 0x8100000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -9425,9 +9627,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -9485,9 +9688,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -9545,9 +9749,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -9605,9 +9810,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -9665,9 +9871,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -9725,9 +9932,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -9785,9 +9993,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -9845,9 +10054,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -9905,9 +10115,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -9965,9 +10176,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -10025,9 +10237,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -10085,9 +10298,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -10145,9 +10359,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -10205,9 +10420,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -10265,9 +10481,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -10325,9 +10542,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -10385,9 +10603,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -10445,9 +10664,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -10505,9 +10725,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -10565,9 +10786,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -10625,9 +10847,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -10685,9 +10908,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor
@@ -10745,9 +10969,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32h7a-b3_flash_2m
   - stm32h7b3i_eval_fmc-nor

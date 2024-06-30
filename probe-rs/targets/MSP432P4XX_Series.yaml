@@ -21,9 +21,10 @@ variants:
     range:
       start: 0x0
       end: 0x208000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - msp432p4xx_mainflash2048kb
   - msp432p4xx_infoflash
@@ -45,9 +46,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - msp432p4xx_mainflash256kb
   - msp432p4xx_infoflash
@@ -69,9 +71,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - msp432p4xx_mainflash256kb
   - msp432p4xx_infoflash
@@ -93,9 +96,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - msp432p4xx_mainflash2048kb
   - msp432p4xx_infoflash
@@ -117,9 +121,10 @@ variants:
     range:
       start: 0x0
       end: 0x100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - msp432p4xx_mainflash2048kb
   - msp432p4xx_infoflash
@@ -141,9 +146,10 @@ variants:
     range:
       start: 0x0
       end: 0x208000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - msp432p4xx_mainflash2048kb
   - msp432p4xx_infoflash_a
@@ -165,9 +171,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - msp432p4xx_mainflash2048kb
   - msp432p4xx_infoflash_a
@@ -189,9 +196,10 @@ variants:
     range:
       start: 0x0
       end: 0x100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - msp432p4xx_mainflash2048kb
   - msp432p4xx_infoflash_a

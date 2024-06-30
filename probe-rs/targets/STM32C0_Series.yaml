@@ -25,9 +25,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32c0x_32
 - name: STM32C011F4Px
@@ -50,9 +51,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32c0x_32
 - name: STM32C011F4Ux
@@ -75,9 +77,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32c0x_32
 - name: STM32C011F6Px
@@ -100,9 +103,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32c0x_32
 - name: STM32C011F6Ux
@@ -125,9 +129,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32c0x_32
 - name: STM32C011J4Mx
@@ -150,9 +155,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32c0x_32
 - name: STM32C011J6Mx
@@ -175,9 +181,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32c0x_32
 - name: STM32C031C4Tx
@@ -200,9 +207,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32c0x_32
 - name: STM32C031C4Ux
@@ -225,9 +233,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32c0x_32
 - name: STM32C031C6Tx
@@ -250,9 +259,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32c0x_32
 - name: STM32C031C6Ux
@@ -275,9 +285,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32c0x_32
 - name: STM32C031F4Px
@@ -300,9 +311,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32c0x_32
 - name: STM32C031F6Px
@@ -325,9 +337,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32c0x_32
 - name: STM32C031G4Ux
@@ -350,9 +363,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32c0x_32
 - name: STM32C031G6Ux
@@ -375,9 +389,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32c0x_32
 - name: STM32C031K4Tx
@@ -400,9 +415,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32c0x_32
 - name: STM32C031K4Ux
@@ -425,9 +441,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32c0x_32
 - name: STM32C031K6Tx
@@ -450,9 +467,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32c0x_32
 - name: STM32C031K6Ux
@@ -475,9 +493,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32c0x_32
 flash_algorithms:

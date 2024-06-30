@@ -21,9 +21,10 @@ variants:
     range:
       start: 0x0
       end: 0xfc00
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - ht32f
   - ht32f_opt
@@ -45,9 +46,10 @@ variants:
     range:
       start: 0x0
       end: 0xfc00
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - ht32f
   - ht32f_opt
@@ -69,9 +71,10 @@ variants:
     range:
       start: 0x0
       end: 0xfc00
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - ht32f
   - ht32f_opt
@@ -93,9 +96,10 @@ variants:
     range:
       start: 0x0
       end: 0xfc00
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - ht32f
   - ht32f_opt
@@ -117,9 +121,10 @@ variants:
     range:
       start: 0x0
       end: 0x3fc00
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - ht32f
   - ht32f_opt
@@ -141,9 +146,10 @@ variants:
     range:
       start: 0x0
       end: 0x3fc00
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - ht32f
   - ht32f_opt
@@ -165,9 +171,10 @@ variants:
     range:
       start: 0x0
       end: 0x3fc00
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - ht32f
   - ht32f_opt
@@ -189,9 +196,10 @@ variants:
     range:
       start: 0x0
       end: 0x3fc00
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - ht32f
   - ht32f_opt
@@ -213,9 +221,10 @@ variants:
     range:
       start: 0x0
       end: 0x3fc00
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - ht32f
   - ht32f_opt
@@ -237,9 +246,10 @@ variants:
     range:
       start: 0x0
       end: 0x3fc00
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - ht32f
   - ht32f_opt
@@ -261,9 +271,10 @@ variants:
     range:
       start: 0x0
       end: 0x3fc00
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - ht32f
   - ht32f_opt
@@ -285,9 +296,10 @@ variants:
     range:
       start: 0x0
       end: 0x3fc00
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - ht32f
   - ht32f_opt
@@ -309,9 +321,10 @@ variants:
     range:
       start: 0x0
       end: 0x3fc00
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - ht32f
   - ht32f_opt
@@ -333,9 +346,10 @@ variants:
     range:
       start: 0x0
       end: 0x3fc00
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - ht32f
   - ht32f_opt
@@ -357,9 +371,10 @@ variants:
     range:
       start: 0x0
       end: 0x3fc00
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - ht32f
   - ht32f_opt
@@ -381,9 +396,10 @@ variants:
     range:
       start: 0x0
       end: 0x3fc00
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - ht32f
   - ht32f_opt
@@ -405,9 +421,10 @@ variants:
     range:
       start: 0x0
       end: 0x3fc00
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - ht32f
   - ht32f_opt
@@ -429,9 +446,10 @@ variants:
     range:
       start: 0x0
       end: 0x3fc00
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - ht32f
   - ht32f_opt
@@ -453,9 +471,10 @@ variants:
     range:
       start: 0x0
       end: 0x3fc00
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - ht32f
   - ht32f_opt
@@ -477,9 +496,10 @@ variants:
     range:
       start: 0x0
       end: 0x3fc00
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - ht32f
   - ht32f_opt
@@ -501,9 +521,10 @@ variants:
     range:
       start: 0x0
       end: 0x3fc00
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - ht32f
   - ht32f_opt
@@ -525,9 +546,10 @@ variants:
     range:
       start: 0x0
       end: 0x3fc00
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - ht32f
   - ht32f_opt
@@ -549,9 +571,10 @@ variants:
     range:
       start: 0x0
       end: 0x3fc00
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - ht32f
   - ht32f_opt

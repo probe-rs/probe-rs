@@ -16,9 +16,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - ch32v3-flash-algo
 flash_algorithms:
@@ -37,7 +38,7 @@ flash_algorithms:
       start: 0x0
       end: 0x40000
     page_size: 0x100
-    erased_byte_value: 0x39 # Note: This is not correct, the erased memory alternates between 0x39 and 0xe3
+    erased_byte_value: 0x39
     program_page_timeout: 1000
     erase_sector_timeout: 2000
     sectors:

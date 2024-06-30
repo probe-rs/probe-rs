@@ -21,9 +21,10 @@ variants:
     range:
       start: 0x0
       end: 0x100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckos2
 - name: EFR32MG21A010F512
@@ -44,9 +45,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckos2
 - name: EFR32MG21A010F768
@@ -67,9 +69,10 @@ variants:
     range:
       start: 0x0
       end: 0xc0000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckos2
 - name: EFR32MG21A020F1024
@@ -90,9 +93,10 @@ variants:
     range:
       start: 0x0
       end: 0x100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckos2
 - name: EFR32MG21A020F512
@@ -113,9 +117,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckos2
 - name: EFR32MG21A020F768
@@ -136,9 +141,10 @@ variants:
     range:
       start: 0x0
       end: 0xc0000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckos2
 - name: EFR32MG21B010F1024
@@ -159,9 +165,10 @@ variants:
     range:
       start: 0x0
       end: 0x100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckos2
 - name: EFR32MG21B010F512
@@ -182,9 +189,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckos2
 - name: EFR32MG21B010F768
@@ -205,9 +213,10 @@ variants:
     range:
       start: 0x0
       end: 0xc0000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckos2
 - name: EFR32MG21B020F1024
@@ -228,9 +237,10 @@ variants:
     range:
       start: 0x0
       end: 0x100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckos2
 - name: EFR32MG21B020F512
@@ -251,9 +261,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckos2
 - name: EFR32MG21B020F768
@@ -274,9 +285,10 @@ variants:
     range:
       start: 0x0
       end: 0xc0000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckos2
 - name: RM21Z000F1024
@@ -297,9 +309,10 @@ variants:
     range:
       start: 0x0
       end: 0x100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckos2
 flash_algorithms:

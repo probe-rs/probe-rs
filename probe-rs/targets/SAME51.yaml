@@ -3,17 +3,17 @@ manufacturer:
   id: 0x1f
   cc: 0x0
 chip_detection:
- - !AtsamDsu
-    processor: 6
-    family: 3
-    series: 1
-    variants:
-      0x00: ATSAME51N20A
-      0x01: ATSAME51N19A
-      0x02: ATSAME51J19A
-      0x03: ATSAME51J18A
-      0x04: ATSAME51J20A
-      0x06: ATSAME51G18A
+- !AtsamDsu
+  processor: 6
+  family: 3
+  series: 1
+  variants:
+    6: ATSAME51G18A
+    1: ATSAME51N19A
+    3: ATSAME51J18A
+    4: ATSAME51J20A
+    0: ATSAME51N20A
+    2: ATSAME51J19A
 variants:
 - name: ATSAME51G18A
   cores:
@@ -33,9 +33,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsame51_1024
 - name: ATSAME51G19A
@@ -56,9 +57,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsame51_1024
 - name: ATSAME51J18A
@@ -79,9 +81,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsame51_1024
 - name: ATSAME51J19A
@@ -102,9 +105,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsame51_1024
 - name: ATSAME51J20A
@@ -125,9 +129,10 @@ variants:
     range:
       start: 0x0
       end: 0x100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsame51_1024
 - name: ATSAME51N19A
@@ -148,9 +153,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsame51_1024
 - name: ATSAME51N20A
@@ -171,9 +177,10 @@ variants:
     range:
       start: 0x0
       end: 0x100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsame51_1024
 flash_algorithms:

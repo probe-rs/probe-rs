@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 /// Represents a region in non-volatile memory (e.g. flash or EEPROM).
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct NvmRegion {
     /// A name to describe the region
     pub name: Option<String>,
@@ -90,6 +91,7 @@ impl Default for MemoryAccess {
 
 /// Represents a region in RAM.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct RamRegion {
     /// A name to describe the region
     pub name: Option<String>,
@@ -132,6 +134,7 @@ impl RamRegion {
 
 /// Represents a generic region.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct GenericRegion {
     /// A name to describe the region
     pub name: Option<String>,

@@ -3,15 +3,15 @@ manufacturer:
   id: 0x1f
   cc: 0x0
 chip_detection:
- - !AtsamDsu
-    processor: 6
-    family: 3
-    series: 4
-    variants:
-      0x00: ATSAME54P20A
-      0x01: ATSAME54P19A
-      0x02: ATSAME54N20A
-      0x03: ATSAME54N19A
+- !AtsamDsu
+  processor: 6
+  family: 3
+  series: 4
+  variants:
+    3: ATSAME54N19A
+    1: ATSAME54P19A
+    0: ATSAME54P20A
+    2: ATSAME54N20A
 variants:
 - name: ATSAME54N19A
   cores:
@@ -31,9 +31,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsame54_1024
 - name: ATSAME54N20A
@@ -54,9 +55,10 @@ variants:
     range:
       start: 0x0
       end: 0x100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsame54_1024
 - name: ATSAME54P19A
@@ -77,9 +79,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsame54_1024
 - name: ATSAME54P20A
@@ -100,9 +103,10 @@ variants:
     range:
       start: 0x0
       end: 0x100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsame54_1024
 flash_algorithms:

@@ -25,9 +25,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -55,9 +56,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -85,9 +87,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -115,9 +118,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -145,9 +149,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32a403a_1024
   - at32a403a_usd
@@ -175,9 +180,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32a403a_1024
   - at32a403a_usd
@@ -205,9 +211,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -235,9 +242,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -265,9 +273,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32a403a_1024
   - at32a403a_usd
@@ -295,9 +304,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -325,9 +335,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -355,9 +366,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32a403a_1024
   - at32a403a_usd
@@ -385,9 +397,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f402_128
   - at32f402_bootmem_ap
@@ -412,9 +425,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f402_128
   - at32f402_bootmem_ap
@@ -439,9 +453,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f402_256
   - at32f402_bootmem_ap
@@ -466,9 +481,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f402_256
   - at32f402_bootmem_ap
@@ -493,9 +509,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f402_128
   - at32f402_bootmem_ap
@@ -520,9 +537,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f402_256
   - at32f402_bootmem_ap
@@ -547,9 +565,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f402_128
   - at32f402_bootmem_ap
@@ -574,9 +593,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f402_128
   - at32f402_bootmem_ap
@@ -601,9 +621,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f402_256
   - at32f402_bootmem_ap
@@ -628,9 +649,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f402_256
   - at32f402_bootmem_ap
@@ -655,9 +677,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f402_128
   - at32f402_bootmem_ap
@@ -682,9 +705,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f402_128
   - at32f402_bootmem_ap
@@ -709,9 +733,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f402_256
   - at32f402_bootmem_ap
@@ -736,9 +761,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f402_256
   - at32f402_bootmem_ap
@@ -763,9 +789,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f402_128
   - at32f402_bootmem_ap
@@ -790,9 +817,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f402_256
   - at32f402_bootmem_ap
@@ -817,9 +845,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f402_128
   - at32f402_bootmem_ap
@@ -844,9 +873,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f402_128
   - at32f402_bootmem_ap
@@ -871,9 +901,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f402_256
   - at32f402_bootmem_ap
@@ -898,9 +929,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f402_256
   - at32f402_bootmem_ap
@@ -925,9 +957,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f403_512
   - at32f403_usd
@@ -953,9 +986,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f403_512
   - at32f403_usd
@@ -981,9 +1015,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f403_512
   - at32f403_usd
@@ -1009,9 +1044,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f403_512
   - at32f403_usd
@@ -1037,9 +1073,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f403_1024
   - at32f403_usd
@@ -1065,9 +1102,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f403_1024
   - at32f403_usd
@@ -1093,9 +1131,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f403_512
   - at32f403_usd
@@ -1121,9 +1160,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f403_512
   - at32f403_usd
@@ -1149,9 +1189,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f403_1024
   - at32f403_usd
@@ -1177,9 +1218,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f403_512
   - at32f403_usd
@@ -1205,9 +1247,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f403_512
   - at32f403_usd
@@ -1233,9 +1276,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f403_1024
   - at32f403_usd
@@ -1261,9 +1305,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f403_512
   - at32f403_usd
@@ -1289,9 +1334,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f403_512
   - at32f403_usd
@@ -1317,9 +1363,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f403_1024
   - at32f403_usd
@@ -1345,9 +1392,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -1375,9 +1423,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -1405,9 +1454,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -1435,9 +1485,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -1465,9 +1516,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32a403a_1024
   - at32a403a_usd
@@ -1495,9 +1547,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32a403a_1024
   - at32a403a_usd
@@ -1525,9 +1578,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -1555,9 +1609,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -1585,9 +1640,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32a403a_1024
   - at32a403a_usd
@@ -1615,9 +1671,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -1645,9 +1702,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -1675,9 +1733,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32a403a_1024
   - at32a403a_usd
@@ -1705,9 +1764,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -1735,9 +1795,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32a403a_1024
   - at32a403a_usd
@@ -1765,9 +1826,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -1795,9 +1857,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -1825,9 +1888,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32a403a_1024
   - at32a403a_usd
@@ -1855,9 +1919,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -1885,9 +1950,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -1915,9 +1981,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32a403a_1024
   - at32a403a_usd
@@ -1945,9 +2012,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f413_128
   - at32f413_usd
@@ -1991,9 +2059,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f413_128
   - at32f413_usd
@@ -2037,9 +2106,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f413_128
   - at32f413_usd
@@ -2083,9 +2153,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f413_256
   - at32f413_usd
@@ -2129,9 +2200,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f413_256
   - at32f413_usd
@@ -2175,9 +2247,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f413_128
   - at32f413_usd
@@ -2221,9 +2294,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f413_256
   - at32f413_usd
@@ -2267,9 +2341,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f413_128
   - at32f413_usd
@@ -2313,9 +2388,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f413_256
   - at32f413_usd
@@ -2359,9 +2435,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f413_128
   - at32f413_usd
@@ -2405,9 +2482,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f413_128
   - at32f413_usd
@@ -2451,9 +2529,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f415_64
   - at32f415_bootmem_ap
@@ -2478,9 +2557,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f415_128
   - at32f415_bootmem_ap
@@ -2505,9 +2585,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f415_128
   - at32f415_bootmem_ap
@@ -2532,9 +2613,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f415_256
   - at32f415_bootmem_ap
@@ -2559,9 +2641,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f415_256
   - at32f415_bootmem_ap
@@ -2586,9 +2669,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f415_64
   - at32f415_bootmem_ap
@@ -2613,9 +2697,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f415_128
   - at32f415_bootmem_ap
@@ -2640,9 +2725,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f415_256
   - at32f415_bootmem_ap
@@ -2667,9 +2753,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f415_64
   - at32f415_bootmem_ap
@@ -2694,9 +2781,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f415_64
   - at32f415_bootmem_ap
@@ -2721,9 +2809,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f415_128
   - at32f415_bootmem_ap
@@ -2748,9 +2837,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f415_128
   - at32f415_bootmem_ap
@@ -2775,9 +2865,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f415_256
   - at32f415_bootmem_ap
@@ -2802,9 +2893,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f415_256
   - at32f415_bootmem_ap
@@ -2829,9 +2921,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f415_64
   - at32f4212_bootmem_ap
@@ -2856,9 +2949,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f421_16
   - at32f4212_bootmem_ap
@@ -2883,9 +2977,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f421_32
   - at32f4212_bootmem_ap
@@ -2910,9 +3005,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f415_64
   - at32f4212_bootmem_ap
@@ -2937,9 +3033,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f421_16
   - at32f4212_bootmem_ap
@@ -2964,9 +3061,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f421_16
   - at32f4212_bootmem_ap
@@ -2991,9 +3089,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f421_32
   - at32f4212_bootmem_ap
@@ -3018,9 +3117,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f421_32
   - at32f4212_bootmem_ap
@@ -3045,9 +3145,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f415_64
   - at32f4212_bootmem_ap
@@ -3072,9 +3173,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f415_64
   - at32f4212_bootmem_ap
@@ -3099,9 +3201,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f421_16
   - at32f4212_bootmem_ap
@@ -3126,9 +3229,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f421_32
   - at32f4212_bootmem_ap
@@ -3153,9 +3257,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f415_64
   - at32f4212_bootmem_ap
@@ -3180,9 +3285,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f421_16
   - at32f4212_bootmem_ap
@@ -3207,9 +3313,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f421_16
   - at32f4212_bootmem_ap
@@ -3234,9 +3341,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f421_16
   - at32f4212_bootmem_ap
@@ -3261,9 +3369,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f421_32
   - at32f4212_bootmem_ap
@@ -3288,9 +3397,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f421_32
   - at32f4212_bootmem_ap
@@ -3315,9 +3425,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f421_32
   - at32f4212_bootmem_ap
@@ -3342,9 +3453,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f415_64
   - at32f4212_bootmem_ap
@@ -3369,9 +3481,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f415_64
   - at32f4212_bootmem_ap
@@ -3396,9 +3509,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f415_64
   - at32f4212_bootmem_ap
@@ -3423,9 +3537,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f421_16
   - at32f4212_bootmem_ap
@@ -3450,9 +3565,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f415_64
   - at32f4212_bootmem_ap
@@ -3477,9 +3593,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f423_128
   - at32f423_bootmem_ap
@@ -3504,9 +3621,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f423_128
   - at32f423_bootmem_ap
@@ -3531,9 +3649,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f423_128
   - at32f423_bootmem_ap
@@ -3558,9 +3677,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f423_128
   - at32f423_bootmem_ap
@@ -3585,9 +3705,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f423_128
   - at32f423_bootmem_ap
@@ -3612,9 +3733,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f423_256
   - at32f423_bootmem_ap
@@ -3639,9 +3761,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f423_256
   - at32f423_bootmem_ap
@@ -3666,9 +3789,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f423_128
   - at32f423_bootmem_ap
@@ -3693,9 +3817,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f423_128
   - at32f423_bootmem_ap
@@ -3720,9 +3845,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f423_256
   - at32f423_bootmem_ap
@@ -3747,9 +3873,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f423_128
   - at32f423_bootmem_ap
@@ -3774,9 +3901,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f423_128
   - at32f423_bootmem_ap
@@ -3801,9 +3929,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f423_128
   - at32f423_bootmem_ap
@@ -3828,9 +3957,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f423_128
   - at32f423_bootmem_ap
@@ -3855,9 +3985,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f423_256
   - at32f423_bootmem_ap
@@ -3882,9 +4013,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f423_256
   - at32f423_bootmem_ap
@@ -3909,9 +4041,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f423_128
   - at32f423_bootmem_ap
@@ -3936,9 +4069,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f423_128
   - at32f423_bootmem_ap
@@ -3963,9 +4097,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f423_256
   - at32f423_bootmem_ap
@@ -3990,9 +4125,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f423_128
   - at32f423_bootmem_ap
@@ -4017,9 +4153,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f423_128
   - at32f423_bootmem_ap
@@ -4044,9 +4181,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f423_256
   - at32f423_bootmem_ap
@@ -4071,9 +4209,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f425_32
   - at32f425_bootmem_ap
@@ -4098,9 +4237,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f425_32
   - at32f425_bootmem_ap
@@ -4125,9 +4265,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f425_64
   - at32f425_bootmem_ap
@@ -4152,9 +4293,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f425_64
   - at32f425_bootmem_ap
@@ -4179,9 +4321,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f425_32
   - at32f425_bootmem_ap
@@ -4206,9 +4349,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f425_64
   - at32f425_bootmem_ap
@@ -4233,9 +4377,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f425_32
   - at32f425_bootmem_ap
@@ -4260,9 +4405,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f425_64
   - at32f425_bootmem_ap
@@ -4287,9 +4433,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f425_32
   - at32f425_bootmem_ap
@@ -4314,9 +4461,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f425_32
   - at32f425_bootmem_ap
@@ -4341,9 +4489,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f425_64
   - at32f425_bootmem_ap
@@ -4368,9 +4517,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f425_64
   - at32f425_bootmem_ap
@@ -4395,9 +4545,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f425_32
   - at32f425_bootmem_ap
@@ -4422,9 +4573,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f425_32
   - at32f425_bootmem_ap
@@ -4449,9 +4601,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f425_64
   - at32f425_bootmem_ap
@@ -4476,9 +4629,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f425_64
   - at32f425_bootmem_ap
@@ -4503,9 +4657,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f435_256
   - at32f435_usd_512
@@ -4529,9 +4684,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f435_256
   - at32f435_usd_512
@@ -4555,9 +4711,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8070000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f435_448
   - at32f435_usd_512
@@ -4581,9 +4738,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8070000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f435_448
   - at32f435_usd_512
@@ -4607,9 +4765,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f435_1024
   - at32f435_usd_512
@@ -4633,9 +4792,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f435_1024
   - at32f435_usd_512
@@ -4659,9 +4819,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x83f0000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f435_4032
   - at32f435_usd_4096
@@ -4685,9 +4846,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x83f0000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f435_4032
   - at32f435_usd_4096
@@ -4711,9 +4873,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f435_256
   - at32f435_usd_512
@@ -4737,9 +4900,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8070000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f435_448
   - at32f435_usd_512
@@ -4763,9 +4927,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f435_1024
   - at32f435_usd_512
@@ -4789,9 +4954,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x83f0000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f435_4032
   - at32f435_usd_4096
@@ -4815,9 +4981,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f435_256
   - at32f435_usd_512
@@ -4841,9 +5008,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8070000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f435_448
   - at32f435_usd_512
@@ -4867,9 +5035,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f435_1024
   - at32f435_usd_512
@@ -4893,9 +5062,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x83f0000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f435_4032
   - at32f435_usd_4096
@@ -4919,9 +5089,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f435_256
   - at32f435_usd_512
@@ -4945,9 +5116,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8070000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f435_448
   - at32f435_usd_512
@@ -4971,9 +5143,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f435_1024
   - at32f435_usd_512
@@ -4997,9 +5170,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x83f0000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f435_4032
   - at32f435_usd_4096
@@ -5023,9 +5197,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f435_256
   - at32f435_usd_512
@@ -5049,9 +5224,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8070000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f435_448
   - at32f435_usd_512
@@ -5075,9 +5251,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f435_1024
   - at32f435_usd_512
@@ -5101,9 +5278,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x83f0000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f435_4032
   - at32f435_usd_4096
@@ -5127,9 +5305,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f435_256
   - at32f435_usd_512
@@ -5153,9 +5332,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8070000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f435_448
   - at32f435_usd_512
@@ -5179,9 +5359,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f435_1024
   - at32f435_usd_512
@@ -5205,9 +5386,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x83f0000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f435_4032
   - at32f435_usd_4096
@@ -5231,9 +5413,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f435_256
   - at32f435_usd_512
@@ -5257,9 +5440,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8070000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f435_256
   - at32f435_usd_512
@@ -5283,9 +5467,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f435_1024
   - at32f435_usd_512
@@ -5309,9 +5494,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x83f0000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f435_4032
   - at32f435_usd_4096
@@ -5335,9 +5521,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - at32f415_256
   - at32f415_bootmem_ap

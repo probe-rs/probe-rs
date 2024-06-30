@@ -16,9 +16,10 @@ variants:
     range:
       start: 0x60000000
       end: 0x61000000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Ram
     name: OCRAM
     range:
