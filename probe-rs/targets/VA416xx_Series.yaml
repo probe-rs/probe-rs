@@ -1,0 +1,101 @@
+name: VA416xx Series
+generated_from_pack: true
+pack_file_release: 1.0.5
+variants:
+- name: VA416xx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    access:
+      boot: true
+    cores:
+    - main
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - va416_spi_fram_256kb
+  - va416_ebiboot_fram_256kb
+  - va416_ebi_fram_512kb
+flash_algorithms:
+- name: va416_spi_fram_256kb
+  default: true
+  description: VA416_SPI_FRAM_256KB
+  instructions: RfYMQMTyAQABaMkHCtEBaMkHBL8BaF/qwXED0QFoyQfy0AC/AWjJBgnVAWjJBkS/AWhf6sFhAtUBaMkG8tQDIQFicEdwRwC/WCAIIcTyAQDA8qgBQWBB8ggBTvJRUsTyAgHB9swiwfi4IAAiCmABaCHwCAEBYAC/AL8CaEX2DEFC8AgCxPIBAQJgAiAAv0hgQPIHQEH4DAxA8oIgQfgIDAMgCGIIaMAHCtEIaMAHBL8IaF/qwHAD0QhowAfy0AC/CGjABgnVCGjABkS/CGhf6sBgAtUIaMAG8tQGIMjyAAADIgpiQfgEDApo0gcK0Qpo0gcEvwpoX+rCcgPRCmjSB/LQAL8KaNIGCdUKaNIGRL8KaF/qwmIC1Qpo0gby1AMiCmJB+AQMCGjABwnRCGjABwS/CGhf6sBwAtEIaMAH8tAIaMAGCdUIaMAGRL8IaF/qwGAC1QhowAby1AMgCGIBIEH4BAxP8ABAQfgEDAhowAcK0QhowAcEvwhoX+rAcAPRCGjAB/LQAL8IaMAGCdUIaMAGRL8IaF/qwGAC1QhowAby1AMiACAKYnBHAL9F9gxBxPIBAQhowAcK0QhowAcEvwhoX+rAcAPRCGjAB/LQAL8IaMAGCdUIaMAGRL8IaF/qwGAC1QhowAby1AYgyPIAAAMiCmJB+AQMCmjSBwrRCmjSBwS/Cmhf6sJyA9EKaNIH8tAAvwpo0gYJ1Qpo0gZEvwpoX+rCYgLVCmjSBvLUAyIKYgEi9zBB+AQsQfgEDAhowAcJ0QhowAcEvwhoX+rAcALRCGjAB/LQCGjABgnVCGjABkS/CGhf6sBgAtUIaMAG8tQDIgAgCmJwRwC/cLVF9gxBQPIGDAAgxPIBAcjyAAwDI0/wAg5P8ABCACQG4AC/ATS09YBvC2IA8KyAQfgEzA1o7QcK0Q1o7QcEvw1oX+rFdQPRDWjtB/LQAL8NaO0GCtUNaO0GRL8NaF/qxWUD1Q1o7Qby1AC/xPMHJQtiQfgE7EH4BFzlskH4BFwAJUH4BFwE4AU1/y1B+AQMTNAOaLYHBtQOaLYHXL8OaF/qhnY+1UH4BAwOaLYHCdQOaLYHXL8OaF/qhnYC1A5otgfy1UH4BAwOaLYHCtQOaLYHXL8OaF/qhnYD1A5otgfy1QC/QfgEDA5otgcK1A5otgdcvw5oX+qGdgPUDmi2B/LVAL9B+AQMDmi2B7zUDmi2B1y/Dmhf6oZ2tdQOaLYH8tWx5w5otgez1bznDWitBwrUDWitB1y/DWhf6oV1A9QNaK0H8tUAv0H4BCwNaO0HCtENaO0HBL8NaF/qxXUD0Q1o7Qfy0AC/DWjtBn/1Wq8NaO0GRL8NaF/qxWV/9VKvDWjtBvDUTecAIHC9ACBwR4C1grBF9gxOxPIBDgAjAZPe+AAw2wcN0d74ADDbBwS/3vgAMF/qw3ME0d74ADDbB+7QAL/e+AAw2wYM1d74ADDbBkS/3vgAMF/qw2MD1d74ADDbBu7UAyPO+CAwBiPI8gADTvgEPN74ADDbBwzR3vgAMNsHBL/e+AAwX+rDcwPR3vgAMNsH7tDe+AAw2wYM1d74ADDbBkS/3vgAMF/qw2MD1d74ADDbBu7UAyPO+CAwAiNN9vAMTvgEPMDzB0PP9v98TvgEPMDzByPAsgEpTvgEPE74BAxA8JKA3vgAAIAHAPEGgd74AACAB1y/3vgAAF/qgHAA8fyA3vgAAIAHXL/e+AAAX+qAcADx8oDe+AAAgAdcv974AABf6oBwAPHogN74AACAB1y/3vgAAF/qgHAA8d6A3vgAAIAHXL/e+AAAX+qAcADx1IDe+AAAgAdcv974AABf6oBwAPHKgN74AACAB1y/3vgAAF/qgHAA8cCA3vgAAIAHXL/e+AAAX+qAcADxtoDe+AAAgAdcv974AABf6oBwAPGsgN74AACAB1y/3vgAAF/qgHAA8aKA3vgAAIAHXL/e+AAAX+qAcADxmIDe+AAAgAdcv974AABf6oBwAPGOgBzxGQx/9H+vheAAvxL4AQsBOU74BAxe+AQMASkAkAGYAPEBAAGQP/Rur2BG3vgAMJsH69Te+AAwmwdcv974ADBf6oNz4tTe+AAwmwdcv974ADBf6oNz2dTe+AAwmwdcv974ADBf6oNz0NTe+AAwmwdcv974ADBf6oNzx9Te+AAwmwdcv974ADBf6oNzvtTe+AAwmwdcv974ADBf6oNztdTe+AAwmwdcv974ADBf6oNzrNTe+AAwmwdcv974ADBf6oNzo9Te+AAwmwdcv974ADBf6oNzmtTe+AAwmwdcv974ADBf6oNzkdTe+AAwmwdcv974ADBf6oNzP/WIr974ADCbB1y/3vgAMF/qg3M/9X6vGTB/9IuvASACsIC9EHgA8QBATvgEDN74AADABwzR3vgAAMAHBL/e+AAAX+rAcAPR3vgAAMAH7tDe+AAAwAYM1d74AADABkS/3vgAAF/qwGAD1d74AADABu7UAyDO+CAAACACsIC9AL8AIHBHsLVF9gxExPIBBCNo2wcJ0SNo2wcEvyNoX+rDcwLRI2jbB/LQI2jbBgnVI2jbBkS/I2hf6sNjAtUjaNsG8tQDIyNiRPgEPMDzB0NE+AQ8wPMHI0T4BDzDskT4BDwAI0T4BDwjaFsHCdQjaFsHXL8jaF/qQ3MC1CNoWwfy1VT4BDwAI0T4BDwjaFsHCdQjaFsHXL8jaF/qQ3MC1CNoWwfy1VT4BDwAI0T4BDwjaFsHCdQjaFsHXL8jaF/qQ3MC1CNoWwfy1VT4BDwAI0T4BDwjaFsHCdQjaFsHXL8jaF/qQ3MC1CNoWwfy1VT4BDwBs0/wAAxP8AAOAL9E+ATMI2hbBwrUI2hbB1y/I2hf6kNzA9QjaFsH8tUAv1T4BDwVeNuynUIo0Q7xAQ6ORQLxAQLj0U/wAEJE+AQsImjSBwrRImjSBwS/Imhf6sJyA9EiaNIH8tAAvyJo0gYJ1SJo0gZEvyJoX+rCYgLVImjSBvLUAyIIRCJisL1wRLC9AAAAAAAA
+  pc_init: 0x49
+  pc_uninit: 0x1ad
+  pc_program_page: 0x40d
+  pc_erase_sector: 0x409
+  pc_erase_all: 0x27d
+  data_section_offset: 0x8d8
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x40000
+    page_size: 0x100
+    erased_byte_value: 0x0
+    program_page_timeout: 3000
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x2000
+      address: 0x0
+- name: va416_ebiboot_fram_256kb
+  description: VA416_EBIBOOT_256KB
+  instructions: QfKAAsTyAQJS+CAwI/TAQ0PqQTFC+CAQcEcAv0HywALE8gECUvggMCP0wEND6kExQvggEHBHAL9B8gASxPIBAlL4IDAj9MBDQ+pBMUL4IBBwRwC/QfJAEsTyAQJS+CAwI/TAQ0PqQTFC+CAQcEcAv0HyiADE8gEAAmgBIWHzTjICYEJoYfNOMkJggmhh804ygmDCaGHzTjLCYAJpYfNOMgJhQmlh804yQmGCaWHzTjKCYcJpYfNOMsJhAmph804yAmJCamHzTjJCYoJqYfNOMoJiwmph804ywmICa2HzTjICY0JrYfNOMkJjgmth804ygmPCa2HzTjLCYwJsYfNOMgJkQmxh804yQmSCbGHzTjKCZMJsYfNOMsJkAm1h804yAmVCbWHzTjJCZYJtYfNOMoJlwm1h804ywmUCbmHzTjICZkJuYfNOMkJmgm5h804ygmbCbmHzTjLCZgJvYfNOMgJnQm9h804yQmeCb2HzTjKCZ8JvYfNOMsJn0PiAIGHzTjLA+IAg0PiEIGHzTjLA+IQg0PiIIGHzTjLA+Igg0PiMIGHzTjLA+Iwg0PiQIGHzTjLA+JAg0PiUIGHzTjLA+JQg0PiYIGHzTjLA+Jgg0PicIGHzTjLA+Jwg0PioIGHzTjLA+Kgg0PisIGHzTjLA+Kwg0PiwIGHzTjLA+LAg0Pi0IGHzTjLA+LQg0Pi4IGHzTjLA+Lgg0Pi8IGHzTjLA+LwgcEcQtVgkACDE8gEEw/Y5QGBgIGhA9IAwIGD/9xj/T/YAccDytjEAIGFhEL0AvwAgcEeAtU/wwEBP9IAhAPA7+AAggL0AvwAgcEcB8AEDGURLCCnQWR4A8cBAAykD8AMME9Mj8AMDMvgIGwQ7IPgIGzL4Bhwg+AYcMvgEHCD4BBwy+AIcIPgCHO3RvPEADwvQEYi88QEPAYAG0FGIvPECD0GAHL+RiIGAACBwRwC/ACBwRwhEcEdP8AACALUTRpRGlkYgOSK/oOgMUKDoDFCx8SABv/T3rwkHKL+g6AxQSL8MwF34BOuJACi/QPgEKwi/cEdIvyD4AisR8IBPGL8A+AErcEcAAAAAAAA=
+  pc_init: 0x225
+  pc_uninit: 0x251
+  pc_program_page: 0x26d
+  pc_erase_sector: 0x269
+  pc_erase_all: 0x255
+  data_section_offset: 0x328
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x40000
+    page_size: 0x100
+    erased_byte_value: 0x0
+    program_page_timeout: 3000
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x2000
+      address: 0x0
+- name: va416_ebi_fram_512kb
+  description: VA416_EBI_512KB
+  instructions: QfKAAsTyAQJS+CAwI/TAQ0PqQTFC+CAQcEcAv0HywALE8gECUvggMCP0wEND6kExQvggEHBHAL9B8gASxPIBAlL4IDAj9MBDQ+pBMUL4IBBwRwC/QfJAEsTyAQJS+CAwI/TAQ0PqQTFC+CAQcEcAv0HyiADE8gEAAmgBIWHzTjICYEJoYfNOMkJggmhh804ygmDCaGHzTjLCYAJpYfNOMgJhQmlh804yQmGCaWHzTjKCYcJpYfNOMsJhAmph804yAmJCamHzTjJCYoJqYfNOMoJiwmph804ywmICa2HzTjICY0JrYfNOMkJjgmth804ygmPCa2HzTjLCYwJsYfNOMgJkQmxh804yQmSCbGHzTjKCZMJsYfNOMsJkAm1h804yAmVCbWHzTjJCZYJtYfNOMoJlwm1h804ywmUCbmHzTjICZkJuYfNOMkJmgm5h804ygmbCbmHzTjLCZgJvYfNOMgJnQm9h804yQmeCb2HzTjKCZ8JvYfNOMsJn0PiAIGHzTjLA+IAg0PiEIGHzTjLA+IQg0PiIIGHzTjLA+Igg0PiMIGHzTjLA+Iwg0PiQIGHzTjLA+JAg0PiUIGHzTjLA+JQg0PiYIGHzTjLA+Jgg0PicIGHzTjLA+Jwg0PioIGHzTjLA+Kgg0PisIGHzTjLA+Kwg0PiwIGHzTjLA+LAg0Pi0IGHzTjLA+LQg0Pi4IGHzTjLA+Lgg0Pi8IGHzTjLA+LwgcEcQtVgkxPIBBCBoQPSAMCBgACDD9jlAYGD/9xj/T/YAcMDytjBgYU7yhBDO8gAAT/QAUQFgRvIAAb/zT4/E8gABGCC/82+PiGAwIgAgCmAQvQAgcEeAtU/wgFBP9AAhAPB4+AAggL0AvwAgcEcB8AEDGURLCCfQWR4DKQPwAwwT0yPwAwMy+AgbBDsg+AgbMvgGHCD4Bhwy+AQcIPgEHDL4Ahwg+AIc7dG88QAPC9ARiLzxAQ8BgAbQUYi88QIPQYAcv5GIgYAAIHBHAL8AIHBHLenwRQHwAQMZRF/qUQwr0OJGvPEBD5i/T/ABCsrxAA6q8QEIACMw+BNQMvgTYLVCItGYRRjQAutDBQDrQwZ3iGyIp0IT0Q7rAwe8HAzQtIipiIxCDdH5HAbQ8YjsiKFCCdEEM5pF3tFgRL3o8IUBMwLgAjMA4AMzT+pDDGBEvejwhU/wAAIAtRNGlEaWRiA5Ir+g6AxQoOgMULHxIAG/9PevCQcov6DoDFBIvwzAXfgE64kAKL9A+AQrCL9wR0i/IPgCKxHwgE8YvwD4AStwRwAAAAA=
+  pc_init: 0x225
+  pc_uninit: 0x275
+  pc_program_page: 0x291
+  pc_erase_sector: 0x28d
+  pc_erase_all: 0x279
+  data_section_offset: 0x3c4
+  flash_properties:
+    address_range:
+      start: 0x10000000
+      end: 0x10080000
+    page_size: 0x100
+    erased_byte_value: 0x0
+    program_page_timeout: 3000
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x2000
+      address: 0x0
