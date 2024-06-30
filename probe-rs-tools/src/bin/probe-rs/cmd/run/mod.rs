@@ -19,7 +19,6 @@ use probe_rs::{
     exception_handler_for_core, probe::list::Lister, Core, CoreInterface, Error, HaltReason,
     Session, VectorCatchCondition,
 };
-use probe_rs_target::MemoryRegion;
 use signal_hook::consts::signal;
 use time::UtcOffset;
 
@@ -121,7 +120,6 @@ impl Cmd {
                 .reset_and_halt(Duration::from_millis(100))?;
         }
 
-        let memory_map = session.target().memory_map.clone();
         let rtt_scan_regions = match self.shared_options.rtt_scan_memory {
             true => session.target().rtt_scan_regions.clone(),
             false => Vec::new(),
@@ -131,7 +129,6 @@ impl Cmd {
             session,
             RunLoop {
                 core_id,
-                memory_map,
                 rtt_scan_regions,
                 timestamp_offset,
                 path: self.shared_options.path,
@@ -192,7 +189,6 @@ fn detect_run_mode(cmd: &Cmd) -> Result<Box<dyn RunMode>, anyhow::Error> {
 
 struct RunLoop {
     core_id: usize,
-    memory_map: Vec<MemoryRegion>,
     rtt_scan_regions: Vec<Range<u64>>,
     path: PathBuf,
     timestamp_offset: UtcOffset,
@@ -273,7 +269,6 @@ impl RunLoop {
         let mut rtta = attach_to_rtt(
             core,
             Duration::from_secs(1),
-            self.memory_map.as_slice(),
             &ScanRegion::Ranges(self.rtt_scan_regions.clone()),
             Path::new(&self.path),
             &rtt_config,
@@ -512,7 +507,6 @@ fn poll_rtt<S: Write + ?Sized>(
 fn attach_to_rtt(
     core: &mut Core<'_>,
     timeout: Duration,
-    memory_map: &[MemoryRegion],
     rtt_region: &ScanRegion,
     elf_file: &Path,
     rtt_config: &RttConfig,
@@ -528,7 +522,7 @@ fn attach_to_rtt(
         rtt_region.clone()
     };
 
-    let rtt = try_attach_to_rtt(core, timeout, memory_map, &scan_region)?;
+    let rtt = try_attach_to_rtt(core, timeout, &scan_region)?;
 
     let Some(rtt) = rtt else {
         return Ok(None);

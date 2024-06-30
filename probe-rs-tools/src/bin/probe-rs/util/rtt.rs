@@ -52,11 +52,7 @@ pub fn get_target_core_id(session: &mut Session, elf_file: impl AsRef<Path>) -> 
 /// Try to find the RTT control block in the ELF file and attach to it.
 ///
 /// This function can return `Ok(None)` to indicate that RTT is not available on the target.
-fn try_attach_to_rtt_once(
-    core: &mut Core,
-    memory_map: &[MemoryRegion],
-    rtt_region: &ScanRegion,
-) -> Result<Option<Rtt>> {
+fn try_attach_to_rtt_once(core: &mut Core, rtt_region: &ScanRegion) -> Result<Option<Rtt>> {
     tracing::debug!("Initializing RTT");
 
     if let ScanRegion::Ranges(rngs) = &rtt_region {
@@ -67,7 +63,7 @@ fn try_attach_to_rtt_once(
         }
     }
 
-    match Rtt::attach_region(core, memory_map, rtt_region) {
+    match Rtt::attach_region(core, rtt_region) {
         Ok(rtt) => {
             tracing::info!("RTT initialized.");
             Ok(Some(rtt))
@@ -684,20 +680,15 @@ fn try_attach_to_rtt_inner(
 pub fn try_attach_to_rtt(
     core: &mut Core<'_>,
     timeout: Duration,
-    memory_map: &[MemoryRegion],
     rtt_region: &ScanRegion,
 ) -> Result<Option<Rtt>> {
-    try_attach_to_rtt_inner(
-        || try_attach_to_rtt_once(core, memory_map, rtt_region),
-        timeout,
-    )
+    try_attach_to_rtt_inner(|| try_attach_to_rtt_once(core, rtt_region), timeout)
 }
 
 /// Try to attach to RTT, with the given timeout.
 pub fn try_attach_to_rtt_shared(
     session: &parking_lot::FairMutex<Session>,
     core_id: usize,
-    memory_map: &[MemoryRegion],
     timeout: Duration,
     rtt_region: &ScanRegion,
 ) -> Result<Option<Rtt>> {
@@ -705,7 +696,7 @@ pub fn try_attach_to_rtt_shared(
         || {
             let mut session_handle = session.lock();
             let mut core = session_handle.core(core_id)?;
-            try_attach_to_rtt_once(&mut core, memory_map, rtt_region)
+            try_attach_to_rtt_once(&mut core, rtt_region)
         },
         timeout,
     )

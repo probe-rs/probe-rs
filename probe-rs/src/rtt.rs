@@ -22,12 +22,11 @@
 //!
 //! let probe = probes[0].open()?;
 //! let mut session = probe.attach("somechip", Permissions::default())?;
-//! let memory_map = session.target().memory_map.clone();
 //! // Select a core.
 //! let mut core = session.core(0)?;
 //!
 //! // Attach to RTT
-//! let mut rtt = Rtt::attach(&mut core, &memory_map)?;
+//! let mut rtt = Rtt::attach(&mut core)?;
 //!
 //! // Read from a channel
 //! if let Some(input) = rtt.up_channel(0) {
@@ -209,7 +208,6 @@ impl Rtt {
 
     fn from(
         core: &mut Core,
-        memory_map: &[MemoryRegion],
         // Pointer from which to scan
         ptr: u64,
         // Memory contents read in advance, starting from ptr
@@ -286,7 +284,7 @@ impl Rtt {
 
         let mut offset = up_channels_start as u64;
         for (i, b) in up_channels_buffer.into_iter().enumerate() {
-            if let Some(chan) = Channel::from(core, i, memory_map, ptr + offset, b)? {
+            if let Some(chan) = Channel::from(core, i, ptr + offset, b)? {
                 up_channels.push(UpChannel(chan));
             } else {
                 tracing::warn!("Buffer for up channel {i} not initialized");
@@ -295,7 +293,7 @@ impl Rtt {
         }
 
         for (i, b) in down_channels_buffer.into_iter().enumerate() {
-            if let Some(chan) = Channel::from(core, i, memory_map, ptr + offset, b)? {
+            if let Some(chan) = Channel::from(core, i, ptr + offset, b)? {
                 down_channels.push(DownChannel(chan));
             } else {
                 tracing::warn!("Buffer for down channel {i} not initialized");
@@ -314,31 +312,26 @@ impl Rtt {
     /// if a valid control block was found.
     ///
     /// `core` can be e.g. an owned `Core` or a shared `Rc<Core>`.
-    pub fn attach(core: &mut Core, memory_map: &[MemoryRegion]) -> Result<Rtt, Error> {
-        Self::attach_region(core, memory_map, &Default::default())
+    pub fn attach(core: &mut Core) -> Result<Rtt, Error> {
+        Self::attach_region(core, &ScanRegion::default())
     }
 
     /// Attempts to detect an RTT control block in the specified RAM region(s) and returns an
     /// instance if a valid control block was found.
     ///
     /// `core` can be e.g. an owned `Core` or a shared `Rc<Core>`.
-    pub fn attach_region(
-        core: &mut Core,
-        memory_map: &[MemoryRegion],
-        region: &ScanRegion,
-    ) -> Result<Rtt, Error> {
+    pub fn attach_region(core: &mut Core, region: &ScanRegion) -> Result<Rtt, Error> {
         let is_64_bit = core.is_64_bit();
         let ranges = match region.clone() {
             ScanRegion::Exact(addr) => {
                 tracing::debug!("Scanning at exact address: {:#010x}", addr);
 
-                return Rtt::from(core, memory_map, addr, None)?.ok_or(Error::ControlBlockNotFound);
+                return Rtt::from(core, addr, None)?.ok_or(Error::ControlBlockNotFound);
             }
             ScanRegion::Ram => {
                 tracing::debug!("Scanning whole RAM");
 
-                memory_map
-                    .iter()
+                core.memory_regions()
                     .filter_map(MemoryRegion::as_ram_region)
                     .map(|r| r.range.clone())
                     .collect()
@@ -382,7 +375,7 @@ impl Rtt {
 
                 let target_ptr = range.start + offset as u64;
 
-                Rtt::from(core, memory_map, target_ptr, Some(&mem[offset..])).transpose()
+                Rtt::from(core, target_ptr, Some(&mem[offset..])).transpose()
             })
             .collect::<Result<Vec<_>, _>>()?;
 

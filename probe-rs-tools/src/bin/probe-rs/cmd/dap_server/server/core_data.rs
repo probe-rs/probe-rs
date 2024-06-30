@@ -440,9 +440,7 @@ fn try_attach_rtt(
 
     let scan_region = ScanRegion::Exact(header_address);
 
-    let memory_regions = core.memory_regions().cloned().collect::<Vec<_>>();
-
-    let rtt = Rtt::attach_region(core, &memory_regions[..], &scan_region)
+    let rtt = Rtt::attach_region(core, &scan_region)
         .map_err(|error| anyhow!("Error attempting to attach to RTT: {}", error))?;
 
     tracing::info!("RTT initialized.");
