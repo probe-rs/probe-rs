@@ -233,13 +233,13 @@ impl CoreExt for Core {
     fn memory_ap(&self) -> Option<MemoryAp> {
         match &self.core_access_options {
             probe_rs_target::CoreAccessOptions::Arm(options) => {
-                Some(MemoryAp::new(FullyQualifiedApAddress {
-                    dp: match options.psel {
+                Some(MemoryAp::new(FullyQualifiedApAddress::v1_with_dp(
+                    match options.psel {
                         0 => DpAddress::Default,
                         x => DpAddress::Multidrop(x),
                     },
-                    ap: crate::architecture::arm::ApAddress::V1(options.ap),
-                }))
+                    options.ap,
+                )))
             }
             probe_rs_target::CoreAccessOptions::Riscv(_) => None,
             probe_rs_target::CoreAccessOptions::Xtensa(_) => None,

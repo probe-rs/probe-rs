@@ -44,7 +44,7 @@ impl Vendor for Microchip {
         }
 
         // FIXME: This is a bit shaky but good enough for now.
-        let access_port = MemoryAp::new(FullyQualifiedApAddress::with_default_dp(0));
+        let access_port = MemoryAp::new(FullyQualifiedApAddress::v1_with_default_dp(0));
         // This device has an Atmel DSU - Read and parse the DSU DID register
         let did = DsuDid(
             interface

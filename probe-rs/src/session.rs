@@ -182,7 +182,7 @@ impl Session {
             ))
         })?;
 
-        let default_dp = default_memory_ap.ap_address().dp;
+        let default_dp = default_memory_ap.ap_address().dp();
 
         let sequence_handle = match &target.debug_sequence {
             DebugSequence::Arm(sequence) => sequence.clone(),

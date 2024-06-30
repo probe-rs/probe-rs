@@ -271,7 +271,7 @@ fn wait_for_stop_after_reset(memory: &mut dyn ArmProbe) -> Result<(), ArmError> 
 
     thread::sleep(Duration::from_millis(10));
 
-    let dp = memory.ap().ap_address().dp;
+    let dp = memory.ap().ap_address().dp();
     let ap = memory.ap();
     let interface = memory.get_arm_communication_interface()?;
 
@@ -326,10 +326,7 @@ fn enable_debug_mailbox(
 ) -> Result<(), ArmError> {
     tracing::info!("LPC55xx connect script start");
 
-    let ap = FullyQualifiedApAddress {
-        dp,
-        ap: crate::architecture::arm::ApAddress::V1(2),
-    };
+    let ap = FullyQualifiedApAddress::v1_with_dp(dp, 2);
 
     let status: IDR = interface.read_ap_register(&GenericAp::new(ap.clone()))?;
 
@@ -449,7 +446,7 @@ impl MIMXRT5xxS {
         thread::sleep(Duration::from_millis(100));
 
         let ap: MemoryAp = probe.ap();
-        let dp = ap.ap_address().dp;
+        let dp = ap.ap_address().dp();
         let start = Instant::now();
         while !self.csw_debug_ready(probe.get_arm_communication_interface()?, &ap)?
             && start.elapsed() < Duration::from_millis(300)
@@ -575,10 +572,7 @@ impl MIMXRT5xxS {
 
         tracing::debug!("enabling MIMXRT5xxS DebugMailbox");
 
-        let ap_addr = &FullyQualifiedApAddress {
-            dp,
-            ap: crate::architecture::arm::ApAddress::V1(2),
-        };
+        let ap_addr = &FullyQualifiedApAddress::v1_with_dp(dp, 2);
 
         // CMSIS Pack implementation reads APIDR and DPIDR and passes each
         // to the "Message" function, but otherwise does nothing with those
@@ -648,10 +642,7 @@ impl ArmDebugSequence for MIMXRT5xxS {
             // Clear WDATAERR, STICKYORUN, STICKYCMP, and STICKYERR bits of CTRL/STAT Register by write to ABORT register
             interface.write_raw_dp_register(dp, SW_DP_ABORT, 0x0000001E)?;
 
-            let ap = FullyQualifiedApAddress {
-                dp,
-                ap: crate::architecture::arm::ApAddress::V1(0),
-            };
+            let ap = FullyQualifiedApAddress::v1_with_dp(dp, 0);
             let mem_ap = MemoryAp::new(ap);
             self.enable_debug_mailbox(interface, dp, &mem_ap)?;
         }

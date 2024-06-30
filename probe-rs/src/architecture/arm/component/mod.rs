@@ -111,10 +111,9 @@ pub fn get_arm_components(
 
     for ap_index in 0..(interface.num_access_ports(dp)? as u8) {
         let ap_information = interface
-            .ap_information(&GenericAp::new(FullyQualifiedApAddress {
-                dp,
-                ap: crate::architecture::arm::ApAddress::V1(ap_index),
-            }))?
+            .ap_information(&GenericAp::new(FullyQualifiedApAddress::v1_with_dp(
+                dp, ap_index,
+            )))?
             .clone();
 
         let component = match ap_information {

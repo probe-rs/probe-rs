@@ -6,11 +6,11 @@ use super::nrf::Nrf;
 use crate::architecture::arm::ap::AccessPort;
 use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
 use crate::architecture::arm::sequences::ArmDebugSequence;
+use crate::architecture::arm::ArmError;
 use crate::architecture::arm::{
     communication_interface::Initialized, ArmCommunicationInterface, DapAccess,
     FullyQualifiedApAddress,
 };
-use crate::architecture::arm::{ApAddress, ArmError};
 
 /// The sequence handle for the nRF9160.
 #[derive(Debug)]
@@ -37,14 +37,8 @@ impl Nrf for Nrf9160 {
             .into_iter()
             .map(|(core_ahb_ap, core_ctrl_ap)| {
                 (
-                    FullyQualifiedApAddress {
-                        ap: ApAddress::V1(core_ahb_ap),
-                        ..ap_address.clone()
-                    },
-                    FullyQualifiedApAddress {
-                        ap: ApAddress::V1(core_ctrl_ap),
-                        ..ap_address.clone()
-                    },
+                    FullyQualifiedApAddress::v1_with_dp(ap_address.dp(), core_ahb_ap),
+                    FullyQualifiedApAddress::v1_with_dp(ap_address.dp(), core_ctrl_ap),
                 )
             })
             .collect()

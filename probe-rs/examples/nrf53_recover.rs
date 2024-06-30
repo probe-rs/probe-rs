@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 use probe_rs::{
-    architecture::arm::{ApAddress, DpAddress, FullyQualifiedApAddress},
+    architecture::arm::{DpAddress, FullyQualifiedApAddress},
     probe::list::Lister,
 };
 
@@ -24,22 +24,10 @@ fn main() -> Result<()> {
         .initialize_unspecified(DpAddress::Default)
         .unwrap();
 
-    const APP_MEM: FullyQualifiedApAddress = FullyQualifiedApAddress {
-        ap: ApAddress::V1(0),
-        dp: DpAddress::Default,
-    };
-    const NET_MEM: FullyQualifiedApAddress = FullyQualifiedApAddress {
-        ap: ApAddress::V1(1),
-        dp: DpAddress::Default,
-    };
-    const APP_CTRL: FullyQualifiedApAddress = FullyQualifiedApAddress {
-        ap: ApAddress::V1(2),
-        dp: DpAddress::Default,
-    };
-    const NET_CTRL: FullyQualifiedApAddress = FullyQualifiedApAddress {
-        ap: ApAddress::V1(3),
-        dp: DpAddress::Default,
-    };
+    const APP_MEM: FullyQualifiedApAddress = FullyQualifiedApAddress::v1_with_default_dp(0);
+    const NET_MEM: FullyQualifiedApAddress = FullyQualifiedApAddress::v1_with_default_dp(1);
+    const APP_CTRL: FullyQualifiedApAddress = FullyQualifiedApAddress::v1_with_default_dp(2);
+    const NET_CTRL: FullyQualifiedApAddress = FullyQualifiedApAddress::v1_with_default_dp(3);
 
     const ERASEALL: u8 = 0x04;
     const ERASEALLSTATUS: u8 = 0x08;
