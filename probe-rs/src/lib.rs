@@ -75,6 +75,7 @@ pub mod config;
 pub mod vendor;
 
 mod core;
+#[cfg(feature = "debug")]
 pub mod debug;
 mod error;
 pub mod flashing;
@@ -91,11 +92,9 @@ mod test;
 
 pub use crate::config::{CoreType, InstructionSet, Target};
 pub use crate::core::{
-    dump::{CoreDump, CoreDumpError},
-    exception_handler_for_core, Architecture, BreakpointCause, Core, CoreInformation,
-    CoreInterface, CoreRegister, CoreRegisters, CoreState, CoreStatus, HaltReason,
-    MemoryMappedRegister, RegisterId, RegisterRole, RegisterValue, SpecificCoreState,
-    VectorCatchCondition,
+    Architecture, BreakpointCause, Core, CoreInformation, CoreInterface, CoreRegister,
+    CoreRegisters, CoreState, CoreStatus, HaltReason, MemoryMappedRegister, RegisterId,
+    RegisterRole, RegisterValue, SpecificCoreState, VectorCatchCondition,
 };
 pub use crate::error::Error;
 pub use crate::memory::MemoryInterface;
@@ -103,3 +102,9 @@ pub use crate::semihosting::{
     ExitErrorDetails, GetCommandLineRequest, SemihostingCommand, UnknownCommandDetails,
 };
 pub use crate::session::{Permissions, Session};
+
+#[cfg(feature = "debug")]
+pub use crate::core::{
+    dump::{CoreDump, CoreDumpError},
+    exception_handler_for_core,
+};

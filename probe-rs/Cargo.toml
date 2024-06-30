@@ -20,11 +20,13 @@ license.workspace = true
 exclude = ["tests/"]
 
 [features]
-default = ["builtin-targets"]
+default = ["builtin-targets", "debug"]
 gdb-server = ["dep:gdbstub"]
 
 # Enable all built in targets.
 builtin-targets = []
+
+debug = ["dep:gimli"]
 
 # Enable helpers for testing
 test = []
@@ -38,11 +40,6 @@ probe-rs-target.workspace = true
 bincode = "1"
 bitfield = "0.15"
 bitvec = "1"
-gimli = { version = "0.30", default-features = false, features = [
-    "endian-reader",
-    "read",
-    "std",
-] }
 hidapi = { version = "2", default-features = false, features = [
     "linux-native",
 ] }
@@ -80,6 +77,13 @@ hexdump = { version = "0.1", optional = true }
 
 # gdb server
 gdbstub = { version = "0.7", optional = true }
+
+# debug
+gimli = { version = "0.30", default-features = false, features = [
+    "endian-reader",
+    "read",
+    "std",
+], optional = true }
 
 [build-dependencies]
 probe-rs-target.workspace = true

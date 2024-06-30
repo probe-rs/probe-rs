@@ -1,10 +1,11 @@
+#[cfg(feature = "debug")]
+use crate::debug::{DebugInfo, DebugRegisters, StackFrame};
 use crate::{
     architecture::{
         arm::sequences::ArmDebugSequence, riscv::sequences::RiscvDebugSequence,
         xtensa::sequences::XtensaDebugSequence,
     },
     config::DebugSequence,
-    debug::{DebugInfo, DebugRegisters, StackFrame},
     error::Error,
     CoreType, InstructionSet, MemoryInterface, Target,
 };
@@ -13,10 +14,13 @@ pub use probe_rs_target::{Architecture, CoreAccessOptions};
 use probe_rs_target::{
     ArmCoreAccessOptions, MemoryRegion, RiscvCoreAccessOptions, XtensaCoreAccessOptions,
 };
-use std::{collections::HashMap, ops::Range, sync::Arc, time::Duration};
+#[cfg(feature = "debug")]
+use std::{collections::HashMap, ops::Range};
+use std::{sync::Arc, time::Duration};
 
 pub mod core_state;
 pub mod core_status;
+#[cfg(feature = "debug")]
 pub(crate) mod dump;
 pub mod memory_mapped_registers;
 pub mod registers;
@@ -26,6 +30,7 @@ pub use core_status::*;
 pub use memory_mapped_registers::MemoryMappedRegister;
 pub use registers::*;
 
+#[cfg(feature = "debug")]
 use self::dump::CoreDump;
 
 /// An struct for storing the current state of a core.
@@ -270,6 +275,7 @@ impl<'probe> MemoryInterface for Core<'probe> {
 /// A struct containing key information about an exception.
 /// The exception details are architecture specific, and the abstraction is handled in the
 /// architecture specific implementations of [`crate::core::ExceptionInterface`].
+#[cfg(feature = "debug")]
 #[derive(PartialEq)]
 pub struct ExceptionInfo {
     /// The exception number.
@@ -282,6 +288,7 @@ pub struct ExceptionInfo {
 }
 
 /// A generic interface to identify and decode exceptions during unwind processing.
+#[cfg(feature = "debug")]
 pub trait ExceptionInterface {
     /// Using the `stackframe_registers` for a "called frame",
     /// determine if the given frame was called from an exception handler,
@@ -320,8 +327,10 @@ pub trait ExceptionInterface {
 }
 
 /// Placeholder for exception handling for cores where handling exceptions is not yet supported.
+#[cfg(feature = "debug")]
 pub struct UnimplementedExceptionHandler;
 
+#[cfg(feature = "debug")]
 impl ExceptionInterface for UnimplementedExceptionHandler {
     fn exception_details(
         &self,
@@ -363,6 +372,7 @@ impl ExceptionInterface for UnimplementedExceptionHandler {
 }
 
 /// Creates a new exception interface for the [`CoreType`] at hand.
+#[cfg(feature = "debug")]
 pub fn exception_handler_for_core(core_type: CoreType) -> Box<dyn ExceptionInterface> {
     use crate::architecture::arm::core::exception_handling::{armv6m, armv7m, armv8m};
     match core_type {
@@ -731,6 +741,7 @@ impl<'probe> Core<'probe> {
     /// # Arguments
     ///
     /// * `ranges`: Memory ranges that should be dumped.
+    #[cfg(feature = "debug")]
     pub fn dump(&mut self, ranges: Vec<Range<u64>>) -> Result<CoreDump, Error> {
         let instruction_set = self.instruction_set()?;
         let core_type = self.core_type();
