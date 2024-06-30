@@ -1,6 +1,8 @@
 use anyhow::Result;
 use probe_rs::{
-    architecture::arm::{sequences::DefaultArmSequence, FullyQualifiedApAddress, DpAddress},
+    architecture::arm::{
+        sequences::DefaultArmSequence, ApAddress, DpAddress, FullyQualifiedApAddress,
+    },
     probe::list::Lister,
 };
 
@@ -25,9 +27,9 @@ fn main() -> Result<()> {
     // This is an example on how to do a "recover" operation (erase+unlock a locked chip)
     // on an nRF52840 target.
 
-    let port = FullyQualifiedApAddress {
+    let port = &FullyQualifiedApAddress {
         dp: DpAddress::Default,
-        ap: 1,
+        ap: ApAddress::V1(1),
     };
 
     const RESET: u8 = 0;

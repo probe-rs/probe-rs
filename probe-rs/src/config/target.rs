@@ -3,7 +3,7 @@ use crate::architecture::{
     arm::{
         ap::MemoryAp,
         sequences::{ArmDebugSequence, DefaultArmSequence},
-        FullyQualifiedApAddress, DpAddress,
+        DpAddress, FullyQualifiedApAddress,
     },
     riscv::sequences::{DefaultRiscvSequence, RiscvDebugSequence},
     xtensa::sequences::{DefaultXtensaSequence, XtensaDebugSequence},
@@ -273,13 +273,15 @@ pub(crate) trait CoreExt {
 impl CoreExt for Core {
     fn memory_ap(&self) -> Option<MemoryAp> {
         match &self.core_access_options {
-            probe_rs_target::CoreAccessOptions::Arm(options) => Some(MemoryAp::new(FullyQualifiedApAddress {
-                dp: match options.psel {
-                    0 => DpAddress::Default,
-                    x => DpAddress::Multidrop(x),
-                },
-                ap: options.ap,
-            })),
+            probe_rs_target::CoreAccessOptions::Arm(options) => {
+                Some(MemoryAp::new(FullyQualifiedApAddress {
+                    dp: match options.psel {
+                        0 => DpAddress::Default,
+                        x => DpAddress::Multidrop(x),
+                    },
+                    ap: crate::architecture::arm::ApAddress::V1(options.ap),
+                }))
+            }
             probe_rs_target::CoreAccessOptions::Riscv(_) => None,
             probe_rs_target::CoreAccessOptions::Xtensa(_) => None,
         }
