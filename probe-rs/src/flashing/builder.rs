@@ -55,8 +55,8 @@ impl FlashPage {
 /// The description of a sector in flash.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct FlashSector {
-    address: u64,
-    size: u64,
+    pub(crate) address: u64,
+    pub(crate) size: u64,
 }
 
 impl FlashSector {
