@@ -233,7 +233,8 @@ impl ProbeFactory for JLinkFactory {
             this.read_max_mem_block()?
         } else {
             tracing::debug!("J-Link does not support GET_MAX_MEM_BLOCK, using default value");
-            65535
+            // Be conservative if we can't read the actual value.
+            504
         };
 
         tracing::debug!("J-Link max mem block size for SWD IO: {max_mem_block_size} byte");
