@@ -161,19 +161,27 @@ pub fn cmd_test(
         progress.clone(),
         EraseSectors(test_start_sector_index, 2),
     )?;
+
+    println!("{test}: Erase done");
+
     let mut readback = vec![0; (sector_size * 2) as usize];
     session
         .core(0)?
         .read_8(test_start_sector_address, &mut readback)?;
     assert!(
-        !readback.iter().any(|v| *v != erased_state),
+        readback.iter().all(|v| *v == erased_state),
         "Not all sectors were erased"
     );
+
+    println!("{test}: Writing two pages ...");
 
     let mut loader = session.target().flash_loader();
     let data = (0..data_size).map(|n| (n % 256) as u8).collect::<Vec<_>>();
     loader.add_data(test_start_sector_address + 1, &data)?;
     run_flash_download(&mut session, loader, progress.clone(), true)?;
+
+    println!("{test}: Write done");
+
     let mut readback = vec![0; data_size as usize];
     session
         .core(0)?
@@ -182,19 +190,24 @@ pub fn cmd_test(
 
     println!("{test}: Erasing the entire chip and writing two pages ...");
     run_flash_erase(&mut session, progress.clone(), EraseAll)?;
+    println!("{test}: Erase done");
     let mut readback = vec![0; (sector_size * 2) as usize];
     session
         .core(0)?
         .read_8(test_start_sector_address, &mut readback)?;
     assert!(
-        !readback.iter().any(|v| *v != erased_state),
+        readback.iter().all(|v| *v == erased_state),
         "Not all sectors were erased"
     );
 
+    println!("{test}: Writing two pages ...");
     let mut loader = session.target().flash_loader();
     let data = (0..data_size).map(|n| (n % 256) as u8).collect::<Vec<_>>();
     loader.add_data(test_start_sector_address + 1, &data)?;
     run_flash_download(&mut session, loader, progress.clone(), true)?;
+
+    println!("{test}: Write done");
+
     let mut readback = vec![0; data_size as usize];
     session
         .core(0)?
@@ -207,19 +220,24 @@ pub fn cmd_test(
         progress.clone(),
         EraseSectors(test_start_sector_index, 2),
     )?;
+    println!("{test}: Erase done");
+
     let mut readback = vec![0; (sector_size * 2) as usize];
     session
         .core(0)?
         .read_8(test_start_sector_address, &mut readback)?;
     assert!(
-        !readback.iter().any(|v| *v != erased_state),
+        readback.iter().all(|v| *v == erased_state),
         "Not all sectors were erased"
     );
 
+    println!("{test}: Writing two pages ...");
     let mut loader = session.target().flash_loader();
     let data = (0..data_size).map(|n| (n % 256) as u8).collect::<Vec<_>>();
     loader.add_data(test_start_sector_address + 1, &data)?;
     run_flash_download(&mut session, loader, progress, false)?;
+    println!("{test}: Write done");
+
     let mut readback = vec![0; data_size as usize];
     session
         .core(0)?
