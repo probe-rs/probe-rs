@@ -13,19 +13,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -41,19 +42,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -69,19 +71,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -97,19 +100,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -125,19 +129,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -153,19 +158,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -181,19 +187,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -209,19 +216,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -237,19 +245,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -265,19 +274,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -293,19 +303,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -321,19 +332,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -349,19 +361,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -377,19 +390,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -405,19 +419,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -433,19 +448,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -461,19 +477,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -489,19 +506,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -517,19 +535,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -545,19 +564,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -573,19 +593,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -601,19 +622,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -629,19 +651,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -657,19 +680,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -685,19 +709,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -713,19 +738,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -741,19 +767,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -769,19 +796,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -797,19 +825,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -825,19 +854,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -853,19 +883,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -881,19 +912,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -909,19 +941,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -937,19 +970,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -965,19 +999,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -993,19 +1028,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -1021,19 +1057,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -1049,19 +1086,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -1077,19 +1115,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -1105,19 +1144,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -1133,19 +1173,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -1161,19 +1202,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20004800
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -1189,19 +1231,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20004800
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -1217,19 +1260,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20004800
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -1245,19 +1289,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20004800
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -1273,19 +1318,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20004800
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -1301,19 +1347,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20004800
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -1329,19 +1376,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20004800
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -1357,19 +1405,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20004800
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -1385,19 +1434,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20004800
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -1413,19 +1463,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20004800
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -1441,19 +1492,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20004800
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -1469,19 +1521,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20004800
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -1497,19 +1550,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20004800
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -1525,19 +1579,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20004800
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -1553,19 +1608,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20004800
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -1581,19 +1637,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20004800
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -1609,19 +1666,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20004800
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -1637,19 +1695,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20004800
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -1665,19 +1724,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20004800
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -1693,19 +1753,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20004800
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -1721,19 +1782,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20004800
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -1749,19 +1811,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20004800
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -1777,19 +1840,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20004800
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -1805,19 +1869,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20004800
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -1833,19 +1898,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20004800
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -1861,19 +1927,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20004800
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -1889,19 +1956,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20004800
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -1917,19 +1985,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20004800
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -1945,19 +2014,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20004800
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -1973,19 +2043,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20004800
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -2001,19 +2072,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20004800
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -2029,19 +2101,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20009000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -2057,19 +2130,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20009000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -2085,19 +2159,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20009000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -2113,19 +2188,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20009000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -2141,19 +2217,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20009000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -2169,19 +2246,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20009000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -2197,19 +2275,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20009000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -2225,19 +2304,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20009000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -2253,19 +2333,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20009000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -2281,19 +2362,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20009000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -2309,19 +2391,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20009000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -2337,19 +2420,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20009000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -2365,19 +2449,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20009000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -2393,19 +2478,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20009000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -2421,19 +2507,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20009000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -2449,19 +2536,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20009000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -2477,19 +2565,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20009000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -2505,19 +2594,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20009000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -2533,19 +2623,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20009000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -2561,19 +2652,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20009000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -2589,19 +2681,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20009000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -2617,19 +2710,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20009000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -2645,19 +2739,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20009000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -2673,19 +2768,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20009000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -2701,19 +2797,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20009000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -2729,19 +2826,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20009000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -2757,19 +2855,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20009000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -2785,19 +2884,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20009000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -2813,19 +2913,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20009000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -2841,19 +2942,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20009000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -2869,19 +2971,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20009000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -2897,19 +3000,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20009000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -2925,19 +3029,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20009000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -2953,19 +3058,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20009000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -2981,19 +3087,29 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -3009,19 +3125,29 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -3037,19 +3163,29 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -3065,19 +3201,29 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
+      end: 0x20024000
     cores:
     - main
   flash_algorithms:
@@ -3093,19 +3239,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -3121,19 +3268,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -3149,19 +3297,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -3177,19 +3326,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -3205,19 +3355,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -3233,19 +3384,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -3261,19 +3413,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -3289,19 +3442,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -3317,19 +3471,29 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -3345,19 +3509,29 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -3373,19 +3547,29 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -3401,19 +3585,29 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -3429,19 +3623,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -3457,19 +3652,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -3485,19 +3681,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -3513,19 +3710,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -3541,19 +3739,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -3569,19 +3768,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -3597,19 +3797,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -3625,19 +3826,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -3653,19 +3855,29 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -3681,19 +3893,29 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -3709,19 +3931,29 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -3737,19 +3969,29 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -3765,19 +4007,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -3793,19 +4036,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -3821,19 +4065,29 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -3849,19 +4103,29 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -3877,19 +4141,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -3905,19 +4170,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -3933,19 +4199,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -3961,19 +4228,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -3989,19 +4257,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -4017,19 +4286,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -4045,19 +4315,29 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -4073,19 +4353,29 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -4101,19 +4391,29 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -4129,19 +4429,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -4157,19 +4458,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -4185,19 +4487,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -4213,19 +4516,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -4241,19 +4545,29 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -4269,19 +4583,29 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -4297,19 +4621,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -4325,19 +4650,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -4353,19 +4679,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -4381,19 +4708,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -4409,19 +4737,29 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -4437,19 +4775,29 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -4465,19 +4813,29 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -4493,19 +4851,29 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -4521,19 +4889,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -4549,19 +4918,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -4577,19 +4947,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -4605,19 +4976,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -4633,19 +5005,29 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -4661,19 +5043,29 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -4689,19 +5081,29 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -4717,19 +5119,29 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -4745,19 +5157,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -4773,19 +5186,29 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -4801,19 +5224,29 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -4829,19 +5262,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -4857,19 +5291,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -4885,19 +5320,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -4913,19 +5349,29 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -4941,19 +5387,29 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -4969,19 +5425,29 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -4997,19 +5463,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -5025,19 +5492,20 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -5053,19 +5521,29 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
@@ -5081,19 +5559,29 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:
       start: 0x20000000
       end: 0x20024000
-    cores:
-    - main
-  - !Nvm
-    name: Main_Flash
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
   flash_algorithms:
