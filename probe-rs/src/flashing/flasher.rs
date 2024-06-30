@@ -805,11 +805,11 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
             std::thread::sleep(Duration::from_millis(1));
         }
 
+        self.check_for_stack_overflow()?;
+
         if timeout_ocurred {
             return Err(FlashError::Core(crate::Error::Timeout));
         }
-
-        self.check_for_stack_overflow()?;
 
         let r: u32 = self.core.read_core_reg(regs.result_register(0))?;
         Ok(r)
