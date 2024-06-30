@@ -369,7 +369,7 @@ impl<'session> Flasher<'session> {
         fill: &FlashFill,
     ) -> Result<(), FlashError> {
         let page_offset = (fill.address() - page.address()) as usize;
-        let page_slice = &mut page.data_mut()[page_offset..page_offset + fill.size() as usize];
+        let page_slice = &mut page.data_mut()[page_offset..][..fill.size() as usize];
         self.run_verify(|active| {
             active
                 .core
@@ -383,9 +383,9 @@ impl<'session> Flasher<'session> {
         self.progress
             .started_programming(flash_encoder.program_size());
 
-        let mut t = Instant::now();
         let result = self.run_program(|active| {
             for page in flash_encoder.pages() {
+                let t = Instant::now();
                 active
                     .program_page(page.address(), page.data())
                     .map_err(|error| FlashError::PageWrite {
@@ -393,8 +393,6 @@ impl<'session> Flasher<'session> {
                         source: Box::new(error),
                     })?;
                 active.progress.page_programmed(page.size(), t.elapsed());
-
-                t = Instant::now();
             }
             Ok(())
         });
@@ -411,9 +409,9 @@ impl<'session> Flasher<'session> {
     fn sector_erase(&mut self, flash_encoder: &FlashEncoder) -> Result<(), FlashError> {
         self.progress.started_erasing();
 
-        let mut t = Instant::now();
         let result = self.run_erase(|active| {
             for sector in flash_encoder.sectors() {
+                let t = Instant::now();
                 active
                     .erase_sector(sector.address())
                     .map_err(|e| FlashError::EraseFailed {
@@ -421,8 +419,6 @@ impl<'session> Flasher<'session> {
                         source: Box::new(e),
                     })?;
                 active.progress.sector_erased(sector.size(), t.elapsed());
-
-                t = Instant::now();
             }
             Ok(())
         });
@@ -449,8 +445,8 @@ impl<'session> Flasher<'session> {
         self.progress
             .started_programming(flash_encoder.program_size());
 
-        let mut t = Instant::now();
         let result = self.run_program(|active| {
+            let mut t = Instant::now();
             let mut last_page_address = 0;
             for page in flash_encoder.pages() {
                 // At the start of each loop cycle load the next page buffer into RAM.
