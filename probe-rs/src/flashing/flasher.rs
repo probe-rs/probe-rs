@@ -3,11 +3,13 @@ use tracing::Level;
 
 use super::{FlashAlgorithm, FlashBuilder, FlashError, FlashFill, FlashPage, FlashProgress};
 use crate::config::NvmRegion;
+use crate::error::Error;
 use crate::flashing::encoder::FlashEncoder;
 use crate::flashing::FlashLayout;
 use crate::memory::MemoryInterface;
-use crate::rtt;
+use crate::rtt::{self, Rtt};
 use crate::{core::CoreRegisters, session::Session, Core, InstructionSet};
+use std::marker::PhantomData;
 use std::{
     fmt::Debug,
     time::{Duration, Instant},
@@ -356,10 +358,9 @@ impl<'session> Flasher<'session> {
             Ok(())
         });
 
-        if result.is_ok() {
-            self.progress.finished_programming();
-        } else {
-            self.progress.failed_programming();
+        match result.is_ok() {
+            true => self.progress.finished_programming(),
+            false => self.progress.failed_programming(),
         }
 
         result
@@ -385,10 +386,9 @@ impl<'session> Flasher<'session> {
             Ok(())
         });
 
-        if result.is_ok() {
-            self.progress.finished_erasing();
-        } else {
-            self.progress.failed_erasing();
+        match result.is_ok() {
+            true => self.progress.finished_erasing(),
+            false => self.progress.failed_erasing(),
         }
 
         result
@@ -460,19 +460,16 @@ impl<'session> Flasher<'session> {
                     error_code: result,
                 })
             } else {
-                Ok(0)
+                Ok(())
             }
         });
 
-        if result.is_ok() {
-            self.progress.finished_programming();
-        } else {
-            self.progress.failed_programming();
-
-            result?;
+        match result.is_ok() {
+            true => self.progress.finished_programming(),
+            false => self.progress.failed_programming(),
         }
 
-        Ok(())
+        result
     }
 
     pub(super) fn flash_layout(
@@ -517,10 +514,10 @@ fn into_reg(val: u64) -> Result<u32, FlashError> {
 
 pub(super) struct ActiveFlasher<'probe, O: Operation> {
     core: Core<'probe>,
-    rtt: Option<rtt::Rtt>,
+    rtt: Option<Rtt>,
     progress: FlashProgress,
     flash_algorithm: FlashAlgorithm,
-    _operation: core::marker::PhantomData<O>,
+    _operation: PhantomData<O>,
 }
 
 impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
@@ -739,7 +736,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
         self.check_for_stack_overflow()?;
 
         if timeout_ocurred {
-            return Err(FlashError::Core(crate::Error::Timeout));
+            return Err(FlashError::Core(Error::Timeout));
         }
 
         let r: u32 = self.core.read_core_reg(regs.result_register(0))?;
@@ -852,7 +849,7 @@ impl<'p> ActiveFlasher<'p, Program> {
         // we will fill the missing bytes with the erased byte value.
         let empty = self.flash_algorithm.flash_properties.erased_byte_value;
         let words: Vec<u32> = bytes
-            .chunks(core::mem::size_of::<u32>())
+            .chunks(std::mem::size_of::<u32>())
             .map(|a| {
                 u32::from_le_bytes([
                     a[0],
