@@ -280,11 +280,10 @@ impl<'session> Flasher<'session> {
         self.progress.started_filling();
 
         if restore_unwritten_bytes {
-            let fills = flash_layout.fills().to_vec();
-            for fill in fills {
+            for fill in flash_layout.fills.iter() {
                 let t = Instant::now();
-                let page = &mut flash_layout.pages_mut()[fill.page_index()];
-                let result = self.fill_page(page, &fill);
+                let page = &mut flash_layout.pages[fill.page_index()];
+                let result = self.fill_page(page, fill);
 
                 // If we encounter an error, catch it, gracefully report the failure and return the error.
                 if result.is_err() {
