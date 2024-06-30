@@ -21,3 +21,7 @@ colored = "2.1.0"
 linkme = "0.3.25"
 miette = { version = "7.2.0", features = ["fancy"] }
 thiserror.workspace = true
+
+[lints.clippy]
+unnecessary_self_imports = "deny"
+enum_glob_use = "deny"

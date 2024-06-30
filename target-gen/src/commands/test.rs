@@ -159,7 +159,7 @@ pub fn cmd_test(
     run_flash_erase(
         &mut session,
         progress.clone(),
-        EraseSectors(test_start_sector_index, 2),
+        EraseType::EraseSectors(test_start_sector_index, 2),
     )?;
 
     println!("{test}: Erase done");
@@ -189,7 +189,7 @@ pub fn cmd_test(
     assert_eq!(readback, data);
 
     println!("{test}: Erasing the entire chip and writing two pages ...");
-    run_flash_erase(&mut session, progress.clone(), EraseAll)?;
+    run_flash_erase(&mut session, progress.clone(), EraseType::EraseAll)?;
     println!("{test}: Erase done");
     let mut readback = vec![0; (sector_size * 2) as usize];
     session
@@ -218,7 +218,7 @@ pub fn cmd_test(
     run_flash_erase(
         &mut session,
         progress.clone(),
-        EraseSectors(test_start_sector_index, 2),
+        EraseType::EraseSectors(test_start_sector_index, 2),
     )?;
     println!("{test}: Erase done");
 
@@ -281,7 +281,6 @@ pub enum EraseType {
     EraseAll,
     EraseSectors(usize, usize),
 }
-use EraseType::*;
 
 /// Erases the entire flash or just the sectors specified.
 pub fn run_flash_erase(
@@ -289,7 +288,7 @@ pub fn run_flash_erase(
     progress: FlashProgress,
     erase_type: EraseType,
 ) -> Result<()> {
-    if let EraseSectors(start_sector, sectors) = erase_type {
+    if let EraseType::EraseSectors(start_sector, sectors) = erase_type {
         erase_sectors(session, progress, start_sector, sectors)?;
     } else {
         erase_all(session, progress)?;

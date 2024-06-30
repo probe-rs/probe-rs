@@ -1,5 +1,3 @@
-#![warn(missing_docs)]
-
 //! Debugging support for probe-rs
 //!
 //! The `debug` module contains various debug functionality, which can be

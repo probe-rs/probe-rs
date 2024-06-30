@@ -1,3 +1,5 @@
+//! This example demonstrates how to do a "recover" operation (erase+unlock a locked chip) on an nRF5340 target.
+
 use anyhow::Result;
 use probe_rs::{
     architecture::arm::{ApAddress, DpAddress},
@@ -21,9 +23,6 @@ fn main() -> Result<()> {
         .unwrap()
         .initialize_unspecified(DpAddress::Default)
         .unwrap();
-
-    // This is an example on how to do a "recover" operation (erase+unlock a locked chip)
-    // on an nRF5340 target.
 
     const APP_MEM: ApAddress = ApAddress {
         ap: 0,

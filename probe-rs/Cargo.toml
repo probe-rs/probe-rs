@@ -107,3 +107,10 @@ replace = "## [{{version}}]\n\nReleased {{date}}"
 file = "../CHANGELOG.md"
 search = "\\[unreleased\\]: https://github.com/probe-rs/probe-rs/compare/v([a-z0-9.-]+)\\.\\.\\.master"
 replace = "[unreleased]: https://github.com/probe-rs/probe-rs/compare/v{{version}}...master\n[{{version}}]: https://github.com/probe-rs/probe-rs/compare/v$1...v{{version}}"
+
+[lints.rust]
+missing_docs = "warn"
+
+[lints.clippy]
+unnecessary_self_imports = "deny"
+enum_glob_use = "deny"
