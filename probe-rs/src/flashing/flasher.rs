@@ -178,8 +178,8 @@ impl<'session> Flasher<'session> {
         let mut flasher = ActiveFlasher::<O> {
             core,
             rtt: None,
-            progress: self.progress.clone(),
-            flash_algorithm: self.flash_algorithm.clone(),
+            progress: &self.progress,
+            flash_algorithm: &self.flash_algorithm,
             _operation: PhantomData,
         };
 
@@ -503,15 +503,15 @@ fn into_reg(val: u64) -> Result<u32, FlashError> {
     Ok(reg_value)
 }
 
-pub(super) struct ActiveFlasher<'probe, O: Operation> {
-    core: Core<'probe>,
+pub(super) struct ActiveFlasher<'op, O: Operation> {
+    core: Core<'op>,
     rtt: Option<Rtt>,
-    progress: FlashProgress,
-    flash_algorithm: FlashAlgorithm,
+    progress: &'op FlashProgress,
+    flash_algorithm: &'op FlashAlgorithm,
     _operation: PhantomData<O>,
 }
 
-impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
+impl<O: Operation> ActiveFlasher<'_, O> {
     #[tracing::instrument(name = "Call to flash algorithm init", skip(self, clock))]
     pub(super) fn init(&mut self, clock: Option<u32>) -> Result<(), FlashError> {
         let algo = &self.flash_algorithm;
