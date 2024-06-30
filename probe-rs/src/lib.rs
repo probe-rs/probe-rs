@@ -65,10 +65,7 @@
 //!
 //! [Probe]: probe::Probe
 #![warn(missing_docs)]
-#![recursion_limit = "256"]
-
-#[macro_use]
-extern crate serde;
+#![recursion_limit = "256"] // required by bitfield!
 
 pub mod architecture;
 pub mod config;

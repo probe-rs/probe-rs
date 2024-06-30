@@ -18,6 +18,7 @@ use crate::{RegisterId, RegisterValue};
 use anyhow::anyhow;
 use probe_rs_target::MemoryRange;
 use scroll::Pread;
+use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     fs::OpenOptions,

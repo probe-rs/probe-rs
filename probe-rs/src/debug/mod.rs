@@ -34,6 +34,7 @@ use crate::{core::Core, MemoryInterface};
 use gimli::AttributeValue;
 use gimli::DebuggingInformationEntry;
 use gimli::EvaluationResult;
+use serde::Serialize;
 use typed_path::TypedPathBuf;
 
 use std::{
