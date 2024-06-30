@@ -229,19 +229,15 @@ impl ProbeFactory for JLinkFactory {
             *this.supported_protocols.first().unwrap()
         };
 
-        if this.caps.contains(Capability::GetMaxBlockSize) {
-            this.max_mem_block_size = this.read_max_mem_block()?;
-
-            tracing::debug!(
-                "J-Link max mem block size for SWD IO: {} byte",
-                this.max_mem_block_size
-            );
+        let max_mem_block_size = if this.caps.contains(Capability::GetMaxBlockSize) {
+            this.read_max_mem_block()?
         } else {
-            tracing::debug!(
-                "J-Link does not support GET_MAX_MEM_BLOCK, using default value of 65535"
-            );
-            this.max_mem_block_size = 65535;
-        }
+            tracing::debug!("J-Link does not support GET_MAX_MEM_BLOCK, using default value");
+            65535
+        };
+
+        tracing::debug!("J-Link max mem block size for SWD IO: {max_mem_block_size} byte");
+        this.max_mem_block_size = max_mem_block_size;
 
         // Some devices can't handle large transfers, so we limit the chunk size.
         // While it would be nice to read this directly from the device,
