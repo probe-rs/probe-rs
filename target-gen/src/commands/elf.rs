@@ -255,7 +255,29 @@ pub fn serialize_to_yaml_string(family: &ChipFamily) -> Result<String> {
         yaml_string.push('\n');
     }
 
-    Ok(yaml_string)
+    // Second pass: remove empty `access:` objects
+    let mut output = String::with_capacity(yaml_string.len());
+    let mut lines = yaml_string.lines().peekable();
+    while let Some(line) = lines.next() {
+        if line.trim() == "access:" {
+            let Some(next) = lines.peek() else {
+                // No other lines, access is empty, skip it
+                continue;
+            };
+
+            let indent_level = line.find(|c: char| c != ' ').unwrap_or(0);
+            let next_indent_level = next.find(|c: char| c != ' ').unwrap_or(0);
+            if next_indent_level <= indent_level {
+                // Access is empty, skip it
+                continue;
+            }
+        }
+
+        output.push_str(line);
+        output.push('\n');
+    }
+
+    Ok(output)
 }
 
 #[cfg(test)]
@@ -266,28 +288,44 @@ mod test {
 
     #[test]
     fn test_serialize_to_yaml_string_cuts_off_unnecessary_defaults() {
+        let mut chip = Chip::generic_arm("Test Chip", CoreType::Armv8m);
+
+        chip.memory_map.push(MemoryRegion::Ram(RamRegion {
+            range: 0x20000000..0x20004000,
+            cores: vec!["main".to_owned()],
+            name: Some(String::from("SRAM")),
+            access: Some(MemoryAccess::default()),
+        }));
+        chip.memory_map.push(MemoryRegion::Ram(RamRegion {
+            range: 0x20000000..0x20004000,
+            cores: vec!["main".to_owned()],
+            name: Some(String::from("CCMRAM")),
+            access: Some(MemoryAccess {
+                boot: false,
+                read: true,
+                write: true,
+                execute: false,
+            }),
+        }));
+        chip.memory_map.push(MemoryRegion::Nvm(NvmRegion {
+            range: 0x8000000..0x8010000,
+            cores: vec!["main".to_owned()],
+            name: Some(String::from("Flash")),
+            access: None,
+            is_alias: false,
+        }));
+
         let family = ChipFamily {
             name: "Test Family".to_owned(),
             manufacturer: None,
             generated_from_pack: false,
             chip_detection: vec![],
             pack_file_release: None,
-            variants: vec![Chip::generic_arm("Test Chip", CoreType::Armv8m)],
+            variants: vec![chip],
             flash_algorithms: vec![],
             source: TargetDescriptionSource::BuiltIn,
         };
         let yaml_string = serialize_to_yaml_string(&family).unwrap();
-        let expectation = "name: Test Family
-variants:
-- name: Test Chip
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  default_binary_format: raw
-";
-        assert_eq!(yaml_string, expectation);
+        insta::assert_snapshot!("serialization_cleanup", yaml_string);
     }
 }
