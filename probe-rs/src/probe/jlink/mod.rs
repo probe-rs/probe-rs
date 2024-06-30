@@ -15,6 +15,7 @@ use std::{cmp, fmt};
 
 use bitvec::prelude::*;
 
+use nusb::descriptors::language_id::US_ENGLISH;
 use nusb::transfer::{Direction, EndpointType};
 use nusb::DeviceInfo;
 use probe_rs_target::ScanChainElement;
@@ -97,15 +98,26 @@ impl ProbeFactory for JLinkFactory {
             .open()
             .map_err(|e| open_error(e, "opening the USB device"))?;
 
-        let configs: Vec<_> = handle.configurations().collect();
+        let mut configs = handle.configurations();
+        let Some(conf) = configs.next() else {
+            // Since the device matches the J-Link VID/PID, it should have at
+            // least one configuration. Otherwise we can't do anything with it.
+            return Err(JlinkError::Other(String::from("Device has no configurations.")).into());
+        };
 
-        if configs.len() != 1 {
-            warn!("device has {} configurations, expected 1", configs.len());
+        let rest = configs.count();
+        if rest != 0 {
+            debug!("device has {} configurations, expected 1", rest + 1);
         }
 
-        let conf = &configs[0];
         debug!("scanning {} interfaces", conf.interfaces().count());
         trace!("active configuration descriptor: {:#x?}", conf);
+
+        let language = handle
+            .get_string_descriptor_supported_languages(Duration::from_millis(100))
+            .ok()
+            .and_then(|mut langs| langs.next())
+            .unwrap_or(US_ENGLISH);
 
         let mut jlink_intf = None;
         for intf in conf.interfaces() {
@@ -117,18 +129,10 @@ impl ProbeFactory for JLinkFactory {
                 // We detect the proprietary J-Link interface using the vendor-specific class codes
                 // and the endpoint properties
                 if descr.class() == 0xff && descr.subclass() == 0xff && descr.protocol() == 0xff {
-                    if let Some((intf, _, _)) = jlink_intf {
-                        Err(JlinkError::Other(format!(
-                            "found multiple matching USB interfaces ({} and {})",
-                            intf,
-                            descr.interface_number()
-                        )))?;
-                    }
-
                     let endpoints: Vec<_> = descr.endpoints().collect();
                     trace!("endpoint descriptors: {:#x?}", endpoints);
                     if endpoints.len() != 2 {
-                        warn!("vendor-specific interface with {} endpoints, expected 2 (skipping interface)", endpoints.len());
+                        debug!("vendor-specific interface with {} endpoints, expected 2 (skipping interface)", endpoints.len());
                         continue;
                     }
 
@@ -136,11 +140,47 @@ impl ProbeFactory for JLinkFactory {
                         .iter()
                         .all(|ep| ep.transfer_type() == EndpointType::Bulk)
                     {
-                        warn!(
+                        debug!(
                             "encountered non-bulk endpoints, skipping interface: {:#x?}",
                             endpoints
                         );
                         continue;
+                    }
+
+                    let Some(index) = descr.string_index() else {
+                        debug!("interface lacks string descriptor, skipping interface");
+                        continue;
+                    };
+
+                    // Read `iInterface`. If we only have a single vendor-specific interface,
+                    // we don't care about its value. Otherwise, we'll use it to try to identify
+                    // the actual J-Link interface.
+                    let Ok(interface_name) =
+                        handle.get_string_descriptor(index, language, Duration::from_millis(100))
+                    else {
+                        debug!("failed to read iInterface string descriptor, skipping interface");
+                        continue;
+                    };
+
+                    if let Some((intf, ref name, _, _)) = jlink_intf {
+                        // We already have a candidate interface, let's see if this one is better
+                        // or we can't distinguish between them.
+                        const EXPECTED_INTERFACE_NAME: &str = "BULK interface";
+                        if interface_name != EXPECTED_INTERFACE_NAME {
+                            // Ignore interfaces with unexpected string descriptors.
+                            continue;
+                        }
+
+                        if name == EXPECTED_INTERFACE_NAME {
+                            // Both interfaces are "BULK interface", we can't
+                            // distinguish between them. This probably indicates a J-Link with
+                            // somehow corrupted or incorrect firmware.
+                            Err(JlinkError::Other(format!(
+                                "found multiple matching USB interfaces ({} and {})",
+                                intf,
+                                descr.interface_number()
+                            )))?;
+                        }
                     }
 
                     let (read_ep, write_ep) = if endpoints[0].direction() == Direction::In {
@@ -149,13 +189,14 @@ impl ProbeFactory for JLinkFactory {
                         (endpoints[1].address(), endpoints[0].address())
                     };
 
-                    jlink_intf = Some((descr.interface_number(), read_ep, write_ep));
+                    jlink_intf =
+                        Some((descr.interface_number(), interface_name, read_ep, write_ep));
                     debug!("J-Link interface is #{}", descr.interface_number());
                 }
             }
         }
 
-        let Some((intf, read_ep, write_ep)) = jlink_intf else {
+        let Some((intf, _name, read_ep, write_ep)) = jlink_intf else {
             Err(JlinkError::Other(
                 "device is not a J-Link device".to_string(),
             ))?
