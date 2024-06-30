@@ -853,19 +853,14 @@ where
 mod tests {
     use scroll::Pread;
 
-    use crate::architecture::arm::{
-        ap::AccessPort, DpAddress, FullyQualifiedApAddress, MemoryApInformation,
-    };
+    use crate::architecture::arm::{ap::AccessPort, FullyQualifiedApAddress, MemoryApInformation};
 
     use super::super::super::ap::memory_ap::mock::MockMemoryAp;
     use super::super::super::ap::memory_ap::MemoryAp;
     use super::ADIMemoryInterface;
     use super::ArmProbe;
 
-    const DUMMY_AP: MemoryAp = MemoryAp::new(FullyQualifiedApAddress {
-        dp: DpAddress::Default,
-        ap: crate::architecture::arm::traits::ApAddress::V1(0),
-    });
+    const DUMMY_AP: MemoryAp = MemoryAp::new(FullyQualifiedApAddress::v1_with_default_dp(0));
 
     impl<'interface> ADIMemoryInterface<'interface, MockMemoryAp> {
         /// Creates a new MemoryInterface for given AccessPort.

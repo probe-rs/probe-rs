@@ -1465,7 +1465,7 @@ impl DapAccess for StlinkArmDebug {
         ap: &FullyQualifiedApAddress,
         address: u8,
     ) -> Result<u32, ArmError> {
-        if ap.dp != DpAddress::Default {
+        if ap.dp() != DpAddress::Default {
             return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
         }
 
@@ -1480,7 +1480,7 @@ impl DapAccess for StlinkArmDebug {
         address: u8,
         value: u32,
     ) -> Result<(), ArmError> {
-        if ap.dp != DpAddress::Default {
+        if ap.dp() != DpAddress::Default {
             return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
         }
 
@@ -1510,7 +1510,7 @@ impl ArmProbeInterface for StlinkArmDebug {
         access_port: &GenericAp,
     ) -> Result<&crate::architecture::arm::communication_interface::ApInformation, ArmError> {
         let addr = access_port.ap_address();
-        if addr.dp != DpAddress::Default {
+        if addr.dp() != DpAddress::Default {
             return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
         }
 

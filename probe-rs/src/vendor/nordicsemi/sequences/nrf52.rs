@@ -7,7 +7,7 @@ use crate::architecture::arm::{
     component::TraceSink,
     memory::CoresightComponent,
     sequences::{ArmDebugSequence, ArmDebugSequenceError},
-    ArmError, ArmProbeInterface, DpAddress, FullyQualifiedApAddress,
+    ArmError, ArmProbeInterface, FullyQualifiedApAddress,
 };
 use crate::session::MissingPermissions;
 
@@ -90,10 +90,7 @@ impl ArmDebugSequence for Nrf52 {
         _default_ap: &MemoryAp,
         permissions: &crate::Permissions,
     ) -> Result<(), ArmError> {
-        let ctrl_ap = &FullyQualifiedApAddress {
-            ap: crate::architecture::arm::ApAddress::V1(1),
-            dp: DpAddress::Default,
-        };
+        let ctrl_ap = &FullyQualifiedApAddress::v1_with_default_dp(1);
 
         tracing::info!("Checking if core is unlocked");
         if self.is_core_unlocked(iface, ctrl_ap)? {

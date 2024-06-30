@@ -697,7 +697,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
         ap: &FullyQualifiedApAddress,
         ap_register_address: u8,
     ) -> Result<(), ArmError> {
-        let dp_state = self.select_dp(ap.dp)?;
+        let dp_state = self.select_dp(ap.dp())?;
 
         let port = ap.ap_v1()?;
         let ap_bank = ap_register_address >> 4;
@@ -727,7 +727,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
             select.set_ap_bank_sel(dp_state.current_apbanksel);
             select.set_dp_bank_sel(dp_state.current_dpbanksel);
 
-            self.write_dp_register(ap.dp, select)?;
+            self.write_dp_register(ap.dp(), select)?;
         }
 
         Ok(())
@@ -742,7 +742,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
     ) -> Result<Option<&ApInformation>, ArmError> {
         let addr = access_port.ap_address();
 
-        let state = self.select_dp(addr.dp)?;
+        let state = self.select_dp(addr.dp())?;
 
         Ok(state.ap_information.get(addr.ap_v1()? as usize))
     }

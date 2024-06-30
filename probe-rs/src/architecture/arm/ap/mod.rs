@@ -210,14 +210,14 @@ where
             let is_valid = u32::from(idr) != 0;
 
             if !is_valid {
-                tracing::debug!("AP {} is not valid, IDR = 0", access_port.ap_address().ap);
+                tracing::debug!("AP {} is not valid, IDR = 0", access_port.ap_address().ap());
             }
             is_valid
         }
         Err(e) => {
             tracing::debug!(
                 "Error reading IDR register from AP {}: {}",
-                access_port.ap_address().ap,
+                access_port.ap_address().ap(),
                 e
             );
             false
@@ -233,12 +233,7 @@ where
     AP: ApAccess,
 {
     (0..=255)
-        .map(|ap| {
-            GenericAp::new(FullyQualifiedApAddress {
-                dp,
-                ap: crate::architecture::arm::ApAddress::V1(ap),
-            })
-        })
+        .map(|ap| GenericAp::new(FullyQualifiedApAddress::v1_with_dp(dp, ap)))
         .take_while(|port| access_port_is_valid(debug_port, port))
         .collect::<Vec<GenericAp>>()
 }
@@ -250,12 +245,7 @@ where
     P: Fn(IDR) -> bool,
 {
     (0..=255)
-        .map(|ap| {
-            GenericAp::new(FullyQualifiedApAddress {
-                dp,
-                ap: crate::architecture::arm::ApAddress::V1(ap),
-            })
-        })
+        .map(|ap| GenericAp::new(FullyQualifiedApAddress::v1_with_dp(dp, ap)))
         .find(|ap| {
             if let Ok(idr) = debug_port.read_ap_register(ap) {
                 f(idr)

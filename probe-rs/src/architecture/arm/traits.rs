@@ -85,21 +85,40 @@ impl std::fmt::Display for ApAddress {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct FullyQualifiedApAddress {
     /// The address of the debug port this access port belongs to.
-    pub dp: DpAddress,
+    dp: DpAddress,
     /// The access port number.
-    pub ap: ApAddress,
+    ap: ApAddress,
 }
 
 impl FullyQualifiedApAddress {
-    /// Create a new `ApAddress` belonging to the default debug port.
-    pub fn with_default_dp(ap: u8) -> Self {
+    /// Create a new `FullyQualifiedApAddress` belonging to the default debug port.
+    pub const fn v1_with_default_dp(ap: u8) -> Self {
         Self {
             dp: DpAddress::Default,
             ap: ApAddress::V1(ap),
         }
     }
 
-    /// Returns the ap address if its version is 1
+    /// Create a new `FullyQualifiedApAddress` belonging to the given debug port using Ap Address
+    /// in the version 1 format.
+    pub const fn v1_with_dp(dp: DpAddress, ap: u8) -> Self {
+        Self {
+            dp,
+            ap: ApAddress::V1(ap),
+        }
+    }
+
+    /// Returns the Debug port’s address.
+    pub fn dp(&self) -> DpAddress {
+        self.dp
+    }
+
+    /// Returns the Access Port address.
+    pub fn ap(&self) -> &ApAddress {
+        &self.ap
+    }
+
+    /// Returns the ap address if its version is 1.
     pub fn ap_v1(&self) -> Result<u8, ArmError> {
         if let ApAddress::V1(ap) = self.ap {
             Ok(ap)

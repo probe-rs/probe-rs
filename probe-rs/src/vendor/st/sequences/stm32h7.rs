@@ -12,7 +12,7 @@ use crate::architecture::arm::{
         PeripheralType,
     },
     sequences::ArmDebugSequence,
-    ArmError, ArmProbeInterface, DpAddress, FullyQualifiedApAddress,
+    ArmError, ArmProbeInterface, FullyQualifiedApAddress,
 };
 
 // Base address of the trace funnel that directs trace data to the SWO peripheral.
@@ -153,10 +153,7 @@ impl ArmDebugSequence for Stm32h7 {
         _permissions: &crate::Permissions,
     ) -> Result<(), ArmError> {
         // Power up the debug components through AP2, which is the default AP debug port.
-        let ap = MemoryAp::new(FullyQualifiedApAddress {
-            dp: DpAddress::Default,
-            ap: crate::architecture::arm::ApAddress::V1(2),
-        });
+        let ap = MemoryAp::new(FullyQualifiedApAddress::v1_with_default_dp(2));
 
         let mut memory = interface.memory_interface(&ap)?;
         self.enable_debug_components(&mut *memory, true)?;
