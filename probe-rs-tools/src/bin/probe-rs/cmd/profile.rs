@@ -58,7 +58,7 @@ pub enum ProfileMethod {
     },
 }
 
-impl core::fmt::Display for ProfileMethod {
+impl std::fmt::Display for ProfileMethod {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         let s = format!("{:?}", self);
         write!(f, "{}", s.to_lowercase())
