@@ -17,8 +17,6 @@ use xshell::{cmd, Shell};
 
 use crate::commands::elf::cmd_elf;
 
-const ALGORITHM_NAME: &str = "algorithm-test";
-
 pub fn cmd_test(
     target_artifact: &Path,
     template_path: &Path,
@@ -50,7 +48,7 @@ pub fn cmd_test(
         true,
         Some(definition_export_path),
         true,
-        Some(String::from(ALGORITHM_NAME)),
+        None,
     )?;
 
     if let Err(error) = generate_debug_info(target_artifact) {
