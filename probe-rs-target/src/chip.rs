@@ -43,6 +43,7 @@ pub struct Jtag {
 /// the `nRF52832` chip has two variants, `nRF52832_xxAA` and `nRF52832_xxBB`. For this case,
 /// the struct will correspond to one of the variants, e.g. `nRF52832_xxAA`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Chip {
     /// This is the name of the chip in base form.
     /// E.g. `nRF52832`.

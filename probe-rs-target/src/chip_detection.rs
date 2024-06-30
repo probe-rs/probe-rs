@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 
 /// Vendor-specific chip detection information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub enum ChipDetectionMethod {
     /// Microchip ATSAM chip detection information.
     AtsamDsu(AtsamDsuDetection),
@@ -60,6 +61,7 @@ impl ChipDetectionMethod {
 
 /// Microchip ATSAM chip detection information when the device contains a DSU.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct AtsamDsuDetection {
     /// DSU DID register, Processor field
     pub processor: u8,
@@ -76,6 +78,7 @@ pub struct AtsamDsuDetection {
 
 /// Espressif chip detection information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct EspressifDetection {
     /// Debug module IDCODE
     pub idcode: u32,
@@ -86,6 +89,7 @@ pub struct EspressifDetection {
 
 /// Nordic FICR CONFIGID-based chip detection information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct NordicConfigIdDetection {
     /// FICR CONFIGID address
     pub configid_address: u32,
@@ -96,6 +100,7 @@ pub struct NordicConfigIdDetection {
 
 /// Nordic FICR INFO-based chip detection information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct NordicFicrDetection {
     /// FICR INFO.PART address
     pub part_address: u32,
