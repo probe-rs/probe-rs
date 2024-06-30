@@ -58,6 +58,9 @@ pub(super) struct Flasher<'session> {
     progress: FlashProgress,
 }
 
+/// The byte used to fill the stack when checking for stack overflows.
+const STACK_FILL_BYTE: u8 = 0x56;
+
 impl<'session> Flasher<'session> {
     pub(super) fn new(
         session: &'session mut Session,
@@ -146,7 +149,7 @@ impl<'session> Flasher<'session> {
 
     fn load(&mut self) -> Result<(), FlashError> {
         tracing::debug!("Initializing the flash algorithm.");
-        let algo = &mut self.flash_algorithm;
+        let algo = &self.flash_algorithm;
 
         // Attach to memory and core.
         let mut core = self
@@ -193,6 +196,14 @@ impl<'session> Flasher<'session> {
             tracing::error!("Readback: {:x?}", &data);
 
             return Err(FlashError::FlashAlgorithmNotLoaded);
+        }
+
+        if algo.stack_overflow_check {
+            // Fill the stack with known data.
+            let stack_bottom = algo.stack_top - algo.stack_size;
+            let fill = vec![STACK_FILL_BYTE; algo.stack_size as usize];
+            core.write_8(stack_bottom, &fill)
+                .map_err(FlashError::Core)?;
         }
 
         tracing::debug!("RAM contents match flashing algo blob.");
@@ -599,6 +610,28 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
         Ok(())
     }
 
+    fn check_for_stack_overflow(&mut self) -> Result<(), FlashError> {
+        let algo = &self.flash_algorithm;
+
+        if !algo.stack_overflow_check {
+            return Ok(());
+        }
+
+        let stack_bottom = algo.stack_top - algo.stack_size;
+        let read_back = self
+            .core
+            .read_word_8(stack_bottom)
+            .map_err(FlashError::Core)?;
+
+        if read_back != STACK_FILL_BYTE {
+            return Err(FlashError::StackOverflowDetected {
+                operation: O::operation_name(),
+            });
+        }
+
+        Ok(())
+    }
+
     // pub(super) fn session_mut(&mut self) -> &mut Session {
     //     &mut self.session
     // }
@@ -665,7 +698,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
             (
                 self.core.stack_pointer(),
                 if init {
-                    Some(into_reg(algo.begin_stack)?)
+                    Some(into_reg(algo.stack_top)?)
                 } else {
                     None
                 },
@@ -775,6 +808,8 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
         if timeout_ocurred {
             return Err(FlashError::Core(crate::Error::Timeout));
         }
+
+        self.check_for_stack_overflow()?;
 
         let r: u32 = self.core.read_core_reg(regs.result_register(0))?;
         Ok(r)
