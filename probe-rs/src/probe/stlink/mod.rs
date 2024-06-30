@@ -656,7 +656,7 @@ impl<D: StLinkUsb> StLink<D> {
             .collect::<Vec<u32>>();
 
         let current = values[1];
-        let n = core::cmp::min(values[2], 10) as usize;
+        let n = std::cmp::min(values[2], 10) as usize;
 
         values.rotate_left(3);
         values.truncate(n);
