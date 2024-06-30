@@ -21,9 +21,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l5x_512_0c00
   - stm32l5x_512_0800
@@ -47,9 +48,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l5x_512_0c00
   - stm32l5x_512_0800
@@ -73,9 +75,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l5x_512_0c00
   - stm32l5x_512_0800
@@ -99,9 +102,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l5x_512_0c00
   - stm32l5x_512_0800
@@ -125,9 +129,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l5x_512_0c00
   - stm32l5x_512_0800
@@ -151,9 +156,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l5x_512_0c00
   - stm32l5x_512_0800
@@ -177,9 +183,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l5x_512_0c00
   - stm32l5x_512_0800
@@ -203,9 +210,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l5x_512_0c00
   - stm32l5x_512_0800
@@ -229,9 +237,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l5x_512_0c00
   - stm32l5x_512_0800
@@ -255,9 +264,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l5x_512_0c00
   - stm32l5x_512_0800
@@ -281,9 +291,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l5x_512_0c00
   - stm32l5x_512_0800
@@ -307,9 +318,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l5x_512_0c00
   - stm32l5x_512_0800
@@ -333,9 +345,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l5x_512_0c00
   - stm32l5x_512_0800
@@ -359,9 +372,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l5x_512_0c00
   - stm32l5x_512_0800
@@ -385,9 +399,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l5x_512_0c00
   - stm32l5x_512_0800
@@ -411,9 +426,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l5x_512_0c00
   - stm32l5x_512_0800
@@ -437,9 +453,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l5x_512_0c00
   - stm32l5x_512_0800
@@ -463,9 +480,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l5x_512_0c00
   - stm32l5x_512_0800
@@ -489,9 +507,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l5x_512_0c00
   - stm32l5x_512_0800
@@ -515,9 +534,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l5x_512_0c00
   - stm32l5x_512_0800
@@ -541,9 +561,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l5x_512_0c00
   - stm32l5x_512_0800
@@ -567,9 +588,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l5x_512_0c00
   - stm32l5x_512_0800
@@ -593,9 +615,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l5x_512_0c00
   - stm32l5x_512_0800
@@ -619,9 +642,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l5x_512_0c00
   - stm32l5x_512_0800
@@ -645,9 +669,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l5x_512_0c00
   - stm32l5x_512_0800
@@ -671,9 +696,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l5x_512_0c00
   - stm32l5x_512_0800
@@ -697,9 +723,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l5x_512_0c00
   - stm32l5x_512_0800
@@ -723,9 +750,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l5x_512_0c00
   - stm32l5x_512_0800
@@ -749,9 +777,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l5x_512_0c00
   - stm32l5x_512_0800
@@ -775,9 +804,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l5x_512_0c00
   - stm32l5x_512_0800
@@ -801,9 +831,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l5x_512_0c00
   - stm32l5x_512_0800
@@ -827,9 +858,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l5x_512_0c00
   - stm32l5x_512_0800
@@ -853,9 +885,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l5x_512_0c00
   - stm32l5x_512_0800
@@ -879,9 +912,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l5x_512_0c00
   - stm32l5x_512_0800
@@ -905,9 +939,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l5x_512_0c00
   - stm32l5x_512_0800
@@ -931,9 +966,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l5x_512_0c00
   - stm32l5x_512_0800

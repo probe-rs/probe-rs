@@ -3,92 +3,92 @@ manufacturer:
   id: 0x44
   cc: 0x2
 chip_detection:
- - !NordicFicrInfo
-    part_address: 0x10000100
-    variant_address: 0x10000104
-    part: 0x52805
-    variants:
-      0x41414141: nRF52805_xxAA
-      0x41414130: nRF52805_xxAA
-      0x41414241: nRF52805_xxAA
-      0x41414242: nRF52805_xxAA
-      0x41414230: nRF52805_xxAA
-      0x41414231: nRF52805_xxAA
-      0x41414341: nRF52805_xxAA
-      0x41414342: nRF52805_xxAA
-      0x41414330: nRF52805_xxAA
- - !NordicFicrInfo
-    part_address: 0x10000100
-    variant_address: 0x10000104
-    part: 0x52810
-    variants:
-      0x41414141: nRF52810_xxAA
-      0x41414130: nRF52810_xxAA
-      0x41414241: nRF52810_xxAA
-      0x41414242: nRF52810_xxAA
-      0x41414230: nRF52810_xxAA
-      0x41414341: nRF52810_xxAA
-      0x41414342: nRF52810_xxAA
-      0x41414330: nRF52810_xxAA
-      0x41414530: nRF52810_xxAA
-      0x41414531: nRF52810_xxAA
- - !NordicFicrInfo
-    part_address: 0x10000100
-    variant_address: 0x10000104
-    part: 0x52811
-    variants:
-      0x41414141: nRF52811_xxAA
-      0x41414130: nRF52811_xxAA
-      0x41414241: nRF52811_xxAA
-      0x41414242: nRF52811_xxAA
-      0x41414230: nRF52811_xxAA
-      0x41414341: nRF52811_xxAA
-      0x41414342: nRF52811_xxAA
-      0x41414330: nRF52811_xxAA
-      0x41414530: nRF52811_xxAA
-      0x41414531: nRF52811_xxAA
- - !NordicFicrInfo
-    part_address: 0x10000100
-    variant_address: 0x10000104
-    part: 0x52832
-    variants:
-      0x41414141: nRF52832_xxAA
-      0x41414143: nRF52832_xxAA
-      0x41414241: nRF52832_xxAA
-      0x41414242: nRF52832_xxAA
-      0x41414230: nRF52832_xxAA
-      0x41424230: nRF52832_xxAB
-      0x41414530: nRF52832_xxAA
-      0x41424530: nRF52832_xxAB
-      0x41414742: nRF52832_xxAA
-      0x41424742: nRF52832_xxAB
-      0x41414730: nRF52832_xxAA
-      0x41424730: nRF52832_xxAB
- - !NordicFicrInfo
-    part_address: 0x10000100
-    variant_address: 0x10000104
-    part: 0x52833
-    variants:
-      0x41414141: nRF52833_xxAA
-      0x41414142: nRF52833_xxAA
-      0x41414130: nRF52833_xxAA
-      0x41414131: nRF52833_xxAA
-      0x41414230: nRF52833_xxAA
- - !NordicFicrInfo
-    part_address: 0x10000100
-    variant_address: 0x10000104
-    part: 0x52840
-    variants:
-      0x41414141: nRF52840_xxAA
-      0x41414242: nRF52840_xxAA
-      0x41414341: nRF52840_xxAA
-      0x41414330: nRF52840_xxAA
-      0x41414441: nRF52840_xxAA
-      0x41414430: nRF52840_xxAA
-      0x41414431: nRF52840_xxAA
-      0x41414541: nRF52840_xxAA
-      0x41414530: nRF52840_xxAA
-      0x41414641: nRF52840_xxAA
+- !NordicFicrInfo
+  part_address: 268435712
+  variant_address: 268435716
+  part: 337925
+  variants:
+    1094795842: nRF52805_xxAA
+    1094795824: nRF52805_xxAA
+    1094795568: nRF52805_xxAA
+    1094796080: nRF52805_xxAA
+    1094795841: nRF52805_xxAA
+    1094795825: nRF52805_xxAA
+    1094796097: nRF52805_xxAA
+    1094795585: nRF52805_xxAA
+    1094796098: nRF52805_xxAA
+- !NordicFicrInfo
+  part_address: 268435712
+  variant_address: 268435716
+  part: 337936
+  variants:
+    1094796098: nRF52810_xxAA
+    1094795841: nRF52810_xxAA
+    1094796097: nRF52810_xxAA
+    1094795568: nRF52810_xxAA
+    1094795842: nRF52810_xxAA
+    1094796592: nRF52810_xxAA
+    1094795585: nRF52810_xxAA
+    1094796593: nRF52810_xxAA
+    1094796080: nRF52810_xxAA
+    1094795824: nRF52810_xxAA
+- !NordicFicrInfo
+  part_address: 268435712
+  variant_address: 268435716
+  part: 337937
+  variants:
+    1094795842: nRF52811_xxAA
+    1094796593: nRF52811_xxAA
+    1094796098: nRF52811_xxAA
+    1094795824: nRF52811_xxAA
+    1094795585: nRF52811_xxAA
+    1094795568: nRF52811_xxAA
+    1094796592: nRF52811_xxAA
+    1094795841: nRF52811_xxAA
+    1094796097: nRF52811_xxAA
+    1094796080: nRF52811_xxAA
+- !NordicFicrInfo
+  part_address: 268435712
+  variant_address: 268435716
+  part: 337970
+  variants:
+    1094862640: nRF52832_xxAB
+    1094795842: nRF52832_xxAA
+    1094861360: nRF52832_xxAB
+    1094862128: nRF52832_xxAB
+    1094862658: nRF52832_xxAB
+    1094797122: nRF52832_xxAA
+    1094795824: nRF52832_xxAA
+    1094795841: nRF52832_xxAA
+    1094795587: nRF52832_xxAA
+    1094796592: nRF52832_xxAA
+    1094795585: nRF52832_xxAA
+    1094797104: nRF52832_xxAA
+- !NordicFicrInfo
+  part_address: 268435712
+  variant_address: 268435716
+  part: 337971
+  variants:
+    1094795568: nRF52833_xxAA
+    1094795569: nRF52833_xxAA
+    1094795824: nRF52833_xxAA
+    1094795586: nRF52833_xxAA
+    1094795585: nRF52833_xxAA
+- !NordicFicrInfo
+  part_address: 268435712
+  variant_address: 268435716
+  part: 337984
+  variants:
+    1094796609: nRF52840_xxAA
+    1094796865: nRF52840_xxAA
+    1094796336: nRF52840_xxAA
+    1094795585: nRF52840_xxAA
+    1094796592: nRF52840_xxAA
+    1094796097: nRF52840_xxAA
+    1094796337: nRF52840_xxAA
+    1094795842: nRF52840_xxAA
+    1094796353: nRF52840_xxAA
+    1094796080: nRF52840_xxAA
 variants:
 - name: nRF52805_xxAA
   cores:
@@ -114,9 +114,10 @@ variants:
     range:
       start: 0x0
       end: 0x30000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Nvm
     range:
       start: 0x10001000
@@ -149,9 +150,10 @@ variants:
     range:
       start: 0x0
       end: 0x30000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Nvm
     range:
       start: 0x10001000
@@ -184,9 +186,10 @@ variants:
     range:
       start: 0x0
       end: 0x30000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Nvm
     range:
       start: 0x10001000
@@ -219,9 +222,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Nvm
     range:
       start: 0x10001000
@@ -254,9 +258,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Nvm
     range:
       start: 0x10001000
@@ -289,9 +294,10 @@ variants:
     range:
       start: 0x0
       end: 0x100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Nvm
     range:
       start: 0x10001000
@@ -324,9 +330,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Nvm
     range:
       start: 0x10001000
@@ -359,9 +366,10 @@ variants:
     range:
       start: 0x0
       end: 0x100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Nvm
     range:
       start: 0x10001000

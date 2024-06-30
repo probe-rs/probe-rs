@@ -21,9 +21,10 @@ variants:
     range:
       start: 0x80000
       end: 0x90000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam3u_128
   - atsam3u_gpnvm
@@ -45,9 +46,10 @@ variants:
     range:
       start: 0x80000
       end: 0x90000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam3u_128
   - atsam3u_gpnvm
@@ -69,9 +71,10 @@ variants:
     range:
       start: 0x80000
       end: 0xa0000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam3u_128
   - atsam3u_gpnvm
@@ -93,9 +96,10 @@ variants:
     range:
       start: 0x80000
       end: 0xa0000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam3u_128
   - atsam3u_gpnvm
@@ -117,9 +121,10 @@ variants:
     range:
       start: 0x80000
       end: 0xa0000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam3u_128
   - atsam3u_128_b1
@@ -142,9 +147,10 @@ variants:
     range:
       start: 0x80000
       end: 0xa0000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam3u_128
   - atsam3u_128_b1

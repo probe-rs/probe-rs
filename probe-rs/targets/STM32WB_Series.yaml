@@ -29,9 +29,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8050000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32wb1x_320_m4
 - name: STM32WB15CCUx
@@ -61,9 +62,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8050000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32wb1x_320_m4
 - name: STM32WB15CCUxE
@@ -93,9 +95,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8050000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32wb1x_320_m4
 - name: STM32WB15CCYx
@@ -125,9 +128,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8050000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32wb1x_320_m4
 - name: STM32WB1MMCHx
@@ -157,9 +161,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8050000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32wb1x_320_m4
 - name: STM32WB30CEUxA
@@ -182,9 +187,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32wb3x_512_m4
 - name: STM32WB35CCUxA
@@ -207,9 +213,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32wb3x_512_m4
 - name: STM32WB35CEUxA
@@ -232,9 +239,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32wb3x_512_m4
 - name: STM32WB50CGUx
@@ -257,9 +265,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32wb5x_m4_1024
 - name: STM32WB55CCUx
@@ -282,9 +291,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32wb5x_m4_1024
   - stm32wb55x_35x_m4_opt
@@ -308,9 +318,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32wb5x_m4_1024
   - stm32wb55x_35x_m4_opt
@@ -334,9 +345,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32wb5x_m4_1024
   - stm32wb55x_35x_m4_opt
@@ -360,9 +372,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32wb5x_m4_1024
   - stm32wb55x_35x_m4_opt
@@ -386,9 +399,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32wb5x_m4_1024
   - stm32wb55x_35x_m4_opt
@@ -412,9 +426,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32wb5x_m4_1024
   - stm32wb55x_35x_m4_opt
@@ -438,9 +453,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32wb5x_m4_1024
   - stm32wb55x_35x_m4_opt
@@ -464,9 +480,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32wb5x_m4_1024
   - stm32wb55x_35x_m4_opt
@@ -490,9 +507,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32wb5x_m4_1024
   - stm32wb55x_35x_m4_opt
@@ -516,9 +534,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32wb5x_m4_1024
   - stm32wb55x_35x_m4_opt
@@ -542,9 +561,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32wb5x_m4_1024
   - stm32wb55x_35x_m4_opt
@@ -568,9 +588,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32wb5x_m4_1024
   - stm32wb55x_35x_m4_opt
@@ -594,9 +615,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x80a0000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32wb5x_m4_1024
   - stm32wb55x_35x_m4_opt
@@ -620,9 +642,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32wb5x_m4_1024
 flash_algorithms:

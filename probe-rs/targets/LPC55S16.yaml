@@ -21,9 +21,10 @@ variants:
     range:
       start: 0x0
       end: 0x38000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc551xx_256
   - lpc551xx_s_256
@@ -45,9 +46,10 @@ variants:
     range:
       start: 0x0
       end: 0x38000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc551xx_256
   - lpc551xx_s_256
@@ -69,9 +71,10 @@ variants:
     range:
       start: 0x0
       end: 0x38000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc551xx_256
   - lpc551xx_s_256

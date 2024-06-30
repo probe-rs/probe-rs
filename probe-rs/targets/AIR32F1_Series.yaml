@@ -22,9 +22,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - air32f103cbt6
 - name: AIR32F103CC
@@ -47,9 +48,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - air32f103cct6
 - name: AIR32F103CG
@@ -72,9 +74,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - air32f10x_1024
 - name: AIR32F103RP
@@ -97,9 +100,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - air32f103cct6
 - name: AIR32F103VE
@@ -122,9 +126,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - air32f103cct6
 flash_algorithms:

@@ -22,9 +22,10 @@ variants:
     range:
       start: 0x80000
       end: 0xa0000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: IROM2
     range:
@@ -69,9 +70,10 @@ variants:
     range:
       start: 0x80000
       end: 0xa0000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: IROM2
     range:
@@ -116,9 +118,10 @@ variants:
     range:
       start: 0x80000
       end: 0xc0000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: IROM2
     range:
@@ -163,9 +166,10 @@ variants:
     range:
       start: 0x80000
       end: 0xc0000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: IROM2
     range:
@@ -210,9 +214,10 @@ variants:
     range:
       start: 0x80000
       end: 0xc0000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: IROM2
     range:

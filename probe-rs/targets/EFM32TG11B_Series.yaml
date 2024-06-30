@@ -25,9 +25,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B120F128GM64
@@ -50,9 +51,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B120F128GQ48
@@ -75,9 +77,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B120F128GQ64
@@ -100,9 +103,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B120F128IM32
@@ -125,9 +129,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B120F128IM64
@@ -150,9 +155,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B120F128IQ48
@@ -175,9 +181,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B120F128IQ64
@@ -200,9 +207,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B140F64GM32
@@ -225,9 +233,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B140F64GM64
@@ -250,9 +259,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B140F64GQ48
@@ -275,9 +285,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B140F64GQ64
@@ -300,9 +311,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B140F64IM32
@@ -325,9 +337,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B140F64IM64
@@ -350,9 +363,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B140F64IQ48
@@ -375,9 +389,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B140F64IQ64
@@ -400,9 +415,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B320F128GM64
@@ -425,9 +441,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B320F128GQ48
@@ -450,9 +467,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B320F128GQ64
@@ -475,9 +493,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B320F128IM64
@@ -500,9 +519,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B320F128IQ48
@@ -525,9 +545,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B320F128IQ64
@@ -550,9 +571,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B340F64GM64
@@ -575,9 +597,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B340F64GQ48
@@ -600,9 +623,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B340F64GQ64
@@ -625,9 +649,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B340F64IM64
@@ -650,9 +675,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B340F64IQ48
@@ -675,9 +701,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B340F64IQ64
@@ -700,9 +727,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B520F128GM32
@@ -725,9 +753,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B520F128GM64
@@ -750,9 +779,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B520F128GM80
@@ -775,9 +805,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B520F128GQ48
@@ -800,9 +831,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B520F128GQ64
@@ -825,9 +857,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B520F128GQ80
@@ -850,9 +883,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B520F128IM32
@@ -875,9 +909,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B520F128IM64
@@ -900,9 +935,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B520F128IM80
@@ -925,9 +961,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B520F128IQ48
@@ -950,9 +987,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B520F128IQ64
@@ -975,9 +1013,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B520F128IQ80
@@ -1000,9 +1039,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B540F64GM32
@@ -1025,9 +1065,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B540F64GM64
@@ -1050,9 +1091,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B540F64GM80
@@ -1075,9 +1117,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B540F64GQ48
@@ -1100,9 +1143,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B540F64GQ64
@@ -1125,9 +1169,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B540F64GQ80
@@ -1150,9 +1195,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B540F64IM32
@@ -1175,9 +1221,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B540F64IM64
@@ -1200,9 +1247,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B540F64IM80
@@ -1225,9 +1273,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B540F64IQ48
@@ -1250,9 +1299,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B540F64IQ64
@@ -1275,9 +1325,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 - name: EFM32TG11B540F64IQ80
@@ -1300,9 +1351,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckot1
 flash_algorithms:

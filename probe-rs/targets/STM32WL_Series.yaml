@@ -21,9 +21,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32wlxx_cm4
 - name: STM32WLE5JBIx
@@ -44,9 +45,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32wlxx_cm4
 - name: STM32WLE5JCIx
@@ -67,9 +69,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32wlxx_cm4
 - name: STM32WLE5CCUx
@@ -90,9 +93,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32wlxx_cm4
 - name: STM32WL55JCIx
@@ -119,10 +123,11 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - application
     - network
+    access:
+      boot: true
   flash_algorithms:
   - stm32wlxx_cm4
 flash_algorithms:

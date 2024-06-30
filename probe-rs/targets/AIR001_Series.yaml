@@ -22,9 +22,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - air001xx_32
   - air001xx_opt

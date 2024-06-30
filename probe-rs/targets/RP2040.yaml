@@ -55,10 +55,11 @@ variants:
     range:
       start: 0x10000000
       end: 0x18000000
-    is_boot_memory: true
     cores:
     - core0
     - core1
+    access:
+      boot: true
   flash_algorithms:
   - algo
 - name: RP2040_SELFDEBUG
@@ -103,9 +104,10 @@ variants:
     range:
       start: 0x10000000
       end: 0x18000000
-    is_boot_memory: true
     cores:
     - core0
+    access:
+      boot: true
   flash_algorithms:
   - algo
 flash_algorithms:

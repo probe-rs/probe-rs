@@ -3,29 +3,29 @@ manufacturer:
   id: 0x1f
   cc: 0x0
 chip_detection:
- - !AtsamDsu
-    processor: 1
-    family: 0
-    series: 1
-    variants:
-      0x31: ATSAMDA1E14A
-      0x30: ATSAMDA1E15A
-      0x2F: ATSAMDA1E16A
-      0x2E: ATSAMDA1G14A
-      0x2D: ATSAMDA1G15A
-      0x2C: ATSAMDA1G16A
-      0x2B: ATSAMDA1J14A
-      0x2A: ATSAMDA1J15A
-      0x29: ATSAMDA1J16A
-      0x6C: ATSAMDA1E14B
-      0x6B: ATSAMDA1E15B
-      0x6A: ATSAMDA1E16B
-      0x69: ATSAMDA1G14B
-      0x68: ATSAMDA1G15B
-      0x67: ATSAMDA1G16B
-      0x66: ATSAMDA1J14B
-      0x65: ATSAMDA1J15B
-      0x64: ATSAMDA1J16B
+- !AtsamDsu
+  processor: 1
+  family: 0
+  series: 1
+  variants:
+    48: ATSAMDA1E15A
+    108: ATSAMDA1E14B
+    43: ATSAMDA1J14A
+    102: ATSAMDA1J14B
+    100: ATSAMDA1J16B
+    49: ATSAMDA1E14A
+    44: ATSAMDA1G16A
+    47: ATSAMDA1E16A
+    45: ATSAMDA1G15A
+    46: ATSAMDA1G14A
+    103: ATSAMDA1G16B
+    104: ATSAMDA1G15B
+    101: ATSAMDA1J15B
+    42: ATSAMDA1J15A
+    106: ATSAMDA1E16B
+    41: ATSAMDA1J16A
+    107: ATSAMDA1E15B
+    105: ATSAMDA1G14B
 variants:
 - name: ATSAMDA1E14B
   cores:
@@ -45,9 +45,10 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamda1_16
 - name: ATSAMDA1E15B
@@ -68,9 +69,10 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamda1_32
 - name: ATSAMDA1E16B
@@ -91,9 +93,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamda1_64
 - name: ATSAMDA1G14B
@@ -114,9 +117,10 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamda1_16
 - name: ATSAMDA1G15B
@@ -137,9 +141,10 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamda1_32
 - name: ATSAMDA1G16B
@@ -160,9 +165,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamda1_64
 - name: ATSAMDA1J14B
@@ -183,9 +189,10 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamda1_16
 - name: ATSAMDA1J15B
@@ -206,9 +213,10 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamda1_32
 - name: ATSAMDA1J16B
@@ -229,9 +237,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamda1_64
 flash_algorithms:

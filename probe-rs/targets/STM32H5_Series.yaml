@@ -25,9 +25,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Ram
     name: SRAM2
     range:
@@ -57,9 +58,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Ram
     name: SRAM2
     range:
@@ -89,9 +91,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Ram
     name: SRAM2
     range:
@@ -121,9 +124,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Ram
     name: SRAM2
     range:
@@ -153,9 +157,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Ram
     name: SRAM2
     range:
@@ -185,9 +190,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Ram
     name: SRAM3
     range:
@@ -218,9 +224,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Ram
     name: SRAM3
     range:
@@ -251,9 +258,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Ram
     name: SRAM3
     range:
@@ -284,9 +292,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Ram
     name: SRAM3
     range:
@@ -317,9 +326,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Ram
     name: SRAM3
     range:
@@ -350,9 +360,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Ram
     name: SRAM3
     range:
@@ -383,9 +394,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Ram
     name: SRAM3
     range:
@@ -416,9 +428,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Ram
     name: SRAM3
     range:
@@ -449,9 +462,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Ram
     name: SRAM3
     range:
@@ -482,9 +496,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Ram
     name: SRAM3
     range:
@@ -515,9 +530,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Ram
     name: SRAM3
     range:
@@ -548,9 +564,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Ram
     name: SRAM3
     range:
@@ -581,9 +598,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Ram
     name: SRAM3
     range:
@@ -614,9 +632,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Ram
     name: SRAM3
     range:
@@ -647,9 +666,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Ram
     name: SRAM3
     range:
@@ -680,9 +700,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Ram
     name: SRAM3
     range:
@@ -713,9 +734,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Ram
     name: SRAM3
     range:
@@ -746,9 +768,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Ram
     name: SRAM3
     range:
@@ -779,9 +802,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Ram
     name: SRAM3
     range:
@@ -812,9 +836,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Ram
     name: SRAM3
     range:
@@ -845,9 +870,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Ram
     name: SRAM3
     range:
@@ -878,9 +904,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Ram
     name: SRAM3
     range:
@@ -911,9 +938,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Ram
     name: SRAM3
     range:

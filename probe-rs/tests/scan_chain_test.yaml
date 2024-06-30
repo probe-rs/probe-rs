@@ -37,7 +37,8 @@ variants:
           range:
             start: 0x20000000
             end: 0x20040000
-          is_boot_memory: true
+          access:
+      boot: true
           cores:
             - core0
   - name: NO_SCAN_CHAIN
@@ -54,7 +55,8 @@ variants:
           range:
             start: 0x20000000
             end: 0x20040000
-          is_boot_memory: true
+          access:
+      boot: true
           cores:
             - core0
   - name: PARTIAL_SCAN_CHAIN

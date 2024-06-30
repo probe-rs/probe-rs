@@ -21,9 +21,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_128
   - stm32f40xxx_41xxx_opt
@@ -46,9 +47,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_128
   - stm32f40xxx_41xxx_opt
@@ -71,9 +73,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -96,9 +99,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -121,9 +125,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8060000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -146,9 +151,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8060000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -171,9 +177,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -196,9 +203,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -221,9 +229,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_128
   - stm32f40xxx_41xxx_opt
@@ -246,9 +255,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -271,9 +281,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8060000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -296,9 +307,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -321,9 +333,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_128
   - stm32f40xxx_41xxx_opt
@@ -346,9 +359,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_128
   - stm32f40xxx_41xxx_opt
@@ -371,9 +385,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -396,9 +411,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -421,9 +437,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8060000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -446,9 +463,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8060000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -471,9 +489,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -496,9 +515,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -521,9 +541,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -546,9 +567,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f40xxx_41xxx_opt
@@ -571,9 +593,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f40xxx_41xxx_opt
@@ -596,9 +619,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f40xxx_41xxx_opt
@@ -621,9 +645,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f40xxx_41xxx_opt
@@ -646,9 +671,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -671,9 +697,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -696,9 +723,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f40xxx_41xxx_opt
@@ -721,9 +749,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f40xxx_41xxx_opt
@@ -746,9 +775,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -771,9 +801,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f40xxx_41xxx_opt
@@ -796,9 +827,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -821,9 +853,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f40xxx_41xxx_opt
@@ -846,9 +879,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_128
   - stm32f40xxx_41xxx_opt
@@ -870,9 +904,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_128
   - stm32f40xxx_41xxx_opt
@@ -894,9 +929,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_128
   - stm32f40xxx_41xxx_opt
@@ -918,9 +954,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_128
   - stm32f40xxx_41xxx_opt
@@ -942,9 +979,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_128
   - stm32f40xxx_41xxx_opt
@@ -966,9 +1004,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_128
   - stm32f40xxx_41xxx_opt
@@ -990,9 +1029,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_128
   - stm32f40xxx_41xxx_opt
@@ -1014,9 +1054,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_128
   - stm32f40xxx_41xxx_opt
@@ -1038,9 +1079,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_128
   - stm32f40xxx_41xxx_opt
@@ -1062,9 +1104,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_128
   - stm32f40xxx_41xxx_opt
@@ -1086,9 +1129,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -1111,9 +1155,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -1136,9 +1181,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -1161,9 +1207,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -1186,9 +1233,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -1211,9 +1259,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -1236,9 +1285,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -1261,9 +1311,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -1286,9 +1337,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -1311,9 +1363,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -1336,9 +1389,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -1361,9 +1415,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f40xxx_41xxx_opt
@@ -1386,9 +1441,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -1411,9 +1467,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -1436,9 +1493,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f40xxx_41xxx_opt
@@ -1461,9 +1519,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f40xxx_41xxx_opt
@@ -1486,9 +1545,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -1511,9 +1571,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -1536,9 +1597,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f40xxx_41xxx_opt
@@ -1561,9 +1623,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f40xxx_41xxx_opt
@@ -1586,9 +1649,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -1611,9 +1675,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -1636,9 +1701,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f40xxx_41xxx_opt
@@ -1661,9 +1727,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f40xxx_41xxx_opt
@@ -1686,9 +1753,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f40xxx_41xxx_opt
@@ -1710,9 +1778,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1536
   - stm32f40xxx_41xxx_opt
@@ -1734,9 +1803,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f40xxx_41xxx_opt
@@ -1758,9 +1828,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1536
   - stm32f40xxx_41xxx_opt
@@ -1782,9 +1853,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f40xxx_41xxx_opt
@@ -1806,9 +1878,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1536
   - stm32f40xxx_41xxx_opt
@@ -1830,9 +1903,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f40xxx_41xxx_opt
@@ -1854,9 +1928,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f40xxx_41xxx_opt
@@ -1878,9 +1953,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1536
   - stm32f40xxx_41xxx_opt
@@ -1902,9 +1978,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1536
   - stm32f40xxx_41xxx_opt
@@ -1926,9 +2003,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f40xxx_41xxx_opt
@@ -1950,9 +2028,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f40xxx_41xxx_opt
@@ -1974,9 +2053,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1536
   - stm32f40xxx_41xxx_opt
@@ -1998,9 +2078,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1536
   - stm32f40xxx_41xxx_opt
@@ -2022,9 +2103,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f40xxx_41xxx_opt
@@ -2047,9 +2129,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f40xxx_41xxx_opt
@@ -2072,9 +2155,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f40xxx_41xxx_opt
@@ -2097,9 +2181,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f40xxx_41xxx_opt
@@ -2122,9 +2207,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -2147,9 +2233,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -2172,9 +2259,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f40xxx_41xxx_opt
@@ -2197,9 +2285,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f40xxx_41xxx_opt
@@ -2222,9 +2311,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -2247,9 +2337,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f40xxx_41xxx_opt
@@ -2272,9 +2363,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -2297,9 +2389,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f40xxx_41xxx_opt
@@ -2322,9 +2415,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1536
   - stm32f40xxx_41xxx_opt
@@ -2346,9 +2440,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1536
   - stm32f40xxx_41xxx_opt
@@ -2370,9 +2465,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1536
   - stm32f40xxx_41xxx_opt
@@ -2394,9 +2490,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1536
   - stm32f40xxx_41xxx_opt
@@ -2418,9 +2515,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1536
   - stm32f40xxx_41xxx_opt
@@ -2442,9 +2540,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1536
   - stm32f40xxx_41xxx_opt
@@ -2466,9 +2565,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8180000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1536
   - stm32f40xxx_41xxx_opt
@@ -2490,9 +2590,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
@@ -2516,9 +2617,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt
@@ -2541,9 +2643,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
@@ -2567,9 +2670,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
@@ -2593,9 +2697,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt
@@ -2618,9 +2723,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt
@@ -2643,9 +2749,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
@@ -2669,9 +2776,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt
@@ -2694,9 +2802,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
@@ -2720,9 +2829,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt
@@ -2745,9 +2855,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
@@ -2771,9 +2882,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt
@@ -2796,9 +2908,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f469xx_479xx_opt
@@ -2821,9 +2934,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
@@ -2847,9 +2961,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt
@@ -2872,9 +2987,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f469xx_479xx_opt
@@ -2897,9 +3013,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f469xx_479xx_opt
@@ -2922,9 +3039,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
@@ -2948,9 +3066,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
@@ -2974,9 +3093,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt
@@ -2999,9 +3119,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt
@@ -3024,9 +3145,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f469xx_479xx_opt
@@ -3049,9 +3171,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
@@ -3075,9 +3198,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt
@@ -3100,9 +3224,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f469xx_479xx_opt
@@ -3125,9 +3250,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
@@ -3151,9 +3277,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt
@@ -3176,9 +3303,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f469xx_479xx_opt
@@ -3201,9 +3329,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
@@ -3227,9 +3356,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt
@@ -3252,9 +3382,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt
@@ -3277,9 +3408,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt
@@ -3302,9 +3434,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
@@ -3328,9 +3461,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
@@ -3354,9 +3488,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt
@@ -3379,9 +3514,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt
@@ -3404,9 +3540,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
@@ -3430,9 +3567,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt
@@ -3455,9 +3593,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
@@ -3481,9 +3620,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt
@@ -3506,9 +3646,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt
@@ -3531,9 +3672,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
@@ -3557,9 +3699,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt
@@ -3582,9 +3725,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
@@ -3608,9 +3752,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
@@ -3634,9 +3779,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt
@@ -3659,9 +3805,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt
@@ -3684,9 +3831,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
@@ -3710,9 +3858,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt
@@ -3735,9 +3884,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
@@ -3761,9 +3911,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt
@@ -3786,9 +3937,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
@@ -3812,9 +3964,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt
@@ -3837,9 +3990,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt
@@ -3862,9 +4016,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -3887,9 +4042,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -3912,9 +4068,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -3937,9 +4094,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -3962,9 +4120,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -3987,9 +4146,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -4012,9 +4172,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -4037,9 +4198,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -4062,9 +4224,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -4087,9 +4250,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -4112,9 +4276,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f40xxx_41xxx_opt
@@ -4137,9 +4302,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f469xx_479xx_opt
@@ -4162,9 +4328,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f469xx_479xx_opt
@@ -4187,9 +4354,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
@@ -4213,9 +4381,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
@@ -4239,9 +4408,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt
@@ -4264,9 +4434,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt
@@ -4289,9 +4460,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f469xx_479xx_opt
@@ -4314,9 +4486,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
@@ -4340,9 +4513,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt
@@ -4365,9 +4539,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f469xx_479xx_opt
@@ -4390,9 +4565,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f469xx_479xx_opt
@@ -4415,9 +4591,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
@@ -4441,9 +4618,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
@@ -4467,9 +4645,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt
@@ -4492,9 +4671,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt
@@ -4517,9 +4697,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f469xx_479xx_opt
@@ -4542,9 +4723,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
@@ -4568,9 +4750,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt
@@ -4593,9 +4776,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f469xx_479xx_opt
@@ -4618,9 +4802,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
@@ -4644,9 +4829,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt
@@ -4669,9 +4855,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_512
   - stm32f469xx_479xx_opt
@@ -4694,9 +4881,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
@@ -4720,9 +4908,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt
@@ -4745,9 +4934,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
@@ -4771,9 +4961,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
@@ -4797,9 +4988,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt
@@ -4822,9 +5014,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt
@@ -4847,9 +5040,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
@@ -4873,9 +5067,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt
@@ -4898,9 +5093,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
@@ -4924,9 +5120,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
@@ -4950,9 +5147,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt
@@ -4975,9 +5173,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt
@@ -5000,9 +5199,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
@@ -5026,9 +5226,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt
@@ -5051,9 +5252,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
@@ -5077,9 +5279,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt
@@ -5102,9 +5305,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
@@ -5128,9 +5332,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f4xx_2048
   - stm32f469xx_479xx_opt

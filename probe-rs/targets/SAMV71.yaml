@@ -23,9 +23,10 @@ variants:
     range:
       start: 0x400000
       end: 0x480000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: IROM2
     range:
@@ -56,9 +57,10 @@ variants:
     range:
       start: 0x400000
       end: 0x480000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: IROM2
     range:
@@ -89,9 +91,10 @@ variants:
     range:
       start: 0x400000
       end: 0x500000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: IROM2
     range:
@@ -122,9 +125,10 @@ variants:
     range:
       start: 0x400000
       end: 0x500000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: IROM2
     range:
@@ -155,9 +159,10 @@ variants:
     range:
       start: 0x400000
       end: 0x600000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: IROM2
     range:
@@ -188,9 +193,10 @@ variants:
     range:
       start: 0x400000
       end: 0x600000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: IROM2
     range:
@@ -221,9 +227,10 @@ variants:
     range:
       start: 0x400000
       end: 0x480000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: IROM2
     range:
@@ -254,9 +261,10 @@ variants:
     range:
       start: 0x400000
       end: 0x480000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: IROM2
     range:
@@ -287,9 +295,10 @@ variants:
     range:
       start: 0x400000
       end: 0x500000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: IROM2
     range:
@@ -320,9 +329,10 @@ variants:
     range:
       start: 0x400000
       end: 0x500000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: IROM2
     range:
@@ -353,9 +363,10 @@ variants:
     range:
       start: 0x400000
       end: 0x600000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: IROM2
     range:
@@ -386,9 +397,10 @@ variants:
     range:
       start: 0x400000
       end: 0x600000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: IROM2
     range:
@@ -419,9 +431,10 @@ variants:
     range:
       start: 0x400000
       end: 0x480000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: IROM2
     range:
@@ -452,9 +465,10 @@ variants:
     range:
       start: 0x400000
       end: 0x480000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: IROM2
     range:
@@ -485,9 +499,10 @@ variants:
     range:
       start: 0x400000
       end: 0x500000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: IROM2
     range:
@@ -518,9 +533,10 @@ variants:
     range:
       start: 0x400000
       end: 0x500000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: IROM2
     range:
@@ -551,9 +567,10 @@ variants:
     range:
       start: 0x400000
       end: 0x600000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: IROM2
     range:
@@ -584,9 +601,10 @@ variants:
     range:
       start: 0x400000
       end: 0x600000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: IROM2
     range:

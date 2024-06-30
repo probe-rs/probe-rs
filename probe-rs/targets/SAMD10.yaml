@@ -21,9 +21,10 @@ variants:
     range:
       start: 0x0
       end: 0x2000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd10_8
 - name: ATSAMD10C14A
@@ -44,9 +45,10 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd10_16
 - name: ATSAMD10D13AM
@@ -67,9 +69,10 @@ variants:
     range:
       start: 0x0
       end: 0x2000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd10_8
 - name: ATSAMD10D13AS
@@ -90,9 +93,10 @@ variants:
     range:
       start: 0x0
       end: 0x2000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd10_8
 - name: ATSAMD10D14AM
@@ -113,9 +117,10 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd10_16
 - name: ATSAMD10D14AS
@@ -136,9 +141,10 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd10_16
 - name: ATSAMD10D14AU
@@ -159,9 +165,10 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd10_16
 flash_algorithms:

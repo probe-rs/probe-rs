@@ -21,9 +21,10 @@ variants:
     range:
       start: 0x400000
       end: 0x500000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4e_1024
 - name: ATSAM4E16E
@@ -44,9 +45,10 @@ variants:
     range:
       start: 0x400000
       end: 0x500000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4e_1024
 - name: ATSAM4E8C
@@ -67,9 +69,10 @@ variants:
     range:
       start: 0x400000
       end: 0x480000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4e_1024
 - name: ATSAM4E8E
@@ -90,9 +93,10 @@ variants:
     range:
       start: 0x400000
       end: 0x480000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4e_1024
 - name: ATSAM4LC2A
@@ -113,9 +117,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4l_512
 - name: ATSAM4LC2B
@@ -136,9 +141,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4l_512
 - name: ATSAM4LC2C
@@ -159,9 +165,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4l_512
 - name: ATSAM4LC4A
@@ -182,9 +189,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4l_512
 - name: ATSAM4LC4B
@@ -205,9 +213,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4l_512
 - name: ATSAM4LC4C
@@ -228,9 +237,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4l_512
 - name: ATSAM4LC8A
@@ -251,9 +261,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4l_512
 - name: ATSAM4LC8B
@@ -274,9 +285,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4l_512
 - name: ATSAM4LC8C
@@ -297,9 +309,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4l_512
 - name: ATSAM4LS2A
@@ -320,9 +333,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4l_512
 - name: ATSAM4LS2B
@@ -343,9 +357,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4l_512
 - name: ATSAM4LS2C
@@ -366,9 +381,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4l_512
 - name: ATSAM4LS4A
@@ -389,9 +405,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4l_512
 - name: ATSAM4LS4B
@@ -412,9 +429,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4l_512
 - name: ATSAM4LS4C
@@ -435,9 +453,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4l_512
 - name: ATSAM4LS8A
@@ -458,9 +477,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4l_512
 - name: ATSAM4LS8B
@@ -481,9 +501,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4l_512
 - name: ATSAM4LS8C
@@ -504,9 +525,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4l_512
 - name: ATSAM4N16B
@@ -527,9 +549,10 @@ variants:
     range:
       start: 0x400000
       end: 0x500000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4n_1024
 - name: ATSAM4N16C
@@ -550,9 +573,10 @@ variants:
     range:
       start: 0x400000
       end: 0x500000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4n_1024
 - name: ATSAM4N8A
@@ -573,9 +597,10 @@ variants:
     range:
       start: 0x400000
       end: 0x480000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4n_1024
 - name: ATSAM4N8B
@@ -596,9 +621,10 @@ variants:
     range:
       start: 0x400000
       end: 0x480000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4n_1024
 - name: ATSAM4N8C
@@ -619,9 +645,10 @@ variants:
     range:
       start: 0x400000
       end: 0x480000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4n_1024
 - name: ATSAM4S16B
@@ -642,9 +669,10 @@ variants:
     range:
       start: 0x400000
       end: 0x500000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4n_1024
   - atsam4s_gpnvm
@@ -666,9 +694,10 @@ variants:
     range:
       start: 0x400000
       end: 0x500000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4n_1024
   - atsam4s_gpnvm
@@ -690,9 +719,10 @@ variants:
     range:
       start: 0x400000
       end: 0x420000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4n_1024
   - atsam4s_gpnvm
@@ -714,9 +744,10 @@ variants:
     range:
       start: 0x400000
       end: 0x420000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4n_1024
   - atsam4s_gpnvm
@@ -738,9 +769,10 @@ variants:
     range:
       start: 0x400000
       end: 0x420000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4n_1024
   - atsam4s_gpnvm
@@ -762,9 +794,10 @@ variants:
     range:
       start: 0x400000
       end: 0x440000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4n_1024
   - atsam4s_gpnvm
@@ -786,9 +819,10 @@ variants:
     range:
       start: 0x400000
       end: 0x440000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4n_1024
   - atsam4s_gpnvm
@@ -810,9 +844,10 @@ variants:
     range:
       start: 0x400000
       end: 0x440000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4n_1024
   - atsam4s_gpnvm
@@ -834,9 +869,10 @@ variants:
     range:
       start: 0x400000
       end: 0x480000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4n_1024
   - atsam4s_gpnvm
@@ -858,9 +894,10 @@ variants:
     range:
       start: 0x400000
       end: 0x480000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4n_1024
   - atsam4s_gpnvm
@@ -882,9 +919,10 @@ variants:
     range:
       start: 0x400000
       end: 0x500000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4n_1024
   - atsam4s_gpnvm
@@ -906,9 +944,10 @@ variants:
     range:
       start: 0x400000
       end: 0x500000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4n_1024
   - atsam4s_gpnvm
@@ -930,9 +969,10 @@ variants:
     range:
       start: 0x400000
       end: 0x500000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4sd_1024
   - atsam4s_gpnvm
@@ -954,9 +994,10 @@ variants:
     range:
       start: 0x400000
       end: 0x500000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4sd_1024
   - atsam4s_gpnvm
@@ -978,9 +1019,10 @@ variants:
     range:
       start: 0x400000
       end: 0x600000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4sd_2048
   - atsam4s_gpnvm
@@ -1002,9 +1044,10 @@ variants:
     range:
       start: 0x400000
       end: 0x600000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4sd_2048
   - atsam4s_gpnvm
@@ -1026,9 +1069,10 @@ variants:
     range:
       start: 0x400000
       end: 0x600000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4sd_2048
 flash_algorithms:
