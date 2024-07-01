@@ -78,7 +78,7 @@ time = { version = "0.3", default-features = false, features = [
 ] }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 tracing-appender = "0.2"
-ratatui = { version = "0.26.2", default-features = false, features = [
+ratatui = { version = "0.27.0", default-features = false, features = [
     "crossterm",
 ] }
 ansi-parser = "0.9.0"
