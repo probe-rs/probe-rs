@@ -19,6 +19,9 @@ pub enum ChipDetectionMethod {
 
     /// Nordic Semiconductor FICR INFO-based chip detection information.
     NordicFicrInfo(NordicFicrDetection),
+
+    /// Infineon SCU chip detection information.
+    InfineonScu(InfinionScuDetection),
 }
 
 impl ChipDetectionMethod {
@@ -52,6 +55,15 @@ impl ChipDetectionMethod {
     /// Returns the Nordic FICR detection information if available.
     pub fn as_nordic_ficr(&self) -> Option<&NordicFicrDetection> {
         if let Self::NordicFicrInfo(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    /// Returns the Infineon SCU detection information if available.
+    pub fn as_infineon_scu(&self) -> Option<&InfinionScuDetection> {
+        if let Self::InfineonScu(v) = self {
             Some(v)
         } else {
             None
@@ -112,5 +124,19 @@ pub struct NordicFicrDetection {
     pub part: u32,
 
     /// INFO.VARIANT => Target name.
+    pub variants: HashMap<u32, String>,
+}
+
+/// Infineon SCU chip detection information.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct InfinionScuDetection {
+    /// Chip partid
+    pub part: u16,
+
+    /// SCU_IDCHIP register value, bits [19:4]
+    pub scu_id: u32,
+
+    /// Flash size in kB => Target name.
     pub variants: HashMap<u32, String>,
 }

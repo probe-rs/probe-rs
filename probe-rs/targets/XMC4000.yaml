@@ -4,6 +4,50 @@ manufacturer:
   cc: 0x0
 generated_from_pack: true
 pack_file_release: 2.12.0
+chip_detection:
+- !InfineonScu
+  part: 0x1dd
+  scu_id: 0x4100
+  variants:
+    64: XMC4104-Q48x64
+    128: XMC4100-Q48x128
+- !InfineonScu
+  part: 0x1dd
+  scu_id: 0x4200
+  variants:
+    256: XMC4200-Q48x256
+- !InfineonScu
+  part: 0x1df
+  scu_id: 0x4300
+  variants:
+    256: XMC4300-F100x256
+- !InfineonScu
+  part: 0x1dc
+  scu_id: 0x4400
+  variants:
+    256: XMC4400-F64x256
+    512: XMC4400-F64x512
+- !InfineonScu
+  part: 0x1db
+  scu_id: 0x4500
+  variants:
+    512: XMC4504-F100x512
+    768: XMC4500-F100x768
+    1024: XMC4500-F100x1024
+- !InfineonScu
+  part: 0x1df
+  scu_id: 0x4700
+  variants:
+    2048: XMC4700-F100x2048
+    1536: XMC4700-F100x1536
+    1024: XMC4700-F100x1024
+- !InfineonScu
+  part: 0x1df
+  scu_id: 0x4800
+  variants:
+    2048: XMC4800-F100x2048
+    1536: XMC4800-F100x1536
+    1024: XMC4800-F100x1024
 variants:
 - name: XMC4100-F64x128
   cores:
