@@ -106,7 +106,5 @@ pretty_assertions = "1.4.0"
 [package.metadata.dist]
 formula = "probe-rs"
 
-[lints.clippy]
-unnecessary_self_imports = "deny"
-enum_glob_use = "deny"
-macro_use_imports = "deny"
+[lints.rust]
+missing_docs = "allow" # this is a binary, we can be more lax here

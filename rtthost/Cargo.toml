@@ -13,7 +13,5 @@ probe-rs.workspace = true
 anyhow.workspace = true
 clap = { version = "4", features = ["cargo", "derive"] }
 
-[lints.clippy]
-unnecessary_self_imports = "deny"
-enum_glob_use = "deny"
-macro_use_imports = "deny"
+[lints]
+workspace = true

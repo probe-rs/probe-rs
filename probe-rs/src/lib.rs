@@ -65,6 +65,7 @@
 //!
 //! [Probe]: probe::Probe
 #![recursion_limit = "256"] // required by bitfield!
+#![warn(missing_docs)]
 
 pub mod architecture;
 pub mod config;

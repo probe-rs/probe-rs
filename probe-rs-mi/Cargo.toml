@@ -14,10 +14,5 @@ description = "The probe-rs machine interface for computers interfacing probe-rs
 semver = { version = "1", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 
-[lints.rust]
-missing_docs = "warn"
-
-[lints.clippy]
-unnecessary_self_imports = "deny"
-enum_glob_use = "deny"
-macro_use_imports = "deny"
+[lints]
+workspace = true

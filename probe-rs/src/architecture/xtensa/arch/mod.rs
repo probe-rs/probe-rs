@@ -1,5 +1,3 @@
-#![allow(missing_docs)] // TODO remove
-
 use crate::{architecture::xtensa::communication_interface::XtensaError, RegisterId};
 
 pub mod instruction;

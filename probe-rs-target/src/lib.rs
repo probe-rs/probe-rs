@@ -8,6 +8,7 @@
 //!
 //! This crate contains the schema structs for the YAML target description files.
 //!
+#![warn(missing_docs)]
 
 mod chip;
 pub mod chip_detection;
