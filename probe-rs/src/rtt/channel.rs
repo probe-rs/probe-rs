@@ -1,5 +1,5 @@
 use crate::rtt::Error;
-use crate::{config::MemoryRegion, Core, MemoryInterface};
+use crate::{Core, MemoryInterface};
 use std::cmp::min;
 use zerocopy_derive::{FromBytes, FromZeroes};
 
@@ -202,7 +202,6 @@ impl Channel {
     pub(crate) fn from(
         core: &mut Core,
         number: usize,
-        memory_map: &[MemoryRegion],
         ptr: u64,
         info: RttChannelBuffer,
     ) -> Result<Option<Channel>, Error> {
@@ -215,7 +214,7 @@ impl Channel {
         let name = if info.standard_name_pointer() == 0 {
             None
         } else {
-            read_c_string(core, memory_map, info.standard_name_pointer())?
+            read_c_string(core, info.standard_name_pointer())?
         };
 
         let size = info.size_of_buffer();
@@ -501,14 +500,11 @@ impl RttChannel for DownChannel {
 }
 
 /// Reads a null-terminated string from target memory. Lossy UTF-8 decoding is used.
-fn read_c_string(
-    core: &mut Core,
-    memory_map: &[MemoryRegion],
-    ptr: u64,
-) -> Result<Option<String>, Error> {
+fn read_c_string(core: &mut Core, ptr: u64) -> Result<Option<String>, Error> {
     // Find out which memory range contains the pointer
-    let Some(range) = memory_map
-        .iter()
+
+    let Some(range) = core
+        .memory_regions()
         .filter(|r| r.is_ram() || r.is_nvm())
         .find(|r| r.contains(ptr))
         .map(|r| r.address_range())

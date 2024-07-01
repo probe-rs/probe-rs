@@ -2,7 +2,7 @@ use probe_rs::rtt::{Rtt, RttChannel, ScanRegion};
 use probe_rs::{config::TargetSelector, probe::DebugProbeInfo};
 use probe_rs::{probe::list::Lister, Permissions};
 
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use clap::Parser;
 use std::io::prelude::*;
 use std::io::{stdin, stdout};
@@ -155,23 +155,12 @@ fn main() -> Result<()> {
         }
     };
 
-    let memory_map = session.target().memory_map.clone();
-
-    let mut core = match session.core(0) {
-        Ok(core) => core,
-        Err(err) => {
-            bail!("Error attaching to core # 0 {err}");
-        }
-    };
+    let mut core = session.core(0).context("Error attaching to core # 0")?;
 
     eprintln!("Attaching to RTT...");
 
-    let mut rtt = match Rtt::attach_region(&mut core, &memory_map, &opts.scan_region) {
-        Ok(rtt) => rtt,
-        Err(err) => {
-            bail!("Error attaching to RTT: {err}");
-        }
-    };
+    let mut rtt =
+        Rtt::attach_region(&mut core, &opts.scan_region).context("Error attaching to RTT")?;
     eprintln!("Found control block at {:#010x}", rtt.ptr());
 
     if opts.list {

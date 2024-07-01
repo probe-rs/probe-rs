@@ -204,7 +204,6 @@ impl<'session> Flasher<'session> {
         &mut self,
         clock: Option<u32>,
     ) -> Result<ActiveFlasher<'_, O>, FlashError> {
-        let memory_map = self.session.target().memory_map.clone();
         // Attach to memory and core.
         let core = self
             .session
@@ -215,7 +214,6 @@ impl<'session> Flasher<'session> {
         let mut flasher = ActiveFlasher::<O> {
             core,
             rtt: None,
-            memory_map,
             progress: self.progress.clone(),
             flash_algorithm: self.flash_algorithm.clone(),
             _operation: core::marker::PhantomData,
@@ -559,7 +557,6 @@ fn into_reg(val: u64) -> Result<u32, FlashError> {
 pub(super) struct ActiveFlasher<'probe, O: Operation> {
     core: Core<'probe>,
     rtt: Option<crate::rtt::Rtt>,
-    memory_map: Vec<MemoryRegion>,
     progress: FlashProgress,
     flash_algorithm: FlashAlgorithm,
     _operation: core::marker::PhantomData<O>,
@@ -715,7 +712,6 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
                 std::thread::sleep(Duration::from_millis(1));
                 let rtt = match crate::rtt::Rtt::attach_region(
                     &mut self.core,
-                    &self.memory_map,
                     &crate::rtt::ScanRegion::Exact(rtt_address),
                 ) {
                     Ok(rtt) => Some(rtt),

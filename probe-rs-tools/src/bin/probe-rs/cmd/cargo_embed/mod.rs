@@ -10,7 +10,6 @@ use probe_rs::gdb_server::GdbInstanceConfiguration;
 use probe_rs::probe::list::Lister;
 use probe_rs::rtt::ScanRegion;
 use probe_rs::{probe::DebugProbeSelector, Session};
-use probe_rs_target::MemoryRegion;
 use std::ffi::OsString;
 use std::fs;
 use std::{
@@ -366,16 +365,10 @@ fn run_rttui_app(
         });
     }
 
-    let memory_map = {
-        let session_handle = session.lock();
-        session_handle.target().memory_map.clone()
-    };
-
     let Some(rtt) = attach_to_rtt_shared(
         session,
         core_id,
         config.rtt.timeout,
-        &memory_map,
         &ScanRegion::Ram,
         elf_path,
         &rtt_config,
@@ -452,7 +445,6 @@ fn attach_to_rtt_shared(
     session: &FairMutex<Session>,
     core_id: usize,
     timeout: Duration,
-    memory_map: &[MemoryRegion],
     rtt_region: &ScanRegion,
     elf_file: &Path,
     rtt_config: &RttConfig,
@@ -468,7 +460,7 @@ fn attach_to_rtt_shared(
         rtt_region.clone()
     };
 
-    let rtt = try_attach_to_rtt_shared(session, core_id, memory_map, timeout, &scan_region)?;
+    let rtt = try_attach_to_rtt_shared(session, core_id, timeout, &scan_region)?;
 
     let Some(rtt) = rtt else {
         return Ok(None);
