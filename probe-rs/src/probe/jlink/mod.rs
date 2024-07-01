@@ -17,7 +17,6 @@ use itertools::Itertools;
 use nusb::transfer::{Direction, EndpointType};
 use nusb::DeviceInfo;
 use probe_rs_target::ScanChainElement;
-use tracing::{debug, trace, warn};
 
 use self::bits::BitIter;
 use self::capabilities::{Capabilities, Capability};
@@ -31,6 +30,7 @@ use crate::architecture::xtensa::communication_interface::{
 };
 use crate::probe::common::{JtagDriverState, RawJtagIo};
 use crate::probe::jlink::bits::IteratorExt;
+use crate::probe::jlink::error::{ReadError, WriteCommandError, WriteCommandErrorKind};
 use crate::probe::usb_util::InterfaceExt;
 use crate::probe::JTAGAccess;
 use crate::{
@@ -87,7 +87,7 @@ impl ProbeFactory for JLinkFactory {
                 super::ProbeCreationError::NotFound,
             ));
         } else if jlinks.len() > 1 {
-            tracing::warn!("More than one matching J-Link was found. Opening the first one.")
+            tracing::warn!("More than one matching J-Link was found. Opening the first one.");
         }
 
         let info = jlinks.pop().unwrap();
@@ -99,19 +99,19 @@ impl ProbeFactory for JLinkFactory {
         let configs: Vec<_> = handle.configurations().collect();
 
         if configs.len() != 1 {
-            warn!("device has {} configurations, expected 1", configs.len());
+            tracing::warn!("device has {} configurations, expected 1", configs.len());
         }
 
         let conf = &configs[0];
-        debug!("scanning {} interfaces", conf.interfaces().count());
-        trace!("active configuration descriptor: {:#x?}", conf);
+        tracing::debug!("scanning {} interfaces", conf.interfaces().count());
+        tracing::trace!("active configuration descriptor: {:#x?}", conf);
 
         let mut jlink_intf = None;
         for intf in conf.interfaces() {
-            trace!("interface #{} descriptors:", intf.interface_number());
+            tracing::trace!("interface #{} descriptors:", intf.interface_number());
 
             for descr in intf.alt_settings() {
-                trace!("{:#x?}", descr);
+                tracing::trace!("{:#x?}", descr);
 
                 // We detect the proprietary J-Link interface using the vendor-specific class codes
                 // and the endpoint properties
@@ -125,9 +125,9 @@ impl ProbeFactory for JLinkFactory {
                     }
 
                     let endpoints: Vec<_> = descr.endpoints().collect();
-                    trace!("endpoint descriptors: {:#x?}", endpoints);
+                    tracing::trace!("endpoint descriptors: {:#x?}", endpoints);
                     if endpoints.len() != 2 {
-                        warn!("vendor-specific interface with {} endpoints, expected 2 (skipping interface)", endpoints.len());
+                        tracing::warn!("vendor-specific interface with {} endpoints, expected 2 (skipping interface)", endpoints.len());
                         continue;
                     }
 
@@ -135,7 +135,7 @@ impl ProbeFactory for JLinkFactory {
                         .iter()
                         .all(|ep| ep.transfer_type() == EndpointType::Bulk)
                     {
-                        warn!(
+                        tracing::warn!(
                             "encountered non-bulk endpoints, skipping interface: {:#x?}",
                             endpoints
                         );
@@ -149,7 +149,7 @@ impl ProbeFactory for JLinkFactory {
                     };
 
                     jlink_intf = Some((descr.interface_number(), read_ep, write_ep));
-                    debug!("J-Link interface is #{}", descr.interface_number());
+                    tracing::debug!("J-Link interface is #{}", descr.interface_number());
                 }
             }
         }
@@ -192,55 +192,46 @@ impl ProbeFactory for JLinkFactory {
         this.fill_capabilities()?;
         this.fill_interfaces()?;
 
-        this.supported_protocols = if this.caps.contains(Capability::SelectIf) {
-            let protocols: Vec<_> = this
-                .interfaces
-                .into_iter()
-                .map(WireProtocol::try_from)
-                .collect();
-
-            protocols
-                .iter()
-                .filter(|p| p.is_err())
-                .for_each(|protocol| {
-                    if let Err(JlinkError::UnknownInterface(interface)) = protocol {
-                        tracing::debug!(
-                            "J-Link returned interface {:?}, which is not supported by probe-rs.",
-                            interface
-                        );
-                    }
-                });
-
-            // We ignore unknown protocols, the chance that this happens is pretty low,
-            // and we can just work with the ones we know and support.
-            protocols.into_iter().filter_map(Result::ok).collect()
-        } else {
-            // The J-Link cannot report which interfaces it supports, and cannot
-            // switch interfaces. We assume it just supports JTAG.
-            vec![WireProtocol::Jtag]
-        };
+        // We ignore unknown protocols, the chance that this happens is pretty low,
+        // and we can just work with the ones we know and support.
+        this.supported_protocols = this
+            .interfaces
+            .into_iter()
+            .filter_map(|interface| match WireProtocol::try_from(interface) {
+                Ok(protocol) => Some(protocol),
+                Err(interface) => {
+                    tracing::debug!(
+                        "J-Link returned interface {:?}, which is not supported by probe-rs.",
+                        interface
+                    );
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
 
         this.protocol = if this.supported_protocols.contains(&WireProtocol::Swd) {
             // Default to SWD if supported, since it's the most commonly used.
             WireProtocol::Swd
         } else {
             // Otherwise just pick the first supported.
-            *this.supported_protocols.first().unwrap()
+            this.supported_protocols[0]
         };
 
-        if this.caps.contains(Capability::GetMaxBlockSize) {
-            this.max_mem_block_size = this.read_max_mem_block()?;
+        this.max_mem_block_size = match this.read_max_mem_block() {
+            Ok(size) => size,
+            Err(JlinkError::MissingCapability(Capability::GetMaxBlockSize)) => {
+                tracing::debug!(
+                    "J-Link does not support GET_MAX_MEM_BLOCK, using default value of 65535"
+                );
+                65535
+            }
+            Err(e) => return Err(e.into()),
+        };
 
-            tracing::debug!(
-                "J-Link max mem block size for SWD IO: {} byte",
-                this.max_mem_block_size
-            );
-        } else {
-            tracing::debug!(
-                "J-Link does not support GET_MAX_MEM_BLOCK, using default value of 65535"
-            );
-            this.max_mem_block_size = 65535;
-        }
+        tracing::debug!(
+            "J-Link max mem block size for SWD IO: {} byte",
+            this.max_mem_block_size
+        );
 
         // Some devices can't handle large transfers, so we limit the chunk size.
         // While it would be nice to read this directly from the device,
@@ -265,8 +256,9 @@ impl ProbeFactory for JLinkFactory {
 }
 
 #[repr(u8)]
-#[allow(dead_code)]
-enum Command {
+#[allow(dead_code, missing_docs)]
+#[derive(Debug, Clone, Copy)]
+pub enum Command {
     Version = 0x01,
     GetSpeeds = 0xC0,
     GetMaxMemBlock = 0xD4,
@@ -372,30 +364,31 @@ impl JLink {
 
     /// Reads the advertised capabilities from the device.
     fn fill_capabilities(&mut self) -> Result<(), JlinkError> {
-        self.write_cmd(&[Command::GetCaps as u8])?;
+        self.write_cmd_byte(Command::GetCaps)?;
 
         let caps = self.read_u32().map(Capabilities::from_raw_legacy)?;
 
-        debug!("legacy caps: {:?}", caps);
+        tracing::debug!("legacy caps: {:?}", caps);
+
+        if !caps.contains(Capability::GetCapsEx) {
+            tracing::debug!("extended caps not supported");
+            self.caps = caps;
+            return Ok(());
+        }
 
         // If the `GET_CAPS_EX` capability is set, use the extended capability command to fetch
         // all the capabilities.
-        if caps.contains(Capability::GetCapsEx) {
-            self.write_cmd(&[Command::GetCapsEx as u8])?;
+        self.write_cmd_byte(Command::GetCapsEx)?;
 
-            let real_caps = self.read_n::<32>().map(Capabilities::from_raw_ex)?;
-            if !real_caps.contains_all(caps) {
-                return Err(JlinkError::Other(format!(
-                    "ext. caps are not a superset of legacy caps (legacy: {:?}, ex: {:?})",
-                    caps, real_caps
-                )));
-            }
-            debug!("extended caps: {:?}", real_caps);
-            self.caps = real_caps;
-        } else {
-            debug!("extended caps not supported");
-            self.caps = caps;
+        let real_caps = self.read_n::<32>().map(Capabilities::from_raw_ex)?;
+        if !real_caps.contains_all(caps) {
+            return Err(JlinkError::Other(format!(
+                "ext. caps are not a superset of legacy caps (legacy: {:?}, ex: {:?})",
+                caps, real_caps
+            )));
         }
+        tracing::debug!("extended caps: {:?}", real_caps);
+        self.caps = real_caps;
 
         Ok(())
     }
@@ -409,28 +402,45 @@ impl JLink {
             return Ok(());
         }
 
-        self.write_cmd(&[Command::SelectIf as u8, 0xFF])?;
+        self.write_cmd(Command::SelectIf, &[Command::SelectIf as u8, 0xFF])?;
 
         self.interfaces = self.read_u32().map(Interfaces::from_bits_warn)?;
 
         Ok(())
     }
 
-    fn write_cmd(&self, cmd: &[u8]) -> Result<(), JlinkError> {
-        trace!("write {} bytes: {:x?}", cmd.len(), cmd);
+    /// Writes a command to the J-Link device.
+    ///
+    /// Although this command takes `command`, it needs to be present as the first byte of the `cmd`
+    /// slice.
+    fn write_cmd(&self, command: Command, cmd: &[u8]) -> Result<(), JlinkError> {
+        fn inner(this: &JLink, cmd: &[u8]) -> Result<(), WriteCommandErrorKind> {
+            tracing::trace!("write {} bytes: {:x?}", cmd.len(), cmd);
 
-        let n = self
-            .handle
-            .write_bulk(self.write_ep, cmd, TIMEOUT_DEFAULT)?;
+            let n = this
+                .handle
+                .write_bulk(this.write_ep, cmd, TIMEOUT_DEFAULT)?;
 
-        if n != cmd.len() {
-            return Err(JlinkError::Other(format!(
-                "incomplete write (expected {} bytes, wrote {})",
-                cmd.len(),
-                n
-            )));
+            if n != cmd.len() {
+                return Err(WriteCommandErrorKind::IncompleteWrite {
+                    expected: cmd.len(),
+                    written: n,
+                });
+            }
+            Ok(())
         }
+
+        inner(self, cmd).map_err(|source| WriteCommandError {
+            command,
+            payload: cmd[1..].to_vec(),
+            source,
+        })?;
+
         Ok(())
+    }
+
+    fn write_cmd_byte(&self, command: Command) -> Result<(), JlinkError> {
+        self.write_cmd(command, &[command as u8])
     }
 
     fn read(&self, buf: &mut [u8]) -> Result<(), JlinkError> {
@@ -439,11 +449,12 @@ impl JLink {
         while total < buf.len() {
             let n = self
                 .handle
-                .read_bulk(self.read_ep, &mut buf[total..], TIMEOUT_DEFAULT)?;
+                .read_bulk(self.read_ep, &mut buf[total..], TIMEOUT_DEFAULT)
+                .map_err(ReadError::from)?;
             total += n;
         }
 
-        trace!("read {} bytes: {:x?}", buf.len(), buf);
+        tracing::trace!("read {} bytes: {:x?}", buf.len(), buf);
 
         Ok(())
     }
@@ -497,14 +508,14 @@ impl JLink {
         // `GET_MAX_MEM_BLOCK`.
         self.require_capability(Capability::GetMaxBlockSize)?;
 
-        self.write_cmd(&[Command::GetMaxMemBlock as u8])?;
+        self.write_cmd_byte(Command::GetMaxMemBlock)?;
 
         self.read_u32()
     }
 
     /// Reads the firmware version string from the device.
     fn read_firmware_version(&self) -> Result<String, JlinkError> {
-        self.write_cmd(&[Command::Version as u8])?;
+        self.write_cmd_byte(Command::Version)?;
 
         let num_bytes = self.read_u16()?;
         let mut buf = vec![0; num_bytes as usize];
@@ -527,7 +538,7 @@ impl JLink {
     fn read_hardware_version(&self) -> Result<HardwareVersion, JlinkError> {
         self.require_capability(Capability::GetHwVersion)?;
 
-        self.write_cmd(&[Command::GetHwVersion as u8])?;
+        self.write_cmd_byte(Command::GetHwVersion)?;
 
         self.read_u32().map(HardwareVersion::from_u32)
     }
@@ -549,7 +560,7 @@ impl JLink {
 
         self.require_interface_supported(intf)?;
 
-        self.write_cmd(&[Command::SelectIf as u8, intf as u8])?;
+        self.write_cmd(Command::SelectIf, &[Command::SelectIf as u8, intf as u8])?;
 
         // Returns the previous interface, ignore it
         let _ = self.read_u32()?;
@@ -577,7 +588,7 @@ impl JLink {
         } else {
             Command::HwReset0
         };
-        self.write_cmd(&[cmd as u8])
+        self.write_cmd_byte(cmd)
     }
 
     /// Resets the target's JTAG TAP controller by temporarily asserting (n)TRST (Pin 3).
@@ -585,7 +596,7 @@ impl JLink {
     /// This might not do anything if the pin is not connected to the target. It does not affect
     /// non-JTAG target interfaces.
     fn reset_trst(&mut self) -> Result<(), JlinkError> {
-        self.write_cmd(&[Command::ResetTrst as u8])
+        self.write_cmd_byte(Command::ResetTrst)
     }
 
     /// Reads the target voltage measured on the `VTref` pin, in millivolts.
@@ -593,7 +604,7 @@ impl JLink {
     /// In order to use the J-Link, this voltage must be present, since it will be used as the level
     /// of the I/O signals to the target.
     fn read_target_voltage(&self) -> Result<u16, JlinkError> {
-        self.write_cmd(&[Command::GetState as u8])?;
+        self.write_cmd_byte(Command::GetState)?;
 
         let buf = self.read_n::<8>()?;
 
@@ -660,11 +671,11 @@ impl JLink {
         buf.extend(self.jtag_tms_bits.drain(..).collapse_bytes());
         buf.extend(self.jtag_tdi_bits.drain(..).collapse_bytes());
 
-        self.write_cmd(&buf)?;
+        self.write_cmd(cmd, &buf)?;
 
         // Round bit count up to multple of 8 to get the number of response bytes.
         let num_resp_bytes = tms_bit_count.div_ceil(8);
-        trace!(
+        tracing::trace!(
             "{} TMS/TDI bits sent; reading {} response bytes",
             tms_bit_count,
             num_resp_bytes
@@ -727,13 +738,14 @@ impl JLink {
         #[allow(clippy::useless_conversion)]
         let chunks = dir_chunks.into_iter().zip(swdio_chunks.into_iter());
 
+        let cmd = Command::HwJtag3;
+
         let mut output = Vec::new();
         let mut buf = Vec::with_capacity(self.max_mem_block_size as usize);
         buf.resize(4, 0);
-        buf[0] = Command::HwJtag3 as u8;
-        // buf[1] is dummy data for alignment
-        buf[1] = 0;
-        // buf[2..=3] is the bit count, which we'll fill in later
+        buf[0] = cmd as u8;
+        buf[1] = 0; // dummy data for alignment
+                    // buf[2..=3] is the bit count, which we'll fill in later
 
         for (dir, swdio) in chunks {
             buf.truncate(4);
@@ -754,7 +766,7 @@ impl JLink {
 
             tracing::debug!("Buffer length for j-link transfer: {}", buf.len());
 
-            self.write_cmd(&buf)?;
+            self.write_cmd(cmd, &buf)?;
 
             // Response is `num_bytes` SWDIO data bytes and one status byte
             self.read(&mut buf[..num_bytes + 1])?;
@@ -778,26 +790,22 @@ impl JLink {
     /// This is not available on all J-Links.
     pub fn set_kickstart_power(&mut self, enable: bool) -> Result<(), JlinkError> {
         self.require_capability(Capability::SetKsPower)?;
-        self.write_cmd(&[Command::SetKsPower as u8, if enable { 1 } else { 0 }])
+        self.write_cmd(
+            Command::SetKsPower,
+            &[Command::SetKsPower as u8, u8::from(enable)],
+        )
     }
 }
 
 impl DebugProbe for JLink {
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
-        if self.caps.contains(Capability::SelectIf) {
-            let jlink_interface = match protocol {
-                WireProtocol::Swd => Interface::Swd,
-                WireProtocol::Jtag => Interface::Jtag,
-            };
+        let jlink_interface = match protocol {
+            WireProtocol::Swd => Interface::Swd,
+            WireProtocol::Jtag => Interface::Jtag,
+        };
 
-            if !self.interfaces.contains(jlink_interface) {
-                return Err(DebugProbeError::UnsupportedProtocol(protocol));
-            }
-        } else {
-            // Assume JTAG protocol if the probe does not support switching interfaces
-            if protocol != WireProtocol::Jtag {
-                return Err(DebugProbeError::UnsupportedProtocol(protocol));
-            }
+        if !self.interfaces.contains(jlink_interface) {
+            return Err(DebugProbeError::UnsupportedProtocol(protocol));
         }
 
         self.protocol = protocol;
@@ -827,23 +835,27 @@ impl DebugProbe for JLink {
             return Err(DebugProbeError::UnsupportedSpeed(speed_khz));
         }
 
-        if let Ok(speeds) = self.read_interface_speeds() {
-            tracing::debug!("Supported speeds: {:?}", speeds);
+        match self.read_interface_speeds() {
+            Ok(speeds) => {
+                tracing::debug!("Supported speeds: {:?}", speeds);
 
-            let max_speed_khz = speeds.max_speed_hz() / 1000;
+                let max_speed_khz = speeds.max_speed_hz() / 1000;
 
-            if max_speed_khz < speed_khz {
-                return Err(DebugProbeError::UnsupportedSpeed(speed_khz));
+                if max_speed_khz < speed_khz {
+                    return Err(DebugProbeError::UnsupportedSpeed(speed_khz));
+                }
             }
-        };
-
-        if let Some(expected_speed) = SpeedConfig::khz(speed_khz as u16) {
-            self.set_interface_clock_speed(expected_speed)?;
-            self.speed_khz = speed_khz;
-        } else {
-            return Err(DebugProbeError::UnsupportedSpeed(speed_khz));
+            Err(JlinkError::MissingCapability(Capability::SpeedInfo)) => {}
+            Err(e) => return Err(e.into()),
         }
 
+        let Some(expected_speed) = SpeedConfig::khz(speed_khz as u16) else {
+            return Err(DebugProbeError::UnsupportedSpeed(speed_khz));
+        };
+
+        self.set_interface_clock_speed(expected_speed)?;
+        self.speed_khz = speed_khz;
+        tracing::info!("Probe speed set to {speed_khz} kHz");
         Ok(speed_khz)
     }
 
@@ -927,7 +939,7 @@ impl DebugProbe for JLink {
     }
 
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
-        self.write_cmd(&[Command::ResetTarget as u8])?;
+        self.write_cmd_byte(Command::ResetTarget)?;
         Ok(())
     }
 
@@ -1181,13 +1193,13 @@ fn list_jlink_devices() -> Vec<DebugProbeInfo> {
 }
 
 impl TryFrom<Interface> for WireProtocol {
-    type Error = JlinkError;
+    type Error = Interface;
 
     fn try_from(interface: Interface) -> Result<Self, Self::Error> {
         match interface {
             Interface::Jtag => Ok(WireProtocol::Jtag),
             Interface::Swd => Ok(WireProtocol::Swd),
-            unknown_interface => Err(JlinkError::UnknownInterface(unknown_interface)),
+            unknown_interface => Err(unknown_interface),
         }
     }
 }

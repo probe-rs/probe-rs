@@ -118,15 +118,17 @@ impl JLink {
     pub fn read_swo_speeds(&self, mode: SwoMode) -> Result<SwoSpeedInfo> {
         self.require_capability(Capability::Swo)?;
 
+        let cmd = Command::Swo;
+
         let mut buf = [0; 9];
-        buf[0] = Command::Swo as u8;
+        buf[0] = cmd as u8;
         buf[1] = SwoCommand::GetSpeeds as u8;
         buf[2] = 0x04; // Next param has 4 data Bytes
         buf[3] = SwoParam::Mode as u8;
         buf[4..8].copy_from_slice(&(mode as u32).to_le_bytes());
         buf[8] = 0x00;
 
-        self.write_cmd(&buf)?;
+        self.write_cmd(cmd, &buf)?;
 
         let buf = self.read_n::<28>()?;
 
@@ -177,8 +179,10 @@ impl JLink {
         // The probe must be in SWD mode for SWO capture to work.
         self.require_interface_selected(Interface::Swd)?;
 
+        let cmd = Command::Swo;
+
         let mut buf = [0; 21];
-        buf[0] = Command::Swo as u8;
+        buf[0] = cmd as u8;
         buf[1] = SwoCommand::Start as u8;
         buf[2] = 0x04;
         buf[3] = SwoParam::Mode as u8;
@@ -191,7 +195,7 @@ impl JLink {
         buf[16..20].copy_from_slice(&buf_size.to_le_bytes());
         buf[20] = 0x00;
 
-        self.write_cmd(&buf)?;
+        self.write_cmd(cmd, &buf)?;
 
         let _status = self.read_u32().map(SwoStatus::new)?;
 
@@ -202,13 +206,15 @@ impl JLink {
     pub fn swo_stop(&mut self) -> Result<()> {
         self.require_capability(Capability::Swo)?;
 
+        let cmd = Command::Swo;
+
         let buf = [
-            Command::Swo as u8,
+            cmd as u8,
             SwoCommand::Stop as u8,
             0x00, // no parameters
         ];
 
-        self.write_cmd(&buf)?;
+        self.write_cmd(cmd, &buf)?;
 
         let _status = self.read_u32().map(SwoStatus::new)?;
         // FIXME: What to do with the status?
@@ -226,15 +232,19 @@ impl JLink {
     /// *fall off the bus and reset*), so it is recommended to use a buffer that is the same size as
     /// the on-probe data buffer.
     pub fn swo_read<'a>(&self, data: &'a mut [u8]) -> Result<SwoData<'a>> {
-        let mut cmd = [0; 9];
-        cmd[0] = Command::Swo as u8;
-        cmd[1] = SwoCommand::Read as u8;
-        cmd[2] = 0x04;
-        cmd[3] = SwoParam::ReadSize as u8;
-        cmd[4..8].copy_from_slice(&(data.len() as u32).to_le_bytes());
-        cmd[8] = 0x00;
+        self.require_capability(Capability::Swo)?;
 
-        self.write_cmd(&cmd)?;
+        let cmd = Command::Swo;
+
+        let mut buf = [0; 9];
+        buf[0] = cmd as u8;
+        buf[1] = SwoCommand::Read as u8;
+        buf[2] = 0x04;
+        buf[3] = SwoParam::ReadSize as u8;
+        buf[4..8].copy_from_slice(&(data.len() as u32).to_le_bytes());
+        buf[8] = 0x00;
+
+        self.write_cmd(cmd, &buf)?;
 
         let header = self.read_n::<8>()?;
 
