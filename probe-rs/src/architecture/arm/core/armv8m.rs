@@ -266,8 +266,6 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
     }
 
     fn step(&mut self) -> Result<CoreInformation, Error> {
-        self.state.semihosting_command = None;
-
         // First check if we stopped on a breakpoint, because this requires special handling before we can continue.
         let breakpoint_at_pc = if matches!(
             self.state.current_state,
@@ -313,6 +311,8 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
             }
             self.enable_breakpoints(true)?;
         }
+
+        self.state.semihosting_command = None;
 
         Ok(CoreInformation {
             pc: pc_after_step.try_into()?,

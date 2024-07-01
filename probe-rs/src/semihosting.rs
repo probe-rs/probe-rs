@@ -64,7 +64,7 @@ impl UnknownCommandDetails {
     }
 
     /// Writes the status of the semihosting operation to the return register of the target
-    pub fn write_status(&self, core: &mut dyn CoreInterface, status: u32) -> Result<()> {
+    pub fn write_status(&self, core: &mut dyn CoreInterface, status: i32) -> Result<()> {
         write_status(core, status)
     }
 }
@@ -91,9 +91,9 @@ impl GetCommandLineRequest {
     }
 }
 
-fn write_status(core: &mut dyn CoreInterface, value: u32) -> Result<()> {
+fn write_status(core: &mut dyn CoreInterface, value: i32) -> Result<()> {
     let reg = core.registers().get_argument_register(0).unwrap();
-    core.write_core_reg(reg.into(), RegisterValue::U32(value))?;
+    core.write_core_reg(reg.into(), RegisterValue::U32(value as u32))?;
 
     Ok(())
 }
@@ -190,9 +190,8 @@ pub fn decode_semihosting_syscall(
 
         (SYS_GET_CMDLINE, block_address) => {
             // signal to target: status = failure, in case the application does not answer this request
-            // 255 or -1 is the error value for SYS_GET_CMDLINE
-            write_status(core, 255)?;
-
+            // -1 is the error value for SYS_GET_CMDLINE
+            write_status(core, -1)?;
             SemihostingCommand::GetCommandLine(GetCommandLineRequest(Buffer::from_block_at(
                 core,
                 block_address,
@@ -200,8 +199,8 @@ pub fn decode_semihosting_syscall(
         }
         _ => {
             // signal to target: status = failure, in case the application does not answer this request
-            // It is not guaranteed that a value of 255 will be treated as an error by the target, but it is a common value to indicate an error.
-            write_status(core, 255)?;
+            // It is not guaranteed that a value of -1 will be treated as an error by the target, but it is a common value to indicate an error.
+            write_status(core, -1)?;
 
             tracing::debug!(
                 "Unknown semihosting operation={operation:04x} parameter={parameter:04x}"
