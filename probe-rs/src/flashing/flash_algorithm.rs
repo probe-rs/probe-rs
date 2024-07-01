@@ -35,7 +35,11 @@ pub struct FlashAlgorithm {
     /// determines where the position-independent data resides.
     pub static_base: u64,
     /// Initial value of the stack pointer when calling any flash algo API.
-    pub begin_stack: u64,
+    pub stack_top: u64,
+    /// The size of the stack in bytes.
+    pub stack_size: u64,
+    /// Whether to check for stack overflows.
+    pub stack_overflow_check: bool,
     /// A list of base addresses for page buffers. The buffers must be at
     /// least as large as the region's `page_size` attribute. If at least 2 buffers are included in
     /// the list, then double buffered programming will be enabled.
@@ -342,10 +346,10 @@ impl FlashAlgorithm {
             };
 
         // Now we can place the stack.
-        let stack_top_addr = stack_bottom + stack_size;
-        tracing::info!("Stack top: {:#010x}", stack_top_addr);
+        let stack_top = stack_bottom + stack_size;
+        tracing::info!("Stack top: {:#010x}", stack_top);
 
-        if stack_top_addr > ram_region.range.end {
+        if stack_top > ram_region.range.end {
             return Err(FlashError::InvalidFlashAlgorithmStackSize);
         }
 
@@ -372,11 +376,13 @@ impl FlashAlgorithm {
             pc_erase_sector: code_start + raw.pc_erase_sector,
             pc_erase_all: raw.pc_erase_all.map(|v| code_start + v),
             static_base: code_start + raw.data_section_offset,
-            begin_stack: stack_top_addr,
+            stack_top,
+            stack_size,
             page_buffers,
             rtt_control_block: raw.rtt_location,
             flash_properties: raw.flash_properties.clone(),
             transfer_encoding: raw.transfer_encoding.unwrap_or_default(),
+            stack_overflow_check: raw.stack_overflow_check(),
         })
     }
 }

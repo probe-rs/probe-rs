@@ -142,7 +142,7 @@ pub enum FlashError {
     /// Two blocks of data overlap each other which means the loaded binary is broken.
     ///
     /// Please check your data and try again.
-    #[error("Adding data for addresses {added_addresses:08X?} overlaps previously added data for addresses {existing_addresses:08X?}.")]
+    #[error("Adding data for addresses {added_addresses:#010x?} overlaps previously added data for addresses {existing_addresses:#010x?}.")]
     DataOverlaps {
         /// The address range that was tried to be added.
         added_addresses: Range<u64>,
@@ -156,6 +156,12 @@ pub enum FlashError {
     #[error("No core can access the ram region {0:?}.")]
     NoRamCoreAccess(RamRegion),
     /// The register value supplied for this flash algorithm is out of the supported range.
-    #[error("The register value {0:08X?} is out of the supported range.")]
+    #[error("The register value {0:#010x?} is out of the supported range.")]
     RegisterValueNotSupported(u64),
+    /// Stack overflow while flashing.
+    #[error("Stack overflow detected during {operation}.")]
+    StackOverflowDetected {
+        /// The operation that caused the stack overflow.
+        operation: &'static str,
+    },
 }

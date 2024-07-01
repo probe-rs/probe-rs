@@ -19,9 +19,9 @@ pub struct FlashProperties {
     /// The value of a byte in flash that was just erased.
     #[serde(serialize_with = "hex_u_int")]
     pub erased_byte_value: u8,
-    /// The approximative time it takes to program a page.
+    /// The approximate time it takes to program a page.
     pub program_page_timeout: u32,
-    /// The approximative time it takes to erase a sector.
+    /// The approximate time it takes to erase a sector.
     pub erase_sector_timeout: u32,
     /// The available sectors of the device flash.
     #[serde(default)]

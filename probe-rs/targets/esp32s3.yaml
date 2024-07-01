@@ -89,6 +89,7 @@ flash_algorithms:
   pc_erase_sector: 0xa8
   pc_erase_all: 0xb8
   data_section_offset: 0x403806f8
+  stack_overflow_check: false
   flash_properties:
     address_range:
       start: 0x0

@@ -81,9 +81,20 @@ pub struct RawFlashAlgorithm {
     /// overruns during flashing.
     pub stack_size: Option<u32>,
 
+    /// Whether to check for stack overflows during flashing.
+    #[serde(default)]
+    pub stack_overflow_check: Option<bool>,
+
     /// The encoding format accepted by the flash algorithm.
     #[serde(default)]
     pub transfer_encoding: Option<TransferEncoding>,
+}
+
+impl RawFlashAlgorithm {
+    /// Whether to check for stack overflows during flashing.
+    pub fn stack_overflow_check(&self) -> bool {
+        self.stack_overflow_check.unwrap_or(true)
+    }
 }
 
 pub fn serialize<S>(bytes: &[u8], serializer: S) -> Result<S::Ok, S::Error>
