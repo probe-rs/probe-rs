@@ -27,8 +27,7 @@ use probe_rs::{
         xtensa::communication_interface::XtensaError,
     },
     debug::{
-        stack_frame::StackFrameInfo, ColumnType, ObjectRef, SourceLocation, SteppingMode,
-        VariableName, VerifiedBreakpoint,
+        stack_frame::StackFrameInfo, ColumnType, ObjectRef, SourceLocation, Stepping, VariableName,
     },
     Architecture::Riscv,
     CoreStatus, Error, HaltReason, MemoryInterface, RegisterValue,
@@ -881,10 +880,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         requested_breakpoint_column,
                         &args.source,
                     ) {
-                        Ok(VerifiedBreakpoint {
-                            address,
-                            source_location,
-                        }) => created_breakpoints.push(Breakpoint {
+                        Ok(source_location) => created_breakpoints.push(Breakpoint {
                             column: source_location.column.map(|col| match col {
                                 ColumnType::LeftEdge => 0_i64,
                                 ColumnType::Column(c) => c as i64,
@@ -894,10 +890,14 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             id: None,
                             line: source_location.line.map(|line| line as i64),
                             message: Some(format!(
-                                "Source breakpoint at memory address: {address:#010X}"
+                                "Source breakpoint at memory address: {:#010X}",
+                                source_location.address
                             )),
                             source: Some(args.source.clone()),
-                            instruction_reference: Some(format!("{address:#010X}")),
+                            instruction_reference: Some(format!(
+                                "{:#010X}",
+                                source_location.address
+                            )),
                             offset: None,
                             verified: true,
                         }),
@@ -1600,8 +1600,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         let arguments: NextArguments = get_arguments(self, request)?;
 
         let stepping_granularity = match arguments.granularity {
-            Some(SteppingGranularity::Instruction) => SteppingMode::StepInstruction,
-            _ => SteppingMode::OverStatement,
+            Some(SteppingGranularity::Instruction) => Stepping::StepInstruction,
+            _ => Stepping::OverStatement,
         };
 
         self.debug_step(stepping_granularity, target_core, request)
@@ -1618,8 +1618,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         let arguments: StepInArguments = get_arguments(self, request)?;
 
         let stepping_granularity = match arguments.granularity {
-            Some(SteppingGranularity::Instruction) => SteppingMode::StepInstruction,
-            _ => SteppingMode::IntoStatement,
+            Some(SteppingGranularity::Instruction) => Stepping::StepInstruction,
+            _ => Stepping::IntoStatement,
         };
         self.debug_step(stepping_granularity, target_core, request)
     }
@@ -1635,8 +1635,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         let arguments: StepOutArguments = get_arguments(self, request)?;
 
         let stepping_granularity = match arguments.granularity {
-            Some(SteppingGranularity::Instruction) => SteppingMode::StepInstruction,
-            _ => SteppingMode::OutOfStatement,
+            Some(SteppingGranularity::Instruction) => Stepping::StepInstruction,
+            _ => Stepping::OutOfStatement,
         };
 
         self.debug_step(stepping_granularity, target_core, request)
@@ -1645,10 +1645,14 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     /// Common code for the `next`, `step_in`, and `step_out` methods.
     fn debug_step(
         &mut self,
-        stepping_granularity: SteppingMode,
+        stepping_granularity: Stepping,
         target_core: &mut CoreHandle,
         request: &Request,
     ) -> Result<(), anyhow::Error> {
+        // Immediately send a response to the client, so that it can update the UI
+        // to show the user that the step has started.
+        self.send_response::<()>(request, Ok(None))?;
+
         target_core.reset_core_status(self);
         let (new_status, program_counter) = match stepping_granularity
             .step(&mut target_core.core, &target_core.core_data.debug_info)
@@ -1656,13 +1660,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             Ok((new_status, program_counter)) => (new_status, program_counter),
             Err(error) => match &error {
                 probe_rs::debug::DebugError::WarnAndContinue { message } => {
+                    let message = format!("{message} Consider using a different step type, or use breakpoints to force a halt at a specific location.");
+                    self.show_message(MessageSeverity::Information, message);
                     let pc_at_error = target_core
                         .core
                         .read_core_reg(target_core.core.program_counter())?;
-                    self.show_message(
-                        MessageSeverity::Information,
-                        format!("Step error @{pc_at_error:#010X}: {message}"),
-                    );
                     (target_core.core.status()?, pc_at_error)
                 }
                 other_error => {
@@ -1671,8 +1673,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 }
             },
         };
-
-        self.send_response::<()>(request, Ok(None))?;
 
         // We override the halt reason because our implementation of stepping uses breakpoints and results in a "BreakPoint" halt reason, which is not appropriate here.
         target_core.core_data.last_known_status = CoreStatus::Halted(HaltReason::Step);

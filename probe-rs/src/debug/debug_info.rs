@@ -7,10 +7,7 @@ use super::{
 };
 use crate::{
     core::{ExceptionInterface, RegisterRole, RegisterValue, UnwindRule},
-    debug::{
-        registers, stack_frame::StackFrameInfo, unit_info::RangeExt, SourceLocation,
-        VerifiedBreakpoint,
-    },
+    debug::{registers, stack_frame::StackFrameInfo, unit_info::RangeExt, SourceLocation},
     MemoryInterface,
 };
 use anyhow::anyhow;
@@ -19,9 +16,7 @@ use gimli::{
 };
 use object::read::{Object, ObjectSection};
 use probe_rs_target::InstructionSet;
-use std::{
-    borrow, cmp::Ordering, num::NonZeroU64, ops::ControlFlow, path::Path, rc::Rc, str::from_utf8,
-};
+use std::{borrow, ops::ControlFlow, path::Path, rc::Rc, str::from_utf8};
 use typed_path::{TypedPath, TypedPathBuf};
 
 pub(crate) type GimliReader = gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>;
@@ -109,100 +104,7 @@ impl DebugInfo {
 
     /// Try get the [`SourceLocation`] for a given address.
     pub fn get_source_location(&self, address: u64) -> Option<SourceLocation> {
-        for unit_info in &self.unit_infos {
-            let unit = &unit_info.unit;
-
-            let mut ranges = match self.dwarf.unit_ranges(unit) {
-                Ok(ranges) => ranges,
-                Err(error) => {
-                    tracing::warn!(
-                        "No valid source code ranges found for unit {:?}: {:?}",
-                        unit.dwo_name(),
-                        error
-                    );
-                    continue;
-                }
-            };
-
-            while let Ok(Some(range)) = ranges.next() {
-                if !(range.begin <= address && address < range.end) {
-                    continue;
-                }
-                // Get the DWARF LineProgram.
-                let ilnp = unit.line_program.as_ref()?.clone();
-
-                let (program, sequences) = match ilnp.sequences() {
-                    Ok(value) => value,
-                    Err(error) => {
-                        tracing::warn!(
-                            "No valid source code ranges found for address {}: {:?}",
-                            address,
-                            error
-                        );
-                        continue;
-                    }
-                };
-
-                // Normalize the address.
-                let mut target_seq = None;
-
-                for seq in sequences {
-                    if seq.start <= address && address < seq.end {
-                        target_seq = Some(seq);
-                        break;
-                    }
-                }
-
-                let Some(target_seq) = target_seq.as_ref() else {
-                    continue;
-                };
-
-                let mut previous_row: Option<gimli::LineRow> = None;
-
-                let mut rows = program.resume_from(target_seq);
-
-                while let Ok(Some((_, row))) = rows.next_row() {
-                    match row.address().cmp(&address) {
-                        Ordering::Greater => {
-                            // The address is after the current row, so we use the previous row data.
-                            //
-                            // (If we don't do this, you get the artificial effect where the debugger
-                            // steps to the top of the file when it is steppping out of a function.)
-                            if let Some(previous_row) = previous_row {
-                                if let Some((file, directory)) =
-                                    self.find_file_and_directory(unit, previous_row.file_index())
-                                {
-                                    tracing::debug!("{} - {:?}", address, previous_row.isa());
-                                    return Some(SourceLocation {
-                                        line: previous_row.line().map(NonZeroU64::get),
-                                        column: Some(previous_row.column().into()),
-                                        file,
-                                        directory,
-                                    });
-                                }
-                            }
-                        }
-                        Ordering::Less => {}
-                        Ordering::Equal => {
-                            if let Some((file, directory)) =
-                                self.find_file_and_directory(unit, row.file_index())
-                            {
-                                tracing::debug!("{} - {:?}", address, row.isa());
-
-                                return Some(SourceLocation {
-                                    line: row.line().map(NonZeroU64::get),
-                                    column: Some(row.column().into()),
-                                    file,
-                                    directory,
-                                });
-                            }
-                        }
-                    }
-                    previous_row = Some(*row);
-                }
-            }
-        }
-        None
+        SourceLocation::breakpoint_at_address(self, address).ok()
     }
 
     /// We do not actually resolve the children of `[VariableName::StaticScope]` automatically, and only create the necessary header in the `VariableCache`.
@@ -414,7 +316,8 @@ impl DebugInfo {
                     next_function.function_name(self)
                 );
 
-                let inlined_caller_source_location = next_function.inline_call_location(self);
+                let inlined_caller_source_location =
+                    next_function.inline_call_location(self, address);
 
                 tracing::debug!("UNWIND: Call site: {inlined_caller_source_location:?}");
 
@@ -518,7 +421,70 @@ impl DebugInfo {
     /// Note: In addition to populating the `StackFrame`s, this function will also
     ///   populate the `DebugInfo::VariableCache` with `Variable`s for available Registers
     ///   as well as static and function variables.
-    /// TODO: Separate logic for stackframe creation and cache population
+    /// TODO: Separate logic for stackframe creation and cache population.
+    ///
+    /// To help understand how the unwind works, consider this graphical
+    /// representation of the stack layout for three functions
+    /// (X, Y, and Z) that call each other in sequence.
+    /// This is generic enough to apply to both ARM and RISC-V calling conventions.
+    /// Both architectures use a stack that grows downwards, towards lower addresses.
+    /// The differences in the architectures is handled in the implementation.
+    ///
+    /// ```text
+    /// High Memory
+    /// |-----------------| <- CFA of X, FP of X, SP before X's prologue
+    /// |  Return address | <- Return address of X (saved by X)
+    /// |-----------------|
+    /// |  Callee-saved   | <- Callee-saved registers for X (saved by X)
+    /// |-----------------|
+    /// |  Local Vars of X|
+    /// |-----------------|
+    /// |                 | <- X calls Y
+    /// |-----------------| <- CFA of Y, FP of Y, SP before Y's prologue
+    /// |  Return address | <- Return address of Y (saved by Y)
+    /// |-----------------|
+    /// |  Callee-saved   | <- Callee-saved registers for Y (saved by Y)
+    /// |-----------------|
+    /// |  Local Vars of Y|
+    /// |-----------------|
+    /// |                 | <- Y calls Z
+    /// |-----------------| <- CFA of Z, FP of Z, SP before Z's prologue
+    /// |  Return address | <- Return address of Z (saved by Z)
+    /// |-----------------|
+    /// |  Callee-saved   | <- Callee-saved registers for Z (saved by Z)
+    /// |-----------------|
+    /// |  Local Vars of Z|
+    /// |-----------------|
+    /// Low Memory
+    /// ```
+    //
+    /// In this diagram:
+    /// - CFA (Canonical Frame Address) is the value of the stack pointer (SP) at the call site in the previous frame
+    ///   (before the function prologue).
+    /// - FP (Frame Pointer) is a fixed point within the stack frame that enables access to function parameters and
+    ///   local variables.
+    /// - SP (Stack Pointer) points to the top of the current stack frame.
+    /// - PC (Program Counter) holds the address of the instruction being executed. It's saved as the return address
+    ///   when a function call is made.
+    /// - Callee-saved are the callee-saved registers. These are typically saved on the stack
+    ///   by the function itself (or the compiler that implements the architecture calling standard).
+    /// - Local Vars is the space for local variables and temporary data.
+    ///
+    /// We use available DWARF data to decode the stack layout and recover the saved registers.
+    /// However, the DWARF data may not always be complete, in which case we will attempt to unwind
+    /// the stack with the following assumptions:
+    /// - SP of X = FP of Y = CFA of Y.(see diagram above).
+    ///   - The SP of the calling function (X in this case) points to the top of its stack frame at the time of the
+    ///     function call.
+    ///   - The FP of the called function (Y in this case) is typically set to the SP of the calling function at the
+    ///     time of the function call, so it points to the base of its own stack frame.
+    ///   - The CFA of the called function (Y in this case) is a reference point from which we can recover the saved
+    ///     registers, including the return address. In many calling conventions, this is set to the SP of the
+    ///     calling function at the time of the function call, which is the same as the FP of the called function.
+    /// - The PC (program counter) of X is the return address saved by Y.
+    ///   - When function X calls function Y, the next instruction to be executed in function X (after Y returns)
+    ///     is saved as the return address on the stack. This saved return address is essentially the PC of function X
+    ///     at the time Y was called.
     pub fn unwind(
         &self,
         core: &mut impl MemoryInterface,
@@ -559,7 +525,7 @@ impl DebugInfo {
             //   - Overwrite the unwind registers with the exception context.
             // - If for some reason we cannot determine the exception context, we silently continue with the rest of the unwind.
             // At worst, the unwind will be able to unwind the stack to the frame of the most recent exception handler.
-            let frame_pc = frame_pc_register_value.try_into().map_err(|error| {
+            let frame_pc =  frame_pc_register_value.try_into().map_err(|error| {
                 let message = format!("Cannot convert register value for program counter to a 64-bit integer value: {error:?}");
                 crate::Error::Register(message)
             })?;
@@ -631,7 +597,7 @@ impl DebugInfo {
             }
 
             // PART 1-c: Process the remaining frame, if any, in the list of cached_stack_frames.
-            let unwind_canonical_frame_address = match cached_stack_frames.pop() {
+            let mut unwind_canonical_frame_address = match cached_stack_frames.pop() {
                 Some(frame) => {
                     // We have valid code for the current frame.
                     let unwind_canonical_frame_address = frame.canonical_frame_address;
@@ -669,18 +635,58 @@ impl DebugInfo {
             if let Some(exception_frame) = exception_frame {
                 unwind_registers = exception_frame.registers.clone();
                 stack_frames.push(exception_frame);
-                // We have everything we need to unwind the next frame in the stack.
-                continue 'unwind;
+                // Check LR values to determine if we can continue unwinding.
+                if unwind_registers
+                    .get_return_address()
+                    .map(|lr| lr.is_zero() || lr.is_max_value())
+                    .unwrap_or(true)
+                {
+                    tracing::trace!("UNWIND: Stack unwind complete - Reached the 'Reset' value of the LR register.");
+                    break;
+                } else {
+                    // We have everything we need to unwind the next frame in the stack.
+                    continue 'unwind;
+                }
+            } else {
+                // Check LR values to determine if we can continue unwinding.
+                if unwind_registers
+                    .get_return_address()
+                    .map(|lr| lr.is_zero() || lr.is_max_value())
+                    .unwrap_or(true)
+                {
+                    tracing::trace!("UNWIND: Stack unwind complete - Reached the 'Reset' value of the LR register.");
+                    break;
+                }
             };
 
             // PART 2: Setup the registers for the next iteration (a.k.a. unwind previous frame, a.k.a. "callee", in the call stack).
-            tracing::trace!("UNWIND - Preparing to unwind the registers for the previous frame.");
+            tracing::debug!(
+                "UNWIND - Preparing to unwind the registers for the frame that called: {} @ {frame_pc:010x}.",
+                stack_frames
+                    .last()
+                    .map(|frame| frame.function_name.as_str())
+                    .unwrap_or("<unknown function>")
+            );
 
             // PART 2-a: get the `gimli::FrameDescriptorEntry` for the program counter
             // and then the unwind info associated with this row.
             let unwind_info =
                 match get_unwind_info(&mut unwind_context, &self.frame_section, frame_pc) {
-                    Ok(unwind_info) => unwind_info,
+                    Ok(unwind_info) => {
+                        if unwind_canonical_frame_address.is_none() {
+                            unwind_canonical_frame_address =
+                                determine_cfa(&unwind_registers, unwind_info).ok().flatten();
+                        }
+                        // If it is still None, we will not be able to continue unwinding.
+                        // This often happens when we have a halt point inside a prologue, and
+                        // and the registers have not been initialized yet.
+                        if unwind_canonical_frame_address.is_none()
+                            || unwind_canonical_frame_address.unwrap_or(0) == 0
+                        {
+                            break 'unwind;
+                        }
+                        unwind_info
+                    }
                     Err(_) => {
                         // For non exception frames, we cannot do stack unwinding if we do not have debug info.
                         // However, there is one case where we can continue. When the frame registers have a valid
@@ -794,14 +800,13 @@ impl DebugInfo {
 
     /// Find the program counter where a breakpoint should be set,
     /// given a source file, a line and optionally a column.
-    // TODO: Move (and fix) this to the [`InstructionSequence::for_source_location`] method.
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "trace", skip_all)]
     pub fn get_breakpoint_location(
         &self,
         path: &TypedPathBuf,
         line: u64,
         column: Option<u64>,
-    ) -> Result<VerifiedBreakpoint, DebugError> {
+    ) -> Result<SourceLocation, DebugError> {
         tracing::debug!(
             "Looking for breakpoint location for {}:{}:{}",
             path.to_path().display(),
@@ -810,7 +815,7 @@ impl DebugInfo {
                 .map(|c| c.to_string())
                 .unwrap_or_else(|| "-".to_owned())
         );
-        VerifiedBreakpoint::for_source_location(self, path, line, column)
+        SourceLocation::breakpoint_at_source(self, path, line, column)
     }
 
     /// Get the path for an entry in a line program header, using the compilation unit's directory and file entries.
@@ -973,14 +978,6 @@ impl DebugInfo {
     }
 }
 
-/// Uses the [`TypedPathBuf::normalize`] function to normalize both paths before comparing them
-pub(crate) fn canonical_path_eq(
-    primary_path: &TypedPathBuf,
-    secondary_path: &TypedPathBuf,
-) -> bool {
-    primary_path.normalize() == secondary_path.normalize()
-}
-
 /// Get a handle to the [`gimli::UnwindTableRow`] for this call frame, so that we can reference it to unwind register values.
 pub fn get_unwind_info<'a>(
     unwind_context: &'a mut UnwindContext<GimliReaderOffset>,
@@ -1049,7 +1046,7 @@ pub fn determine_cfa<R: gimli::ReaderOffset>(
                 *offset,
                 unwind_registers.get_address_size_bytes(),
             );
-            tracing::trace!(
+            tracing::debug!(
                 "UNWIND - CFA : {:#010x}\tRule: {:?}",
                 unwind_cfa,
                 unwind_info.cfa()
@@ -1092,12 +1089,25 @@ pub fn unwind_register(
                     .core_register
                     .register_has_role(RegisterRole::FramePointer) =>
                 {
-                    register_rule_string = "FP=CFA (dwarf Undefined)".to_string();
+                    // The frame_size can be calculated as the difference between the CFA of the current
+                    // function and the CFA of the caller function.
+                    // This is because the CFA of the caller function is usually the value
+                    // of the stack pointer at the point where the current function was called,
+                    // which is right after the current function's stack frame.
+                    // let previous_sp = callee_frame_registers
+                    //     .get_register_value_by_role(&RegisterRole::StackPointer)
+                    //     .ok()
+                    //     .flatten();
+                    // let frame_size =
+                    register_rule_string = format!(
+                        "FP=(SP+frame_size)({:#010x}+{:#04x}={:#010x}) (dwarf Undefined)",
+                        0, 0, 0
+                    );
                     unwind_cfa.map(|unwind_cfa| {
                         if fp.is_u32() {
-                            RegisterValue::U32(unwind_cfa as u32 & !0b11)
+                            RegisterValue::U32(unwind_cfa as u32)
                         } else {
-                            RegisterValue::U64(unwind_cfa & !0b11)
+                            RegisterValue::U64(unwind_cfa)
                         }
                     })
                 }
@@ -1105,14 +1115,14 @@ pub fn unwind_register(
                     .core_register
                     .register_has_role(RegisterRole::StackPointer) =>
                 {
-                    // NOTE: [ARMv7-M Architecture Reference Manual](https://developer.arm.com/documentation/ddi0403/ee), Section B.1.4.1: Treat bits [1:0] as `Should be Zero or Preserved`
-                    // - Applying this logic to RISC-V has no adverse effects, since all incoming addresses are already 32-bit aligned.
+                    // We calculate this as the reverse(unwind) of DWARF Specification 6.4: "Typically,
+                    // the CFA is defined to be the value of the stack pointer at the call site in the previous frame"
                     register_rule_string = "SP=CFA (dwarf Undefined)".to_string();
                     unwind_cfa.map(|unwind_cfa| {
                         if sp.is_u32() {
-                            RegisterValue::U32(unwind_cfa as u32 & !0b11)
+                            RegisterValue::U32(unwind_cfa as u32)
                         } else {
-                            RegisterValue::U64(unwind_cfa & !0b11)
+                            RegisterValue::U64(unwind_cfa)
                         }
                     })
                 }
@@ -1266,14 +1276,22 @@ pub fn unwind_register(
     };
     debug_register.value = new_value;
 
-    tracing::trace!(
-        "UNWIND - {:>10}: Caller: {}\tCallee: {}\tRule: {}",
+    let caller_value: u32 = debug_register
+        .value
+        .unwrap_or_default()
+        .try_into()
+        .unwrap_or_default();
+    let callee_value: u32 = callee_frame_registers
+        .get_register(debug_register.core_register.id)
+        .and_then(|reg| reg.value)
+        .unwrap_or_default()
+        .try_into()
+        .unwrap_or_default();
+    tracing::debug!(
+        "UNWIND - {:>10}: Caller: {:#010x}\tCallee: {:#010x}\tRule: {}",
         debug_register.get_register_name(),
-        debug_register.value.unwrap_or_default(),
-        callee_frame_registers
-            .get_register(debug_register.core_register.id)
-            .and_then(|reg| reg.value)
-            .unwrap_or_default(),
+        caller_value,
+        callee_value,
         register_rule_string,
     );
     ControlFlow::Continue(())
@@ -1942,7 +1960,12 @@ mod test {
 
         // Using YAML output because it is easier to read than the default snapshot output,
         // and also because they provide better diffs.
-        insta::assert_yaml_snapshot!(snapshot_name, stack_frames);
+        // Redacting the source location address to make the snapshots more stable.
+        insta::with_settings!(
+            {filters=>vec![(r"source_location:[\n\s].*address:.*\n",
+            "source_location:\n")]},
+            {insta::assert_yaml_snapshot!(snapshot_name, stack_frames);}
+        )
     }
 
     #[test_case("RP2040_full_unwind"; "Armv6-m using RP2040")]
@@ -1978,6 +2001,11 @@ mod test {
         );
         // Using YAML output because it is easier to read than the default snapshot output,
         // and also because they provide better diffs.
-        insta::assert_yaml_snapshot!(snapshot_name, static_variables);
+        // Redacting the source location address to make the snapshots more stable.
+        insta::with_settings!(
+            {filters=>vec![(r"source_location:[\n\s].*address:.*\n",
+            "source_location:\n")]},
+            {insta::assert_yaml_snapshot!(snapshot_name, static_variables);}
+        )
     }
 }

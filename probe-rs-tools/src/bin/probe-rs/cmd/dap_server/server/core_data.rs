@@ -19,7 +19,7 @@ use crate::{
     util::rtt::RttConfig,
 };
 use anyhow::{anyhow, Result};
-use probe_rs::debug::VerifiedBreakpoint;
+use probe_rs::debug::SourceLocation;
 use probe_rs::{
     debug::{
         debug_info::DebugInfo, stack_frame::StackFrameInfo, ColumnType, ObjectRef, VariableCache,
@@ -292,6 +292,8 @@ impl<'p> CoreHandle<'p> {
     /// Set a breakpoint at the requested address. If the requested source location is not specific, or
     /// if the requested address is not a valid breakpoint location,
     /// the debugger will attempt to find the closest location to the requested location, and set a breakpoint there.
+    /// A verified breakpoint represents an instruction address, and the source location that it corresponds to it,
+    /// for locations in the target binary that comply with the DWARF standard terminology for "recommended breakpoint location".
     /// The Result<> contains the "verified" `address` and `SourceLocation` where the breakpoint that was set.
     pub(crate) fn verify_and_set_breakpoint(
         &mut self,
@@ -299,11 +301,8 @@ impl<'p> CoreHandle<'p> {
         requested_breakpoint_line: u64,
         requested_breakpoint_column: Option<u64>,
         requested_source: &Source,
-    ) -> Result<VerifiedBreakpoint, DebuggerError> {
-        let VerifiedBreakpoint {
-                 address,
-                 source_location,
-             } = self.core_data
+    ) -> Result<SourceLocation, DebuggerError> {
+        let source_location = self.core_data
             .debug_info
             .get_breakpoint_location(
                 source_path,
@@ -313,16 +312,13 @@ impl<'p> CoreHandle<'p> {
             .map_err(|debug_error|
                 DebuggerError::Other(anyhow!("Cannot set breakpoint here. Try reducing compile time-, and link time-, optimization in your build configuration, or choose a different source location: {debug_error}")))?;
         self.set_breakpoint(
-            address,
+            source_location.address,
             BreakpointType::SourceBreakpoint {
                 source: requested_source.clone(),
                 location: SourceLocationScope::Specific(source_location.clone()),
             },
         )?;
-        Ok(VerifiedBreakpoint {
-            address,
-            source_location,
-        })
+        Ok(source_location)
     }
 
     /// In the case where a new binary is flashed as part of a restart, we need to recompute the breakpoint address,

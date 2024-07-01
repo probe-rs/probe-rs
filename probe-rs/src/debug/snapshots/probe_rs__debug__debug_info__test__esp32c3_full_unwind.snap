@@ -4984,7 +4984,7 @@ expression: stack_frames
   source_location:
     line: 26
     column:
-      Column: 10
+      Column: 54
     file: esp32c3.rs
     directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
   registers:

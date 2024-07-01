@@ -26,10 +26,11 @@
         }
       },
       "args": ["dap-server", "--port", "50001"],
-      // "env": {
-      //     "RUST_LOG": "error",
-      //     "DEFMT_LOG": "info"
-      // },
+      "env": {
+        "RUST_LOG": "probe_rs::debug=debug",
+        // "RUST_LOG": "probe_rs::cmd::dap_server=info,probe_rs::debug=info"
+        // "DEFMT_LOG": "info"
+      },
     },
     {
       "type": "lldb",

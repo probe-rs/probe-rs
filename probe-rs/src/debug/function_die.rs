@@ -32,6 +32,12 @@ pub(crate) struct FunctionDie<'abbrev, 'unit> {
     pub(crate) ranges: Vec<Range<u64>>,
 }
 
+impl PartialEq for FunctionDie<'_, '_> {
+    fn eq(&self, other: &Self) -> bool {
+        self.function_die.offset() == other.function_die.offset()
+    }
+}
+
 impl<'abbrev, 'unit> FunctionDie<'abbrev, 'unit> {
     /// Create a new function DIE reference.
     /// We only return DIE's that are functions, with valid address ranges that represent machine code
@@ -48,7 +54,13 @@ impl<'abbrev, 'unit> FunctionDie<'abbrev, 'unit> {
         'unit: 'abbrev,
     {
         let is_inlined_function = match function_die.tag() {
-            gimli::DW_TAG_subprogram => false,
+            gimli::DW_TAG_subprogram => function_die
+                .attr(gimli::DW_AT_inline)
+                .ok()
+                .flatten()
+                .and_then(|attr| attr.udata_value())
+                .map(|is_inlined| is_inlined.eq(&1))
+                .unwrap_or(false),
             gimli::DW_TAG_inlined_subroutine => true,
             _ => {
                 // We only need DIEs for functions, so we can ignore all other DIEs.
@@ -109,13 +121,6 @@ impl<'abbrev, 'unit> FunctionDie<'abbrev, 'unit> {
         }))
     }
 
-    /// Test whether the given address is contained in the address ranges of this function.
-    /// Use this, instead of checking for values between `low_pc()` and `high_pc()`, because
-    /// the address ranges can be disjointed.
-    pub(crate) fn range_contains(&self, address: u64) -> bool {
-        self.ranges.iter().any(|range| range.contains(&address))
-    }
-
     /// Returns the lowest valid address for which this function DIE is valid.
     /// Please use `range_contains()` to check whether an address is contained in the range.
     pub(crate) fn low_pc(&self) -> Option<u64> {
@@ -161,6 +166,7 @@ impl<'abbrev, 'unit> FunctionDie<'abbrev, 'unit> {
     pub(crate) fn inline_call_location(
         &self,
         debug_info: &super::DebugInfo,
+        address: u64,
     ) -> Option<SourceLocation> {
         if !self.is_inline() {
             return None;
@@ -181,6 +187,7 @@ impl<'abbrev, 'unit> FunctionDie<'abbrev, 'unit> {
                     Some(c) => ColumnType::Column(c),
                 });
         Some(SourceLocation {
+            address,
             line,
             column,
             file: Some(file),
