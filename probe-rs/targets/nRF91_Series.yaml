@@ -4,11 +4,11 @@ manufacturer:
   cc: 0x2
 chip_detection:
 - !NordicFicrInfo
-  part_address: 16712000
-  variant_address: 16712220
-  part: 37216
+  part_address: 0xff0140
+  variant_address: 0xff021c
+  part: 0x9160
   variants:
-    1024: nRF9160_xxAA
+    0x400: nRF9160_xxAA
 variants:
 - name: nRF9160_xxAA
   cores:

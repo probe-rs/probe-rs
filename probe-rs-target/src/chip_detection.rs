@@ -1,8 +1,10 @@
 //! Chip detection information.
 
-use std::collections::HashMap;
-
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
+use serde_with::rust::maps_duplicate_key_is_error;
+
+use crate::serialize::{hex_keys_indexmap, hex_u_int};
 
 /// Vendor-specific chip detection information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -85,7 +87,9 @@ pub struct AtsamDsuDetection {
     pub series: u8,
 
     /// Devsel => Target field value
-    pub variants: HashMap<u8, String>,
+    #[serde(serialize_with = "hex_keys_indexmap")]
+    #[serde(deserialize_with = "maps_duplicate_key_is_error::deserialize")]
+    pub variants: IndexMap<u8, String>,
 }
 
 /// Espressif chip detection information.
@@ -93,10 +97,13 @@ pub struct AtsamDsuDetection {
 #[serde(deny_unknown_fields)]
 pub struct EspressifDetection {
     /// Debug module IDCODE
+    #[serde(serialize_with = "hex_u_int")]
     pub idcode: u32,
 
     /// Magic chip value => Target name.
-    pub variants: HashMap<u32, String>,
+    #[serde(serialize_with = "hex_keys_indexmap")]
+    #[serde(deserialize_with = "maps_duplicate_key_is_error::deserialize")]
+    pub variants: IndexMap<u32, String>,
 }
 
 /// Nordic FICR CONFIGID-based chip detection information.
@@ -104,10 +111,13 @@ pub struct EspressifDetection {
 #[serde(deny_unknown_fields)]
 pub struct NordicConfigIdDetection {
     /// FICR CONFIGID address
+    #[serde(serialize_with = "hex_u_int")]
     pub configid_address: u32,
 
     /// CONFIGID.HWID => Target name.
-    pub hwid: HashMap<u32, String>,
+    #[serde(serialize_with = "hex_keys_indexmap")]
+    #[serde(deserialize_with = "maps_duplicate_key_is_error::deserialize")]
+    pub hwid: IndexMap<u32, String>,
 }
 
 /// Nordic FICR INFO-based chip detection information.
@@ -115,16 +125,21 @@ pub struct NordicConfigIdDetection {
 #[serde(deny_unknown_fields)]
 pub struct NordicFicrDetection {
     /// FICR INFO.PART address
+    #[serde(serialize_with = "hex_u_int")]
     pub part_address: u32,
 
     /// FICR INFO.VARIANT address
+    #[serde(serialize_with = "hex_u_int")]
     pub variant_address: u32,
 
     /// The value of INFO.PART
+    #[serde(serialize_with = "hex_u_int")]
     pub part: u32,
 
     /// INFO.VARIANT => Target name.
-    pub variants: HashMap<u32, String>,
+    #[serde(serialize_with = "hex_keys_indexmap")]
+    #[serde(deserialize_with = "maps_duplicate_key_is_error::deserialize")]
+    pub variants: IndexMap<u32, String>,
 }
 
 /// Infineon SCU chip detection information.
@@ -132,11 +147,15 @@ pub struct NordicFicrDetection {
 #[serde(deny_unknown_fields)]
 pub struct InfinionScuDetection {
     /// Chip partid
+    #[serde(serialize_with = "hex_u_int")]
     pub part: u16,
 
     /// SCU_IDCHIP register value, bits [19:4]
+    #[serde(serialize_with = "hex_u_int")]
     pub scu_id: u32,
 
     /// Flash size in kB => Target name.
-    pub variants: HashMap<u32, String>,
+    // Intentionally not hex-keyed, sizes look better in decimal.
+    #[serde(deserialize_with = "maps_duplicate_key_is_error::deserialize")]
+    pub variants: IndexMap<u32, String>,
 }
