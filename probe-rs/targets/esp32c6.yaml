@@ -4,9 +4,9 @@ manufacturer:
   cc: 0xc
 chip_detection:
 - !Espressif
-  idcode: 56357
+  idcode: 0xdc25
   variants:
-    752910447: esp32c6
+    0x2ce0806f: esp32c6
 variants:
 - name: esp32c6
   cores:

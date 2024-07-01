@@ -2,8 +2,6 @@ name: XMC4000
 manufacturer:
   id: 0x41
   cc: 0x0
-generated_from_pack: true
-pack_file_release: 2.12.0
 chip_detection:
 - !InfineonScu
   part: 0x1dd
@@ -38,16 +36,18 @@ chip_detection:
   part: 0x1df
   scu_id: 0x4700
   variants:
-    2048: XMC4700-F100x2048
-    1536: XMC4700-F100x1536
     1024: XMC4700-F100x1024
+    1536: XMC4700-F100x1536
+    2048: XMC4700-F100x2048
 - !InfineonScu
   part: 0x1df
   scu_id: 0x4800
   variants:
-    2048: XMC4800-F100x2048
-    1536: XMC4800-F100x1536
     1024: XMC4800-F100x1024
+    1536: XMC4800-F100x1536
+    2048: XMC4800-F100x2048
+generated_from_pack: true
+pack_file_release: 2.12.0
 variants:
 - name: XMC4100-F64x128
   cores:

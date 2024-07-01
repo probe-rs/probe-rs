@@ -4,12 +4,12 @@ manufacturer:
   cc: 0x2
 chip_detection:
 - !NordicFicrInfo
-  part_address: 16712204
-  variant_address: 16712208
-  part: 21312
+  part_address: 0xff020c
+  variant_address: 0xff0210
+  part: 0x5340
   variants:
-    1363886401: nRF5340_xxAA
-    1129070913: nRF5340_xxAA
+    0x514b4141: nRF5340_xxAA
+    0x434c4141: nRF5340_xxAA
 variants:
 - name: nRF5340_xxAA
   cores:

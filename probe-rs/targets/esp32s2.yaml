@@ -4,9 +4,9 @@ manufacturer:
   cc: 0xc
 chip_detection:
 - !Espressif
-  idcode: 302003429
+  idcode: 0x120034e5
   variants:
-    1990: esp32s2
+    0x7c6: esp32s2
 variants:
 - name: esp32s2
   cores:
