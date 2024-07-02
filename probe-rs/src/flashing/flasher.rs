@@ -666,13 +666,15 @@ impl<O: Operation> ActiveFlasher<'_, O> {
         if let Some(rtt_address) = self.flash_algorithm.rtt_control_block {
             match rtt::try_attach_to_rtt(
                 &mut self.core,
+                Duration::from_secs(1),
                 &ScanRegion::Exact(rtt_address),
             ) {
                 Ok(rtt) => self.rtt = Some(rtt),
                 Err(rtt::Error::NoControlBlockLocation) => {}
                 Err(error) => tracing::error!("RTT could not be initialized: {error}"),
-            // FIXME: replace this with try_attach_to_rtt once it's been moved to the library
-            let now = Instant::now();
+            }
+        }
+
         Ok(())
     }
 
