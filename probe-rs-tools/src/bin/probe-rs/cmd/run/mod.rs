@@ -5,7 +5,6 @@ use test_run_mode::*;
 
 use std::fs::{self, File};
 use std::io::{Read, Write};
-use std::ops::Range;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -123,7 +122,7 @@ impl Cmd {
 
         let rtt_scan_regions = match self.shared_options.rtt_scan_memory {
             true => session.target().rtt_scan_regions.clone(),
-            false => Vec::new(),
+            false => ScanRegion::Ranges(vec![]),
         };
 
         run_mode.run(
@@ -190,7 +189,7 @@ fn detect_run_mode(cmd: &Cmd) -> Result<Box<dyn RunMode>, anyhow::Error> {
 
 struct RunLoop {
     core_id: usize,
-    rtt_scan_regions: Vec<Range<u64>>,
+    rtt_scan_regions: ScanRegion,
     path: PathBuf,
     timestamp_offset: UtcOffset,
     always_print_stacktrace: bool,
@@ -270,7 +269,7 @@ impl RunLoop {
         let mut rtta = attach_to_rtt(
             core,
             Duration::from_secs(1),
-            ScanRegion::Ranges(self.rtt_scan_regions.clone()),
+            &self.rtt_scan_regions,
             &self.path,
             &rtt_config,
             self.timestamp_offset,
@@ -508,7 +507,7 @@ fn poll_rtt<S: Write + ?Sized>(
 fn attach_to_rtt(
     core: &mut Core<'_>,
     timeout: Duration,
-    rtt_region: ScanRegion,
+    rtt_region: &ScanRegion,
     elf_file: &Path,
     rtt_config: &RttConfig,
     timestamp_offset: UtcOffset,
@@ -517,13 +516,15 @@ fn attach_to_rtt(
     // If we find it, we can use the exact address to attach to the RTT control block. Otherwise, we
     // fall back to the caller-provided scan regions.
     let elf = fs::read(elf_file)?;
+    let exact_region;
     let scan_region = if let Some(address) = RttActiveTarget::get_rtt_symbol_from_bytes(&elf) {
-        ScanRegion::Exact(address)
+        exact_region = ScanRegion::Exact(address);
+        &exact_region
     } else {
         rtt_region
     };
 
-    let rtt = match try_attach_to_rtt(core, timeout, &scan_region) {
+    let rtt = match try_attach_to_rtt(core, timeout, scan_region) {
         Ok(rtt) => rtt,
         Err(RttError::NoControlBlockLocation) => return Ok(None),
         Err(err) => return Err(anyhow!("Error attempting to attach to RTT: {err}")),
