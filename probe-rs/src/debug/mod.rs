@@ -33,7 +33,9 @@ pub use self::{
 };
 use crate::{core::Core, MemoryInterface};
 
+use gimli::AttributeValue;
 use gimli::DebuggingInformationEntry;
+use gimli::EvaluationResult;
 use typed_path::TypedPathBuf;
 
 use std::{
@@ -251,26 +253,22 @@ pub(crate) fn _print_all_attributes(
         }
         print!("{}: ", attr.name());
 
-        use gimli::AttributeValue::*;
-
         match attr.value() {
-            Addr(a) => println!("{a:#010x}"),
-            DebugStrRef(_) => {
+            AttributeValue::Addr(a) => println!("{a:#010x}"),
+            AttributeValue::DebugStrRef(_) => {
                 let val = dwarf.attr_string(unit, attr.value()).unwrap();
                 println!("{}", std::str::from_utf8(&val).unwrap());
             }
-            Exprloc(e) => {
+            AttributeValue::Exprloc(e) => {
                 let mut evaluation = e.evaluation(unit.encoding());
 
                 // go for evaluation
                 let mut result = evaluation.evaluate().unwrap();
 
                 loop {
-                    use gimli::EvaluationResult::*;
-
                     result = match result {
-                        Complete => break,
-                        RequiresMemory { address, size, .. } => {
+                        EvaluationResult::Complete => break,
+                        EvaluationResult::RequiresMemory { address, size, .. } => {
                             let mut buff = vec![0u8; size as usize];
                             core.read(address, &mut buff)
                                 .expect("Failed to read memory");
@@ -302,10 +300,10 @@ pub(crate) fn _print_all_attributes(
                                 }
                             }
                         }
-                        RequiresFrameBase => evaluation
+                        EvaluationResult::RequiresFrameBase => evaluation
                             .resume_with_frame_base(stackframe_cfa.unwrap())
                             .unwrap(),
-                        RequiresRegister {
+                        EvaluationResult::RequiresRegister {
                             register,
                             base_type,
                         } => {
@@ -322,7 +320,7 @@ pub(crate) fn _print_all_attributes(
                                 .resume_with_register(gimli::Value::Generic(raw_value))
                                 .unwrap()
                         }
-                        RequiresRelocatedAddress(address_index) => {
+                        EvaluationResult::RequiresRelocatedAddress(address_index) => {
                             // Use the address_index as an offset from 0, so just pass it into the next step.
                             evaluation
                                 .resume_with_relocated_address(address_index)
@@ -340,13 +338,13 @@ pub(crate) fn _print_all_attributes(
 
                 println!("Expression: {:x?}", &result[0]);
             }
-            LocationListsRef(_) => {
+            AttributeValue::LocationListsRef(_) => {
                 println!("LocationList");
             }
-            DebugLocListsBase(_) => {
+            AttributeValue::DebugLocListsBase(_) => {
                 println!(" LocationList");
             }
-            DebugLocListsIndex(_) => {
+            AttributeValue::DebugLocListsIndex(_) => {
                 println!(" LocationList");
             }
             _ => {

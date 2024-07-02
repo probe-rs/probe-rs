@@ -4,7 +4,7 @@ use crate::{
     Error, MemoryInterface,
 };
 
-use super::armv6m_armv7m_shared::{self};
+use super::armv6m_armv7m_shared;
 
 /// Decode the exception number.
 #[derive(Debug, Copy, Clone, PartialEq)]

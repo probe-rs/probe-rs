@@ -1,4 +1,4 @@
-use super::armv6m_armv7m_shared::{self};
+use super::armv6m_armv7m_shared;
 use crate::{
     core::{ExceptionInfo, ExceptionInterface},
     debug::{DebugInfo, DebugRegisters},

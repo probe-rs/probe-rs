@@ -110,17 +110,15 @@ pub enum AbstractCommandErrorKind {
 
 impl AbstractCommandErrorKind {
     fn parse(value: u8) -> Self {
-        use AbstractCommandErrorKind::*;
-
         match value {
-            0 => None,
-            1 => Busy,
-            2 => NotSupported,
-            3 => Exception,
-            4 => HaltResume,
-            5 => Bus,
-            6 => _Reserved,
-            7 => Other,
+            0 => Self::None,
+            1 => Self::Busy,
+            2 => Self::NotSupported,
+            3 => Self::Exception,
+            4 => Self::HaltResume,
+            5 => Self::Bus,
+            6 => Self::_Reserved,
+            7 => Self::Other,
             _ => unreachable!("cmderr is a 3 bit value, values higher than 7 should not occur."),
         }
     }
