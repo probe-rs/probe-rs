@@ -1,23 +1,76 @@
 name: STM32WBA Series
-manufacturer:
-  id: 0x20
-  cc: 0x0
 generated_from_pack: true
-pack_file_release: 1.2.1
+pack_file_release: 1.3.0
 variants:
+- name: STM32WBA50KEUx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32wbax_1m_0800
+  - stm32wbax_1m_0c00
+- name: STM32WBA50KGUx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32wbax_1m_0800
+  - stm32wbax_1m_0c00
 - name: STM32WBA52CEUx
   cores:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: 0
       psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1_2
     range:
       start: 0x20000000
-      end: 0x20020000
+      end: 0x20018000
     cores:
     - main
   - !Nvm
@@ -28,33 +81,7 @@ variants:
     cores:
     - main
     access:
-      boot: true
-  flash_algorithms:
-  - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
-- name: STM32WBA52CEUxT
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 1
-      psel: 0x0
-  memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32wbax_1m_0800
@@ -64,7 +91,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: 0
       psel: 0x0
   memory_map:
   - !Ram
@@ -82,43 +109,45 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32wbax_1m_0800
   - stm32wbax_1m_0c00
-- name: STM32WBA52CGUxT
+- name: STM32WBA52KEUx
   cores:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: 0
       psel: 0x0
   memory_map:
   - !Ram
     name: SRAM1_2
     range:
       start: 0x20000000
-      end: 0x20020000
+      end: 0x20018000
     cores:
     - main
   - !Nvm
     name: Flash
     range:
       start: 0x8000000
-      end: 0x8100000
+      end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32wbax_1m_0800
   - stm32wbax_1m_0c00
-- name: STM32WBA52CGUxU
+- name: STM32WBA52KGUx
   cores:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: 0
       psel: 0x0
   memory_map:
   - !Ram
@@ -136,6 +165,287 @@ variants:
     cores:
     - main
     access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32wbax_1m_0800
+  - stm32wbax_1m_0c00
+- name: STM32WBA54CEUx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32wbax_1m_0800
+  - stm32wbax_1m_0c00
+- name: STM32WBA54CGUx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32wbax_1m_0800
+  - stm32wbax_1m_0c00
+- name: STM32WBA54KEUx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32wbax_1m_0800
+  - stm32wbax_1m_0c00
+- name: STM32WBA54KGUx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32wbax_1m_0800
+  - stm32wbax_1m_0c00
+- name: STM32WBA55CEUx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32wbax_1m_0800
+  - stm32wbax_1m_0c00
+- name: STM32WBA55CGUx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32wbax_1m_0800
+  - stm32wbax_1m_0c00
+- name: STM32WBA55HEFx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32wbax_1m_0800
+  - stm32wbax_1m_0c00
+- name: STM32WBA55HGFx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32wbax_1m_0800
+  - stm32wbax_1m_0c00
+- name: STM32WBA55UEIx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32wbax_1m_0800
+  - stm32wbax_1m_0c00
+- name: STM32WBA55UGIx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32wbax_1m_0800
