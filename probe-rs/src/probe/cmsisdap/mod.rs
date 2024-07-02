@@ -3,19 +3,26 @@ mod commands;
 mod tools;
 
 use crate::{
-    architecture::arm::{
-        communication_interface::{DapProbe, UninitializedArmProbe},
-        dp::{Abort, Ctrl},
-        swo::poll_interval_from_buf_size,
-        ArmCommunicationInterface, ArmError, DapError, Pins, PortType, RawDapAccess, Register,
-        SwoAccess, SwoConfig, SwoMode,
+    architecture::{
+        arm::{
+            communication_interface::{DapProbe, UninitializedArmProbe},
+            dp::{Abort, Ctrl},
+            swo::poll_interval_from_buf_size,
+            ArmCommunicationInterface, ArmError, DapError, Pins, PortType, RawDapAccess, Register,
+            SwoAccess, SwoConfig, SwoMode,
+        },
+        riscv::{communication_interface::RiscvInterfaceBuilder, dtm::jtag_dtm::JtagDtmBuilder},
+        xtensa::communication_interface::{
+            XtensaCommunicationInterface, XtensaDebugInterfaceState,
+        },
     },
     probe::{
         cmsisdap::commands::{
             general::info::{CapabilitiesCommand, PacketCountCommand, SWOTraceBufferSizeCommand},
             CmsisDapError,
         },
-        BatchCommand, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
+        common::{JtagDriverState, RawJtagIo},
+        BatchCommand, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, JTAGAccess,
         JtagChainItem, ProbeFactory, WireProtocol,
     },
     CoreStatus,
@@ -101,6 +108,9 @@ pub struct CmsisDap {
     scan_chain: Option<Vec<ScanChainElement>>,
 
     batch: Vec<BatchCommand>,
+
+    jtag_driver_state: JtagDriverState,
+    jtag_sequences: Vec<JtagSequence>,
 }
 
 impl std::fmt::Debug for CmsisDap {
@@ -138,7 +148,6 @@ impl CmsisDap {
             swo_buffer_size = Some(swo_size as usize);
             tracing::debug!("Probe SWO buffer size: {}", swo_size);
         }
-
         Ok(Self {
             device,
             _hw_version: 0,
@@ -154,6 +163,8 @@ impl CmsisDap {
             speed_khz: 1_000,
             scan_chain: None,
             batch: Vec::new(),
+            jtag_driver_state: JtagDriverState::default(),
+            jtag_sequences: Vec::<JtagSequence>::new(),
         })
     }
 
@@ -809,6 +820,11 @@ impl DebugProbe for CmsisDap {
             // to ensure the debug port is ready for JTAG signals,
             // at which point we can interrogate the scan chain
             // and configure the probe with the given IR lengths.
+            {
+                // For arm MCU there is no need to do anything, but for riscv it is necessary. Or one day in architecture\riscv code to do the relevant processing, here you can delete.
+                self.scan_chain()?;
+                self.select_target(0)?;
+            }
         } else {
             self.configure_swd(swd::configure::ConfigureRequest {})?;
         }
@@ -906,6 +922,39 @@ impl DebugProbe for CmsisDap {
 
     fn has_arm_interface(&self) -> bool {
         true
+    }
+
+    fn try_get_riscv_interface_builder<'probe>(
+        &'probe mut self,
+    ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, DebugProbeError> {
+        if self.has_riscv_interface() {
+            Ok(Box::new(JtagDtmBuilder::new(self)))
+        } else {
+            Err(DebugProbeError::InterfaceNotAvailable {
+                interface_name: "RISC-V",
+            })
+        }
+    }
+
+    fn has_riscv_interface(&self) -> bool {
+        self.capabilities._jtag_implemented
+    }
+
+    fn try_get_xtensa_interface<'probe>(
+        &'probe mut self,
+        state: &'probe mut XtensaDebugInterfaceState,
+    ) -> Result<XtensaCommunicationInterface<'probe>, DebugProbeError> {
+        if self.has_xtensa_interface() {
+            Ok(XtensaCommunicationInterface::new(self, state))
+        } else {
+            Err(DebugProbeError::InterfaceNotAvailable {
+                interface_name: "Xtensa",
+            })
+        }
+    }
+
+    fn has_xtensa_interface(&self) -> bool {
+        self.capabilities._jtag_implemented
     }
 
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
@@ -1218,6 +1267,51 @@ impl SwoAccess for CmsisDap {
     }
 }
 
+impl RawJtagIo for CmsisDap {
+    fn state(&self) -> &JtagDriverState {
+        &self.jtag_driver_state
+    }
+    fn state_mut(&mut self) -> &mut JtagDriverState {
+        &mut self.jtag_driver_state
+    }
+    fn shift_bit(&mut self, tms: bool, tdi: bool, capture: bool) -> Result<(), DebugProbeError> {
+        self.jtag_driver_state.state.update(tms);
+        if let Some(sequence) = self.jtag_sequences.last_mut() {
+            if sequence.append(tms, tdi, capture).is_ok() {
+                return Ok(());
+            }
+        }
+        self.jtag_sequences.push(JtagSequence::new(
+            1,
+            capture,
+            tms,
+            [u8::from(tdi), 0, 0, 0, 0, 0, 0, 0],
+        )?);
+        Ok(())
+    }
+    fn read_captured_bits(&mut self) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
+        let mut capture = BitVec::<u8, Lsb0>::new();
+        // We can transfer up to 255 sequences in one dap jtag-sequence command. But in some riscv chip there is some bug, thus I set up to 3 sequence in once jtag-sequence command transfer.
+        for sequence_slice in self.jtag_sequences.clone().chunks(3 as usize) {
+            let mut batch_sequence = Vec::new();
+            batch_sequence.extend_from_slice(sequence_slice);
+            let capture_count = batch_sequence.iter().map(|x| x.capture_count()).sum();
+            match self.send_jtag_sequences(JtagSequenceRequest::new(batch_sequence)?) {
+                Ok(x) => {
+                    let mut batch_capture = BitVec::<u8, Lsb0>::from_vec(x);
+                    batch_capture.truncate(capture_count);
+                    capture.extend_from_bitslice(batch_capture.as_bitslice());
+                }
+                Err(err) => {
+                    self.jtag_sequences.clear();
+                    return Err(err.into());
+                }
+            }
+        }
+        self.jtag_sequences.clear();
+        Ok(capture)
+    }
+}
 impl Drop for CmsisDap {
     fn drop(&mut self) {
         tracing::debug!("Detaching from CMSIS-DAP probe");

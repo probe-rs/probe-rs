@@ -1,0 +1,1 @@
+Add JTAG support for CMSIS-DAP probes.
