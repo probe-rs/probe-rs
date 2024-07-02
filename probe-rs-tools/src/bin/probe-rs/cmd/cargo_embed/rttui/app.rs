@@ -203,12 +203,9 @@ impl App {
             KeyCode::Char('l') if event.modifiers.contains(KeyModifiers::CONTROL) => {
                 self.current_tab_mut().clear();
             }
-            KeyCode::F(n) => {
-                let n = n as usize - 1;
-                if n < self.tabs.len() {
-                    self.current_tab = n;
-                }
-            }
+            KeyCode::F(n) => self.select_tab(n as usize - 1),
+            KeyCode::Tab if event.modifiers.contains(KeyModifiers::CONTROL) => self.next_tab(),
+            KeyCode::Tab if event.modifiers.contains(KeyModifiers::SHIFT) => self.previous_tab(),
             KeyCode::Enter => self.push_rtt(core),
             KeyCode::Char(c) => self.current_tab_mut().push_input(c),
             KeyCode::Backspace => self.current_tab_mut().pop_input(),
@@ -304,6 +301,20 @@ impl App {
                 }
             }
         }
+    }
+
+    fn select_tab(&mut self, n: usize) {
+        if n < self.tabs.len() {
+            self.current_tab = n;
+        }
+    }
+
+    fn next_tab(&mut self) {
+        self.select_tab((self.current_tab + 1) % self.tabs.len());
+    }
+
+    fn previous_tab(&mut self) {
+        self.select_tab((self.current_tab + self.tabs.len() - 1) % self.tabs.len());
     }
 }
 

@@ -1,0 +1,1 @@
+cargo-embed: use `ctrl+tab` and `shift+tab` to move to next/previous tab
