@@ -118,9 +118,9 @@ enum RttControlBlockHeader {
 impl RttControlBlockHeader {
     pub fn try_from_header(is_64_bit: bool, mem: &[u8]) -> Option<Self> {
         if is_64_bit {
-            RttControlBlockHeaderInner::<u64>::read_from(mem).map(Self::Header64)
+            RttControlBlockHeaderInner::<u64>::read_from_prefix(mem).map(Self::Header64)
         } else {
-            RttControlBlockHeaderInner::<u32>::read_from(mem).map(Self::Header32)
+            RttControlBlockHeaderInner::<u32>::read_from_prefix(mem).map(Self::Header32)
         }
     }
 
