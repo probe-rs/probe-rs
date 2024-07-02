@@ -1,7 +1,8 @@
 use super::FlashError;
 use crate::{architecture::riscv, core::Architecture, Target};
 use probe_rs_target::{
-    FlashProperties, PageInfo, RamRegion, RawFlashAlgorithm, SectorInfo, TransferEncoding,
+    FlashProperties, MemoryRegion, PageInfo, RamRegion, RawFlashAlgorithm, SectorInfo,
+    TransferEncoding,
 };
 use std::mem::size_of_val;
 
@@ -327,7 +328,7 @@ impl FlashAlgorithm {
             // We can't place data and stack.
             // TODO: this should probably be done in the target validation.
             // TODO: make the errors a bit more meaningful.
-            return Err(FlashError::InvalidFlashAlgorithmStackSize);
+            return Err(FlashError::InvalidFlashAlgorithmStackSize { size: stack_size });
         };
 
         // We need to make sure the blocks don't overlap and we have enough memory.
@@ -350,7 +351,7 @@ impl FlashAlgorithm {
         tracing::info!("Stack top: {:#010x}", stack_top);
 
         if stack_top > ram_region.range.end {
-            return Err(FlashError::InvalidFlashAlgorithmStackSize);
+            return Err(FlashError::InvalidFlashAlgorithmStackSize { size: stack_size });
         }
 
         // Determine whether we can use double buffering or not by the remaining RAM region size.
@@ -383,6 +384,113 @@ impl FlashAlgorithm {
             flash_properties: raw.flash_properties.clone(),
             transfer_encoding: raw.transfer_encoding.unwrap_or_default(),
             stack_overflow_check: raw.stack_overflow_check(),
+        })
+    }
+
+    /// Constructs a complete flash algorithm, choosing a suitable RAM region to run the algorithm.
+    pub(crate) fn assemble_from_raw_with_core(
+        algo: &RawFlashAlgorithm,
+        core_name: &str,
+        target: &Target,
+    ) -> Result<FlashAlgorithm, FlashError> {
+        // Find a RAM region from which we can run the algo.
+        let mm = &target.memory_map;
+        let ram = mm
+            .iter()
+            .filter_map(MemoryRegion::as_ram_region)
+            .merged()
+            .filter(|ram| is_ram_suitable_for_algo(ram, core_name, algo.load_address))
+            .max_by_key(|region| region.range.end - region.range.start)
+            .ok_or(FlashError::NoRamDefined {
+                name: target.name.clone(),
+            })?;
+        tracing::info!("Chosen RAM to run the algo: {:x?}", ram);
+
+        let data_ram;
+        let data_ram = if let Some(data_load_address) = algo.data_load_address {
+            data_ram = mm
+                .iter()
+                .filter_map(MemoryRegion::as_ram_region)
+                .merged()
+                .find(|ram| is_ram_suitable_for_data(ram, core_name, data_load_address))
+                .ok_or(FlashError::NoRamDefined {
+                    name: target.name.clone(),
+                })?;
+
+            &data_ram
+        } else {
+            // If not specified, use the same region as the flash algo.
+            &ram
+        };
+        tracing::info!("Data will be loaded to: {:x?}", data_ram);
+
+        Self::assemble_from_raw_with_data(algo, &ram, data_ram, target)
+    }
+}
+
+/// Returns whether the given RAM region is usable for downloading the flash algorithm.
+fn is_ram_suitable_for_algo(ram: &RamRegion, core_name: &str, load_address: Option<u64>) -> bool {
+    if !ram.is_executable() {
+        return false;
+    }
+
+    // If the algorithm has a forced load address, we try to use it.
+    // If not, then follow the CMSIS-Pack spec and use first available RAM region.
+    // In theory, it should be the "first listed in the pack", but the process of
+    // reading from the pack files obfuscates the list order, so we will use the first
+    // one in the target spec, which is the qualifying region with the lowest start saddress.
+    // - See https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/pdsc_family_pg.html#element_memory .
+    if let Some(load_addr) = load_address {
+        // The RAM must contain the forced load address _and_
+        // be accessible from the core we're going to run the
+        // algorithm on.
+        ram.range.contains(&load_addr) && ram.accessible_by(core_name)
+    } else {
+        // Any executable RAM is okay as long as it's accessible to the core;
+        // the algorithm is presumably position-independent.
+        ram.accessible_by(core_name)
+    }
+}
+
+/// Returns whether the given RAM region is usable for downloading the flash algorithm data.
+fn is_ram_suitable_for_data(ram: &RamRegion, core_name: &str, load_address: u64) -> bool {
+    // The RAM must contain the forced load address _and_
+    // be accessible from the core we're going to run the
+    // algorithm on.
+    ram.range.contains(&load_address) && ram.accessible_by(core_name)
+}
+
+trait IterExt {
+    /// Merge adjacent regions.
+    fn merged(self) -> impl Iterator<Item = RamRegion>;
+}
+
+impl<'a, I> IterExt for I
+where
+    I: Iterator<Item = &'a RamRegion>,
+{
+    fn merged(self) -> impl Iterator<Item = RamRegion> {
+        let mut iter = self.peekable();
+        std::iter::from_fn(move || {
+            let first = iter.next()?;
+            let mut range = first.range.clone();
+            while let Some(next) = iter.peek() {
+                if range.end != next.range.start
+                    || first.cores != next.cores
+                    || first.access != next.access
+                {
+                    break;
+                }
+                range.end = next.range.end;
+                iter.next();
+            }
+
+            Some(RamRegion {
+                name: first.name.clone(),
+                range,
+                cores: first.cores.clone(),
+                access: first.access,
+            })
         })
     }
 }

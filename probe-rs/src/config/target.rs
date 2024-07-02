@@ -9,7 +9,7 @@ use crate::architecture::{
     xtensa::sequences::{DefaultXtensaSequence, XtensaDebugSequence},
 };
 use crate::flashing::FlashLoader;
-use probe_rs_target::{Architecture, BinaryFormat, ChipFamily, Jtag, MemoryRange};
+use probe_rs_target::{Architecture, BinaryFormat, Chip, ChipFamily, Jtag, MemoryRange};
 use std::sync::Arc;
 
 /// This describes a complete target with a fixed chip model and variant.
@@ -56,36 +56,11 @@ impl std::fmt::Debug for Target {
     }
 }
 
-/// An error occurred while parsing the target description.
-pub type TargetParseError = serde_yaml::Error;
-
 impl Target {
     /// Create a new target for the given details.
     ///
-    /// We suggest never using this function directly.
-    /// Use [`crate::config::registry::get_target_by_name`] instead.
-    /// This will ensure that the used target is valid.
-    ///
-    /// The user has to make sure that all the cores have the same [`Architecture`].
-    /// In any case, this function will always just use the architecture of the first core in any further functionality.
-    /// In practice we have never encountered a [`Chip`] with mixed architectures so this should not be of issue.
-    ///
-    /// Furthermore, the user has to ensure that any [`Core`] in `flash_algorithms[n].cores` is present in `cores` as well.
-    pub(crate) fn new(
-        family: &ChipFamily,
-        chip_name: impl AsRef<str>,
-    ) -> Result<Target, RegistryError> {
-        // Make sure we are given a valid family:
-        family
-            .validate()
-            .map_err(|e| RegistryError::InvalidChipFamilyDefinition(Box::new(family.clone()), e))?;
-
-        let chip = family
-            .variants
-            .iter()
-            .find(|chip| chip.name == chip_name.as_ref())
-            .ok_or_else(|| RegistryError::ChipNotFound(chip_name.as_ref().to_string()))?;
-
+    /// The given chip must be a member of the given family.
+    pub(super) fn new(family: &ChipFamily, chip: &Chip) -> Result<Target, RegistryError> {
         let mut flash_algorithms = Vec::new();
         for algo_name in chip.flash_algorithms.iter() {
             let algo = family.get_algorithm(algo_name).expect(

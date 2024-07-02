@@ -306,8 +306,8 @@ impl Registry {
     }
 
     fn get_target(&self, family: &ChipFamily, chip: &Chip) -> Result<Target, RegistryError> {
-        // The validity of the given `ChipFamily` is checked in the constructor.
-        Target::new(family, &chip.name)
+        // The validity of the given `ChipFamily` is checked in test time and in `add_target_from_yaml`.
+        Target::new(family, chip)
     }
 
     fn add_target_from_yaml<R>(&mut self, yaml_reader: R) -> Result<String, RegistryError>
@@ -431,6 +431,8 @@ fn match_name_prefix(pattern: &str, name: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use crate::flashing::FlashAlgorithm;
+
     use super::*;
     use std::fs::File;
     type TestResult = Result<(), RegistryError>;
@@ -497,9 +499,30 @@ mod tests {
         registry
             .families
             .iter()
-            .map(|family| family.validate())
-            .collect::<Result<Vec<_>, _>>()
-            .unwrap();
+            .flat_map(|family| {
+                // Validate all chip descriptors.
+                family.validate().unwrap();
+
+                // Make additional checks by creating a target for each chip.
+                family
+                    .variants()
+                    .iter()
+                    .map(|chip| registry.get_target(family, chip).unwrap())
+            })
+            .for_each(|target| {
+                // Walk through the flash algorithms and cores and try to create each one.
+                for raw_flash_algo in target.flash_algorithms.iter() {
+                    for core in raw_flash_algo.cores.iter() {
+                        FlashAlgorithm::assemble_from_raw_with_core(raw_flash_algo, core, &target)
+                            .unwrap_or_else(|error| {
+                                panic!(
+                                    "Failed to initialize flash algorithm ({}, {}, {core}): {}",
+                                    &target.name, &raw_flash_algo.name, error
+                                )
+                            });
+                    }
+                }
+            });
     }
 
     #[test]

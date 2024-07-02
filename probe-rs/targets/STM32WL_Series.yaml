@@ -101,7 +101,7 @@ variants:
   - stm32wlxx_cm4
 - name: STM32WL55JCIx
   cores:
-  - name: application
+  - name: main
     type: armv7em
     core_access_options: !Arm
       ap: 0
@@ -117,14 +117,14 @@ variants:
       start: 0x20000000
       end: 0x20010000
     cores:
-    - application
+    - main
     - network
   - !Nvm
     range:
       start: 0x8000000
       end: 0x8040000
     cores:
-    - application
+    - main
     - network
     access:
       boot: true
