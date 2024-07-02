@@ -49,29 +49,6 @@ pub fn get_target_core_id(session: &mut Session, elf_file: impl AsRef<Path>) -> 
     maybe_core_id().unwrap_or(0)
 }
 
-/// Try to find the RTT control block in the ELF file and attach to it.
-///
-/// This function can return `Ok(None)` to indicate that RTT is not available on the target.
-fn try_attach_to_rtt_once(core: &mut Core, rtt_region: &ScanRegion) -> Result<Option<Rtt>> {
-    tracing::debug!("Initializing RTT");
-
-    if let ScanRegion::Ranges(rngs) = &rtt_region {
-        if rngs.is_empty() {
-            // We have no regions to scan so we cannot initialize RTT.
-            tracing::debug!("ELF file has no RTT block symbol, and this target does not support automatic scanning");
-            return Ok(None);
-        }
-    }
-
-    match Rtt::attach_region(core, rtt_region) {
-        Ok(rtt) => {
-            tracing::info!("RTT initialized.");
-            Ok(Some(rtt))
-        }
-        Err(err) => Err(anyhow!("Error attempting to attach to RTT: {}", err)),
-    }
-}
-
 /// Used by serde to provide defaults for `RttChannelConfig::show_timestamps`
 fn default_show_timestamps() -> bool {
     true
@@ -653,7 +630,7 @@ impl fmt::Debug for RttBuffer {
 }
 
 fn try_attach_to_rtt_inner(
-    mut try_attach_once: impl FnMut() -> Result<Option<Rtt>>,
+    mut try_attach_once: impl FnMut() -> Result<Rtt, Error>,
     timeout: Duration,
 ) -> Result<Option<Rtt>> {
     let t = Instant::now();
@@ -662,12 +639,14 @@ fn try_attach_to_rtt_inner(
         tracing::debug!("Initializing RTT (attempt {attempt})...");
 
         match try_attach_once() {
+            Err(Error::NoControlBlockLocation) => return Ok(None),
             Err(_) if t.elapsed() < timeout => {
                 attempt += 1;
                 tracing::debug!("Failed to initialize RTT. Retrying until timeout.");
                 thread::sleep(Duration::from_millis(50));
             }
-            result => return result,
+            Ok(rtt) => return Ok(Some(rtt)),
+            Err(err) => return Err(anyhow!("Error attempting to attach to RTT: {err}")),
         }
     }
 }
@@ -682,7 +661,7 @@ pub fn try_attach_to_rtt(
     timeout: Duration,
     rtt_region: &ScanRegion,
 ) -> Result<Option<Rtt>> {
-    try_attach_to_rtt_inner(|| try_attach_to_rtt_once(core, rtt_region), timeout)
+    try_attach_to_rtt_inner(|| Rtt::attach_region(core, rtt_region), timeout)
 }
 
 /// Try to attach to RTT, with the given timeout.
@@ -696,7 +675,7 @@ pub fn try_attach_to_rtt_shared(
         || {
             let mut session_handle = session.lock();
             let mut core = session_handle.core(core_id)?;
-            try_attach_to_rtt_once(&mut core, rtt_region)
+            Rtt::attach_region(&mut core, rtt_region)
         },
         timeout,
     )
