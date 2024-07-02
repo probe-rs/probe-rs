@@ -105,3 +105,6 @@ pretty_assertions = "1.4.0"
 # Set the proper name for the homebrew formula
 [package.metadata.dist]
 formula = "probe-rs"
+
+[lints]
+workspace = true

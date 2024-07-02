@@ -77,6 +77,11 @@ aarch64-unknown-linux-musl = "buildjet-2vcpu-ubuntu-2204-arm"
 libudev-dev = '*'
 libudev1 = { stage = ["run"] }
 
+[workspace.lints.clippy]
+unnecessary_self_imports = "deny"
+enum_glob_use = "deny"
+macro_use_imports = "deny"
+
 # The profile that 'cargo dist' will build with
 [profile.dist]
 inherits = "release"

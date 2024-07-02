@@ -103,38 +103,37 @@ pub enum Status {
 
 impl From<u8> for Status {
     fn from(value: u8) -> Status {
-        use Status::*;
         match value {
-            0x80 => JtagOk,
-            0x01 => JtagUnknownError,
-            0x02 => JtagSpiError,
-            0x03 => JtagDmaError,
-            0x04 => JtagUnknownJtagChain,
-            0x05 => JtagNoDeviceConnected,
-            0x06 => JtagInternalError,
-            0x07 => JtagCmdWait,
-            0x08 => JtagCmdError,
-            0x09 => JtagGetIdcodeError,
-            0x0A => JtagAlignmentError,
-            0x0B => JtagDbgPowerError,
-            0x0C => JtagWriteError,
-            0x0D => JtagWriteVerifError,
-            0x0E => JtagAlreadyOpenedInOtherMode,
-            0x10 => SwdApWait,
-            0x11 => SwdApFault,
-            0x12 => SwdApError,
-            0x13 => SwdApParityError,
-            0x14 => SwdDpWait,
-            0x15 => SwdDpFault,
-            0x16 => SwdDpError,
-            0x17 => SwdDpParityError,
-            0x18 => SwdApWdataError,
-            0x19 => SwdApStickyError,
-            0x1A => SwdApStickyorunError,
-            0x20 => SwoNotAvailable,
-            0x41 => JtagFreqNotSupported,
-            0x42 => JtagUnknownCmd,
-            v => Other(v),
+            0x80 => Self::JtagOk,
+            0x01 => Self::JtagUnknownError,
+            0x02 => Self::JtagSpiError,
+            0x03 => Self::JtagDmaError,
+            0x04 => Self::JtagUnknownJtagChain,
+            0x05 => Self::JtagNoDeviceConnected,
+            0x06 => Self::JtagInternalError,
+            0x07 => Self::JtagCmdWait,
+            0x08 => Self::JtagCmdError,
+            0x09 => Self::JtagGetIdcodeError,
+            0x0A => Self::JtagAlignmentError,
+            0x0B => Self::JtagDbgPowerError,
+            0x0C => Self::JtagWriteError,
+            0x0D => Self::JtagWriteVerifError,
+            0x0E => Self::JtagAlreadyOpenedInOtherMode,
+            0x10 => Self::SwdApWait,
+            0x11 => Self::SwdApFault,
+            0x12 => Self::SwdApError,
+            0x13 => Self::SwdApParityError,
+            0x14 => Self::SwdDpWait,
+            0x15 => Self::SwdDpFault,
+            0x16 => Self::SwdDpError,
+            0x17 => Self::SwdDpParityError,
+            0x18 => Self::SwdApWdataError,
+            0x19 => Self::SwdApStickyError,
+            0x1A => Self::SwdApStickyorunError,
+            0x20 => Self::SwoNotAvailable,
+            0x41 => Self::JtagFreqNotSupported,
+            0x42 => Self::JtagUnknownCmd,
+            v => Self::Other(v),
         }
     }
 }
@@ -162,21 +161,19 @@ impl SwdFrequencyToDelayCount {
     /// If a direct match is not found, return the setting for a lower frequency
     /// if possible. If this is not possible, returns `None`.
     pub(crate) fn find_setting(frequency: u32) -> Option<SwdFrequencyToDelayCount> {
-        use SwdFrequencyToDelayCount::*;
-
         Some(match frequency {
-            _ if frequency >= 4_600 => Hz4600000,
-            _ if frequency >= 1_800 => Hz1800000,
-            _ if frequency >= 1_200 => Hz1200000,
-            _ if frequency >= 950 => Hz950000,
-            _ if frequency >= 650 => Hz650000,
-            _ if frequency >= 480 => Hz480000,
-            _ if frequency >= 400 => Hz400000,
-            _ if frequency >= 360 => Hz360000,
-            _ if frequency >= 240 => Hz240000,
-            _ if frequency >= 150 => Hz150000,
-            _ if frequency >= 125 => Hz125000,
-            _ if frequency >= 100 => Hz100000,
+            _ if frequency >= 4_600 => Self::Hz4600000,
+            _ if frequency >= 1_800 => Self::Hz1800000,
+            _ if frequency >= 1_200 => Self::Hz1200000,
+            _ if frequency >= 950 => Self::Hz950000,
+            _ if frequency >= 650 => Self::Hz650000,
+            _ if frequency >= 480 => Self::Hz480000,
+            _ if frequency >= 400 => Self::Hz400000,
+            _ if frequency >= 360 => Self::Hz360000,
+            _ if frequency >= 240 => Self::Hz240000,
+            _ if frequency >= 150 => Self::Hz150000,
+            _ if frequency >= 125 => Self::Hz125000,
+            _ if frequency >= 100 => Self::Hz100000,
             _ => {
                 return None;
             }
@@ -185,21 +182,19 @@ impl SwdFrequencyToDelayCount {
 
     /// Get the SWD frequency in kHz
     pub(crate) fn to_khz(self) -> u32 {
-        use SwdFrequencyToDelayCount::*;
-
         match self {
-            Hz4600000 => 4600,
-            Hz1800000 => 1800,
-            Hz1200000 => 1200,
-            Hz950000 => 950,
-            Hz650000 => 650,
-            Hz480000 => 480,
-            Hz400000 => 400,
-            Hz360000 => 360,
-            Hz240000 => 240,
-            Hz150000 => 150,
-            Hz125000 => 125,
-            Hz100000 => 100,
+            Self::Hz4600000 => 4600,
+            Self::Hz1800000 => 1800,
+            Self::Hz1200000 => 1200,
+            Self::Hz950000 => 950,
+            Self::Hz650000 => 650,
+            Self::Hz480000 => 480,
+            Self::Hz400000 => 400,
+            Self::Hz360000 => 360,
+            Self::Hz240000 => 240,
+            Self::Hz150000 => 150,
+            Self::Hz125000 => 125,
+            Self::Hz100000 => 100,
         }
     }
 }
@@ -223,36 +218,30 @@ impl JTagFrequencyToDivider {
     /// If a direct match is not found, return the setting for a higher frequency
     /// if possible. If this is not possible, returns `None`.
     pub(crate) fn find_setting(frequency: u32) -> Option<Self> {
-        use JTagFrequencyToDivider::*;
-
         Some(match frequency {
-            _ if frequency >= 18_000 => Hz18000000,
-            _ if frequency >= 9_000 => Hz9000000,
-            _ if frequency >= 4_500 => Hz4500000,
-            _ if frequency >= 2_225 => Hz2250000,
-            _ if frequency >= 1_120 => Hz1120000,
-            _ if frequency >= 560 => Hz560000,
-            _ if frequency >= 280 => Hz280000,
-            _ if frequency >= 140 => Hz140000,
-            _ => {
-                return None;
-            }
+            _ if frequency >= 18_000 => Self::Hz18000000,
+            _ if frequency >= 9_000 => Self::Hz9000000,
+            _ if frequency >= 4_500 => Self::Hz4500000,
+            _ if frequency >= 2_225 => Self::Hz2250000,
+            _ if frequency >= 1_120 => Self::Hz1120000,
+            _ if frequency >= 560 => Self::Hz560000,
+            _ if frequency >= 280 => Self::Hz280000,
+            _ if frequency >= 140 => Self::Hz140000,
+            _ => return None,
         })
     }
 
     /// Return the frequency in kHz
     pub(crate) fn to_khz(self) -> u32 {
-        use JTagFrequencyToDivider::*;
-
         match self {
-            Hz18000000 => 18_000,
-            Hz9000000 => 9_000,
-            Hz4500000 => 4_500,
-            Hz2250000 => 2_250,
-            Hz1120000 => 1_120,
-            Hz560000 => 560,
-            Hz280000 => 280,
-            Hz140000 => 140,
+            Self::Hz18000000 => 18_000,
+            Self::Hz9000000 => 9_000,
+            Self::Hz4500000 => 4_500,
+            Self::Hz2250000 => 2_250,
+            Self::Hz1120000 => 1_120,
+            Self::Hz560000 => 560,
+            Self::Hz280000 => 280,
+            Self::Hz140000 => 140,
         }
     }
 }

@@ -1,5 +1,3 @@
-#![warn(missing_docs)]
-
 //! Target description schema
 //!
 //! For debugging and flashing different chips, called *target* in probe-rs, some
@@ -10,6 +8,7 @@
 //!
 //! This crate contains the schema structs for the YAML target description files.
 //!
+#![warn(missing_docs)]
 
 mod chip;
 pub mod chip_detection;
