@@ -290,9 +290,7 @@ fn iterate(
                 1 => gimli::Value::U8(buff[0]),
                 2 => gimli::Value::U16(u16::from_be_bytes([buff[0], buff[1]])),
                 4 => gimli::Value::U32(u32::from_be_bytes([buff[0], buff[1], buff[2], buff[3]])),
-                x => {
-                    unimplemented!("Requested memory with size {x}, which is not supported yet.")
-                }
+                x => unimplemented!("Requested memory with size {x}, which is not supported yet."),
             };
 
             evaluation.resume_with_memory(value)
