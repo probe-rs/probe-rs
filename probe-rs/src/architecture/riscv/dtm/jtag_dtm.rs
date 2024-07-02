@@ -2,13 +2,15 @@
 //!
 //! The DTM is responsible for access to the debug module.
 //! Currently, only JTAG is supported.
-use crate::architecture::riscv::dtm::dtm_access::DtmAccess;
+
 use bitfield::bitfield;
 use std::time::{Duration, Instant};
 
 use crate::architecture::riscv::communication_interface::{
     RiscvCommunicationInterface, RiscvDebugInterfaceState, RiscvError, RiscvInterfaceBuilder,
 };
+use crate::architecture::riscv::dtm::dtm_access::DtmAccess;
+use crate::error::Error;
 use crate::probe::DebugProbeError;
 use crate::probe::{
     CommandResult, DeferredResultIndex, DeferredResultSet, JTAGAccess, JtagCommandQueue,
@@ -114,7 +116,7 @@ impl<'probe> JtagDtm<'probe> {
             transform: |_, result| {
                 Self::transform_dmi_result(result)
                     .map(CommandResult::U32)
-                    .map_err(|e| crate::Error::Riscv(e.map_as_err().unwrap_err()))
+                    .map_err(|e| Error::Riscv(e.map_as_err().unwrap_err()))
             },
             len: bit_size,
         }))
@@ -229,21 +231,17 @@ impl DtmAccess for JtagDtm<'_> {
                     return Ok(());
                 }
                 Err(e) => match e.error {
-                    crate::Error::Riscv(ae) => {
-                        match ae {
-                            RiscvError::DtmOperationInProcess => {
-                                self.clear_error_state()?;
+                    Error::Riscv(RiscvError::DtmOperationInProcess) => {
+                        self.clear_error_state()?;
 
-                                // queue up the remaining commands when we retry
-                                cmds.consume(e.results.len());
-                                self.state.jtag_results.merge_from(e.results);
+                        // queue up the remaining commands when we retry
+                        cmds.consume(e.results.len());
+                        self.state.jtag_results.merge_from(e.results);
 
-                                self.probe.set_idle_cycles(self.probe.idle_cycles() + 1);
-                            }
-                            _ => return Err(ae),
-                        }
+                        self.probe.set_idle_cycles(self.probe.idle_cycles() + 1);
                     }
-                    crate::Error::Probe(err) => return Err(err.into()),
+                    Error::Riscv(error) => return Err(error),
+                    Error::Probe(error) => return Err(error.into()),
                     _other => unreachable!(),
                 },
             }
