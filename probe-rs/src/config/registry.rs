@@ -306,8 +306,8 @@ impl Registry {
     }
 
     fn get_target(&self, family: &ChipFamily, chip: &Chip) -> Result<Target, RegistryError> {
-        // The validity of the given `ChipFamily` is checked in the constructor.
-        Target::new(family, &chip.name)
+        // The validity of the given `ChipFamily` is checked in test time and in `add_target_from_yaml`.
+        Target::new(family, chip)
     }
 
     fn add_target_from_yaml<R>(&mut self, yaml_reader: R) -> Result<String, RegistryError>
