@@ -68,8 +68,7 @@ espflash = { version = "3", default-features = false }
 dunce = "1"
 parse_int = "0.6"
 parking_lot = "0.12.2"
-zerocopy = "0.7.32"
-zerocopy-derive = "0.7.32"
+zerocopy = { version = "0.7.32", features = ["derive"] }
 
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9"

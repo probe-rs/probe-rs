@@ -50,8 +50,7 @@ pub use channel::*;
 use crate::{config::MemoryRegion, Core, MemoryInterface};
 use std::borrow::Cow;
 use std::ops::Range;
-use zerocopy::FromBytes;
-use zerocopy_derive::{FromBytes, FromZeroes};
+use zerocopy::{FromBytes, FromZeroes};
 
 /// The RTT interface.
 ///
