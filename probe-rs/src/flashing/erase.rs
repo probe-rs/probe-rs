@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use probe_rs_target::{MemoryRange, MemoryRegion, NvmRegion};
 
+use crate::flashing::FlashSector;
 use crate::flashing::{flasher::Flasher, FlashError, FlashLoader};
 use crate::Session;
 
@@ -78,13 +79,17 @@ pub fn erase_all(session: &mut Session, progress: FlashProgress) -> Result<(), F
             flasher.run_erase(|active| {
                 for info in sectors {
                     tracing::debug!(
-                        "    sector: {:08x}-{:08x} ({} bytes)",
+                        "    sector: {:#010x}-{:#010x} ({} bytes)",
                         info.base_address,
                         info.base_address + info.size,
                         info.size
                     );
+                    let sector = FlashSector {
+                        address: info.base_address,
+                        size: info.size,
+                    };
 
-                    active.erase_sector(info.base_address)?;
+                    active.erase_sector(&sector)?;
                 }
                 Ok(())
             })?;
@@ -165,13 +170,18 @@ pub fn erase_sectors(
         flasher.run_erase(|active| {
             for info in sectors {
                 tracing::debug!(
-                    "    sector: {:08x}-{:08x} ({} bytes)",
+                    "    sector: {:#010x}-{:#010x} ({} bytes)",
                     info.base_address,
                     info.base_address + info.size,
                     info.size
                 );
 
-                active.erase_sector(info.base_address)?;
+                let sector = FlashSector {
+                    address: info.base_address,
+                    size: info.size,
+                };
+
+                active.erase_sector(&sector)?;
             }
             Ok(())
         })?;

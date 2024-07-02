@@ -1,3 +1,5 @@
+//! This build script compiles the target definitions into a binary format.
+
 use std::env;
 use std::fs::{read_dir, read_to_string};
 use std::io;

@@ -64,11 +64,8 @@
 //! [Target], [Session]  and [Core] structs.
 //!
 //! [Probe]: probe::Probe
+#![recursion_limit = "256"] // required by bitfield!
 #![warn(missing_docs)]
-#![recursion_limit = "256"]
-
-#[macro_use]
-extern crate serde;
 
 pub mod architecture;
 pub mod config;

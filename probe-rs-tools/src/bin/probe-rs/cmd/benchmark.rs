@@ -112,14 +112,11 @@ impl Cmd {
                     self.word_size,
                     self.iterations,
                 );
-                match res {
-                    core::result::Result::Ok(_) => {}
-                    core::result::Result::Err(e) => {
-                        println!(
-                            "Test failed for speed {} size {} word_size {}bit - {}",
-                            speed, size, self.word_size, e
-                        )
-                    }
+                if let Err(e) = res {
+                    println!(
+                        "Test failed for speed {} size {} word_size {}bit - {}",
+                        speed, size, self.word_size, e
+                    )
                 }
             }
         }

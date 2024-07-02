@@ -58,7 +58,7 @@ pub enum ProfileMethod {
     },
 }
 
-impl core::fmt::Display for ProfileMethod {
+impl std::fmt::Display for ProfileMethod {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         let s = format!("{:?}", self);
         write!(f, "{}", s.to_lowercase())
@@ -117,7 +117,7 @@ impl ProfileCmd {
                 let pc_reg = core.program_counter();
 
                 loop {
-                    core.halt(std::time::Duration::from_millis(10))?;
+                    core.halt(Duration::from_millis(10))?;
                     let pc: u32 = core.read_core_reg(pc_reg)?;
                     *samples.entry(pc).or_insert(1) += 1;
                     reads += 1;

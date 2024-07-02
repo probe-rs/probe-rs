@@ -9,6 +9,7 @@ use std::ops::Range;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::thread;
 use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, Context, Result};
@@ -303,7 +304,7 @@ impl RunLoop {
     fn do_run_until<F, R>(
         &self,
         core: &mut Core,
-        rtta: &mut Option<rtt::RttActiveTarget>,
+        rtta: &mut Option<RttActiveTarget>,
         output_stream: OutputStream,
         timeout: Option<Duration>,
         start: Instant,
@@ -374,9 +375,9 @@ impl RunLoop {
             // If the polling frequency is too high, the USB connection to the probe
             // can become unstable. Hence we only pull as little as necessary.
             if had_rtt_data {
-                std::thread::sleep(Duration::from_millis(1));
+                thread::sleep(Duration::from_millis(1));
             } else {
-                std::thread::sleep(Duration::from_millis(100));
+                thread::sleep(Duration::from_millis(100));
             }
         };
 
@@ -466,7 +467,7 @@ fn print_stacktrace<S: Write + ?Sized>(
 
 /// Poll RTT and print the received buffer.
 fn poll_rtt<S: Write + ?Sized>(
-    rtta: &mut Option<rtt::RttActiveTarget>,
+    rtta: &mut Option<RttActiveTarget>,
     core: &mut Core<'_>,
     out_stream: &mut S,
 ) -> Result<bool, anyhow::Error> {

@@ -4,6 +4,7 @@ use super::{
     ColumnType, DebugError, DebugInfo, GimliReader,
 };
 use gimli::LineSequence;
+use serde::Serialize;
 use std::{
     fmt::{Debug, Formatter},
     num::NonZeroU64,

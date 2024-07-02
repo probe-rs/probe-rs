@@ -165,7 +165,7 @@ impl Value for String {
                 } else {
                     let mut buff = vec![0u8; string_length];
                     memory.read(string_location, &mut buff)?;
-                    core::str::from_utf8(&buff)?.clone_into(&mut str_value);
+                    std::str::from_utf8(&buff)?.clone_into(&mut str_value);
                 }
             }
         } else {

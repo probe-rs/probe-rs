@@ -1,3 +1,5 @@
+//! This example demonstrates how to do raw DP register access on multidrop systems.
+
 use anyhow::Result;
 use probe_rs::{
     architecture::arm::DpAddress,

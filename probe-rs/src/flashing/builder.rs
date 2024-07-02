@@ -55,8 +55,8 @@ impl FlashPage {
 /// The description of a sector in flash.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct FlashSector {
-    address: u64,
-    size: u64,
+    pub(crate) address: u64,
+    pub(crate) size: u64,
 }
 
 impl FlashSector {
@@ -101,8 +101,8 @@ impl FlashFill {
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct FlashLayout {
     sectors: Vec<FlashSector>,
-    pages: Vec<FlashPage>,
-    fills: Vec<FlashFill>,
+    pub(crate) pages: Vec<FlashPage>,
+    pub(crate) fills: Vec<FlashFill>,
     data_blocks: Vec<FlashDataBlockSpan>,
 }
 
@@ -125,11 +125,6 @@ impl FlashLayout {
         &self.pages
     }
 
-    /// Mutable list of pages which are programmed during flashing.
-    pub(super) fn pages_mut(&mut self) -> &mut [FlashPage] {
-        &mut self.pages
-    }
-
     /// Get the fills of the flash layout.
     ///
     /// This is data which is not written during flashing, but has to be restored to its original value afterwards.
@@ -137,7 +132,7 @@ impl FlashLayout {
         &self.fills
     }
 
-    /// Get the datablocks of the flash layout.
+    /// Get the data blocks of the flash layout.
     ///
     /// This is the data which is written during flashing.
     pub fn data_blocks(&self) -> &[FlashDataBlockSpan] {

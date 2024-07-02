@@ -1,3 +1,5 @@
+//! This example demonstrates how to write data to RAM and read it back.
+
 use probe_rs::probe::{list::Lister, Probe};
 use probe_rs::{config::TargetSelector, probe::WireProtocol, MemoryInterface, Permissions};
 
