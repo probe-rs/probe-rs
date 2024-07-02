@@ -270,8 +270,8 @@ impl RunLoop {
         let mut rtta = attach_to_rtt(
             core,
             Duration::from_secs(1),
-            &ScanRegion::Ranges(self.rtt_scan_regions.clone()),
-            Path::new(&self.path),
+            ScanRegion::Ranges(self.rtt_scan_regions.clone()),
+            &self.path,
             &rtt_config,
             self.timestamp_offset,
         )
@@ -508,7 +508,7 @@ fn poll_rtt<S: Write + ?Sized>(
 fn attach_to_rtt(
     core: &mut Core<'_>,
     timeout: Duration,
-    rtt_region: &ScanRegion,
+    rtt_region: ScanRegion,
     elf_file: &Path,
     rtt_config: &RttConfig,
     timestamp_offset: UtcOffset,
@@ -520,7 +520,7 @@ fn attach_to_rtt(
     let scan_region = if let Some(address) = RttActiveTarget::get_rtt_symbol_from_bytes(&elf) {
         ScanRegion::Exact(address)
     } else {
-        rtt_region.clone()
+        rtt_region
     };
 
     let rtt = match try_attach_to_rtt(core, timeout, &scan_region) {
