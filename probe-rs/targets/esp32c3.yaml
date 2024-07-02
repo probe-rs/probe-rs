@@ -4,12 +4,12 @@ manufacturer:
   cc: 0xc
 chip_detection:
 - !Espressif
-  idcode: 23589
+  idcode: 0x5c25
   variants:
-    456216687: esp32c3
-    1216438383: esp32c3
-    1763790959: esp32c3
-    1130455151: esp32c3
+    0x1b31506f: esp32c3
+    0x4881606f: esp32c3
+    0x6921506f: esp32c3
+    0x4361606f: esp32c3
 variants:
 - name: esp32c3
   cores:
