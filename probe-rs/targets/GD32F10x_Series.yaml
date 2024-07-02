@@ -18,8 +18,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -28,8 +27,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_md
@@ -49,8 +47,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -59,8 +56,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_md
@@ -80,8 +76,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -90,8 +85,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_md
@@ -111,8 +105,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -121,8 +114,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_md
@@ -142,8 +134,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -152,8 +143,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_md
@@ -173,8 +163,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -183,8 +172,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_md
@@ -204,8 +192,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -214,8 +201,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_md
@@ -235,8 +221,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -245,8 +230,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_md
@@ -266,8 +250,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -276,8 +259,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_hd
@@ -297,8 +279,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -307,8 +288,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_hd
@@ -328,8 +308,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -338,8 +317,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_hd
@@ -359,8 +337,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -369,8 +346,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -390,8 +366,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -400,8 +375,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -421,8 +395,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -431,8 +404,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -452,8 +424,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -462,8 +433,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -483,8 +453,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -493,8 +462,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_md
@@ -514,8 +482,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -524,8 +491,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_md
@@ -545,8 +511,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -555,8 +520,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_md
@@ -576,8 +540,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -586,8 +549,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_md
@@ -607,8 +569,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -617,8 +578,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_md
@@ -638,8 +598,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -648,8 +607,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_md
@@ -669,8 +627,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -679,8 +636,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_hd
@@ -700,8 +656,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -710,8 +665,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_hd
@@ -731,8 +685,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -741,8 +694,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_hd
@@ -762,8 +714,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -772,8 +723,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -793,8 +743,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -803,8 +752,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -824,8 +772,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -834,8 +781,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -855,8 +801,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -865,8 +810,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -886,8 +830,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -896,8 +839,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_hd
@@ -917,8 +859,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -927,8 +868,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_hd
@@ -948,8 +888,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -958,8 +897,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_hd
@@ -979,8 +917,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -989,8 +926,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -1010,8 +946,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -1020,8 +955,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -1041,8 +975,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -1051,8 +984,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -1072,8 +1004,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -1082,8 +1013,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -1103,8 +1033,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -1113,8 +1042,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_md
@@ -1134,8 +1062,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -1144,8 +1071,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_md
@@ -1165,8 +1091,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -1175,8 +1100,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_md
@@ -1196,8 +1120,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -1206,8 +1129,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_md
@@ -1227,8 +1149,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -1237,8 +1158,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_md
@@ -1258,8 +1178,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -1268,8 +1187,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_md
@@ -1289,8 +1207,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -1299,8 +1216,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_md
@@ -1320,8 +1236,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -1330,8 +1245,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_md
@@ -1351,8 +1265,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -1361,8 +1274,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_hd
@@ -1382,8 +1294,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -1392,8 +1303,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_hd
@@ -1413,8 +1323,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -1423,8 +1332,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_hd
@@ -1444,8 +1352,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -1454,8 +1361,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -1475,8 +1381,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -1485,8 +1390,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -1506,8 +1410,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -1516,8 +1419,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -1537,8 +1439,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -1547,8 +1448,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -1568,8 +1468,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -1578,8 +1477,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_md
@@ -1599,8 +1497,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -1609,8 +1506,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_md
@@ -1630,8 +1526,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -1640,8 +1535,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_md
@@ -1661,8 +1555,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -1671,8 +1564,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_md
@@ -1692,8 +1584,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -1702,8 +1593,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_md
@@ -1723,8 +1613,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -1733,8 +1622,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_md
@@ -1754,8 +1642,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -1764,8 +1651,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_hd
@@ -1785,8 +1671,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -1795,8 +1680,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_hd
@@ -1816,8 +1700,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -1826,8 +1709,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_hd
@@ -1847,8 +1729,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -1857,8 +1738,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -1878,8 +1758,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -1888,8 +1767,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -1909,8 +1787,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -1919,8 +1796,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -1940,8 +1816,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -1950,8 +1825,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -1971,8 +1845,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -1981,8 +1854,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_hd
@@ -2002,8 +1874,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -2012,8 +1883,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_hd
@@ -2033,8 +1903,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -2043,8 +1912,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_hd
@@ -2064,8 +1932,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -2074,8 +1941,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -2095,8 +1961,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -2105,8 +1970,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -2126,8 +1990,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -2136,8 +1999,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -2157,8 +2019,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -2167,8 +2028,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -2188,8 +2048,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -2198,8 +2057,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -2219,8 +2077,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -2229,8 +2086,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -2250,8 +2106,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -2260,8 +2115,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -2281,8 +2135,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -2291,8 +2144,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -2312,8 +2164,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -2322,8 +2173,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -2343,8 +2193,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -2353,8 +2202,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -2374,8 +2222,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -2384,8 +2231,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -2405,8 +2251,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -2415,8 +2260,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -2436,8 +2280,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -2446,8 +2289,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -2467,8 +2309,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -2477,8 +2318,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -2498,8 +2338,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -2508,8 +2347,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -2529,8 +2367,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -2539,8 +2376,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -2560,8 +2396,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -2570,8 +2405,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -2591,8 +2425,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -2601,8 +2434,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -2622,8 +2454,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -2632,8 +2463,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -2653,8 +2483,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -2663,8 +2492,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -2684,8 +2512,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -2694,8 +2521,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -2715,8 +2541,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -2725,8 +2550,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -2746,8 +2570,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -2756,8 +2579,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -2777,8 +2599,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -2787,8 +2608,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -2808,8 +2628,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -2818,8 +2637,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -2839,8 +2657,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -2849,8 +2666,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -2870,8 +2686,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -2880,8 +2695,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -2901,8 +2715,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -2911,8 +2724,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -2932,8 +2744,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -2942,8 +2753,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -2963,8 +2773,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -2973,8 +2782,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -2994,8 +2802,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -3004,8 +2811,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -3025,8 +2831,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -3035,8 +2840,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -3056,8 +2860,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -3066,8 +2869,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -3087,8 +2889,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -3097,8 +2898,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -3118,8 +2918,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -3128,8 +2927,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -3149,8 +2947,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -3159,8 +2956,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -3180,8 +2976,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -3190,8 +2985,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -3211,8 +3005,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -3221,8 +3014,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -3242,8 +3034,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -3252,8 +3043,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
@@ -3273,8 +3063,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      write: true
+      execute: false
   - !Nvm
     name: IROM1
     range:
@@ -3283,8 +3072,7 @@ variants:
     cores:
     - main
     access:
-      read: true
-      execute: true
+      write: false
       boot: true
   flash_algorithms:
   - gd32f10x_xd
