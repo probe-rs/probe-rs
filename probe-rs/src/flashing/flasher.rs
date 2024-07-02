@@ -18,28 +18,28 @@ use std::{
 
 pub(super) trait Operation {
     const OPERATION: u32;
-    const OPERATION_NAME: &'static str;
+    const NAME: &'static str;
 }
 
 pub(super) struct Erase;
 
 impl Operation for Erase {
     const OPERATION: u32 = 1;
-    const OPERATION_NAME: &'static str = "Erase";
+    const NAME: &'static str = "Erase";
 }
 
 pub(super) struct Program;
 
 impl Operation for Program {
     const OPERATION: u32 = 2;
-    const OPERATION_NAME: &'static str = "Program";
+    const NAME: &'static str = "Program";
 }
 
 pub(super) struct Verify;
 
 impl Operation for Verify {
     const OPERATION: u32 = 3;
-    const OPERATION_NAME: &'static str = "Verify";
+    const NAME: &'static str = "Verify";
 }
 
 /// A structure to control the flash of an attached microchip.
@@ -164,7 +164,7 @@ impl<'session> Flasher<'session> {
             .core(self.core_index)
             .map_err(FlashError::Core)?;
 
-        tracing::debug!("Preparing Flasher for operation {}", O::OPERATION_NAME);
+        tracing::debug!("Preparing Flasher for operation {}", O::NAME);
         let mut flasher = ActiveFlasher::<O> {
             core,
             rtt: None,
@@ -549,9 +549,7 @@ impl<O: Operation> ActiveFlasher<'_, O> {
             .map_err(FlashError::Core)?;
 
         if read_back != STACK_FILL_BYTE {
-            return Err(FlashError::StackOverflowDetected {
-                operation: O::operation_name(),
-            });
+            return Err(FlashError::StackOverflowDetected { operation: O::NAME });
         }
 
         Ok(())
