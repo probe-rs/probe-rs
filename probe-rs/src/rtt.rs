@@ -343,11 +343,6 @@ impl Rtt {
                 tracing::debug!("Scanning regions: {:#010x?}", region);
                 regions
             }
-
-            ScanRegion::Range(region) => {
-                tracing::debug!("Scanning region: {:#010x?}", region);
-                vec![region]
-            }
         };
 
         let is_64_bit = core.is_64_bit();
@@ -423,14 +418,6 @@ pub enum ScanRegion {
     /// if your device has a lot of RAM, scanning all of it is slow.
     #[default]
     Ram,
-
-    /// Limit scanning to these memory addresses in target memory. It is up to the user to ensure
-    /// that reading from this range will not read from undefined memory.
-    ///
-    /// This variant is equivalent to using [`Self::Ranges`] with a single range as long as the
-    /// memory region fits into a 32-bit address space. This variant is for backward compatibility
-    /// for code written before the addition of [`Self::Ranges`].
-    Range(Range<u64>),
 
     /// Limit scanning to the memory addresses covered by all of the given ranges. It is up to the
     /// user to ensure that reading from this range will not read from undefined memory.

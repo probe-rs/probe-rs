@@ -50,7 +50,7 @@ fn parse_scan_region(
 
     match *parts.as_slice() {
         [addr] => Ok(ScanRegion::Exact(addr)),
-        [start, end] => Ok(ScanRegion::Range(start..end)),
+        [start, end] => Ok(ScanRegion::Ranges(vec![start..end])),
         _ => Err("Invalid range: multiple '..'s".into()),
     }
 }
