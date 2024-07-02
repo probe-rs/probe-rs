@@ -432,6 +432,15 @@ pub enum ScanRegion {
     Exact(u64),
 }
 
+impl ScanRegion {
+    /// Creates a new `ScanRegion` that scans the given memory range.
+    ///
+    /// The memory range should be in a single memory block of the target.
+    pub fn range(range: Range<u64>) -> Self {
+        Self::Ranges(vec![range])
+    }
+}
+
 /// Error type for RTT operations.
 #[derive(thiserror::Error, Debug, docsplay::Display)]
 pub enum Error {
