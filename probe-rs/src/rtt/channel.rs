@@ -1,7 +1,7 @@
 use crate::rtt::Error;
 use crate::{Core, MemoryInterface};
 use std::cmp::min;
-use zerocopy_derive::{FromBytes, FromZeroes};
+use zerocopy::{FromBytes, FromZeroes};
 
 /// Trait for channel information shared between up and down channels.
 pub trait RttChannel {
