@@ -320,7 +320,6 @@ impl Rtt {
     ///
     /// `core` can be e.g. an owned `Core` or a shared `Rc<Core>`.
     pub fn attach_region(core: &mut Core, region: &ScanRegion) -> Result<Rtt, Error> {
-        let is_64_bit = core.is_64_bit();
         let ranges = match region.clone() {
             ScanRegion::Exact(addr) => {
                 tracing::debug!("Scanning at exact address: {:#010x}", addr);
@@ -335,6 +334,11 @@ impl Rtt {
                     .map(|r| r.range.clone())
                     .collect()
             }
+            ScanRegion::Ranges(regions) if regions.is_empty() => {
+                // We have no regions to scan so we cannot initialize RTT.
+                tracing::debug!("ELF file has no RTT block symbol, and this target does not support automatic scanning");
+                return Err(Error::NoControlBlockLocation);
+            }
             ScanRegion::Ranges(regions) => {
                 tracing::debug!("Scanning regions: {:#010x?}", region);
                 regions
@@ -346,6 +350,7 @@ impl Rtt {
             }
         };
 
+        let is_64_bit = core.is_64_bit();
         let minimal_header_size = RttControlBlockHeader::minimal_header_size(is_64_bit) as u64;
         let mut instances = ranges
             .into_iter()
@@ -440,6 +445,10 @@ pub enum ScanRegion {
 /// Error type for RTT operations.
 #[derive(thiserror::Error, Debug, docsplay::Display)]
 pub enum Error {
+    /// There is no control block location given. This usually means RTT is not present in the
+    /// firmware.
+    NoControlBlockLocation,
+
     /// RTT control block not found in target memory.
     /// - Make sure RTT is initialized on the target, AND that there are NO target breakpoints before RTT initialization.
     /// - For VSCode and probe-rs-debugger users, using `halt_after_reset:true` in your `launch.json` file will prevent RTT
