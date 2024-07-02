@@ -1,5 +1,6 @@
 use crate::serialize::hex_jep106_option;
 use crate::{chip_detection::ChipDetectionMethod, CoreAccessOptions};
+use crate::{MemoryRange, MemoryRegion};
 
 use super::chip::Chip;
 use super::flash_algorithm::RawFlashAlgorithm;
@@ -221,6 +222,7 @@ impl ChipFamily {
         self.ensure_at_least_one_core()?;
         self.reject_incorrect_core_access_options()?;
         self.validate_memory_regions()?;
+        self.validate_rtt_scan_regions()?;
 
         Ok(())
     }
@@ -361,6 +363,38 @@ impl ChipFamily {
                         variant.name, memory
                     ));
                 }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn validate_rtt_scan_regions(&self) -> Result<(), String> {
+        for variant in &self.variants {
+            let Some(ranges) = &variant.rtt_scan_ranges else {
+                return Ok(());
+            };
+
+            let ram_regions = variant
+                .memory_map
+                .iter()
+                .filter_map(MemoryRegion::as_ram_region);
+
+            // The custom ranges must all be enclosed by exactly one of
+            // the defined RAM regions.
+            // TODO: we should allow consecutive RAM regions
+            for rng in ranges {
+                if ram_regions
+                    .clone()
+                    .all(|region| region.range.contains_range(rng))
+                {
+                    continue;
+                }
+
+                return Err(format!(
+                    "The RTT scan region ({:#010x?}) of {} is not enclosed by any single RAM region.",
+                    rng, variant.name,
+                ));
             }
         }
 

@@ -47,9 +47,12 @@
 mod channel;
 pub use channel::*;
 
+use crate::Session;
 use crate::{config::MemoryRegion, Core, MemoryInterface};
-use std::borrow::Cow;
 use std::ops::Range;
+use std::thread;
+use std::time::Instant;
+use std::{borrow::Cow, time::Duration};
 use zerocopy::{FromBytes, FromZeroes};
 
 /// The RTT interface.
@@ -320,7 +323,6 @@ impl Rtt {
     ///
     /// `core` can be e.g. an owned `Core` or a shared `Rc<Core>`.
     pub fn attach_region(core: &mut Core, region: &ScanRegion) -> Result<Rtt, Error> {
-        let is_64_bit = core.is_64_bit();
         let ranges = match region.clone() {
             ScanRegion::Exact(addr) => {
                 tracing::debug!("Scanning at exact address: {:#010x}", addr);
@@ -335,17 +337,18 @@ impl Rtt {
                     .map(|r| r.range.clone())
                     .collect()
             }
+            ScanRegion::Ranges(regions) if regions.is_empty() => {
+                // We have no regions to scan so we cannot initialize RTT.
+                tracing::debug!("ELF file has no RTT block symbol, and this target does not support automatic scanning");
+                return Err(Error::NoControlBlockLocation);
+            }
             ScanRegion::Ranges(regions) => {
                 tracing::debug!("Scanning regions: {:#010x?}", region);
                 regions
             }
-
-            ScanRegion::Range(region) => {
-                tracing::debug!("Scanning region: {:#010x?}", region);
-                vec![region]
-            }
         };
 
+        let is_64_bit = core.is_64_bit();
         let minimal_header_size = RttControlBlockHeader::minimal_header_size(is_64_bit) as u64;
         let mut instances = ranges
             .into_iter()
@@ -419,14 +422,6 @@ pub enum ScanRegion {
     #[default]
     Ram,
 
-    /// Limit scanning to these memory addresses in target memory. It is up to the user to ensure
-    /// that reading from this range will not read from undefined memory.
-    ///
-    /// This variant is equivalent to using [`Self::Ranges`] with a single range as long as the
-    /// memory region fits into a 32-bit address space. This variant is for backward compatibility
-    /// for code written before the addition of [`Self::Ranges`].
-    Range(Range<u64>),
-
     /// Limit scanning to the memory addresses covered by all of the given ranges. It is up to the
     /// user to ensure that reading from this range will not read from undefined memory.
     Ranges(Vec<Range<u64>>),
@@ -437,9 +432,22 @@ pub enum ScanRegion {
     Exact(u64),
 }
 
+impl ScanRegion {
+    /// Creates a new `ScanRegion` that scans the given memory range.
+    ///
+    /// The memory range should be in a single memory block of the target.
+    pub fn range(range: Range<u64>) -> Self {
+        Self::Ranges(vec![range])
+    }
+}
+
 /// Error type for RTT operations.
 #[derive(thiserror::Error, Debug, docsplay::Display)]
 pub enum Error {
+    /// There is no control block location given. This usually means RTT is not present in the
+    /// firmware.
+    NoControlBlockLocation,
+
     /// RTT control block not found in target memory.
     /// - Make sure RTT is initialized on the target, AND that there are NO target breakpoints before RTT initialization.
     /// - For VSCode and probe-rs-debugger users, using `halt_after_reset:true` in your `launch.json` file will prevent RTT
@@ -468,6 +476,53 @@ fn display_list(list: &[Rtt]) -> String {
         .map(|rtt| format!("{:#010x}", rtt.ptr))
         .collect::<Vec<_>>()
         .join(", ")
+}
+
+fn try_attach_to_rtt_inner(
+    mut try_attach_once: impl FnMut() -> Result<Rtt, Error>,
+    timeout: Duration,
+) -> Result<Rtt, Error> {
+    let t = Instant::now();
+    let mut attempt = 1;
+    loop {
+        tracing::debug!("Initializing RTT (attempt {attempt})...");
+
+        match try_attach_once() {
+            err @ Err(Error::NoControlBlockLocation) => return err,
+            Err(_) if t.elapsed() < timeout => {
+                attempt += 1;
+                tracing::debug!("Failed to initialize RTT. Retrying until timeout.");
+                thread::sleep(Duration::from_millis(50));
+            }
+            other => return other,
+        }
+    }
+}
+
+/// Try to attach to RTT, with the given timeout.
+pub fn try_attach_to_rtt(
+    core: &mut Core<'_>,
+    timeout: Duration,
+    rtt_region: &ScanRegion,
+) -> Result<Rtt, Error> {
+    try_attach_to_rtt_inner(|| Rtt::attach_region(core, rtt_region), timeout)
+}
+
+/// Try to attach to RTT, with the given timeout.
+pub fn try_attach_to_rtt_shared(
+    session: &parking_lot::FairMutex<Session>,
+    core_id: usize,
+    timeout: Duration,
+    rtt_region: &ScanRegion,
+) -> Result<Rtt, Error> {
+    try_attach_to_rtt_inner(
+        || {
+            let mut session_handle = session.lock();
+            let mut core = session_handle.core(core_id)?;
+            Rtt::attach_region(&mut core, rtt_region)
+        },
+        timeout,
+    )
 }
 
 #[cfg(test)]

@@ -30,8 +30,6 @@ pub enum RegistryError {
     Yaml(#[from] serde_yaml::Error),
     /// Invalid chip family definition ({0.name}): {1}
     InvalidChipFamilyDefinition(Box<ChipFamily>, String),
-    /// Chip's RTT scan region {0:#010X?} is not enclosed by any single RAM region.
-    InvalidRttScanRange(std::ops::Range<u64>),
 }
 
 fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
@@ -221,7 +219,7 @@ impl Registry {
             );
         }
 
-        let targ = self.get_target(family, chip)?;
+        let targ = self.get_target(family, chip);
         Ok((targ, family.clone()))
     }
 
@@ -302,10 +300,10 @@ impl Registry {
                 identified_chips[0]
             }
         };
-        self.get_target(family, chip)
+        Ok(self.get_target(family, chip))
     }
 
-    fn get_target(&self, family: &ChipFamily, chip: &Chip) -> Result<Target, RegistryError> {
+    fn get_target(&self, family: &ChipFamily, chip: &Chip) -> Target {
         // The validity of the given `ChipFamily` is checked in test time and in `add_target_from_yaml`.
         Target::new(family, chip)
     }
@@ -507,7 +505,7 @@ mod tests {
                 family
                     .variants()
                     .iter()
-                    .map(|chip| registry.get_target(family, chip).unwrap())
+                    .map(|chip| registry.get_target(family, chip))
             })
             .for_each(|target| {
                 // Walk through the flash algorithms and cores and try to create each one.

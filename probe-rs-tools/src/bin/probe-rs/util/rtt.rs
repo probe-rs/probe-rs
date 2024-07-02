@@ -2,13 +2,13 @@ use anyhow::{anyhow, Result};
 use defmt_decoder::log::format::{Formatter, FormatterConfig, FormatterFormat};
 use defmt_decoder::DecodeError;
 pub use probe_rs::rtt::ChannelMode;
-use probe_rs::rtt::{DownChannel, Error, Rtt, ScanRegion, UpChannel};
+use probe_rs::rtt::{DownChannel, Error, UpChannel};
 use probe_rs::{Core, Session};
 use probe_rs_target::MemoryRegion;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::path::PathBuf;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use std::{
     fmt,
     fmt::Write,
@@ -47,29 +47,6 @@ pub fn get_target_core_id(session: &mut Session, elf_file: impl AsRef<Path>) -> 
         Some(core_id)
     };
     maybe_core_id().unwrap_or(0)
-}
-
-/// Try to find the RTT control block in the ELF file and attach to it.
-///
-/// This function can return `Ok(None)` to indicate that RTT is not available on the target.
-fn try_attach_to_rtt_once(core: &mut Core, rtt_region: &ScanRegion) -> Result<Option<Rtt>> {
-    tracing::debug!("Initializing RTT");
-
-    if let ScanRegion::Ranges(rngs) = &rtt_region {
-        if rngs.is_empty() {
-            // We have no regions to scan so we cannot initialize RTT.
-            tracing::debug!("ELF file has no RTT block symbol, and this target does not support automatic scanning");
-            return Ok(None);
-        }
-    }
-
-    match Rtt::attach_region(core, rtt_region) {
-        Ok(rtt) => {
-            tracing::info!("RTT initialized.");
-            Ok(Some(rtt))
-        }
-        Err(err) => Err(anyhow!("Error attempting to attach to RTT: {}", err)),
-    }
 }
 
 /// Used by serde to provide defaults for `RttChannelConfig::show_timestamps`
@@ -650,54 +627,4 @@ impl fmt::Debug for RttBuffer {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.0.fmt(f)
     }
-}
-
-fn try_attach_to_rtt_inner(
-    mut try_attach_once: impl FnMut() -> Result<Option<Rtt>>,
-    timeout: Duration,
-) -> Result<Option<Rtt>> {
-    let t = Instant::now();
-    let mut attempt = 1;
-    loop {
-        tracing::debug!("Initializing RTT (attempt {attempt})...");
-
-        match try_attach_once() {
-            Err(_) if t.elapsed() < timeout => {
-                attempt += 1;
-                tracing::debug!("Failed to initialize RTT. Retrying until timeout.");
-                thread::sleep(Duration::from_millis(50));
-            }
-            result => return result,
-        }
-    }
-}
-
-// TODO: these should be part of the library, but that requires refactoring the errors to not use
-// anyhow. Also, we probably should only have one variant of this function and pass the closure
-// in as an argument.
-
-/// Try to attach to RTT, with the given timeout.
-pub fn try_attach_to_rtt(
-    core: &mut Core<'_>,
-    timeout: Duration,
-    rtt_region: &ScanRegion,
-) -> Result<Option<Rtt>> {
-    try_attach_to_rtt_inner(|| try_attach_to_rtt_once(core, rtt_region), timeout)
-}
-
-/// Try to attach to RTT, with the given timeout.
-pub fn try_attach_to_rtt_shared(
-    session: &parking_lot::FairMutex<Session>,
-    core_id: usize,
-    timeout: Duration,
-    rtt_region: &ScanRegion,
-) -> Result<Option<Rtt>> {
-    try_attach_to_rtt_inner(
-        || {
-            let mut session_handle = session.lock();
-            let mut core = session_handle.core(core_id)?;
-            try_attach_to_rtt_once(&mut core, rtt_region)
-        },
-        timeout,
-    )
 }

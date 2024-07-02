@@ -1,15 +1,18 @@
-use super::{Core, MemoryRegion, RawFlashAlgorithm, RegistryError, TargetDescriptionSource};
-use crate::architecture::{
-    arm::{
-        ap::MemoryAp,
-        sequences::{ArmDebugSequence, DefaultArmSequence},
-        ApAddress, DpAddress,
-    },
-    riscv::sequences::{DefaultRiscvSequence, RiscvDebugSequence},
-    xtensa::sequences::{DefaultXtensaSequence, XtensaDebugSequence},
-};
+use super::{Core, MemoryRegion, RawFlashAlgorithm, TargetDescriptionSource};
 use crate::flashing::FlashLoader;
-use probe_rs_target::{Architecture, BinaryFormat, Chip, ChipFamily, Jtag, MemoryRange};
+use crate::{
+    architecture::{
+        arm::{
+            ap::MemoryAp,
+            sequences::{ArmDebugSequence, DefaultArmSequence},
+            ApAddress, DpAddress,
+        },
+        riscv::sequences::{DefaultRiscvSequence, RiscvDebugSequence},
+        xtensa::sequences::{DefaultXtensaSequence, XtensaDebugSequence},
+    },
+    rtt::ScanRegion,
+};
+use probe_rs_target::{Architecture, BinaryFormat, Chip, ChipFamily, Jtag};
 use std::sync::Arc;
 
 /// This describes a complete target with a fixed chip model and variant.
@@ -31,7 +34,7 @@ pub struct Target {
     ///
     /// Each region must be enclosed in exactly one RAM region from
     /// `memory_map`.
-    pub rtt_scan_regions: Vec<std::ops::Range<u64>>,
+    pub rtt_scan_regions: ScanRegion,
     /// The Description of the scan chain
     ///
     /// The scan chain can be parsed from the CMSIS-SDF file, or specified
@@ -60,7 +63,7 @@ impl Target {
     /// Create a new target for the given details.
     ///
     /// The given chip must be a member of the given family.
-    pub(super) fn new(family: &ChipFamily, chip: &Chip) -> Result<Target, RegistryError> {
+    pub(super) fn new(family: &ChipFamily, chip: &Chip) -> Target {
         let mut flash_algorithms = Vec::new();
         for algo_name in chip.flash_algorithms.iter() {
             let algo = family.get_algorithm(algo_name).expect(
@@ -82,31 +85,12 @@ impl Target {
 
         tracing::info!("Using sequence {:?}", debug_sequence);
 
-        let ram_regions = chip
-            .memory_map
-            .iter()
-            .filter_map(MemoryRegion::as_ram_region);
         let rtt_scan_regions = match &chip.rtt_scan_ranges {
-            Some(ranges) => {
-                // The custom ranges must all be enclosed by exactly one of
-                // the defined RAM regions.
-                for rng in ranges {
-                    if !ram_regions
-                        .clone()
-                        .any(|region| region.range.contains_range(rng))
-                    {
-                        return Err(RegistryError::InvalidRttScanRange(rng.clone()));
-                    }
-                }
-                ranges.clone()
-            }
-            None => {
-                // By default we use all of the RAM ranges from the memory map.
-                ram_regions.map(|region| region.range.clone()).collect()
-            }
+            Some(ranges) => ScanRegion::Ranges(ranges.clone()),
+            None => ScanRegion::Ram, // By default we use all of the RAM ranges from the memory map.
         };
 
-        Ok(Target {
+        Target {
             name: chip.name.clone(),
             cores: chip.cores.clone(),
             flash_algorithms,
@@ -116,7 +100,7 @@ impl Target {
             rtt_scan_regions,
             jtag: chip.jtag.clone(),
             default_format: chip.default_binary_format.clone().unwrap_or_default(),
-        })
+        }
     }
 
     /// Get the architecture of the target
