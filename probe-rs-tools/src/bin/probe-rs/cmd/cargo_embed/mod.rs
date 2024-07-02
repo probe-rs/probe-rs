@@ -8,7 +8,7 @@ use colored::Colorize;
 use parking_lot::FairMutex;
 use probe_rs::gdb_server::GdbInstanceConfiguration;
 use probe_rs::probe::list::Lister;
-use probe_rs::rtt::ScanRegion;
+use probe_rs::rtt::{try_attach_to_rtt_shared, Error, ScanRegion};
 use probe_rs::{probe::DebugProbeSelector, Session};
 use std::ffi::OsString;
 use std::fs;
@@ -27,9 +27,7 @@ use crate::util::cargo::target_instruction_set;
 use crate::util::common_options::{BinaryDownloadOptions, OperationError, ProbeOptions};
 use crate::util::flash::{build_loader, run_flash_download};
 use crate::util::logging::setup_logging;
-use crate::util::rtt::{
-    self, try_attach_to_rtt_shared, DefmtState, RttActiveTarget, RttChannelConfig, RttConfig,
-};
+use crate::util::rtt::{self, DefmtState, RttActiveTarget, RttChannelConfig, RttConfig};
 use crate::util::{cargo::build_artifact, common_options::CargoOptions, logging, rtt::DataFormat};
 use crate::FormatOptions;
 
@@ -369,7 +367,6 @@ fn run_rttui_app(
         session,
         core_id,
         config.rtt.timeout,
-        &ScanRegion::Ram,
         elf_path,
         &rtt_config,
         timezone_offset,
@@ -440,12 +437,10 @@ fn run_rttui_app(
     Ok(())
 }
 
-#[allow(clippy::too_many_arguments)]
 fn attach_to_rtt_shared(
     session: &FairMutex<Session>,
     core_id: usize,
     timeout: Duration,
-    rtt_region: &ScanRegion,
     elf_file: &Path,
     rtt_config: &RttConfig,
     timestamp_offset: UtcOffset,
@@ -457,14 +452,15 @@ fn attach_to_rtt_shared(
     let scan_region = if let Some(address) = RttActiveTarget::get_rtt_symbol_from_bytes(&elf) {
         ScanRegion::Exact(address)
     } else {
-        rtt_region.clone()
+        ScanRegion::Ram
     };
 
-    let rtt = try_attach_to_rtt_shared(session, core_id, timeout, &scan_region)?;
-
-    let Some(rtt) = rtt else {
-        return Ok(None);
+    let rtt = match try_attach_to_rtt_shared(session, core_id, timeout, &scan_region) {
+        Ok(rtt) => rtt,
+        Err(Error::NoControlBlockLocation) => return Ok(None),
+        Err(err) => return Err(anyhow!("Error attempting to attach to RTT: {err}")),
     };
+
     let mut session_handle = session.lock();
     let mut core = session_handle.core(core_id)?;
 

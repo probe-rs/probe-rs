@@ -179,7 +179,7 @@ impl<'p> CoreHandle<'p> {
     pub fn attach_to_rtt<P: ProtocolAdapter>(
         &mut self,
         debug_adapter: &mut DebugAdapter<P>,
-        program_binary: &std::path::Path,
+        program_binary: &Path,
         rtt_config: &rtt::RttConfig,
         timestamp_offset: UtcOffset,
     ) -> Result<()> {
