@@ -1,0 +1,1 @@
+Fixed compilation when whe `derive` feature of the `zerocopy` crate was enabled.
