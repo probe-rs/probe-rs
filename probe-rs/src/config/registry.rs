@@ -30,8 +30,6 @@ pub enum RegistryError {
     Yaml(#[from] serde_yaml::Error),
     /// Invalid chip family definition ({0.name}): {1}
     InvalidChipFamilyDefinition(Box<ChipFamily>, String),
-    /// Chip's RTT scan region {0:#010X?} is not enclosed by any single RAM region.
-    InvalidRttScanRange(std::ops::Range<u64>),
 }
 
 fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
