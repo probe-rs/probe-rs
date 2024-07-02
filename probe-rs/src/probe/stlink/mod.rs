@@ -25,6 +25,7 @@ use crate::{
 use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
 use probe_rs_target::ScanChainElement;
 use scroll::{Pread, Pwrite, BE, LE};
+use std::thread;
 use std::{cmp::Ordering, sync::Arc, time::Duration};
 use usb_interface::TIMEOUT;
 
@@ -379,7 +380,7 @@ impl StLink<StLinkUsbDevice> {
             // Normally this would be the timeout we pass to the probe to settle the pins.
             // The ST-Link is not capable of this, so we just wait for this time on the host
             // and assume it has settled until then.
-            std::thread::sleep(Duration::from_micros(pin_wait as u64));
+            thread::sleep(Duration::from_micros(pin_wait as u64));
 
             // We signal that we cannot read the pin state.
             Ok(0xFFFF_FFFF)
@@ -655,7 +656,7 @@ impl<D: StLinkUsb> StLink<D> {
             .collect::<Vec<u32>>();
 
         let current = values[1];
-        let n = core::cmp::min(values[2], 10) as usize;
+        let n = std::cmp::min(values[2], 10) as usize;
 
         values.rotate_left(3);
         values.truncate(n);
@@ -1925,7 +1926,7 @@ fn retry_on_wait<R>(mut f: impl FnMut() -> Result<R, StlinkError>) -> Result<R, 
         }
 
         // Sleep with exponential backoff.
-        std::thread::sleep(Duration::from_micros(100 << attempt));
+        thread::sleep(Duration::from_micros(100 << attempt));
     }
 
     tracing::warn!("too many retries, giving up");
@@ -1971,7 +1972,7 @@ mod test {
             cmd: &[u8],
             _write_data: &[u8],
             read_data: &mut [u8],
-            _timeout: std::time::Duration,
+            _timeout: Duration,
         ) -> Result<(), StlinkError> {
             match cmd[0] {
                 commands::GET_VERSION => {
@@ -2013,7 +2014,7 @@ mod test {
         fn read_swo(
             &mut self,
             _read_data: &mut [u8],
-            _timeout: std::time::Duration,
+            _timeout: Duration,
         ) -> Result<usize, DebugProbeError> {
             unimplemented!("Not implemented for MockUSB")
         }

@@ -174,9 +174,7 @@ impl SwdFrequencyToDelayCount {
             _ if frequency >= 150 => Self::Hz150000,
             _ if frequency >= 125 => Self::Hz125000,
             _ if frequency >= 100 => Self::Hz100000,
-            _ => {
-                return None;
-            }
+            _ => return None,
         })
     }
 

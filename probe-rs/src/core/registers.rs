@@ -2,6 +2,7 @@
 
 use crate::Error;
 use anyhow::{anyhow, Result};
+use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
     convert::Infallible,

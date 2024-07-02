@@ -9,7 +9,7 @@ mod utils;
 
 use super::arch::RuntimeArch;
 use crate::{BreakpointCause, CoreStatus, Error, HaltReason, Session};
-use gdbstub::stub::state_machine::GdbStubStateMachine;
+use gdbstub::stub::state_machine::{state, GdbStubStateMachine, GdbStubStateMachineInner};
 use parking_lot::FairMutex;
 
 use std::net::{SocketAddr, TcpListener, TcpStream};
@@ -86,155 +86,156 @@ impl<'a> RuntimeTarget<'a> {
         // State 1 - unconnected
         if self.gdb.is_none() {
             // See if we have a connection
-            match self.listener.accept() {
-                Ok((s, addr)) => {
-                    tracing::info!("New connection from {:#?}", addr);
-
-                    for i in 0..self.cores.len() {
-                        let core_id = self.cores[i];
-                        // When we first attach to the core, GDB expects us to halt the core, so we do this here when a new client connects.
-                        // If the core is already halted, nothing happens if we issue a halt command again, so we always do this no matter of core state.
-                        self.session
-                            .lock()
-                            .core(core_id)?
-                            .halt(Duration::from_millis(100))?;
-
-                        self.load_target_desc()?;
-                    }
-
-                    // Start the GDB Stub state machine
-                    let stub = GdbStub::<RuntimeTarget, _>::new(s);
-                    match stub.run_state_machine(self) {
-                        Ok(gdbstub) => {
-                            self.gdb = Some(gdbstub);
-                        }
-                        Err(e) => {
-                            // Any errors at this state are either IO errors or fatal config errors
-                            return Err(anyhow::Error::from(e).into());
-                        }
-                    };
+            let stream = match self.listener.accept() {
+                Ok((stream, addr)) => {
+                    tracing::info!("New connection from {addr:#?}");
+                    stream
                 }
+                // No connection yet
                 Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                    // No connection yet
                     return Ok(Duration::from_millis(10));
                 }
-                Err(e) => {
-                    // Fatal error
-                    return Err(anyhow::Error::from(e).into());
-                }
+                // Fatal error
+                Err(e) => return Err(anyhow::anyhow!(e).into()),
             };
+
+            // When we first attach to the core, GDB expects us to halt the core,
+            // so we do this here when a new client connects.
+            self.halt_all_cores()?;
+            self.load_target_desc()?;
+
+            // Start the GDB Stub state machine
+            // Any errors at this state are either IO errors or fatal config errors
+            let state_machine = GdbStub::new(stream)
+                .run_state_machine(self)
+                .map_err(|e| anyhow::anyhow!(e))?;
+
+            self.gdb = Some(state_machine);
         }
 
         // Stage 2 - connected
-        if self.gdb.is_some() {
-            let mut wait_time = Duration::ZERO;
-            let gdb = self.gdb.take().unwrap();
+        let Some(gdb) = self.gdb.take() else {
+            return Ok(Duration::ZERO);
+        };
 
-            self.gdb = match gdb {
-                GdbStubStateMachine::Idle(mut state) => {
-                    // Read data if available
-                    let next_byte = {
-                        let conn = state.borrow_conn();
+        let mut wait_time = Duration::ZERO;
 
-                        read_if_available(conn)?
-                    };
+        self.gdb = match gdb {
+            GdbStubStateMachine::Idle(state) => self.handle_idle(state, &mut wait_time)?,
+            GdbStubStateMachine::Running(state) => self.handle_running(state, &mut wait_time)?,
+            GdbStubStateMachine::CtrlCInterrupt(state) => self.handle_ctrl_c(state)?,
+            GdbStubStateMachine::Disconnected(state) => {
+                tracing::info!("GDB client disconnected: {:?}", state.get_reason());
 
-                    if let Some(b) = next_byte {
-                        Some(state.incoming_data(self, b).into_error()?)
-                    } else {
-                        wait_time = Duration::from_millis(10);
-                        Some(state.into())
-                    }
-                }
-                GdbStubStateMachine::Running(mut state) => {
-                    // Read data if available
-                    let next_byte = {
-                        let conn = state.borrow_conn();
+                None
+            }
+        };
 
-                        read_if_available(conn)?
-                    };
+        Ok(wait_time)
+    }
 
-                    if let Some(b) = next_byte {
-                        Some(state.incoming_data(self, b).into_error()?)
-                    } else {
-                        // Check for break
-                        let mut stop_reason: Option<MultiThreadStopReason<u64>> = None;
-                        {
-                            let mut session = self.session.lock();
+    fn halt_all_cores(&mut self) -> Result<(), Error> {
+        let mut session = self.session.lock();
 
-                            for i in &self.cores {
-                                let mut core = session.core(*i)?;
-                                let status = core.status()?;
-
-                                if let CoreStatus::Halted(reason) = status {
-                                    let tid = NonZeroUsize::new(i + 1).unwrap();
-                                    stop_reason = Some(match reason {
-                                        HaltReason::Breakpoint(BreakpointCause::Hardware)
-                                        | HaltReason::Breakpoint(BreakpointCause::Unknown) => {
-                                            // Some architectures do not allow us to distinguish between hardware and software breakpoints, so we just treat `Unknown` as hardware breakpoints.
-                                            MultiThreadStopReason::HwBreak(tid)
-                                        }
-                                        HaltReason::Step => MultiThreadStopReason::DoneStep,
-                                        _ => MultiThreadStopReason::SignalWithThread {
-                                            tid,
-                                            signal: Signal::SIGINT,
-                                        },
-                                    });
-                                    break;
-                                }
-                            }
-
-                            // halt all remaining cores that are still running
-                            // GDB expects all or nothing stops
-                            if stop_reason.is_some() {
-                                for i in &self.cores {
-                                    let mut core = session.core(*i)?;
-                                    if !core.core_halted()? {
-                                        core.halt(Duration::from_millis(100))?;
-                                    }
-                                }
-                            }
-                        }
-
-                        if let Some(reason) = stop_reason {
-                            Some(state.report_stop(self, reason).into_error()?)
-                        } else {
-                            wait_time = Duration::from_millis(10);
-                            Some(state.into())
-                        }
-                    }
-                }
-                GdbStubStateMachine::CtrlCInterrupt(state) => {
-                    // Break core, handle interrupt
-                    {
-                        let mut session = self.session.lock();
-                        for i in &self.cores {
-                            let mut core = session.core(*i)?;
-
-                            core.halt(Duration::from_millis(100))?;
-                        }
-                    }
-
-                    Some(
-                        state
-                            .interrupt_handled(
-                                self,
-                                Some(MultiThreadStopReason::Signal(Signal::SIGINT)),
-                            )
-                            .into_error()?,
-                    )
-                }
-                GdbStubStateMachine::Disconnected(state) => {
-                    tracing::info!("GDB client disconnected: {:?}", state.get_reason());
-
-                    None
-                }
-            };
-
-            return Ok(wait_time);
+        for i in &self.cores {
+            let mut core = session.core(*i)?;
+            if !core.core_halted()? {
+                core.halt(Duration::from_millis(100))?;
+            }
         }
 
-        Ok(Duration::ZERO)
+        Ok(())
+    }
+
+    fn handle_idle<'b>(
+        &mut self,
+        mut state: GdbStubStateMachineInner<'b, state::Idle<Self>, Self, TcpStream>,
+        wait_time: &mut Duration,
+    ) -> Result<Option<GdbStubStateMachine<'b, Self, TcpStream>>, Error> {
+        let next_byte = {
+            let conn = state.borrow_conn();
+
+            read_if_available(conn)?
+        };
+
+        let next_state = if let Some(b) = next_byte {
+            state.incoming_data(self, b).into_error()?
+        } else {
+            *wait_time = Duration::from_millis(10);
+            state.into()
+        };
+
+        Ok(Some(next_state))
+    }
+
+    fn handle_running<'b>(
+        &mut self,
+        mut state: GdbStubStateMachineInner<'b, state::Running, Self, TcpStream>,
+        wait_time: &mut Duration,
+    ) -> Result<Option<GdbStubStateMachine<'b, Self, TcpStream>>, Error> {
+        let next_byte = {
+            let conn = state.borrow_conn();
+
+            read_if_available(conn)?
+        };
+
+        if let Some(b) = next_byte {
+            return Ok(Some(state.incoming_data(self, b).into_error()?));
+        }
+
+        // Check for break
+        let mut stop_reason: Option<MultiThreadStopReason<u64>> = None;
+        {
+            let mut session = self.session.lock();
+
+            for i in &self.cores {
+                let mut core = session.core(*i)?;
+                let CoreStatus::Halted(reason) = core.status()? else {
+                    continue;
+                };
+
+                let tid = NonZeroUsize::new(i + 1).unwrap();
+                stop_reason = Some(match reason {
+                    HaltReason::Breakpoint(BreakpointCause::Hardware)
+                    | HaltReason::Breakpoint(BreakpointCause::Unknown) => {
+                        // Some architectures do not allow us to distinguish between
+                        // hardware and software breakpoints, so we just treat `Unknown`
+                        // as hardware breakpoints.
+                        MultiThreadStopReason::HwBreak(tid)
+                    }
+                    HaltReason::Step => MultiThreadStopReason::DoneStep,
+                    _ => MultiThreadStopReason::SignalWithThread {
+                        tid,
+                        signal: Signal::SIGINT,
+                    },
+                });
+                break;
+            }
+        }
+
+        let next_state = if let Some(reason) = stop_reason {
+            // Halt all remaining cores that are still running.
+            // GDB expects all or nothing stops.
+            self.halt_all_cores()?;
+            state.report_stop(self, reason).into_error()?
+        } else {
+            *wait_time = Duration::from_millis(10);
+            state.into()
+        };
+
+        Ok(Some(next_state))
+    }
+
+    fn handle_ctrl_c<'b>(
+        &mut self,
+        state: GdbStubStateMachineInner<'b, state::CtrlCInterrupt, Self, TcpStream>,
+    ) -> Result<Option<GdbStubStateMachine<'b, Self, TcpStream>>, Error> {
+        self.halt_all_cores()?;
+        let next_state = state
+            .interrupt_handled(self, Some(MultiThreadStopReason::Signal(Signal::SIGINT)))
+            .into_error()?;
+
+        Ok(Some(next_state))
     }
 }
 
