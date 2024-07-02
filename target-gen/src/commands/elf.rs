@@ -43,28 +43,26 @@ pub fn cmd_elf(
 
         let mut family: ChipFamily = serde_yaml::from_reader(target_description)?;
 
-        let algorithm_to_update = family
+        let Some(algorithm_to_update) = family
             .flash_algorithms
             .iter()
-            .position(|old_algorithm| old_algorithm.name == algorithm.name);
+            .position(|old_algorithm| old_algorithm.name == algorithm.name)
+        else {
+            bail!("Unable to update flash algorithm in target description file '{}'. Did not find an existing algorithm with name '{}'", target_description_file.display(), &algorithm.name)
+        };
 
-        match algorithm_to_update {
-            None => bail!("Unable to update flash algorithm in target description file '{}'. Did not find an existing algorithm with name '{}'", target_description_file.display(), &algorithm.name),
-            Some(index) => {
-                let current = &family.flash_algorithms[index];
+        let current = &family.flash_algorithms[algorithm_to_update];
 
-                // if a load address was specified, use it in the replacement
-                if let Some(load_addr)  = current.load_address {
-                    algorithm.load_address = Some(load_addr);
-                    algorithm.data_section_offset = algorithm.data_section_offset.saturating_sub(load_addr);
-                }
-                // core access cannot be determined, use the current value
-                algorithm.cores.clone_from(&current.cores);
-                algorithm.description.clone_from(&current.description);
-
-                family.flash_algorithms[index] = algorithm
-            },
+        // if a load address was specified, use it in the replacement
+        if let Some(load_addr) = current.load_address {
+            algorithm.load_address = Some(load_addr);
+            algorithm.data_section_offset = algorithm.data_section_offset.saturating_sub(load_addr);
         }
+        // core access cannot be determined, use the current value
+        algorithm.cores.clone_from(&current.cores);
+        algorithm.description.clone_from(&current.description);
+
+        family.flash_algorithms[algorithm_to_update] = algorithm;
 
         let output_yaml = serialize_to_yaml_string(&family)?;
         std::fs::write(target_description_file, output_yaml)?;
