@@ -6,6 +6,7 @@ use crate::config::NvmRegion;
 use crate::flashing::encoder::FlashEncoder;
 use crate::flashing::FlashLayout;
 use crate::memory::MemoryInterface;
+use crate::rtt;
 use crate::{core::CoreRegisters, session::Session, Core, InstructionSet};
 use std::{
     fmt::Debug,
@@ -516,7 +517,7 @@ fn into_reg(val: u64) -> Result<u32, FlashError> {
 
 pub(super) struct ActiveFlasher<'probe, O: Operation> {
     core: Core<'probe>,
-    rtt: Option<crate::rtt::Rtt>,
+    rtt: Option<rtt::Rtt>,
     progress: FlashProgress,
     flash_algorithm: FlashAlgorithm,
     _operation: core::marker::PhantomData<O>,
@@ -687,29 +688,16 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
         self.core.run()?;
 
         if let Some(rtt_address) = self.flash_algorithm.rtt_control_block {
-            // FIXME: replace this with try_attach_to_rtt once it's been moved to the library
-            let now = Instant::now();
-            let mut last_error = None;
-            while self.rtt.is_none() {
-                std::thread::sleep(Duration::from_millis(1));
-                let rtt = match crate::rtt::Rtt::attach_region(
-                    &mut self.core,
-                    &crate::rtt::ScanRegion::Exact(rtt_address),
-                ) {
-                    Ok(rtt) => Some(rtt),
-                    Err(error) => {
-                        last_error = Some(error);
-                        None
-                    }
-                };
-                self.rtt = rtt;
-
-                if now.elapsed() > Duration::from_secs(1) {
-                    break;
+            match rtt::try_attach_to_rtt(
+                &mut self.core,
+                Duration::from_secs(1),
+                &rtt::ScanRegion::Exact(rtt_address),
+            ) {
+                Ok(rtt) => self.rtt = Some(rtt),
+                Err(rtt::Error::NoControlBlockLocation) => {}
+                Err(error) => {
+                    tracing::error!("RTT could not be initialized: {error}");
                 }
-            }
-            if let Some(error) = last_error {
-                tracing::error!("RTT could not be initialized: {error}");
             }
         }
 

@@ -47,9 +47,12 @@
 mod channel;
 pub use channel::*;
 
+use crate::Session;
 use crate::{config::MemoryRegion, Core, MemoryInterface};
-use std::borrow::Cow;
 use std::ops::Range;
+use std::thread;
+use std::time::Instant;
+use std::{borrow::Cow, time::Duration};
 use zerocopy::{FromBytes, FromZeroes};
 
 /// The RTT interface.
@@ -464,6 +467,53 @@ fn display_list(list: &[Rtt]) -> String {
         .map(|rtt| format!("{:#010x}", rtt.ptr))
         .collect::<Vec<_>>()
         .join(", ")
+}
+
+fn try_attach_to_rtt_inner(
+    mut try_attach_once: impl FnMut() -> Result<Rtt, Error>,
+    timeout: Duration,
+) -> Result<Rtt, Error> {
+    let t = Instant::now();
+    let mut attempt = 1;
+    loop {
+        tracing::debug!("Initializing RTT (attempt {attempt})...");
+
+        match try_attach_once() {
+            err @ Err(Error::NoControlBlockLocation) => return err,
+            Err(_) if t.elapsed() < timeout => {
+                attempt += 1;
+                tracing::debug!("Failed to initialize RTT. Retrying until timeout.");
+                thread::sleep(Duration::from_millis(50));
+            }
+            other => return other,
+        }
+    }
+}
+
+/// Try to attach to RTT, with the given timeout.
+pub fn try_attach_to_rtt(
+    core: &mut Core<'_>,
+    timeout: Duration,
+    rtt_region: &ScanRegion,
+) -> Result<Rtt, Error> {
+    try_attach_to_rtt_inner(|| Rtt::attach_region(core, rtt_region), timeout)
+}
+
+/// Try to attach to RTT, with the given timeout.
+pub fn try_attach_to_rtt_shared(
+    session: &parking_lot::FairMutex<Session>,
+    core_id: usize,
+    timeout: Duration,
+    rtt_region: &ScanRegion,
+) -> Result<Rtt, Error> {
+    try_attach_to_rtt_inner(
+        || {
+            let mut session_handle = session.lock();
+            let mut core = session_handle.core(core_id)?;
+            Rtt::attach_region(&mut core, rtt_region)
+        },
+        timeout,
+    )
 }
 
 #[cfg(test)]

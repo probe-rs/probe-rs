@@ -2,13 +2,13 @@ use anyhow::{anyhow, Result};
 use defmt_decoder::log::format::{Formatter, FormatterConfig, FormatterFormat};
 use defmt_decoder::DecodeError;
 pub use probe_rs::rtt::ChannelMode;
-use probe_rs::rtt::{DownChannel, Error, Rtt, ScanRegion, UpChannel};
+use probe_rs::rtt::{DownChannel, Error, UpChannel};
 use probe_rs::{Core, Session};
 use probe_rs_target::MemoryRegion;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::path::PathBuf;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use std::{
     fmt,
     fmt::Write,
@@ -627,56 +627,4 @@ impl fmt::Debug for RttBuffer {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.0.fmt(f)
     }
-}
-
-fn try_attach_to_rtt_inner(
-    mut try_attach_once: impl FnMut() -> Result<Rtt, Error>,
-    timeout: Duration,
-) -> Result<Option<Rtt>> {
-    let t = Instant::now();
-    let mut attempt = 1;
-    loop {
-        tracing::debug!("Initializing RTT (attempt {attempt})...");
-
-        match try_attach_once() {
-            Err(Error::NoControlBlockLocation) => return Ok(None),
-            Err(_) if t.elapsed() < timeout => {
-                attempt += 1;
-                tracing::debug!("Failed to initialize RTT. Retrying until timeout.");
-                thread::sleep(Duration::from_millis(50));
-            }
-            Ok(rtt) => return Ok(Some(rtt)),
-            Err(err) => return Err(anyhow!("Error attempting to attach to RTT: {err}")),
-        }
-    }
-}
-
-// TODO: these should be part of the library, but that requires refactoring the errors to not use
-// anyhow. Also, we probably should only have one variant of this function and pass the closure
-// in as an argument.
-
-/// Try to attach to RTT, with the given timeout.
-pub fn try_attach_to_rtt(
-    core: &mut Core<'_>,
-    timeout: Duration,
-    rtt_region: &ScanRegion,
-) -> Result<Option<Rtt>> {
-    try_attach_to_rtt_inner(|| Rtt::attach_region(core, rtt_region), timeout)
-}
-
-/// Try to attach to RTT, with the given timeout.
-pub fn try_attach_to_rtt_shared(
-    session: &parking_lot::FairMutex<Session>,
-    core_id: usize,
-    timeout: Duration,
-    rtt_region: &ScanRegion,
-) -> Result<Option<Rtt>> {
-    try_attach_to_rtt_inner(
-        || {
-            let mut session_handle = session.lock();
-            let mut core = session_handle.core(core_id)?;
-            Rtt::attach_region(&mut core, rtt_region)
-        },
-        timeout,
-    )
 }
