@@ -1,14 +1,17 @@
 use super::{Core, MemoryRegion, RawFlashAlgorithm, RegistryError, TargetDescriptionSource};
-use crate::architecture::{
-    arm::{
-        ap::MemoryAp,
-        sequences::{ArmDebugSequence, DefaultArmSequence},
-        ApAddress, DpAddress,
-    },
-    riscv::sequences::{DefaultRiscvSequence, RiscvDebugSequence},
-    xtensa::sequences::{DefaultXtensaSequence, XtensaDebugSequence},
-};
 use crate::flashing::FlashLoader;
+use crate::{
+    architecture::{
+        arm::{
+            ap::MemoryAp,
+            sequences::{ArmDebugSequence, DefaultArmSequence},
+            ApAddress, DpAddress,
+        },
+        riscv::sequences::{DefaultRiscvSequence, RiscvDebugSequence},
+        xtensa::sequences::{DefaultXtensaSequence, XtensaDebugSequence},
+    },
+    rtt::ScanRegion,
+};
 use probe_rs_target::{Architecture, BinaryFormat, Chip, ChipFamily, Jtag, MemoryRange};
 use std::sync::Arc;
 
@@ -31,7 +34,7 @@ pub struct Target {
     ///
     /// Each region must be enclosed in exactly one RAM region from
     /// `memory_map`.
-    pub rtt_scan_regions: Vec<std::ops::Range<u64>>,
+    pub rtt_scan_regions: ScanRegion,
     /// The Description of the scan chain
     ///
     /// The scan chain can be parsed from the CMSIS-SDF file, or specified
@@ -98,11 +101,11 @@ impl Target {
                         return Err(RegistryError::InvalidRttScanRange(rng.clone()));
                     }
                 }
-                ranges.clone()
+                ScanRegion::Ranges(ranges.clone())
             }
             None => {
                 // By default we use all of the RAM ranges from the memory map.
-                ram_regions.map(|region| region.range.clone()).collect()
+                ScanRegion::Ram
             }
         };
 
