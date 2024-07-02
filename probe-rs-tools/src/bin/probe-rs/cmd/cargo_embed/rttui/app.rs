@@ -207,7 +207,16 @@ impl App {
             KeyCode::Tab if event.modifiers.contains(KeyModifiers::CONTROL) => self.next_tab(),
             KeyCode::Tab if event.modifiers.contains(KeyModifiers::SHIFT) => self.previous_tab(),
             KeyCode::Enter => self.push_rtt(core),
-            KeyCode::Char(c) => self.current_tab_mut().push_input(c),
+            KeyCode::Char(c) => {
+                if event.modifiers.contains(KeyModifiers::CONTROL) {
+                    if let Some(digit) = c.to_digit(10).and_then(|d| d.checked_sub(1)) {
+                        self.select_tab(digit as usize);
+                        return false;
+                    }
+                }
+
+                self.current_tab_mut().push_input(c)
+            }
             KeyCode::Backspace => self.current_tab_mut().pop_input(),
             KeyCode::PageUp => self.current_tab_mut().scroll_up(),
             KeyCode::PageDown => self.current_tab_mut().scroll_down(),
