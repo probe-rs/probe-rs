@@ -245,7 +245,7 @@ pub fn serialize_to_yaml_string(family: &ChipFamily) -> Result<String> {
 
         let mut reader_line = Cow::Borrowed(reader_line);
         if (reader_line.contains("'0x") || reader_line.contains("'0X"))
-            && reader_line.ends_with('\'')
+            && (reader_line.ends_with('\'') || reader_line.contains("':"))
         {
             // Remove the single quotes
             reader_line = reader_line.replace('\'', "").into();

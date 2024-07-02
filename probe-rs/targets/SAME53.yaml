@@ -8,11 +8,11 @@ chip_detection:
   family: 3
   series: 3
   variants:
-    2: ATSAME53N20A
-    5: ATSAME53J19A
-    3: ATSAME53N19A
-    6: ATSAME53J18A
-    4: ATSAME53J20A
+    0x2: ATSAME53N20A
+    0x3: ATSAME53N19A
+    0x4: ATSAME53J20A
+    0x5: ATSAME53J19A
+    0x6: ATSAME53J18A
 variants:
 - name: ATSAME53J18A
   cores:

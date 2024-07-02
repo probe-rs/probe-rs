@@ -8,10 +8,10 @@ chip_detection:
   family: 3
   series: 4
   variants:
-    3: ATSAME54N19A
-    1: ATSAME54P19A
-    0: ATSAME54P20A
-    2: ATSAME54N20A
+    0x0: ATSAME54P20A
+    0x1: ATSAME54P19A
+    0x2: ATSAME54N20A
+    0x3: ATSAME54N19A
 variants:
 - name: ATSAME54N19A
   cores:

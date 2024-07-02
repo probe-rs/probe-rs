@@ -4,9 +4,9 @@ manufacturer:
   cc: 0xc
 chip_detection:
 - !Espressif
-  idcode: 68645
+  idcode: 0x10c25
   variants:
-    3619110528: esp32h2
+    0xd7b73e80: esp32h2
 variants:
 - name: esp32h2
   cores:
