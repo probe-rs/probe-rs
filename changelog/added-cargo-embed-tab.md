@@ -1,1 +1,1 @@
-cargo-embed: use `ctrl+tab` and `shift+tab` to move to next/previous tab. Use `ctrl+number` to switch to the `number`th tab.
+cargo-embed: use `ctrl+tab` and `ctrl+shift+tab` to move to next/previous tab. Use `ctrl+number` to switch to the `number`th tab.
