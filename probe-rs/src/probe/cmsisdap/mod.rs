@@ -1292,7 +1292,7 @@ impl RawJtagIo for CmsisDap {
     fn read_captured_bits(&mut self) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
         let mut capture = BitVec::<u8, Lsb0>::new();
         // We can transfer up to 255 sequences in one dap jtag-sequence command. But in some riscv chip there is some bug, thus I set up to 3 sequence in once jtag-sequence command transfer.
-        for sequence_slice in self.jtag_sequences.clone().chunks(3 as usize) {
+        for sequence_slice in self.jtag_sequences.clone().chunks(3) {
             let mut batch_sequence = Vec::new();
             batch_sequence.extend_from_slice(sequence_slice);
             let capture_count = batch_sequence.iter().map(|x| x.capture_count()).sum();
