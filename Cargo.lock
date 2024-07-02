@@ -2355,7 +2355,6 @@ dependencies = [
  "typed-path",
  "uf2-decode",
  "zerocopy",
- "zerocopy-derive",
 ]
 
 [[package]]
