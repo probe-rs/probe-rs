@@ -14,10 +14,11 @@ use std::time::{Duration, Instant};
 use anyhow::{anyhow, Context, Result};
 use probe_rs::debug::{DebugInfo, DebugRegisters};
 use probe_rs::flashing::FileDownloadError;
-use probe_rs::rtt::ScanRegion;
 use probe_rs::{
-    exception_handler_for_core, probe::list::Lister, Core, CoreInterface, Error, HaltReason,
-    Session, VectorCatchCondition,
+    exception_handler_for_core,
+    probe::list::Lister,
+    rtt::{try_attach_to_rtt, Error as RttError, ScanRegion},
+    Core, CoreInterface, Error, HaltReason, Session, VectorCatchCondition,
 };
 use signal_hook::consts::signal;
 use time::UtcOffset;
@@ -25,7 +26,7 @@ use time::UtcOffset;
 use crate::util::common_options::{BinaryDownloadOptions, ProbeOptions};
 use crate::util::flash::{build_loader, run_flash_download};
 use crate::util::rtt::{
-    self, try_attach_to_rtt, ChannelDataCallbacks, DefmtState, RttActiveTarget, RttConfig,
+    self, ChannelDataCallbacks, DefmtState, RttActiveTarget, RttChannelConfig, RttConfig,
 };
 use crate::FormatOptions;
 
@@ -258,8 +259,8 @@ impl RunLoop {
         }
         let start = Instant::now();
 
-        let mut rtt_config = rtt::RttConfig::default();
-        rtt_config.channels.push(rtt::RttChannelConfig {
+        let mut rtt_config = RttConfig::default();
+        rtt_config.channels.push(RttChannelConfig {
             channel_number: Some(0),
             show_location: !self.no_location,
             log_format: self.log_format.clone(),
@@ -303,7 +304,7 @@ impl RunLoop {
     fn do_run_until<F, R>(
         &self,
         core: &mut Core,
-        rtta: &mut Option<rtt::RttActiveTarget>,
+        rtta: &mut Option<RttActiveTarget>,
         output_stream: OutputStream,
         timeout: Option<Duration>,
         start: Instant,
@@ -466,7 +467,7 @@ fn print_stacktrace<S: Write + ?Sized>(
 
 /// Poll RTT and print the received buffer.
 fn poll_rtt<S: Write + ?Sized>(
-    rtta: &mut Option<rtt::RttActiveTarget>,
+    rtta: &mut Option<RttActiveTarget>,
     core: &mut Core<'_>,
     out_stream: &mut S,
 ) -> Result<bool, anyhow::Error> {
@@ -522,10 +523,10 @@ fn attach_to_rtt(
         rtt_region.clone()
     };
 
-    let rtt = try_attach_to_rtt(core, timeout, &scan_region)?;
-
-    let Some(rtt) = rtt else {
-        return Ok(None);
+    let rtt = match try_attach_to_rtt(core, timeout, &scan_region) {
+        Ok(rtt) => rtt,
+        Err(RttError::NoControlBlockLocation) => return Ok(None),
+        Err(err) => return Err(anyhow!("Error attempting to attach to RTT: {err}")),
     };
 
     let defmt_state = DefmtState::try_from_bytes(&elf)?;
