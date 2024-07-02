@@ -219,7 +219,7 @@ impl Registry {
             );
         }
 
-        let targ = self.get_target(family, chip)?;
+        let targ = self.get_target(family, chip);
         Ok((targ, family.clone()))
     }
 
@@ -300,10 +300,10 @@ impl Registry {
                 identified_chips[0]
             }
         };
-        self.get_target(family, chip)
+        Ok(self.get_target(family, chip))
     }
 
-    fn get_target(&self, family: &ChipFamily, chip: &Chip) -> Result<Target, RegistryError> {
+    fn get_target(&self, family: &ChipFamily, chip: &Chip) -> Target {
         // The validity of the given `ChipFamily` is checked in test time and in `add_target_from_yaml`.
         Target::new(family, chip)
     }
@@ -505,7 +505,7 @@ mod tests {
                 family
                     .variants()
                     .iter()
-                    .map(|chip| registry.get_target(family, chip).unwrap())
+                    .map(|chip| registry.get_target(family, chip))
             })
             .for_each(|target| {
                 // Walk through the flash algorithms and cores and try to create each one.
