@@ -75,11 +75,6 @@ impl Target {
         family: &ChipFamily,
         chip_name: impl AsRef<str>,
     ) -> Result<Target, RegistryError> {
-        // Make sure we are given a valid family:
-        family
-            .validate()
-            .map_err(|e| RegistryError::InvalidChipFamilyDefinition(Box::new(family.clone()), e))?;
-
         let chip = family
             .variants
             .iter()

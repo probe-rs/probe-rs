@@ -500,7 +500,10 @@ mod tests {
             .families
             .iter()
             .flat_map(|family| {
-                // Validate all chip descriptors by constructing a Target.
+                // Validate all chip descriptors.
+                family.validate().unwrap();
+
+                // Make additional checks by creating a target for each chip.
                 family
                     .variants()
                     .iter()
