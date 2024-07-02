@@ -12,7 +12,7 @@ use super::ap::{GenericAp, MemoryAp};
 use super::memory::romtable::{CoresightComponent, PeripheralType, RomTableError};
 use super::memory::Component;
 use super::ArmError;
-use super::{ApAddress, ApInformation, DpAddress, MemoryApInformation};
+use super::{ApInformation, DpAddress, FullyQualifiedApAddress, MemoryApInformation};
 use crate::architecture::arm::core::armv6m::Demcr;
 use crate::architecture::arm::{ArmProbeInterface, SwoConfig, SwoMode};
 use crate::{Core, Error, MemoryInterface, MemoryMappedRegister};
@@ -111,7 +111,9 @@ pub fn get_arm_components(
 
     for ap_index in 0..(interface.num_access_ports(dp)? as u8) {
         let ap_information = interface
-            .ap_information(GenericAp::new(ApAddress { dp, ap: ap_index }))?
+            .ap_information(&GenericAp::new(FullyQualifiedApAddress::v1_with_dp(
+                dp, ap_index,
+            )))?
             .clone();
 
         let component = match ap_information {
@@ -125,7 +127,7 @@ pub fn get_arm_components(
                 ..
             }) => {
                 let ap = MemoryAp::new(address);
-                let mut memory = interface.memory_interface(ap)?;
+                let mut memory = interface.memory_interface(&ap)?;
                 let component = Component::try_parse(&mut *memory, debug_base_address)?;
                 Ok(CoresightComponent::new(component, ap))
             }

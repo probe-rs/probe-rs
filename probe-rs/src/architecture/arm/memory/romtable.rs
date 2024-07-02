@@ -508,7 +508,7 @@ impl CoresightComponent {
         interface: &mut dyn ArmProbeInterface,
         offset: u32,
     ) -> Result<u32, ArmError> {
-        let mut memory = interface.memory_interface(self.ap)?;
+        let mut memory = interface.memory_interface(&self.ap)?;
         let value = memory.read_word_32(self.component.id().component_address + offset as u64)?;
         Ok(value)
     }
@@ -520,7 +520,7 @@ impl CoresightComponent {
         offset: u32,
         value: u32,
     ) -> Result<(), ArmError> {
-        let mut memory = interface.memory_interface(self.ap)?;
+        let mut memory = interface.memory_interface(&self.ap)?;
         memory.write_word_32(self.component.id().component_address + offset as u64, value)?;
         Ok(())
     }

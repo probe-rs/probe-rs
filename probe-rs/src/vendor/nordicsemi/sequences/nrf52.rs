@@ -7,7 +7,7 @@ use crate::architecture::arm::{
     component::TraceSink,
     memory::CoresightComponent,
     sequences::{ArmDebugSequence, ArmDebugSequenceError},
-    ApAddress, ArmError, ArmProbeInterface, DpAddress,
+    ArmError, ArmProbeInterface, FullyQualifiedApAddress,
 };
 use crate::session::MissingPermissions;
 
@@ -41,7 +41,7 @@ impl Nrf52 {
     fn is_core_unlocked(
         &self,
         iface: &mut dyn ArmProbeInterface,
-        ctrl_ap: ApAddress,
+        ctrl_ap: &FullyQualifiedApAddress,
     ) -> Result<bool, ArmError> {
         let status = iface.read_raw_ap_register(ctrl_ap, APPROTECTSTATUS)?;
         Ok(status != 0)
@@ -87,13 +87,10 @@ impl ArmDebugSequence for Nrf52 {
     fn debug_device_unlock(
         &self,
         iface: &mut dyn ArmProbeInterface,
-        _default_ap: MemoryAp,
+        _default_ap: &MemoryAp,
         permissions: &crate::Permissions,
     ) -> Result<(), ArmError> {
-        let ctrl_ap = ApAddress {
-            ap: 1,
-            dp: DpAddress::Default,
-        };
+        let ctrl_ap = &FullyQualifiedApAddress::v1_with_default_dp(1);
 
         tracing::info!("Checking if core is unlocked");
         if self.is_core_unlocked(iface, ctrl_ap)? {
@@ -155,7 +152,7 @@ impl ArmDebugSequence for Nrf52 {
             }
         };
 
-        let mut memory = interface.memory_interface(components[0].ap)?;
+        let mut memory = interface.memory_interface(&components[0].ap)?;
         let mut config = clock::TraceConfig::read(&mut *memory)?;
         config.set_traceportspeed(portspeed);
         if matches!(sink, TraceSink::Tpiu(_)) {

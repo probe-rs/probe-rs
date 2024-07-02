@@ -6,6 +6,7 @@ mod usb_interface;
 
 use self::usb_interface::{StLinkUsb, StLinkUsbDevice};
 use super::{DebugProbe, DebugProbeError, ProbeCreationError, WireProtocol};
+use crate::architecture::arm::ap::GenericAp;
 use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
 use crate::architecture::arm::{valid_32bit_arm_address, ArmError};
 use crate::{
@@ -16,8 +17,8 @@ use crate::{
         },
         memory::Component,
         sequences::ArmDebugSequence,
-        ApAddress, ApInformation, ArmChipInfo, DapAccess, DpAddress, Pins, SwoAccess, SwoConfig,
-        SwoMode,
+        ApInformation, ArmChipInfo, DapAccess, DpAddress, FullyQualifiedApAddress, Pins, SwoAccess,
+        SwoConfig, SwoMode,
     },
     probe::{DebugProbeInfo, DebugProbeSelector, Probe, ProbeFactory},
     Error as ProbeRsError,
@@ -1408,7 +1409,7 @@ impl StlinkArmDebug {
         };
 
         for ap in valid_access_ports(&mut interface, DpAddress::Default) {
-            let ap_state = match ApInformation::read_from_target(&mut interface, ap) {
+            let ap_state = match ApInformation::read_from_target(&mut interface, &ap) {
                 Ok(state) => state,
                 Err(e) => {
                     return Err((
@@ -1459,27 +1460,32 @@ impl DapAccess for StlinkArmDebug {
         Ok(())
     }
 
-    fn read_raw_ap_register(&mut self, ap: ApAddress, address: u8) -> Result<u32, ArmError> {
-        if ap.dp != DpAddress::Default {
+    fn read_raw_ap_register(
+        &mut self,
+        ap: &FullyQualifiedApAddress,
+        address: u8,
+    ) -> Result<u32, ArmError> {
+        if ap.dp() != DpAddress::Default {
             return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
         }
 
-        let value = self.probe.read_register(ap.ap as u16, address)?;
+        let value = self.probe.read_register(ap.ap_v1()? as u16, address)?;
 
         Ok(value)
     }
 
     fn write_raw_ap_register(
         &mut self,
-        ap: ApAddress,
+        ap: &FullyQualifiedApAddress,
         address: u8,
         value: u32,
     ) -> Result<(), ArmError> {
-        if ap.dp != DpAddress::Default {
+        if ap.dp() != DpAddress::Default {
             return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
         }
 
-        self.probe.write_register(ap.ap as u16, address, value)?;
+        self.probe
+            .write_register(ap.ap_v1()? as u16, address, value)?;
 
         Ok(())
     }
@@ -1488,11 +1494,11 @@ impl DapAccess for StlinkArmDebug {
 impl ArmProbeInterface for StlinkArmDebug {
     fn memory_interface(
         &mut self,
-        access_port: MemoryAp,
+        access_port: &MemoryAp,
     ) -> Result<Box<dyn ArmProbe + '_>, ArmError> {
         let interface = StLinkMemoryInterface {
             probe: self,
-            current_ap: access_port,
+            current_ap: access_port.clone(),
         };
 
         Ok(Box::new(interface) as _)
@@ -1501,16 +1507,16 @@ impl ArmProbeInterface for StlinkArmDebug {
     #[tracing::instrument(skip(self))]
     fn ap_information(
         &mut self,
-        access_port: crate::architecture::arm::ap::GenericAp,
+        access_port: &GenericAp,
     ) -> Result<&crate::architecture::arm::communication_interface::ApInformation, ArmError> {
         let addr = access_port.ap_address();
-        if addr.dp != DpAddress::Default {
+        if addr.dp() != DpAddress::Default {
             return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
         }
 
-        match self.ap_information.get(addr.ap as usize) {
+        match self.ap_information.get(addr.ap_v1()? as usize) {
             Some(res) => Ok(res),
-            None => Err(ArmError::ApDoesNotExist(addr)),
+            None => Err(ArmError::ApDoesNotExist(addr.clone())),
         }
     }
 
@@ -1523,7 +1529,7 @@ impl ArmProbeInterface for StlinkArmDebug {
         }
 
         for access_port in valid_access_ports(self, dp) {
-            let idr: IDR = self.read_ap_register(access_port)?;
+            let idr: IDR = self.read_ap_register(&access_port)?;
             tracing::debug!("{:#x?}", idr);
 
             if idr.CLASS == ApClass::MemAp {
@@ -1531,7 +1537,7 @@ impl ArmProbeInterface for StlinkArmDebug {
 
                 let baseaddr = access_port.base_address(self)?;
 
-                let mut memory = self.memory_interface(access_port)?;
+                let mut memory = self.memory_interface(&access_port)?;
 
                 let component = Component::try_parse(&mut *memory, baseaddr)?;
 
@@ -1634,7 +1640,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
             self.probe.probe.read_mem_32bit(
                 address + (i * 8) as u32,
                 &mut buff,
-                self.current_ap.ap_address().ap,
+                self.current_ap.ap_address().ap_v1()?,
             )?;
 
             *d = u64::from_le_bytes(buff.try_into().unwrap());
@@ -1653,7 +1659,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
             self.probe.probe.read_mem_32bit(
                 address + (index * STLINK_MAX_READ_LEN) as u32,
                 &mut buff,
-                self.current_ap.ap_address().ap,
+                self.current_ap.ap_address().ap_v1()?,
             )?;
 
             for (index, word) in buff.chunks_exact(4).enumerate() {
@@ -1680,7 +1686,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
             self.probe.probe.read_mem_16bit(
                 address + (index * chunk_size) as u32,
                 &mut buff,
-                self.current_ap.ap_address().ap,
+                self.current_ap.ap_address().ap_v1()?,
             )?;
 
             for (index, word) in buff.chunks_exact(2).enumerate() {
@@ -1709,7 +1715,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
             chunk.copy_from_slice(&self.probe.probe.read_mem_8bit(
                 address + (index * chunk_size) as u32,
                 chunk.len() as u16,
-                self.current_ap.ap_address().ap,
+                self.current_ap.ap_address().ap_v1()?,
             )?);
         }
 
@@ -1733,7 +1739,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
             self.probe.probe.write_mem_32bit(
                 address + (index * STLINK_MAX_WRITE_LEN) as u32,
                 chunk,
-                self.current_ap.ap_address().ap,
+                self.current_ap.ap_address().ap_v1()?,
             )?;
         }
 
@@ -1757,7 +1763,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
             self.probe.probe.write_mem_32bit(
                 address + (index * STLINK_MAX_WRITE_LEN) as u32,
                 chunk,
-                self.current_ap.ap_address().ap,
+                self.current_ap.ap_address().ap_v1()?,
             )?;
         }
 
@@ -1788,7 +1794,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
             self.probe.probe.write_mem_16bit(
                 address + (index * STLINK_MAX_WRITE_LEN) as u32,
                 chunk,
-                self.current_ap.ap_address().ap,
+                self.current_ap.ap_address().ap_v1()?,
             )?;
         }
 
@@ -1810,9 +1816,11 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
         // If we write less than 64 bytes, just write it directly
         if data.len() < chunk_size {
             tracing::trace!("write_8: small - direct 8 bit write to {:08x}", address);
-            self.probe
-                .probe
-                .write_mem_8bit(address, data, self.current_ap.ap_address().ap)?;
+            self.probe.probe.write_mem_8bit(
+                address,
+                data,
+                self.current_ap.ap_address().ap_v1()?,
+            )?;
         } else {
             // Handle unaligned data in the beginning.
             let bytes_beginning = if address % 4 == 0 {
@@ -1832,7 +1840,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
                 self.probe.probe.write_mem_8bit(
                     current_address,
                     &data[..bytes_beginning],
-                    self.current_ap.ap_address().ap,
+                    self.current_ap.ap_address().ap_v1()?,
                 )?;
 
                 current_address += bytes_beginning as u32;
@@ -1856,7 +1864,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
                 self.probe.probe.write_mem_32bit(
                     current_address + (index * STLINK_MAX_WRITE_LEN) as u32,
                     chunk,
-                    self.current_ap.ap_address().ap,
+                    self.current_ap.ap_address().ap_v1()?,
                 )?;
             }
 
@@ -1873,7 +1881,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
                 self.probe.probe.write_mem_8bit(
                     current_address,
                     remaining_bytes,
-                    self.current_ap.ap_address().ap,
+                    self.current_ap.ap_address().ap_v1()?,
                 )?;
             }
         }
@@ -1900,7 +1908,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
     }
 
     fn ap(&mut self) -> MemoryAp {
-        self.current_ap
+        self.current_ap.clone()
     }
 }
 

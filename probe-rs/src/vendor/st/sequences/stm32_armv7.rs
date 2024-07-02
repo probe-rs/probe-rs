@@ -72,7 +72,7 @@ impl ArmDebugSequence for Stm32Armv7 {
     fn debug_device_unlock(
         &self,
         interface: &mut dyn ArmProbeInterface,
-        default_ap: MemoryAp,
+        default_ap: &MemoryAp,
         _permissions: &crate::Permissions,
     ) -> Result<(), ArmError> {
         let mut memory = interface.memory_interface(default_ap)?;
@@ -106,7 +106,7 @@ impl ArmDebugSequence for Stm32Armv7 {
         components: &[CoresightComponent],
         sink: &TraceSink,
     ) -> Result<(), ArmError> {
-        let mut memory = interface.memory_interface(components[0].ap)?;
+        let mut memory = interface.memory_interface(&components[0].ap)?;
         let mut cr = dbgmcu::Control::read(&mut *memory)?;
 
         if matches!(sink, TraceSink::Tpiu(_) | TraceSink::Swo(_)) {

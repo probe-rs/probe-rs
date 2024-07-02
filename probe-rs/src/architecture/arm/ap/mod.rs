@@ -14,8 +14,8 @@ pub use memory_ap::{
 };
 
 use super::{
-    communication_interface::RegisterParseError, ApAddress, ArmError, DapAccess, DpAddress,
-    Register,
+    communication_interface::RegisterParseError, ArmError, DapAccess, DpAddress,
+    FullyQualifiedApAddress, Register,
 };
 
 /// Some error during AP handling occurred.
@@ -89,13 +89,13 @@ pub trait ApRegister<PORT: AccessPort>: Register + Sized {}
 /// Use the [`define_ap!`] macro to implement this.
 pub trait AccessPort: Clone {
     /// Returns the address of the access port.
-    fn ap_address(&self) -> ApAddress;
+    fn ap_address(&self) -> &FullyQualifiedApAddress;
 }
 
 /// A trait to be implemented by access port drivers to implement access port operations.
 pub trait ApAccess {
     /// Read a register of the access port.
-    fn read_ap_register<PORT, R>(&mut self, port: PORT) -> Result<R, ArmError>
+    fn read_ap_register<PORT, R>(&mut self, port: &PORT) -> Result<R, ArmError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>;
@@ -104,7 +104,7 @@ pub trait ApAccess {
     /// This can be used to read multiple values from the same register.
     fn read_ap_register_repeated<PORT, R>(
         &mut self,
-        port: impl Into<PORT> + Clone,
+        port: &PORT,
         register: R,
         values: &mut [u32],
     ) -> Result<(), ArmError>
@@ -113,11 +113,7 @@ pub trait ApAccess {
         R: ApRegister<PORT>;
 
     /// Write a register of the access port.
-    fn write_ap_register<PORT, R>(
-        &mut self,
-        port: impl Into<PORT>,
-        register: R,
-    ) -> Result<(), ArmError>
+    fn write_ap_register<PORT, R>(&mut self, port: &PORT, register: R) -> Result<(), ArmError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>;
@@ -126,7 +122,7 @@ pub trait ApAccess {
     /// This can be used to write multiple values to the same register.
     fn write_ap_register_repeated<PORT, R>(
         &mut self,
-        port: impl Into<PORT> + Clone,
+        port: &PORT,
         register: R,
         values: &[u32],
     ) -> Result<(), ArmError>
@@ -136,8 +132,8 @@ pub trait ApAccess {
 }
 
 impl<T: DapAccess> ApAccess for T {
-    #[tracing::instrument(skip(self, port), fields(ap = port.ap_address().ap, register = R::NAME, value))]
-    fn read_ap_register<PORT, R>(&mut self, port: PORT) -> Result<R, ArmError>
+    #[tracing::instrument(skip(self, port), fields(ap = port.ap_address().ap_v1().ok(), register = R::NAME, value))]
+    fn read_ap_register<PORT, R>(&mut self, port: &PORT) -> Result<R, ArmError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>,
@@ -151,22 +147,18 @@ impl<T: DapAccess> ApAccess for T {
         Ok(raw_value.try_into()?)
     }
 
-    fn write_ap_register<PORT, R>(
-        &mut self,
-        port: impl Into<PORT>,
-        register: R,
-    ) -> Result<(), ArmError>
+    fn write_ap_register<PORT, R>(&mut self, port: &PORT, register: R) -> Result<(), ArmError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>,
     {
         tracing::debug!("Writing register {}, value={:x?}", R::NAME, register);
-        self.write_raw_ap_register(port.into().ap_address(), R::ADDRESS, register.into())
+        self.write_raw_ap_register(port.ap_address(), R::ADDRESS, register.into())
     }
 
     fn write_ap_register_repeated<PORT, R>(
         &mut self,
-        port: impl Into<PORT>,
+        port: &PORT,
         _register: R,
         values: &[u32],
     ) -> Result<(), ArmError>
@@ -179,12 +171,12 @@ impl<T: DapAccess> ApAccess for T {
             R::NAME,
             values.len(),
         );
-        self.write_raw_ap_register_repeated(port.into().ap_address(), R::ADDRESS, values)
+        self.write_raw_ap_register_repeated(port.ap_address(), R::ADDRESS, values)
     }
 
     fn read_ap_register_repeated<PORT, R>(
         &mut self,
-        port: impl Into<PORT>,
+        port: &PORT,
         _register: R,
         values: &mut [u32],
     ) -> Result<(), ArmError>
@@ -198,7 +190,7 @@ impl<T: DapAccess> ApAccess for T {
             values.len(),
         );
 
-        self.read_raw_ap_register_repeated(port.into().ap_address(), R::ADDRESS, values)
+        self.read_raw_ap_register_repeated(port.ap_address(), R::ADDRESS, values)
     }
 }
 
@@ -207,7 +199,7 @@ impl<T: DapAccess> ApAccess for T {
 /// The test is performed by reading the IDR register, and checking if the register is non-zero.
 ///
 /// Can fail silently under the hood testing an ap that doesn't exist and would require cleanup.
-pub fn access_port_is_valid<AP>(debug_port: &mut AP, access_port: GenericAp) -> bool
+pub fn access_port_is_valid<AP>(debug_port: &mut AP, access_port: &GenericAp) -> bool
 where
     AP: ApAccess,
 {
@@ -218,14 +210,14 @@ where
             let is_valid = u32::from(idr) != 0;
 
             if !is_valid {
-                tracing::debug!("AP {} is not valid, IDR = 0", access_port.ap_address().ap);
+                tracing::debug!("AP {} is not valid, IDR = 0", access_port.ap_address().ap());
             }
             is_valid
         }
         Err(e) => {
             tracing::debug!(
                 "Error reading IDR register from AP {}: {}",
-                access_port.ap_address().ap,
+                access_port.ap_address().ap(),
                 e
             );
             false
@@ -241,8 +233,8 @@ where
     AP: ApAccess,
 {
     (0..=255)
-        .map(|ap| GenericAp::new(ApAddress { dp, ap }))
-        .take_while(|port| access_port_is_valid(debug_port, *port))
+        .map(|ap| GenericAp::new(FullyQualifiedApAddress::v1_with_dp(dp, ap)))
+        .take_while(|port| access_port_is_valid(debug_port, port))
         .collect::<Vec<GenericAp>>()
 }
 
@@ -253,9 +245,9 @@ where
     P: Fn(IDR) -> bool,
 {
     (0..=255)
-        .map(|ap| GenericAp::new(ApAddress { dp, ap }))
+        .map(|ap| GenericAp::new(FullyQualifiedApAddress::v1_with_dp(dp, ap)))
         .find(|ap| {
-            if let Ok(idr) = debug_port.read_ap_register(*ap) {
+            if let Ok(idr) = debug_port.read_ap_register(ap) {
                 f(idr)
             } else {
                 false

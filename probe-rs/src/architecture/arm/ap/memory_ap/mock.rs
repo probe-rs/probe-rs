@@ -61,7 +61,7 @@ impl ApAccess for MockMemoryAp {
     /// Mocks the read_register method of a AP.
     ///
     /// Returns an Error if any bad instructions or values are chosen.
-    fn read_ap_register<PORT, R>(&mut self, _port: PORT) -> Result<R, ArmError>
+    fn read_ap_register<PORT, R>(&mut self, _port: &PORT) -> Result<R, ArmError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>,
@@ -131,11 +131,7 @@ impl ApAccess for MockMemoryAp {
     /// Mocks the write_register method of a AP.
     ///
     /// Returns an Error if any bad instructions or values are chosen.
-    fn write_ap_register<PORT, R>(
-        &mut self,
-        _port: impl Into<PORT>,
-        register: R,
-    ) -> Result<(), ArmError>
+    fn write_ap_register<PORT, R>(&mut self, _port: &PORT, register: R) -> Result<(), ArmError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>,
@@ -209,7 +205,7 @@ impl ApAccess for MockMemoryAp {
 
     fn write_ap_register_repeated<PORT, R>(
         &mut self,
-        port: impl Into<PORT> + Clone,
+        port: &PORT,
         _register: R,
         values: &[u32],
     ) -> Result<(), ArmError>
@@ -218,7 +214,7 @@ impl ApAccess for MockMemoryAp {
         R: ApRegister<PORT>,
     {
         for value in values {
-            self.write_ap_register(port.clone(), R::try_from(*value).unwrap())?
+            self.write_ap_register(port, R::try_from(*value).unwrap())?
         }
 
         Ok(())
@@ -226,7 +222,7 @@ impl ApAccess for MockMemoryAp {
 
     fn read_ap_register_repeated<PORT, R>(
         &mut self,
-        port: impl Into<PORT> + Clone,
+        port: &PORT,
         _register: R,
         values: &mut [u32],
     ) -> Result<(), ArmError>
@@ -234,10 +230,8 @@ impl ApAccess for MockMemoryAp {
         PORT: AccessPort,
         R: ApRegister<PORT>,
     {
-        let port = port.into();
-
         for value in values {
-            let register_value: R = self.read_ap_register(port.clone())?;
+            let register_value: R = self.read_ap_register(port)?;
             *value = register_value.into()
         }
 
