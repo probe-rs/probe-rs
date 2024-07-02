@@ -367,7 +367,6 @@ fn run_rttui_app(
         session,
         core_id,
         config.rtt.timeout,
-        &ScanRegion::Ram,
         elf_path,
         &rtt_config,
         timezone_offset,
@@ -438,12 +437,10 @@ fn run_rttui_app(
     Ok(())
 }
 
-#[allow(clippy::too_many_arguments)]
 fn attach_to_rtt_shared(
     session: &FairMutex<Session>,
     core_id: usize,
     timeout: Duration,
-    rtt_region: &ScanRegion,
     elf_file: &Path,
     rtt_config: &RttConfig,
     timestamp_offset: UtcOffset,
@@ -455,7 +452,7 @@ fn attach_to_rtt_shared(
     let scan_region = if let Some(address) = RttActiveTarget::get_rtt_symbol_from_bytes(&elf) {
         ScanRegion::Exact(address)
     } else {
-        rtt_region.clone()
+        ScanRegion::Ram
     };
 
     let rtt = match try_attach_to_rtt_shared(session, core_id, timeout, &scan_region) {
