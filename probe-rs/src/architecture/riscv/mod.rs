@@ -192,24 +192,6 @@ impl<'state> Riscv32<'state> {
 
         Ok(tselect_index)
     }
-
-    fn halted_access<R>(
-        &mut self,
-        op: impl FnOnce(&mut Self) -> Result<R, crate::Error>,
-    ) -> Result<R, crate::Error> {
-        let was_running = !self.core_halted()?;
-        if was_running {
-            self.halt(Duration::from_millis(100))?;
-        }
-
-        let result = op(self);
-
-        if was_running {
-            self.resume_core()?;
-        }
-
-        result
-    }
 }
 
 impl<'state> CoreInterface for Riscv32<'state> {
@@ -220,9 +202,7 @@ impl<'state> CoreInterface for Riscv32<'state> {
     }
 
     fn core_halted(&mut self) -> Result<bool, crate::Error> {
-        let dmstatus: Dmstatus = self.interface.read_dm_register()?;
-
-        Ok(dmstatus.allhalted())
+        Ok(self.interface.core_halted()?)
     }
 
     fn status(&mut self) -> Result<crate::core::CoreStatus, crate::Error> {
@@ -688,39 +668,39 @@ impl MemoryInterface for Riscv32<'_> {
     }
 
     fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), Error> {
-        self.halted_access(|core| core.interface.write_word_64(address, data))
+        self.interface.write_word_64(address, data)
     }
 
     fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
-        self.halted_access(|core| core.interface.write_word_32(address, data))
+        self.interface.write_word_32(address, data)
     }
 
     fn write_word_16(&mut self, address: u64, data: u16) -> Result<(), Error> {
-        self.halted_access(|core| core.interface.write_word_16(address, data))
+        self.interface.write_word_16(address, data)
     }
 
     fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
-        self.halted_access(|core| core.interface.write_word_8(address, data))
+        self.interface.write_word_8(address, data)
     }
 
     fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), Error> {
-        self.halted_access(|core| core.interface.write_64(address, data))
+        self.interface.write_64(address, data)
     }
 
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
-        self.halted_access(|core| core.interface.write_32(address, data))
+        self.interface.write_32(address, data)
     }
 
     fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), Error> {
-        self.halted_access(|core| core.interface.write_16(address, data))
+        self.interface.write_16(address, data)
     }
 
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
-        self.halted_access(|core| core.interface.write_8(address, data))
+        self.interface.write_8(address, data)
     }
 
     fn write(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
-        self.halted_access(|core| core.interface.write(address, data))
+        self.interface.write(address, data)
     }
 
     fn supports_8bit_transfers(&self) -> Result<bool, Error> {
