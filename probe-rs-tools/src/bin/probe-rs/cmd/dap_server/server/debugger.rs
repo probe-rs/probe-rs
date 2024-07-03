@@ -440,21 +440,6 @@ impl Debugger {
             return Err(bad_config);
         }
 
-        if requested_target_session_type == TargetSessionType::AttachRequest {
-            // Since VSCode doesn't do field validation checks for relationships in launch.json request types, check it here.
-            if self.config.flashing_config.flashing_enabled
-                || self.config.flashing_config.halt_after_reset
-                || self.config.flashing_config.full_chip_erase
-                || self.config.flashing_config.restore_unwritten_bytes
-            {
-                let error = DebuggerError::Other(anyhow!(
-                                            "Please do not use any of the `flashing_enabled`, `reset_after_flashing`, halt_after_reset`, `full_chip_erase`, or `restore_unwritten_bytes` options when using `attach` request type."));
-
-                debug_adapter.send_response::<()>(launch_attach_request, Err(&error))?;
-                return Err(error);
-            }
-        }
-
         debug_adapter
             .set_console_log_level(self.config.console_log_level.unwrap_or(ConsoleLog::Console));
 
@@ -996,7 +981,6 @@ mod test {
         server::configuration::{ConsoleLog, CoreConfig, FlashingConfig, SessionConfig},
         test::TestLister,
     };
-    use core::panic;
     use probe_rs::{
         architecture::arm::ApAddress,
         integration::{FakeProbe, Operation},

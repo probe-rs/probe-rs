@@ -22,9 +22,10 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: NonMain
     range:
@@ -62,9 +63,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: NonMain
     range:
@@ -80,7 +82,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - mspm0l_main_64kb
+  - mspm0l_main_32kb
   - mspm0l_nonmain
 - name: MSPM0L1303
   cores:
@@ -102,9 +104,10 @@ variants:
     range:
       start: 0x0
       end: 0x2000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: NonMain
     range:
@@ -120,7 +123,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - mspm0l_main_8kb
+  - mspm0l_main_16kb
   - mspm0l_nonmain
 - name: MSPM0L1304
   cores:
@@ -142,9 +145,10 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: NonMain
     range:
@@ -182,9 +186,10 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: NonMain
     range:
@@ -222,9 +227,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: NonMain
     range:
@@ -240,7 +246,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - mspm0l_main_64kb
+  - mspm0l_main_32kb
   - mspm0l_nonmain
 - name: MSPM0L1343
   cores:
@@ -262,9 +268,10 @@ variants:
     range:
       start: 0x0
       end: 0x2000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: NonMain
     range:
@@ -280,7 +287,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - mspm0l_main_8kb
+  - mspm0l_main_16kb
   - mspm0l_nonmain
 - name: MSPM0L1344
   cores:
@@ -302,9 +309,10 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: NonMain
     range:
@@ -342,9 +350,10 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: NonMain
     range:
@@ -382,9 +391,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: NonMain
     range:
@@ -400,7 +410,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - mspm0l_main_64kb
+  - mspm0l_main_32kb
   - mspm0l_nonmain
 flash_algorithms:
 - name: mspm0l_main_32kb
@@ -441,46 +451,6 @@ flash_algorithms:
     erase_sector_timeout: 3000
     sectors:
     - size: 0x200
-      address: 0x0
-- name: mspm0l_main_64kb
-  description: MSPM0L MAIN 64KB
-  default: true
-  instructions: gLUJSAFoByKRQwFgB0gBaA8ikUMBYADwv/gFSAFoBCKRQwFgACCAvQATQEAEAQtAEO0A4AAgcEf4tQRGEUgAaBFJAUCgChFKAkCKQhfSASBCAg9OMEYhRgDwgPgEIMdDACUoRsAHC9EALwnQQCIwRiFGAPBV+H8cAPAM+PLnASUoRvi9GADEQf8PAAD/7z8AANAMQARIAWjJB/zQAGgCIQFASAhwR8BG0OMMQPi1FEYNRgZGFUgAaBVJAUCwChVKAkABIIpCINIALR7QByEpQBvRASERTwAgAC0W0MkHFNABIEICDEgxRgDwOPg4aEAH/NQJSDFGIkYA8B74CDYINAg9//fH/wFG5ef4vRgAxEH/DwAA/+8/AADQDEDQ4wxAELUCIxNDESISAoQYY2AhYgEhgVAQvcBGcLURIxsCxBgBJWVgBE5mYiFiEWghY1FoYWPFUHC9wEb/AQAAELUNS8AYASOcAqJCDNBcAqJCENGJAgkNHykI2f8pCtgAHSA5yQgC4EAwSQTJDotAAWiZQwFgEL3QEQAAASCBAgZKE2iLQxNgAAVRaIFDUWADSAFoiQP81HBHwEYAAQtABAILQAAAAAA=
-  pc_init: 0x1
-  pc_uninit: 0x35
-  pc_program_page: 0xad
-  pc_erase_sector: 0x39
-  data_section_offset: 0x1c0
-  flash_properties:
-    address_range:
-      start: 0x0
-      end: 0x10000
-    page_size: 0x100
-    erased_byte_value: 0xff
-    program_page_timeout: 500
-    erase_sector_timeout: 3000
-    sectors:
-    - size: 0x400
-      address: 0x0
-- name: mspm0l_main_8kb
-  description: MSPM0L MAIN 8KB
-  default: true
-  instructions: gLUJSAFoByKRQwFgB0gBaA8ikUMBYADwv/gFSAFoBCKRQwFgACCAvQATQEAEAQtAEO0A4AAgcEf4tQRGEUgAaBFJAUCgChFKAkCKQhfSASBCAg9OMEYhRgDwgPgEIMdDACUoRsAHC9EALwnQQCIwRiFGAPBV+H8cAPAM+PLnASUoRvi9GADEQf8PAAD/7z8AANAMQARIAWjJB/zQAGgCIQFASAhwR8BG0OMMQPi1FEYNRgZGFUgAaBVJAUCwChVKAkABIIpCINIALR7QByEpQBvRASERTwAgAC0W0MkHFNABIEICDEgxRgDwOPg4aEAH/NQJSDFGIkYA8B74CDYINAg9//fH/wFG5ef4vRgAxEH/DwAA/+8/AADQDEDQ4wxAELUCIxNDESISAoQYY2AhYgEhgVAQvcBGcLURIxsCxBgBJWVgBE5mYiFiEWghY1FoYWPFUHC9wEb/AQAAELUNS8AYASOcAqJCDNBcAqJCENGJAgkNHykI2f8pCtgAHSA5yQgC4EAwSQTJDotAAWiZQwFgEL3QEQAAASCBAgZKE2iLQxNgAAVRaIFDUWADSAFoiQP81HBHwEYAAQtABAILQAAAAAA=
-  pc_init: 0x1
-  pc_uninit: 0x35
-  pc_program_page: 0xad
-  pc_erase_sector: 0x39
-  data_section_offset: 0x1c0
-  flash_properties:
-    address_range:
-      start: 0x0
-      end: 0x2000
-    page_size: 0x80
-    erased_byte_value: 0xff
-    program_page_timeout: 500
-    erase_sector_timeout: 3000
-    sectors:
-    - size: 0x400
       address: 0x0
 - name: mspm0l_main_16kb
   description: MSPM0L MAIN 16KB

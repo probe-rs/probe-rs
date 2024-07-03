@@ -1,0 +1,560 @@
+name: MIMXRT685S Series
+manufacturer:
+  id: 0x15
+  cc: 0x0
+generated_from_pack: true
+pack_file_release: 18.0.0
+variants:
+- name: MIMXRT685SFAWBR
+  cores:
+  - name: cm33
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM_ROM
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM_SHARED
+    range:
+      start: 0x20000
+      end: 0x80000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x80000
+      end: 0x200000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM_DSP
+    range:
+      start: 0x200000
+      end: 0x480000
+    cores:
+    - cm33
+  - !Generic
+    name: USB_RAM
+    range:
+      start: 0x40140000
+      end: 0x40144000
+    cores:
+    - cm33
+  - !Generic
+    name: BootROM
+    range:
+      start: 0x3000000
+      end: 0x3040000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM_ROM_alias1
+    range:
+      start: 0x10000000
+      end: 0x10020000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM_SHARED_alias1
+    range:
+      start: 0x10020000
+      end: 0x10080000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM_alias1
+    range:
+      start: 0x10080000
+      end: 0x10200000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM_DSP_alias1
+    range:
+      start: 0x10200000
+      end: 0x10480000
+    cores:
+    - cm33
+  - !Generic
+    name: BootROM_alias
+    range:
+      start: 0x13000000
+      end: 0x13040000
+    cores:
+    - cm33
+  - !Generic
+    name: SRAM_ROM_alias2
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM_SHARED_alias2
+    range:
+      start: 0x20020000
+      end: 0x20080000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM_alias2
+    range:
+      start: 0x20080000
+      end: 0x20200000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM_DSP_alias2
+    range:
+      start: 0x20200000
+      end: 0x20480000
+    cores:
+    - cm33
+  - !Generic
+    name: SRAM_ROM_alias3
+    range:
+      start: 0x30000000
+      end: 0x30020000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM_SHARED_alias3
+    range:
+      start: 0x30020000
+      end: 0x30080000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM_alias3
+    range:
+      start: 0x30080000
+      end: 0x30200000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM_DSP_alias3
+    range:
+      start: 0x30200000
+      end: 0x30480000
+    cores:
+    - cm33
+  - !Generic
+    name: USB_RAM_alias
+    range:
+      start: 0x50140000
+      end: 0x50144000
+    cores:
+    - cm33
+  flash_algorithms:
+  - mimxrt6xx_evk_flexspi
+  - mimxrt6xx_evk_flexspi_s
+  - mimxrt6xx_flexspi_b_sfdp_qspi
+  - mimxrt6xx_flexspi_b_sfdp_qspi_s
+- name: MIMXRT685SFFOB
+  cores:
+  - name: cm33
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM_ROM
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM_SHARED
+    range:
+      start: 0x20000
+      end: 0x80000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x80000
+      end: 0x200000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM_DSP
+    range:
+      start: 0x200000
+      end: 0x480000
+    cores:
+    - cm33
+  - !Generic
+    name: USB_RAM
+    range:
+      start: 0x40140000
+      end: 0x40144000
+    cores:
+    - cm33
+  - !Generic
+    name: BootROM
+    range:
+      start: 0x3000000
+      end: 0x3040000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM_ROM_alias1
+    range:
+      start: 0x10000000
+      end: 0x10020000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM_SHARED_alias1
+    range:
+      start: 0x10020000
+      end: 0x10080000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM_alias1
+    range:
+      start: 0x10080000
+      end: 0x10200000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM_DSP_alias1
+    range:
+      start: 0x10200000
+      end: 0x10480000
+    cores:
+    - cm33
+  - !Generic
+    name: BootROM_alias
+    range:
+      start: 0x13000000
+      end: 0x13040000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM_ROM_alias2
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM_SHARED_alias2
+    range:
+      start: 0x20020000
+      end: 0x20080000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM_alias2
+    range:
+      start: 0x20080000
+      end: 0x20200000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM_DSP_alias2
+    range:
+      start: 0x20200000
+      end: 0x20480000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM_ROM_alias3
+    range:
+      start: 0x30000000
+      end: 0x30020000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM_SHARED_alias3
+    range:
+      start: 0x30020000
+      end: 0x30080000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM_alias3
+    range:
+      start: 0x30080000
+      end: 0x30200000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM_DSP_alias3
+    range:
+      start: 0x30200000
+      end: 0x30480000
+    cores:
+    - cm33
+  - !Generic
+    name: USB_RAM_alias
+    range:
+      start: 0x50140000
+      end: 0x50144000
+    cores:
+    - cm33
+  flash_algorithms:
+  - mimxrt6xx_evk_flexspi
+  - mimxrt6xx_evk_flexspi_s
+  - mimxrt6xx_flexspi_b_sfdp_qspi
+  - mimxrt6xx_flexspi_b_sfdp_qspi_s
+- name: MIMXRT685SFVKB
+  cores:
+  - name: cm33
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM_ROM
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM_SHARED
+    range:
+      start: 0x20000
+      end: 0x80000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x80000
+      end: 0x200000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM_DSP
+    range:
+      start: 0x200000
+      end: 0x480000
+    cores:
+    - cm33
+  - !Generic
+    name: USB_RAM
+    range:
+      start: 0x40140000
+      end: 0x40144000
+    cores:
+    - cm33
+  - !Generic
+    name: BootROM
+    range:
+      start: 0x3000000
+      end: 0x3040000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM_ROM_alias1
+    range:
+      start: 0x10000000
+      end: 0x10020000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM_SHARED_alias1
+    range:
+      start: 0x10020000
+      end: 0x10080000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM_alias1
+    range:
+      start: 0x10080000
+      end: 0x10200000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM_DSP_alias1
+    range:
+      start: 0x10200000
+      end: 0x10480000
+    cores:
+    - cm33
+  - !Generic
+    name: BootROM_alias
+    range:
+      start: 0x13000000
+      end: 0x13040000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM_ROM_alias2
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM_SHARED_alias2
+    range:
+      start: 0x20020000
+      end: 0x20080000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM_alias2
+    range:
+      start: 0x20080000
+      end: 0x20200000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM_DSP_alias2
+    range:
+      start: 0x20200000
+      end: 0x20480000
+    cores:
+    - cm33
+  - !Generic
+    name: SRAM_ROM_alias3
+    range:
+      start: 0x30000000
+      end: 0x30020000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM_SHARED_alias3
+    range:
+      start: 0x30020000
+      end: 0x30080000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM_alias3
+    range:
+      start: 0x30080000
+      end: 0x30200000
+    cores:
+    - cm33
+  - !Ram
+    name: SRAM_DSP_alias3
+    range:
+      start: 0x30200000
+      end: 0x30480000
+    cores:
+    - cm33
+  - !Generic
+    name: USB_RAM_alias
+    range:
+      start: 0x50140000
+      end: 0x50144000
+    cores:
+    - cm33
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0xc000000
+    cores:
+    - cm33
+  flash_algorithms:
+  - mimxrt6xx_evk_flexspi
+  - mimxrt6xx_evk_flexspi_s
+  - mimxrt6xx_flexspi_b_sfdp_qspi
+  - mimxrt6xx_flexspi_b_sfdp_qspi_s
+flash_algorithms:
+- name: mimxrt6xx_evk_flexspi
+  description: MIMXRT6XX FLEXSPI
+  default: true
+  instructions: 8LWBsEDyDATv8xCAcrbA8gAERfIMBgnrBABP9ABxxPITBgDwj/lA8gQFQ/JRAMDyAAXM8lAQFCFJ+AUACesFAMLyAAFBYEP2AADE8gMAACEBYEPyHADE8gMAAWABIHBiQvIwYMTyAABP9IAxAWAMIUFgT/D/MYFgwWAwaEDwAQAwYAC/VvgIDMAH+9FB8jBGxPIABgMgMGAAIELyCAdwYAMgxPIQBwDw1/hwIMTyAABP9IAxwPjQHwFgRPIwEMTyAABP9JhxAWB0IMTyAgAEIcD40B8BYE/0gFA4YMf4gAJB8nBwATgAv/zRT/SAUMf4AAIAIMb4UA8J6wQBCesFAgAgAPC9+AGw8L0AvwAgcEeAtUDyDADA8gAACesAAQAgAPBS+IC9AL+AtUDyDAHA8gABSUTR+MQxAPF4QgAgAPBX+IC9ACkEvwAgcEct6fBFgbBA8gwKFEaIRgZGACXA8gAKAL8J6woHBvF4QgAgOUYjRgDwHfjX+MARDUQMREVFDkTv0wGwvejwhQAAT/IcAMHyAzAAaABocEcAv4C1T/IcAsHyAzISaFJokEeAvQC/gLVP8hwMwfIDPNz4AMDc+AjA4EeAvQC/gLVP8hwCwfIDMhJo0miQR4C9AL+AtU/yHAPB8gMzG2jbaZhHgL0Av4C1T/IcDMHyAzzc+ADA3PgQwOBHgL0Av4C1grBP8hwMwfIDPNz4AMDd+BDg3PggwM34AODgRwKwgL0Av4C1T/IcDMHyAzzc+ADA3PgowOBHgL0Av4C1T/IcAsHyAzISaFJqkEeAvQC/gLVP8hwBwfIDMQloyWqIR4C9AL+AtU/yHAPB8gMzG2gba5hHgL0Av3C1T/IcBsHyAzYzaAxG22kFRphHACgYv3C9MGghRkJoKEaQR3C9AL+AtU/yIAHB8gMxCWgJaIhHgL0Av4C1T/IgAMHyAzAAaEBogEeAvQC/gLVP8iACwfIDMhJokmiQR4C9AL+AtU/yIAPB8gMzG2jbaJhHgL0Av4C1T/IgAMHyAzAAaEBpgEeAvQC/gLVP8iADwfIDMxtom2mYR4C9AL+AtU/yIAPB8gMzG2gbaZhHgL0Av4C1T/IAAcHyAzEJaIhHgL1P8AACALUTRpRGlkYgOSK/oOgMUKDoDFCx8SABv/T3rwkHKL+g6AxQSL8MwF34BOuJACi/QPgEKwi/cEdIvyD4AisR8IBPGL8A+AErcEcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+  load_address: 0x1001c020
+  pc_init: 0x1
+  pc_uninit: 0x10d
+  pc_program_page: 0x145
+  pc_erase_sector: 0x129
+  pc_erase_all: 0x111
+  data_section_offset: 0x394
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0xc000000
+    page_size: 0x100
+    erased_byte_value: 0xff
+    program_page_timeout: 3000
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+- name: mimxrt6xx_evk_flexspi_s
+  description: MIMXRT6XX FLEXSPI
+  default: true
+  instructions: 8LWBsEDyDATv8xCAcrbA8gAERfIMBgnrBABP9ABxxPITBgDwj/lA8gQFQ/JRAMDyAAXM8lAQFCFJ+AUACesFAMLyAAFBYEP2AADE8gMAACEBYEPyHADE8gMAAWABIHBiQvIwYMTyAABP9IAxAWAMIUFgT/D/MYFgwWAwaEDwAQAwYAC/VvgIDMAH+9FB8jBGxPIABgMgMGAAIELyCAdwYAMgxPIQBwDw1/hwIMTyAABP9IAxwPjQHwFgRPIwEMTyAABP9JhxAWB0IMTyAgAEIcD40B8BYE/0gFA4YMf4gAJB8nBwATgAv/zRT/SAUMf4AAIAIMb4UA8J6wQBCesFAgAgAPC9+AGw8L0AvwAgcEeAtUDyDADA8gAACesAAQAgAPBS+IC9AL+AtUDyDAHA8gABSUTR+MQxAPFoQgAgAPBX+IC9ACkEvwAgcEct6fBFgbBA8gwKFEaIRgZGACXA8gAKAL8J6woHBvFoQgAgOUYjRgDwHfjX+MARDUQMREVFDkTv0wGwvejwhQAAT/IcAMHyAzAAaABocEcAv4C1T/IcAsHyAzISaFJokEeAvQC/gLVP8hwMwfIDPNz4AMDc+AjA4EeAvQC/gLVP8hwCwfIDMhJo0miQR4C9AL+AtU/yHAPB8gMzG2jbaZhHgL0Av4C1T/IcDMHyAzzc+ADA3PgQwOBHgL0Av4C1grBP8hwMwfIDPNz4AMDd+BDg3PggwM34AODgRwKwgL0Av4C1T/IcDMHyAzzc+ADA3PgowOBHgL0Av4C1T/IcAsHyAzISaFJqkEeAvQC/gLVP8hwBwfIDMQloyWqIR4C9AL+AtU/yHAPB8gMzG2gba5hHgL0Av3C1T/IcBsHyAzYzaAxG22kFRphHACgYv3C9MGghRkJoKEaQR3C9AL+AtU/yIAHB8gMxCWgJaIhHgL0Av4C1T/IgAMHyAzAAaEBogEeAvQC/gLVP8iACwfIDMhJokmiQR4C9AL+AtU/yIAPB8gMzG2jbaJhHgL0Av4C1T/IgAMHyAzAAaEBpgEeAvQC/gLVP8iADwfIDMxtom2mYR4C9AL+AtU/yIAPB8gMzG2gbaZhHgL0Av4C1T/IAAcHyAzEJaIhHgL1P8AACALUTRpRGlkYgOSK/oOgMUKDoDFCx8SABv/T3rwkHKL+g6AxQSL8MwF34BOuJACi/QPgEKwi/cEdIvyD4AisR8IBPGL8A+AErcEcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+  load_address: 0x1001c020
+  pc_init: 0x1
+  pc_uninit: 0x10d
+  pc_program_page: 0x145
+  pc_erase_sector: 0x129
+  pc_erase_all: 0x111
+  data_section_offset: 0x394
+  flash_properties:
+    address_range:
+      start: 0x18000000
+      end: 0x1c000000
+    page_size: 0x100
+    erased_byte_value: 0xff
+    program_page_timeout: 300
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+- name: mimxrt6xx_flexspi_b_sfdp_qspi
+  description: MIMXRT6XX FLEXSPI
+  instructions: 8LWBsEDyDATv8xCAcrbA8gAERfIMBgnrBABP9ABxxPITBgDwjflA8gQFASDA8gAFzPIAEAYhSfgFAAnrBQDC8gABQWBD9gAAxPIDAAAhAWBD8hwAxPIDAAFgASBwYkLyMGDE8gAAT/SAMQFgDCFBYE/w/zGBYMFgMGhA8AEAMGBW+AgMwAf70UHyMEbE8gAGAyAwYAAgQvIIB3BgAyDE8hAHAPDX+HAgxPIAAE/0gDHA+NAfAWBE8jAQxPIAAE/0mHEBYHQgxPICAAQhwPjQHwFgT/SAUDhgx/iAAkHycHABOAC//NFP9IBQx/gAAgAgxvhQDwnrBAEJ6wUCACAA8L34AbDwvQC/ACBwR4C1QPIMAMDyAAAJ6wABACAA8FL4gL0Av4C1QPIMAcDyAAFJRNH4xDEA8XhCACAA8Ff4gL0AKQS/ACBwRy3p8EWBsEDyDAoURohGBkYAJcDyAAoAvwnrCgcG8XhCACA5RiNGAPAd+Nf4wBENRAxERUUORO/TAbC96PCFAABP8hwAwfIDMABoAGhwRwC/gLVP8hwCwfIDMhJoUmiQR4C9AL+AtU/yHAzB8gM83PgAwNz4CMDgR4C9AL+AtU/yHALB8gMyEmjSaJBHgL0Av4C1T/IcA8HyAzMbaNtpmEeAvQC/gLVP8hwMwfIDPNz4AMDc+BDA4EeAvQC/gLWCsE/yHAzB8gM83PgAwN34EODc+CDAzfgA4OBHArCAvQC/gLVP8hwMwfIDPNz4AMDc+CjA4EeAvQC/gLVP8hwCwfIDMhJoUmqQR4C9AL+AtU/yHAHB8gMxCWjJaohHgL0Av4C1T/IcA8HyAzMbaBtrmEeAvQC/cLVP8hwGwfIDNjNoDEbbaQVGmEcAKBi/cL0waCFGQmgoRpBHcL0Av4C1T/IgAcHyAzEJaAloiEeAvQC/gLVP8iAAwfIDMABoQGiAR4C9AL+AtU/yIALB8gMyEmiSaJBHgL0Av4C1T/IgA8HyAzMbaNtomEeAvQC/gLVP8iAAwfIDMABoQGmAR4C9AL+AtU/yIAPB8gMzG2ibaZhHgL0Av4C1T/IgA8HyAzMbaBtpmEeAvQC/gLVP8gABwfIDMQloiEeAvU/wAAIAtRNGlEaWRiA5Ir+g6AxQoOgMULHxIAG/9PevCQcov6DoDFBIvwzAXfgE64kAKL9A+AQrCL9wR0i/IPgCKxHwgE8YvwD4AStwRwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+  load_address: 0x1001c020
+  pc_init: 0x1
+  pc_uninit: 0x109
+  pc_program_page: 0x141
+  pc_erase_sector: 0x125
+  pc_erase_all: 0x10d
+  data_section_offset: 0x390
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0xc000000
+    page_size: 0x100
+    erased_byte_value: 0xff
+    program_page_timeout: 3000
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+- name: mimxrt6xx_flexspi_b_sfdp_qspi_s
+  description: MIMXRT6XX FLEXSPI
+  instructions: 8LWBsEDyDATv8xCAcrbA8gAERfIMBgnrBABP9ABxxPITBgDwjflA8gQFASDA8gAFzPIAEAYhSfgFAAnrBQDC8gABQWBD9gAAxPIDAAAhAWBD8hwAxPIDAAFgASBwYkLyMGDE8gAAT/SAMQFgDCFBYE/w/zGBYMFgMGhA8AEAMGBW+AgMwAf70UHyMEbE8gAGAyAwYAAgQvIIB3BgAyDE8hAHAPDX+HAgxPIAAE/0gDHA+NAfAWBE8jAQxPIAAE/0mHEBYHQgxPICAAQhwPjQHwFgT/SAUDhgx/iAAkHycHABOAC//NFP9IBQx/gAAgAgxvhQDwnrBAEJ6wUCACAA8L34AbDwvQC/ACBwR4C1QPIMAMDyAAAJ6wABACAA8FL4gL0Av4C1QPIMAcDyAAFJRNH4xDEA8WhCACAA8Ff4gL0AKQS/ACBwRy3p8EWBsEDyDAoURohGBkYAJcDyAAoAvwnrCgcG8WhCACA5RiNGAPAd+Nf4wBENRAxERUUORO/TAbC96PCFAABP8hwAwfIDMABoAGhwRwC/gLVP8hwCwfIDMhJoUmiQR4C9AL+AtU/yHAzB8gM83PgAwNz4CMDgR4C9AL+AtU/yHALB8gMyEmjSaJBHgL0Av4C1T/IcA8HyAzMbaNtpmEeAvQC/gLVP8hwMwfIDPNz4AMDc+BDA4EeAvQC/gLWCsE/yHAzB8gM83PgAwN34EODc+CDAzfgA4OBHArCAvQC/gLVP8hwMwfIDPNz4AMDc+CjA4EeAvQC/gLVP8hwCwfIDMhJoUmqQR4C9AL+AtU/yHAHB8gMxCWjJaohHgL0Av4C1T/IcA8HyAzMbaBtrmEeAvQC/cLVP8hwGwfIDNjNoDEbbaQVGmEcAKBi/cL0waCFGQmgoRpBHcL0Av4C1T/IgAcHyAzEJaAloiEeAvQC/gLVP8iAAwfIDMABoQGiAR4C9AL+AtU/yIALB8gMyEmiSaJBHgL0Av4C1T/IgA8HyAzMbaNtomEeAvQC/gLVP8iAAwfIDMABoQGmAR4C9AL+AtU/yIAPB8gMzG2ibaZhHgL0Av4C1T/IgA8HyAzMbaBtpmEeAvQC/gLVP8gABwfIDMQloiEeAvU/wAAIAtRNGlEaWRiA5Ir+g6AxQoOgMULHxIAG/9PevCQcov6DoDFBIvwzAXfgE64kAKL9A+AQrCL9wR0i/IPgCKxHwgE8YvwD4AStwRwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+  load_address: 0x1001c020
+  pc_init: 0x1
+  pc_uninit: 0x109
+  pc_program_page: 0x141
+  pc_erase_sector: 0x125
+  pc_erase_all: 0x10d
+  data_section_offset: 0x390
+  flash_properties:
+    address_range:
+      start: 0x18000000
+      end: 0x1c000000
+    page_size: 0x100
+    erased_byte_value: 0xff
+    program_page_timeout: 300
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x1000
+      address: 0x0

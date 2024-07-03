@@ -11,9 +11,10 @@ variants:
     range:
       start: 0x8000
       end: 0x10000
-    is_boot_memory: true
     cores:
     - ibex
+    access:
+      boot: true
   - !Nvm
     name: Flash
     range:

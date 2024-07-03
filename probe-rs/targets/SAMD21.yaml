@@ -2,6 +2,45 @@ name: SAMD21
 manufacturer:
   id: 0x1f
   cc: 0x0
+chip_detection:
+- !AtsamDsu
+  processor: 1
+  family: 0
+  series: 1
+  variants:
+    0x0: ATSAMD21J18A
+    0x1: ATSAMD21J17A
+    0x2: ATSAMD21J16A
+    0x3: ATSAMD21J15A
+    0x5: ATSAMD21G18A
+    0xf: ATSAMD21G18AU
+    0x6: ATSAMD21G17A
+    0x10: ATSAMD21G17AU
+    0x7: ATSAMD21G16A
+    0x8: ATSAMD21G15A
+    0xa: ATSAMD21E18A
+    0xb: ATSAMD21E17A
+    0xc: ATSAMD21E16A
+    0xd: ATSAMD21E15A
+    0x20: ATSAMD21J16B
+    0x21: ATSAMD21J15B
+    0x23: ATSAMD21G16B
+    0x24: ATSAMD21G15B
+    0x26: ATSAMD21E16B
+    0x55: ATSAMD21E16BU
+    0x27: ATSAMD21E15B
+    0x56: ATSAMD21E15BU
+    0x57: ATSAMD21G16L
+    0x3e: ATSAMD21E16L
+    0x3f: ATSAMD21E15L
+    0x62: ATSAMD21E16CU
+    0x63: ATSAMD21E15CU
+    0x94: ATSAMD21E17D
+    0x95: ATSAMD21E17DU
+    0x97: ATSAMD21E17L
+    0x93: ATSAMD21G17D
+    0x96: ATSAMD21G17L
+    0x92: ATSAMD21J17D
 variants:
 - name: ATSAMD21E15A
   cores:
@@ -21,9 +60,10 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd21_32
 - name: ATSAMD21E15B
@@ -44,9 +84,10 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd21_32
 - name: ATSAMD21E15BU
@@ -67,12 +108,13 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd21_32
-  - atsamd21_32_eeprom
+  - atsamd21_128_eeprom
 - name: ATSAMD21E15CU
   cores:
   - name: main
@@ -91,12 +133,13 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd21_32
-  - atsamd21_32_eeprom
+  - atsamd21_128_eeprom
 - name: ATSAMD21E15L
   cores:
   - name: main
@@ -115,12 +158,13 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd21_32
-  - atsamd21_32_eeprom
+  - atsamd21_128_eeprom
 - name: ATSAMD21E16A
   cores:
   - name: main
@@ -139,12 +183,13 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd21_64
-  - atsamd21_64_eeprom
+  - atsamd21_128_eeprom
 - name: ATSAMD21E16B
   cores:
   - name: main
@@ -163,12 +208,13 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd21_64
-  - atsamd21_64_eeprom
+  - atsamd21_128_eeprom
 - name: ATSAMD21E16BU
   cores:
   - name: main
@@ -187,12 +233,13 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd21_64
-  - atsamd21_64_eeprom
+  - atsamd21_128_eeprom
 - name: ATSAMD21E16CU
   cores:
   - name: main
@@ -211,12 +258,13 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd21_64
-  - atsamd21_64_eeprom
+  - atsamd21_128_eeprom
 - name: ATSAMD21E16L
   cores:
   - name: main
@@ -235,12 +283,13 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd21_64
-  - atsamd21_64_eeprom
+  - atsamd21_128_eeprom
 - name: ATSAMD21E17A
   cores:
   - name: main
@@ -259,9 +308,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd21_128
 - name: ATSAMD21E17D
@@ -282,9 +332,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd21_128
   - atsamd21_128_eeprom
@@ -306,9 +357,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd21_128
   - atsamd21_128_eeprom
@@ -330,9 +382,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd21_128
   - atsamd21_128_eeprom
@@ -354,9 +407,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd21_256
 - name: ATSAMD21G15A
@@ -377,9 +431,10 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd21_32
 - name: ATSAMD21G15B
@@ -400,12 +455,13 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd21_32
-  - atsamd21_32_eeprom
+  - atsamd21_128_eeprom
 - name: ATSAMD21G15L
   cores:
   - name: main
@@ -424,12 +480,13 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd21_32
-  - atsamd21_32_eeprom
+  - atsamd21_128_eeprom
 - name: ATSAMD21G16A
   cores:
   - name: main
@@ -448,9 +505,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd21_64
 - name: ATSAMD21G16B
@@ -471,12 +529,13 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd21_64
-  - atsamd21_64_eeprom
+  - atsamd21_128_eeprom
 - name: ATSAMD21G16L
   cores:
   - name: main
@@ -495,12 +554,13 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd21_64
-  - atsamd21_64_eeprom
+  - atsamd21_128_eeprom
 - name: ATSAMD21G17A
   cores:
   - name: main
@@ -519,9 +579,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd21_128
 - name: ATSAMD21G17AU
@@ -542,9 +603,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd21_128
 - name: ATSAMD21G17D
@@ -565,9 +627,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd21_128
   - atsamd21_128_eeprom
@@ -589,9 +652,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd21_128
   - atsamd21_128_eeprom
@@ -613,9 +677,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd21_256
 - name: ATSAMD21G18AU
@@ -636,9 +701,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd21_256
 - name: ATSAMD21J15A
@@ -659,9 +725,10 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd21_32
 - name: ATSAMD21J15B
@@ -682,12 +749,13 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd21_32
-  - atsamd21_32_eeprom
+  - atsamd21_128_eeprom
 - name: ATSAMD21J16A
   cores:
   - name: main
@@ -706,9 +774,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd21_64
 - name: ATSAMD21J16B
@@ -729,12 +798,13 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd21_64
-  - atsamd21_64_eeprom
+  - atsamd21_128_eeprom
 - name: ATSAMD21J17A
   cores:
   - name: main
@@ -753,9 +823,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd21_128
 - name: ATSAMD21J17D
@@ -776,9 +847,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd21_128
   - atsamd21_128_eeprom
@@ -800,9 +872,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd21_256
 flash_algorithms:
@@ -828,8 +901,8 @@ flash_algorithms:
       address: 0x0
   cores:
   - main
-- name: atsamd21_32_eeprom
-  description: ATSAMD21 1kB Data EEPROM
+- name: atsamd21_128_eeprom
+  description: ATSAMD21 4kB Data EEPROM
   default: true
   instructions: QSEJBgpoUgcB1QQiCmAcShpJUWAbSUlECGAAIHBHACBwR0EIFkjBYRdJAYABfckH/NAAfYAHAdUBIHBHACBwRxC1EUwOSyo0HIAcfeQH/NDJHIkIiQAC4BDKCR8QwAAp+tEJSIAcGIAYfcAH/NAYfYAHAdUBIBC9ACAQvZ4ABAAAQABBBAAAABqlAAAAAAAAAAAAAA==
   pc_init: 0x1
@@ -840,7 +913,7 @@ flash_algorithms:
   flash_properties:
     address_range:
       start: 0x400000
-      end: 0x400400
+      end: 0x401000
     page_size: 0x40
     erased_byte_value: 0xff
     program_page_timeout: 100
@@ -872,28 +945,6 @@ flash_algorithms:
       address: 0x0
   cores:
   - main
-- name: atsamd21_64_eeprom
-  description: ATSAMD21 2kB Data EEPROM
-  default: true
-  instructions: QSEJBgpoUgcB1QQiCmAcShpJUWAbSUlECGAAIHBHACBwR0EIFkjBYRdJAYABfckH/NAAfYAHAdUBIHBHACBwRxC1EUwOSyo0HIAcfeQH/NDJHIkIiQAC4BDKCR8QwAAp+tEJSIAcGIAYfcAH/NAYfYAHAdUBIBC9ACAQvZ4ABAAAQABBBAAAABqlAAAAAAAAAAAAAA==
-  pc_init: 0x1
-  pc_uninit: 0x1f
-  pc_program_page: 0x41
-  pc_erase_sector: 0x23
-  data_section_offset: 0x8c
-  flash_properties:
-    address_range:
-      start: 0x400000
-      end: 0x400800
-    page_size: 0x40
-    erased_byte_value: 0xff
-    program_page_timeout: 100
-    erase_sector_timeout: 1000
-    sectors:
-    - size: 0x100
-      address: 0x0
-  cores:
-  - main
 - name: atsamd21_128
   description: ATSAMD21 128kB Flash
   default: true
@@ -913,28 +964,6 @@ flash_algorithms:
     erase_sector_timeout: 1000
     sectors:
     - size: 0x2000
-      address: 0x0
-  cores:
-  - main
-- name: atsamd21_128_eeprom
-  description: ATSAMD21 4kB Data EEPROM
-  default: true
-  instructions: QSEJBgpoUgcB1QQiCmAcShpJUWAbSUlECGAAIHBHACBwR0EIFkjBYRdJAYABfckH/NAAfYAHAdUBIHBHACBwRxC1EUwOSyo0HIAcfeQH/NDJHIkIiQAC4BDKCR8QwAAp+tEJSIAcGIAYfcAH/NAYfYAHAdUBIBC9ACAQvZ4ABAAAQABBBAAAABqlAAAAAAAAAAAAAA==
-  pc_init: 0x1
-  pc_uninit: 0x1f
-  pc_program_page: 0x41
-  pc_erase_sector: 0x23
-  data_section_offset: 0x8c
-  flash_properties:
-    address_range:
-      start: 0x400000
-      end: 0x401000
-    page_size: 0x40
-    erased_byte_value: 0xff
-    program_page_timeout: 100
-    erase_sector_timeout: 1000
-    sectors:
-    - size: 0x100
       address: 0x0
   cores:
   - main

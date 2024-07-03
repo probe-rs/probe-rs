@@ -2,13 +2,15 @@
 //!
 //! The DTM is responsible for access to the debug module.
 //! Currently, only JTAG is supported.
-use crate::architecture::riscv::dtm::dtm_access::DtmAccess;
+
 use bitfield::bitfield;
 use std::time::{Duration, Instant};
 
 use crate::architecture::riscv::communication_interface::{
     RiscvCommunicationInterface, RiscvDebugInterfaceState, RiscvError, RiscvInterfaceBuilder,
 };
+use crate::architecture::riscv::dtm::dtm_access::DtmAccess;
+use crate::error::Error;
 use crate::probe::DebugProbeError;
 use crate::probe::{
     CommandResult, DeferredResultIndex, DeferredResultSet, JTAGAccess, JtagCommandQueue,
@@ -114,7 +116,7 @@ impl<'probe> JtagDtm<'probe> {
             transform: |_, result| {
                 Self::transform_dmi_result(result)
                     .map(CommandResult::U32)
-                    .map_err(|e| crate::Error::Riscv(e.map_as_err().unwrap_err()))
+                    .map_err(|e| Error::Riscv(e.map_as_err().unwrap_err()))
             },
             len: bit_size,
         }))
@@ -229,21 +231,17 @@ impl DtmAccess for JtagDtm<'_> {
                     return Ok(());
                 }
                 Err(e) => match e.error {
-                    crate::Error::Riscv(ae) => {
-                        match ae {
-                            RiscvError::DtmOperationInProcess => {
-                                self.clear_error_state()?;
+                    Error::Riscv(RiscvError::DtmOperationInProcess) => {
+                        self.clear_error_state()?;
 
-                                // queue up the remaining commands when we retry
-                                cmds.consume(e.results.len());
-                                self.state.jtag_results.merge_from(e.results);
+                        // queue up the remaining commands when we retry
+                        cmds.consume(e.results.len());
+                        self.state.jtag_results.merge_from(e.results);
 
-                                self.probe.set_idle_cycles(self.probe.idle_cycles() + 1);
-                            }
-                            _ => return Err(ae),
-                        }
+                        self.probe.set_idle_cycles(self.probe.idle_cycles() + 1);
                     }
-                    crate::Error::Probe(err) => return Err(err.into()),
+                    Error::Riscv(error) => return Err(error),
+                    Error::Probe(error) => return Err(error.into()),
                     _other => unreachable!(),
                 },
             }
@@ -303,17 +301,17 @@ pub enum DmiOperation {
 impl DmiOperation {
     fn opcode(&self) -> u8 {
         match self {
-            DmiOperation::NoOp => 0,
-            DmiOperation::Read { .. } => 1,
-            DmiOperation::Write { .. } => 2,
+            Self::NoOp => 0,
+            Self::Read { .. } => 1,
+            Self::Write { .. } => 2,
         }
     }
 
-    pub fn to_byte_batch(self: DmiOperation) -> [u8; 16] {
+    pub fn to_byte_batch(self) -> [u8; 16] {
         let (opcode, address, value): (u128, u128, u128) = match self {
-            DmiOperation::NoOp => (self.opcode() as u128, 0, 0),
-            DmiOperation::Read { address } => (self.opcode() as u128, address as u128, 0),
-            DmiOperation::Write { address, value } => {
+            Self::NoOp => (self.opcode() as u128, 0, 0),
+            Self::Read { address } => (self.opcode() as u128, address as u128, 0),
+            Self::Write { address, value } => {
                 (self.opcode() as u128, address as u128, value as u128)
             }
         };
@@ -337,23 +335,21 @@ pub enum DmiOperationStatus {
 impl DmiOperationStatus {
     pub fn map_as_err(self) -> Result<(), RiscvError> {
         match self {
-            DmiOperationStatus::Ok => Ok(()),
-            DmiOperationStatus::Reserved => unimplemented!("Reserved."),
-            DmiOperationStatus::OperationFailed => Err(RiscvError::DtmOperationFailed),
-            DmiOperationStatus::RequestInProgress => Err(RiscvError::DtmOperationInProcess),
+            Self::Ok => Ok(()),
+            Self::Reserved => unimplemented!("Reserved."),
+            Self::OperationFailed => Err(RiscvError::DtmOperationFailed),
+            Self::RequestInProgress => Err(RiscvError::DtmOperationInProcess),
         }
     }
 }
 
 impl DmiOperationStatus {
     pub(crate) fn parse(value: u8) -> Option<Self> {
-        use DmiOperationStatus::*;
-
         let status = match value {
-            0 => Ok,
-            1 => Reserved,
-            2 => OperationFailed,
-            3 => RequestInProgress,
+            0 => Self::Ok,
+            1 => Self::Reserved,
+            2 => Self::OperationFailed,
+            3 => Self::RequestInProgress,
             _ => return None,
         };
 

@@ -5,11 +5,10 @@ use futures::StreamExt;
 use probe_rs::flashing::FlashAlgorithm;
 use probe_rs_target::{
     Architecture, ArmCoreAccessOptions, Chip, ChipFamily, Core as ProbeCore, CoreAccessOptions,
-    CoreType, GenericRegion, MemoryRegion, NvmRegion, RamRegion, RawFlashAlgorithm,
+    CoreType, GenericRegion, MemoryAccess, MemoryRegion, NvmRegion, RamRegion, RawFlashAlgorithm,
     RiscvCoreAccessOptions, TargetDescriptionSource, XtensaCoreAccessOptions,
 };
 use std::collections::HashMap;
-use std::ffi::OsStr;
 use std::{fs, io::Read, path::Path};
 
 pub(crate) enum Kind<'a, T>
@@ -31,7 +30,7 @@ where
                 let reader = archive.by_name(&path.to_string_lossy())?;
                 reader.bytes().collect::<std::io::Result<Vec<u8>>>()?
             }
-            Kind::Directory(dir) => std::fs::read(dir.join(path))?,
+            Kind::Directory(dir) => fs::read(dir.join(path))?,
         };
 
         Ok(buffer)
@@ -75,14 +74,13 @@ where
     T: std::io::Seek + std::io::Read,
 {
     // Forge a definition file for each device in the .pdsc file.
-    let pack_file_release = Some(pdsc.releases.latest_release().version.clone());
     let mut devices = pdsc.devices.0.into_iter().collect::<Vec<_>>();
     devices.sort_by(|a, b| a.0.cmp(&b.0));
 
-    for (device_name, device) in devices {
-        // Only process this, if this belongs to a supported family.
-        let currently_supported_chip_families = probe_rs::config::families();
+    // Only process this, if this belongs to a supported family.
+    let currently_supported_chip_families = probe_rs::config::families();
 
+    for (device_name, device) in devices {
         if only_supported_familes
             && !currently_supported_chip_families
                 .iter()
@@ -105,7 +103,8 @@ where
                 name: device.family.clone(),
                 manufacturer: None,
                 generated_from_pack: true,
-                pack_file_release: pack_file_release.clone(),
+                chip_detection: vec![],
+                pack_file_release: Some(pdsc.releases.latest_release().version.clone()),
                 variants: Vec::new(),
                 flash_algorithms: Vec::new(),
                 source: TargetDescriptionSource::BuiltIn,
@@ -115,7 +114,7 @@ where
         };
 
         // Extract the flash algorithm, block & sector size and the erased byte value from the ELF binary.
-        let variant_flash_algorithms = device
+        let flash_algorithm_names = device
             .algorithms
             .iter()
             .filter_map(|flash_algorithm| {
@@ -123,11 +122,12 @@ where
                     Ok(algo) => {
                         // We add this algo directly to the algos of the family if it's not already added.
                         // Make sure we never add an algo twice to save file size.
+                        let algo_name = algo.name.clone();
                         if !family.flash_algorithms.contains(&algo) {
-                            family.flash_algorithms.push(algo.clone());
+                            family.flash_algorithms.push(algo);
                         }
 
-                        Some(algo)
+                        Some(algo_name)
                     }
                     Err(e) => {
                         log::warn!(
@@ -139,11 +139,6 @@ where
                     }
                 }
             })
-            .collect::<Vec<_>>();
-
-        let flash_algorithm_names = variant_flash_algorithms
-            .iter()
-            .map(|fa| fa.name.to_string())
             .collect::<Vec<_>>();
 
         // Sometimes the algos are referenced twice, for example in the multicore H7s
@@ -226,32 +221,39 @@ fn core_to_probe_core(value: &Core) -> Result<CoreType, Error> {
     })
 }
 
-// one possible implementation of walking a directory only visiting files
+// Process all `.pdsc` files in the given directory.
 pub(crate) fn visit_dirs(path: &Path, families: &mut Vec<ChipFamily>) -> Result<()> {
-    // If we get a dir, look for all .pdsc files.
-    for entry in fs::read_dir(path)? {
-        let entry = entry?;
-        let entry_path = entry.path();
-
-        if entry_path.is_dir() {
-            visit_dirs(&entry_path, families)?;
-        } else if entry_path.extension() == Some(OsStr::new("pdsc")) {
+    walk_files(path, &mut |path| {
+        if has_extension(path, "pack") {
             log::info!("Found .pdsc file: {}", path.display());
 
-            extract_families::<std::fs::File>(
-                Package::from_path(&entry_path)?,
-                Kind::Directory(path),
-                families,
-                false,
-            )
-            .context(format!(
-                "Failed to process .pdsc file {}.",
-                entry_path.display()
-            ))?;
+            let package = Package::from_path(path)
+                .context(format!("Failed to open .pdsc file {}.", path.display()))?;
+
+            extract_families::<fs::File>(package, Kind::Directory(path), families, false)
+                .context(format!("Failed to process .pdsc file {}.", path.display()))?;
+        }
+
+        Ok(())
+    })
+}
+
+fn walk_files(path: &Path, callback: &mut impl FnMut(&Path) -> Result<()>) -> Result<()> {
+    for entry in fs::read_dir(path)? {
+        let entry_path = entry?.path();
+
+        if entry_path.is_dir() {
+            walk_files(&entry_path, callback)?;
+        } else {
+            callback(&entry_path)?;
         }
     }
 
     Ok(())
+}
+
+fn has_extension(path: &Path, ext: &str) -> bool {
+    path.extension().map_or(false, |e| e == ext)
 }
 
 pub(crate) fn visit_file(path: &Path, families: &mut Vec<ChipFamily>) -> Result<()> {
@@ -425,7 +427,7 @@ where
             )
         })?;
 
-        if outpath.extension() == Some(OsStr::new("pdsc")) {
+        if has_extension(&outpath, "pdsc") {
             // We cannot return the file directly here,
             // because this leads to lifetime problems.
 
@@ -444,7 +446,7 @@ where
 }
 
 /// A flag to indicate what type of memory this is.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum MemoryType {
     /// A RAM memory.
     Ram,
@@ -457,14 +459,28 @@ enum MemoryType {
 /// A struct to combine essential information from [`cmsis_pack::pdsc::Device::memories`].
 /// This is used to apply the necessary sorting and filtering in creating [`MemoryRegion`]s.
 // The sequence of the fields is important for the sorting by derived natural order.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct DeviceMemory {
     memory_type: MemoryType,
     p_name: Option<String>,
-    is_boot_memory: bool,
     memory_start: u64,
     memory_end: u64,
     name: String,
+    access: MemoryAccess,
+}
+
+impl DeviceMemory {
+    fn access(&self) -> Option<MemoryAccess> {
+        fn is_default(access: &MemoryAccess) -> bool {
+            access == &MemoryAccess::default()
+        }
+
+        if is_default(&self.access) {
+            None
+        } else {
+            Some(self.access)
+        }
+    }
 }
 
 /// Extracts the memory regions in the package.
@@ -491,12 +507,24 @@ pub(crate) fn get_mem_map(device: &Device, cores: &[probe_rs_target::Core]) -> V
             },
             memory_start: memory.start,
             memory_end: memory.start + memory.size,
-            is_boot_memory: memory.startup,
+            access: MemoryAccess {
+                read: memory.access.read,
+                write: memory.access.write,
+                execute: memory.access.execute,
+                boot: memory.startup,
+            },
         })
         .collect();
 
     // Sort by memory type, then by processor name, then by boot memory, then by start address.
-    device_memories.sort();
+    device_memories.sort_by_key(|memory| {
+        (
+            memory.memory_type,
+            memory.p_name.clone(),
+            memory.access.boot,
+            memory.memory_start,
+        )
+    });
 
     let all_cores: Vec<_> = cores.iter().map(|core| core.name.clone()).collect();
 
@@ -518,30 +546,30 @@ pub(crate) fn get_mem_map(device: &Device, cores: &[probe_rs_target::Core]) -> V
         match region.memory_type {
             MemoryType::Ram => {
                 if let Some(MemoryRegion::Ram(existing_region)) = mem_map.iter_mut().find(|existing_region| {
-                        matches!(existing_region, MemoryRegion::Ram(ram_region) if ram_region.name.as_deref() == Some(&region.name))
+                        matches!(existing_region, MemoryRegion::Ram(ram_region) if ram_region.name.as_deref() == Some(&region.name) && ram_region.access == region.access())
                     })
                 {
                     existing_region.cores.extend_from_slice(&cores);
                 } else {
                     mem_map.push(MemoryRegion::Ram(RamRegion {
+                        access: region.access(),
                         name: Some(region.name),
                         range: region.memory_start..region.memory_end,
-                        is_boot_memory: region.is_boot_memory,
                         cores,
                     }));
                 }
             },
             MemoryType::Nvm => {
                 if let Some(MemoryRegion::Nvm(existing_region)) = mem_map.iter_mut().find(|existing_region| {
-                        matches!(existing_region, MemoryRegion::Nvm(nvm_region) if nvm_region.name.as_deref() == Some(&region.name))
+                        matches!(existing_region, MemoryRegion::Nvm(nvm_region) if nvm_region.name.as_deref() == Some(&region.name) && nvm_region.access == region.access())
                     })
                 {
                     existing_region.cores.extend_from_slice(&cores);
                 } else {
                     mem_map.push(MemoryRegion::Nvm(NvmRegion {
+                        access: region.access(),
                         name: Some(region.name),
                         range: region.memory_start..region.memory_end,
-                        is_boot_memory: region.is_boot_memory,
                         cores,
                         is_alias: false,
                     }));
@@ -549,12 +577,13 @@ pub(crate) fn get_mem_map(device: &Device, cores: &[probe_rs_target::Core]) -> V
             },
             MemoryType::Generic => {
                 if let Some(MemoryRegion::Generic(existing_region)) = mem_map.iter_mut().find(|existing_region| {
-                        matches!(existing_region, MemoryRegion::Generic(generic_region) if generic_region.name.as_deref() == Some(&region.name))
+                        matches!(existing_region, MemoryRegion::Generic(generic_region) if generic_region.name.as_deref() == Some(&region.name) && generic_region.access == region.access())
                     })
                 {
                     existing_region.cores.extend_from_slice(&cores);
                 } else {
                     mem_map.push(MemoryRegion::Generic(GenericRegion {
+                        access: region.access(),
                         name: Some(region.name),
                         range: region.memory_start..region.memory_end,
                         cores,

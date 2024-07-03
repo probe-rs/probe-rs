@@ -13,3 +13,6 @@ description = "The probe-rs machine interface for computers interfacing probe-rs
 [dependencies]
 semver = { version = "1", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
+
+[lints]
+workspace = true

@@ -19,9 +19,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - gd32vf103
 flash_algorithms:

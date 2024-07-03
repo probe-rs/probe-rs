@@ -30,8 +30,6 @@ pub enum RegistryError {
     Yaml(#[from] serde_yaml::Error),
     /// Invalid chip family definition ({0.name}): {1}
     InvalidChipFamilyDefinition(Box<ChipFamily>, String),
-    /// Chip's RTT scan region {0:#010X?} is not enclosed by any single RAM region.
-    InvalidRttScanRange(std::ops::Range<u64>),
 }
 
 fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
@@ -41,6 +39,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
             manufacturer: None,
             generated_from_pack: false,
             pack_file_release: None,
+            chip_detection: vec![],
             variants: vec![
                 Chip::generic_arm("Cortex-M0", CoreType::Armv6m),
                 Chip::generic_arm("Cortex-M0+", CoreType::Armv6m),
@@ -55,6 +54,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
             manufacturer: None,
             generated_from_pack: false,
             pack_file_release: None,
+            chip_detection: vec![],
             variants: vec![Chip::generic_arm("Cortex-M3", CoreType::Armv7m)],
             flash_algorithms: vec![],
             source: TargetDescriptionSource::Generic,
@@ -64,6 +64,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
             manufacturer: None,
             generated_from_pack: false,
             pack_file_release: None,
+            chip_detection: vec![],
             variants: vec![
                 Chip::generic_arm("Cortex-M4", CoreType::Armv7em),
                 Chip::generic_arm("Cortex-M7", CoreType::Armv7em),
@@ -76,6 +77,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
             manufacturer: None,
             generated_from_pack: false,
             pack_file_release: None,
+            chip_detection: vec![],
             variants: vec![
                 Chip::generic_arm("Cortex-M23", CoreType::Armv8m),
                 Chip::generic_arm("Cortex-M33", CoreType::Armv8m),
@@ -90,6 +92,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
             manufacturer: None,
             pack_file_release: None,
             generated_from_pack: false,
+            chip_detection: vec![],
             variants: vec![Chip {
                 name: "riscv".to_owned(),
                 part: None,
@@ -216,7 +219,7 @@ impl Registry {
             );
         }
 
-        let targ = self.get_target(family, chip)?;
+        let targ = self.get_target(family, chip);
         Ok((targ, family.clone()))
     }
 
@@ -297,30 +300,35 @@ impl Registry {
                 identified_chips[0]
             }
         };
-        self.get_target(family, chip)
+        Ok(self.get_target(family, chip))
     }
 
-    fn get_target(&self, family: &ChipFamily, chip: &Chip) -> Result<Target, RegistryError> {
-        // The validity of the given `ChipFamily` is checked in the constructor.
-        Target::new(family, &chip.name)
+    fn get_target(&self, family: &ChipFamily, chip: &Chip) -> Target {
+        // The validity of the given `ChipFamily` is checked in test time and in `add_target_from_yaml`.
+        Target::new(family, chip)
     }
 
-    fn add_target_from_yaml<R>(&mut self, yaml_reader: R) -> Result<(), RegistryError>
+    fn add_target_from_yaml<R>(&mut self, yaml_reader: R) -> Result<String, RegistryError>
     where
         R: Read,
     {
         let family: ChipFamily = serde_yaml::from_reader(yaml_reader)?;
 
-        family
-            .validate()
-            .map_err(|e| RegistryError::InvalidChipFamilyDefinition(Box::new(family.clone()), e))?;
+        if let Err(error) = family.validate() {
+            return Err(RegistryError::InvalidChipFamilyDefinition(
+                Box::new(family),
+                error,
+            ));
+        };
+
+        let family_name = family.name.clone();
 
         self.families
-            .retain(|old_family| !old_family.name.eq_ignore_ascii_case(&family.name));
+            .retain(|old_family| !old_family.name.eq_ignore_ascii_case(&family_name));
 
         self.families.push(family);
 
-        Ok(())
+        Ok(family_name)
     }
 }
 
@@ -380,7 +388,7 @@ pub(crate) fn get_target_by_chip_info(chip_info: ChipInfo) -> Result<Target, Reg
 /// const BUILTIN_TARGET_YAML: &[u8] = include_bytes!("/path/target.yaml");
 /// probe_rs::config::add_target_from_yaml(BUILTIN_TARGET_YAML)?;
 /// ```
-pub fn add_target_from_yaml<R>(yaml_reader: R) -> Result<(), RegistryError>
+pub fn add_target_from_yaml<R>(yaml_reader: R) -> Result<String, RegistryError>
 where
     R: Read,
 {
@@ -421,6 +429,8 @@ fn match_name_prefix(pattern: &str, name: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use crate::flashing::FlashAlgorithm;
+
     use super::*;
     use std::fs::File;
     type TestResult = Result<(), RegistryError>;
@@ -487,9 +497,30 @@ mod tests {
         registry
             .families
             .iter()
-            .map(|family| family.validate())
-            .collect::<Result<Vec<_>, _>>()
-            .unwrap();
+            .flat_map(|family| {
+                // Validate all chip descriptors.
+                family.validate().unwrap();
+
+                // Make additional checks by creating a target for each chip.
+                family
+                    .variants()
+                    .iter()
+                    .map(|chip| registry.get_target(family, chip))
+            })
+            .for_each(|target| {
+                // Walk through the flash algorithms and cores and try to create each one.
+                for raw_flash_algo in target.flash_algorithms.iter() {
+                    for core in raw_flash_algo.cores.iter() {
+                        FlashAlgorithm::assemble_from_raw_with_core(raw_flash_algo, core, &target)
+                            .unwrap_or_else(|error| {
+                                panic!(
+                                    "Failed to initialize flash algorithm ({}, {}, {core}): {}",
+                                    &target.name, &raw_flash_algo.name, error
+                                )
+                            });
+                    }
+                }
+            });
     }
 
     #[test]

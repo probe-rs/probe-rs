@@ -2,6 +2,11 @@ name: esp32c6
 manufacturer:
   id: 0x12
   cc: 0xc
+chip_detection:
+- !Espressif
+  idcode: 0xdc25
+  variants:
+    0x2ce0806f: esp32c6
 variants:
 - name: esp32c6
   cores:
@@ -14,9 +19,10 @@ variants:
     range:
       start: 0x0
       end: 0x1000000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Nvm
     name: External flash (Read Only)
     range:
@@ -51,6 +57,7 @@ flash_algorithms:
   pc_erase_sector: 0x14
   pc_erase_all: 0x1c
   data_section_offset: 0x408102a0
+  stack_overflow_check: false
   flash_properties:
     address_range:
       start: 0x0

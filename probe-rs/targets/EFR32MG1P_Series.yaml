@@ -21,9 +21,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckop2
 - name: EFR32MG1P132F256
@@ -44,9 +45,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckop2
 - name: EFR32MG1P133F256
@@ -67,9 +69,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckop2
 - name: EFR32MG1P231F256
@@ -90,9 +93,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckop2
 - name: EFR32MG1P232F256
@@ -113,9 +117,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckop2
 - name: EFR32MG1P233F256
@@ -136,9 +141,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckop2
 - name: EFR32MG1P632F256
@@ -159,9 +165,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckop2
 - name: EFR32MG1P732F256
@@ -182,9 +189,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckop2
 flash_algorithms:

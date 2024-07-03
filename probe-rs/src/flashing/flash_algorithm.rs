@@ -1,7 +1,8 @@
 use super::FlashError;
 use crate::{architecture::riscv, core::Architecture, Target};
 use probe_rs_target::{
-    FlashProperties, PageInfo, RamRegion, RawFlashAlgorithm, SectorInfo, TransferEncoding,
+    FlashProperties, MemoryRegion, PageInfo, RamRegion, RawFlashAlgorithm, SectorInfo,
+    TransferEncoding,
 };
 use std::mem::size_of_val;
 
@@ -35,7 +36,11 @@ pub struct FlashAlgorithm {
     /// determines where the position-independent data resides.
     pub static_base: u64,
     /// Initial value of the stack pointer when calling any flash algo API.
-    pub begin_stack: u64,
+    pub stack_top: u64,
+    /// The size of the stack in bytes.
+    pub stack_size: u64,
+    /// Whether to check for stack overflows.
+    pub stack_overflow_check: bool,
     /// A list of base addresses for page buffers. The buffers must be at
     /// least as large as the region's `page_size` attribute. If at least 2 buffers are included in
     /// the list, then double buffered programming will be enabled.
@@ -160,7 +165,7 @@ impl FlashAlgorithm {
         true
     }
 
-    const FLASH_ALGO_MIN_STACK_SIZE: u64 = 512;
+    const FLASH_ALGO_STACK_SIZE: u32 = 512;
 
     // Header for RISC-V Flash Algorithms
     const RISCV_FLASH_BLOB_HEADER: [u32; 2] = [riscv::assembly::EBREAK, riscv::assembly::EBREAK];
@@ -274,32 +279,14 @@ impl FlashAlgorithm {
             return Err(FlashError::InvalidFlashAlgorithmLoadAddress { address: addr_load });
         }
 
-        // Memory layout when `data_ram_region == ram_region`:
-        //
-        // Single buffering:
-        //
-        // ++-------------+-----------------------+---------------+ <- RAM region end
-        // || Loader code |         Stack         |  Data buffer  |
-        // ++-------------+-----------------------+---------------+
-        // ^- addr_load   ^- code_end             ^- data_start_addr = stack_top_addr
-        //  ^- code_start                         ^---------------^ buffer_page_size
-        //
-        // Double buffering:
-        //
-        // ++-------------+-------+---------------+---------------+ <- RAM region end
-        // || Loader code | Stack | Data buffer 1 | Data buffer 2 |
-        // ++-------------+-------+---------------+---------------+
-        // ^- addr_load           ^- data_start_addr = stack_top_addr
-        //  ^- code_start         ^---------------^---------------^ buffer_page_size (x2)
-        //                ^- code_end
-        //
-        // Configured stack with single buffer fitting:
-        //
-        // ++-------------+----+------------------+---------------+ <- RAM region end
-        // || Loader code |    |      Stack       |  Data buffer  |
-        // ++-------------+----+------------------+---------------+
-        // ^- addr_load   ^- code_end             ^- data_start_addr = stack_top_addr
-        //  ^- code_start                         ^---------------^ buffer_page_size (x1)
+        // Memory layout:
+        // - Header
+        // - Code
+        // - Data
+        // - Stack
+        // Stack placement depends on the optional `data_load_address` field. If the stack fits
+        // between the code and the data, it will be placed there. Otherwise, it will be placed
+        // after the data.
 
         let code_start = addr_load + header_size;
         let code_size_bytes = (instructions.len() * size_of::<u32>()) as u64;
@@ -307,91 +294,75 @@ impl FlashAlgorithm {
 
         let buffer_page_size = raw.flash_properties.page_size as u64;
 
-        let remaining_ram = ram_region.range.end - code_end;
-
-        // How much space does a data buffer take up in the current RAM region?
-        // If the data is in a different region, we don't need to account for it for the stack.
-        let buffer_page_size_in_instr_region = if ram_region == data_ram_region {
-            buffer_page_size
-        } else {
-            0
-        };
-
-        // Try to find a stack size that fits with at least one page of data.
-        let stack_size = if let Some(configured_stack) = raw.stack_size {
-            // The user has configured a stack size. Let's use it.
-            let stack_size = configured_stack as u64;
-
-            // Make sure at least one data page fits into RAM.
-            if buffer_page_size_in_instr_region + stack_size > remaining_ram {
-                // The configured stack size is too large. Let's not try to be too clever about it.
-                return Err(FlashError::InvalidFlashAlgorithmStackSize);
-            }
-            stack_size
-        } else {
-            // No stack is specified, let's try to use as much as we can.
-            let required_for_double_buffer =
-                2 * buffer_page_size_in_instr_region + Self::FLASH_ALGO_MIN_STACK_SIZE;
-            let required_for_single_buffer =
-                buffer_page_size_in_instr_region + Self::FLASH_ALGO_MIN_STACK_SIZE;
-
-            if remaining_ram >= required_for_double_buffer {
-                // We have space for two pages of data and a stack.
-                remaining_ram - 2 * buffer_page_size_in_instr_region
-            } else if remaining_ram > required_for_single_buffer {
-                // We have space for one page of data and a stack.
-                remaining_ram - buffer_page_size_in_instr_region
-            } else {
-                // We don't have enough space for a stack
-                return Err(FlashError::InvalidFlashAlgorithmStackSize);
-            }
-        };
+        let stack_size = raw.stack_size.unwrap_or(Self::FLASH_ALGO_STACK_SIZE) as u64;
         tracing::info!("The flash algorithm will be configured with {stack_size} bytes of stack");
 
-        // We have the stack size, let's lay out the data block(s)
-        // Determine the bounds of the data region.
-        let data_load_addr = if let Some(data_load_addr) = raw.data_load_address {
-            data_load_addr
-        } else if ram_region == data_ram_region {
-            let remaining_ram = remaining_ram - stack_size;
-
-            let data_size = if remaining_ram >= 2 * buffer_page_size {
-                2 * buffer_page_size
+        let data_load_addr = if ram_region == data_ram_region {
+            if let Some(data_load_addr) = raw.data_load_address {
+                data_load_addr
             } else {
-                buffer_page_size
-            };
-
-            ram_region.range.end - data_size
+                // The data is not placed explicitly. We can place it after the code.
+                code_end
+            }
         } else {
+            // The data is in a different region. We can place it at the start of the region.
             data_ram_region.range.start
         };
-        let data_range = data_load_addr..data_ram_region.range.end;
+
+        // Available memory for data depends on where the stack needs to be placed.
+        let mut ram_for_data = data_ram_region.range.end - data_load_addr;
+        if code_end + stack_size > data_load_addr && ram_region == data_ram_region {
+            // Stack can only go after the data, so let's reduce the available size.
+            ram_for_data -= stack_size;
+        }
+
+        // To determine the stack bottom, we need to know if the data is double buffered.
+        let double_buffering = if ram_for_data >= 2 * buffer_page_size {
+            // The data may be double buffered
+            // TODO: maybe allow disabling in the target description?
+            true
+        } else if ram_for_data >= buffer_page_size {
+            // The data is not double buffered. Place the stack at the end of the RAM region.
+            false
+        } else {
+            // We can't place data and stack.
+            // TODO: this should probably be done in the target validation.
+            // TODO: make the errors a bit more meaningful.
+            return Err(FlashError::InvalidFlashAlgorithmStackSize { size: stack_size });
+        };
+
+        // We need to make sure the blocks don't overlap and we have enough memory.
+        let stack_bottom =
+            if code_end + stack_size <= data_load_addr || ram_region != data_ram_region {
+                // Two cases:
+                // - The stack fits between the code and the data.
+                // - The data is in a different region, so we can place
+                //   the stack at the end of the code region.
+                code_end
+            } else {
+                // The data and the stack are in the same region. There is not enough space
+                // for the stack below the data. Place the stack after the data.
+                let page_count = if double_buffering { 2 } else { 1 };
+                data_load_addr + page_count * buffer_page_size
+            };
 
         // Now we can place the stack.
-        let stack_top_addr = if ram_region == data_ram_region {
-            // Under the data...
-            data_range.start
-        } else {
-            // ... or the top of the region if data is in a different region.
-            ram_region.range.end
-        };
-        tracing::info!("Stack top: {:#010X}", stack_top_addr);
+        let stack_top = stack_bottom + stack_size;
+        tracing::info!("Stack top: {:#010x}", stack_top);
 
-        // Data buffer 1
-        let first_buffer_start = data_range.start;
-
-        // Data buffer 2
-        let second_buffer_start = first_buffer_start + buffer_page_size;
-        let second_buffer_end = second_buffer_start + buffer_page_size;
+        if stack_top > ram_region.range.end {
+            return Err(FlashError::InvalidFlashAlgorithmStackSize { size: stack_size });
+        }
 
         // Determine whether we can use double buffering or not by the remaining RAM region size.
-        let page_buffers = if second_buffer_end <= data_range.end {
-            vec![first_buffer_start, second_buffer_start]
+        let page_buffers = if double_buffering {
+            let second_buffer_start = data_load_addr + buffer_page_size;
+            vec![data_load_addr, second_buffer_start]
         } else {
-            vec![first_buffer_start]
+            vec![data_load_addr]
         };
 
-        tracing::debug!("Page buffers: {:#010X?}", page_buffers);
+        tracing::debug!("Page buffers: {:#010x?}", page_buffers);
 
         let name = raw.name.clone();
 
@@ -406,11 +377,120 @@ impl FlashAlgorithm {
             pc_erase_sector: code_start + raw.pc_erase_sector,
             pc_erase_all: raw.pc_erase_all.map(|v| code_start + v),
             static_base: code_start + raw.data_section_offset,
-            begin_stack: stack_top_addr,
+            stack_top,
+            stack_size,
             page_buffers,
             rtt_control_block: raw.rtt_location,
             flash_properties: raw.flash_properties.clone(),
             transfer_encoding: raw.transfer_encoding.unwrap_or_default(),
+            stack_overflow_check: raw.stack_overflow_check(),
+        })
+    }
+
+    /// Constructs a complete flash algorithm, choosing a suitable RAM region to run the algorithm.
+    pub(crate) fn assemble_from_raw_with_core(
+        algo: &RawFlashAlgorithm,
+        core_name: &str,
+        target: &Target,
+    ) -> Result<FlashAlgorithm, FlashError> {
+        // Find a RAM region from which we can run the algo.
+        let mm = &target.memory_map;
+        let ram = mm
+            .iter()
+            .filter_map(MemoryRegion::as_ram_region)
+            .merged()
+            .filter(|ram| is_ram_suitable_for_algo(ram, core_name, algo.load_address))
+            .max_by_key(|region| region.range.end - region.range.start)
+            .ok_or(FlashError::NoRamDefined {
+                name: target.name.clone(),
+            })?;
+        tracing::info!("Chosen RAM to run the algo: {:x?}", ram);
+
+        let data_ram;
+        let data_ram = if let Some(data_load_address) = algo.data_load_address {
+            data_ram = mm
+                .iter()
+                .filter_map(MemoryRegion::as_ram_region)
+                .merged()
+                .find(|ram| is_ram_suitable_for_data(ram, core_name, data_load_address))
+                .ok_or(FlashError::NoRamDefined {
+                    name: target.name.clone(),
+                })?;
+
+            &data_ram
+        } else {
+            // If not specified, use the same region as the flash algo.
+            &ram
+        };
+        tracing::info!("Data will be loaded to: {:x?}", data_ram);
+
+        Self::assemble_from_raw_with_data(algo, &ram, data_ram, target)
+    }
+}
+
+/// Returns whether the given RAM region is usable for downloading the flash algorithm.
+fn is_ram_suitable_for_algo(ram: &RamRegion, core_name: &str, load_address: Option<u64>) -> bool {
+    if !ram.is_executable() {
+        return false;
+    }
+
+    // If the algorithm has a forced load address, we try to use it.
+    // If not, then follow the CMSIS-Pack spec and use first available RAM region.
+    // In theory, it should be the "first listed in the pack", but the process of
+    // reading from the pack files obfuscates the list order, so we will use the first
+    // one in the target spec, which is the qualifying region with the lowest start saddress.
+    // - See https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/pdsc_family_pg.html#element_memory .
+    if let Some(load_addr) = load_address {
+        // The RAM must contain the forced load address _and_
+        // be accessible from the core we're going to run the
+        // algorithm on.
+        ram.range.contains(&load_addr) && ram.accessible_by(core_name)
+    } else {
+        // Any executable RAM is okay as long as it's accessible to the core;
+        // the algorithm is presumably position-independent.
+        ram.accessible_by(core_name)
+    }
+}
+
+/// Returns whether the given RAM region is usable for downloading the flash algorithm data.
+fn is_ram_suitable_for_data(ram: &RamRegion, core_name: &str, load_address: u64) -> bool {
+    // The RAM must contain the forced load address _and_
+    // be accessible from the core we're going to run the
+    // algorithm on.
+    ram.range.contains(&load_address) && ram.accessible_by(core_name)
+}
+
+trait IterExt {
+    /// Merge adjacent regions.
+    fn merged(self) -> impl Iterator<Item = RamRegion>;
+}
+
+impl<'a, I> IterExt for I
+where
+    I: Iterator<Item = &'a RamRegion>,
+{
+    fn merged(self) -> impl Iterator<Item = RamRegion> {
+        let mut iter = self.peekable();
+        std::iter::from_fn(move || {
+            let first = iter.next()?;
+            let mut range = first.range.clone();
+            while let Some(next) = iter.peek() {
+                if range.end != next.range.start
+                    || first.cores != next.cores
+                    || first.access != next.access
+                {
+                    break;
+                }
+                range.end = next.range.end;
+                iter.next();
+            }
+
+            Some(RamRegion {
+                name: first.name.clone(),
+                range,
+                cores: first.cores.clone(),
+                access: first.access,
+            })
         })
     }
 }

@@ -21,9 +21,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc55xx_256
 - name: LPC55S26JBD64
@@ -44,9 +45,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc55xx_256
 - name: LPC55S26JEV98
@@ -67,9 +69,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc55xx_256
 flash_algorithms:

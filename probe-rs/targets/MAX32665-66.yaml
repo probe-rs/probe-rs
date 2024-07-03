@@ -21,9 +21,10 @@ variants:
     range:
       start: 0x10000000
       end: 0x10100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - max32665
 - name: MAX32666
@@ -44,9 +45,10 @@ variants:
     range:
       start: 0x10000000
       end: 0x10100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - max32665
 flash_algorithms:

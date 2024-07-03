@@ -2,6 +2,14 @@ name: nRF53 Series
 manufacturer:
   id: 0x44
   cc: 0x2
+chip_detection:
+- !NordicFicrInfo
+  part_address: 0xff020c
+  variant_address: 0xff0210
+  part: 0x5340
+  variants:
+    0x514b4141: nRF5340_xxAA
+    0x434c4141: nRF5340_xxAA
 variants:
 - name: nRF5340_xxAA
   cores:
@@ -32,16 +40,18 @@ variants:
     range:
       start: 0x0
       end: 0x100000
-    is_boot_memory: true
     cores:
     - application
+    access:
+      boot: true
   - !Nvm
     range:
       start: 0x1000000
       end: 0x1040000
-    is_boot_memory: true
     cores:
     - network
+    access:
+      boot: true
   flash_algorithms:
   - nrf53xx_application
   - nrf53xx_application_uicr

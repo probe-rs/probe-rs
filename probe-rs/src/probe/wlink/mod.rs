@@ -3,7 +3,7 @@
 //! The protocol is mostly undocumented, and is changing between firmware versions.
 //! For more details see: <https://github.com/ch32-rs/wlink>
 
-use core::fmt;
+use std::fmt;
 use std::time::Duration;
 
 use nusb::DeviceInfo;

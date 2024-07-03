@@ -21,9 +21,10 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd11_16
 - name: ATSAMD11D14AM
@@ -44,9 +45,10 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd11_16
 - name: ATSAMD11D14AS
@@ -67,9 +69,10 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd11_16
 - name: ATSAMD11D14AU
@@ -90,9 +93,10 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd11_16
 flash_algorithms:

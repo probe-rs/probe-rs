@@ -15,7 +15,7 @@ license.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-probe-rs = { path = "../probe-rs", version = "0.24.0", default-features = false }
+probe-rs = { path = "../probe-rs", version = "0.24.0" }
 probe-rs-target = { path = "../probe-rs-target", version = "0.24.0", default-features = false }
 cmsis-pack = "0.7.0"
 goblin = { version = "0.8.2", default-features = false, features = [
@@ -55,3 +55,7 @@ parse_int = "0.6"
 assert_cmd = "2.0.14"
 predicates = "3.1.0"
 tempfile = "3.0"
+insta = { version = "1.38", default-features = false, features = ["yaml"] }
+
+[lints]
+workspace = true

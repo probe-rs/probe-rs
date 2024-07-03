@@ -13,9 +13,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Ram
     name: SRAM
     range:

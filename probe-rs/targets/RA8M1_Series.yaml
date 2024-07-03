@@ -22,9 +22,10 @@ variants:
     range:
       start: 0x2000000
       end: 0x2100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: ITCM
     range:
@@ -84,9 +85,10 @@ variants:
     range:
       start: 0x2000000
       end: 0x21f8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: ITCM
     range:

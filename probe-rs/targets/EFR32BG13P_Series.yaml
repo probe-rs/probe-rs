@@ -21,9 +21,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckos1
 - name: EFR32BG13P632F512
@@ -44,9 +45,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckos1
 - name: EFR32BG13P732F512
@@ -67,9 +69,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckos1
 - name: EFR32BG13P733F512
@@ -90,9 +93,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - geckos1
 flash_algorithms:

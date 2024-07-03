@@ -2,6 +2,21 @@ name: SAMD51
 manufacturer:
   id: 0x1f
   cc: 0x0
+chip_detection:
+- !AtsamDsu
+  processor: 6
+  family: 0
+  series: 6
+  variants:
+    0x0: ATSAMD51P20A
+    0x1: ATSAMD51P19A
+    0x2: ATSAMD51N20A
+    0x3: ATSAMD51N19A
+    0x4: ATSAMD51J20A
+    0x5: ATSAMD51J19A
+    0x6: ATSAMD51J18A
+    0x7: ATSAMD51G19A
+    0x8: ATSAMD51G18A
 variants:
 - name: ATSAMD51G18A
   cores:
@@ -21,11 +36,12 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - atsamd51_256
+  - atsamd51_1024
 - name: ATSAMD51G19A
   cores:
   - name: main
@@ -44,11 +60,12 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - atsamd51_512
+  - atsamd51_1024
 - name: ATSAMD51J18A
   cores:
   - name: main
@@ -67,11 +84,12 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - atsamd51_256
+  - atsamd51_1024
 - name: ATSAMD51J19A
   cores:
   - name: main
@@ -90,11 +108,12 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - atsamd51_512
+  - atsamd51_1024
 - name: ATSAMD51J20A
   cores:
   - name: main
@@ -113,9 +132,10 @@ variants:
     range:
       start: 0x0
       end: 0x100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd51_1024
 - name: ATSAMD51N19A
@@ -136,11 +156,12 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - atsamd51_512
+  - atsamd51_1024
 - name: ATSAMD51N20A
   cores:
   - name: main
@@ -159,9 +180,10 @@ variants:
     range:
       start: 0x0
       end: 0x100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd51_1024
 - name: ATSAMD51P19A
@@ -182,11 +204,12 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - atsamd51_512
+  - atsamd51_1024
 - name: ATSAMD51P20A
   cores:
   - name: main
@@ -205,56 +228,13 @@ variants:
     range:
       start: 0x0
       end: 0x100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsamd51_1024
 flash_algorithms:
-- name: atsamd51_256
-  description: ATSAMD51 256kB Flash
-  default: true
-  instructions: ASGJB4prUgcB1SFKCmDPIiBJEgIKgE4iCoIfSUlECGAAIHBHACBwRxpJSGEbSoqASorSB/zQSGEYSBE4iIBIisAH/NAIik4hCEAA0AEgcEcwtRJLD0zbHKOAY4rbB/zQyRyJCANGiQAC4CDKCR8gwwAp+tFgYQlIDziggGCKwAf80CCKTiEIQADQASAwvQAAIgABAABAAEEEAAAAEqUAAAAAAAAAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x25
-  pc_program_page: 0x51
-  pc_erase_sector: 0x29
-  data_section_offset: 0xa0
-  flash_properties:
-    address_range:
-      start: 0x0
-      end: 0x40000
-    page_size: 0x200
-    erased_byte_value: 0xff
-    program_page_timeout: 100
-    erase_sector_timeout: 1000
-    sectors:
-    - size: 0x2000
-      address: 0x0
-  cores:
-  - main
-- name: atsamd51_512
-  description: ATSAMD51 512kB Flash
-  default: true
-  instructions: ASGJB4prUgcB1SFKCmDPIiBJEgIKgE4iCoIfSUlECGAAIHBHACBwRxpJSGEbSoqASorSB/zQSGEYSBE4iIBIisAH/NAIik4hCEAA0AEgcEcwtRJLD0zbHKOAY4rbB/zQyRyJCANGiQAC4CDKCR8gwwAp+tFgYQlIDziggGCKwAf80CCKTiEIQADQASAwvQAAIgABAABAAEEEAAAAEqUAAAAAAAAAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x25
-  pc_program_page: 0x51
-  pc_erase_sector: 0x29
-  data_section_offset: 0xa0
-  flash_properties:
-    address_range:
-      start: 0x0
-      end: 0x80000
-    page_size: 0x200
-    erased_byte_value: 0xff
-    program_page_timeout: 100
-    erase_sector_timeout: 1000
-    sectors:
-    - size: 0x2000
-      address: 0x0
-  cores:
-  - main
 - name: atsamd51_1024
   description: ATSAMD51 1024kB Flash
   default: true

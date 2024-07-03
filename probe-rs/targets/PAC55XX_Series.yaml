@@ -22,9 +22,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - pac55xx
 - name: PAC5524
@@ -47,9 +48,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - pac55xx
 - name: PAC5527
@@ -72,9 +74,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - pac55xx
 - name: PAC5532
@@ -97,9 +100,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - pac55xx
 - name: PAC5556
@@ -122,9 +126,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - pac55xx
 - name: PAC55XX
@@ -147,9 +152,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - pac55xx
 flash_algorithms:

@@ -2,14 +2,13 @@ use anyhow::{anyhow, Result};
 use defmt_decoder::log::format::{Formatter, FormatterConfig, FormatterFormat};
 use defmt_decoder::DecodeError;
 pub use probe_rs::rtt::ChannelMode;
-use probe_rs::rtt::{DownChannel, Error, Rtt, ScanRegion, UpChannel};
+use probe_rs::rtt::{DownChannel, Error, UpChannel};
 use probe_rs::{Core, Session};
 use probe_rs_target::MemoryRegion;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::fs::File;
 use std::path::PathBuf;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use std::{
     fmt,
     fmt::Write,
@@ -48,33 +47,6 @@ pub fn get_target_core_id(session: &mut Session, elf_file: impl AsRef<Path>) -> 
         Some(core_id)
     };
     maybe_core_id().unwrap_or(0)
-}
-
-/// Try to find the RTT control block in the ELF file and attach to it.
-///
-/// This function can return `Ok(None)` to indicate that RTT is not available on the target.
-fn try_attach_to_rtt_once(
-    core: &mut Core,
-    memory_map: &[MemoryRegion],
-    rtt_region: &ScanRegion,
-) -> Result<Option<Rtt>> {
-    tracing::debug!("Initializing RTT");
-
-    if let ScanRegion::Ranges(rngs) = &rtt_region {
-        if rngs.is_empty() {
-            // We have no regions to scan so we cannot initialize RTT.
-            tracing::debug!("ELF file has no RTT block symbol, and this target does not support automatic scanning");
-            return Ok(None);
-        }
-    }
-
-    match Rtt::attach_region(core, memory_map, rtt_region) {
-        Ok(rtt) => {
-            tracing::info!("RTT initialized.");
-            Ok(Some(rtt))
-        }
-        Err(err) => Err(anyhow!("Error attempting to attach to RTT: {}", err)),
-    }
 }
 
 /// Used by serde to provide defaults for `RttChannelConfig::show_timestamps`
@@ -178,8 +150,8 @@ impl From<&ChannelDataFormat> for DataFormat {
     }
 }
 
-impl std::fmt::Debug for ChannelDataFormat {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Debug for ChannelDataFormat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ChannelDataFormat::String {
                 timestamp_offset,
@@ -442,7 +414,7 @@ impl RttActiveUpChannel {
                     tracing::error!("\nError reading from RTT: {}", err);
                     return None;
                 }
-                _ => std::thread::sleep(std::time::Duration::from_millis(50)),
+                _ => thread::sleep(Duration::from_millis(50)),
             }
         }
 
@@ -509,8 +481,8 @@ impl RttActiveDownChannel {
 /// each of the active channels, and hold essential state information for successful communication.
 #[derive(Debug)]
 pub struct RttActiveTarget {
-    pub active_up_channels: HashMap<usize, RttActiveUpChannel>,
-    pub active_down_channels: HashMap<usize, RttActiveDownChannel>,
+    pub active_up_channels: Vec<RttActiveUpChannel>,
+    pub active_down_channels: Vec<RttActiveDownChannel>,
     pub defmt_state: Option<DefmtState>,
 }
 
@@ -521,26 +493,22 @@ pub struct DefmtState {
 }
 impl DefmtState {
     pub fn try_from_bytes(buffer: &[u8]) -> Result<Option<Self>> {
-        if let Some(table) = defmt_decoder::Table::parse(buffer)? {
-            let locs = {
-                let locs = table.get_locations(buffer)?;
+        let Some(table) = defmt_decoder::Table::parse(buffer)? else {
+            return Ok(None);
+        };
 
-                if !table.is_empty() && locs.is_empty() {
-                    tracing::warn!("Insufficient DWARF info; compile your program with `debug = 2` to enable location info.");
-                    None
-                } else if table.indices().all(|idx| locs.contains_key(&(idx as u64))) {
-                    Some(locs)
-                } else {
-                    tracing::warn!(
-                        "Location info is incomplete; it will be omitted from the output."
-                    );
-                    None
-                }
-            };
-            Ok(Some(DefmtState { table, locs }))
+        let locs = table.get_locations(buffer)?;
+
+        let locs = if !table.is_empty() && locs.is_empty() {
+            tracing::warn!("Insufficient DWARF info; compile your program with `debug = 2` to enable location info.");
+            None
+        } else if table.indices().all(|idx| locs.contains_key(&(idx as u64))) {
+            Some(locs)
         } else {
-            Ok(None)
-        }
+            tracing::warn!("Location info is incomplete; it will be omitted from the output.");
+            None
+        };
+        Ok(Some(DefmtState { table, locs }))
     }
 }
 
@@ -559,37 +527,35 @@ impl RttActiveTarget {
         rtt_config: &RttConfig,
         timestamp_offset: UtcOffset,
     ) -> Result<Self> {
-        let mut active_up_channels = HashMap::new();
-        let mut active_down_channels = HashMap::new();
+        let mut active_up_channels = Vec::with_capacity(rtt.up_channels.len());
 
-        // For each channel configured in the RTT Control Block (`Rtt`), check if there are additional user configuration in a `RttChannelConfig`. If not, apply defaults.
+        // For each channel configured in the RTT Control Block (`Rtt`), check if there are
+        // additional user configuration in a `RttChannelConfig`. If not, apply defaults.
         for channel in rtt.up_channels.into_iter() {
             let channel_config = rtt_config
                 .channel_config(channel.number())
                 .cloned()
                 .unwrap_or_default();
-            active_up_channels.insert(
-                channel.number(),
-                RttActiveUpChannel::new(
-                    core,
-                    channel,
-                    &channel_config,
-                    timestamp_offset,
-                    defmt_state.as_ref(),
-                )?,
-            );
-        }
-
-        for channel in rtt.down_channels.into_iter() {
-            active_down_channels.insert(channel.number(), RttActiveDownChannel::new(channel));
+            active_up_channels.push(RttActiveUpChannel::new(
+                core,
+                channel,
+                &channel_config,
+                timestamp_offset,
+                defmt_state.as_ref(),
+            )?);
         }
 
         // It doesn't make sense to pretend RTT is active, if there are no active up channels
-        if active_up_channels.is_empty() {
-            return Err(anyhow!(
-                "RTT Initialized correctly, but there were no active channels configured"
-            ));
-        }
+        anyhow::ensure!(
+            !active_up_channels.is_empty(),
+            "RTT Initialized correctly, but there were no active channels configured"
+        );
+
+        let active_down_channels = rtt
+            .down_channels
+            .into_iter()
+            .map(RttActiveDownChannel::new)
+            .collect::<Vec<_>>();
 
         Ok(Self {
             active_up_channels,
@@ -632,7 +598,7 @@ impl RttActiveTarget {
         collector: &mut impl ChannelDataCallbacks,
     ) -> Result<()> {
         let defmt_state = self.defmt_state.as_ref();
-        for channel in self.active_up_channels.values_mut() {
+        for channel in self.active_up_channels.iter_mut() {
             channel.poll_process_rtt_data(core, defmt_state, collector)?;
         }
         Ok(())
@@ -640,7 +606,7 @@ impl RttActiveTarget {
 
     /// Clean up temporary changes made to the channels.
     pub fn clean_up(&mut self, core: &mut Core) -> Result<()> {
-        for channel in self.active_up_channels.values_mut() {
+        for channel in self.active_up_channels.iter_mut() {
             channel.clean_up(core)?;
         }
         Ok(())
@@ -660,59 +626,4 @@ impl fmt::Debug for RttBuffer {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.0.fmt(f)
     }
-}
-
-fn try_attach_to_rtt_inner(
-    mut try_attach_once: impl FnMut() -> Result<Option<Rtt>>,
-    timeout: Duration,
-) -> Result<Option<Rtt>> {
-    let t = Instant::now();
-    let mut attempt = 1;
-    loop {
-        tracing::debug!("Initializing RTT (attempt {attempt})...");
-
-        match try_attach_once() {
-            Err(_) if t.elapsed() < timeout => {
-                attempt += 1;
-                tracing::debug!("Failed to initialize RTT. Retrying until timeout.");
-                thread::sleep(Duration::from_millis(50));
-            }
-            result => return result,
-        }
-    }
-}
-
-// TODO: these should be part of the library, but that requires refactoring the errors to not use
-// anyhow. Also, we probably should only have one variant of this function and pass the closure
-// in as an argument.
-
-/// Try to attach to RTT, with the given timeout.
-pub fn try_attach_to_rtt(
-    core: &mut Core<'_>,
-    timeout: Duration,
-    memory_map: &[MemoryRegion],
-    rtt_region: &ScanRegion,
-) -> Result<Option<Rtt>> {
-    try_attach_to_rtt_inner(
-        || try_attach_to_rtt_once(core, memory_map, rtt_region),
-        timeout,
-    )
-}
-
-/// Try to attach to RTT, with the given timeout.
-pub fn try_attach_to_rtt_shared(
-    session: &parking_lot::FairMutex<Session>,
-    core_id: usize,
-    memory_map: &[MemoryRegion],
-    timeout: Duration,
-    rtt_region: &ScanRegion,
-) -> Result<Option<Rtt>> {
-    try_attach_to_rtt_inner(
-        || {
-            let mut session_handle = session.lock();
-            let mut core = session_handle.core(core_id)?;
-            try_attach_to_rtt_once(&mut core, memory_map, rtt_region)
-        },
-        timeout,
-    )
 }

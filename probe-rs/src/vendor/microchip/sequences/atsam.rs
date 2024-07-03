@@ -20,6 +20,7 @@ use bitfield::bitfield;
 use probe_rs_target::CoreType;
 use std::{
     sync::Arc,
+    thread,
     time::{Duration, Instant},
 };
 
@@ -218,7 +219,7 @@ bitfield! {
     pub revision, _ : 11, 8;
 
     /// This bit field identifies a device within a product family and product series.
-    pub devsel, _ : 8, 0;
+    pub devsel, _ : 7, 0;
 }
 
 impl DsuDid {
@@ -333,7 +334,7 @@ impl AtSAM {
             } else if current_dsu_statusa.fail() {
                 return Err(ArmError::ChipEraseFailed);
             }
-            std::thread::sleep(Duration::from_millis(250));
+            thread::sleep(Duration::from_millis(250));
         }
 
         tracing::error!("Chip-Erase failed to complete within 8 seconds");
@@ -361,13 +362,13 @@ impl AtSAM {
         // First set nReset, SWDIO and SWCLK to low.
         let mut pin_values = Pins(0);
         interface.swj_pins(pin_values.0 as u32, pins.0 as u32, 0)?;
-        std::thread::sleep(Duration::from_millis(10));
+        thread::sleep(Duration::from_millis(10));
 
         // Next release nReset, but keep SWDIO and SWCLK low. This should put the device into
         // reset extension.
         pin_values.set_nreset(true);
         interface.swj_pins(pin_values.0 as u32, pins.0 as u32, 0)?;
-        std::thread::sleep(Duration::from_millis(20));
+        thread::sleep(Duration::from_millis(20));
 
         Ok(())
     }
@@ -415,11 +416,11 @@ impl AtSAM {
 
         pin_values.set_nreset(false);
         interface.swj_pins(pin_values.0 as u32, pins.0 as u32, 0)?;
-        std::thread::sleep(Duration::from_millis(10));
+        thread::sleep(Duration::from_millis(10));
 
         pin_values.set_nreset(true);
         interface.swj_pins(pin_values.0 as u32, pins.0 as u32, 0)?;
-        std::thread::sleep(Duration::from_millis(10));
+        thread::sleep(Duration::from_millis(10));
 
         Ok(())
     }
@@ -442,10 +443,10 @@ impl AtSAM {
                 pins.set_nreset(true);
 
                 interface.swj_pins(0, pins.0 as u32, 0)?;
-                std::thread::sleep(Duration::from_millis(10));
+                thread::sleep(Duration::from_millis(10));
 
                 interface.swj_pins(pins.0 as u32, pins.0 as u32, 0)?;
-                std::thread::sleep(Duration::from_millis(10));
+                thread::sleep(Duration::from_millis(10));
 
                 Ok(())
             }

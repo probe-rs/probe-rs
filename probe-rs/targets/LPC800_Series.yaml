@@ -21,9 +21,10 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc80x_16
 - name: LPC802M001JDH20
@@ -44,9 +45,10 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc80x_16
 - name: LPC802M001JHI33
@@ -67,9 +69,10 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc80x_16
 - name: LPC802M011JDH20
@@ -90,9 +93,10 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc80x_16
 - name: LPC804M101JDH20
@@ -113,9 +117,10 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc80x_32
 - name: LPC804M101JDH24
@@ -136,9 +141,10 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc80x_32
 - name: LPC804M101JHI33
@@ -159,9 +165,10 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc80x_32
 - name: LPC804M111JDH24
@@ -182,9 +189,10 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc80x_32
 - name: LPC810M021FN8
@@ -205,9 +213,10 @@ variants:
     range:
       start: 0x0
       end: 0x1000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc8xx_4
 - name: LPC811M001JDH16
@@ -228,9 +237,10 @@ variants:
     range:
       start: 0x0
       end: 0x2000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc8xx_8
 - name: LPC812M101JD20
@@ -251,9 +261,10 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc8xx_16
 - name: LPC812M101JDH16
@@ -274,9 +285,10 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc8xx_16
 - name: LPC812M101JDH20
@@ -297,9 +309,10 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc8xx_16
 - name: LPC812M101JTB16
@@ -320,9 +333,10 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc8xx_16
 - name: LPC822M101JDH20
@@ -343,9 +357,10 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc8xx_16
 - name: LPC822M101JHI33
@@ -366,9 +381,10 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc8xx_16
 - name: LPC824M201JDH20
@@ -389,9 +405,10 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc8xx_32
 - name: LPC824M201JHI33
@@ -412,9 +429,10 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc8xx_32
 - name: LPC832M101FDH20
@@ -435,9 +453,10 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc8xx_16
 - name: LPC834M101FHI33
@@ -458,9 +477,10 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc8xx_32
 - name: LPC844M201JBD48
@@ -481,9 +501,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc84x_64
 - name: LPC844M201JBD64
@@ -504,9 +525,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc84x_64
 - name: LPC844M201JHI33
@@ -527,9 +549,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc84x_64
 - name: LPC844M201JHI48
@@ -550,9 +573,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc84x_64
 - name: LPC845M301JBD48
@@ -573,9 +597,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc84x_64
 - name: LPC845M301JBD64
@@ -596,9 +621,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc84x_64
 - name: LPC845M301JHI33
@@ -619,9 +645,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc84x_64
 - name: LPC845M301JHI48
@@ -642,9 +669,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc84x_64
 - name: LPC8N04FHI24
@@ -665,9 +693,10 @@ variants:
     range:
       start: 0x0
       end: 0x7800
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lpc8n04_30
 flash_algorithms:
@@ -727,6 +756,7 @@ flash_algorithms:
   pc_erase_sector: 0x6d
   pc_erase_all: 0x2d
   data_section_offset: 0x130
+  stack_size: 256
   flash_properties:
     address_range:
       start: 0x0

@@ -22,9 +22,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: ConfigROM
     range:
@@ -63,9 +64,10 @@ variants:
     range:
       start: 0x0
       end: 0x60000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: ConfigROM
     range:
@@ -104,9 +106,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: ConfigROM
     range:

@@ -2,6 +2,8 @@ name: STM32F2 Series
 manufacturer:
   id: 0x20
   cc: 0x0
+generated_from_pack: true
+pack_file_release: 2.11.0
 variants:
 - name: STM32F205RBTx
   cores:
@@ -12,18 +14,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20010000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -37,18 +42,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20018000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -62,18 +70,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -87,18 +98,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -112,18 +126,49 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x80c0000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
+  flash_algorithms:
+  - stm32f2xx_1024
+  - stm32f2xx_opt
+  - stm32f2xx_otp
+- name: STM32F205RGEx
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -137,18 +182,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -162,18 +210,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -187,18 +238,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20010000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -212,18 +266,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20018000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -237,18 +294,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -262,18 +322,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x80c0000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -287,18 +350,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -312,18 +378,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20018000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -337,18 +406,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -362,18 +434,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x80c0000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -387,18 +462,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -412,18 +490,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -437,18 +518,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -462,18 +546,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -487,18 +574,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -512,18 +602,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x80c0000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -537,18 +630,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x80c0000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -562,18 +658,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -587,18 +686,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -612,18 +714,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -637,18 +742,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -662,18 +770,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x80c0000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -687,18 +798,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -712,18 +826,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -737,18 +854,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -762,18 +882,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x80c0000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -787,18 +910,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -812,18 +938,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -837,18 +966,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -862,18 +994,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -887,18 +1022,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -912,18 +1050,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -937,18 +1078,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -962,18 +1106,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -987,18 +1134,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -1012,18 +1162,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -1037,18 +1190,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -1062,18 +1218,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -1087,18 +1246,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -1112,18 +1274,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -1137,18 +1302,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32f2xx_1024
   - stm32f2xx_opt
@@ -1179,8 +1347,6 @@ flash_algorithms:
       address: 0x10000
     - size: 0x20000
       address: 0x20000
-  cores:
-  - main
 - name: stm32f2xx_opt
   description: STM32F2xx Flash Options
   instructions: AAMADiAoAtNACQAdcEcQKALTAAnAHHBHgAhwRylIKEmBYClJgWDBaPAiEUPBYEBpgAYG1CZIJUkBYAYhQWAlSYFgACBwRx9IQWkBIhFDQWEAIHBHG0jCaPAhCkPCYB5KQmFCaQIjGkNCYcJoEgYSDwTQwmgKQ8JgASBwRwAgcEcAIHBHEYkQiAkFCQmACIAAAUMMSMNo8CITQ8NgAiMZQ0FhwWjJA/zUwWgJBgkPBNDBaBFDwWABIHBHACBwRwAAOyoZCAA8AkB/bl1MVVUAAAAwAED/DwAA7Kr/DwAAAAA=
@@ -1201,8 +1367,6 @@ flash_algorithms:
     sectors:
     - size: 0x10
       address: 0x0
-  cores:
-  - main
 - name: stm32f2xx_otp
   description: STM32F2xx Flash OTP
   instructions: AAMADiAoAtNACQAdcEcQKALTAAnAHHBHgAhwRyVIJElBYCVJQWAAIQFgwWjwIhFDwWBAaYAGBtQhSCBJAWAGIUFgIEmBYAAgcEcaSAFpQgURQwFhACBwRwAgcEdwtRVNyRyJCOtoiQDwJjND62AAIythFUsX4CxpHEMsYRRoBGDsaOQD/NQsaWQIZAAsYexoJAYkDwTQ6GgwQ+hgASBwvQAdEh0JHwAp5dEAIHC9AAAjAWdFADwCQKuJ781VVQAAADAAQP8PAAABAgAAAAAAAA==
@@ -1222,5 +1386,3 @@ flash_algorithms:
     sectors:
     - size: 0x210
       address: 0x0
-  cores:
-  - main

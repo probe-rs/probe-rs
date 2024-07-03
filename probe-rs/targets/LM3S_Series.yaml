@@ -22,11 +22,12 @@ variants:
     range:
       start: 0x0
       end: 0x2000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_8
+  - lm3s_64
 - name: LM3S102
   cores:
   - name: main
@@ -47,11 +48,12 @@ variants:
     range:
       start: 0x0
       end: 0x2000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_8
+  - lm3s_64
 - name: LM3S1110
   cores:
   - name: main
@@ -72,9 +74,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_64
 - name: LM3S1133
@@ -97,9 +100,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_64
 - name: LM3S1138
@@ -122,9 +126,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_64
 - name: LM3S1150
@@ -147,9 +152,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_64
 - name: LM3S1162
@@ -172,9 +178,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_64
 - name: LM3S1165
@@ -197,9 +204,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_64
 - name: LM3S1332
@@ -222,9 +230,10 @@ variants:
     range:
       start: 0x0
       end: 0x18000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S1435
@@ -247,9 +256,10 @@ variants:
     range:
       start: 0x0
       end: 0x18000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S1439
@@ -272,9 +282,10 @@ variants:
     range:
       start: 0x0
       end: 0x18000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S1512
@@ -297,9 +308,10 @@ variants:
     range:
       start: 0x0
       end: 0x18000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S1538
@@ -322,9 +334,10 @@ variants:
     range:
       start: 0x0
       end: 0x18000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S1601
@@ -347,9 +360,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S1607
@@ -372,9 +386,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S1608
@@ -397,9 +412,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S1620
@@ -422,9 +438,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S1621
@@ -447,9 +464,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S1625
@@ -472,9 +490,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S1626
@@ -497,9 +516,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S1627
@@ -522,9 +542,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S1635
@@ -547,9 +568,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S1637
@@ -572,9 +594,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S1651
@@ -597,9 +620,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S1751
@@ -622,9 +646,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S1776
@@ -647,9 +672,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S1811
@@ -672,9 +698,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S1816
@@ -697,9 +724,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S1850
@@ -722,9 +750,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S1911
@@ -747,9 +776,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S1918
@@ -772,9 +802,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S1937
@@ -797,9 +828,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S1958
@@ -822,9 +854,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S1960
@@ -847,9 +880,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S1968
@@ -872,9 +906,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S1B21
@@ -897,9 +932,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S1C21
@@ -922,9 +958,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_512
 - name: LM3S1C26
@@ -947,9 +984,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_512
 - name: LM3S1D21
@@ -972,9 +1010,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_512
 - name: LM3S1D26
@@ -997,9 +1036,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_512
 - name: LM3S1F11
@@ -1022,11 +1062,12 @@ variants:
     range:
       start: 0x0
       end: 0x60000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_384
+  - lm3s_512
 - name: LM3S1F16
   cores:
   - name: main
@@ -1047,11 +1088,12 @@ variants:
     range:
       start: 0x0
       end: 0x60000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_384
+  - lm3s_512
 - name: LM3S1G21
   cores:
   - name: main
@@ -1072,11 +1114,12 @@ variants:
     range:
       start: 0x0
       end: 0x60000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_384
+  - lm3s_512
 - name: LM3S1H11
   cores:
   - name: main
@@ -1097,9 +1140,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_512
 - name: LM3S1H16
@@ -1122,9 +1166,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_512
 - name: LM3S1J11
@@ -1147,9 +1192,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S1J16
@@ -1172,9 +1218,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S1N11
@@ -1197,9 +1244,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_64
 - name: LM3S1N16
@@ -1222,9 +1270,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_64
 - name: LM3S1P51
@@ -1247,9 +1296,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_64
 - name: LM3S1R21
@@ -1272,9 +1322,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S1R26
@@ -1297,9 +1348,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S1W16
@@ -1322,11 +1374,12 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_32
+  - lm3s_64
 - name: LM3S1Z16
   cores:
   - name: main
@@ -1347,11 +1400,12 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_16
+  - lm3s_64
 - name: LM3S2110
   cores:
   - name: main
@@ -1372,9 +1426,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_64
 - name: LM3S2139
@@ -1397,9 +1452,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_64
 - name: LM3S2276
@@ -1422,9 +1478,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_64
 - name: LM3S2410
@@ -1447,9 +1504,10 @@ variants:
     range:
       start: 0x0
       end: 0x18000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S2412
@@ -1472,9 +1530,10 @@ variants:
     range:
       start: 0x0
       end: 0x18000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S2432
@@ -1497,9 +1556,10 @@ variants:
     range:
       start: 0x0
       end: 0x18000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S2533
@@ -1522,9 +1582,10 @@ variants:
     range:
       start: 0x0
       end: 0x18000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S2601
@@ -1547,9 +1608,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S2608
@@ -1572,9 +1634,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S2616
@@ -1597,9 +1660,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S2620
@@ -1622,9 +1686,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S2637
@@ -1647,9 +1712,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S2651
@@ -1672,9 +1738,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S2671
@@ -1697,9 +1764,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S2678
@@ -1722,9 +1790,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S2730
@@ -1747,9 +1816,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S2739
@@ -1772,9 +1842,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S2776
@@ -1797,9 +1868,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S2793
@@ -1822,9 +1894,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S2911
@@ -1847,9 +1920,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S2918
@@ -1872,9 +1946,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S2939
@@ -1897,9 +1972,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S2948
@@ -1922,9 +1998,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S2950
@@ -1947,9 +2024,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S2965
@@ -1972,9 +2050,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S2B93
@@ -1997,9 +2076,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S2D93
@@ -2022,9 +2102,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_512
 - name: LM3S2U93
@@ -2047,11 +2128,12 @@ variants:
     range:
       start: 0x0
       end: 0x60000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_384
+  - lm3s_512
 - name: LM3S300
   cores:
   - name: main
@@ -2072,11 +2154,12 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_16
+  - lm3s_64
 - name: LM3S301
   cores:
   - name: main
@@ -2097,11 +2180,12 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_16
+  - lm3s_64
 - name: LM3S308
   cores:
   - name: main
@@ -2122,11 +2206,12 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_16
+  - lm3s_64
 - name: LM3S310
   cores:
   - name: main
@@ -2147,11 +2232,12 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_16
+  - lm3s_64
 - name: LM3S315
   cores:
   - name: main
@@ -2172,11 +2258,12 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_16
+  - lm3s_64
 - name: LM3S316
   cores:
   - name: main
@@ -2197,11 +2284,12 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_16
+  - lm3s_64
 - name: LM3S317
   cores:
   - name: main
@@ -2222,11 +2310,12 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_16
+  - lm3s_64
 - name: LM3S328
   cores:
   - name: main
@@ -2247,11 +2336,12 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_16
+  - lm3s_64
 - name: LM3S3634
   cores:
   - name: main
@@ -2272,9 +2362,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S3651
@@ -2297,9 +2388,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S3654
@@ -2322,9 +2414,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S3739
@@ -2347,9 +2440,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S3748
@@ -2372,9 +2466,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S3749
@@ -2397,9 +2492,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S3826
@@ -2422,9 +2518,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S3J26
@@ -2447,9 +2544,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S3N26
@@ -2472,9 +2570,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_64
 - name: LM3S3W26
@@ -2497,11 +2596,12 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_32
+  - lm3s_64
 - name: LM3S3Z26
   cores:
   - name: main
@@ -2522,11 +2622,12 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_16
+  - lm3s_64
 - name: LM3S5632
   cores:
   - name: main
@@ -2547,9 +2648,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S5651
@@ -2572,9 +2674,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S5652
@@ -2597,9 +2700,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S5656
@@ -2622,9 +2726,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S5662
@@ -2647,9 +2752,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S5732
@@ -2672,9 +2778,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S5737
@@ -2697,9 +2804,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S5739
@@ -2722,9 +2830,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S5747
@@ -2747,9 +2856,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S5749
@@ -2772,9 +2882,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S5752
@@ -2797,9 +2908,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S5762
@@ -2822,9 +2934,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S5791
@@ -2847,9 +2960,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S5951
@@ -2872,9 +2986,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S5956
@@ -2897,9 +3012,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S5B91
@@ -2922,9 +3038,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S5C31
@@ -2947,9 +3064,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_512
 - name: LM3S5C36
@@ -2972,9 +3090,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_512
 - name: LM3S5C51
@@ -2997,9 +3116,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_512
 - name: LM3S5C56
@@ -3022,9 +3142,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_512
 - name: LM3S5D51
@@ -3047,9 +3168,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_512
 - name: LM3S5D56
@@ -3072,9 +3194,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_512
 - name: LM3S5D91
@@ -3097,9 +3220,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_512
 - name: LM3S5G31
@@ -3122,11 +3246,12 @@ variants:
     range:
       start: 0x0
       end: 0x60000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_384
+  - lm3s_512
 - name: LM3S5G36
   cores:
   - name: main
@@ -3147,11 +3272,12 @@ variants:
     range:
       start: 0x0
       end: 0x60000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_384
+  - lm3s_512
 - name: LM3S5G51
   cores:
   - name: main
@@ -3172,11 +3298,12 @@ variants:
     range:
       start: 0x0
       end: 0x60000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_384
+  - lm3s_512
 - name: LM3S5G56
   cores:
   - name: main
@@ -3197,11 +3324,12 @@ variants:
     range:
       start: 0x0
       end: 0x60000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_384
+  - lm3s_512
 - name: LM3S5K31
   cores:
   - name: main
@@ -3222,9 +3350,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S5K36
@@ -3247,9 +3376,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S5P31
@@ -3272,9 +3402,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_64
 - name: LM3S5P36
@@ -3297,9 +3428,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_64
 - name: LM3S5P3B
@@ -3322,9 +3454,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_64
 - name: LM3S5P51
@@ -3347,9 +3480,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_64
 - name: LM3S5P56
@@ -3372,9 +3506,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_64
 - name: LM3S5R31
@@ -3397,9 +3532,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S5R36
@@ -3422,9 +3558,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S5T36
@@ -3447,11 +3584,12 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_32
+  - lm3s_64
 - name: LM3S5U91
   cores:
   - name: main
@@ -3472,11 +3610,12 @@ variants:
     range:
       start: 0x0
       end: 0x60000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_384
+  - lm3s_512
 - name: LM3S5Y36
   cores:
   - name: main
@@ -3497,11 +3636,12 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_16
+  - lm3s_64
 - name: LM3S600
   cores:
   - name: main
@@ -3522,11 +3662,12 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_32
+  - lm3s_64
 - name: LM3S601
   cores:
   - name: main
@@ -3547,11 +3688,12 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_32
+  - lm3s_64
 - name: LM3S608
   cores:
   - name: main
@@ -3572,11 +3714,12 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_32
+  - lm3s_64
 - name: LM3S610
   cores:
   - name: main
@@ -3597,11 +3740,12 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_32
+  - lm3s_64
 - name: LM3S6100
   cores:
   - name: main
@@ -3622,9 +3766,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_64
 - name: LM3S611
@@ -3647,11 +3792,12 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_32
+  - lm3s_64
 - name: LM3S6110
   cores:
   - name: main
@@ -3672,9 +3818,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_64
 - name: LM3S612
@@ -3697,11 +3844,12 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_32
+  - lm3s_64
 - name: LM3S613
   cores:
   - name: main
@@ -3722,11 +3870,12 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_32
+  - lm3s_64
 - name: LM3S615
   cores:
   - name: main
@@ -3747,11 +3896,12 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_32
+  - lm3s_64
 - name: LM3S617
   cores:
   - name: main
@@ -3772,11 +3922,12 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_32
+  - lm3s_64
 - name: LM3S618
   cores:
   - name: main
@@ -3797,11 +3948,12 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_32
+  - lm3s_64
 - name: LM3S628
   cores:
   - name: main
@@ -3822,11 +3974,12 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_32
+  - lm3s_64
 - name: LM3S6420
   cores:
   - name: main
@@ -3847,9 +4000,10 @@ variants:
     range:
       start: 0x0
       end: 0x18000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S6422
@@ -3872,9 +4026,10 @@ variants:
     range:
       start: 0x0
       end: 0x18000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S6432
@@ -3897,9 +4052,10 @@ variants:
     range:
       start: 0x0
       end: 0x18000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S6537
@@ -3922,9 +4078,10 @@ variants:
     range:
       start: 0x0
       end: 0x18000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S6610
@@ -3947,9 +4104,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S6611
@@ -3972,9 +4130,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S6618
@@ -3997,9 +4156,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S6633
@@ -4022,9 +4182,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S6637
@@ -4047,9 +4208,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S6730
@@ -4072,9 +4234,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S6753
@@ -4097,9 +4260,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S6911
@@ -4122,9 +4286,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S6918
@@ -4147,9 +4312,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S6938
@@ -4172,9 +4338,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S6950
@@ -4197,9 +4364,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S6952
@@ -4222,9 +4390,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S6965
@@ -4247,9 +4416,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S800
@@ -4272,9 +4442,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_64
 - name: LM3S801
@@ -4297,9 +4468,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_64
 - name: LM3S808
@@ -4322,9 +4494,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_64
 - name: LM3S811
@@ -4347,9 +4520,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_64
 - name: LM3S812
@@ -4372,9 +4546,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_64
 - name: LM3S815
@@ -4397,9 +4572,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_64
 - name: LM3S817
@@ -4422,9 +4598,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_64
 - name: LM3S818
@@ -4447,9 +4624,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_64
 - name: LM3S828
@@ -4472,9 +4650,10 @@ variants:
     range:
       start: 0x0
       end: 0x10000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_64
 - name: LM3S8530
@@ -4497,9 +4676,10 @@ variants:
     range:
       start: 0x0
       end: 0x18000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S8538
@@ -4522,9 +4702,10 @@ variants:
     range:
       start: 0x0
       end: 0x18000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S8630
@@ -4547,9 +4728,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S8730
@@ -4572,9 +4754,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S8733
@@ -4597,9 +4780,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S8738
@@ -4622,9 +4806,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S8930
@@ -4647,9 +4832,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S8933
@@ -4672,9 +4858,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S8938
@@ -4697,9 +4884,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S8962
@@ -4722,9 +4910,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S8970
@@ -4747,9 +4936,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S8971
@@ -4772,9 +4962,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S9781
@@ -4797,9 +4988,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S9790
@@ -4822,9 +5014,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S9792
@@ -4847,9 +5040,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S9971
@@ -4872,9 +5066,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S9997
@@ -4897,9 +5092,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S9B81
@@ -4922,9 +5118,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S9B90
@@ -4947,9 +5144,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S9B92
@@ -4972,9 +5170,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S9B95
@@ -4997,9 +5196,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S9B96
@@ -5022,9 +5222,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S9BN2
@@ -5047,9 +5248,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S9BN5
@@ -5072,9 +5274,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S9BN6
@@ -5097,9 +5300,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_256
 - name: LM3S9C97
@@ -5122,9 +5326,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_512
 - name: LM3S9D81
@@ -5147,9 +5352,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_512
 - name: LM3S9D90
@@ -5172,9 +5378,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_512
 - name: LM3S9D92
@@ -5197,9 +5404,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_512
 - name: LM3S9D96
@@ -5222,9 +5430,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_512
 - name: LM3S9DN5
@@ -5247,9 +5456,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_512
 - name: LM3S9DN6
@@ -5272,9 +5482,10 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_512
 - name: LM3S9G97
@@ -5297,11 +5508,12 @@ variants:
     range:
       start: 0x0
       end: 0x60000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_384
+  - lm3s_512
 - name: LM3S9GN5
   cores:
   - name: main
@@ -5322,11 +5534,12 @@ variants:
     range:
       start: 0x0
       end: 0x60000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_384
+  - lm3s_512
 - name: LM3S9L71
   cores:
   - name: main
@@ -5347,9 +5560,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S9L97
@@ -5372,9 +5586,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - lm3s_128
 - name: LM3S9U81
@@ -5397,11 +5612,12 @@ variants:
     range:
       start: 0x0
       end: 0x60000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_384
+  - lm3s_512
 - name: LM3S9U90
   cores:
   - name: main
@@ -5422,11 +5638,12 @@ variants:
     range:
       start: 0x0
       end: 0x60000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_384
+  - lm3s_512
 - name: LM3S9U92
   cores:
   - name: main
@@ -5447,11 +5664,12 @@ variants:
     range:
       start: 0x0
       end: 0x60000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_384
+  - lm3s_512
 - name: LM3S9U96
   cores:
   - name: main
@@ -5472,33 +5690,13 @@ variants:
     range:
       start: 0x0
       end: 0x60000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - lm3s_384
+  - lm3s_512
 flash_algorithms:
-- name: lm3s_8
-  description: LM3Sxxx 8kB Flash
-  default: true
-  instructions: iApA8jJBSENP8P8xAesQUSlIAWUBIQFgACBwRwAgcEeBBQvRJUkBIkphCGAkSIhgiGiAB/zUyGjABwDQASBwR3C1gwc10ckcHEsBJCHwAwFcYRlMsDQkaOUHGkwX0SPgIPB/BR1gB+AA8HwGIMoeRMb4AFEAHQkfEPB8DwHRHWsNuQAp8NEcYh1q7Qf80QAp5tEL4BhgFWhdYJxgnWjtB/zRAB0SHQkfACnz0dhowAcA0AEgcL0AAPDgD0AA0A9AAgBCpAEAQqQAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x1d
-  pc_program_page: 0x41
-  pc_erase_sector: 0x21
-  data_section_offset: 0xc8
-  flash_properties:
-    address_range:
-      start: 0x0
-      end: 0x2000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 500
-    erase_sector_timeout: 500
-    sectors:
-    - size: 0x400
-      address: 0x0
-  transfer_encoding: raw
 - name: lm3s_64
   description: LM3Sxxx 64kB Flash
   default: true
@@ -5577,70 +5775,6 @@ flash_algorithms:
     address_range:
       start: 0x0
       end: 0x80000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 500
-    erase_sector_timeout: 500
-    sectors:
-    - size: 0x400
-      address: 0x0
-  transfer_encoding: raw
-- name: lm3s_384
-  description: LM3Sxxx 384kB Flash
-  default: true
-  instructions: iAo0SUhDAA0zSUAeCGAySQEggDkIYwAgcEcAIHBHL0gBIUFhLkmBYIFoSQf81MBowAcA0AEgcEeBBQzRJ0kBIkphCGAmSIAeiGCIaIAH/NTIaMAHANABIHBH8LWDBzfRyRyJCIkAHU0BI2thGktAMxtqHEzbBybQG058IwApJNDECeQBLGAG4AdGEMofQL8ZPGAAHQkfRAbkDgLRLGsALAHRACnw0Q9MLGIsauQH/NHk5yhgE2hrYKxgq2jbB/zRAB0SHQkfACnz0ehowAcA0AEg8L0yBAAAQOEPQADQD0AEAEKkAQBCpADRD0AAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x1b
-  pc_program_page: 0x5b
-  pc_erase_sector: 0x39
-  pc_erase_all: 0x1f
-  data_section_offset: 0xec
-  flash_properties:
-    address_range:
-      start: 0x0
-      end: 0x60000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 500
-    erase_sector_timeout: 500
-    sectors:
-    - size: 0x400
-      address: 0x0
-  transfer_encoding: raw
-- name: lm3s_32
-  description: LM3Sxxx 32kB Flash
-  default: true
-  instructions: iApA8jJBSENP8P8xAesQUSlIAWUBIQFgACBwRwAgcEeBBQvRJUkBIkphCGAkSIhgiGiAB/zUyGjABwDQASBwR3C1gwc10ckcHEsBJCHwAwFcYRlMsDQkaOUHGkwX0SPgIPB/BR1gB+AA8HwGIMoeRMb4AFEAHQkfEPB8DwHRHWsNuQAp8NEcYh1q7Qf80QAp5tEL4BhgFWhdYJxgnWjtB/zRAB0SHQkfACnz0dhowAcA0AEgcL0AAPDgD0AA0A9AAgBCpAEAQqQAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x1d
-  pc_program_page: 0x41
-  pc_erase_sector: 0x21
-  data_section_offset: 0xc8
-  flash_properties:
-    address_range:
-      start: 0x0
-      end: 0x8000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 500
-    erase_sector_timeout: 500
-    sectors:
-    - size: 0x400
-      address: 0x0
-  transfer_encoding: raw
-- name: lm3s_16
-  description: LM3Sxxx 16kB Flash
-  default: true
-  instructions: iApA8jJBSENP8P8xAesQUSlIAWUBIQFgACBwRwAgcEeBBQvRJUkBIkphCGAkSIhgiGiAB/zUyGjABwDQASBwR3C1gwc10ckcHEsBJCHwAwFcYRlMsDQkaOUHGkwX0SPgIPB/BR1gB+AA8HwGIMoeRMb4AFEAHQkfEPB8DwHRHWsNuQAp8NEcYh1q7Qf80QAp5tEL4BhgFWhdYJxgnWjtB/zRAB0SHQkfACnz0dhowAcA0AEgcL0AAPDgD0AA0A9AAgBCpAEAQqQAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x1d
-  pc_program_page: 0x41
-  pc_erase_sector: 0x21
-  data_section_offset: 0xc8
-  flash_properties:
-    address_range:
-      start: 0x0
-      end: 0x4000
     page_size: 0x400
     erased_byte_value: 0xff
     program_page_timeout: 500

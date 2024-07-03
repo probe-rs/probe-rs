@@ -12,7 +12,6 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
-    # OCRAM1, OCRAM2, and the ECC extensions for each region.
     name: OCRAM
     range:
       start: 0x20240000
@@ -53,3 +52,4 @@ flash_algorithms:
       address: 0x0
   cores:
   - cm7
+  stack_size: 4096

@@ -179,7 +179,7 @@ impl<'p> CoreHandle<'p> {
     pub fn attach_to_rtt<P: ProtocolAdapter>(
         &mut self,
         debug_adapter: &mut DebugAdapter<P>,
-        program_binary: &std::path::Path,
+        program_binary: &Path,
         rtt_config: &rtt::RttConfig,
         timestamp_offset: UtcOffset,
     ) -> Result<()> {
@@ -193,7 +193,7 @@ impl<'p> CoreHandle<'p> {
             return Ok(());
         };
 
-        for up_channel in target_rtt.active_up_channels.values() {
+        for up_channel in target_rtt.active_up_channels.iter() {
             debugger_rtt_channels.push(debug_rtt::DebuggerRttChannel {
                 channel_number: up_channel.number(),
                 // This value will eventually be set to true by a VSCode client request "rttWindowOpened"
@@ -440,9 +440,7 @@ fn try_attach_rtt(
 
     let scan_region = ScanRegion::Exact(header_address);
 
-    let memory_regions = core.memory_regions().cloned().collect::<Vec<_>>();
-
-    let rtt = Rtt::attach_region(core, &memory_regions[..], &scan_region)
+    let rtt = Rtt::attach_region(core, &scan_region)
         .map_err(|error| anyhow!("Error attempting to attach to RTT: {}", error))?;
 
     tracing::info!("RTT initialized.");

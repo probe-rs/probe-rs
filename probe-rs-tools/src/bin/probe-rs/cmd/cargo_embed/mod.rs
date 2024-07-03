@@ -8,11 +8,10 @@ use colored::Colorize;
 use parking_lot::FairMutex;
 use probe_rs::gdb_server::GdbInstanceConfiguration;
 use probe_rs::probe::list::Lister;
-use probe_rs::rtt::ScanRegion;
+use probe_rs::rtt::{try_attach_to_rtt_shared, Error, ScanRegion};
 use probe_rs::{probe::DebugProbeSelector, Session};
-use probe_rs_target::MemoryRegion;
 use std::ffi::OsString;
-use std::fs;
+use std::{fs, thread};
 use std::{
     fs::File,
     io::Write,
@@ -28,9 +27,7 @@ use crate::util::cargo::target_instruction_set;
 use crate::util::common_options::{BinaryDownloadOptions, OperationError, ProbeOptions};
 use crate::util::flash::{build_loader, run_flash_download};
 use crate::util::logging::setup_logging;
-use crate::util::rtt::{
-    self, try_attach_to_rtt_shared, DefmtState, RttActiveTarget, RttChannelConfig, RttConfig,
-};
+use crate::util::rtt::{self, DefmtState, RttActiveTarget, RttChannelConfig, RttConfig};
 use crate::util::{cargo::build_artifact, common_options::CargoOptions, logging, rtt::DataFormat};
 use crate::FormatOptions;
 
@@ -58,6 +55,9 @@ struct CliOptions {
     /// Work directory for the command.
     #[arg(long)]
     work_dir: Option<PathBuf>,
+    /// The path to the file to be flashed. Setting this will ignore the cargo options.
+    #[arg(value_name = "path", long)]
+    path: Option<PathBuf>,
     #[clap(flatten)]
     cargo_options: CargoOptions,
 }
@@ -126,12 +126,17 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
         probe_rs::config::add_target_from_yaml(file)
             .with_context(|| format!("failed to load the chip description from {cdp}"))?;
     }
+    let image_instr_set;
+    let path = if let Some(path_buf) = &opt.path {
+        image_instr_set = None;
+        path_buf.clone()
+    } else {
+        let cargo_options = opt.cargo_options.to_cargo_options();
+        image_instr_set = target_instruction_set(opt.cargo_options.target.clone());
 
-    let cargo_options = opt.cargo_options.to_cargo_options();
-
-    let artifact = build_artifact(&work_dir, &cargo_options)?;
-
-    let path = artifact.path();
+        // Build the project, and extract the path of the built artifact.
+        build_artifact(&work_dir, &cargo_options)?.path().into()
+    };
 
     // Get the binary name (without extension) from the build artifact path
     let name = path.file_stem().and_then(|f| f.to_str()).ok_or_else(|| {
@@ -147,8 +152,6 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
         "Target".green().bold(),
         path.display()
     ));
-
-    let lister = Lister::new();
 
     // If we got a probe selector in the config, open the probe matching the selector if possible.
     let selector = if let Some(selector) = opt.probe {
@@ -190,6 +193,7 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
         allow_erase_all: config.flashing.enabled || config.gdb.enabled,
     };
 
+    let lister = Lister::new();
     let (mut session, probe_options) = match probe_options.simple_attach(&lister) {
         Ok((session, probe_options)) => (session, probe_options),
 
@@ -223,10 +227,6 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
     };
 
     if config.flashing.enabled {
-        // As opposed to cargo-flash, we do not have the option of suppliying an external image.
-        // This means we can just take the cargo target, if it's set.
-        let image_instr_set = target_instruction_set(opt.cargo_options.target.clone());
-
         let download_options = BinaryDownloadOptions {
             disable_progressbars: opt.disable_progressbars,
             disable_double_buffering: config.flashing.disable_double_buffering,
@@ -235,10 +235,10 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
             verify: config.flashing.verify,
         };
         let format_options = FormatOptions::default();
-        let loader = build_loader(&mut session, path, format_options, image_instr_set)?;
+        let loader = build_loader(&mut session, &path, format_options, image_instr_set)?;
         run_flash_download(
             &mut session,
-            path,
+            &path,
             &download_options,
             &probe_options,
             loader,
@@ -246,7 +246,7 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
         )?;
     }
 
-    let core_id = rtt::get_target_core_id(&mut session, path);
+    let core_id = rtt::get_target_core_id(&mut session, &path);
     if config.reset.enabled {
         let mut core = session.core(core_id)?;
         let halt_timeout = Duration::from_millis(500);
@@ -265,7 +265,7 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
         let gdb_connection_string = config.gdb.gdb_connection_string.clone();
         let session = session.clone();
 
-        gdb_thread_handle = Some(std::thread::spawn(move || {
+        gdb_thread_handle = Some(thread::spawn(move || {
             let gdb_connection_string =
                 gdb_connection_string.as_deref().unwrap_or("127.0.0.1:1337");
 
@@ -289,7 +289,7 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
 
     if config.rtt.enabled {
         // GDB is also using the session, so we do not lock on the outside.
-        run_rttui_app(name, &session, core_id, config, path, offset)?;
+        run_rttui_app(name, &session, core_id, config, &path, offset)?;
     }
 
     if let Some(gdb_thread_handle) = gdb_thread_handle {
@@ -352,27 +352,21 @@ fn run_rttui_app(
         if config
             .rtt
             .up_channel_config(channel_config.channel)
-            .is_none()
+            .is_some()
         {
-            // Set up channel defaults, we don't read from it anyway.
-            rtt_config.channels.push(RttChannelConfig {
-                channel_number: Some(channel_config.channel),
-                ..Default::default()
-            });
+            continue;
         }
+        // Set up channel defaults, we don't read from it anyway.
+        rtt_config.channels.push(RttChannelConfig {
+            channel_number: Some(channel_config.channel),
+            ..Default::default()
+        });
     }
-
-    let memory_map = {
-        let session_handle = session.lock();
-        session_handle.target().memory_map.clone()
-    };
 
     let Some(rtt) = attach_to_rtt_shared(
         session,
         core_id,
         config.rtt.timeout,
-        &memory_map,
-        &ScanRegion::Ram,
         elf_path,
         &rtt_config,
         timezone_offset,
@@ -433,7 +427,7 @@ fn run_rttui_app(
             app.poll_rtt(&mut core)?;
         }
 
-        std::thread::sleep(Duration::from_millis(10));
+        thread::sleep(Duration::from_millis(10));
     }
 
     let mut session_handle = session.lock();
@@ -443,13 +437,10 @@ fn run_rttui_app(
     Ok(())
 }
 
-#[allow(clippy::too_many_arguments)]
 fn attach_to_rtt_shared(
     session: &FairMutex<Session>,
     core_id: usize,
     timeout: Duration,
-    memory_map: &[MemoryRegion],
-    rtt_region: &ScanRegion,
     elf_file: &Path,
     rtt_config: &RttConfig,
     timestamp_offset: UtcOffset,
@@ -461,14 +452,15 @@ fn attach_to_rtt_shared(
     let scan_region = if let Some(address) = RttActiveTarget::get_rtt_symbol_from_bytes(&elf) {
         ScanRegion::Exact(address)
     } else {
-        rtt_region.clone()
+        ScanRegion::Ram
     };
 
-    let rtt = try_attach_to_rtt_shared(session, core_id, memory_map, timeout, &scan_region)?;
-
-    let Some(rtt) = rtt else {
-        return Ok(None);
+    let rtt = match try_attach_to_rtt_shared(session, core_id, timeout, &scan_region) {
+        Ok(rtt) => rtt,
+        Err(Error::NoControlBlockLocation) => return Ok(None),
+        Err(err) => return Err(anyhow!("Error attempting to attach to RTT: {err}")),
     };
+
     let mut session_handle = session.lock();
     let mut core = session_handle.core(core_id)?;
 

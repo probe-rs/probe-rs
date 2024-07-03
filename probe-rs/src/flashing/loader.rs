@@ -1,4 +1,4 @@
-use espflash::flasher::{FlashData, FlashSettings};
+use espflash::flasher::{FlashData, FlashSettings, FlashSize};
 use espflash::targets::XtalFrequency;
 use ihex::Record;
 use probe_rs_target::{
@@ -191,17 +191,17 @@ impl FlashLoader {
         });
 
         let flash_size = match flash_size_result.map_err(FileDownloadError::FlashSizeDetection)? {
-            Some(0x40000) => Some(espflash::flasher::FlashSize::_256Kb),
-            Some(0x80000) => Some(espflash::flasher::FlashSize::_512Kb),
-            Some(0x100000) => Some(espflash::flasher::FlashSize::_1Mb),
-            Some(0x200000) => Some(espflash::flasher::FlashSize::_2Mb),
-            Some(0x400000) => Some(espflash::flasher::FlashSize::_4Mb),
-            Some(0x800000) => Some(espflash::flasher::FlashSize::_8Mb),
-            Some(0x1000000) => Some(espflash::flasher::FlashSize::_16Mb),
-            Some(0x2000000) => Some(espflash::flasher::FlashSize::_32Mb),
-            Some(0x4000000) => Some(espflash::flasher::FlashSize::_64Mb),
-            Some(0x8000000) => Some(espflash::flasher::FlashSize::_128Mb),
-            Some(0x10000000) => Some(espflash::flasher::FlashSize::_256Mb),
+            Some(0x40000) => Some(FlashSize::_256Kb),
+            Some(0x80000) => Some(FlashSize::_512Kb),
+            Some(0x100000) => Some(FlashSize::_1Mb),
+            Some(0x200000) => Some(FlashSize::_2Mb),
+            Some(0x400000) => Some(FlashSize::_4Mb),
+            Some(0x800000) => Some(FlashSize::_8Mb),
+            Some(0x1000000) => Some(FlashSize::_16Mb),
+            Some(0x2000000) => Some(FlashSize::_32Mb),
+            Some(0x4000000) => Some(FlashSize::_64Mb),
+            Some(0x8000000) => Some(FlashSize::_128Mb),
+            Some(0x10000000) => Some(FlashSize::_256Mb),
             _ => None,
         };
 

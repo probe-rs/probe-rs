@@ -158,18 +158,18 @@ dependencies = [
 
 [[package]]
 name = "microbit"
-version = "0.14.0"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3ea941ae60d022668f789ff6a6439fdb59b5cea202cd2affbb967e9af7425356"
+checksum = "e65a87c29e39e928c536c160bacf679d815e0c00bca26665b34e2c7eac926b93"
 dependencies = [
  "microbit-common",
 ]
 
 [[package]]
 name = "microbit-common"
-version = "0.14.0"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "37409f40befaa165d8a94255955475337422f5fe2fecaeeeedde170562ee114b"
+checksum = "26d84d7858bbe6cdd89c429be9aa62f2820d1a271e66580df22fe9093bb63c51"
 dependencies = [
  "embedded-hal 1.0.0",
  "nrf51-hal",
@@ -193,9 +193,9 @@ checksum = "8d5439c4ad607c3c23abf66de8c8bf57ba8adcd1f129e699851a6e43935d339d"
 
 [[package]]
 name = "nrf-hal-common"
-version = "0.17.1"
+version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "56fbecd598c7f16e32bd4783447ca023aa7897d4a4c8e70f6b7c5739c81b4ceb"
+checksum = "0c134de1f2f0191aed3fc24d3831da8808d1e636b06edf81a5717103095f625d"
 dependencies = [
  "cast",
  "cfg-if",
@@ -213,9 +213,9 @@ dependencies = [
 
 [[package]]
 name = "nrf51-hal"
-version = "0.17.1"
+version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5fb186285d15fdfe7329ebb25e64b898f1c619831c43dc96849f11c3ef244b2a"
+checksum = "22ed1244a7c2c8da0ce121b6ef28175a253c1ddb2ef9849b8f15825295253bcd"
 dependencies = [
  "nrf-hal-common",
  "nrf51-pac",

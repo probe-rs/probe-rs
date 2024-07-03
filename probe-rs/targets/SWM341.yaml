@@ -12,16 +12,18 @@ variants:
     range:
       start: 0x0
       end: 0x80000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Ram
     range:
       start: 0x20000000
       end: 0x20010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Nvm
     range:
       start: 0x70000000

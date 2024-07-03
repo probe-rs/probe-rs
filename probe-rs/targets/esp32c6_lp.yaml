@@ -15,9 +15,10 @@ variants:
     range:
       start: 0x0
       end: 0x1000000
-    is_boot_memory: true
     cores:
     - lp
+    access:
+      boot: true
   - !Nvm
     name: External flash (Read Only)
     range:

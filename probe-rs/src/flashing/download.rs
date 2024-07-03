@@ -3,6 +3,7 @@ use object::{
     read::elf::ProgramHeader, Endianness, Object, ObjectSection,
 };
 use probe_rs_target::{InstructionSet, MemoryRange};
+use serde::{Deserialize, Serialize};
 
 use std::{
     fs::File,

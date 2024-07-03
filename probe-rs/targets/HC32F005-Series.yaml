@@ -18,9 +18,10 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - hc32f005
 - name: HC32F005C6UA
@@ -41,9 +42,10 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - hc32f005
 flash_algorithms:

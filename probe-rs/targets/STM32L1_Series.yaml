@@ -21,12 +21,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_128
-  - stm32l1xx_128_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L100C6xxA
   cores:
@@ -46,12 +47,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_128
-  - stm32l1xx_128_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L100R8
   cores:
@@ -71,12 +73,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_128
-  - stm32l1xx_128_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L100R8xxA
   cores:
@@ -96,12 +99,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_128
-  - stm32l1xx_128_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L100RB
   cores:
@@ -121,12 +125,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_128
-  - stm32l1xx_128_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L100RBxxA
   cores:
@@ -146,12 +151,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_128
-  - stm32l1xx_128_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L100RC
   cores:
@@ -171,12 +177,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_256
-  - stm32l1xx_256_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
 - name: STM32L151C6
   cores:
@@ -196,12 +203,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_128
-  - stm32l1xx_128_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L151C6xxA
   cores:
@@ -221,12 +229,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_128
-  - stm32l1xx_128_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L151C8
   cores:
@@ -246,12 +255,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_128
-  - stm32l1xx_128_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L151C8xxA
   cores:
@@ -271,12 +281,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_128
-  - stm32l1xx_128_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L151CB
   cores:
@@ -296,12 +307,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_128
-  - stm32l1xx_128_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L151CBxxA
   cores:
@@ -321,12 +333,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_128
-  - stm32l1xx_128_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L151CC
   cores:
@@ -346,12 +359,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_256
-  - stm32l1xx_256_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
 - name: STM32L151QC
   cores:
@@ -371,12 +385,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_256
-  - stm32l1xx_256_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
 - name: STM32L151QD
   cores:
@@ -396,9 +411,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8060000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
@@ -421,9 +437,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l1xx_512
   - stm32l1xx_512_eeprom
@@ -446,12 +463,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_128
-  - stm32l1xx_128_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L151R6xxA
   cores:
@@ -471,12 +489,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_128
-  - stm32l1xx_128_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L151R8
   cores:
@@ -496,12 +515,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_128
-  - stm32l1xx_128_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L151R8xxA
   cores:
@@ -521,12 +541,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_128
-  - stm32l1xx_128_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L151RB
   cores:
@@ -546,12 +567,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_128
-  - stm32l1xx_128_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L151RBxxA
   cores:
@@ -571,12 +593,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_128
-  - stm32l1xx_128_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L151RC
   cores:
@@ -596,12 +619,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_256
-  - stm32l1xx_256_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
 - name: STM32L151RCxxA
   cores:
@@ -621,12 +645,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_256
-  - stm32l1xx_256_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
 - name: STM32L151RD
   cores:
@@ -646,9 +671,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8060000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
@@ -671,9 +697,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l1xx_512
   - stm32l1xx_512_eeprom
@@ -696,12 +723,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_256
-  - stm32l1xx_256_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
 - name: STM32L151V8
   cores:
@@ -721,12 +749,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_128
-  - stm32l1xx_128_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L151V8xxA
   cores:
@@ -746,12 +775,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_128
-  - stm32l1xx_128_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L151VB
   cores:
@@ -771,12 +801,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_128
-  - stm32l1xx_128_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L151VBxxA
   cores:
@@ -796,12 +827,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_128
-  - stm32l1xx_128_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L151VC
   cores:
@@ -821,12 +853,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_256
-  - stm32l1xx_256_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
 - name: STM32L151VCxxA
   cores:
@@ -846,12 +879,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_256
-  - stm32l1xx_256_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
 - name: STM32L151VD
   cores:
@@ -871,9 +905,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8060000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
@@ -896,9 +931,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l1xx_512
   - stm32l1xx_512_eeprom
@@ -921,12 +957,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_256
-  - stm32l1xx_256_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
 - name: STM32L151ZD
   cores:
@@ -946,9 +983,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8060000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
@@ -971,9 +1009,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l1xx_512
   - stm32l1xx_512_eeprom
@@ -996,12 +1035,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_128
-  - stm32l1xx_128_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L152C6xxA
   cores:
@@ -1021,12 +1061,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_128
-  - stm32l1xx_128_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L152C8
   cores:
@@ -1046,12 +1087,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_128
-  - stm32l1xx_128_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L152C8xxA
   cores:
@@ -1071,12 +1113,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_128
-  - stm32l1xx_128_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L152CB
   cores:
@@ -1096,12 +1139,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_128
-  - stm32l1xx_128_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L152CBxxA
   cores:
@@ -1121,12 +1165,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_128
-  - stm32l1xx_128_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L152CC
   cores:
@@ -1146,12 +1191,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_256
-  - stm32l1xx_256_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
 - name: STM32L152QC
   cores:
@@ -1171,12 +1217,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_256
-  - stm32l1xx_256_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
 - name: STM32L152QD
   cores:
@@ -1196,9 +1243,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8060000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
@@ -1221,9 +1269,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l1xx_512
   - stm32l1xx_512_eeprom
@@ -1246,12 +1295,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_128
-  - stm32l1xx_128_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L152R6xxA
   cores:
@@ -1271,12 +1321,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_128
-  - stm32l1xx_128_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L152R8
   cores:
@@ -1296,12 +1347,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_128
-  - stm32l1xx_128_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L152R8xxA
   cores:
@@ -1321,12 +1373,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_128
-  - stm32l1xx_128_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L152RB
   cores:
@@ -1346,12 +1399,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_128
-  - stm32l1xx_128_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L152RBxxA
   cores:
@@ -1371,12 +1425,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_128
-  - stm32l1xx_128_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L152RC
   cores:
@@ -1396,12 +1451,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_256
-  - stm32l1xx_256_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
 - name: STM32L152RCxxA
   cores:
@@ -1421,12 +1477,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_256
-  - stm32l1xx_256_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
 - name: STM32L152RD
   cores:
@@ -1446,9 +1503,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8060000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
@@ -1471,9 +1529,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l1xx_512
   - stm32l1xx_512_eeprom
@@ -1496,12 +1555,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_128
-  - stm32l1xx_128_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L152V8xxA
   cores:
@@ -1521,12 +1581,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8010000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_128
-  - stm32l1xx_128_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L152VB
   cores:
@@ -1546,12 +1607,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_128
-  - stm32l1xx_128_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L152VBxxA
   cores:
@@ -1571,12 +1633,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_128
-  - stm32l1xx_128_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L152VC
   cores:
@@ -1596,12 +1659,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_256
-  - stm32l1xx_256_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
 - name: STM32L152VCxxA
   cores:
@@ -1621,12 +1685,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_256
-  - stm32l1xx_256_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
 - name: STM32L152VD
   cores:
@@ -1646,9 +1711,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8060000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
@@ -1671,9 +1737,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l1xx_512
   - stm32l1xx_512_eeprom
@@ -1696,12 +1763,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_256
-  - stm32l1xx_256_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
 - name: STM32L152ZD
   cores:
@@ -1721,9 +1789,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8060000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
@@ -1746,9 +1815,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l1xx_512
   - stm32l1xx_512_eeprom
@@ -1771,9 +1841,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8060000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
@@ -1796,12 +1867,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_256
-  - stm32l1xx_256_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
 - name: STM32L162RCxxA
   cores:
@@ -1821,12 +1893,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_256
-  - stm32l1xx_256_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
 - name: STM32L162RD
   cores:
@@ -1846,9 +1919,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8060000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
@@ -1871,9 +1945,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l1xx_512
   - stm32l1xx_512_eeprom
@@ -1896,12 +1971,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_256
-  - stm32l1xx_256_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
 - name: STM32L162VCxxA
   cores:
@@ -1921,12 +1997,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32l1xx_256
-  - stm32l1xx_256_eeprom
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
 - name: STM32L162VD
   cores:
@@ -1946,9 +2023,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8060000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
@@ -1971,9 +2049,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l1xx_512
   - stm32l1xx_512_eeprom
@@ -1996,9 +2075,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8060000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
@@ -2021,144 +2101,15 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32l1xx_512
   - stm32l1xx_512_eeprom
   - stm32l1xx_512_opt
 flash_algorithms:
-- name: stm32l1xx_128
-  description: STM32L1xx Med-density Flash
-  default: true
-  instructions: ELUDRgEqAtACKiLRAOAAv3JIAGhA9HBgcEwgYHBIb0wMPCBgb0ggYG9IJB0gYG9IIGBqSAAdAGgQ9IAfCNFF8lVQa0wgYAYgYGBA9v9woGAAvwC/ACAQvQFGASkC0AIpD9EA4AC/XUgUOABoQPACAFpKFDoQYBBGAGhA8AEAEGAAvwC/ACBwRwFGVEgUOABoQPQAcFFKFDoQYBBGAGhA8AgAEGAAIAhgA+BK9qogUEoQYEpIAGgQ8AEP9tFHSBQ4AGgg9ABwRUoUOhBgEEYAaCDwCAAQYAAgcEcDRgEgcEcwtQNGgCQB8f8AIPD/ATtIFDgAaED0gGA4TRQ9KGAoRgBoQPAIAChgAL8F4BBoGGAbHRIdCR8kHwmxACz20QPgSvaqIDJNKGAsSABoEPABD/bRKkgAaBD0cG8H0CdIAGhA9HBgJU0oYAEgML0jSBQ4AGgg9IBgIU0UPShgKEYAaCDwCAAoYChGAGhA9IBgKGAoRgBoQPAIAChggCQF4BBoGGAbHRIdCR8kHwmxACz20QPgSvaqIBZNKGAQSABoEPABD/bRDUgAaBD0cG8H0AtIAGhA9HBgCU0oYAEgxecHSBQ4AGgg9IBgBE0UPShgKEYAaCDwCAAoYAAgtucYPAJA782riQUEAwK/rp2MFhUUEwAwAEAAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x59
-  pc_program_page: 0xe1
-  pc_erase_sector: 0x89
-  data_section_offset: 0x1f4
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8020000
-    page_size: 0x100
-    erased_byte_value: 0x0
-    program_page_timeout: 500
-    erase_sector_timeout: 500
-    sectors:
-    - size: 0x100
-      address: 0x0
-  cores:
-  - main
-- name: stm32l1xx_128_eeprom
-  description: STM32L1xx Mid-density Data EEPROM
-  instructions: ELUDRgEqAtACKh3RAOAAv0RIAGhA9HBgQkwgYEJIQUwMPCBgQUggYD5IAB0AaBD0gB8I0UXyVVA9TCBgBiBgYED2/3CgYAC/AL8AIBC9AUYBKQLQAikK0QDgAL8xSBQ4AGhA8AEAL0oUOhBgAL8AvwAgcEcBRk/0gHIB8f8AIPD/AQPgSvaqIClLGGAlSABoEPABD/bRDeAAIAhgA+BK9qogI0sYYB9IAGgQ8AEP9tEJHRIfACrv0QAgcEcDRgEgcEcwtQNGT/SAdAHx/wAg8P8BA+BK9qogFU0oYBFIAGgQ8AEP9tEX4A5IFDgAaCD0gHAMTRQ9KGAQaBhgA+BK9qogC00oYAdIAGgQ8AEP9tEbHRIdCR8kHwmxACzk0QAgML0AABg8AkDvzauJBQQDAgAwAEAAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x4f
-  pc_program_page: 0xc3
-  pc_erase_sector: 0x75
-  data_section_offset: 0x134
-  flash_properties:
-    address_range:
-      start: 0x8080000
-      end: 0x8081000
-    page_size: 0x100
-    erased_byte_value: 0x0
-    program_page_timeout: 500
-    erase_sector_timeout: 500
-    sectors:
-    - size: 0x100
-      address: 0x0
-  cores:
-  - main
-- name: stm32l1xx_128_opt
-  description: STM32L1xx Mid-density Options
-  instructions: ELUDRgEqAtACKiPRAOAAv0dIAGhA9HBgRUwgYEVIREwMPCBgREggYERIQUwkHyBgQ0ggYD5IAB0AaBD0gB8I0UXyVVA/TCBgBiBgYED2/3CgYAC/AL8AIBC9AUYBKQLQAikP0QDgAL8xSBQ4AGhA8AQAL0oUOhBgEEYAaEDwAQAQYAC/AL8AIHBHL0gvSQhgL0hIYC9IiGDIYAPgSvaqIChJCGAiSABoEPABD/bRIEgAaBD0cG8H0B1IAGhA9HBgG0kIYAEgcEcAIPznAUYAIHBHA0YBIHBHELUDRgHxDwAg8A8BH+AYaBRooEIB0BBoGGAD4Er2qiASTCBgDEgAaBDwAQ/20QpIAGgQ9HBvB9AHSABoQPRwYAVMIGABIBC9Gx0SHQkfACnd0QAg9+cAABg8AkDvzauJBQQDAsjZ6vsnJiUkADAAQKoAVf8AAPgfeACH/wAA//8AAAAA
-  pc_init: 0x1
-  pc_uninit: 0x5b
-  pc_program_page: 0xd9
-  pc_erase_sector: 0xcd
-  pc_erase_all: 0x8b
-  data_section_offset: 0x158
-  flash_properties:
-    address_range:
-      start: 0x1ff80000
-      end: 0x1ff80010
-    page_size: 0x10
-    erased_byte_value: 0x0
-    program_page_timeout: 3000
-    erase_sector_timeout: 3000
-    sectors:
-    - size: 0x10
-      address: 0x0
-  cores:
-  - main
-- name: stm32l1xx_256
-  description: STM32L1xx Med+-density Flash
-  default: true
-  instructions: ELUDRgEqAtACKiLRAOAAv3JIAGhA9HBgcEwgYHBIb0wMPCBgb0ggYG9IJB0gYG9IIGBqSAAdAGgQ9IAfCNFF8lVQa0wgYAYgYGBA9v9woGAAvwC/ACAQvQFGASkC0AIpD9EA4AC/XUgUOABoQPACAFpKFDoQYBBGAGhA8AEAEGAAvwC/ACBwRwFGVEgUOABoQPQAcFFKFDoQYBBGAGhA8AgAEGAAIAhgA+BK9qogUEoQYEpIAGgQ8AEP9tFHSBQ4AGgg9ABwRUoUOhBgEEYAaCDwCAAQYAAgcEcDRgEgcEcwtQNGgCQB8f8AIPD/ATtIFDgAaED0gGA4TRQ9KGAoRgBoQPAIAChgAL8F4BBoGGAbHRIdCR8kHwmxACz20QPgSvaqIDJNKGAsSABoEPABD/bRKkgAaBD0cG8H0CdIAGhA9HBgJU0oYAEgML0jSBQ4AGgg9IBgIU0UPShgKEYAaCDwCAAoYChGAGhA9IBgKGAoRgBoQPAIAChggCQF4BBoGGAbHRIdCR8kHwmxACz20QPgSvaqIBZNKGAQSABoEPABD/bRDUgAaBD0cG8H0AtIAGhA9HBgCU0oYAEgxecHSBQ4AGgg9IBgBE0UPShgKEYAaCDwCAAoYAAgtucYPAJA782riQUEAwK/rp2MFhUUEwAwAEAAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x59
-  pc_program_page: 0xe1
-  pc_erase_sector: 0x89
-  data_section_offset: 0x1f4
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8040000
-    page_size: 0x100
-    erased_byte_value: 0x0
-    program_page_timeout: 500
-    erase_sector_timeout: 500
-    sectors:
-    - size: 0x100
-      address: 0x0
-  cores:
-  - main
-- name: stm32l1xx_256_eeprom
-  description: STM32L1xx Mid+-density Data EEPROM
-  instructions: ELUDRgEqAtACKh3RAOAAv0RIAGhA9HBgQkwgYEJIQUwMPCBgQUggYD5IAB0AaBD0gB8I0UXyVVA9TCBgBiBgYED2/3CgYAC/AL8AIBC9AUYBKQLQAikK0QDgAL8xSBQ4AGhA8AEAL0oUOhBgAL8AvwAgcEcBRk/0gHIB8f8AIPD/AQPgSvaqIClLGGAlSABoEPABD/bRDeAAIAhgA+BK9qogI0sYYB9IAGgQ8AEP9tEJHRIfACrv0QAgcEcDRgEgcEcwtQNGT/SAdAHx/wAg8P8BA+BK9qogFU0oYBFIAGgQ8AEP9tEX4A5IFDgAaCD0gHAMTRQ9KGAQaBhgA+BK9qogC00oYAdIAGgQ8AEP9tEbHRIdCR8kHwmxACzk0QAgML0AABg8AkDvzauJBQQDAgAwAEAAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x4f
-  pc_program_page: 0xc3
-  pc_erase_sector: 0x75
-  data_section_offset: 0x134
-  flash_properties:
-    address_range:
-      start: 0x8080000
-      end: 0x8082000
-    page_size: 0x100
-    erased_byte_value: 0x0
-    program_page_timeout: 500
-    erase_sector_timeout: 500
-    sectors:
-    - size: 0x100
-      address: 0x0
-  cores:
-  - main
-- name: stm32l1xx_256_opt
-  description: STM32L1xx Mid+-density Options
-  instructions: ELUDRgEqAtACKiPRAOAAv0hIAGhA9HBgRkwgYEZIRUwMPCBgRUggYEVIQkwkHyBgREggYD9IAB0AaBD0gB8I0UXyVVBATCBgBiBgYED2/3CgYAC/AL8AIBC9AUYBKQLQAikP0QDgAL8ySBQ4AGhA8AQAMEoUOhBgEEYAaEDwAQAQYAC/AL8AIHBHMEgwSQhgMEhIYDBIiGDIYAhhSGED4Er2qiAoSQhgIkgAaBDwAQ/20SBIAGgQ9HBvB9AdSABoQPRwYBtJCGABIHBHACD85wFGACBwRwNGASBwRxC1A0YB8RcAIPAXAR/gGGgUaKBCAdAQaBhgA+BK9qogEkwgYAxIAGgQ8AEP9tEKSABoEPRwbwfQB0gAaED0cGAFTCBgASAQvRsdEh0JHwAp3dEAIPfnAAAYPAJA782riQUEAwLI2er7JyYlJAAwAECqAFX/AAD4H3gAh/8AAP//AAAAAA==
-  pc_init: 0x1
-  pc_uninit: 0x5b
-  pc_program_page: 0xdd
-  pc_erase_sector: 0xd1
-  pc_erase_all: 0x8b
-  data_section_offset: 0x15c
-  flash_properties:
-    address_range:
-      start: 0x1ff80000
-      end: 0x1ff80010
-    page_size: 0x18
-    erased_byte_value: 0x0
-    program_page_timeout: 3000
-    erase_sector_timeout: 3000
-    sectors:
-    - size: 0x18
-      address: 0x0
-  cores:
-  - main
 - name: stm32l1xx_384
   description: STM32L1xx High-density Flash
   default: true
@@ -2199,6 +2150,50 @@ flash_algorithms:
     erase_sector_timeout: 500
     sectors:
     - size: 0x100
+      address: 0x0
+  cores:
+  - main
+- name: stm32l1xx_128_opt
+  description: STM32L1xx Mid-density Options
+  instructions: ELUDRgEqAtACKiPRAOAAv0dIAGhA9HBgRUwgYEVIREwMPCBgREggYERIQUwkHyBgQ0ggYD5IAB0AaBD0gB8I0UXyVVA/TCBgBiBgYED2/3CgYAC/AL8AIBC9AUYBKQLQAikP0QDgAL8xSBQ4AGhA8AQAL0oUOhBgEEYAaEDwAQAQYAC/AL8AIHBHL0gvSQhgL0hIYC9IiGDIYAPgSvaqIChJCGAiSABoEPABD/bRIEgAaBD0cG8H0B1IAGhA9HBgG0kIYAEgcEcAIPznAUYAIHBHA0YBIHBHELUDRgHxDwAg8A8BH+AYaBRooEIB0BBoGGAD4Er2qiASTCBgDEgAaBDwAQ/20QpIAGgQ9HBvB9AHSABoQPRwYAVMIGABIBC9Gx0SHQkfACnd0QAg9+cAABg8AkDvzauJBQQDAsjZ6vsnJiUkADAAQKoAVf8AAPgfeACH/wAA//8AAAAA
+  pc_init: 0x1
+  pc_uninit: 0x5b
+  pc_program_page: 0xd9
+  pc_erase_sector: 0xcd
+  pc_erase_all: 0x8b
+  data_section_offset: 0x158
+  flash_properties:
+    address_range:
+      start: 0x1ff80000
+      end: 0x1ff80010
+    page_size: 0x10
+    erased_byte_value: 0x0
+    program_page_timeout: 3000
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x10
+      address: 0x0
+  cores:
+  - main
+- name: stm32l1xx_256_opt
+  description: STM32L1xx Mid+-density Options
+  instructions: ELUDRgEqAtACKiPRAOAAv0hIAGhA9HBgRkwgYEZIRUwMPCBgRUggYEVIQkwkHyBgREggYD9IAB0AaBD0gB8I0UXyVVBATCBgBiBgYED2/3CgYAC/AL8AIBC9AUYBKQLQAikP0QDgAL8ySBQ4AGhA8AQAMEoUOhBgEEYAaEDwAQAQYAC/AL8AIHBHMEgwSQhgMEhIYDBIiGDIYAhhSGED4Er2qiAoSQhgIkgAaBDwAQ/20SBIAGgQ9HBvB9AdSABoQPRwYBtJCGABIHBHACD85wFGACBwRwNGASBwRxC1A0YB8RcAIPAXAR/gGGgUaKBCAdAQaBhgA+BK9qogEkwgYAxIAGgQ8AEP9tEKSABoEPRwbwfQB0gAaED0cGAFTCBgASAQvRsdEh0JHwAp3dEAIPfnAAAYPAJA782riQUEAwLI2er7JyYlJAAwAECqAFX/AAD4H3gAh/8AAP//AAAAAA==
+  pc_init: 0x1
+  pc_uninit: 0x5b
+  pc_program_page: 0xdd
+  pc_erase_sector: 0xd1
+  pc_erase_all: 0x8b
+  data_section_offset: 0x15c
+  flash_properties:
+    address_range:
+      start: 0x1ff80000
+      end: 0x1ff80010
+    page_size: 0x18
+    erased_byte_value: 0x0
+    program_page_timeout: 3000
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x18
       address: 0x0
   cores:
   - main

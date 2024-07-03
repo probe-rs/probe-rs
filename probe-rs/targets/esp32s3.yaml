@@ -2,6 +2,11 @@ name: esp32s3
 manufacturer:
   id: 0x12
   cc: 0xc
+chip_detection:
+- !Espressif
+  idcode: 0x120034e5
+  variants:
+    0x9: esp32s3
 variants:
 - name: esp32s3
   cores:
@@ -14,9 +19,10 @@ variants:
     range:
       start: 0x0
       end: 0x4000000
-    is_boot_memory: true
     cores:
     - cpu0
+    access:
+      boot: true
   - !Ram
     name: SRAM1 Data bus
     range:
@@ -83,6 +89,7 @@ flash_algorithms:
   pc_erase_sector: 0xa8
   pc_erase_all: 0xb8
   data_section_offset: 0x403806f8
+  stack_overflow_check: false
   flash_properties:
     address_range:
       start: 0x0

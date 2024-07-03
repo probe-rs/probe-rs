@@ -25,9 +25,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -36,8 +37,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_128k_0800
-  - stm32u5xx_128k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -61,9 +62,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -72,8 +74,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_128k_0800
-  - stm32u5xx_128k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -97,9 +99,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -108,8 +111,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_128k_0800
-  - stm32u5xx_128k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -133,9 +136,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -144,8 +148,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_128k_0800
-  - stm32u5xx_128k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -169,9 +173,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -180,8 +185,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_256k_0800
-  - stm32u5xx_256k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -205,9 +210,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -216,8 +222,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_256k_0800
-  - stm32u5xx_256k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -241,9 +247,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -252,8 +259,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_256k_0800
-  - stm32u5xx_256k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -277,9 +284,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -288,8 +296,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_256k_0800
-  - stm32u5xx_256k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -313,9 +321,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -324,8 +333,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_512k_0800
-  - stm32u5xx_512k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -349,9 +358,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -360,8 +370,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_512k_0800
-  - stm32u5xx_512k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -385,9 +395,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -396,8 +407,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_512k_0800
-  - stm32u5xx_512k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -421,9 +432,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -432,8 +444,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_512k_0800
-  - stm32u5xx_512k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -457,9 +469,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -468,8 +481,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_512k_0800
-  - stm32u5xx_512k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -493,9 +506,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -504,8 +518,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_256k_0800
-  - stm32u5xx_256k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -529,9 +543,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -540,8 +555,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_512k_0800
-  - stm32u5xx_512k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -565,9 +580,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -576,8 +592,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_128k_0800
-  - stm32u5xx_128k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -601,9 +617,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -612,8 +629,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_128k_0800
-  - stm32u5xx_128k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -637,9 +654,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -648,8 +666,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_128k_0800
-  - stm32u5xx_128k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -673,9 +691,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -684,8 +703,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_128k_0800
-  - stm32u5xx_128k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -709,9 +728,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -720,8 +740,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_256k_0800
-  - stm32u5xx_256k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -745,9 +765,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -756,8 +777,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_256k_0800
-  - stm32u5xx_256k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -781,9 +802,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -792,8 +814,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_256k_0800
-  - stm32u5xx_256k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -817,9 +839,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -828,8 +851,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_256k_0800
-  - stm32u5xx_256k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -853,9 +876,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -864,8 +888,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_512k_0800
-  - stm32u5xx_512k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -889,9 +913,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -900,8 +925,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_512k_0800
-  - stm32u5xx_512k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -925,9 +950,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -936,8 +962,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_512k_0800
-  - stm32u5xx_512k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -961,9 +987,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -972,8 +999,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_512k_0800
-  - stm32u5xx_512k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -997,9 +1024,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -1008,8 +1036,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_256k_0800
-  - stm32u5xx_256k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -1033,9 +1061,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -1044,8 +1073,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_256k_0800
-  - stm32u5xx_256k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -1069,9 +1098,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -1080,8 +1110,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_256k_0800
-  - stm32u5xx_256k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -1105,9 +1135,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -1116,8 +1147,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_256k_0800
-  - stm32u5xx_256k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -1141,9 +1172,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -1152,8 +1184,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_512k_0800
-  - stm32u5xx_512k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -1177,9 +1209,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -1188,8 +1221,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_512k_0800
-  - stm32u5xx_512k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -1213,9 +1246,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -1224,8 +1258,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_512k_0800
-  - stm32u5xx_512k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -1249,9 +1283,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -1260,8 +1295,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_512k_0800
-  - stm32u5xx_512k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -1285,9 +1320,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -1296,8 +1332,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_512k_0800
-  - stm32u5xx_512k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -1321,9 +1357,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -1332,8 +1369,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_512k_0800
-  - stm32u5xx_512k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -1357,9 +1394,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -1368,8 +1406,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_512k_0800
-  - stm32u5xx_512k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -1393,9 +1431,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -1404,8 +1443,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_512k_0800
-  - stm32u5xx_512k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -1429,9 +1468,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -1440,8 +1480,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_512k_0800
-  - stm32u5xx_512k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -1465,9 +1505,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -1476,8 +1517,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_512k_0800
-  - stm32u5xx_512k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -1501,9 +1542,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -1512,8 +1554,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_512k_0800
-  - stm32u5xx_512k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -1537,9 +1579,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -1548,8 +1591,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_512k_0800
-  - stm32u5xx_512k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -1573,9 +1616,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -1584,8 +1628,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_512k_0800
-  - stm32u5xx_512k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -1609,9 +1653,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -1620,8 +1665,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_512k_0800
-  - stm32u5xx_512k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -1645,9 +1690,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -1656,8 +1702,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_512k_0800
-  - stm32u5xx_512k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -1681,9 +1727,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -1692,8 +1739,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_512k_0800
-  - stm32u5xx_512k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -1717,9 +1764,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -1728,8 +1776,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_512k_0800
-  - stm32u5xx_512k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -1753,9 +1801,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -1764,8 +1813,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_512k_0800
-  - stm32u5xx_512k_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -1789,9 +1838,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -1800,8 +1850,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_1m_0800
-  - stm32u5xx_1m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -1825,9 +1875,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -1836,8 +1887,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_1m_0800
-  - stm32u5xx_1m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -1861,9 +1912,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -1872,8 +1924,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_2m_0800
-  - stm32u5xx_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -1897,9 +1949,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -1908,8 +1961,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_2m_0800
-  - stm32u5xx_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -1933,9 +1986,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -1944,8 +1998,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_1m_0800
-  - stm32u5xx_1m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -1969,9 +2023,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -1980,8 +2035,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_1m_0800
-  - stm32u5xx_1m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -2005,9 +2060,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -2016,8 +2072,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_1m_0800
-  - stm32u5xx_1m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -2041,9 +2097,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -2052,8 +2109,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_1m_0800
-  - stm32u5xx_1m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -2077,9 +2134,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -2088,8 +2146,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_2m_0800
-  - stm32u5xx_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -2113,9 +2171,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -2124,8 +2183,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_2m_0800
-  - stm32u5xx_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -2149,9 +2208,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -2160,8 +2220,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_2m_0800
-  - stm32u5xx_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -2185,9 +2245,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -2196,8 +2257,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_2m_0800
-  - stm32u5xx_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -2221,9 +2282,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -2232,8 +2294,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_1m_0800
-  - stm32u5xx_1m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -2257,9 +2319,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -2268,8 +2331,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_2m_0800
-  - stm32u5xx_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -2293,9 +2356,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -2304,8 +2368,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_1m_0800
-  - stm32u5xx_1m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -2329,9 +2393,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -2340,8 +2405,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_1m_0800
-  - stm32u5xx_1m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -2365,9 +2430,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -2376,8 +2442,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_2m_0800
-  - stm32u5xx_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -2401,9 +2467,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -2412,8 +2479,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_2m_0800
-  - stm32u5xx_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -2437,9 +2504,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -2448,8 +2516,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_1m_0800
-  - stm32u5xx_1m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -2473,9 +2541,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -2484,8 +2553,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_1m_0800
-  - stm32u5xx_1m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -2509,9 +2578,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -2520,8 +2590,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_2m_0800
-  - stm32u5xx_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -2545,9 +2615,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -2556,8 +2627,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_2m_0800
-  - stm32u5xx_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -2581,9 +2652,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -2592,8 +2664,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_1m_0800
-  - stm32u5xx_1m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -2617,9 +2689,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -2628,8 +2701,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_1m_0800
-  - stm32u5xx_1m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -2653,9 +2726,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -2664,8 +2738,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_2m_0800
-  - stm32u5xx_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -2689,9 +2763,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -2700,8 +2775,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_2m_0800
-  - stm32u5xx_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -2725,9 +2800,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -2736,8 +2812,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_1m_0800
-  - stm32u5xx_1m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -2761,9 +2837,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -2772,8 +2849,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_1m_0800
-  - stm32u5xx_1m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -2797,9 +2874,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -2808,8 +2886,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_2m_0800
-  - stm32u5xx_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -2833,9 +2911,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -2844,8 +2923,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_2m_0800
-  - stm32u5xx_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -2869,9 +2948,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -2880,8 +2960,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_2m_0800
-  - stm32u5xx_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -2905,9 +2985,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -2916,8 +2997,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_2m_0800
-  - stm32u5xx_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -2941,9 +3022,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -2952,8 +3034,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_2m_0800
-  - stm32u5xx_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -2977,9 +3059,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -2988,8 +3071,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_2m_0800
-  - stm32u5xx_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -3013,9 +3096,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -3024,8 +3108,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_2m_0800
-  - stm32u5xx_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -3049,9 +3133,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -3060,8 +3145,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_2m_0800
-  - stm32u5xx_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -3085,9 +3170,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -3096,8 +3182,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_2m_0800
-  - stm32u5xx_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -3121,9 +3207,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -3132,8 +3219,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_2m_0800
-  - stm32u5xx_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -3157,9 +3244,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -3168,8 +3256,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_2m_0800
-  - stm32u5xx_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -3193,9 +3281,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -3204,8 +3293,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_2m_0800
-  - stm32u5xx_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -3229,9 +3318,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -3240,8 +3330,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_2m_0800
-  - stm32u5xx_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -3265,9 +3355,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -3276,8 +3367,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_2m_0800
-  - stm32u5xx_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -3301,9 +3392,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -3312,8 +3404,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_2m_0800
-  - stm32u5xx_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -3337,9 +3429,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -3348,8 +3441,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_2m_0800
-  - stm32u5xx_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -3373,9 +3466,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Generic
     name: SRAM3
     range:
@@ -3384,8 +3478,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u5xx_2m_0800
-  - stm32u5xx_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -3423,12 +3517,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32u59x_2m_0800
-  - stm32u59x_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -3466,12 +3561,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32u59x_2m_0800
-  - stm32u59x_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -3509,9 +3605,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8400000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32u59x_4m_0800
   - stm32u59x_4m_0c00
@@ -3552,9 +3649,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8400000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32u59x_4m_0800
   - stm32u59x_4m_0c00
@@ -3595,12 +3693,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32u59x_2m_0800
-  - stm32u59x_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -3638,12 +3737,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32u59x_2m_0800
-  - stm32u59x_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -3681,9 +3781,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8400000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32u59x_4m_0800
   - stm32u59x_4m_0c00
@@ -3724,9 +3825,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8400000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32u59x_4m_0800
   - stm32u59x_4m_0c00
@@ -3767,12 +3869,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32u59x_2m_0800
-  - stm32u59x_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -3810,12 +3913,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32u59x_2m_0800
-  - stm32u59x_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -3853,9 +3957,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8400000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32u59x_4m_0800
   - stm32u59x_4m_0c00
@@ -3896,9 +4001,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8400000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32u59x_4m_0800
   - stm32u59x_4m_0c00
@@ -3939,12 +4045,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32u59x_2m_0800
-  - stm32u59x_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -3982,12 +4089,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32u59x_2m_0800
-  - stm32u59x_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -4025,9 +4133,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8400000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32u59x_4m_0800
   - stm32u59x_4m_0c00
@@ -4068,9 +4177,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8400000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32u59x_4m_0800
   - stm32u59x_4m_0c00
@@ -4111,12 +4221,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32u59x_2m_0800
-  - stm32u59x_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -4154,12 +4265,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32u59x_2m_0800
-  - stm32u59x_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -4197,12 +4309,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32u59x_2m_0800
-  - stm32u59x_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -4240,12 +4353,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32u59x_2m_0800
-  - stm32u59x_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -4283,9 +4397,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8400000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32u59x_4m_0800
   - stm32u59x_4m_0c00
@@ -4326,9 +4441,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8400000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32u59x_4m_0800
   - stm32u59x_4m_0c00
@@ -4369,9 +4485,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8400000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32u59x_4m_0800
   - stm32u59x_4m_0c00
@@ -4412,9 +4529,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8400000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32u59x_4m_0800
   - stm32u59x_4m_0c00
@@ -4455,12 +4573,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32u59x_2m_0800
-  - stm32u59x_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -4498,9 +4617,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8400000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32u59x_4m_0800
   - stm32u59x_4m_0c00
@@ -4541,12 +4661,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32u59x_2m_0800
-  - stm32u59x_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -4584,9 +4705,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8400000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32u59x_4m_0800
   - stm32u59x_4m_0c00
@@ -4627,9 +4749,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8400000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32u59x_4m_0800
   - stm32u59x_4m_0c00
@@ -4670,12 +4793,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32u59x_2m_0800
-  - stm32u59x_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -4713,12 +4837,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8200000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - stm32u59x_2m_0800
-  - stm32u59x_2m_0c00
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
@@ -4756,9 +4881,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8400000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32u59x_4m_0800
   - stm32u59x_4m_0c00
@@ -4799,9 +4925,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8400000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32u59x_4m_0800
   - stm32u59x_4m_0c00
@@ -4842,9 +4969,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8400000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32u59x_4m_0800
   - stm32u59x_4m_0c00
@@ -4885,9 +5013,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8400000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32u59x_4m_0800
   - stm32u59x_4m_0c00
@@ -4928,9 +5057,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8400000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32u59x_4m_0800
   - stm32u59x_4m_0c00
@@ -4971,9 +5101,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8400000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32u59x_4m_0800
   - stm32u59x_4m_0c00
@@ -5014,9 +5145,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8400000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32u59x_4m_0800
   - stm32u59x_4m_0c00
@@ -5057,9 +5189,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8400000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32u59x_4m_0800
   - stm32u59x_4m_0c00
@@ -5100,9 +5233,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8400000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32u59x_4m_0800
   - stm32u59x_4m_0c00
@@ -5143,9 +5277,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8400000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32u59x_4m_0800
   - stm32u59x_4m_0c00
@@ -5186,9 +5321,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8400000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32u59x_4m_0800
   - stm32u59x_4m_0c00
@@ -5229,9 +5365,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8400000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32u59x_4m_0800
   - stm32u59x_4m_0c00
@@ -5272,9 +5409,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8400000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32u59x_4m_0800
   - stm32u59x_4m_0c00
@@ -5315,9 +5453,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8400000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32u59x_4m_0800
   - stm32u59x_4m_0c00
@@ -5358,9 +5497,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8400000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32u59x_4m_0800
   - stm32u59x_4m_0c00
@@ -5401,9 +5541,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8400000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32u59x_4m_0800
   - stm32u59x_4m_0c00
@@ -5444,9 +5585,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8400000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32u59x_4m_0800
   - stm32u59x_4m_0c00
@@ -5487,9 +5629,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8400000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - stm32u59x_4m_0800
   - stm32u59x_4m_0c00
@@ -5497,8 +5640,8 @@ variants:
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
 flash_algorithms:
-- name: stm32u5xx_128k_0800
-  description: STM32U5xx 128K NSecure Flash
+- name: stm32u59x_4m_0800
+  description: STM32U5xx 4M NSecure Flash
   default: true
   instructions: LenwQQdGcraATCBsgk2ASYBKwA9NRArQfEgsMKhge0gkMOhg4WDiYL/zT48Q4HdIKDCoYHVIIDDoYKFgomC/80+PAOAAvyBqwAP71BbgAL9gasAD+9RP8P82xPiAYMT4hGDE+IhgxPiMYADwyvgBKATRRPigb2ZgpmDmYOhoAWjJAwHVAL/652RIL2AAaAAEgAloYAAgvejwgV9IT/AAQUhEgmgRYL/zT4/AaADgAL8BaMkD+9QAIHBHASBwR1ZJQvL6AklEyGgCYIloSPIEAgpgCmhC9IAyCmC/80+PAOAAvwFoyQP71AAgcEdwtQZGAPCH+EhNAShNRAfR1ekAAQDrUQGxQgHYASQA4AAkAPB4+AEoaGgE0EAeBkByC+hoB+BP8P8xAetQADBAQgv25wC/AWjJA/vUQvL6AwNgAiEB68IBQerEIqloCmAKaEL0gDIKYL/zT48A4AC/AWjJA/vUAWgZQgLQA2ABIHC9ACBwvfC1KE4PMU5EIfAPA/FoAOAAvwxo5AP71ELy+gUNYLZoASQ0YC/gl3gUiGfzH0TXeETqB2QEYJd5lIhn8x9E13lE6gdkRGCXehSJZ/MfRNd6ROoHZIRgl3uUiWfzH0TXe0TqB2TEYL/zT48A4AC/DGjkA/vUDGgsQgLQDWABIPC9EDAQMhA7ACvN0QAgMGDwvQJIAGzA80BQcEcAIAJAIwFnRauJ780EAAAAoAf6CwAAAAAAAAAAAAAAAAAAAAAAAAAA
   load_address: 0x20000020
@@ -5511,7 +5654,7 @@ flash_algorithms:
   flash_properties:
     address_range:
       start: 0x8000000
-      end: 0x8020000
+      end: 0x8400000
     page_size: 0x400
     erased_byte_value: 0xff
     program_page_timeout: 400
@@ -5519,8 +5662,8 @@ flash_algorithms:
     sectors:
     - size: 0x2000
       address: 0x0
-- name: stm32u5xx_128k_0c00
-  description: STM32U5xx 128K Secure Flash
+- name: stm32u59x_4m_0c00
+  description: STM32U5xx 4M Secure Flash
   default: true
   instructions: LenwQQdGcraATCBsgk2ASYBKwA9NRArQfEgsMKhge0gkMOhg4WDiYL/zT48Q4HdIKDCoYHVIIDDoYKFgomC/80+PAOAAvyBqwAP71BbgAL9gasAD+9RP8P82xPiAYMT4hGDE+IhgxPiMYADwyvgBKATRRPigb2ZgpmDmYOhoAWjJAwHVAL/652RIL2AAaAAEgAloYAAgvejwgV9IT/AAQUhEgmgRYL/zT4/AaADgAL8BaMkD+9QAIHBHASBwR1ZJQvL6AklEyGgCYIloSPIEAgpgCmhC9IAyCmC/80+PAOAAvwFoyQP71AAgcEdwtQZGAPCH+EhNAShNRAfR1ekAAQDrUQGxQgHYASQA4AAkAPB4+AEoaGgE0EAeBkByC+hoB+BP8P8xAetQADBAQgv25wC/AWjJA/vUQvL6AwNgAiEB68IBQerEIqloCmAKaEL0gDIKYL/zT48A4AC/AWjJA/vUAWgZQgLQA2ABIHC9ACBwvfC1KE4PMU5EIfAPA/FoAOAAvwxo5AP71ELy+gUNYLZoASQ0YC/gl3gUiGfzH0TXeETqB2QEYJd5lIhn8x9E13lE6gdkRGCXehSJZ/MfRNd6ROoHZIRgl3uUiWfzH0TXe0TqB2TEYL/zT48A4AC/DGjkA/vUDGgsQgLQDWABIPC9EDAQMhA7ACvN0QAgMGDwvQJIAGzA80BQcEcAIAJAIwFnRauJ780EAAAAoAf6CwAAAAAAAAAAAAAAAAAAAAAAAAAA
   load_address: 0x20000020
@@ -5533,7 +5676,7 @@ flash_algorithms:
   flash_properties:
     address_range:
       start: 0xc000000
-      end: 0xc020000
+      end: 0xc400000
     page_size: 0x400
     erased_byte_value: 0xff
     program_page_timeout: 400
@@ -5603,268 +5746,4 @@ flash_algorithms:
     erase_sector_timeout: 6000
     sectors:
     - size: 0x10000
-      address: 0x0
-- name: stm32u5xx_256k_0800
-  description: STM32U5xx 256K NSecure Flash
-  default: true
-  instructions: LenwQQdGcraATCBsgk2ASYBKwA9NRArQfEgsMKhge0gkMOhg4WDiYL/zT48Q4HdIKDCoYHVIIDDoYKFgomC/80+PAOAAvyBqwAP71BbgAL9gasAD+9RP8P82xPiAYMT4hGDE+IhgxPiMYADwyvgBKATRRPigb2ZgpmDmYOhoAWjJAwHVAL/652RIL2AAaAAEgAloYAAgvejwgV9IT/AAQUhEgmgRYL/zT4/AaADgAL8BaMkD+9QAIHBHASBwR1ZJQvL6AklEyGgCYIloSPIEAgpgCmhC9IAyCmC/80+PAOAAvwFoyQP71AAgcEdwtQZGAPCH+EhNAShNRAfR1ekAAQDrUQGxQgHYASQA4AAkAPB4+AEoaGgE0EAeBkByC+hoB+BP8P8xAetQADBAQgv25wC/AWjJA/vUQvL6AwNgAiEB68IBQerEIqloCmAKaEL0gDIKYL/zT48A4AC/AWjJA/vUAWgZQgLQA2ABIHC9ACBwvfC1KE4PMU5EIfAPA/FoAOAAvwxo5AP71ELy+gUNYLZoASQ0YC/gl3gUiGfzH0TXeETqB2QEYJd5lIhn8x9E13lE6gdkRGCXehSJZ/MfRNd6ROoHZIRgl3uUiWfzH0TXe0TqB2TEYL/zT48A4AC/DGjkA/vUDGgsQgLQDWABIPC9EDAQMhA7ACvN0QAgMGDwvQJIAGzA80BQcEcAIAJAIwFnRauJ780EAAAAoAf6CwAAAAAAAAAAAAAAAAAAAAAAAAAA
-  load_address: 0x20000020
-  pc_init: 0x1
-  pc_uninit: 0x9b
-  pc_program_page: 0x173
-  pc_erase_sector: 0xed
-  pc_erase_all: 0xbf
-  data_section_offset: 0x220
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8040000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 400
-    erase_sector_timeout: 400
-    sectors:
-    - size: 0x2000
-      address: 0x0
-- name: stm32u5xx_256k_0c00
-  description: STM32U5xx 256K Secure Flash
-  default: true
-  instructions: LenwQQdGcraATCBsgk2ASYBKwA9NRArQfEgsMKhge0gkMOhg4WDiYL/zT48Q4HdIKDCoYHVIIDDoYKFgomC/80+PAOAAvyBqwAP71BbgAL9gasAD+9RP8P82xPiAYMT4hGDE+IhgxPiMYADwyvgBKATRRPigb2ZgpmDmYOhoAWjJAwHVAL/652RIL2AAaAAEgAloYAAgvejwgV9IT/AAQUhEgmgRYL/zT4/AaADgAL8BaMkD+9QAIHBHASBwR1ZJQvL6AklEyGgCYIloSPIEAgpgCmhC9IAyCmC/80+PAOAAvwFoyQP71AAgcEdwtQZGAPCH+EhNAShNRAfR1ekAAQDrUQGxQgHYASQA4AAkAPB4+AEoaGgE0EAeBkByC+hoB+BP8P8xAetQADBAQgv25wC/AWjJA/vUQvL6AwNgAiEB68IBQerEIqloCmAKaEL0gDIKYL/zT48A4AC/AWjJA/vUAWgZQgLQA2ABIHC9ACBwvfC1KE4PMU5EIfAPA/FoAOAAvwxo5AP71ELy+gUNYLZoASQ0YC/gl3gUiGfzH0TXeETqB2QEYJd5lIhn8x9E13lE6gdkRGCXehSJZ/MfRNd6ROoHZIRgl3uUiWfzH0TXe0TqB2TEYL/zT48A4AC/DGjkA/vUDGgsQgLQDWABIPC9EDAQMhA7ACvN0QAgMGDwvQJIAGzA80BQcEcAIAJAIwFnRauJ780EAAAAoAf6CwAAAAAAAAAAAAAAAAAAAAAAAAAA
-  load_address: 0x20000020
-  pc_init: 0x1
-  pc_uninit: 0x9b
-  pc_program_page: 0x173
-  pc_erase_sector: 0xed
-  pc_erase_all: 0xbf
-  data_section_offset: 0x220
-  flash_properties:
-    address_range:
-      start: 0xc000000
-      end: 0xc040000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 400
-    erase_sector_timeout: 400
-    sectors:
-    - size: 0x2000
-      address: 0x0
-- name: stm32u5xx_512k_0800
-  description: STM32U5xx 512K NSecure Flash
-  default: true
-  instructions: LenwQQdGcraATCBsgk2ASYBKwA9NRArQfEgsMKhge0gkMOhg4WDiYL/zT48Q4HdIKDCoYHVIIDDoYKFgomC/80+PAOAAvyBqwAP71BbgAL9gasAD+9RP8P82xPiAYMT4hGDE+IhgxPiMYADwyvgBKATRRPigb2ZgpmDmYOhoAWjJAwHVAL/652RIL2AAaAAEgAloYAAgvejwgV9IT/AAQUhEgmgRYL/zT4/AaADgAL8BaMkD+9QAIHBHASBwR1ZJQvL6AklEyGgCYIloSPIEAgpgCmhC9IAyCmC/80+PAOAAvwFoyQP71AAgcEdwtQZGAPCH+EhNAShNRAfR1ekAAQDrUQGxQgHYASQA4AAkAPB4+AEoaGgE0EAeBkByC+hoB+BP8P8xAetQADBAQgv25wC/AWjJA/vUQvL6AwNgAiEB68IBQerEIqloCmAKaEL0gDIKYL/zT48A4AC/AWjJA/vUAWgZQgLQA2ABIHC9ACBwvfC1KE4PMU5EIfAPA/FoAOAAvwxo5AP71ELy+gUNYLZoASQ0YC/gl3gUiGfzH0TXeETqB2QEYJd5lIhn8x9E13lE6gdkRGCXehSJZ/MfRNd6ROoHZIRgl3uUiWfzH0TXe0TqB2TEYL/zT48A4AC/DGjkA/vUDGgsQgLQDWABIPC9EDAQMhA7ACvN0QAgMGDwvQJIAGzA80BQcEcAIAJAIwFnRauJ780EAAAAoAf6CwAAAAAAAAAAAAAAAAAAAAAAAAAA
-  load_address: 0x20000020
-  pc_init: 0x1
-  pc_uninit: 0x9b
-  pc_program_page: 0x173
-  pc_erase_sector: 0xed
-  pc_erase_all: 0xbf
-  data_section_offset: 0x220
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8080000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 400
-    erase_sector_timeout: 400
-    sectors:
-    - size: 0x2000
-      address: 0x0
-- name: stm32u5xx_512k_0c00
-  description: STM32U5xx 512K Secure Flash
-  default: true
-  instructions: LenwQQdGcraATCBsgk2ASYBKwA9NRArQfEgsMKhge0gkMOhg4WDiYL/zT48Q4HdIKDCoYHVIIDDoYKFgomC/80+PAOAAvyBqwAP71BbgAL9gasAD+9RP8P82xPiAYMT4hGDE+IhgxPiMYADwyvgBKATRRPigb2ZgpmDmYOhoAWjJAwHVAL/652RIL2AAaAAEgAloYAAgvejwgV9IT/AAQUhEgmgRYL/zT4/AaADgAL8BaMkD+9QAIHBHASBwR1ZJQvL6AklEyGgCYIloSPIEAgpgCmhC9IAyCmC/80+PAOAAvwFoyQP71AAgcEdwtQZGAPCH+EhNAShNRAfR1ekAAQDrUQGxQgHYASQA4AAkAPB4+AEoaGgE0EAeBkByC+hoB+BP8P8xAetQADBAQgv25wC/AWjJA/vUQvL6AwNgAiEB68IBQerEIqloCmAKaEL0gDIKYL/zT48A4AC/AWjJA/vUAWgZQgLQA2ABIHC9ACBwvfC1KE4PMU5EIfAPA/FoAOAAvwxo5AP71ELy+gUNYLZoASQ0YC/gl3gUiGfzH0TXeETqB2QEYJd5lIhn8x9E13lE6gdkRGCXehSJZ/MfRNd6ROoHZIRgl3uUiWfzH0TXe0TqB2TEYL/zT48A4AC/DGjkA/vUDGgsQgLQDWABIPC9EDAQMhA7ACvN0QAgMGDwvQJIAGzA80BQcEcAIAJAIwFnRauJ780EAAAAoAf6CwAAAAAAAAAAAAAAAAAAAAAAAAAA
-  load_address: 0x20000020
-  pc_init: 0x1
-  pc_uninit: 0x9b
-  pc_program_page: 0x173
-  pc_erase_sector: 0xed
-  pc_erase_all: 0xbf
-  data_section_offset: 0x220
-  flash_properties:
-    address_range:
-      start: 0xc000000
-      end: 0xc080000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 400
-    erase_sector_timeout: 400
-    sectors:
-    - size: 0x2000
-      address: 0x0
-- name: stm32u5xx_1m_0800
-  description: STM32U5xx 1M NSecure Flash
-  default: true
-  instructions: LenwQQdGcraATCBsgk2ASYBKwA9NRArQfEgsMKhge0gkMOhg4WDiYL/zT48Q4HdIKDCoYHVIIDDoYKFgomC/80+PAOAAvyBqwAP71BbgAL9gasAD+9RP8P82xPiAYMT4hGDE+IhgxPiMYADwyvgBKATRRPigb2ZgpmDmYOhoAWjJAwHVAL/652RIL2AAaAAEgAloYAAgvejwgV9IT/AAQUhEgmgRYL/zT4/AaADgAL8BaMkD+9QAIHBHASBwR1ZJQvL6AklEyGgCYIloSPIEAgpgCmhC9IAyCmC/80+PAOAAvwFoyQP71AAgcEdwtQZGAPCH+EhNAShNRAfR1ekAAQDrUQGxQgHYASQA4AAkAPB4+AEoaGgE0EAeBkByC+hoB+BP8P8xAetQADBAQgv25wC/AWjJA/vUQvL6AwNgAiEB68IBQerEIqloCmAKaEL0gDIKYL/zT48A4AC/AWjJA/vUAWgZQgLQA2ABIHC9ACBwvfC1KE4PMU5EIfAPA/FoAOAAvwxo5AP71ELy+gUNYLZoASQ0YC/gl3gUiGfzH0TXeETqB2QEYJd5lIhn8x9E13lE6gdkRGCXehSJZ/MfRNd6ROoHZIRgl3uUiWfzH0TXe0TqB2TEYL/zT48A4AC/DGjkA/vUDGgsQgLQDWABIPC9EDAQMhA7ACvN0QAgMGDwvQJIAGzA80BQcEcAIAJAIwFnRauJ780EAAAAoAf6CwAAAAAAAAAAAAAAAAAAAAAAAAAA
-  load_address: 0x20000020
-  pc_init: 0x1
-  pc_uninit: 0x9b
-  pc_program_page: 0x173
-  pc_erase_sector: 0xed
-  pc_erase_all: 0xbf
-  data_section_offset: 0x220
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8100000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 400
-    erase_sector_timeout: 400
-    sectors:
-    - size: 0x2000
-      address: 0x0
-- name: stm32u5xx_1m_0c00
-  description: STM32U5xx 1M Secure Flash
-  default: true
-  instructions: LenwQQdGcraATCBsgk2ASYBKwA9NRArQfEgsMKhge0gkMOhg4WDiYL/zT48Q4HdIKDCoYHVIIDDoYKFgomC/80+PAOAAvyBqwAP71BbgAL9gasAD+9RP8P82xPiAYMT4hGDE+IhgxPiMYADwyvgBKATRRPigb2ZgpmDmYOhoAWjJAwHVAL/652RIL2AAaAAEgAloYAAgvejwgV9IT/AAQUhEgmgRYL/zT4/AaADgAL8BaMkD+9QAIHBHASBwR1ZJQvL6AklEyGgCYIloSPIEAgpgCmhC9IAyCmC/80+PAOAAvwFoyQP71AAgcEdwtQZGAPCH+EhNAShNRAfR1ekAAQDrUQGxQgHYASQA4AAkAPB4+AEoaGgE0EAeBkByC+hoB+BP8P8xAetQADBAQgv25wC/AWjJA/vUQvL6AwNgAiEB68IBQerEIqloCmAKaEL0gDIKYL/zT48A4AC/AWjJA/vUAWgZQgLQA2ABIHC9ACBwvfC1KE4PMU5EIfAPA/FoAOAAvwxo5AP71ELy+gUNYLZoASQ0YC/gl3gUiGfzH0TXeETqB2QEYJd5lIhn8x9E13lE6gdkRGCXehSJZ/MfRNd6ROoHZIRgl3uUiWfzH0TXe0TqB2TEYL/zT48A4AC/DGjkA/vUDGgsQgLQDWABIPC9EDAQMhA7ACvN0QAgMGDwvQJIAGzA80BQcEcAIAJAIwFnRauJ780EAAAAoAf6CwAAAAAAAAAAAAAAAAAAAAAAAAAA
-  load_address: 0x20000020
-  pc_init: 0x1
-  pc_uninit: 0x9b
-  pc_program_page: 0x173
-  pc_erase_sector: 0xed
-  pc_erase_all: 0xbf
-  data_section_offset: 0x220
-  flash_properties:
-    address_range:
-      start: 0xc000000
-      end: 0xc100000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 400
-    erase_sector_timeout: 400
-    sectors:
-    - size: 0x2000
-      address: 0x0
-- name: stm32u5xx_2m_0800
-  description: STM32U5xx 2M NSecure Flash
-  default: true
-  instructions: LenwQQdGcraATCBsgk2ASYBKwA9NRArQfEgsMKhge0gkMOhg4WDiYL/zT48Q4HdIKDCoYHVIIDDoYKFgomC/80+PAOAAvyBqwAP71BbgAL9gasAD+9RP8P82xPiAYMT4hGDE+IhgxPiMYADwyvgBKATRRPigb2ZgpmDmYOhoAWjJAwHVAL/652RIL2AAaAAEgAloYAAgvejwgV9IT/AAQUhEgmgRYL/zT4/AaADgAL8BaMkD+9QAIHBHASBwR1ZJQvL6AklEyGgCYIloSPIEAgpgCmhC9IAyCmC/80+PAOAAvwFoyQP71AAgcEdwtQZGAPCH+EhNAShNRAfR1ekAAQDrUQGxQgHYASQA4AAkAPB4+AEoaGgE0EAeBkByC+hoB+BP8P8xAetQADBAQgv25wC/AWjJA/vUQvL6AwNgAiEB68IBQerEIqloCmAKaEL0gDIKYL/zT48A4AC/AWjJA/vUAWgZQgLQA2ABIHC9ACBwvfC1KE4PMU5EIfAPA/FoAOAAvwxo5AP71ELy+gUNYLZoASQ0YC/gl3gUiGfzH0TXeETqB2QEYJd5lIhn8x9E13lE6gdkRGCXehSJZ/MfRNd6ROoHZIRgl3uUiWfzH0TXe0TqB2TEYL/zT48A4AC/DGjkA/vUDGgsQgLQDWABIPC9EDAQMhA7ACvN0QAgMGDwvQJIAGzA80BQcEcAIAJAIwFnRauJ780EAAAAoAf6CwAAAAAAAAAAAAAAAAAAAAAAAAAA
-  load_address: 0x20000020
-  pc_init: 0x1
-  pc_uninit: 0x9b
-  pc_program_page: 0x173
-  pc_erase_sector: 0xed
-  pc_erase_all: 0xbf
-  data_section_offset: 0x220
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8200000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 400
-    erase_sector_timeout: 400
-    sectors:
-    - size: 0x2000
-      address: 0x0
-- name: stm32u5xx_2m_0c00
-  description: STM32U5xx 2M Secure Flash
-  default: true
-  instructions: LenwQQdGcraATCBsgk2ASYBKwA9NRArQfEgsMKhge0gkMOhg4WDiYL/zT48Q4HdIKDCoYHVIIDDoYKFgomC/80+PAOAAvyBqwAP71BbgAL9gasAD+9RP8P82xPiAYMT4hGDE+IhgxPiMYADwyvgBKATRRPigb2ZgpmDmYOhoAWjJAwHVAL/652RIL2AAaAAEgAloYAAgvejwgV9IT/AAQUhEgmgRYL/zT4/AaADgAL8BaMkD+9QAIHBHASBwR1ZJQvL6AklEyGgCYIloSPIEAgpgCmhC9IAyCmC/80+PAOAAvwFoyQP71AAgcEdwtQZGAPCH+EhNAShNRAfR1ekAAQDrUQGxQgHYASQA4AAkAPB4+AEoaGgE0EAeBkByC+hoB+BP8P8xAetQADBAQgv25wC/AWjJA/vUQvL6AwNgAiEB68IBQerEIqloCmAKaEL0gDIKYL/zT48A4AC/AWjJA/vUAWgZQgLQA2ABIHC9ACBwvfC1KE4PMU5EIfAPA/FoAOAAvwxo5AP71ELy+gUNYLZoASQ0YC/gl3gUiGfzH0TXeETqB2QEYJd5lIhn8x9E13lE6gdkRGCXehSJZ/MfRNd6ROoHZIRgl3uUiWfzH0TXe0TqB2TEYL/zT48A4AC/DGjkA/vUDGgsQgLQDWABIPC9EDAQMhA7ACvN0QAgMGDwvQJIAGzA80BQcEcAIAJAIwFnRauJ780EAAAAoAf6CwAAAAAAAAAAAAAAAAAAAAAAAAAA
-  load_address: 0x20000020
-  pc_init: 0x1
-  pc_uninit: 0x9b
-  pc_program_page: 0x173
-  pc_erase_sector: 0xed
-  pc_erase_all: 0xbf
-  data_section_offset: 0x220
-  flash_properties:
-    address_range:
-      start: 0xc000000
-      end: 0xc200000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 400
-    erase_sector_timeout: 400
-    sectors:
-    - size: 0x2000
-      address: 0x0
-- name: stm32u59x_2m_0800
-  description: STM32U59x 2M NSecure Flash
-  default: true
-  instructions: LenwQQdGcraATCBsgk2ASYBKwA9NRArQfEgsMKhge0gkMOhg4WDiYL/zT48Q4HdIKDCoYHVIIDDoYKFgomC/80+PAOAAvyBqwAP71BbgAL9gasAD+9RP8P82xPiAYMT4hGDE+IhgxPiMYADwyvgBKATRRPigb2ZgpmDmYOhoAWjJAwHVAL/652RIL2AAaAAEgAloYAAgvejwgV9IT/AAQUhEgmgRYL/zT4/AaADgAL8BaMkD+9QAIHBHASBwR1ZJQvL6AklEyGgCYIloSPIEAgpgCmhC9IAyCmC/80+PAOAAvwFoyQP71AAgcEdwtQZGAPCH+EhNAShNRAfR1ekAAQDrUQGxQgHYASQA4AAkAPB4+AEoaGgE0EAeBkByC+hoB+BP8P8xAetQADBAQgv25wC/AWjJA/vUQvL6AwNgAiEB68IBQerEIqloCmAKaEL0gDIKYL/zT48A4AC/AWjJA/vUAWgZQgLQA2ABIHC9ACBwvfC1KE4PMU5EIfAPA/FoAOAAvwxo5AP71ELy+gUNYLZoASQ0YC/gl3gUiGfzH0TXeETqB2QEYJd5lIhn8x9E13lE6gdkRGCXehSJZ/MfRNd6ROoHZIRgl3uUiWfzH0TXe0TqB2TEYL/zT48A4AC/DGjkA/vUDGgsQgLQDWABIPC9EDAQMhA7ACvN0QAgMGDwvQJIAGzA80BQcEcAIAJAIwFnRauJ780EAAAAoAf6CwAAAAAAAAAAAAAAAAAAAAAAAAAA
-  load_address: 0x20000020
-  pc_init: 0x1
-  pc_uninit: 0x9b
-  pc_program_page: 0x173
-  pc_erase_sector: 0xed
-  pc_erase_all: 0xbf
-  data_section_offset: 0x220
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8200000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 400
-    erase_sector_timeout: 400
-    sectors:
-    - size: 0x2000
-      address: 0x0
-- name: stm32u59x_2m_0c00
-  description: STM32U59x 2M NSecure Flash
-  default: true
-  instructions: LenwQQdGcraATCBsgk2ASYBKwA9NRArQfEgsMKhge0gkMOhg4WDiYL/zT48Q4HdIKDCoYHVIIDDoYKFgomC/80+PAOAAvyBqwAP71BbgAL9gasAD+9RP8P82xPiAYMT4hGDE+IhgxPiMYADwyvgBKATRRPigb2ZgpmDmYOhoAWjJAwHVAL/652RIL2AAaAAEgAloYAAgvejwgV9IT/AAQUhEgmgRYL/zT4/AaADgAL8BaMkD+9QAIHBHASBwR1ZJQvL6AklEyGgCYIloSPIEAgpgCmhC9IAyCmC/80+PAOAAvwFoyQP71AAgcEdwtQZGAPCH+EhNAShNRAfR1ekAAQDrUQGxQgHYASQA4AAkAPB4+AEoaGgE0EAeBkByC+hoB+BP8P8xAetQADBAQgv25wC/AWjJA/vUQvL6AwNgAiEB68IBQerEIqloCmAKaEL0gDIKYL/zT48A4AC/AWjJA/vUAWgZQgLQA2ABIHC9ACBwvfC1KE4PMU5EIfAPA/FoAOAAvwxo5AP71ELy+gUNYLZoASQ0YC/gl3gUiGfzH0TXeETqB2QEYJd5lIhn8x9E13lE6gdkRGCXehSJZ/MfRNd6ROoHZIRgl3uUiWfzH0TXe0TqB2TEYL/zT48A4AC/DGjkA/vUDGgsQgLQDWABIPC9EDAQMhA7ACvN0QAgMGDwvQJIAGzA80BQcEcAIAJAIwFnRauJ780EAAAAoAf6CwAAAAAAAAAAAAAAAAAAAAAAAAAA
-  load_address: 0x20000020
-  pc_init: 0x1
-  pc_uninit: 0x9b
-  pc_program_page: 0x173
-  pc_erase_sector: 0xed
-  pc_erase_all: 0xbf
-  data_section_offset: 0x220
-  flash_properties:
-    address_range:
-      start: 0xc000000
-      end: 0xc200000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 400
-    erase_sector_timeout: 400
-    sectors:
-    - size: 0x2000
-      address: 0x0
-- name: stm32u59x_4m_0800
-  description: STM32U5xx 4M NSecure Flash
-  default: true
-  instructions: LenwQQdGcraATCBsgk2ASYBKwA9NRArQfEgsMKhge0gkMOhg4WDiYL/zT48Q4HdIKDCoYHVIIDDoYKFgomC/80+PAOAAvyBqwAP71BbgAL9gasAD+9RP8P82xPiAYMT4hGDE+IhgxPiMYADwyvgBKATRRPigb2ZgpmDmYOhoAWjJAwHVAL/652RIL2AAaAAEgAloYAAgvejwgV9IT/AAQUhEgmgRYL/zT4/AaADgAL8BaMkD+9QAIHBHASBwR1ZJQvL6AklEyGgCYIloSPIEAgpgCmhC9IAyCmC/80+PAOAAvwFoyQP71AAgcEdwtQZGAPCH+EhNAShNRAfR1ekAAQDrUQGxQgHYASQA4AAkAPB4+AEoaGgE0EAeBkByC+hoB+BP8P8xAetQADBAQgv25wC/AWjJA/vUQvL6AwNgAiEB68IBQerEIqloCmAKaEL0gDIKYL/zT48A4AC/AWjJA/vUAWgZQgLQA2ABIHC9ACBwvfC1KE4PMU5EIfAPA/FoAOAAvwxo5AP71ELy+gUNYLZoASQ0YC/gl3gUiGfzH0TXeETqB2QEYJd5lIhn8x9E13lE6gdkRGCXehSJZ/MfRNd6ROoHZIRgl3uUiWfzH0TXe0TqB2TEYL/zT48A4AC/DGjkA/vUDGgsQgLQDWABIPC9EDAQMhA7ACvN0QAgMGDwvQJIAGzA80BQcEcAIAJAIwFnRauJ780EAAAAoAf6CwAAAAAAAAAAAAAAAAAAAAAAAAAA
-  load_address: 0x20000020
-  pc_init: 0x1
-  pc_uninit: 0x9b
-  pc_program_page: 0x173
-  pc_erase_sector: 0xed
-  pc_erase_all: 0xbf
-  data_section_offset: 0x220
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8400000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 400
-    erase_sector_timeout: 400
-    sectors:
-    - size: 0x2000
-      address: 0x0
-- name: stm32u59x_4m_0c00
-  description: STM32U5xx 4M Secure Flash
-  default: true
-  instructions: LenwQQdGcraATCBsgk2ASYBKwA9NRArQfEgsMKhge0gkMOhg4WDiYL/zT48Q4HdIKDCoYHVIIDDoYKFgomC/80+PAOAAvyBqwAP71BbgAL9gasAD+9RP8P82xPiAYMT4hGDE+IhgxPiMYADwyvgBKATRRPigb2ZgpmDmYOhoAWjJAwHVAL/652RIL2AAaAAEgAloYAAgvejwgV9IT/AAQUhEgmgRYL/zT4/AaADgAL8BaMkD+9QAIHBHASBwR1ZJQvL6AklEyGgCYIloSPIEAgpgCmhC9IAyCmC/80+PAOAAvwFoyQP71AAgcEdwtQZGAPCH+EhNAShNRAfR1ekAAQDrUQGxQgHYASQA4AAkAPB4+AEoaGgE0EAeBkByC+hoB+BP8P8xAetQADBAQgv25wC/AWjJA/vUQvL6AwNgAiEB68IBQerEIqloCmAKaEL0gDIKYL/zT48A4AC/AWjJA/vUAWgZQgLQA2ABIHC9ACBwvfC1KE4PMU5EIfAPA/FoAOAAvwxo5AP71ELy+gUNYLZoASQ0YC/gl3gUiGfzH0TXeETqB2QEYJd5lIhn8x9E13lE6gdkRGCXehSJZ/MfRNd6ROoHZIRgl3uUiWfzH0TXe0TqB2TEYL/zT48A4AC/DGjkA/vUDGgsQgLQDWABIPC9EDAQMhA7ACvN0QAgMGDwvQJIAGzA80BQcEcAIAJAIwFnRauJ780EAAAAoAf6CwAAAAAAAAAAAAAAAAAAAAAAAAAA
-  load_address: 0x20000020
-  pc_init: 0x1
-  pc_uninit: 0x9b
-  pc_program_page: 0x173
-  pc_erase_sector: 0xed
-  pc_erase_all: 0xbf
-  data_section_offset: 0x220
-  flash_properties:
-    address_range:
-      start: 0xc000000
-      end: 0xc400000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 400
-    erase_sector_timeout: 400
-    sectors:
-    - size: 0x2000
       address: 0x0

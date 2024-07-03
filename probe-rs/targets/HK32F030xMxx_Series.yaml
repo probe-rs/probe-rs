@@ -22,9 +22,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - hk32f030mxx_16
   - hk32f030mxx_opt
@@ -49,11 +50,12 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - hk32f030xmxxa_16
+  - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
   - hk32f030xmxxa_eeprom
 - name: HK32F0301MD4P7C
@@ -76,9 +78,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - hk32f0301mxxc_16
   - hk32f0301mxxc_opt
@@ -102,9 +105,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -129,11 +133,12 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - hk32f030xmxxa_16
+  - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
   - hk32f030xmxxa_eeprom
 - name: HK32F0301ME4U7A
@@ -156,11 +161,12 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - hk32f030xmxxa_16
+  - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
   - hk32f030xmxxa_eeprom
 - name: HK32F0301ME6P7A
@@ -183,9 +189,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -210,9 +217,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -237,11 +245,12 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - hk32f030xmxxa_16
+  - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
   - hk32f030xmxxa_eeprom
 - name: HK32F0301MF4N7C
@@ -264,9 +273,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - hk32f0301mxxc_16
   - hk32f0301mxxc_opt
@@ -290,9 +300,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - hk32f030mxx_16
   - hk32f030mxx_opt
@@ -317,11 +328,12 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - hk32f030xmxxa_16
+  - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
   - hk32f030xmxxa_eeprom
 - name: HK32F0301MF4P7C
@@ -344,9 +356,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - hk32f0301mxxc_16
   - hk32f0301mxxc_opt
@@ -370,9 +383,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - hk32f030mxx_16
   - hk32f030mxx_opt
@@ -397,11 +411,12 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - hk32f030xmxxa_16
+  - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
   - hk32f030xmxxa_eeprom
 - name: HK32F0301MF4U7C
@@ -424,9 +439,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - hk32f0301mxxc_16
   - hk32f0301mxxc_opt
@@ -450,9 +466,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -477,9 +494,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -504,9 +522,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -531,11 +550,12 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - hk32f030xmxxa_16
+  - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
   - hk32f030xmxxa_eeprom
 - name: HK32F0301MG4U7A
@@ -558,11 +578,12 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - hk32f030xmxxa_16
+  - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
   - hk32f030xmxxa_eeprom
 - name: HK32F0301MG6P7A
@@ -585,9 +606,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -612,9 +634,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -639,9 +662,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - hk32f030mxx_16
   - hk32f030mxx_opt
@@ -666,11 +690,12 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - hk32f030xmxxa_16
+  - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
   - hk32f030xmxxa_eeprom
 - name: HK32F0301MJ4M7C
@@ -693,9 +718,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - hk32f0301mxxc_16
   - hk32f0301mxxc_opt
@@ -719,9 +745,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -746,9 +773,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - hk32f030mxx_16
   - hk32f030mxx_opt
@@ -773,11 +801,12 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - hk32f030xmxxa_16
+  - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
   - hk32f030xmxxa_eeprom
 - name: HK32F030MD6P7A
@@ -800,9 +829,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -827,11 +857,12 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - hk32f030xmxxa_16
+  - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
   - hk32f030xmxxa_eeprom
 - name: HK32F030ME4U7A
@@ -854,11 +885,12 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - hk32f030xmxxa_16
+  - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
   - hk32f030xmxxa_eeprom
 - name: HK32F030ME6P7A
@@ -881,9 +913,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -908,9 +941,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -935,11 +969,12 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - hk32f030xmxxa_16
+  - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
   - hk32f030xmxxa_eeprom
 - name: HK32F030MF4P6
@@ -962,9 +997,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - hk32f030mxx_16
   - hk32f030mxx_opt
@@ -989,11 +1025,12 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - hk32f030xmxxa_16
+  - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
   - hk32f030xmxxa_eeprom
 - name: HK32F030MF4U6
@@ -1016,9 +1053,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - hk32f030mxx_16
   - hk32f030mxx_opt
@@ -1043,11 +1081,12 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - hk32f030xmxxa_16
+  - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
   - hk32f030xmxxa_eeprom
 - name: HK32F030MF6N7A
@@ -1070,9 +1109,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -1097,9 +1137,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -1124,9 +1165,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -1151,11 +1193,12 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - hk32f030xmxxa_16
+  - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
   - hk32f030xmxxa_eeprom
 - name: HK32F030MG4U7A
@@ -1178,11 +1221,12 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - hk32f030xmxxa_16
+  - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
   - hk32f030xmxxa_eeprom
 - name: HK32F030MG6P7A
@@ -1205,9 +1249,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -1232,9 +1277,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -1259,9 +1305,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - hk32f030mxx_16
   - hk32f030mxx_opt
@@ -1286,11 +1333,12 @@ variants:
     range:
       start: 0x8000000
       end: 0x8004000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - hk32f030xmxxa_16
+  - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
   - hk32f030xmxxa_eeprom
 - name: HK32F030MJ6M7A
@@ -1313,9 +1361,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8008000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -1382,8 +1431,8 @@ flash_algorithms:
     sectors:
     - size: 0x1c0
       address: 0x0
-- name: hk32f030xmxxa_16
-  description: 'HK32F030xMxxA 16kB Flash '
+- name: hk32f030xmxxa_32
+  description: HK32F030xMxxA 32kB Flash
   default: true
   instructions: ELUDRqFIgGoPJOQCoEOfTKBiIEaAagck5AIgQ5tMoGKbSJxMYGCcSGBgIEbAaBAkIEOYTOBgACAgYGBhIEYAaUckoEOTTCBhlEiVTCBgBiBgYJRIoGAAIBC9AUaNSABpgCIQQ4tKEGEAIHBHiUgAaQQhCEOHSQhhCEYAaUAhCEOESQhhAuCISIVJCGCBSMBowAfADwAo9tGDSIFJCGB9SABpBCGIQ3tJCGEIRsBoICEIQAAoBdB3SMBoCEN1SchgAeABIHBHACD85wFGcUgAaQIiEENvShBhEEZBYQBpQCIQQ2xKEGEC4G9IbUoQYGlIwGjAB8APACj20WtIaEoQYGRIAGkCIpBDYkoQYRBGwGggIhBAACgF0F5IwGgQQ11K0GAB4AEgcEcAIPznMLUDRgAkWEjAaBAlKEAAKATQVUjAaChDU03oYNgHwA8AKC/QFHgkAv8gBENOSABpASUoQ0xNKGEYRj84xIcC4E5ITE0oYEhIwGjAB8APACj20UpIR00oYENIAGlACEAAQU0oYShGwGgQJShAACgG0D1IwGgoQzxN6GABIDC9WxxSHEkeZ+A4SABpASUoQzZNKGEQiBiAAuA4SDZNKGAySMBowAfADwAo9tE0SDFNKGAtSABpQAhAACtNKGEoRsBoECUoQAAoBtAnSMBoKEMmTehgASDS5yRIwGggJShAACgF0CFIwGgoQx9N6GAB4AEgxOebHJIcAikB04keK+AUeP8gAAIEQxhIAGkBJShDFk0oYRyAAuAZSBZNKGASSMBowAfADwAo9tEUSBJNKGAOSABpQAhAAAxNKGEoRsBoECUoQAAoBtAISMBoKEMGTehgASCT5wHgACmV0QC/ACCN58AQAkAjAWdFACACQKuJ781VVQAAADAAQP8PAACqqgAAAAAAAA==
   pc_init: 0x1
@@ -1395,7 +1444,7 @@ flash_algorithms:
   flash_properties:
     address_range:
       start: 0x8000000
-      end: 0x8004000
+      end: 0x8008000
     page_size: 0x80
     erased_byte_value: 0xff
     program_page_timeout: 6000
@@ -1483,25 +1532,4 @@ flash_algorithms:
     erase_sector_timeout: 6000
     sectors:
     - size: 0x1c
-      address: 0x0
-- name: hk32f030xmxxa_32
-  description: HK32F030xMxxA 32kB Flash
-  default: true
-  instructions: ELUDRqFIgGoPJOQCoEOfTKBiIEaAagck5AIgQ5tMoGKbSJxMYGCcSGBgIEbAaBAkIEOYTOBgACAgYGBhIEYAaUckoEOTTCBhlEiVTCBgBiBgYJRIoGAAIBC9AUaNSABpgCIQQ4tKEGEAIHBHiUgAaQQhCEOHSQhhCEYAaUAhCEOESQhhAuCISIVJCGCBSMBowAfADwAo9tGDSIFJCGB9SABpBCGIQ3tJCGEIRsBoICEIQAAoBdB3SMBoCEN1SchgAeABIHBHACD85wFGcUgAaQIiEENvShBhEEZBYQBpQCIQQ2xKEGEC4G9IbUoQYGlIwGjAB8APACj20WtIaEoQYGRIAGkCIpBDYkoQYRBGwGggIhBAACgF0F5IwGgQQ11K0GAB4AEgcEcAIPznMLUDRgAkWEjAaBAlKEAAKATQVUjAaChDU03oYNgHwA8AKC/QFHgkAv8gBENOSABpASUoQ0xNKGEYRj84xIcC4E5ITE0oYEhIwGjAB8APACj20UpIR00oYENIAGlACEAAQU0oYShGwGgQJShAACgG0D1IwGgoQzxN6GABIDC9WxxSHEkeZ+A4SABpASUoQzZNKGEQiBiAAuA4SDZNKGAySMBowAfADwAo9tE0SDFNKGAtSABpQAhAACtNKGEoRsBoECUoQAAoBtAnSMBoKEMmTehgASDS5yRIwGggJShAACgF0CFIwGgoQx9N6GAB4AEgxOebHJIcAikB04keK+AUeP8gAAIEQxhIAGkBJShDFk0oYRyAAuAZSBZNKGASSMBowAfADwAo9tEUSBJNKGAOSABpQAhAAAxNKGEoRsBoECUoQAAoBtAISMBoKEMGTehgASCT5wHgACmV0QC/ACCN58AQAkAjAWdFACACQKuJ781VVQAAADAAQP8PAACqqgAAAAAAAA==
-  pc_init: 0x1
-  pc_uninit: 0x5b
-  pc_program_page: 0x12d
-  pc_erase_sector: 0xcb
-  pc_erase_all: 0x6d
-  data_section_offset: 0x2ac
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8008000
-    page_size: 0x80
-    erased_byte_value: 0xff
-    program_page_timeout: 6000
-    erase_sector_timeout: 6000
-    sectors:
-    - size: 0x80
       address: 0x0

@@ -5,28 +5,28 @@ use test_run_mode::*;
 
 use std::fs::{self, File};
 use std::io::{Read, Write};
-use std::ops::Range;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::thread;
 use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, Context, Result};
 use probe_rs::debug::{DebugInfo, DebugRegisters};
 use probe_rs::flashing::FileDownloadError;
-use probe_rs::rtt::ScanRegion;
 use probe_rs::{
-    exception_handler_for_core, probe::list::Lister, Core, CoreInterface, Error, HaltReason,
-    Session, VectorCatchCondition,
+    exception_handler_for_core,
+    probe::list::Lister,
+    rtt::{try_attach_to_rtt, Error as RttError, ScanRegion},
+    Core, CoreInterface, Error, HaltReason, Session, VectorCatchCondition,
 };
-use probe_rs_target::MemoryRegion;
 use signal_hook::consts::signal;
 use time::UtcOffset;
 
 use crate::util::common_options::{BinaryDownloadOptions, ProbeOptions};
 use crate::util::flash::{build_loader, run_flash_download};
 use crate::util::rtt::{
-    self, try_attach_to_rtt, ChannelDataCallbacks, DefmtState, RttActiveTarget, RttConfig,
+    self, ChannelDataCallbacks, DefmtState, RttActiveTarget, RttChannelConfig, RttConfig,
 };
 use crate::FormatOptions;
 
@@ -121,17 +121,15 @@ impl Cmd {
                 .reset_and_halt(Duration::from_millis(100))?;
         }
 
-        let memory_map = session.target().memory_map.clone();
         let rtt_scan_regions = match self.shared_options.rtt_scan_memory {
             true => session.target().rtt_scan_regions.clone(),
-            false => Vec::new(),
+            false => ScanRegion::Ranges(vec![]),
         };
 
         run_mode.run(
             session,
             RunLoop {
                 core_id,
-                memory_map,
                 rtt_scan_regions,
                 timestamp_offset,
                 path: self.shared_options.path,
@@ -192,8 +190,7 @@ fn detect_run_mode(cmd: &Cmd) -> Result<Box<dyn RunMode>, anyhow::Error> {
 
 struct RunLoop {
     core_id: usize,
-    memory_map: Vec<MemoryRegion>,
-    rtt_scan_regions: Vec<Range<u64>>,
+    rtt_scan_regions: ScanRegion,
     path: PathBuf,
     timestamp_offset: UtcOffset,
     always_print_stacktrace: bool,
@@ -262,8 +259,8 @@ impl RunLoop {
         }
         let start = Instant::now();
 
-        let mut rtt_config = rtt::RttConfig::default();
-        rtt_config.channels.push(rtt::RttChannelConfig {
+        let mut rtt_config = RttConfig::default();
+        rtt_config.channels.push(RttChannelConfig {
             channel_number: Some(0),
             show_location: !self.no_location,
             log_format: self.log_format.clone(),
@@ -273,9 +270,8 @@ impl RunLoop {
         let mut rtta = attach_to_rtt(
             core,
             Duration::from_secs(1),
-            self.memory_map.as_slice(),
-            &ScanRegion::Ranges(self.rtt_scan_regions.clone()),
-            Path::new(&self.path),
+            &self.rtt_scan_regions,
+            &self.path,
             &rtt_config,
             self.timestamp_offset,
         )
@@ -308,7 +304,7 @@ impl RunLoop {
     fn do_run_until<F, R>(
         &self,
         core: &mut Core,
-        rtta: &mut Option<rtt::RttActiveTarget>,
+        rtta: &mut Option<RttActiveTarget>,
         output_stream: OutputStream,
         timeout: Option<Duration>,
         start: Instant,
@@ -379,9 +375,9 @@ impl RunLoop {
             // If the polling frequency is too high, the USB connection to the probe
             // can become unstable. Hence we only pull as little as necessary.
             if had_rtt_data {
-                std::thread::sleep(Duration::from_millis(1));
+                thread::sleep(Duration::from_millis(1));
             } else {
-                std::thread::sleep(Duration::from_millis(100));
+                thread::sleep(Duration::from_millis(100));
             }
         };
 
@@ -471,7 +467,7 @@ fn print_stacktrace<S: Write + ?Sized>(
 
 /// Poll RTT and print the received buffer.
 fn poll_rtt<S: Write + ?Sized>(
-    rtta: &mut Option<rtt::RttActiveTarget>,
+    rtta: &mut Option<RttActiveTarget>,
     core: &mut Core<'_>,
     out_stream: &mut S,
 ) -> Result<bool, anyhow::Error> {
@@ -512,7 +508,6 @@ fn poll_rtt<S: Write + ?Sized>(
 fn attach_to_rtt(
     core: &mut Core<'_>,
     timeout: Duration,
-    memory_map: &[MemoryRegion],
     rtt_region: &ScanRegion,
     elf_file: &Path,
     rtt_config: &RttConfig,
@@ -522,16 +517,18 @@ fn attach_to_rtt(
     // If we find it, we can use the exact address to attach to the RTT control block. Otherwise, we
     // fall back to the caller-provided scan regions.
     let elf = fs::read(elf_file)?;
+    let exact_region;
     let scan_region = if let Some(address) = RttActiveTarget::get_rtt_symbol_from_bytes(&elf) {
-        ScanRegion::Exact(address)
+        exact_region = ScanRegion::Exact(address);
+        &exact_region
     } else {
-        rtt_region.clone()
+        rtt_region
     };
 
-    let rtt = try_attach_to_rtt(core, timeout, memory_map, &scan_region)?;
-
-    let Some(rtt) = rtt else {
-        return Ok(None);
+    let rtt = match try_attach_to_rtt(core, timeout, scan_region) {
+        Ok(rtt) => rtt,
+        Err(RttError::NoControlBlockLocation) => return Ok(None),
+        Err(err) => return Err(anyhow!("Error attempting to attach to RTT: {err}")),
     };
 
     let defmt_state = DefmtState::try_from_bytes(&elf)?;

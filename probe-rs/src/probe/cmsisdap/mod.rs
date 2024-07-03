@@ -1197,11 +1197,11 @@ impl SwoAccess for CmsisDap {
         }
     }
 
-    fn swo_poll_interval_hint(&mut self, config: &SwoConfig) -> Option<std::time::Duration> {
+    fn swo_poll_interval_hint(&mut self, config: &SwoConfig) -> Option<Duration> {
         let caps = self.capabilities;
         if caps.swo_streaming_trace_implemented && self.device.swo_streaming_supported() {
             // Streaming reads block waiting for new data so any polling interval is fine
-            Some(std::time::Duration::from_secs(0))
+            Some(Duration::from_secs(0))
         } else {
             match self.swo_buffer_size {
                 // Given the buffer size and SWO baud rate we can estimate a poll rate.

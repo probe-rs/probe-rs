@@ -2,23 +2,16 @@ name: NXP MIMXRT500 Series
 manufacturer:
   id: 0x15
   cc: 0x0
-# NOTE: This was originally generated from CMSIS-Pack but subsequently modified
-# to use datasheet-consistent names for the memory regions and to consolidate
-# the three chip variants into one target file, since they all have the same
-# memory map and flash algorithms anyway.
 generated_from_pack: true
 pack_file_release: 16.1.0
 variants:
 - name: MIMXRT595S
-  # This is the full-featured variant, including both DSP core and vector GPU
   cores:
   - name: cm33
     type: armv8m
     core_access_options: !Arm
       ap: 0
       psel: 0x0
-  # RT595 also includes a Cadence Fusion F1 (Tensilica) core, but
-  # probe-rs currently has no support for that architecture.
   memory_map:
   - !Ram
     name: Shared RAM partitions 0-31 via M33 code bus
@@ -104,16 +97,11 @@ variants:
       end: 0x50144000
     cores:
     - cm33
-  rtt_scan_ranges: [
-    # This chip has a large amount of RAM that takes too long to scan its
-    # entirety, so there's no automatic RTT header scanning on this target.
-  ]
   flash_algorithms:
   - mimxrt5xx_evk_flexspi
   - mimxrt5xx_evk_flexspi_s
+  rtt_scan_ranges: []
 - name: MIMXRT555S
-  # This is the first reduced variant, with no DSP core but still including
-  # the vector GPU.
   cores:
   - name: cm33
     type: armv8m
@@ -205,16 +193,11 @@ variants:
       end: 0x50144000
     cores:
     - cm33
-  rtt_scan_ranges: [
-    # This chip has a large amount of RAM that takes too long to scan its
-    # entirety, so there's no automatic RTT header scanning on this target.
-  ]
   flash_algorithms:
   - mimxrt5xx_evk_flexspi
   - mimxrt5xx_evk_flexspi_s
+  rtt_scan_ranges: []
 - name: MIMXRT533S
-  # This is the second reduced variant, with neither DSP core nor vector GPU,
-  # and fewer RAM blocks than the other variants.
   cores:
   - name: cm33
     type: armv8m
@@ -306,21 +289,14 @@ variants:
       end: 0x50144000
     cores:
     - cm33
-  rtt_scan_ranges: [
-    # This chip has a large amount of RAM that takes too long to scan its
-    # entirety, so there's no automatic RTT header scanning on this target.
-  ]
   flash_algorithms:
   - mimxrt5xx_evk_flexspi
   - mimxrt5xx_evk_flexspi_s
+  rtt_scan_ranges: []
 flash_algorithms:
 - name: mimxrt5xx_evk_flexspi
   description: MIMXRT5XX-EVK FlexSPI0
   default: true
-  # NOTE: The vendor-provided flash algorithm is largely just jumps into the
-  # boot ROM, where the real logic lives. Before launching the boot ROM it
-  # pulses PIO4_5 to reset the external flash chip, assuming the pinout used
-  # on the official evaluation kit boards.
   instructions: cLVA8gwEwPIABEXyBAYJ6wQAT/QAccTyEwYA8F75QPIEBUPyBADA8gAFzPJAAEn4BQBD9gAAxPIDAAAhAWBD8hwAxPIDAAFgQPIBEPBiQvIwYMTyAABP9IAxAWAMIUFgT/D/MYFgwWCwaEDwAQCwYDBowAcJ0DBowAccvzBoX+rAcALQMGjAB/LRQfIQEMTyAAAfIQFgAyHA+CATACHA+CQTAyAA8Jj4cCPE8gADT/SANsP40G8J6wQBCesFAgEgHmC96HBAAPCXuAC/ACBwR0DyDADA8gAACesAAQEgAPBFuAC/APF4QkDyDADA8gAACesAAdH4xDEBIADwR7gAvwApBL8AIHBHLenwRYGwQPIMChRGiEYGRgAlwPIACgC/CesKBwbxeEIBIDlGI0YA8BP41/jAEQ1EDERFRQ5E79MBsL3o8IUAAE/yHALB8gIyEmhSaBBHAL9P8hwMwfICPNz4AMDc+AjAYEcAv0/yHALB8gIyEmjSaBBHAL9P8hwDwfICMxto22kYRwC/T/IcDMHyAjzc+ADA3PgQwGBHAL9P8hwMwfICPNz4AMDc+CDAYEcAv0/yHAzB8gI83PgAwNz4KMBgRwC/T/IcAsHyAjISaFJqEEcAv0/yHAHB8gIxCWjJaghHAL9P8hwDwfICMxtoG2sYRwC/cLWCsAxGBUZC8hBwAZAAvwGYQR4BkWCxAZhBHgGRQLEBmEEeAZEgsQGYQR4AKAGR7tFP8hwGwfICNjBoIUbDaShGmEcIsQKwcL0waCFGQmgoRpBHArBwvU/yIAHB8gIxCWgJaAhHAL9P8iAAwfICMABoQGgARwC/T/IgAsHyAjISaJJoEEcAv0/yIAPB8gIzG2jbaBhHAL9P8iAAwfICMABoQGkARwC/T/IgA8HyAjMbaJtpGEcAv0/yIAPB8gIzG2gbaRhHAL9P8gABwfICMQloCEfSsgHgAPgBK0ke+9JwRwAi9ucQtRNGCkYERhlG//fw/yBGEL0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
   load_address: 0x1001c000
   pc_init: 0x1
@@ -340,13 +316,10 @@ flash_algorithms:
     sectors:
     - size: 0x1000
       address: 0x0
+  stack_size: 4096
 - name: mimxrt5xx_evk_flexspi_s
   description: MIMXRT5XX-EVK FlexSPI0 (Secure Memory Space)
   default: true
-  # NOTE: The vendor-provided flash algorithm is largely just jumps into the
-  # boot ROM, where the real logic lives. Before launching the boot ROM it
-  # pulses PIO4_5 to reset the external flash chip, assuming the pinout used
-  # on the official evaluation kit boards.
   instructions: cLVA8gwEwPIABEXyBAYJ6wQAT/QAccTyEwYA8F75QPIEBUPyBADA8gAFzPJAAEn4BQBD9gAAxPIDAAAhAWBD8hwAxPIDAAFgQPIBEPBiQvIwYMTyAABP9IAxAWAMIUFgT/D/MYFgwWCwaEDwAQCwYDBowAcJ0DBowAccvzBoX+rAcALQMGjAB/LRQfIQEMTyAAAfIQFgAyHA+CATACHA+CQTAyAA8Jj4cCPE8gADT/SANsP40G8J6wQBCesFAgEgHmC96HBAAPCXuAC/ACBwR0DyDADA8gAACesAAQEgAPBFuAC/APFoQkDyDADA8gAACesAAdH4xDEBIADwR7gAvwApBL8AIHBHLenwRYGwQPIMChRGiEYGRgAlwPIACgC/CesKBwbxaEIBIDlGI0YA8BP41/jAEQ1EDERFRQ5E79MBsL3o8IUAAE/yHALB8gIyEmhSaBBHAL9P8hwMwfICPNz4AMDc+AjAYEcAv0/yHALB8gIyEmjSaBBHAL9P8hwDwfICMxto22kYRwC/T/IcDMHyAjzc+ADA3PgQwGBHAL9P8hwMwfICPNz4AMDc+CDAYEcAv0/yHAzB8gI83PgAwNz4KMBgRwC/T/IcAsHyAjISaFJqEEcAv0/yHAHB8gIxCWjJaghHAL9P8hwDwfICMxtoG2sYRwC/cLWCsAxGBUZC8hBwAZAAvwGYQR4BkWCxAZhBHgGRQLEBmEEeAZEgsQGYQR4AKAGR7tFP8hwGwfICNjBoIUbDaShGmEcIsQKwcL0waCFGQmgoRpBHArBwvU/yIAHB8gIxCWgJaAhHAL9P8iAAwfICMABoQGgARwC/T/IgAsHyAjISaJJoEEcAv0/yIAPB8gIzG2jbaBhHAL9P8iAAwfICMABoQGkARwC/T/IgA8HyAjMbaJtpGEcAv0/yIAPB8gIzG2gbaRhHAL9P8gABwfICMQloCEfSsgHgAPgBK0ke+9JwRwAi9ucQtRNGCkYERhlG//fw/yBGEL0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
   load_address: 0x1001c000
   pc_init: 0x1
@@ -366,3 +339,4 @@ flash_algorithms:
     sectors:
     - size: 0x1000
       address: 0x0
+  stack_size: 4096

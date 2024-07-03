@@ -22,9 +22,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8020000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - air32f103cbt6
 - name: AIR32F103CC
@@ -47,9 +48,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - air32f103cct6
 - name: AIR32F103CG
@@ -72,9 +74,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - air32f10x_1024
 - name: AIR32F103RP
@@ -97,9 +100,10 @@ variants:
     range:
       start: 0x8000000
       end: 0x8040000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - air32f103cct6
 - name: AIR32F103VE
@@ -122,11 +126,12 @@ variants:
     range:
       start: 0x8000000
       end: 0x8080000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - air32f103vet6
+  - air32f103cct6
 flash_algorithms:
 - name: air32f103cbt6
   description: Air32F103CBT6
@@ -195,28 +200,5 @@ flash_algorithms:
     erase_sector_timeout: 500
     sectors:
     - size: 0x1000
-      address: 0x0
-  transfer_encoding: raw
-- name: air32f103vet6
-  description: Air32F103VET6
-  default: true
-  instructions: ELUDRtgMwARHTExEIGAAIEZMIGBGSGBgRkhgYCBGwGkA8AQAQLlF8lVQQ0wgYAYgYGBA9v9woGAAIBC9AUY7SABpQPCAADlKEGEAIHBHN0gAaUDwBAA1SQhhCEYAaUDwQAAIYQPgSvaqIDNJCGAvSMBoAPABAAAo9dEsSABpIPAEACpJCGEAIHBHAUYnSABpQPACACVKEGEQRkFhAGlA8EAAEGED4Er2qiAjShBgH0jAaADwAQAAKPXRHEgAaSDwAgAaShBhACBwRxC1A0ZIHCDwAQEj4BVIAGlA8AEAE0wgYRCIGIAAvxBIwGgA8AEAACj50Q1IAGkg8AEAC0wgYSBGwGgA8BQAMLEgRsBoQPAUAOBgASAQvZsckhyJHgAp2dEAIPfnAAAEAAAAACACQCMBZ0Wrie/NADAAQAAAAAAAAAAA
-  load_address: 0x20000020
-  pc_init: 0x1
-  pc_uninit: 0x3d
-  pc_program_page: 0xcb
-  pc_erase_sector: 0x8b
-  pc_erase_all: 0x4f
-  data_section_offset: 0x13c
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8080000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 100
-    erase_sector_timeout: 500
-    sectors:
-    - size: 0x800
       address: 0x0
   transfer_encoding: raw

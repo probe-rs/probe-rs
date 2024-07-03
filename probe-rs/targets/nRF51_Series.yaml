@@ -2,6 +2,112 @@ name: nRF51 Series
 manufacturer:
   id: 0x44
   cc: 0x2
+chip_detection:
+- !NordicConfigId
+  configid_address: 0x1000005c
+  hwid:
+    0x1d: nRF51822_xxAA
+    0x1e: nRF51422_xxAA
+    0x20: nRF51822_xxAA
+    0x21: nRF51822_xxAA
+    0x22: nRF51822_xxAA
+    0x23: nRF51822_xxAA
+    0x24: nRF51422_xxAA
+    0x26: nRF51822_xxAB
+    0x27: nRF51822_xxAB
+    0x28: nRF51822_xxAA
+    0x29: nRF51822_xxAA
+    0x2a: nRF51822_xxAA
+    0x2b: nRF51822_xxAA
+    0x2c: nRF51822_xxAA
+    0x2d: nRF51422_xxAA
+    0x2e: nRF51422_xxAA
+    0x2f: nRF51822_xxAA
+    0x30: nRF51822_xxAA
+    0x31: nRF51422_xxAA
+    0x32: nRF51422_xxAA
+    0x33: nRF51922_xxAA
+    0x34: nRF51822_xxAA
+    0x38: nRF51822_xxAA
+    0x39: nRF51822_xxAA
+    0x3a: nRF51822_xxAB
+    0x3b: nRF51822_xxAB
+    0x3c: nRF51822_xxAA
+    0x3d: nRF51822_xxAA
+    0x3e: nRF51822_xxAA
+    0x3f: nRF51922_xxAA
+    0x40: nRF51822_xxAA
+    0x41: nRF51822_xxAA
+    0x42: nRF51822_xxAA
+    0x43: nRF51822_xxAA
+    0x44: nRF51822_xxAA
+    0x45: nRF51822_xxAA
+    0x46: nRF51822_xxAA
+    0x47: nRF51822_xxAA
+    0x48: nRF51822_xxAA
+    0x49: nRF51822_xxAA
+    0x4a: nRF51822_xxAA
+    0x4b: nRF51922_xxAA
+    0x4c: nRF51822_xxAB
+    0x4d: nRF51822_xxAA
+    0x4e: nRF51822_xxAA
+    0x4f: nRF51822_xxAA
+    0x50: nRF51422_xxAA
+    0x54: nRF51822_xxAA
+    0x56: nRF51822_xxAB
+    0x57: nRF51822_xxAA
+    0x58: nRF51822_xxAA
+    0x59: nRF51822_xxAA
+    0x5a: nRF51822_xxAA
+    0x5b: nRF51822_xxAA
+    0x5c: nRF51422_xxAA
+    0x5d: nRF51822_xxAA
+    0x5e: nRF51422_xxAA
+    0x5f: nRF51822_xxAB
+    0x60: nRF51822_xxAB
+    0x61: nRF51422_xxAB
+    0x63: nRF51422_xxAA
+    0x64: nRF51822_xxAB
+    0x65: nRF51422_xxAB
+    0x66: nRF51422_xxAB
+    0x67: nRF51822_xxAB
+    0x68: nRF51422_xxAB
+    0x6a: nRF51822_xxAA
+    0x6b: nRF51822_xxAA
+    0x6c: nRF51822_xxAC
+    0x6d: nRF51422_xxAC
+    0x6e: nRF51822_xxAC
+    0x6f: nRF51822_xxAA
+    0x70: nRF51822_xxAA
+    0x71: nRF51422_xxAC
+    0x72: nRF51822_xxAA
+    0x73: nRF51422_xxAA
+    0x74: nRF51822_xxAC
+    0x75: nRF51422_xxAC
+    0x76: nRF51822_xxAB
+    0x77: nRF51822_xxAA
+    0x79: nRF51822_xxAA
+    0x7a: nRF51422_xxAA
+    0x7b: nRF51822_xxAB
+    0x7c: nRF51422_xxAB
+    0x7d: nRF51822_xxAB
+    0x80: nRF51822_xxAA
+    0x82: nRF51822_xxAC
+    0x83: nRF51822_xxAC
+    0x84: nRF51822_xxAC
+    0x85: nRF51422_xxAC
+    0x86: nRF51422_xxAC
+    0x87: nRF51822_xxAC
+    0x88: nRF51422_xxAC
+    0x8a: nRF51802_xxAA
+    0x8b: nRF51832_xxAA
+    0x8c: nRF51822_xx00
+    0x8e: nRF51822_xxAA
+    0x8f: nRF51822_xxAA
+    0x91: nRF51822_xxAC
+    0x92: nRF51822_xxAQ
+    0x93: nRF51822_xx00
+    0x94: nRF51802_xxAA
 variants:
 - name: nRF51422_xxAA
   cores:
@@ -21,9 +127,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - nrf51xxx
   - nrf51xxx_sde
@@ -46,9 +153,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - nrf51xxx
   - nrf51xxx_sde
@@ -71,9 +179,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - nrf51xxx
   - nrf51xxx_sde
@@ -96,9 +205,10 @@ variants:
     range:
       start: 0x0
       end: 0x30000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - nrf51xxx
   - nrf51xxx_sde
@@ -121,9 +231,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - nrf51xxx
   - nrf51xxx_sde
@@ -146,9 +257,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - nrf51xxx
   - nrf51xxx_sde
@@ -171,9 +283,10 @@ variants:
     range:
       start: 0x0
       end: 0x20000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - nrf51xxx
   - nrf51xxx_sde
@@ -196,9 +309,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - nrf51xxx
   - nrf51xxx_sde
@@ -221,9 +335,10 @@ variants:
     range:
       start: 0x0
       end: 0x40000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - nrf51xxx
   - nrf51xxx_sde

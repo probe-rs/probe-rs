@@ -26,6 +26,7 @@ pub enum TransferEncoding {
 /// a specific chip, by determining the RAM addresses which are used when flashing.
 /// This process is done in the main `probe-rs` library.
 #[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[serde(deny_unknown_fields)]
 pub struct RawFlashAlgorithm {
     /// The name of the flash algorithm.
     pub name: String,
@@ -80,9 +81,20 @@ pub struct RawFlashAlgorithm {
     /// overruns during flashing.
     pub stack_size: Option<u32>,
 
+    /// Whether to check for stack overflows during flashing.
+    #[serde(default)]
+    pub stack_overflow_check: Option<bool>,
+
     /// The encoding format accepted by the flash algorithm.
     #[serde(default)]
     pub transfer_encoding: Option<TransferEncoding>,
+}
+
+impl RawFlashAlgorithm {
+    /// Whether to check for stack overflows during flashing.
+    pub fn stack_overflow_check(&self) -> bool {
+        self.stack_overflow_check.unwrap_or(true)
+    }
 }
 
 pub fn serialize<S>(bytes: &[u8], serializer: S) -> Result<S::Ok, S::Error>

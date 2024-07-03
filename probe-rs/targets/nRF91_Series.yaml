@@ -2,6 +2,13 @@ name: nRF91 Series
 manufacturer:
   id: 0x44
   cc: 0x2
+chip_detection:
+- !NordicFicrInfo
+  part_address: 0xff0140
+  variant_address: 0xff021c
+  part: 0x9160
+  variants:
+    0x400: nRF9160_xxAA
 variants:
 - name: nRF9160_xxAA
   cores:
@@ -21,16 +28,18 @@ variants:
     range:
       start: 0x0
       end: 0x100000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Nvm
     range:
       start: 0xff8000
       end: 0xff9000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - nrf91xx
   - nrf91xx_uicr

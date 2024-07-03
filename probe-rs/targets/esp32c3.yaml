@@ -2,6 +2,14 @@ name: esp32c3
 manufacturer:
   id: 0x12
   cc: 0xc
+chip_detection:
+- !Espressif
+  idcode: 0x5c25
+  variants:
+    0x1b31506f: esp32c3
+    0x4881606f: esp32c3
+    0x6921506f: esp32c3
+    0x4361606f: esp32c3
 variants:
 - name: esp32c3
   cores:
@@ -14,9 +22,10 @@ variants:
     range:
       start: 0x0
       end: 0x1000000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Ram
     name: SRAM Instruction bus
     range:
@@ -67,6 +76,7 @@ flash_algorithms:
   pc_erase_sector: 0x14
   pc_erase_all: 0x1c
   data_section_offset: 0x403902a4
+  stack_overflow_check: false
   flash_properties:
     address_range:
       start: 0x0

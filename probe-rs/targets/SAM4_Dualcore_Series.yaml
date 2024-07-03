@@ -21,9 +21,10 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4c_1024
   - atsam4c_gpnvm
@@ -45,9 +46,10 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4c32_2048
 - name: ATSAM4C32E
@@ -68,9 +70,10 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4c32_2048
 - name: ATSAM4C4C
@@ -91,11 +94,12 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - atsam4c_256
+  - atsam4c_1024
   - atsam4c_gpnvm
 - name: ATSAM4C8C
   cores:
@@ -115,11 +119,12 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - atsam4c_512
+  - atsam4c_1024
   - atsam4c_gpnvm
 - name: ATSAM4CMP16C
   cores:
@@ -139,9 +144,10 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4c_1024
 - name: ATSAM4CMP32C
@@ -162,9 +168,10 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4c32_2048
 - name: ATSAM4CMP8C
@@ -185,11 +192,12 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - atsam4c_512
+  - atsam4c_1024
 - name: ATSAM4CMS16C
   cores:
   - name: main
@@ -208,9 +216,10 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4c_1024
 - name: ATSAM4CMS32C
@@ -231,9 +240,10 @@ variants:
     range:
       start: 0x0
       end: 0x8000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4c32_2048
 - name: ATSAM4CMS4C
@@ -254,11 +264,12 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - atsam4c_256
+  - atsam4c_1024
 - name: ATSAM4CMS8C
   cores:
   - name: main
@@ -277,11 +288,12 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
-  - atsam4c_512
+  - atsam4c_1024
 - name: ATSAM4CP16B
   cores:
   - name: main
@@ -300,9 +312,10 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4c_1024
 - name: ATSAM4CP16C
@@ -323,9 +336,10 @@ variants:
     range:
       start: 0x0
       end: 0x4000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   flash_algorithms:
   - atsam4c_1024
 flash_algorithms:
@@ -365,52 +379,6 @@ flash_algorithms:
     address_range:
       start: 0x400000
       end: 0x600000
-    page_size: 0x200
-    erased_byte_value: 0xff
-    program_page_timeout: 100
-    erase_sector_timeout: 1000
-    sectors:
-    - size: 0x2000
-      address: 0x0
-  cores:
-  - main
-- name: atsam4c_256
-  description: ATSAM4C 256kB Flash
-  default: true
-  instructions: MLVVSUlECGAPIFRJAAIIYAEgU0nAA0hhU0tSSFhiUkrAOhBrgAiAAEAcEGNOSIA4gWoJB/zVEWtwJKFDEWOBagkH/NURaklNKUMRYoFqiQP81RFqoUNFTBg0IUMRYhFq5AShQzckJAQhQxFigWrJA/zVEWuJCIkASRwRY4FqCQf81QEhEWOBagkH/NU1SEAcWGIAIDC9AigW0TVLL0geIUNggmjSB/zQgmgSBwHVSR720jBLHiFDYIJo0gf80IJoEgcB1Uke9tIAIHBHI0gqSUFggWjJB/zQACBwRx5KH0lKRBJogBpACoAIgACAHAAEAgohSAAdEENIYIhowAf80B1IgBwCQ0pgiGjAB/zQiGgAB0APANABIHBHMLUOTA9LTEQkaAQbyRxkCokIiQAC4CDKCR8gwAAp+tEgBA5JAAoJHwhDWGCYaMAH/NCYaAAHQA8A0AEgML0EAAAAAAoOQEAUDkAAQ01QwAQOQAgANwALAQBaDAIAWgUAAFoAAAAAAAAAAA==
-  pc_init: 0x1
-  pc_uninit: 0x97
-  pc_program_page: 0x11b
-  pc_erase_sector: 0xdd
-  pc_erase_all: 0xcd
-  data_section_offset: 0x17c
-  flash_properties:
-    address_range:
-      start: 0x1000000
-      end: 0x1040000
-    page_size: 0x200
-    erased_byte_value: 0xff
-    program_page_timeout: 100
-    erase_sector_timeout: 1000
-    sectors:
-    - size: 0x2000
-      address: 0x0
-  cores:
-  - main
-- name: atsam4c_512
-  description: ATSAM4C 512kB Flash
-  default: true
-  instructions: MLVVSUlECGAPIFRJAAIIYAEgU0nAA0hhU0tSSFhiUkrAOhBrgAiAAEAcEGNOSIA4gWoJB/zVEWtwJKFDEWOBagkH/NURaklNKUMRYoFqiQP81RFqoUNFTBg0IUMRYhFq5AShQzckJAQhQxFigWrJA/zVEWuJCIkASRwRY4FqCQf81QEhEWOBagkH/NU1SEAcWGIAIDC9AigW0TVLL0geIUNggmjSB/zQgmgSBwHVSR720jBLHiFDYIJo0gf80IJoEgcB1Uke9tIAIHBHI0gqSUFggWjJB/zQACBwRx5KH0lKRBJogBpACoAIgACAHAAEAgohSAAdEENIYIhowAf80B1IgBwCQ0pgiGjAB/zQiGgAB0APANABIHBHMLUOTA9LTEQkaAQbyRxkCokIiQAC4CDKCR8gwAAp+tEgBA5JAAoJHwhDWGCYaMAH/NCYaAAHQA8A0AEgML0EAAAAAAoOQEAUDkAAQ01QwAQOQAgANwALAQBaDAIAWgUAAFoAAAAAAAAAAA==
-  pc_init: 0x1
-  pc_uninit: 0x97
-  pc_program_page: 0x11b
-  pc_erase_sector: 0xdd
-  pc_erase_all: 0xcd
-  data_section_offset: 0x17c
-  flash_properties:
-    address_range:
-      start: 0x1000000
-      end: 0x1080000
     page_size: 0x200
     erased_byte_value: 0xff
     program_page_timeout: 100

@@ -12,14 +12,14 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    # Target internal QSPI flash.
     name: FlexSPI2
     range:
       start: 0x70000000
       end: 0x70400000
-    is_boot_memory: true
     cores:
     - main
+    access:
+      boot: true
   - !Ram
     name: OCRAM2
     range:
@@ -54,3 +54,4 @@ flash_algorithms:
       address: 0x0
   cores:
   - main
+  stack_size: 1024
