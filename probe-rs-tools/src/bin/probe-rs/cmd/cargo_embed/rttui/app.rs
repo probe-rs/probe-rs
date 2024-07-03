@@ -236,7 +236,9 @@ impl App {
     }
 
     pub fn push_rtt(&mut self, core: &mut Core) {
-        _ = self.tabs[self.current_tab].send_input(core);
+        if let Err(error) = self.tabs[self.current_tab].send_input(core) {
+            tracing::warn!("Failed to send input to RTT channel: {error:?}");
+        }
     }
 
     pub(crate) fn clean_up(&mut self, core: &mut Core) -> Result<()> {

@@ -410,8 +410,8 @@ impl RttActiveUpChannel {
             match self.up_channel.read(core, self.rtt_buffer.0.as_mut()) {
                 Ok(0) => return None,
                 Ok(count) => return Some(count),
-                Err(err) if loop_count == RETRY_COUNT => {
-                    tracing::error!("\nError reading from RTT: {}", err);
+                Err(error) if loop_count == RETRY_COUNT => {
+                    tracing::error!("\nError reading from RTT: {:?}", anyhow::anyhow!(error));
                     return None;
                 }
                 _ => thread::sleep(Duration::from_millis(50)),

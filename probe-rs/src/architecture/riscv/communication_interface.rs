@@ -659,20 +659,42 @@ impl<'state> RiscvCommunicationInterface<'state> {
         Ok(CoreInformation { pc })
     }
 
+    pub(crate) fn core_halted(&mut self) -> Result<bool, RiscvError> {
+        let dmstatus: Dmstatus = self.read_dm_register()?;
+
+        tracing::trace!("{:?}", dmstatus);
+
+        Ok(dmstatus.allhalted())
+    }
+
     pub(crate) fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), RiscvError> {
         let start = Instant::now();
 
         while start.elapsed() < timeout {
-            let dmstatus: Dmstatus = self.read_dm_register()?;
-
-            tracing::trace!("{:?}", dmstatus);
-
-            if dmstatus.allhalted() {
+            if self.core_halted()? {
                 return Ok(());
             }
         }
 
         Err(RiscvError::Timeout)
+    }
+
+    fn halted_access<R>(
+        &mut self,
+        op: impl FnOnce(&mut Self) -> Result<R, RiscvError>,
+    ) -> Result<R, RiscvError> {
+        let was_running = !self.core_halted()?;
+        if was_running {
+            self.halt(Duration::from_millis(100))?;
+        }
+
+        let result = op(self);
+
+        if was_running {
+            self.resume_core()?;
+        }
+
+        result
     }
 
     pub(super) fn read_csr(&mut self, address: u16) -> Result<u32, RiscvError> {
@@ -892,48 +914,50 @@ impl<'state> RiscvCommunicationInterface<'state> {
         &mut self,
         address: u32,
     ) -> Result<V, RiscvError> {
-        // assemble
-        //  lb s1, 0(s0)
+        self.halted_access(|core| {
+            // assemble
+            //  lb s1, 0(s0)
 
-        let s0 = self.save_s0()?;
+            let s0 = core.save_s0()?;
 
-        let lw_command = assembly::lw(0, 8, V::WIDTH as u8, 8);
+            let lw_command = assembly::lw(0, 8, V::WIDTH as u8, 8);
 
-        self.schedule_setup_program_buffer(&[lw_command])?;
+            core.schedule_setup_program_buffer(&[lw_command])?;
 
-        self.schedule_write_dm_register(Data0(address))?;
+            core.schedule_write_dm_register(Data0(address))?;
 
-        // Write s0, then execute program buffer
-        let mut command = AccessRegisterCommand(0);
-        command.set_cmd_type(0);
-        command.set_transfer(true);
-        command.set_write(true);
+            // Write s0, then execute program buffer
+            let mut command = AccessRegisterCommand(0);
+            command.set_cmd_type(0);
+            command.set_transfer(true);
+            command.set_write(true);
 
-        // registers are 32 bit, so we have size 2 here
-        command.set_aarsize(RiscvBusAccess::A32);
-        command.set_postexec(true);
+            // registers are 32 bit, so we have size 2 here
+            command.set_aarsize(RiscvBusAccess::A32);
+            command.set_postexec(true);
 
-        // register s0, ie. 0x1008
-        command.set_regno((registers::S0).id.0 as u32);
+            // register s0, ie. 0x1008
+            command.set_regno((registers::S0).id.0 as u32);
 
-        self.schedule_write_dm_register(command)?;
+            core.schedule_write_dm_register(command)?;
 
-        let abstractcs_idx = self.schedule_read_dm_register::<Abstractcs>()?;
+            let abstractcs_idx = core.schedule_read_dm_register::<Abstractcs>()?;
 
-        // Read back s0
-        let value = self.abstract_cmd_register_read(&registers::S0)?;
+            // Read back s0
+            let value = core.abstract_cmd_register_read(&registers::S0)?;
 
-        let abstractcs = Abstractcs(self.dtm.read_deferred_result(abstractcs_idx)?.into_u32());
-        if abstractcs.cmderr() != 0 {
-            return Err(RiscvError::AbstractCommand(
-                AbstractCommandErrorKind::parse(abstractcs.cmderr() as u8),
-            ));
-        }
+            let abstractcs = Abstractcs(core.dtm.read_deferred_result(abstractcs_idx)?.into_u32());
+            if abstractcs.cmderr() != 0 {
+                return Err(RiscvError::AbstractCommand(
+                    AbstractCommandErrorKind::parse(abstractcs.cmderr() as u8),
+                ));
+            }
 
-        // Restore s0 register
-        self.restore_s0(s0)?;
+            // Restore s0 register
+            core.restore_s0(s0)?;
 
-        Ok(V::from_register_value(value))
+            Ok(V::from_register_value(value))
+        })
     }
 
     fn perform_memory_read_multiple_progbuf<V: RiscvValue32>(
@@ -941,81 +965,83 @@ impl<'state> RiscvCommunicationInterface<'state> {
         address: u32,
         data: &mut [V],
     ) -> Result<(), RiscvError> {
-        // Backup registers s0 and s1
-        let s0 = self.save_s0()?;
-        let s1 = self.save_s1()?;
+        self.halted_access(|core| {
+            // Backup registers s0 and s1
+            let s0 = core.save_s0()?;
+            let s1 = core.save_s1()?;
 
-        // Load a word from address in register 8 (S0), with offset 0, into register 9 (S9)
-        let lw_command: u32 = assembly::lw(0, 8, V::WIDTH as u8, 9);
+            // Load a word from address in register 8 (S0), with offset 0, into register 9 (S9)
+            let lw_command: u32 = assembly::lw(0, 8, V::WIDTH as u8, 9);
 
-        self.schedule_setup_program_buffer(&[
-            lw_command,
-            assembly::addi(8, 8, V::WIDTH.byte_width() as i16),
-        ])?;
+            core.schedule_setup_program_buffer(&[
+                lw_command,
+                assembly::addi(8, 8, V::WIDTH.byte_width() as i16),
+            ])?;
 
-        self.schedule_write_dm_register(Data0(address))?;
+            core.schedule_write_dm_register(Data0(address))?;
 
-        // Write s0, then execute program buffer
-        let mut command = AccessRegisterCommand(0);
-        command.set_cmd_type(0);
-        command.set_transfer(true);
-        command.set_write(true);
-
-        // registers are 32 bit, so we have size 2 here
-        command.set_aarsize(RiscvBusAccess::A32);
-        command.set_postexec(true);
-
-        // register s0, ie. 0x1008
-        command.set_regno((registers::S0).id.0 as u32);
-
-        self.schedule_write_dm_register(command)?;
-
-        let data_len = data.len();
-
-        let mut result_idxs = Vec::with_capacity(data_len - 1);
-        for out_idx in 0..data_len - 1 {
+            // Write s0, then execute program buffer
             let mut command = AccessRegisterCommand(0);
             command.set_cmd_type(0);
             command.set_transfer(true);
-            command.set_write(false);
+            command.set_write(true);
 
             // registers are 32 bit, so we have size 2 here
             command.set_aarsize(RiscvBusAccess::A32);
             command.set_postexec(true);
 
-            command.set_regno((registers::S1).id.0 as u32);
+            // register s0, ie. 0x1008
+            command.set_regno((registers::S0).id.0 as u32);
 
-            self.schedule_write_dm_register(command)?;
+            core.schedule_write_dm_register(command)?;
 
-            // Read back s1
-            let value_idx = self.schedule_read_dm_register::<Data0>()?;
+            let data_len = data.len();
 
-            result_idxs.push((out_idx, value_idx));
-        }
+            let mut result_idxs = Vec::with_capacity(data_len - 1);
+            for out_idx in 0..data_len - 1 {
+                let mut command = AccessRegisterCommand(0);
+                command.set_cmd_type(0);
+                command.set_transfer(true);
+                command.set_write(false);
 
-        // Specifically read the last value first. The result is that this last read is still
-        // part of the command queue we just assembled.
-        let last_value = self.abstract_cmd_register_read(&registers::S1)?;
-        data[data.len() - 1] = V::from_register_value(last_value);
+                // registers are 32 bit, so we have size 2 here
+                command.set_aarsize(RiscvBusAccess::A32);
+                command.set_postexec(true);
 
-        for (out_idx, value_idx) in result_idxs {
-            let value = Data0::from(self.dtm.read_deferred_result(value_idx)?.into_u32());
+                command.set_regno((registers::S1).id.0 as u32);
 
-            data[out_idx] = V::from_register_value(value.0);
-        }
+                core.schedule_write_dm_register(command)?;
 
-        let status: Abstractcs = self.read_dm_register()?;
+                // Read back s1
+                let value_idx = core.schedule_read_dm_register::<Data0>()?;
 
-        if status.cmderr() != 0 {
-            return Err(RiscvError::AbstractCommand(
-                AbstractCommandErrorKind::parse(status.cmderr() as u8),
-            ));
-        }
+                result_idxs.push((out_idx, value_idx));
+            }
 
-        self.restore_s0(s0)?;
-        self.restore_s1(s1)?;
+            // Specifically read the last value first. The result is that this last read is still
+            // part of the command queue we just assembled.
+            let last_value = core.abstract_cmd_register_read(&registers::S1)?;
+            data[data.len() - 1] = V::from_register_value(last_value);
 
-        Ok(())
+            for (out_idx, value_idx) in result_idxs {
+                let value = Data0::from(core.dtm.read_deferred_result(value_idx)?.into_u32());
+
+                data[out_idx] = V::from_register_value(value.0);
+            }
+
+            let status: Abstractcs = core.read_dm_register()?;
+
+            if status.cmderr() != 0 {
+                return Err(RiscvError::AbstractCommand(
+                    AbstractCommandErrorKind::parse(status.cmderr() as u8),
+                ));
+            }
+
+            core.restore_s0(s0)?;
+            core.restore_s1(s1)?;
+
+            Ok(())
+        })
     }
 
     /// Memory write using system bus
@@ -1055,88 +1081,28 @@ impl<'state> RiscvCommunicationInterface<'state> {
         address: u32,
         data: V,
     ) -> Result<(), RiscvError> {
-        tracing::debug!(
-            "Memory write using progbuf - {:#010x} = {:#?}",
-            address,
-            data
-        );
-
-        // Backup registers s0 and s1
-        let s0 = self.save_s0()?;
-        let s1 = self.save_s1()?;
-
-        let sw_command = assembly::sw(0, 8, V::WIDTH as u32, 9);
-
-        self.schedule_setup_program_buffer(&[sw_command])?;
-
-        // write address into s0
-        self.abstract_cmd_register_write(&registers::S0, address)?;
-
-        // write data into data 0
-        self.schedule_write_dm_register(Data0(data.into()))?;
-
-        // Write s1, then execute program buffer
-        let mut command = AccessRegisterCommand(0);
-        command.set_cmd_type(0);
-        command.set_transfer(true);
-        command.set_write(true);
-
-        // registers are 32 bit, so we have size 2 here
-        command.set_aarsize(RiscvBusAccess::A32);
-        command.set_postexec(true);
-
-        // register s1, ie. 0x1009
-        command.set_regno((registers::S1).id.0 as u32);
-
-        self.schedule_write_dm_register(command)?;
-
-        let status = self.read_dm_register::<Abstractcs>()?;
-
-        if status.cmderr() != 0 {
-            let error = AbstractCommandErrorKind::parse(status.cmderr() as u8);
-
-            tracing::error!(
-                "Executing the abstract command for write_{} failed: {:?} ({:x?})",
-                V::WIDTH.byte_width() * 8,
-                error,
-                status,
+        self.halted_access(|core| {
+            tracing::debug!(
+                "Memory write using progbuf - {:#010x} = {:#?}",
+                address,
+                data
             );
 
-            return Err(RiscvError::AbstractCommand(error));
-        }
+            // Backup registers s0 and s1
+            let s0 = core.save_s0()?;
+            let s1 = core.save_s1()?;
 
-        self.restore_s0(s0)?;
-        self.restore_s1(s1)?;
+            let sw_command = assembly::sw(0, 8, V::WIDTH as u32, 9);
 
-        Ok(())
-    }
+            core.schedule_setup_program_buffer(&[sw_command])?;
 
-    /// Perform multiple memory writes to consecutive locations using the program buffer.
-    /// Only writes up to a width of 32 bits are currently supported.
-    fn perform_memory_write_multiple_progbuf<V: RiscvValue32>(
-        &mut self,
-        address: u32,
-        data: &[V],
-    ) -> Result<(), RiscvError> {
-        let s0 = self.save_s0()?;
-        let s1 = self.save_s1()?;
+            // write address into s0
+            core.abstract_cmd_register_write(&registers::S0, address)?;
 
-        // Setup program buffer for multiple writes
-        // Store value from register s9 into memory,
-        // then increase the address for next write.
-        self.schedule_setup_program_buffer(&[
-            assembly::sw(0, 8, V::WIDTH as u32, 9),
-            assembly::addi(8, 8, V::WIDTH.byte_width() as i16),
-        ])?;
+            // write data into data 0
+            core.schedule_write_dm_register(Data0(data.into()))?;
 
-        // write address into s0
-        self.abstract_cmd_register_write(&registers::S0, address)?;
-
-        for value in data {
-            // write address into data 0
-            self.schedule_write_dm_register(Data0((*value).into()))?;
-
-            // Write s0, then execute program buffer
+            // Write s1, then execute program buffer
             let mut command = AccessRegisterCommand(0);
             command.set_cmd_type(0);
             command.set_transfer(true);
@@ -1146,34 +1112,98 @@ impl<'state> RiscvCommunicationInterface<'state> {
             command.set_aarsize(RiscvBusAccess::A32);
             command.set_postexec(true);
 
-            // register s1
+            // register s1, ie. 0x1009
             command.set_regno((registers::S1).id.0 as u32);
 
-            self.schedule_write_dm_register(command)?;
-        }
+            core.schedule_write_dm_register(command)?;
 
-        // Errors are sticky, so we can just check at the end if everything worked.
-        let status = self.read_dm_register::<Abstractcs>()?;
+            let status = core.read_dm_register::<Abstractcs>()?;
 
-        if status.cmderr() != 0 {
-            let error = AbstractCommandErrorKind::parse(status.cmderr() as u8);
+            if status.cmderr() != 0 {
+                let error = AbstractCommandErrorKind::parse(status.cmderr() as u8);
 
-            tracing::error!(
-                "Executing the abstract command for write_multiple_{} failed: {:?} ({:x?})",
-                V::WIDTH.byte_width() * 8,
-                error,
-                status,
-            );
+                tracing::error!(
+                    "Executing the abstract command for write_{} failed: {:?} ({:x?})",
+                    V::WIDTH.byte_width() * 8,
+                    error,
+                    status,
+                );
 
-            return Err(RiscvError::AbstractCommand(error));
-        }
+                return Err(RiscvError::AbstractCommand(error));
+            }
 
-        // Restore register s0 and s1
+            core.restore_s0(s0)?;
+            core.restore_s1(s1)?;
 
-        self.restore_s0(s0)?;
-        self.restore_s1(s1)?;
+            Ok(())
+        })
+    }
 
-        Ok(())
+    /// Perform multiple memory writes to consecutive locations using the program buffer.
+    /// Only writes up to a width of 32 bits are currently supported.
+    fn perform_memory_write_multiple_progbuf<V: RiscvValue32>(
+        &mut self,
+        address: u32,
+        data: &[V],
+    ) -> Result<(), RiscvError> {
+        self.halted_access(|core| {
+            let s0 = core.save_s0()?;
+            let s1 = core.save_s1()?;
+
+            // Setup program buffer for multiple writes
+            // Store value from register s9 into memory,
+            // then increase the address for next write.
+            core.schedule_setup_program_buffer(&[
+                assembly::sw(0, 8, V::WIDTH as u32, 9),
+                assembly::addi(8, 8, V::WIDTH.byte_width() as i16),
+            ])?;
+
+            // write address into s0
+            core.abstract_cmd_register_write(&registers::S0, address)?;
+
+            for value in data {
+                // write address into data 0
+                core.schedule_write_dm_register(Data0((*value).into()))?;
+
+                // Write s0, then execute program buffer
+                let mut command = AccessRegisterCommand(0);
+                command.set_cmd_type(0);
+                command.set_transfer(true);
+                command.set_write(true);
+
+                // registers are 32 bit, so we have size 2 here
+                command.set_aarsize(RiscvBusAccess::A32);
+                command.set_postexec(true);
+
+                // register s1
+                command.set_regno((registers::S1).id.0 as u32);
+
+                core.schedule_write_dm_register(command)?;
+            }
+
+            // Errors are sticky, so we can just check at the end if everything worked.
+            let status = core.read_dm_register::<Abstractcs>()?;
+
+            if status.cmderr() != 0 {
+                let error = AbstractCommandErrorKind::parse(status.cmderr() as u8);
+
+                tracing::error!(
+                    "Executing the abstract command for write_multiple_{} failed: {:?} ({:x?})",
+                    V::WIDTH.byte_width() * 8,
+                    error,
+                    status,
+                );
+
+                return Err(RiscvError::AbstractCommand(error));
+            }
+
+            // Restore register s0 and s1
+
+            core.restore_s0(s0)?;
+            core.restore_s1(s1)?;
+
+            Ok(())
+        })
     }
 
     pub(crate) fn execute_abstract_command(&mut self, command: u32) -> Result<(), RiscvError> {
@@ -1334,65 +1364,69 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
     /// Read the CSR `progbuf` register.
     pub fn read_csr_progbuf(&mut self, address: u16) -> Result<u32, RiscvError> {
-        tracing::debug!("Reading CSR {:#04x}", address);
+        self.halted_access(|core| {
+            tracing::debug!("Reading CSR {:#04x}", address);
 
-        // Validate that the CSR address is valid
-        if address > RISCV_MAX_CSR_ADDR {
-            return Err(RiscvError::UnsupportedCsrAddress(address));
-        }
+            // Validate that the CSR address is valid
+            if address > RISCV_MAX_CSR_ADDR {
+                return Err(RiscvError::UnsupportedCsrAddress(address));
+            }
 
-        let s0 = self.save_s0()?;
+            let s0 = core.save_s0()?;
 
-        // Read csr value into register 8 (s0)
-        let csrr_cmd = assembly::csrr(8, address);
+            // Read csr value into register 8 (s0)
+            let csrr_cmd = assembly::csrr(8, address);
 
-        self.schedule_setup_program_buffer(&[csrr_cmd])?;
+            core.schedule_setup_program_buffer(&[csrr_cmd])?;
 
-        // command: postexec
-        let mut postexec_cmd = AccessRegisterCommand(0);
-        postexec_cmd.set_postexec(true);
+            // command: postexec
+            let mut postexec_cmd = AccessRegisterCommand(0);
+            postexec_cmd.set_postexec(true);
 
-        self.execute_abstract_command(postexec_cmd.0)?;
+            core.execute_abstract_command(postexec_cmd.0)?;
 
-        // read the s0 value
-        let reg_value = self.abstract_cmd_register_read(&registers::S0)?;
+            // read the s0 value
+            let reg_value = core.abstract_cmd_register_read(&registers::S0)?;
 
-        // restore original value in s0
-        self.restore_s0(s0)?;
+            // restore original value in s0
+            core.restore_s0(s0)?;
 
-        Ok(reg_value)
+            Ok(reg_value)
+        })
     }
 
     /// Write the CSR `progbuf` register.
     pub fn write_csr_progbuf(&mut self, address: u16, value: u32) -> Result<(), RiscvError> {
-        tracing::debug!("Writing CSR {:#04x}={}", address, value);
+        self.halted_access(|core| {
+            tracing::debug!("Writing CSR {:#04x}={}", address, value);
 
-        // Validate that the CSR address is valid
-        if address > RISCV_MAX_CSR_ADDR {
-            return Err(RiscvError::UnsupportedCsrAddress(address));
-        }
+            // Validate that the CSR address is valid
+            if address > RISCV_MAX_CSR_ADDR {
+                return Err(RiscvError::UnsupportedCsrAddress(address));
+            }
 
-        // Backup register s0
-        let s0 = self.save_s0()?;
+            // Backup register s0
+            let s0 = core.save_s0()?;
 
-        // Write value into s0
-        self.abstract_cmd_register_write(&registers::S0, value)?;
+            // Write value into s0
+            core.abstract_cmd_register_write(&registers::S0, value)?;
 
-        // Built the CSRW command to write into the program buffer
-        let csrw_cmd = assembly::csrw(address, 8);
-        self.schedule_setup_program_buffer(&[csrw_cmd])?;
+            // Built the CSRW command to write into the program buffer
+            let csrw_cmd = assembly::csrw(address, 8);
+            core.schedule_setup_program_buffer(&[csrw_cmd])?;
 
-        // command: postexec
-        let mut postexec_cmd = AccessRegisterCommand(0);
-        postexec_cmd.set_postexec(true);
+            // command: postexec
+            let mut postexec_cmd = AccessRegisterCommand(0);
+            postexec_cmd.set_postexec(true);
 
-        self.execute_abstract_command(postexec_cmd.0)?;
+            core.execute_abstract_command(postexec_cmd.0)?;
 
-        // command: transfer, regno = 0x1008
-        // restore original value in s0
-        self.restore_s0(s0)?;
+            // command: transfer, regno = 0x1008
+            // restore original value in s0
+            core.restore_s0(s0)?;
 
-        Ok(())
+            Ok(())
+        })
     }
 
     fn read_word<V: RiscvValue32>(&mut self, address: u32) -> Result<V, crate::Error> {
