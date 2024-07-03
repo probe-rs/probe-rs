@@ -16,8 +16,6 @@ pub mod armv8m;
 pub(crate) mod armv7a_debug_regs;
 pub(crate) mod armv8a_debug_regs;
 pub(crate) mod cortex_m;
-#[cfg(feature = "debug")]
-pub(crate) mod exception_handling;
 pub(crate) mod instructions;
 pub(crate) mod registers;
 

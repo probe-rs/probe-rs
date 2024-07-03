@@ -1,10 +1,11 @@
 use std::ops::ControlFlow;
 
 use crate::{
-    core::{ExceptionInfo, ExceptionInterface, RegisterRole},
+    core::RegisterRole,
     debug::{
         determine_cfa, get_object_reference, get_unwind_info, stack_frame::StackFrameInfo,
-        unwind_register, DebugError, DebugInfo, DebugRegisters, StackFrame,
+        unwind_register, DebugError, DebugInfo, DebugRegisters, ExceptionInfo, ExceptionInterface,
+        StackFrame,
     },
     Error, MemoryInterface, RegisterValue,
 };

@@ -66,6 +66,7 @@
 //! [Probe]: probe::Probe
 #![warn(missing_docs)]
 #![recursion_limit = "256"] // required by bitfield!
+#![cfg_attr(probers_docsrs, feature(doc_cfg))] // Used for docs.rs
 
 pub mod architecture;
 pub mod config;
@@ -73,10 +74,12 @@ pub mod vendor;
 
 mod core;
 #[cfg(feature = "debug")]
+#[cfg_attr(probers_docsrs, doc(cfg(feature = "debug")))]
 pub mod debug;
 mod error;
 pub mod flashing;
 #[cfg(feature = "gdb-server")]
+#[cfg_attr(probers_docsrs, doc(cfg(feature = "gdb-server")))]
 pub mod gdb_server;
 pub mod integration;
 mod memory;
@@ -101,7 +104,7 @@ pub use crate::semihosting::{
 pub use crate::session::{Permissions, Session};
 
 #[cfg(feature = "debug")]
-pub use crate::core::{
-    dump::{CoreDump, CoreDumpError},
-    exception_handler_for_core,
-};
+pub use crate::core::dump::{CoreDump, CoreDumpError};
+
+#[cfg(feature = "debug")]
+pub use crate::debug::exception_handler_for_core;

@@ -1,6 +1,5 @@
 use crate::{
-    core::{ExceptionInfo, ExceptionInterface},
-    debug::{DebugInfo, DebugRegisters},
+    debug::{DebugInfo, DebugRegisters, ExceptionInfo, ExceptionInterface},
     Error, MemoryInterface,
 };
 
@@ -156,8 +155,7 @@ mod test {
     use super::ArmV6MExceptionHandler;
     use crate::{
         architecture::arm::core::registers::cortex_m::{RA, XPSR},
-        core::ExceptionInterface,
-        debug::{DebugRegister, DebugRegisters},
+        debug::{DebugRegister, DebugRegisters, ExceptionInterface},
         test::MockMemory,
         RegisterValue,
     };

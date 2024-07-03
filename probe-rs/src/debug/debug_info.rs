@@ -3,10 +3,10 @@ use super::{
     get_object_reference,
     unit_info::UnitInfo,
     variable::*,
-    DebugError, DebugRegisters, StackFrame, VariableCache,
+    DebugError, DebugRegisters, ExceptionInterface, StackFrame, VariableCache,
 };
 use crate::{
-    core::{ExceptionInterface, RegisterRole, RegisterValue, UnwindRule},
+    core::{RegisterRole, RegisterValue, UnwindRule},
     debug::{
         registers, stack_frame::StackFrameInfo, unit_info::RangeExt, SourceLocation,
         VerifiedBreakpoint,
@@ -1349,12 +1349,10 @@ fn add_to_address(address: u64, offset: i64, address_size_in_bytes: usize) -> u6
 #[cfg(test)]
 mod test {
     use crate::{
-        architecture::arm::core::{
-            exception_handling::{armv6m::ArmV6MExceptionHandler, armv7m::ArmV7MExceptionHandler},
-            registers::cortex_m::CORTEX_M_CORE_REGISTERS,
-        },
-        core::exception_handler_for_core,
+        architecture::arm::core::registers::cortex_m::CORTEX_M_CORE_REGISTERS,
         debug::{
+            exception_handler_for_core,
+            exception_handling::{armv6m::ArmV6MExceptionHandler, armv7m::ArmV7MExceptionHandler},
             stack_frame::{StackFrameInfo, TestFormatter},
             DebugInfo, DebugRegister, DebugRegisters,
         },
