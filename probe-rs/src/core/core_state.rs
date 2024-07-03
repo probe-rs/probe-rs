@@ -3,7 +3,7 @@ use crate::{
         arm::{
             ap::MemoryAp,
             core::{CortexAState, CortexMState},
-            ApAddress, ArmProbeInterface, DpAddress,
+            ArmProbeInterface, DpAddress, FullyQualifiedApAddress,
         },
         riscv::{
             communication_interface::{RiscvCommunicationInterface, RiscvError},
@@ -47,7 +47,7 @@ impl CombinedCoreState {
 
         let name = &target.cores[self.id].name;
 
-        let memory = arm_interface.memory_interface(self.arm_memory_ap())?;
+        let memory = arm_interface.memory_interface(&self.arm_memory_ap())?;
 
         let ResolvedCoreOptions::Arm { options, sequence } = &self.core_state.core_access_options
         else {
@@ -147,7 +147,7 @@ impl CombinedCoreState {
             );
         };
 
-        let mut memory_interface = interface.memory_interface(self.arm_memory_ap())?;
+        let mut memory_interface = interface.memory_interface(&self.arm_memory_ap())?;
 
         let reset_catch_span = tracing::debug_span!("reset_catch_set", id = self.id()).entered();
         sequence.reset_catch_set(&mut *memory_interface, self.core_type(), options.debug_base)?;
@@ -266,7 +266,7 @@ impl CoreState {
             x => DpAddress::Multidrop(x),
         };
 
-        let ap = ApAddress { dp, ap: options.ap };
+        let ap = FullyQualifiedApAddress::v1_with_dp(dp, options.ap);
 
         MemoryAp::new(ap)
     }

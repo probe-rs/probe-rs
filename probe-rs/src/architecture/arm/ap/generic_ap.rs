@@ -1,7 +1,9 @@
 //! Generic access port
 
 use super::{AccessPort, ApRegister, Register};
-use crate::architecture::arm::{communication_interface::RegisterParseError, ApAddress};
+use crate::architecture::arm::{
+    communication_interface::RegisterParseError, FullyQualifiedApAddress,
+};
 
 /// Describes the class of an access port defined in the [`ARM Debug Interface v5.2`](https://developer.arm.com/documentation/ihi0031/f/?lang=en) specification.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

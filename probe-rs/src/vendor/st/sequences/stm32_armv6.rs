@@ -112,7 +112,7 @@ impl ArmDebugSequence for Stm32Armv6 {
     fn debug_device_unlock(
         &self,
         interface: &mut dyn ArmProbeInterface,
-        default_ap: MemoryAp,
+        default_ap: &MemoryAp,
         _permissions: &crate::Permissions,
     ) -> Result<(), ArmError> {
         let mut memory = interface.memory_interface(default_ap)?;
