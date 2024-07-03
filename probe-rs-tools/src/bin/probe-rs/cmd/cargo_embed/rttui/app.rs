@@ -204,14 +204,8 @@ impl App {
                 self.current_tab_mut().clear();
             }
             KeyCode::F(n) => self.select_tab(n as usize - 1),
-            KeyCode::Tab if event.modifiers.contains(KeyModifiers::CONTROL) => self.next_tab(),
-            KeyCode::Tab
-                if event
-                    .modifiers
-                    .contains(KeyModifiers::CONTROL | KeyModifiers::SHIFT) =>
-            {
-                self.previous_tab()
-            }
+            KeyCode::Tab => self.next_tab(),
+            KeyCode::BackTab => self.previous_tab(),
             KeyCode::Enter => self.push_rtt(core),
             KeyCode::Char(c) => {
                 if event.modifiers.contains(KeyModifiers::CONTROL) {
