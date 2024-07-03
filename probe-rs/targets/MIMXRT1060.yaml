@@ -61,3 +61,4 @@ flash_algorithms:
       address: 0x0
   cores:
   - main
+  stack_size: 1024
