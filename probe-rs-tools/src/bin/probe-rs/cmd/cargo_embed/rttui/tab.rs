@@ -59,10 +59,6 @@ impl Tab {
         &self.name
     }
 
-    pub fn scroll_offset(&self) -> usize {
-        self.scroll_offset
-    }
-
     pub fn set_scroll_offset(&mut self, value: usize) {
         self.scroll_offset = value;
     }
@@ -71,16 +67,16 @@ impl Tab {
         self.up_channel.borrow()
     }
 
-    pub fn scroll_up(&mut self) {
+    pub fn scroll_up(&mut self, lines: usize) {
         self.set_scroll_offset(
-            self.scroll_offset()
-                .saturating_add(1)
+            self.scroll_offset
+                .saturating_add(lines)
                 .min(self.messages.len()),
         );
     }
 
-    pub fn scroll_down(&mut self) {
-        self.set_scroll_offset(self.scroll_offset().saturating_sub(1));
+    pub fn scroll_down(&mut self, lines: usize) {
+        self.set_scroll_offset(self.scroll_offset.saturating_sub(lines));
     }
 
     pub fn clear(&mut self) {
@@ -113,7 +109,7 @@ impl Tab {
         Ok(())
     }
 
-    pub fn update_messages(&mut self, width: usize) {
+    pub fn update_messages(&mut self, width: usize, height: usize) {
         if self.last_width != width {
             // If the width changes, we need to reprocess all messages.
             self.last_width = width;
@@ -179,7 +175,15 @@ impl Tab {
 
         // Move scroll offset if we're not at the bottom
         if self.scroll_offset != 0 {
-            self.set_scroll_offset(self.scroll_offset + inserted);
+            // This scroll ensures that inserting new messages will not move our view.
+            self.scroll_up(inserted);
+
+            // Don't let scrolling up more than necessary to show all messages.
+            // Doing so would require the user to scroll down more times than necessary.
+            self.set_scroll_offset(
+                self.scroll_offset
+                    .min(self.messages.len().saturating_sub(height)),
+            );
         }
     }
 
@@ -188,7 +192,7 @@ impl Tab {
         self.messages
             .iter()
             .map(|s| s.as_str())
-            .skip(message_num - (height + self.scroll_offset).min(message_num))
+            .skip(message_num.saturating_sub(height + self.scroll_offset))
             .take(height)
     }
 }
