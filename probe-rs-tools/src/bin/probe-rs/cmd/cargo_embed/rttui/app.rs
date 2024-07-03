@@ -36,6 +36,8 @@ pub struct App {
     history_path: Option<PathBuf>,
     logname: String,
 
+    current_height: usize,
+
     defmt_state: Option<DefmtState>,
 
     pub(crate) up_channels: Vec<Rc<RefCell<UpChannel>>>,
@@ -153,6 +155,7 @@ impl App {
             history_path,
             logname,
             defmt_state: rtt.defmt_state,
+            current_height: 0,
 
             up_channels,
         })
@@ -170,7 +173,9 @@ impl App {
                 let width = chunks[1].width as usize;
 
                 let current_tab = &mut self.tabs[self.current_tab];
-                current_tab.update_messages(width);
+                current_tab.update_messages(width, height);
+
+                self.current_height = height;
 
                 let messages = List::new(current_tab.messages(height))
                     .block(Block::default().borders(Borders::NONE));
@@ -198,9 +203,12 @@ impl App {
             }
         };
 
+        let height = self.current_height / 2;
+        let has_control = event.modifiers.contains(KeyModifiers::CONTROL);
+
         match event.code {
-            KeyCode::Char('c') if event.modifiers.contains(KeyModifiers::CONTROL) => return true,
-            KeyCode::Char('l') if event.modifiers.contains(KeyModifiers::CONTROL) => {
+            KeyCode::Char('c') if has_control => return true,
+            KeyCode::Char('l') if has_control => {
                 self.current_tab_mut().clear();
             }
             KeyCode::F(n) => self.select_tab(n as usize - 1),
@@ -208,7 +216,7 @@ impl App {
             KeyCode::BackTab => self.previous_tab(),
             KeyCode::Enter => self.push_rtt(core),
             KeyCode::Char(c) => {
-                if event.modifiers.contains(KeyModifiers::CONTROL) {
+                if has_control {
                     if let Some(digit) = c.to_digit(10).and_then(|d| d.checked_sub(1)) {
                         self.select_tab(digit as usize);
                         return false;
@@ -218,8 +226,10 @@ impl App {
                 self.current_tab_mut().push_input(c)
             }
             KeyCode::Backspace => self.current_tab_mut().pop_input(),
-            KeyCode::PageUp => self.current_tab_mut().scroll_up(),
-            KeyCode::PageDown => self.current_tab_mut().scroll_down(),
+            KeyCode::Up => self.current_tab_mut().scroll_up(1),
+            KeyCode::Down => self.current_tab_mut().scroll_down(1),
+            KeyCode::PageUp => self.current_tab_mut().scroll_up(height),
+            KeyCode::PageDown => self.current_tab_mut().scroll_down(height),
             _ => {}
         }
 
