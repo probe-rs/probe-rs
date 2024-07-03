@@ -37,7 +37,7 @@ impl Cmd {
             ReadWriteBitWidth::B8 => {
                 let mut bvalues = Vec::new();
                 for val in &self.values {
-                    if val > &(u8::max_value() as u64) {
+                    if val > &(u8::MAX as u64) {
                         return Err(anyhow::anyhow!(
                             "{} in {:?} is too large for an 8 bit write.",
                             val,
@@ -51,7 +51,7 @@ impl Cmd {
             ReadWriteBitWidth::B32 => {
                 let mut bvalues = Vec::new();
                 for val in &self.values {
-                    if val > &(u32::max_value() as u64) {
+                    if val > &(u32::MAX as u64) {
                         return Err(anyhow::anyhow!(
                             "{} in {:?} is too large for a 32 bit write.",
                             val,

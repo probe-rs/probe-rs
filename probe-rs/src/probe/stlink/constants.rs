@@ -288,7 +288,7 @@ mod test {
             SwdFrequencyToDelayCount::Hz4600000
         );
         assert_eq!(
-            SwdFrequencyToDelayCount::find_setting(u32::max_value()).unwrap(),
+            SwdFrequencyToDelayCount::find_setting(u32::MAX).unwrap(),
             SwdFrequencyToDelayCount::Hz4600000
         );
     }
@@ -320,7 +320,7 @@ mod test {
             JTagFrequencyToDivider::Hz18000000
         );
         assert_eq!(
-            JTagFrequencyToDivider::find_setting(u32::max_value()).unwrap(),
+            JTagFrequencyToDivider::find_setting(u32::MAX).unwrap(),
             JTagFrequencyToDivider::Hz18000000
         );
     }
