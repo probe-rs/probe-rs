@@ -348,17 +348,10 @@ impl Rtt {
             }
         };
 
-        let is_64_bit = core.is_64_bit();
-        let minimal_header_size = RttControlBlockHeader::minimal_header_size(is_64_bit) as u64;
         let mut instances = ranges
             .into_iter()
             .filter_map(|range| {
-                let range_len = match range.end.checked_sub(range.start) {
-                    Some(v) if v < minimal_header_size => return None,
-                    Some(v) => v,
-                    None => return None,
-                };
-
+                let range_len = range.end.checked_sub(range.start)?;
                 let Ok(range_len) = usize::try_from(range_len) else {
                     // FIXME: This is not ideal because it means that we
                     // won't consider a >4GiB region if probe-rs is running
