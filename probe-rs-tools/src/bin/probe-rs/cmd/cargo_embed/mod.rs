@@ -24,7 +24,7 @@ use std::{
 };
 use time::{OffsetDateTime, UtcOffset};
 
-use crate::util::cargo::target_instruction_set;
+use crate::util::cargo::Artifact;
 use crate::util::common_options::{BinaryDownloadOptions, OperationError, ProbeOptions};
 use crate::util::flash::{build_loader, run_flash_download};
 use crate::util::logging::setup_logging;
@@ -131,37 +131,29 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
 
     // Get the path to the binary we want to flash.
     // This can either be give from the arguments or can be a cargo build artifact.
-    let image_instr_set;
-    let path = if let Some(path_buf) = &opt.path {
-        image_instr_set = None;
-        path_buf.clone()
+    let artifact = if let Some(path_buf) = opt.path.clone() {
+        Artifact::from_path_buf(path_buf)
     } else {
-        let cargo_options = opt.cargo_options.to_cargo_options();
-        image_instr_set = target_instruction_set(opt.cargo_options.target.clone());
-
         // Build the project, and extract the path of the built artifact.
-        build_artifact(&work_dir, &cargo_options)
-            .map_err(|error| {
-                if let Some(ref work_dir) = opt.work_dir {
-                    OperationError::FailedToBuildExternalCargoProject {
-                        source: error,
-                        // This unwrap is okay, because if we get this error, the path was properly canonicalized on the internal
-                        // `cargo build` step.
-                        path: work_dir.canonicalize().unwrap(),
-                    }
-                } else {
-                    OperationError::FailedToBuildCargoProject(error)
+        build_artifact(&work_dir, &opt.cargo_options).map_err(|error| {
+            if let Some(ref work_dir) = opt.work_dir {
+                OperationError::FailedToBuildExternalCargoProject {
+                    source: error,
+                    // This unwrap is okay, because if we get this error, the path was properly canonicalized on the internal
+                    // `cargo build` step.
+                    path: work_dir.canonicalize().unwrap(),
                 }
-            })?
-            .path()
-            .into()
+            } else {
+                OperationError::FailedToBuildCargoProject(error)
+            }
+        })?
     };
 
     logging::println(format!("      {} {}", "Config".green().bold(), config_name));
     logging::println(format!(
         "      {} {}",
         "Target".green().bold(),
-        path.display()
+        artifact.path().display()
     ));
 
     // If we got a probe selector in the config, open the probe matching the selector if possible.
@@ -256,10 +248,15 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
             verify: config.flashing.verify,
         };
         let format_options = FormatOptions::default();
-        let loader = build_loader(&mut session, &path, format_options, image_instr_set)?;
+        let loader = build_loader(
+            &mut session,
+            artifact.path(),
+            format_options,
+            artifact.instruction_set,
+        )?;
         run_flash_download(
             &mut session,
-            &path,
+            artifact.path(),
             &download_options,
             &probe_options,
             loader,
@@ -267,7 +264,7 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
         )?;
     }
 
-    let elf = fs::read(&path)?;
+    let elf = fs::read(artifact.path())?;
     let rtt_client = RttClient::new(
         Some(&elf),
         session.target(),
@@ -316,6 +313,7 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
 
     if config.rtt.enabled {
         // Get the binary name (without extension) from the build artifact path
+        let path = artifact.path();
         let name = path.file_stem().and_then(|f| f.to_str()).ok_or_else(|| {
             anyhow!(
                 "Unable to determine binary file name from path {}",

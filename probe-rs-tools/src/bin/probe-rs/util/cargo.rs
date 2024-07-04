@@ -8,6 +8,8 @@ use std::process::{Command, Stdio};
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
+use crate::util::common_options::CargoOptions;
+
 #[derive(Debug, Error)]
 pub enum ArtifactError {
     #[error("Failed to canonicalize path '{work_dir}'.")]
@@ -29,19 +31,20 @@ pub enum ArtifactError {
 /// Represents compiled code that the compiler emitted during compilation.
 pub struct Artifact {
     path: PathBuf,
-    fresh: bool,
+    pub instruction_set: Option<InstructionSet>,
 }
 
 impl Artifact {
+    pub fn from_path_buf(path: PathBuf) -> Self {
+        Self {
+            path,
+            instruction_set: None,
+        }
+    }
+
     /// Get the path of this output from the compiler.
     pub fn path(&self) -> &Path {
         &self.path
-    }
-
-    /// If `true`, then the artifact was unchanged during compilation.
-    #[allow(unused)]
-    pub fn fresh(&self) -> bool {
-        self.fresh
     }
 }
 
@@ -52,7 +55,21 @@ impl Artifact {
 ///
 /// The output of `cargo build` is parsed to detect the path to the generated binary artifact.
 /// If either no artifact, or more than a single artifact are created, an error is returned.
-pub fn build_artifact(work_dir: &Path, args: &[String]) -> Result<Artifact, ArtifactError> {
+pub fn build_artifact(work_dir: &Path, opts: &CargoOptions) -> Result<Artifact, ArtifactError> {
+    let cargo_options = opts.to_cargo_options();
+    let instruction_set = target_instruction_set(opts.target.clone());
+
+    let mut artifact = do_build_artifact(work_dir, cargo_options)?;
+
+    artifact.instruction_set = instruction_set;
+
+    Ok(artifact)
+}
+
+fn do_build_artifact(
+    work_dir: &Path,
+    cargo_options: Vec<String>,
+) -> Result<Artifact, ArtifactError> {
     let work_dir = dunce::canonicalize(work_dir).map_err(|e| ArtifactError::Canonicalize {
         source: e,
         work_dir: format!("{}", work_dir.display()),
@@ -70,7 +87,7 @@ pub fn build_artifact(work_dir: &Path, args: &[String]) -> Result<Artifact, Arti
     let cargo_command = Command::new(cargo_executable)
         .current_dir(work_dir)
         .arg("build")
-        .args(args)
+        .args(cargo_options)
         .args(["--message-format", "json-diagnostic-rendered-ansi"])
         .stdout(Stdio::piped())
         .spawn()
@@ -118,10 +135,9 @@ pub fn build_artifact(work_dir: &Path, args: &[String]) -> Result<Artifact, Arti
 
     if let Some(artifact) = target_artifact {
         // Unwrap is safe, we only store artifacts with an executable.
-        Ok(Artifact {
-            path: PathBuf::from(artifact.executable.unwrap().as_path()),
-            fresh: artifact.fresh,
-        })
+        Ok(Artifact::from_path_buf(
+            artifact.executable.unwrap().into_std_path_buf(),
+        ))
     } else {
         // We did not find a binary, so we should return an error.
         Err(ArtifactError::NoArtifacts)
@@ -155,10 +171,10 @@ mod test {
         expected_path.push("debug");
         expected_path.push(host_binary_name("binary_project"));
 
-        let args = [];
+        let args = owned_args(&[]);
 
         let binary_artifact =
-            build_artifact(&work_dir, &args).expect("Failed to read artifact path.");
+            do_build_artifact(&work_dir, args).expect("Failed to read artifact path.");
 
         assert_eq!(binary_artifact.path(), expected_path);
     }
@@ -172,10 +188,10 @@ mod test {
         expected_path.push("debug");
         expected_path.push("binary_cargo_config");
 
-        let args = [];
+        let args = owned_args(&[]);
 
         let binary_artifact =
-            build_artifact(&work_dir, &args).expect("Failed to read artifact path.");
+            do_build_artifact(&work_dir, args).expect("Failed to read artifact path.");
 
         assert_eq!(
             binary_artifact.path(),
@@ -191,10 +207,10 @@ mod test {
         expected_path.push("debug");
         expected_path.push("binary_cargo_config_toml");
 
-        let args = [];
+        let args = owned_args(&[]);
 
         let binary_artifact =
-            build_artifact(&work_dir, &args).expect("Failed to read artifact path.");
+            do_build_artifact(&work_dir, args).expect("Failed to read artifact path.");
 
         assert_eq!(
             binary_artifact.path(),
@@ -206,9 +222,9 @@ mod test {
     fn get_library_artifact_fails() {
         let work_dir = test_project_dir("library_project");
 
-        let args = ["--release".to_owned()];
+        let args = owned_args(&["--release"]);
 
-        let binary_artifact = build_artifact(&work_dir, &args);
+        let binary_artifact = do_build_artifact(&work_dir, args);
 
         assert!(
             binary_artifact.is_err(),
@@ -231,7 +247,7 @@ mod test {
         let args = owned_args(&["--release"]);
 
         let binary_artifact =
-            build_artifact(&work_dir, &args).expect("Failed to read artifact path.");
+            do_build_artifact(&work_dir, args).expect("Failed to read artifact path.");
 
         assert_eq!(binary_artifact.path(), expected_path);
     }
@@ -248,10 +264,10 @@ mod test {
         expected_path.push("release");
         expected_path.push(host_binary_name("workspace_bin"));
 
-        let args = ["--release".to_owned()];
+        let args = owned_args(&["--release"]);
 
         let binary_artifact =
-            build_artifact(&work_dir, &args).expect("Failed to read artifact path.");
+            do_build_artifact(&work_dir, args).expect("Failed to read artifact path.");
 
         assert_eq!(binary_artifact.path(), expected_path);
     }
@@ -263,9 +279,9 @@ mod test {
 
         let work_dir = test_project_dir("workspace_project/workspace_lib");
 
-        let args = ["--release".to_owned()];
+        let args = owned_args(&["--release"]);
 
-        let binary_artifact = build_artifact(&work_dir, &args);
+        let binary_artifact = do_build_artifact(&work_dir, args);
 
         assert!(
             binary_artifact.is_err(),
@@ -280,9 +296,9 @@ mod test {
         // we should show an error message if no binary is specified
         let work_dir = test_project_dir("multiple_binary_project");
 
-        let args = [];
+        let args = owned_args(&[]);
 
-        let binary_artifact = build_artifact(&work_dir, &args);
+        let binary_artifact = do_build_artifact(&work_dir, args);
 
         assert!(
             binary_artifact.is_err(),
@@ -300,10 +316,10 @@ mod test {
         expected_path.push("debug");
         expected_path.push(host_binary_name("bin_a"));
 
-        let args = ["--bin".to_owned(), "bin_a".to_owned()];
+        let args = owned_args(&["--bin", "bin_a"]);
 
         let binary_artifact =
-            build_artifact(&work_dir, &args).expect("Failed to get artifact path.");
+            do_build_artifact(&work_dir, args).expect("Failed to get artifact path.");
 
         assert_eq!(binary_artifact.path(), expected_path);
     }
@@ -314,9 +330,9 @@ mod test {
         // we should return an error. (Same behaviour as cargo run)
         let work_dir = test_project_dir("library_with_example_project");
 
-        let args = [];
+        let args = owned_args(&[]);
 
-        let binary_artifact = build_artifact(&work_dir, &args);
+        let binary_artifact = do_build_artifact(&work_dir, args);
 
         assert!(binary_artifact.is_err())
     }
@@ -333,7 +349,7 @@ mod test {
         let args = owned_args(&["--example", "example"]);
 
         let binary_artifact =
-            build_artifact(&work_dir, &args).expect("Failed to get artifact path.");
+            do_build_artifact(&work_dir, args).expect("Failed to get artifact path.");
 
         assert_eq!(binary_artifact.path(), expected_path);
     }
