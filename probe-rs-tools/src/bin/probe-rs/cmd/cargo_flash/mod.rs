@@ -75,9 +75,6 @@ fn main_try(args: &[OsString]) -> Result<(), OperationError> {
     // Parse the commandline options.
     let opt = CliOptions::parse_from(args);
 
-    // Initialize the logger with the loglevel given on the commandline.
-    let _log_guard = setup_logging(None, opt.log);
-
     // Change the work dir if the user asked to do so.
     if let Some(ref work_dir) = opt.work_dir {
         std::env::set_current_dir(work_dir).map_err(|error| {
@@ -88,6 +85,9 @@ fn main_try(args: &[OsString]) -> Result<(), OperationError> {
         })?;
     }
     let work_dir = std::env::current_dir()?;
+
+    // Initialize the logger with the loglevel given on the commandline.
+    let _log_guard = setup_logging(None, opt.log);
 
     // Get the path to the binary we want to flash.
     // This can either be give from the arguments or can be a cargo build artifact.
