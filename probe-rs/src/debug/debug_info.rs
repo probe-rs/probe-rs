@@ -1,9 +1,10 @@
 use super::{
+    exception_handling::ExceptionInterface,
     function_die::{Die, FunctionDie},
     get_object_reference,
     unit_info::UnitInfo,
     variable::*,
-    DebugError, DebugRegisters, ExceptionInterface, StackFrame, VariableCache,
+    DebugError, DebugRegisters, StackFrame, VariableCache,
 };
 use crate::{
     core::{RegisterRole, RegisterValue, UnwindRule},
@@ -1351,7 +1352,7 @@ mod test {
     use crate::{
         architecture::arm::core::registers::cortex_m::CORTEX_M_CORE_REGISTERS,
         debug::{
-            exception_handler_for_core,
+            exception_handling::exception_handler_for_core,
             exception_handling::{armv6m::ArmV6MExceptionHandler, armv7m::ArmV7MExceptionHandler},
             stack_frame::{StackFrameInfo, TestFormatter},
             DebugInfo, DebugRegister, DebugRegisters,

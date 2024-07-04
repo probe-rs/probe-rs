@@ -4,13 +4,14 @@ use crate::{
     core::RegisterRole,
     debug::{
         determine_cfa, get_object_reference, get_unwind_info, stack_frame::StackFrameInfo,
-        unwind_register, DebugError, DebugInfo, DebugRegisters, ExceptionInfo, ExceptionInterface,
-        StackFrame,
+        unwind_register, DebugError, DebugInfo, DebugRegisters, StackFrame,
     },
     Error, MemoryInterface, RegisterValue,
 };
 use bitfield::bitfield;
 use probe_rs_target::InstructionSet;
+
+use super::{ExceptionInfo, ExceptionInterface};
 
 /// Registers which are stored on the stack when an exception occurs.
 ///

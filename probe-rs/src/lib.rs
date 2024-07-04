@@ -107,4 +107,4 @@ pub use crate::session::{Permissions, Session};
 pub use crate::core::dump::{CoreDump, CoreDumpError};
 
 #[cfg(feature = "debug")]
-pub use crate::debug::exception_handler_for_core;
+pub use crate::debug::exception_handling::exception_handler_for_core;

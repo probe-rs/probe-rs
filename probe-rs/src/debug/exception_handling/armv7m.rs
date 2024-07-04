@@ -1,6 +1,6 @@
-use super::armv6m_armv7m_shared;
+use super::{armv6m_armv7m_shared, ExceptionInfo, ExceptionInterface};
 use crate::{
-    debug::{DebugInfo, DebugRegisters, ExceptionInfo, ExceptionInterface},
+    debug::{DebugInfo, DebugRegisters},
     memory_mapped_bitfield_register, Error, MemoryInterface, MemoryMappedRegister,
 };
 

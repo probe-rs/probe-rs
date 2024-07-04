@@ -2,3 +2,5 @@
 channel = "1.79"
 
 components = ["rustfmt", "clippy"]
+# Target used for tests
+targets = ["thumbv7m-none-eabi"]
