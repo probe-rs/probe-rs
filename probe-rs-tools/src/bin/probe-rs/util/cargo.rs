@@ -8,7 +8,7 @@ use std::process::{Command, Stdio};
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
-use crate::util::common_options::CargoOptions;
+use crate::util::common_options::{CargoOptions, OperationError};
 
 #[derive(Debug, Error)]
 pub enum ArtifactError {
@@ -55,11 +55,26 @@ impl Artifact {
 ///
 /// The output of `cargo build` is parsed to detect the path to the generated binary artifact.
 /// If either no artifact, or more than a single artifact are created, an error is returned.
-pub fn build_artifact(work_dir: &Path, opts: &CargoOptions) -> Result<Artifact, ArtifactError> {
+pub fn build_artifact(
+    work_dir: &Path,
+    opts: &CargoOptions,
+    is_external: bool,
+) -> Result<Artifact, OperationError> {
     let cargo_options = opts.to_cargo_options();
     let instruction_set = target_instruction_set(opts.target.clone());
 
-    let mut artifact = do_build_artifact(work_dir, cargo_options)?;
+    let mut artifact = do_build_artifact(work_dir, cargo_options).map_err(|error| {
+        if is_external {
+            OperationError::FailedToBuildExternalCargoProject {
+                source: error,
+                // This unwrap is okay, because if we get this error, the path was properly canonicalized on the internal
+                // `cargo build` step.
+                path: work_dir.canonicalize().unwrap(),
+            }
+        } else {
+            OperationError::FailedToBuildCargoProject(error)
+        }
+    })?;
 
     artifact.instruction_set = instruction_set;
 
