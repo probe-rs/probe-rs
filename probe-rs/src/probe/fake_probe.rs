@@ -600,7 +600,7 @@ impl DapAccess for FakeArmInterface<Initialized> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "builtin-targets"))]
 mod test {
     use super::FakeProbe;
     use crate::Permissions;

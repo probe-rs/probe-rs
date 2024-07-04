@@ -439,6 +439,7 @@ mod tests {
     const FIRST_IR_LENGTH: u8 = 4;
     const SECOND_IR_LENGTH: u8 = 6;
 
+    #[cfg(feature = "builtin-targets")]
     #[test]
     fn try_fetch_not_unique() {
         let registry = Registry::from_builtin_families();
@@ -458,6 +459,7 @@ mod tests {
         ));
     }
 
+    #[cfg(feature = "builtin-targets")]
     #[test]
     fn try_fetch2() {
         let registry = Registry::from_builtin_families();
@@ -465,6 +467,7 @@ mod tests {
         assert!(registry.get_target_by_name("stm32G081KBUx").is_ok());
     }
 
+    #[cfg(feature = "builtin-targets")]
     #[test]
     fn try_fetch3() {
         let registry = Registry::from_builtin_families();
@@ -472,6 +475,7 @@ mod tests {
         assert!(registry.get_target_by_name("STM32G081RBI").is_ok());
     }
 
+    #[cfg(feature = "builtin-targets")]
     #[test]
     fn try_fetch4() {
         let registry = Registry::from_builtin_families();

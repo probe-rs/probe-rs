@@ -26,7 +26,7 @@ gdb-server = ["dep:gdbstub"]
 # Enable all built in targets.
 builtin-targets = []
 
-debug = ["dep:gimli"]
+debug = ["dep:gimli", "dep:typed-path"]
 
 # Enable helpers for testing
 test = []
@@ -60,7 +60,6 @@ scroll = "0.12"
 svg = "0.17"
 tracing = "0.1"
 uf2-decode = "0.2"
-typed-path = "0.9"
 espflash = { version = "3", default-features = false }
 dunce = "1"
 parse_int = "0.6"
@@ -83,6 +82,7 @@ gimli = { version = "0.30", default-features = false, features = [
     "read",
     "std",
 ], optional = true }
+typed-path = { version = "0.9", optional = true }
 
 [build-dependencies]
 probe-rs-target.workspace = true
