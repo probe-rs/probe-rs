@@ -129,8 +129,7 @@ pub struct FormatOptions {
         long,
         help_heading = "DOWNLOAD CONFIGURATION"
     )]
-    // TODO: remove this alias in the next release after 0.24 and release of https://github.com/probe-rs/vscode/pull/86
-    #[serde(deserialize_with = "format_from_str", alias = "format")]
+    #[serde(deserialize_with = "format_from_str")]
     binary_format: Option<Format>,
     /// The address in memory where the binary will be put at. This is only considered when `bin` is selected as the format.
     #[clap(long, value_parser = parse_u64, help_heading = "DOWNLOAD CONFIGURATION")]
