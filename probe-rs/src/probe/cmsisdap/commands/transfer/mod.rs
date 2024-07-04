@@ -212,7 +212,7 @@ impl Request for TransferRequest {
                 _ => Ack::NoAck,
             },
             protocol_error: buffer[1] & 0x8 != 0,
-            value_mismatch: buffer[1] & 0x10 != 0,
+            _value_mismatch: buffer[1] & 0x10 != 0,
         };
         let mut buffer = &buffer[2..];
 
@@ -252,7 +252,7 @@ pub enum Ack {
 pub struct LastTransferResponse {
     pub ack: Ack,
     pub protocol_error: bool,
-    pub value_mismatch: bool,
+    pub _value_mismatch: bool,
 }
 
 #[derive(Debug)]

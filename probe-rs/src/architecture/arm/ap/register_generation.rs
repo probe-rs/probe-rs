@@ -62,21 +62,21 @@ macro_rules! define_ap {
         $name:ident
     ) => {
         $(#[$outer])*
-        #[derive(Clone, Copy, Debug)]
+        #[derive(Clone, Debug)]
         pub struct $name {
-            address: ApAddress,
+            address: FullyQualifiedApAddress,
         }
 
         impl $name {
             #[doc = concat!("Creates a new ", stringify!($name), " with `address` as base address.")]
-            pub const fn new(address: ApAddress) -> Self {
+            pub const fn new(address: FullyQualifiedApAddress) -> Self {
                 Self { address }
             }
         }
 
         impl AccessPort for $name {
-            fn ap_address(&self) -> ApAddress {
-                self.address
+            fn ap_address(&self) -> &FullyQualifiedApAddress {
+                &self.address
             }
         }
     };

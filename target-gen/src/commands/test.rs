@@ -17,14 +17,13 @@ use xshell::{cmd, Shell};
 
 use crate::commands::elf::cmd_elf;
 
-const ALGORITHM_NAME: &str = "algorithm-test";
-
 pub fn cmd_test(
     target_artifact: &Path,
     template_path: &Path,
     definition_export_path: &Path,
     test_start_sector_address: Option<u64>,
     chip: Option<String>,
+    name: Option<String>,
 ) -> Result<()> {
     ensure_is_file(target_artifact)?;
     ensure_is_file(template_path)?;
@@ -50,7 +49,7 @@ pub fn cmd_test(
         true,
         Some(definition_export_path),
         true,
-        Some(String::from(ALGORITHM_NAME)),
+        name,
     )?;
 
     if let Err(error) = generate_debug_info(target_artifact) {

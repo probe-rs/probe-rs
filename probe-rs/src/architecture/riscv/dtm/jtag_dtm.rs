@@ -238,7 +238,8 @@ impl DtmAccess for JtagDtm<'_> {
                         cmds.consume(e.results.len());
                         self.state.jtag_results.merge_from(e.results);
 
-                        self.probe.set_idle_cycles(self.probe.idle_cycles() + 1);
+                        self.probe
+                            .set_idle_cycles(self.probe.idle_cycles().saturating_add(1));
                     }
                     Error::Riscv(error) => return Err(error),
                     Error::Probe(error) => return Err(error.into()),

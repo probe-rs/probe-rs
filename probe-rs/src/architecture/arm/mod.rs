@@ -50,7 +50,7 @@ pub enum ArmError {
     #[error("Error using access port.")]
     AccessPort {
         /// Address of the access port
-        address: ApAddress,
+        address: FullyQualifiedApAddress,
         /// Source of the error.
         source: AccessPortError,
     },
@@ -107,7 +107,11 @@ pub enum ArmError {
 
     /// The AP with the specified address does not exist.
     #[error("The AP with address {0:?} does not exist.")]
-    ApDoesNotExist(ApAddress),
+    ApDoesNotExist(FullyQualifiedApAddress),
+
+    /// The AP has the wrong version for the operation.
+    #[error("Wrong AP version.")]
+    WrongApVersion,
 
     /// The AP has the wrong type for the operation.
     #[error("Wrong AP type.")]
@@ -137,7 +141,7 @@ pub enum ArmError {
     TracingUnconfigured,
 
     /// Error parsing a register.
-    #[error("Error parsing a registere.")]
+    #[error("Error parsing a register.")]
     RegisterParse(#[from] RegisterParseError),
 
     /// Error reading ROM table.
@@ -159,9 +163,9 @@ pub enum ArmError {
 
 impl ArmError {
     /// Constructs [`ArmError::MemoryNotAligned`] from the address and the required alignment.
-    pub fn from_access_port(err: AccessPortError, ap: impl AccessPort) -> Self {
+    pub fn from_access_port(err: AccessPortError, ap: &impl AccessPort) -> Self {
         ArmError::AccessPort {
-            address: ap.ap_address(),
+            address: ap.ap_address().clone(),
             source: err,
         }
     }

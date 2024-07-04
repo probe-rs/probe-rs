@@ -20,15 +20,15 @@ pub const TIMEOUT: Duration = Duration::from_millis(1000);
 /// Map of USB PID to firmware version name and device endpoints.
 pub static USB_PID_EP_MAP: Lazy<HashMap<u16, StLinkInfo>> = Lazy::new(|| {
     let mut m = HashMap::new();
-    m.insert(0x3748, StLinkInfo::new("V2", 0x3748, 0x02, 0x81, 0x83));
-    m.insert(0x374b, StLinkInfo::new("V2-1", 0x374b, 0x01, 0x81, 0x82));
-    m.insert(0x374a, StLinkInfo::new("V2-1", 0x374a, 0x01, 0x81, 0x82)); // Audio
-    m.insert(0x3742, StLinkInfo::new("V2-1", 0x3742, 0x01, 0x81, 0x82)); // No MSD
-    m.insert(0x3752, StLinkInfo::new("V2-1", 0x3752, 0x01, 0x81, 0x82)); // Unproven
-    m.insert(0x374e, StLinkInfo::new("V3", 0x374e, 0x01, 0x81, 0x82));
-    m.insert(0x374f, StLinkInfo::new("V3", 0x374f, 0x01, 0x81, 0x82)); // Bridge
-    m.insert(0x3753, StLinkInfo::new("V3", 0x3753, 0x01, 0x81, 0x82)); // 2VCP
-    m.insert(0x3754, StLinkInfo::new("V3", 0x3754, 0x01, 0x81, 0x82)); // Without mass storage
+    m.insert(0x3748, StLinkInfo::new("V2", 0x02, 0x81, 0x83));
+    m.insert(0x374b, StLinkInfo::new("V2-1", 0x01, 0x81, 0x82));
+    m.insert(0x374a, StLinkInfo::new("V2-1", 0x01, 0x81, 0x82)); // Audio
+    m.insert(0x3742, StLinkInfo::new("V2-1", 0x01, 0x81, 0x82)); // No MSD
+    m.insert(0x3752, StLinkInfo::new("V2-1", 0x01, 0x81, 0x82)); // Unproven
+    m.insert(0x374e, StLinkInfo::new("V3", 0x01, 0x81, 0x82));
+    m.insert(0x374f, StLinkInfo::new("V3", 0x01, 0x81, 0x82)); // Bridge
+    m.insert(0x3753, StLinkInfo::new("V3", 0x01, 0x81, 0x82)); // 2VCP
+    m.insert(0x3754, StLinkInfo::new("V3", 0x01, 0x81, 0x82)); // Without mass storage
     m
 });
 
@@ -36,23 +36,15 @@ pub static USB_PID_EP_MAP: Lazy<HashMap<u16, StLinkInfo>> = Lazy::new(|| {
 #[derive(Clone, Debug, Default)]
 pub struct StLinkInfo {
     pub version_name: &'static str,
-    pub usb_pid: u16,
     ep_out: u8,
     ep_in: u8,
     ep_swo: u8,
 }
 
 impl StLinkInfo {
-    pub const fn new(
-        version_name: &'static str,
-        usb_pid: u16,
-        ep_out: u8,
-        ep_in: u8,
-        ep_swo: u8,
-    ) -> Self {
+    pub const fn new(version_name: &'static str, ep_out: u8, ep_in: u8, ep_swo: u8) -> Self {
         Self {
             version_name,
-            usb_pid,
             ep_out,
             ep_in,
             ep_swo,

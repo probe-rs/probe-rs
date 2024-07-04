@@ -202,9 +202,7 @@ impl<'state> CoreInterface for Riscv32<'state> {
     }
 
     fn core_halted(&mut self) -> Result<bool, crate::Error> {
-        let dmstatus: Dmstatus = self.interface.read_dm_register()?;
-
-        Ok(dmstatus.allhalted())
+        Ok(self.interface.core_halted()?)
     }
 
     fn status(&mut self) -> Result<crate::core::CoreStatus, crate::Error> {

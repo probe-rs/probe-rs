@@ -2,6 +2,8 @@ name: STM32F4 Series
 manufacturer:
   id: 0x20
   cc: 0x0
+generated_from_pack: true
+pack_file_release: 2.17.1
 variants:
 - name: STM32F401CBUx
   cores:
@@ -12,22 +14,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20010000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_128
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F401CBYx
   cores:
@@ -38,22 +43,54 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20010000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_128
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
+  - stm32f4xx_otp
+- name: STM32F401CCFx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F401CCUx
   cores:
@@ -64,22 +101,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20010000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8040000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F401CCYx
   cores:
@@ -90,22 +130,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20010000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8040000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F401CDUx
   cores:
@@ -116,22 +159,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20018000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8060000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F401CDYx
   cores:
@@ -142,22 +188,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20018000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8060000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F401CEUx
   cores:
@@ -168,22 +217,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20018000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F401CEYx
   cores:
@@ -194,22 +246,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20018000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F401RBTx
   cores:
@@ -220,22 +275,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20010000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_128
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F401RCTx
   cores:
@@ -246,22 +304,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20010000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8040000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F401RDTx
   cores:
@@ -272,22 +333,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20018000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8060000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F401RETx
   cores:
@@ -298,22 +362,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20018000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F401VBHx
   cores:
@@ -324,22 +391,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20010000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_128
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F401VBTx
   cores:
@@ -350,22 +420,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20010000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_128
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F401VCHx
   cores:
@@ -376,22 +449,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20010000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8040000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F401VCTx
   cores:
@@ -402,22 +478,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20010000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8040000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F401VDHx
   cores:
@@ -428,22 +507,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20018000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8060000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F401VDTx
   cores:
@@ -454,22 +536,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20018000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8060000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F401VEHx
   cores:
@@ -480,22 +565,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20018000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F401VETx
   cores:
@@ -506,22 +594,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20018000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F405OEYx
   cores:
@@ -532,22 +623,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F405OGYx
   cores:
@@ -558,22 +661,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_1024
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F405RGTx
   cores:
@@ -584,22 +699,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_1024
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F405VGTx
   cores:
@@ -610,22 +737,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_1024
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F405ZGTx
   cores:
@@ -636,22 +775,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_1024
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F407IEHx
   cores:
@@ -662,22 +813,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F407IETx
   cores:
@@ -688,22 +851,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F407IGHx
   cores:
@@ -714,22 +889,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_1024
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F407IGTx
   cores:
@@ -740,22 +927,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_1024
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F407VETx
   cores:
@@ -766,22 +965,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F407VGTx
   cores:
@@ -792,22 +1003,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_1024
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F407ZETx
   cores:
@@ -818,22 +1041,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F407ZGTx
   cores:
@@ -844,22 +1079,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_1024
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F410C8Tx
   cores:
@@ -870,22 +1117,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20008000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_128
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
 - name: STM32F410C8Ux
   cores:
   - name: main
@@ -895,22 +1145,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20008000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_128
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
 - name: STM32F410CBTx
   cores:
   - name: main
@@ -920,22 +1173,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20008000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_128
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
 - name: STM32F410CBUx
   cores:
   - name: main
@@ -945,22 +1201,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20008000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_128
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
 - name: STM32F410R8Ix
   cores:
   - name: main
@@ -970,22 +1229,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20008000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_128
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
 - name: STM32F410R8Tx
   cores:
   - name: main
@@ -995,22 +1257,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20008000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_128
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
 - name: STM32F410RBIx
   cores:
   - name: main
@@ -1020,22 +1285,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20008000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_128
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
 - name: STM32F410RBTx
   cores:
   - name: main
@@ -1045,22 +1313,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20008000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_128
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
 - name: STM32F410T8Yx
   cores:
   - name: main
@@ -1070,22 +1341,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20008000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_128
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
 - name: STM32F410TBYx
   cores:
   - name: main
@@ -1095,22 +1369,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20008000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_128
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
 - name: STM32F411CCUx
   cores:
   - name: main
@@ -1120,22 +1397,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8040000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F411CCYx
   cores:
@@ -1146,22 +1426,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8040000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F411CEUx
   cores:
@@ -1172,22 +1455,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F411CEYx
   cores:
@@ -1198,22 +1484,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F411RCTx
   cores:
@@ -1224,22 +1513,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8040000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F411RETx
   cores:
@@ -1250,22 +1542,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F411VCHx
   cores:
@@ -1276,22 +1571,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8040000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F411VCTx
   cores:
@@ -1302,22 +1600,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8040000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F411VEHx
   cores:
@@ -1328,22 +1629,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F411VETx
   cores:
@@ -1354,22 +1658,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F412CEUx
   cores:
@@ -1380,22 +1687,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20040000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F412CGUx
   cores:
@@ -1406,22 +1716,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20040000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1024
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F412RETx
   cores:
@@ -1432,22 +1745,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20040000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F412REYx
   cores:
@@ -1458,22 +1774,54 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20040000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
+  - stm32f4xx_otp
+- name: STM32F412REYxP
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F412RGTx
   cores:
@@ -1484,22 +1832,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20040000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1024
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F412RGYx
   cores:
@@ -1510,22 +1861,54 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20040000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1024
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
+  - stm32f4xx_otp
+- name: STM32F412RGYxP
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F412VEHx
   cores:
@@ -1536,22 +1919,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20040000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F412VETx
   cores:
@@ -1562,22 +1948,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20040000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F412VGHx
   cores:
@@ -1588,22 +1977,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20040000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1024
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F412VGTx
   cores:
@@ -1614,22 +2006,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20040000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1024
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F412ZEJx
   cores:
@@ -1640,22 +2035,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20040000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F412ZETx
   cores:
@@ -1666,22 +2064,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20040000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F412ZGJx
   cores:
@@ -1692,22 +2093,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20040000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1024
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F412ZGTx
   cores:
@@ -1718,22 +2122,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20040000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1024
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F413CGUx
   cores:
@@ -1744,22 +2151,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1024
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
 - name: STM32F413CHUx
   cores:
   - name: main
@@ -1769,22 +2179,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8180000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1536
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
 - name: STM32F413MGYx
   cores:
   - name: main
@@ -1794,22 +2207,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1024
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
 - name: STM32F413MHYx
   cores:
   - name: main
@@ -1819,22 +2235,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8180000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1536
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
 - name: STM32F413RGTx
   cores:
   - name: main
@@ -1844,22 +2263,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1024
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
 - name: STM32F413RHTx
   cores:
   - name: main
@@ -1869,22 +2291,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8180000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1536
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
 - name: STM32F413VGHx
   cores:
   - name: main
@@ -1894,22 +2319,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1024
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
 - name: STM32F413VGTx
   cores:
   - name: main
@@ -1919,22 +2347,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1024
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
 - name: STM32F413VHHx
   cores:
   - name: main
@@ -1944,22 +2375,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8180000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1536
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
 - name: STM32F413VHTx
   cores:
   - name: main
@@ -1969,22 +2403,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8180000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1536
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
 - name: STM32F413ZGJx
   cores:
   - name: main
@@ -1994,22 +2431,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1024
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
 - name: STM32F413ZGTx
   cores:
   - name: main
@@ -2019,22 +2459,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1024
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
 - name: STM32F413ZHJx
   cores:
   - name: main
@@ -2044,22 +2487,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8180000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1536
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
 - name: STM32F413ZHTx
   cores:
   - name: main
@@ -2069,22 +2515,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8180000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1536
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
 - name: STM32F415OGYx
   cores:
   - name: main
@@ -2094,22 +2543,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_1024
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F415RGTx
   cores:
@@ -2120,22 +2581,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_1024
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F415VGTx
   cores:
@@ -2146,22 +2619,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_1024
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F415ZGTx
   cores:
@@ -2172,22 +2657,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_1024
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F417IEHx
   cores:
@@ -2198,22 +2695,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F417IETx
   cores:
@@ -2224,22 +2733,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F417IGHx
   cores:
@@ -2250,22 +2771,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_1024
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F417IGTx
   cores:
@@ -2276,22 +2809,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_1024
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F417VETx
   cores:
@@ -2302,22 +2847,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F417VGTx
   cores:
@@ -2328,22 +2885,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_1024
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F417ZETx
   cores:
@@ -2354,22 +2923,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F417ZGTx
   cores:
@@ -2380,22 +2961,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_1024
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F423CHUx
   cores:
@@ -2406,22 +2999,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8180000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1536
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
 - name: STM32F423MHYx
   cores:
   - name: main
@@ -2431,22 +3027,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8180000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1536
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
 - name: STM32F423RHTx
   cores:
   - name: main
@@ -2456,22 +3055,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8180000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1536
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
 - name: STM32F423VHHx
   cores:
   - name: main
@@ -2481,22 +3083,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8180000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1536
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
 - name: STM32F423VHTx
   cores:
   - name: main
@@ -2506,22 +3111,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8180000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1536
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
 - name: STM32F423ZHJx
   cores:
   - name: main
@@ -2531,22 +3139,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8180000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1536
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
 - name: STM32F423ZHTx
   cores:
   - name: main
@@ -2556,22 +3167,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8180000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1536
-  - stm32f40xxx_41xxx_opt
+  - stm32f401xx_opt
 - name: STM32F427AGHx
   cores:
   - name: main
@@ -2581,23 +3195,35 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F427AIHx
   cores:
@@ -2608,22 +3234,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F427IGHx
   cores:
@@ -2634,23 +3272,35 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F427IGTx
   cores:
@@ -2661,23 +3311,35 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F427IIHx
   cores:
@@ -2688,22 +3350,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F427IITx
   cores:
@@ -2714,22 +3388,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F427VGTx
   cores:
@@ -2740,23 +3426,35 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F427VITx
   cores:
@@ -2767,22 +3465,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F427ZGTx
   cores:
@@ -2793,23 +3503,35 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F427ZITx
   cores:
@@ -2820,22 +3542,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F429AGHx
   cores:
@@ -2846,23 +3580,35 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F429AIHx
   cores:
@@ -2873,22 +3619,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F429BETx
   cores:
@@ -2899,22 +3657,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f469xx_479xx_opt
+  - stm32f4xx_1024
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F429BGTx
   cores:
@@ -2925,23 +3695,35 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F429BITx
   cores:
@@ -2952,22 +3734,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F429IEHx
   cores:
@@ -2978,22 +3772,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f469xx_479xx_opt
+  - stm32f4xx_1024
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F429IETx
   cores:
@@ -3004,22 +3810,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f469xx_479xx_opt
+  - stm32f4xx_1024
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F429IGHx
   cores:
@@ -3030,23 +3848,35 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F429IGTx
   cores:
@@ -3057,23 +3887,35 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F429IIHx
   cores:
@@ -3084,22 +3926,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F429IITx
   cores:
@@ -3110,22 +3964,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F429NEHx
   cores:
@@ -3136,22 +4002,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f469xx_479xx_opt
+  - stm32f4xx_1024
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F429NGHx
   cores:
@@ -3162,23 +4040,35 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F429NIHx
   cores:
@@ -3189,22 +4079,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F429VETx
   cores:
@@ -3215,22 +4117,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f469xx_479xx_opt
+  - stm32f4xx_1024
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F429VGTx
   cores:
@@ -3241,23 +4155,35 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F429VITx
   cores:
@@ -3268,22 +4194,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F429ZETx
   cores:
@@ -3294,22 +4232,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f469xx_479xx_opt
+  - stm32f4xx_1024
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F429ZGTx
   cores:
@@ -3320,23 +4270,74 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F429ZGYx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f4xx_1024dual
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F429ZITx
   cores:
@@ -3347,22 +4348,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F429ZIYx
   cores:
@@ -3373,22 +4386,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F437AIHx
   cores:
@@ -3399,22 +4424,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F437IGHx
   cores:
@@ -3425,23 +4462,35 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F437IGTx
   cores:
@@ -3452,23 +4501,35 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F437IIHx
   cores:
@@ -3479,22 +4540,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F437IITx
   cores:
@@ -3505,22 +4578,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F437VGTx
   cores:
@@ -3531,23 +4616,35 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F437VITx
   cores:
@@ -3558,22 +4655,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F437ZGTx
   cores:
@@ -3584,23 +4693,35 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F437ZITx
   cores:
@@ -3611,22 +4732,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F439AIHx
   cores:
@@ -3637,22 +4770,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F439BGTx
   cores:
@@ -3663,23 +4808,35 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F439BITx
   cores:
@@ -3690,22 +4847,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F439IGHx
   cores:
@@ -3716,23 +4885,35 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F439IGTx
   cores:
@@ -3743,23 +4924,35 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F439IIHx
   cores:
@@ -3770,22 +4963,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F439IITx
   cores:
@@ -3796,22 +5001,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F439NGHx
   cores:
@@ -3822,23 +5039,35 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F439NIHx
   cores:
@@ -3849,22 +5078,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F439VGTx
   cores:
@@ -3875,23 +5116,35 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F439VITx
   cores:
@@ -3902,22 +5155,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F439ZGTx
   cores:
@@ -3928,23 +5193,74 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F439ZGYx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f4xx_1024dual
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F439ZITx
   cores:
@@ -3955,22 +5271,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F439ZIYx
   cores:
@@ -3981,22 +5309,34 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f4xx_otp
 - name: STM32F446MCYx
   cores:
@@ -4007,22 +5347,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8040000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F446MEYx
   cores:
@@ -4033,22 +5376,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F446RCTx
   cores:
@@ -4059,22 +5405,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8040000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F446RETx
   cores:
@@ -4085,22 +5434,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F446VCTx
   cores:
@@ -4111,22 +5463,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8040000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F446VETx
   cores:
@@ -4137,22 +5492,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F446ZCHx
   cores:
@@ -4163,22 +5521,54 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8040000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
+  - stm32f4xx_otp
+- name: STM32F446ZCJx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F446ZCTx
   cores:
@@ -4189,22 +5579,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8040000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F446ZEHx
   cores:
@@ -4215,22 +5608,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F446ZEJx
   cores:
@@ -4241,22 +5637,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F446ZETx
   cores:
@@ -4267,22 +5666,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f40xxx_41xxx_opt
+  - stm32f4xx_1024
+  - stm32f401xx_opt
   - stm32f4xx_otp
 - name: STM32F469AEHx
   cores:
@@ -4293,22 +5695,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f469xx_479xx_opt
+  - stm32f4xx_1024
+  - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
 - name: STM32F469AEYx
   cores:
@@ -4319,22 +5724,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f469xx_479xx_opt
+  - stm32f4xx_1024
+  - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
 - name: STM32F469AGHx
   cores:
@@ -4345,23 +5753,26 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
 - name: STM32F469AGYx
   cores:
@@ -4372,23 +5783,26 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
 - name: STM32F469AIHx
   cores:
@@ -4399,22 +5813,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
 - name: STM32F469AIYx
   cores:
@@ -4425,22 +5842,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
 - name: STM32F469BETx
   cores:
@@ -4451,22 +5871,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f469xx_479xx_opt
+  - stm32f4xx_1024
+  - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
 - name: STM32F469BGTx
   cores:
@@ -4477,23 +5900,26 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
 - name: STM32F469BITx
   cores:
@@ -4504,22 +5930,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
 - name: STM32F469IEHx
   cores:
@@ -4530,22 +5959,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f469xx_479xx_opt
+  - stm32f4xx_1024
+  - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
 - name: STM32F469IETx
   cores:
@@ -4556,22 +5988,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f469xx_479xx_opt
+  - stm32f4xx_1024
+  - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
 - name: STM32F469IGHx
   cores:
@@ -4582,23 +6017,26 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
 - name: STM32F469IGTx
   cores:
@@ -4609,23 +6047,26 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
 - name: STM32F469IIHx
   cores:
@@ -4636,22 +6077,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
 - name: STM32F469IITx
   cores:
@@ -4662,22 +6106,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
 - name: STM32F469NEHx
   cores:
@@ -4688,22 +6135,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f469xx_479xx_opt
+  - stm32f4xx_1024
+  - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
 - name: STM32F469NGHx
   cores:
@@ -4714,23 +6164,26 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
 - name: STM32F469NIHx
   cores:
@@ -4741,22 +6194,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
 - name: STM32F469VETx
   cores:
@@ -4767,22 +6223,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f469xx_479xx_opt
+  - stm32f4xx_1024
+  - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
 - name: STM32F469VGTx
   cores:
@@ -4793,23 +6252,26 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
 - name: STM32F469VITx
   cores:
@@ -4820,22 +6282,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
 - name: STM32F469ZETx
   cores:
@@ -4846,22 +6311,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32f4xx_512
-  - stm32f469xx_479xx_opt
+  - stm32f4xx_1024
+  - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
 - name: STM32F469ZGTx
   cores:
@@ -4872,23 +6340,26 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
 - name: STM32F469ZITx
   cores:
@@ -4899,22 +6370,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
 - name: STM32F479AGHx
   cores:
@@ -4925,23 +6399,26 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
 - name: STM32F479AGYx
   cores:
@@ -4952,23 +6429,26 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
 - name: STM32F479AIHx
   cores:
@@ -4979,22 +6459,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
 - name: STM32F479AIYx
   cores:
@@ -5005,22 +6488,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
 - name: STM32F479BGTx
   cores:
@@ -5031,23 +6517,26 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
 - name: STM32F479BITx
   cores:
@@ -5058,22 +6547,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
 - name: STM32F479IGHx
   cores:
@@ -5084,23 +6576,26 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
 - name: STM32F479IGTx
   cores:
@@ -5111,23 +6606,26 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
 - name: STM32F479IIHx
   cores:
@@ -5138,22 +6636,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
 - name: STM32F479IITx
   cores:
@@ -5164,22 +6665,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
 - name: STM32F479NGHx
   cores:
@@ -5190,23 +6694,26 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
 - name: STM32F479NIHx
   cores:
@@ -5217,22 +6724,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
 - name: STM32F479VGTx
   cores:
@@ -5243,23 +6753,26 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
 - name: STM32F479VITx
   cores:
@@ -5270,22 +6783,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
 - name: STM32F479ZGTx
   cores:
@@ -5296,23 +6812,26 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_1024
   - stm32f4xx_1024dual
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
 - name: STM32F479ZITx
   cores:
@@ -5323,55 +6842,59 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8200000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32f4xx_2048
-  - stm32f469xx_479xx_opt
+  - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
 flash_algorithms:
-- name: stm32f469xx_479xx_opt
-  description: STM32F469xx/479xx Flash Options
-  instructions: AUYAAwAOICgC00AJAB0F4BAoAtMACcAcAOCACMkCAdUQIQhDcEc0SDJJgWAzSYFgwWjwIhFDwWBAaYAGBtQxSC9JAWAGIUFgL0mBYAAgcEcpSEFpASIRQ0FhACBwRyZIwmjwIQpDwmAoSoJhKEpCYUJpAiMaQ0JhwmgSBhIPBNDCaApDwmABIHBHACBwRwAgcEcQtRhIBsrEaPAjHEPEYBpMIkCCYRtKEUCJHEFhwWjJA/zUwWgJBgkPBNDBaBlDwWABIBC9ACAQvXC1Ck4TaBBMUmh1aSNAJUCrQgbRC0u0aRpAHECiQgHQQBxwvUAYcL0AADsqGQgAPAJAf25dTFVVAAAAMABA/w8AAAAA/w/sqv8P/P//DwAAAAA=
-  pc_init: 0x27
-  pc_uninit: 0x51
-  pc_program_page: 0x93
-  pc_erase_sector: 0x8f
-  pc_erase_all: 0x5f
-  data_section_offset: 0x118
+- name: stm32f4xx_128
+  description: STM32F4xx 128kB Flash
+  default: true
+  instructions: AAMADiAoAtNACQAdcEcQKALTAAnAHHBHgAhwR0NIQklBYENJQWABaAkHCQ8BYMFo8CIRQ8FgQGmABgbUPkg9SQFgBiFBYD1JgWAAIHBHN0gBaUIFEUMBYQAgcEcQtTNIAWkEJCFDAWEBaaIDEUMBYTNJMUoA4BFgw2jbA/vUAWmhQwFhACAQvTC1//e5/ydJymjwIxpDymACJAxhCmnABgAOAkMKYQhp4gMQQwhhJEghSgDgEGDNaO0D+9QIaaBDCGHIaAAGAA8D0MhoGEPIYAEgML1wtRVNyRyJCOtoiQDwJjND62AAIythFksX4CxpHEMsYRRoBGDsaOQD/NQsaWQIZAAsYexoJAYkDwTQ6GgwQ+hgASBwvQAdCR8SHQAp5dEAIHC9AAAjAWdFADwCQKuJ781VVQAAADAAQP8PAACqqgAAAQIAAAAAAAA=
+  pc_init: 0x1d
+  pc_uninit: 0x4f
+  pc_program_page: 0xd5
+  pc_erase_sector: 0x89
+  pc_erase_all: 0x5d
+  data_section_offset: 0x148
   flash_properties:
     address_range:
-      start: 0x1fffc000
-      end: 0x1fffc008
-    page_size: 0x8
+      start: 0x8000000
+      end: 0x8020000
+    page_size: 0x400
     erased_byte_value: 0xff
-    program_page_timeout: 3000
-    erase_sector_timeout: 3000
+    program_page_timeout: 100
+    erase_sector_timeout: 6000
     sectors:
-    - size: 0x8
+    - size: 0x4000
       address: 0x0
-  cores:
-  - main
-- name: stm32f40xxx_41xxx_opt
-  description: STM32F40xxx/41xxx Flash Options
-  instructions: AUYAAwAOICgC00AJAB0F4BAoAtMACcAcAOCACMkCAdUQIQhDcEcsSCpJgWArSYFgwWjwIhFDwWBAaYAGBtQpSCdJAWAGIUFgJ0mBYAAgcEchSEFpASIRQ0FhACBwRx5IwmjwIQpDwmAgSkJhQmkCIxpDQmHCaBIGEg8E0MJoCkPCYAEgcEcAIHBHACBwRxJIEWjDaPAiE0PDYBVLGUCJHEFhwWjJA/zUwWgJBgkPBNDBaBFDwWABIHBHACBwRxC1BUwSaApLZGkaQBxAokIA0UAYEL07KhkIADwCQH9uXUxVVQAAADAAQP8PAADsqv8P/P//DwAAAAA=
-  pc_init: 0x27
-  pc_uninit: 0x51
-  pc_program_page: 0x8f
-  pc_erase_sector: 0x8b
-  pc_erase_all: 0x5f
-  data_section_offset: 0xf4
+    - size: 0x10000
+      address: 0x10000
+- name: stm32f401xx_opt
+  description: STM32F401xx Flash Options
+  instructions: LEgrSYFgLEmBYMFo8CIRQ8FgQGmABgbUKUgoSQFgBiFBYChJgWAAIHBHIkhBaQEiEUNBYQAgcEceSMJo8CEKQ8JgIUpCYUJpAiMaQ0JhwmgSBhIPBNDCaApDwmABIHBHACBwRwAgcEcSSBFow2jwIhNDw2AVSxlAiRxBYcFoyQP81MFoCQYJDwTQwWgRQ8FgASBwRwAgcEcQtQZMEmgLS2RpGkAcQKJCANFAGBC9AAA7KhkIADwCQH9uXUxVVQAAADAAQP8PAADsqv8P/P//zwAAAAA=
+  pc_init: 0x1
+  pc_uninit: 0x2b
+  pc_program_page: 0x69
+  pc_erase_sector: 0x65
+  pc_erase_all: 0x39
+  data_section_offset: 0xd0
   flash_properties:
     address_range:
       start: 0x1fffc000
@@ -5383,17 +6906,84 @@ flash_algorithms:
     sectors:
     - size: 0x4
       address: 0x0
-  cores:
-  - main
+- name: stm32f4xx_otp
+  description: STM32F4xx Flash OTP
+  instructions: JkglSUFgJklBYAFoCQcJDwFgwWjwIhFDwWBAaYAGBtQhSCBJAWAGIUFgIEmBYAAgcEcaSAFpQgURQwFhACBwRwAgcEdwtRVNyRyJCOtoiQDwJjND62AAIythFUsX4CxpHEMsYRRoBGDsaOQD/NQsaWQIZAAsYexoJAYkDwTQ6GgwQ+hgASBwvQAdCR8SHQAp5dEAIHC9AAAjAWdFADwCQKuJ781VVQAAADAAQP8PAAABAgAAAAAAAA==
+  pc_init: 0x1
+  pc_uninit: 0x33
+  pc_program_page: 0x45
+  pc_erase_sector: 0x41
+  data_section_offset: 0xb4
+  flash_properties:
+    address_range:
+      start: 0x1fff7800
+      end: 0x1fff7a10
+    page_size: 0x210
+    erased_byte_value: 0xff
+    program_page_timeout: 3000
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x210
+      address: 0x0
+- name: stm32f4xx_1024
+  description: STM32F4xx 1MB Flash
+  default: true
+  instructions: AAMADiAoAtNACQAdcEcQKALTAAnAHHBHgAhwR0NIQklBYENJQWABaAkHCQ8BYMFo8CIRQ8FgQGmABgbUPkg9SQFgBiFBYD1JgWAAIHBHN0gBaUIFEUMBYQAgcEcQtTNIAWkEJCFDAWEBaaIDEUMBYTNJMUoA4BFgw2jbA/vUAWmhQwFhACAQvTC1//e5/ydJymjwIxpDymACJAxhCmnABgAOAkMKYQhp4gMQQwhhJEghSgDgEGDNaO0D+9QIaaBDCGHIaAAGAA8D0MhoGEPIYAEgML1wtRVNyRyJCOtoiQDwJjND62AAIythFksX4CxpHEMsYRRoBGDsaOQD/NQsaWQIZAAsYexoJAYkDwTQ6GgwQ+hgASBwvQAdCR8SHQAp5dEAIHC9AAAjAWdFADwCQKuJ781VVQAAADAAQP8PAACqqgAAAQIAAAAAAAA=
+  pc_init: 0x1d
+  pc_uninit: 0x4f
+  pc_program_page: 0xd5
+  pc_erase_sector: 0x89
+  pc_erase_all: 0x5d
+  data_section_offset: 0x148
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0x8100000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 6000
+    sectors:
+    - size: 0x4000
+      address: 0x0
+    - size: 0x10000
+      address: 0x10000
+    - size: 0x20000
+      address: 0x20000
+- name: stm32f4xx_1536
+  description: STM32F4xx 1.5MB Flash
+  default: true
+  instructions: wALADSAoAtNACQAdcEcQKALTAAnAHHBHgAhwR0NIQklBYENJQWABaAkHCQ8BYMFo8CIRQ8FgQGmABgbUPkg9SQFgBiFBYD1JgWAAIHBHN0gBaUIFEUMBYQAgcEcQtTNIAWkEJCFDAWEBaaIDEUMBYTNJMUoA4BFgw2jbA/vUAWmhQwFhACAQvTC1//e5/ydJymjwIxpDymACJAxhCmnABgAOAkMKYQhp4gMQQwhhJEghSgDgEGDNaO0D+9QIaaBDCGHIaAAGAA8D0MhoGEPIYAEgML1wtRVNyRyJCOtoiQDwJjND62AAIythFksX4CxpHEMsYRRoBGDsaOQD/NQsaWQIZAAsYexoJAYkDwTQ6GgwQ+hgASBwvQAdCR8SHQAp5dEAIHC9AAAjAWdFADwCQKuJ781VVQAAADAAQP8PAACqqgAAAQIAAAAAAAA=
+  pc_init: 0x1d
+  pc_uninit: 0x4f
+  pc_program_page: 0xd5
+  pc_erase_sector: 0x89
+  pc_erase_all: 0x5d
+  data_section_offset: 0x148
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0x8180000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 6000
+    sectors:
+    - size: 0x4000
+      address: 0x0
+    - size: 0x10000
+      address: 0x10000
+    - size: 0x20000
+      address: 0x20000
 - name: stm32f4xx_1024dual
   description: STM32F4xx 1MB dual bank Flash
-  instructions: AUZAA0AOICgC00AJAB0F4BAoAtMACcAcAOCACAkDAdUQIQhDcEdCSEBJQWBBSUFgACEBYMFo8CIRQ8FgQGmABgbUPkg8SQFgBiFBYDxJgWAAIHBHNkgBaUIFEUMBYQAgcEcQtTJIAWkEJCFDAWEBaaIDEUMBYTNJMEoA4BFgw2jbA/vUAWmhQwFhACAQvTC1//e2/yZJymjwIxpDymACJAxhCmnABgAOAkMKYQhp4gMQQwhhI0ghSgDgEGDNaO0D+9QIaaBDCGHIaAAGAA8D0MhoGEPIYAEgML1wtRRNyRyJCOtoiQDwJjND62AAIythFUsX4CxpHEMsYRRoBGDsaOQD/NQsaWQIZAAsYexoJAYkDwTQ6GgwQ+hgASBwvQAdCR8SHQAp5dEAIHC9IwFnRQA8AkCrie/NVVUAAAAwAED/DwAAqqoAAAECAAAAAAAA
+  instructions: AUZAA0AOICgC00AJAB0F4BAoAtMACcAcAOCACAkDAdUQIQhDcEdDSEFJQWBCSUFgAWgJBwkPAWDBaPAiEUPBYEBpgAYG1D5IPEkBYAYhQWA8SYFgACBwRzZIAWlCBRFDAWEAIHBHELUySAFpBCQhQwFhAWmiAxFDAWEzSTBKAOARYMNo2wP71AFpoUMBYQAgEL0wtf/3tP8mScpo8CMaQ8pgAiQMYQppwAYADgJDCmEIaeIDEEMIYSNIIUoA4BBgzWjtA/vUCGmgQwhhyGgABgAPA9DIaBhDyGABIDC9cLUUTckciQjraIkA8CYzQ+tgACMrYRVLF+AsaRxDLGEUaARg7GjkA/zULGlkCGQALGHsaCQGJA8E0OhoMEPoYAEgcL0AHQkfEh0AKeXRACBwvSMBZ0UAPAJAq4nvzVVVAAAAMABA/w8AAKqqAAABAgAAAAAAAA==
   pc_init: 0x27
-  pc_uninit: 0x55
-  pc_program_page: 0xdb
-  pc_erase_sector: 0x8f
-  pc_erase_all: 0x63
-  data_section_offset: 0x14c
+  pc_uninit: 0x59
+  pc_program_page: 0xdf
+  pc_erase_sector: 0x93
+  pc_erase_all: 0x67
+  data_section_offset: 0x150
   flash_properties:
     address_range:
       start: 0x8000000
@@ -5415,168 +7005,36 @@ flash_algorithms:
       address: 0x90000
     - size: 0x20000
       address: 0xa0000
-  cores:
-  - main
-- name: stm32f469_quad_spi
-  description: STM32F469 QSPI Flash
-  default: true
-  instructions: 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
-  pc_init: 0x16f
-  pc_uninit: 0x26f
-  pc_program_page: 0x3bb
-  pc_erase_sector: 0x275
-  pc_erase_all: 0x285
-  data_section_offset: 0x1320
+- name: stm32f42xxx_43xxx_opt
+  description: STM32F42xxx/43xxx Flash Options
+  instructions: M0gySYFgM0mBYMFo8CIRQ8FgQGmABgbUMEgvSQFgBiFBYC9JgWAAIHBHKUhBaQEiEUNBYQAgcEclSMJo8CEKQ8JgKEqCYShKQmFCaQIjGkNCYcJoEgYSDwTQwmgKQ8JgASBwRwAgcEcAIHBHELUYSAbKxGjwIxxDxGAaTCJAgmEaShFAiRxBYcFoyQP81MFoCQYJDwTQwWgZQ8FgASAQvQAgEL1wtQpOE2gQTFJodWkjQCVAq0IG0QpLtGkaQBxAokIB0EAccL1AGHC9OyoZCAA8AkB/bl1MVVUAAAAwAED/DwAAAAD/D+yq/w/8///PAAAAAA==
+  pc_init: 0x1
+  pc_uninit: 0x2b
+  pc_program_page: 0x6d
+  pc_erase_sector: 0x69
+  pc_erase_all: 0x39
+  data_section_offset: 0xf0
   flash_properties:
     address_range:
-      start: 0x90000000
-      end: 0x92000000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 1000
-    erase_sector_timeout: 3000
-    sectors:
-    - size: 0x10000
-      address: 0x0
-  cores:
-  - main
-- name: stm32f4xx_1024
-  description: STM32F4xx Flash
-  default: true
-  instructions: AAMADiAoAtNACQAdcEcQKALTAAnAHHBHgAhwR0JIQUlBYEJJQWAAIQFgwWjwIhFDwWBAaYAGBtQ+SD1JAWAGIUFgPUmBYAAgcEc3SAFpQgURQwFhACBwRxC1M0gBaQQkIUMBYQFpogMRQwFhM0kxSgDgEWDDaNsD+9QBaaFDAWEAIBC9MLX/97v/J0nKaPAjGkPKYAIkDGEKaQAHQA4CQwphCGniAxBDCGEkSCFKAOAQYM1o7QP71AhpoEMIYchoAAYADwPQyGgYQ8hgASAwvXC1FU3JHIkI62iJAPAmM0PrYAAjK2EWSxfgLGkcQyxhFGgEYOxo5AP81CxpZAhkACxh7GgkBiQPBNDoaDBD6GABIHC9AB0SHQkfACnl0QAgcL0AACMBZ0UAPAJAq4nvzVVVAAAAMABA/w8AAKqqAAABAgAAAAAAAA==
-  pc_init: 0x1d
-  pc_uninit: 0x4b
-  pc_program_page: 0xd1
-  pc_erase_sector: 0x85
-  pc_erase_all: 0x59
-  data_section_offset: 0x144
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8100000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 100
-    erase_sector_timeout: 6000
-    sectors:
-    - size: 0x4000
-      address: 0x0
-    - size: 0x10000
-      address: 0x10000
-    - size: 0x20000
-      address: 0x20000
-  cores:
-  - main
-- name: stm32f4xx_1536
-  description: STM32F4xx 1.5MB Flash
-  default: true
-  instructions: wALADSAoAtNACQAdcEcQKALTAAnAHHBHgAhwR0JIQUlBYEJJQWAAIQFgwWjwIhFDwWBAaYAGBtQ+SD1JAWAGIUFgPUmBYAAgcEc3SAFpQgURQwFhACBwRxC1M0gBaQQkIUMBYQFpogMRQwFhM0kxSgDgEWDDaNsD+9QBaaFDAWEAIBC9MLX/97v/J0nKaPAjGkPKYAIkDGEKacAGAA4CQwphCGniAxBDCGEkSCFKAOAQYM1o7QP71AhpoEMIYchoAAYADwPQyGgYQ8hgASAwvXC1FU3JHIkI62iJAPAmM0PrYAAjK2EWSxfgLGkcQyxhFGgEYOxo5AP81CxpZAhkACxh7GgkBiQPBNDoaDBD6GABIHC9AB0JHxIdACnl0QAgcL0AACMBZ0UAPAJAq4nvzVVVAAAAMABA/w8AAKqqAAABAgAAAAAAAA==
-  pc_init: 0x1d
-  pc_uninit: 0x4b
-  pc_program_page: 0xd1
-  pc_erase_sector: 0x85
-  pc_erase_all: 0x59
-  data_section_offset: 0x144
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8180000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 100
-    erase_sector_timeout: 6000
-    sectors:
-    - size: 0x4000
-      address: 0x0
-    - size: 0x10000
-      address: 0x10000
-    - size: 0x20000
-      address: 0x20000
-  cores:
-  - main
-- name: stm32f4xx_otp
-  description: STM32F4xx Flash OTP
-  instructions: AAMADiAoAtNACQAdcEcQKALTAAnAHHBHgAhwRyVIJElBYCVJQWAAIQFgwWjwIhFDwWBAaYAGBtQhSCBJAWAGIUFgIEmBYAAgcEcaSAFpQgURQwFhACBwRwAgcEdwtRVNyRyJCOtoiQDwJjND62AAIythFUsX4CxpHEMsYRRoBGDsaOQD/NQsaWQIZAAsYexoJAYkDwTQ6GgwQ+hgASBwvQAdEh0JHwAp5dEAIHC9AAAjAWdFADwCQKuJ781VVQAAADAAQP8PAAABAgAAAAAAAA==
-  pc_init: 0x1d
-  pc_uninit: 0x4b
-  pc_program_page: 0x5d
-  pc_erase_sector: 0x59
-  data_section_offset: 0xcc
-  flash_properties:
-    address_range:
-      start: 0x1fff7800
-      end: 0x1fff7a10
-    page_size: 0x210
+      start: 0x1fffc000
+      end: 0x1fffc008
+    page_size: 0x8
     erased_byte_value: 0xff
     program_page_timeout: 3000
     erase_sector_timeout: 3000
     sectors:
-    - size: 0x210
+    - size: 0x8
       address: 0x0
-  cores:
-  - main
-- name: stm32f4xx_512
-  description: STM32F4xx 512kB Flash
-  default: true
-  instructions: AUYAAwAOICgC00AJAB0F4BAoAtMACcAcAOCACMkCAdUQIQhDcEdCSEBJQWBBSUFgACEBYMFo8CIRQ8FgQGmABgbUPkg8SQFgBiFBYDxJgWAAIHBHNkgBaUIFEUMBYQAgcEcQtTJIAWkEJCFDAWEBaaIDEUMBYTNJMEoA4BFgw2jbA/vUAWmhQwFhACAQvTC1//e2/yZJymjwIxpDymACJAxhCmnABgAOAkMKYQhp4gMQQwhhI0ghSgDgEGDNaO0D+9QIaaBDCGHIaAAGAA8D0MhoGEPIYAEgML1wtRRNyRyJCOtoiQDwJjND62AAIythFUsX4CxpHEMsYRRoBGDsaOQD/NQsaWQIZAAsYexoJAYkDwTQ6GgwQ+hgASBwvQAdEh0JHwAp5dEAIHC9IwFnRQA8AkCrie/NVVUAAAAwAED/DwAAqqoAAAECAAAAAAAA
-  pc_init: 0x27
-  pc_uninit: 0x55
-  pc_program_page: 0xdb
-  pc_erase_sector: 0x8f
-  pc_erase_all: 0x63
-  data_section_offset: 0x14c
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8080000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 100
-    erase_sector_timeout: 6000
-    sectors:
-    - size: 0x4000
-      address: 0x0
-    - size: 0x10000
-      address: 0x10000
-    - size: 0x20000
-      address: 0x20000
-  cores:
-  - main
-- name: stm32f4xx_128
-  description: STM32F4xx 128kB Flash
-  default: true
-  instructions: AUYAAwAOICgC00AJAB0F4BAoAtMACcAcAOCACMkCAdUQIQhDcEdCSEBJQWBBSUFgACEBYMFo8CIRQ8FgQGmABgbUPkg8SQFgBiFBYDxJgWAAIHBHNkgBaUIFEUMBYQAgcEcQtTJIAWkEJCFDAWEBaaIDEUMBYTNJMEoA4BFgw2jbA/vUAWmhQwFhACAQvTC1//e2/yZJymjwIxpDymACJAxhCmnABgAOAkMKYQhp4gMQQwhhI0ghSgDgEGDNaO0D+9QIaaBDCGHIaAAGAA8D0MhoGEPIYAEgML1wtRRNyRyJCOtoiQDwJjND62AAIythFUsX4CxpHEMsYRRoBGDsaOQD/NQsaWQIZAAsYexoJAYkDwTQ6GgwQ+hgASBwvQAdEh0JHwAp5dEAIHC9IwFnRQA8AkCrie/NVVUAAAAwAED/DwAAqqoAAAECAAAAAAAA
-  pc_init: 0x27
-  pc_uninit: 0x55
-  pc_program_page: 0xdb
-  pc_erase_sector: 0x8f
-  pc_erase_all: 0x63
-  data_section_offset: 0x14c
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8020000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 100
-    erase_sector_timeout: 6000
-    sectors:
-    - size: 0x4000
-      address: 0x0
-    - size: 0x10000
-      address: 0x10000
-  cores:
-  - main
 - name: stm32f4xx_2048
   description: STM32F4xx 2MB Flash
   default: true
-  instructions: AUYAAwAOICgC00AJAB0F4BAoAtMACcAcAOCACMkCAdUQIQhDcEdGSERJQWBFSUFgACEBYMFo8CIRQ8FgQGmABgbUQkhASQFgBiFBYEBJgWAAIHBHOkgBaUIFEUMBYQAgcEcwtTZIAWkEJCFDAWEBaWUDKUMBYQFpogMRQwFhNUkySgDgEWDDaNsD+9QBaaFDAWEBaalDAWEAIDC9MLX/96//J0nKaPAjGkPKYAIkDGEKacAGAA4CQwphCGniAxBDCGEkSCFKAOAQYM1o7QP71AhpoEMIYchoAAYADwPQyGgYQ8hgASAwvXC1FU3JHIkI62iJAPAmM0PrYAAjK2EWSxfgLGkcQyxhFGgEYOxo5AP81CxpZAhkACxh7GgkBiQPBNDoaDBD6GABIHC9AB0SHQkfACnl0QAgcL0AACMBZ0UAPAJAq4nvzVVVAAAAMABA/w8AAKqqAAABAgAAAAAAAA==
+  instructions: AUYAAwAOICgC00AJAB0F4BAoAtMACcAcAOCACMkCAdUQIQhDcEdHSEVJQWBGSUFgAWgJBwkPAWDBaPAiEUPBYEBpgAYG1EJIQEkBYAYhQWBASYFgACBwRzpIAWlCBRFDAWEAIHBHMLU2SAFpBCQhQwFhAWllAylDAWEBaaIDEUMBYTVJMkoA4BFgw2jbA/vUAWmhQwFhAWmpQwFhACAwvTC1//et/ydJymjwIxpDymACJAxhCmnABgAOAkMKYQhp4gMQQwhhJEghSgDgEGDNaO0D+9QIaaBDCGHIaAAGAA8D0MhoGEPIYAEgML1wtRVNyRyJCOtoiQDwJjND62AAIythFksX4CxpHEMsYRRoBGDsaOQD/NQsaWQIZAAsYexoJAYkDwTQ6GgwQ+hgASBwvQAdCR8SHQAp5dEAIHC9AAAjAWdFADwCQKuJ781VVQAAADAAQP8PAACqqgAAAQIAAAAAAAA=
   pc_init: 0x27
-  pc_uninit: 0x55
-  pc_program_page: 0xe9
-  pc_erase_sector: 0x9d
-  pc_erase_all: 0x63
-  data_section_offset: 0x15c
+  pc_uninit: 0x59
+  pc_program_page: 0xed
+  pc_erase_sector: 0xa1
+  pc_erase_all: 0x67
+  data_section_offset: 0x160
   flash_properties:
     address_range:
       start: 0x8000000
@@ -5598,5 +7056,24 @@ flash_algorithms:
       address: 0x110000
     - size: 0x20000
       address: 0x120000
-  cores:
-  - main
+- name: stm32f469_quad_spi
+  description: 32F469IDISCOVERY  N25Q128A
+  default: true
+  instructions: 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
+  pc_init: 0x4a95
+  pc_uninit: 0x4ee5
+  pc_program_page: 0x4aad
+  pc_erase_sector: 0xa51
+  pc_erase_all: 0xa31
+  data_section_offset: 0x4fc8
+  flash_properties:
+    address_range:
+      start: 0x90000000
+      end: 0x91000000
+    page_size: 0x1000
+    erased_byte_value: 0xff
+    program_page_timeout: 10000
+    erase_sector_timeout: 10000
+    sectors:
+    - size: 0x10000
+      address: 0x0

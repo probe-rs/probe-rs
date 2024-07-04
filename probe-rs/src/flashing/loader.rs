@@ -139,13 +139,9 @@ impl FlashLoader {
         file.read_to_end(&mut buf)?;
 
         self.add_data(
-            if let Some(address) = options.base_address {
-                address
-            } else {
-                // If no base address is specified use the start of the boot memory.
-                // TODO: Implement this as soon as we know targets.
-                0
-            },
+            // If no base address is specified use the start of the boot memory.
+            // TODO: Implement this as soon as we know targets.
+            options.base_address.unwrap_or_default(),
             &buf,
         )?;
 
