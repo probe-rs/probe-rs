@@ -198,19 +198,6 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
     let (mut session, probe_options) = match probe_options.simple_attach(&lister) {
         Ok((session, probe_options)) => (session, probe_options),
 
-        Err(OperationError::MultipleProbesFound { list }) => {
-            use std::fmt::Write;
-
-            return Err(anyhow!("The following devices were found:\n \
-                    {} \
-                        \
-                    Use '--probe VID:PID'\n \
-                                            \
-                    You can also set the [default.probe] config attribute \
-                    (in your Embed.toml) to select which probe to use. \
-                    For usage examples see https://github.com/probe-rs/probe-rs/blob/master/probe-rs-tools/src/bin/probe-rs/cmd/cargo_embed/config/default.toml .",
-                    list.iter().enumerate().fold(String::new(), |mut s, (num, link)| { let _ = writeln!(s, "[{num}]: {link}"); s })));
-        }
         Err(OperationError::AttachingFailed {
             source,
             connect_under_reset,
