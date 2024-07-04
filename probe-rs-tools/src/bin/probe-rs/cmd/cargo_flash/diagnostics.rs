@@ -1,7 +1,7 @@
 /// Error handling
 use colored::{ColoredString, Colorize};
-use std::error::Error;
 use std::fmt::Write;
+use std::{error::Error, io};
 
 use bytesize::ByteSize;
 
@@ -28,15 +28,6 @@ pub(crate) fn render_diagnostics(error: OperationError) {
                 "For a guide on how to set up your probes, see https://probe.rs/docs/getting-started/probe-setup".into(),
             ],
         ),
-        OperationError::FailedToOpenElf { source, path } => (
-            error.to_string(),
-            match source.kind() {
-                std::io::ErrorKind::NotFound => vec![
-                    format!("Make sure the path '{}' is the correct location of your ELF binary.", path.display())
-                ],
-                _ => vec![]
-            },
-        ),
         OperationError::FailedToLoadElfData(e) => match e {
             FileDownloadError::NoLoadableSegments => (
                 e.to_string(),
@@ -57,11 +48,29 @@ pub(crate) fn render_diagnostics(error: OperationError) {
                     vec![]
                 ),
             },
+            FileDownloadError::IO(e) => {
+                let mut hints = vec![];
+
+                match e.kind() {
+                    io::ErrorKind::NotFound => {
+                        hints.push("Make sure the file exists and the path is correct.".into());
+                    }
+                    io::ErrorKind::PermissionDenied => {
+                        hints.push("Make sure you have the necessary permissions to read the file.".into());
+                    }
+                    _ => (),
+                }
+
+                (e.to_string(), hints)
+            }
+            FileDownloadError::IncompatibleImage {.. }=>{
+                let hints = vec!["Make sure you are compiling for the correct architecture of your chip.".into()];
+
+                (e.to_string(), hints)
+            }
             _ => (
                 e.to_string(),
-                vec![
-                    "Make sure you are compiling for the correct architecture of your chip.".into()
-                ],
+                vec![]
             ),
         },
         OperationError::FailedToOpenProbe(_e) => (
@@ -211,7 +220,7 @@ pub(crate) fn render_diagnostics(error: OperationError) {
     };
 
     use std::io::Write;
-    let mut stderr = std::io::stderr();
+    let mut stderr = io::stderr();
 
     write_with_offset(&mut stderr, "Error".red().bold(), &selected_error);
 
@@ -311,7 +320,7 @@ fn generate_flash_error_hints(
     )
 }
 
-fn write_with_offset(mut output: impl std::io::Write, header: ColoredString, msg: &str) {
+fn write_with_offset(mut output: impl io::Write, header: ColoredString, msg: &str) {
     let _ = write!(output, "{: >1$} ", header, 12);
 
     let mut lines = msg.lines();

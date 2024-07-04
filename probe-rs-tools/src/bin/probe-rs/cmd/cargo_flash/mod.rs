@@ -11,7 +11,7 @@ use crate::util::cargo::Artifact;
 use crate::util::common_options::{
     BinaryDownloadOptions, CargoOptions, OperationError, ProbeOptions,
 };
-use crate::util::flash;
+use crate::util::flash::{self, build_loader};
 use crate::util::logging::{setup_logging, LevelFilter};
 use crate::util::{cargo::build_artifact, logging};
 
@@ -110,13 +110,12 @@ fn main_try(args: &[OsString]) -> Result<(), OperationError> {
     let (mut session, probe_options) = opt.probe_options.simple_attach(&lister)?;
 
     // Flash the binary
-    let loader = flash::build_loader(
+    let loader = build_loader(
         &mut session,
         artifact.path(),
         opt.format_options,
         artifact.instruction_set,
-    )
-    .unwrap();
+    )?;
     flash::run_flash_download(
         &mut session,
         artifact.path(),
