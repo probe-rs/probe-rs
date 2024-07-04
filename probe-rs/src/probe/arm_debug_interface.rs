@@ -204,7 +204,7 @@ fn perform_jtag_transfer<P: JTAGAccess + RawProtocolIo>(
         s if s == JTAG_STATUS_WAIT => TransferStatus::Failed(DapError::WaitResponse),
         s if s == JTAG_STATUS_OK => TransferStatus::Ok,
         _ => {
-            tracing::error!("Unexpected DAP response: {}", status);
+            tracing::debug!("Unexpected DAP response: {}", status);
 
             TransferStatus::Failed(DapError::NoAcknowledge)
         }
@@ -515,7 +515,7 @@ fn perform_raw_transfers_retry<P: DebugProbe + RawProtocolIo + JTAGAccess>(
 
                     continue 'transfer;
                 }
-                _ => break, // on any other error, we're done.
+                _ => break 'transfer, // on any other error, we're done.
             }
         }
 

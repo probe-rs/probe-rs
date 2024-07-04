@@ -141,7 +141,7 @@ pub enum ArmError {
     TracingUnconfigured,
 
     /// Error parsing a register.
-    #[error("Error parsing a registere.")]
+    #[error("Error parsing a register.")]
     RegisterParse(#[from] RegisterParseError),
 
     /// Error reading ROM table.

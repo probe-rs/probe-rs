@@ -119,9 +119,16 @@ fn try_detect_arm_chip(mut probe: Probe) -> Result<(Probe, Option<Target>), Erro
         // TODO: do not consume probe
         match probe.try_into_arm_interface() {
             Ok(interface) => {
-                let mut interface = interface
-                    .initialize(DefaultArmSequence::create(), dp_address)
-                    .map_err(|(_probe, err)| err)?;
+                let mut interface =
+                    match interface.initialize(DefaultArmSequence::create(), dp_address) {
+                        Ok(interface) => interface,
+                        Err((interface, error)) => {
+                            probe = interface.close();
+                            tracing::debug!("Error during ARM chip detection: {error}");
+                            // If we can't connect, assume this is not an ARM chip and not an error.
+                            return Ok((probe, None));
+                        }
+                    };
 
                 let found_arm_chip = interface
                     .read_chip_info_from_rom_table(dp_address)

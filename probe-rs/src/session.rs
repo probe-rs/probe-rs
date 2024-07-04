@@ -832,8 +832,10 @@ fn get_target_from_selector(
             let (returned_probe, found_target) = crate::vendor::auto_determine_target(probe)?;
             probe = returned_probe;
 
-            // Now we can deassert reset in case we asserted it before. This is always okay.
-            probe.target_reset_deassert()?;
+            if AttachMethod::UnderReset == attach_method {
+                // Now we can deassert reset in case we asserted it before.
+                probe.target_reset_deassert()?;
+            }
 
             if let Some(target) = found_target {
                 target
