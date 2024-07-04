@@ -61,14 +61,23 @@ jobs:
         with:
           name: smoke_tester
 
-      - uses: actions/download-artifact@v4
-        with:
-          name: probe-rs
-
       - name: Run smoke-tester
         run:  |
           chmod +x smoke_tester
           ./smoke_tester test --dut-definitions $SMOKE_TESTER_CONFIG --markdown-summary $GITHUB_STEP_SUMMARY
+
+  embedded-test:
+    runs-on: ["self-hosted", "linux", "ARM64", "${{ matrix.runner }}"]
+    strategy:
+      matrix:
+        runner: ["smoke-tester-2"]
+
+    needs: build
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: probe-rs
 
       - name: Run embedded-tests
         run:  |
