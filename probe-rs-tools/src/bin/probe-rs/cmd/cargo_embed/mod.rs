@@ -106,11 +106,11 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
 
     // Change the work dir if the user asked to do so.
     if let Some(ref work_dir) = opt.work_dir {
-        std::env::set_current_dir(work_dir).with_context(|| {
-            format!(
-                "Unable to change working directory to {}",
-                work_dir.display()
-            )
+        std::env::set_current_dir(work_dir).map_err(|error| {
+            OperationError::FailedToChangeWorkingDirectory {
+                source: error,
+                path: work_dir.clone(),
+            }
         })?;
     }
     let work_dir = std::env::current_dir()?;
@@ -122,12 +122,15 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
 
     let _log_guard = setup_logging(None, config.general.log_level);
 
-    // Make sure we load the config given in the cli parameters.
+    // Make sure we load the target description if specified in config
     for cdp in &config.general.chip_descriptions {
         let file = File::open(Path::new(cdp))?;
         probe_rs::config::add_target_from_yaml(file)
             .with_context(|| format!("failed to load the chip description from {cdp}"))?;
     }
+
+    // Get the path to the binary we want to flash.
+    // This can either be give from the arguments or can be a cargo build artifact.
     let image_instr_set;
     let path = if let Some(path_buf) = &opt.path {
         image_instr_set = None;
@@ -137,16 +140,22 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
         image_instr_set = target_instruction_set(opt.cargo_options.target.clone());
 
         // Build the project, and extract the path of the built artifact.
-        build_artifact(&work_dir, &cargo_options)?.path().into()
+        build_artifact(&work_dir, &cargo_options)
+            .map_err(|error| {
+                if let Some(ref work_dir) = opt.work_dir {
+                    OperationError::FailedToBuildExternalCargoProject {
+                        source: error,
+                        // This unwrap is okay, because if we get this error, the path was properly canonicalized on the internal
+                        // `cargo build` step.
+                        path: work_dir.canonicalize().unwrap(),
+                    }
+                } else {
+                    OperationError::FailedToBuildCargoProject(error)
+                }
+            })?
+            .path()
+            .into()
     };
-
-    // Get the binary name (without extension) from the build artifact path
-    let name = path.file_stem().and_then(|f| f.to_str()).ok_or_else(|| {
-        anyhow!(
-            "Unable to determine binary file name from path {}",
-            path.display()
-        )
-    })?;
 
     logging::println(format!("      {} {}", "Config".green().bold(), config_name));
     logging::println(format!(
@@ -158,13 +167,22 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
     // If we got a probe selector in the config, open the probe matching the selector if possible.
     let selector = if let Some(selector) = opt.probe {
         Some(selector)
+    } else if let Some(ref selector) = config.probe.probe {
+        Some(selector.clone())
     } else {
+        #[allow(deprecated)]
         match (config.probe.usb_vid.as_ref(), config.probe.usb_pid.as_ref()) {
-            (Some(vid), Some(pid)) => Some(DebugProbeSelector {
-                vendor_id: u16::from_str_radix(vid, 16)?,
-                product_id: u16::from_str_radix(pid, 16)?,
-                serial_number: config.probe.serial.clone(),
-            }),
+            (Some(vid), Some(pid)) => {
+                let mut selector = format!("{vid}:{pid}");
+                if let Some(serial) = &config.probe.serial {
+                    use std::fmt::Write;
+                    write!(&mut selector, ":{serial}")?;
+                }
+
+                let selector = DebugProbeSelector::try_from(selector)
+                    .context("Failed to parse debug probe selector")?;
+                Some(selector)
+            }
             (vid, pid) => {
                 if vid.is_some() {
                     tracing::warn!("USB VID ignored, because PID is not specified.");
@@ -297,6 +315,14 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
     }
 
     if config.rtt.enabled {
+        // Get the binary name (without extension) from the build artifact path
+        let name = path.file_stem().and_then(|f| f.to_str()).ok_or_else(|| {
+            anyhow!(
+                "Unable to determine binary file name from path {}",
+                path.display()
+            )
+        })?;
+
         // GDB is also using the session, so we do not lock on the outside.
         run_rttui_app(name, &session, config, offset, rtt_client)?;
     } else if should_resume_core(&config) {
