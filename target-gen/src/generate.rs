@@ -156,7 +156,8 @@ where
             .map(create_core)
             .collect::<Result<Vec<_>>>()?;
 
-        let memory_map = get_mem_map(&device, &cores);
+        let mut memory_map = get_mem_map(&device, &cores);
+        patch_memmap(&mut memory_map);
 
         family.variants.push(Chip {
             name: device_name,
@@ -592,5 +593,32 @@ pub(crate) fn get_mem_map(device: &Device, cores: &[probe_rs_target::Core]) -> V
             },
         };
     }
+
     mem_map
+}
+
+fn patch_memmap(mem_map: &mut [MemoryRegion]) {
+    ensure_single_ram_region_is_executable(mem_map);
+}
+
+/// Ensure that at least one RAM region is executable.
+fn ensure_single_ram_region_is_executable(mem_map: &mut [MemoryRegion]) {
+    // If the device only has one Ram region, mark that region as executable. This is necessary
+    // as we rely on RAM-loaded flashing algorithms and so at least some of the RAM must be
+    // executable.
+    let ram_regions = mem_map
+        .iter()
+        .filter_map(MemoryRegion::as_ram_region)
+        .count();
+
+    if ram_regions == 1 {
+        if let Some(MemoryRegion::Ram(ram_region)) = mem_map
+            .iter_mut()
+            .find(|region| matches!(region, MemoryRegion::Ram(_)))
+        {
+            if let Some(ref mut access) = ram_region.access {
+                access.execute = true;
+            }
+        }
+    }
 }
