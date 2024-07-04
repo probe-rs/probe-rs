@@ -627,6 +627,7 @@ impl<'probe> Core<'probe> {
     ///
     /// * `ranges`: Memory ranges that should be dumped.
     #[cfg(feature = "debug")]
+    #[cfg_attr(probers_docsrs, doc(cfg(feature = "debug")))]
     pub fn dump(&mut self, ranges: Vec<Range<u64>>) -> Result<CoreDump, Error> {
         let instruction_set = self.instruction_set()?;
         let core_type = self.core_type();
