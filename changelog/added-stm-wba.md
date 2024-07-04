@@ -1,0 +1,1 @@
+Added support for new STM32WBA55 chips
