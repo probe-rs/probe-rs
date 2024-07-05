@@ -440,7 +440,7 @@ fn validate_family(family: &ChipFamily) -> Result<(), String> {
     // We can't have this in the `validate` method as we need information that is not available in
     // probe-rs-target.
     for target in family.variants() {
-        crate::flashing::Format::from_optional(target.default_binary_format.as_deref())?;
+        crate::flashing::FormatKind::from_optional(target.default_binary_format.as_deref())?;
     }
 
     Ok(())
