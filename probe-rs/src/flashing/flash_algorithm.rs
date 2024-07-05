@@ -1,8 +1,8 @@
 use super::FlashError;
 use crate::{architecture::riscv, core::Architecture, Target};
 use probe_rs_target::{
-    FlashProperties, MemoryRegion, PageInfo, RamRegion, RawFlashAlgorithm, SectorInfo,
-    TransferEncoding,
+    FlashProperties, MemoryRegion, PageInfo, RamRegion, RawFlashAlgorithm, RegionMergeIterator,
+    SectorInfo, TransferEncoding,
 };
 use std::mem::size_of_val;
 
@@ -395,11 +395,16 @@ impl FlashAlgorithm {
     ) -> Result<FlashAlgorithm, FlashError> {
         // Find a RAM region from which we can run the algo.
         let mm = &target.memory_map;
-        let ram = mm
+
+        let ram_regions = mm
             .iter()
             .filter_map(MemoryRegion::as_ram_region)
-            .merged()
-            .filter(|ram| is_ram_suitable_for_algo(ram, core_name, algo.load_address))
+            .filter(|ram| ram.accessible_by(core_name))
+            .merge_consecutive();
+
+        let ram = ram_regions
+            .clone()
+            .filter(|ram| is_ram_suitable_for_algo(ram, algo.load_address))
             .max_by_key(|region| region.range.end - region.range.start)
             .ok_or(FlashError::NoRamDefined {
                 name: target.name.clone(),
@@ -408,11 +413,9 @@ impl FlashAlgorithm {
 
         let data_ram;
         let data_ram = if let Some(data_load_address) = algo.data_load_address {
-            data_ram = mm
-                .iter()
-                .filter_map(MemoryRegion::as_ram_region)
-                .merged()
-                .find(|ram| is_ram_suitable_for_data(ram, core_name, data_load_address))
+            data_ram = ram_regions
+                .clone()
+                .find(|ram| is_ram_suitable_for_data(ram, data_load_address))
                 .ok_or(FlashError::NoRamDefined {
                     name: target.name.clone(),
                 })?;
@@ -429,7 +432,7 @@ impl FlashAlgorithm {
 }
 
 /// Returns whether the given RAM region is usable for downloading the flash algorithm.
-fn is_ram_suitable_for_algo(ram: &RamRegion, core_name: &str, load_address: Option<u64>) -> bool {
+fn is_ram_suitable_for_algo(ram: &RamRegion, load_address: Option<u64>) -> bool {
     if !ram.is_executable() {
         return false;
     }
@@ -444,55 +447,18 @@ fn is_ram_suitable_for_algo(ram: &RamRegion, core_name: &str, load_address: Opti
         // The RAM must contain the forced load address _and_
         // be accessible from the core we're going to run the
         // algorithm on.
-        ram.range.contains(&load_addr) && ram.accessible_by(core_name)
+        ram.range.contains(&load_addr)
     } else {
-        // Any executable RAM is okay as long as it's accessible to the core;
-        // the algorithm is presumably position-independent.
-        ram.accessible_by(core_name)
+        true
     }
 }
 
 /// Returns whether the given RAM region is usable for downloading the flash algorithm data.
-fn is_ram_suitable_for_data(ram: &RamRegion, core_name: &str, load_address: u64) -> bool {
+fn is_ram_suitable_for_data(ram: &RamRegion, load_address: u64) -> bool {
     // The RAM must contain the forced load address _and_
     // be accessible from the core we're going to run the
     // algorithm on.
-    ram.range.contains(&load_address) && ram.accessible_by(core_name)
-}
-
-trait IterExt {
-    /// Merge adjacent regions.
-    fn merged(self) -> impl Iterator<Item = RamRegion>;
-}
-
-impl<'a, I> IterExt for I
-where
-    I: Iterator<Item = &'a RamRegion>,
-{
-    fn merged(self) -> impl Iterator<Item = RamRegion> {
-        let mut iter = self.peekable();
-        std::iter::from_fn(move || {
-            let first = iter.next()?;
-            let mut range = first.range.clone();
-            while let Some(next) = iter.peek() {
-                if range.end != next.range.start
-                    || first.cores != next.cores
-                    || first.access != next.access
-                {
-                    break;
-                }
-                range.end = next.range.end;
-                iter.next();
-            }
-
-            Some(RamRegion {
-                name: first.name.clone(),
-                range,
-                cores: first.cores.clone(),
-                access: first.access,
-            })
-        })
-    }
+    ram.range.contains(&load_address)
 }
 
 #[cfg(test)]
