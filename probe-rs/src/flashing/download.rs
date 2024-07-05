@@ -72,7 +72,7 @@ impl FromStr for FormatKind {
             "hex" | "ihex" | "intelhex" => Ok(Self::Hex),
             "elf" => Ok(Self::Elf),
             "uf2" => Ok(Self::Uf2),
-            "idf" | "esp-idf" => Ok(Self::Idf),
+            "idf" | "esp-idf" | "espidf" => Ok(Self::Idf),
             _ => Err(format!("Format '{s}' is unknown.")),
         }
     }
@@ -409,6 +409,7 @@ mod tests {
         assert_eq!(FormatKind::from_str("Elf"), Ok(FormatKind::Elf));
         assert_eq!(FormatKind::from_str("elf"), Ok(FormatKind::Elf));
         assert_eq!(FormatKind::from_str("idf"), Ok(FormatKind::Idf));
+        assert_eq!(FormatKind::from_str("espidf"), Ok(FormatKind::Idf));
         assert_eq!(FormatKind::from_str("esp-idf"), Ok(FormatKind::Idf));
         assert_eq!(FormatKind::from_str("ESP-IDF"), Ok(FormatKind::Idf));
         assert_eq!(
