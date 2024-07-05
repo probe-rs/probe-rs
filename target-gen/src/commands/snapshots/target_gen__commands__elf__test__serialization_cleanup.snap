@@ -35,4 +35,3 @@ variants:
       end: 0x8010000
     cores:
     - main
-  default_binary_format: raw
