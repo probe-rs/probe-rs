@@ -15,7 +15,7 @@ use super::*;
 use crate::session::Session;
 
 /// Extended options for flashing a binary file.
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Default)]
 pub struct BinOptions {
     /// The address in memory where the binary will be put at.
     pub base_address: Option<u64>,
@@ -30,6 +30,52 @@ pub struct IdfOptions {
     pub bootloader: Option<PathBuf>,
     /// The partition table
     pub partition_table: Option<PathBuf>,
+}
+
+/// A finite list of all the available binary formats probe-rs understands.
+#[derive(Debug, Default, Serialize, Deserialize, PartialEq, Eq, Clone)]
+pub enum FormatKind {
+    /// Marks a file in binary format. This means that the file contains the contents of the flash 1:1.
+    /// [BinOptions] can be used to define the location in flash where the file contents should be put at.
+    /// Additionally using the same config struct, you can skip the first N bytes of the binary file to have them not put into the flash.
+    Bin,
+    /// Marks a file in [Intel HEX](https://en.wikipedia.org/wiki/Intel_HEX) format.
+    Hex,
+    /// Marks a file in the [ELF](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format) format.
+    #[default]
+    Elf,
+    /// Marks a file in the [ESP-IDF bootloader](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/app_image_format.html#app-image-structures) format.
+    /// Use [IdfOptions] to configure flashing.
+    Idf,
+    /// Marks a file in the [UF2](https://github.com/microsoft/uf2) format.
+    Uf2,
+}
+
+impl FormatKind {
+    /// Creates a new Format from an optional string.
+    ///
+    /// If the string is `None`, the default format is returned.
+    pub fn from_optional(s: Option<&str>) -> Result<Self, String> {
+        match s {
+            Some(format) => Self::from_str(format),
+            None => Ok(Self::default()),
+        }
+    }
+}
+
+impl FromStr for FormatKind {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match &s.to_lowercase()[..] {
+            "bin" | "binary" => Ok(Self::Bin),
+            "hex" | "ihex" | "intelhex" => Ok(Self::Hex),
+            "elf" => Ok(Self::Elf),
+            "uf2" => Ok(Self::Uf2),
+            "idf" | "esp-idf" => Ok(Self::Idf),
+            _ => Err(format!("Format '{s}' is unknown.")),
+        }
+    }
 }
 
 /// A finite list of all the available binary formats probe-rs understands.
@@ -51,32 +97,14 @@ pub enum Format {
     Uf2,
 }
 
-impl Format {
-    /// Creates a new Format from an optional string.
-    ///
-    /// If the string is `None`, the default format is returned.
-    pub fn from_optional(s: Option<&str>) -> Result<Self, String> {
-        match s {
-            Some(format) => Self::from_str(format),
-            None => Ok(Self::default()),
-        }
-    }
-}
-
-impl FromStr for Format {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match &s.to_lowercase()[..] {
-            "bin" | "binary" => Ok(Format::Bin(BinOptions {
-                base_address: None,
-                skip: 0,
-            })),
-            "idf" | "esp-idf" => Ok(Format::Idf(Default::default())),
-            "hex" | "ihex" | "intelhex" => Ok(Format::Hex),
-            "elf" => Ok(Format::Elf),
-            "uf2" => Ok(Format::Uf2),
-            _ => Err(format!("Format '{s}' is unknown.")),
+impl From<FormatKind> for Format {
+    fn from(kind: FormatKind) -> Self {
+        match kind {
+            FormatKind::Bin => Format::Bin(BinOptions::default()),
+            FormatKind::Hex => Format::Hex,
+            FormatKind::Elf => Format::Elf,
+            FormatKind::Uf2 => Format::Uf2,
+            FormatKind::Idf => Format::Idf(IdfOptions::default()),
         }
     }
 }
@@ -208,10 +236,10 @@ pub fn build_loader(
 /// This will ensure that memory boundaries are honored and does unlocking, erasing and programming of the flash for you.
 ///
 /// If you are looking for more options, have a look at [download_file_with_options].
-pub fn download_file<P: AsRef<Path>>(
+pub fn download_file(
     session: &mut Session,
-    path: P,
-    format: Format,
+    path: impl AsRef<Path>,
+    format: impl Into<Format>,
 ) -> Result<(), FileDownloadError> {
     download_file_with_options(session, path, format, DownloadOptions::default())
 }
@@ -221,13 +249,13 @@ pub fn download_file<P: AsRef<Path>>(
 /// This will ensure that memory boundaries are honored and does unlocking, erasing and programming of the flash for you.
 ///
 /// If you are looking for a simple version without many options, have a look at [download_file].
-pub fn download_file_with_options<P: AsRef<Path>>(
+pub fn download_file_with_options(
     session: &mut Session,
-    path: P,
-    format: Format,
+    path: impl AsRef<Path>,
+    format: impl Into<Format>,
     options: DownloadOptions,
 ) -> Result<(), FileDownloadError> {
-    let loader = build_loader(session, path, format, None)?;
+    let loader = build_loader(session, path, format.into(), None)?;
 
     loader
         .commit(session, options)
@@ -361,59 +389,35 @@ pub(super) fn extract_from_elf(
 mod tests {
     use std::str::FromStr;
 
-    use super::{BinOptions, Format};
+    use super::FormatKind;
 
     #[test]
     fn parse_format() {
-        assert_eq!(Format::from_str("hex"), Ok(Format::Hex));
-        assert_eq!(Format::from_str("Hex"), Ok(Format::Hex));
-        assert_eq!(Format::from_str("Ihex"), Ok(Format::Hex));
-        assert_eq!(Format::from_str("IHex"), Ok(Format::Hex));
-        assert_eq!(Format::from_str("iHex"), Ok(Format::Hex));
-        assert_eq!(Format::from_str("IntelHex"), Ok(Format::Hex));
-        assert_eq!(Format::from_str("intelhex"), Ok(Format::Hex));
-        assert_eq!(Format::from_str("intelHex"), Ok(Format::Hex));
-        assert_eq!(Format::from_str("Intelhex"), Ok(Format::Hex));
+        assert_eq!(FormatKind::from_str("hex"), Ok(FormatKind::Hex));
+        assert_eq!(FormatKind::from_str("Hex"), Ok(FormatKind::Hex));
+        assert_eq!(FormatKind::from_str("Ihex"), Ok(FormatKind::Hex));
+        assert_eq!(FormatKind::from_str("IHex"), Ok(FormatKind::Hex));
+        assert_eq!(FormatKind::from_str("iHex"), Ok(FormatKind::Hex));
+        assert_eq!(FormatKind::from_str("IntelHex"), Ok(FormatKind::Hex));
+        assert_eq!(FormatKind::from_str("intelhex"), Ok(FormatKind::Hex));
+        assert_eq!(FormatKind::from_str("intelHex"), Ok(FormatKind::Hex));
+        assert_eq!(FormatKind::from_str("Intelhex"), Ok(FormatKind::Hex));
+        assert_eq!(FormatKind::from_str("bin"), Ok(FormatKind::Bin));
+        assert_eq!(FormatKind::from_str("Bin"), Ok(FormatKind::Bin));
+        assert_eq!(FormatKind::from_str("binary"), Ok(FormatKind::Bin));
+        assert_eq!(FormatKind::from_str("Binary"), Ok(FormatKind::Bin));
+        assert_eq!(FormatKind::from_str("Elf"), Ok(FormatKind::Elf));
+        assert_eq!(FormatKind::from_str("elf"), Ok(FormatKind::Elf));
         assert_eq!(
-            Format::from_str("bin"),
-            Ok(Format::Bin(BinOptions {
-                base_address: None,
-                skip: 0
-            }))
-        );
-        assert_eq!(
-            Format::from_str("Bin"),
-            Ok(Format::Bin(BinOptions {
-                base_address: None,
-                skip: 0
-            }))
-        );
-        assert_eq!(
-            Format::from_str("binary"),
-            Ok(Format::Bin(BinOptions {
-                base_address: None,
-                skip: 0
-            }))
-        );
-        assert_eq!(
-            Format::from_str("Binary"),
-            Ok(Format::Bin(BinOptions {
-                base_address: None,
-                skip: 0
-            }))
-        );
-        assert_eq!(Format::from_str("Elf"), Ok(Format::Elf));
-        assert_eq!(Format::from_str("elf"), Ok(Format::Elf));
-        assert_eq!(
-            Format::from_str("elfbin"),
+            FormatKind::from_str("elfbin"),
             Err("Format 'elfbin' is unknown.".to_string())
         );
         assert_eq!(
-            Format::from_str(""),
+            FormatKind::from_str(""),
             Err("Format '' is unknown.".to_string())
         );
         assert_eq!(
-            Format::from_str("asdasdf"),
+            FormatKind::from_str("asdasdf"),
             Err("Format 'asdasdf' is unknown.".to_string())
         );
     }

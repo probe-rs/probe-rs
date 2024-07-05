@@ -12,12 +12,11 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use colored::Colorize;
 use itertools::Itertools;
-use probe_rs::flashing::{BinOptions, Format, IdfOptions};
+use probe_rs::flashing::{BinOptions, Format, FormatKind, IdfOptions};
 use probe_rs::{probe::list::Lister, Target};
 use report::Report;
+use serde::Deserialize;
 use serde::Serialize;
-use serde::{de::Error, Deserialize, Deserializer};
-use serde_json::Value;
 use time::{OffsetDateTime, UtcOffset};
 
 use crate::util::logging::setup_logging;
@@ -105,17 +104,6 @@ pub(crate) struct CoreOptions {
     core: usize,
 }
 
-/// A helper function to deserialize a default [`Format`] from a string.
-fn format_from_str<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Option<Format>, D::Error> {
-    match Value::deserialize(deserializer)? {
-        Value::String(s) => match Format::from_str(s.as_str()) {
-            Ok(format) => Ok(Some(format)),
-            Err(e) => Err(D::Error::custom(e)),
-        },
-        _ => Ok(None),
-    }
-}
-
 #[derive(clap::Parser, Clone, Serialize, Deserialize, Debug, Default)]
 #[serde(default)]
 pub struct FormatOptions {
@@ -128,20 +116,19 @@ pub struct FormatOptions {
         long,
         help_heading = "DOWNLOAD CONFIGURATION"
     )]
-    #[serde(deserialize_with = "format_from_str")]
-    binary_format: Option<Format>,
+    binary_format: Option<FormatKind>,
     /// The address in memory where the binary will be put at. This is only considered when `bin` is selected as the format.
     #[clap(long, value_parser = parse_u64, help_heading = "DOWNLOAD CONFIGURATION")]
-    pub base_address: Option<u64>,
+    base_address: Option<u64>,
     /// The number of bytes to skip at the start of the binary file. This is only considered when `bin` is selected as the format.
     #[clap(long, value_parser = parse_u32, default_value = "0", help_heading = "DOWNLOAD CONFIGURATION")]
-    pub skip: u32,
+    skip: u32,
     /// The idf bootloader path
     #[clap(long, help_heading = "DOWNLOAD CONFIGURATION")]
-    pub idf_bootloader: Option<PathBuf>,
+    idf_bootloader: Option<PathBuf>,
     /// The idf partition table path
     #[clap(long, help_heading = "DOWNLOAD CONFIGURATION")]
-    pub idf_partition_table: Option<PathBuf>,
+    idf_partition_table: Option<PathBuf>,
 }
 
 impl FormatOptions {
@@ -159,13 +146,13 @@ impl FormatOptions {
                 base_address: self.base_address,
                 skip: self.skip,
             }),
-            Format::Hex => Format::Hex,
-            Format::Elf => Format::Elf,
-            Format::Idf(_) => Format::Idf(IdfOptions {
+            FormatKind::Hex => Format::Hex,
+            FormatKind::Elf => Format::Elf,
+            FormatKind::Uf2 => Format::Uf2,
+            FormatKind::Idf => Format::Idf(IdfOptions {
                 bootloader: self.idf_bootloader,
                 partition_table: self.idf_partition_table,
             }),
-            Format::Uf2 => Format::Uf2,
         }
     }
 }
@@ -262,7 +249,7 @@ fn main() -> Result<()> {
     if let Some(format_arg_pos) = args.iter().position(|arg| arg == "--format") {
         if let Some(format_arg) = args.get(format_arg_pos + 1) {
             if let Some(format_arg) = format_arg.to_str() {
-                if Format::from_str(format_arg).is_ok() {
+                if FormatKind::from_str(format_arg).is_ok() {
                     anyhow::bail!("--format has been renamed to --binary-format. Please use --binary-format {0} instead of --format {0}", format_arg);
                 }
             }
