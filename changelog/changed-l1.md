@@ -1,0 +1,1 @@
+Updated STM32L1 family information. Note that this changes the target names by adding a package-specific suffix (e.g. STM32L100RB became STM32L100RBTx)
