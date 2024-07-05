@@ -392,6 +392,9 @@ mod tests {
         assert_eq!(FormatKind::from_str("Binary"), Ok(FormatKind::Bin));
         assert_eq!(FormatKind::from_str("Elf"), Ok(FormatKind::Elf));
         assert_eq!(FormatKind::from_str("elf"), Ok(FormatKind::Elf));
+        assert_eq!(FormatKind::from_str("idf"), Ok(FormatKind::Idf));
+        assert_eq!(FormatKind::from_str("esp-idf"), Ok(FormatKind::Idf));
+        assert_eq!(FormatKind::from_str("ESP-IDF"), Ok(FormatKind::Idf));
         assert_eq!(
             FormatKind::from_str("elfbin"),
             Err("Format 'elfbin' is unknown.".to_string())
