@@ -224,10 +224,7 @@ pub fn test_flashing(tracker: &TestTracker, session: &mut Session) -> Result<(),
 
     let start_time = Instant::now();
 
-    let format = match session.target().default_format {
-        probe_rs_target::BinaryFormat::Idf => Format::Idf(Default::default()),
-        probe_rs_target::BinaryFormat::Raw => Default::default(),
-    };
+    let format = Format::from_optional(session.target().default_format.as_deref()).unwrap();
 
     let result = download_file_with_options(session, test_binary, format, options);
 
