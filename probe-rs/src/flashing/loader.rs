@@ -21,6 +21,268 @@ use crate::memory::MemoryInterface;
 use crate::session::Session;
 use crate::Target;
 
+/// Helper trait for object safety.
+pub trait ImageReader: Read + Seek {}
+impl<T> ImageReader for T where T: Read + Seek {}
+
+/// Load and parse a firmware in a particular format, and add it to the flash loader.
+pub trait ImageLoader {
+    /// Loads the given image.
+    fn load(
+        &self,
+        flash_loader: &mut FlashLoader,
+        session: &mut Session,
+        file: &mut dyn ImageReader,
+    ) -> Result<(), FileDownloadError>;
+}
+
+impl ImageLoader for Format {
+    fn load(
+        &self,
+        flash_loader: &mut FlashLoader,
+        session: &mut Session,
+        file: &mut dyn ImageReader,
+    ) -> Result<(), FileDownloadError> {
+        match self {
+            Format::Bin(options) => BinLoader(options.clone()).load(flash_loader, session, file),
+            Format::Elf => ElfLoader.load(flash_loader, session, file),
+            Format::Hex => HexLoader.load(flash_loader, session, file),
+            Format::Idf(options) => IdfLoader(options.clone()).load(flash_loader, session, file),
+            Format::Uf2 => Uf2Loader.load(flash_loader, session, file),
+        }
+    }
+}
+
+/// Reads the data from the binary file and adds it to the loader without splitting it into flash instructions yet.
+struct BinLoader(BinOptions);
+
+impl ImageLoader for BinLoader {
+    fn load(
+        &self,
+        flash_loader: &mut FlashLoader,
+        _session: &mut Session,
+        file: &mut dyn ImageReader,
+    ) -> Result<(), FileDownloadError> {
+        // Skip the specified bytes.
+        file.seek(SeekFrom::Start(u64::from(self.0.skip)))?;
+
+        let mut buf = Vec::new();
+        file.read_to_end(&mut buf)?;
+
+        flash_loader.add_data(
+            // If no base address is specified use the start of the boot memory.
+            // TODO: Implement this as soon as we know targets.
+            self.0.base_address.unwrap_or_default(),
+            &buf,
+        )?;
+
+        Ok(())
+    }
+}
+
+/// Prepares the data sections that have to be loaded into flash from an ELF file.
+/// This will validate the ELF file and transform all its data into sections but no flash loader commands yet.
+struct ElfLoader;
+
+impl ImageLoader for ElfLoader {
+    fn load(
+        &self,
+        flash_loader: &mut FlashLoader,
+        _session: &mut Session,
+        file: &mut dyn ImageReader,
+    ) -> Result<(), FileDownloadError> {
+        let mut elf_buffer = Vec::new();
+        file.read_to_end(&mut elf_buffer)?;
+
+        let extracted_data = extract_from_elf(&elf_buffer)?;
+
+        if extracted_data.is_empty() {
+            tracing::warn!("No loadable segments were found in the ELF file.");
+            return Err(FileDownloadError::NoLoadableSegments);
+        }
+
+        tracing::info!("Found {} loadable sections:", extracted_data.len());
+
+        for section in &extracted_data {
+            let source = match section.section_names.len() {
+                0 => "Unknown",
+                1 => section.section_names[0].as_str(),
+                _ => "Multiple sections",
+            };
+
+            tracing::info!(
+                "    {} at {:#010X} ({} byte{})",
+                source,
+                section.address,
+                section.data.len(),
+                if section.data.len() == 1 { "" } else { "s" }
+            );
+        }
+
+        for data in extracted_data {
+            flash_loader.add_data(data.address.into(), data.data)?;
+        }
+
+        Ok(())
+    }
+}
+
+/// Reads the HEX data segments and adds them as loadable data blocks to the loader.
+/// This does not create any flash loader instructions yet.
+struct HexLoader;
+
+impl ImageLoader for HexLoader {
+    fn load(
+        &self,
+        flash_loader: &mut FlashLoader,
+        _session: &mut Session,
+        file: &mut dyn ImageReader,
+    ) -> Result<(), FileDownloadError> {
+        let mut base_address = 0;
+
+        let mut data = String::new();
+        file.read_to_string(&mut data)?;
+
+        for record in ihex::Reader::new(&data) {
+            match record? {
+                Record::Data { offset, value } => {
+                    let offset = base_address + offset as u64;
+                    flash_loader.add_data(offset, &value)?;
+                }
+                Record::ExtendedSegmentAddress(address) => {
+                    base_address = (address as u64) * 16;
+                }
+                Record::ExtendedLinearAddress(address) => {
+                    base_address = (address as u64) << 16;
+                }
+
+                Record::EndOfFile
+                | Record::StartSegmentAddress { .. }
+                | Record::StartLinearAddress(_) => {}
+            }
+        }
+        Ok(())
+    }
+}
+
+/// Prepares the data sections that have to be loaded into flash from an UF2 file.
+/// This will validate the UF2 file and transform all its data into sections but no flash loader commands yet.
+struct Uf2Loader;
+
+impl ImageLoader for Uf2Loader {
+    fn load(
+        &self,
+        flash_loader: &mut FlashLoader,
+        _session: &mut Session,
+        file: &mut dyn ImageReader,
+    ) -> Result<(), FileDownloadError> {
+        let mut uf2_buffer = Vec::new();
+        file.read_to_end(&mut uf2_buffer)?;
+
+        let (converted, family_to_target) = uf2_decode::convert_from_uf2(&uf2_buffer).unwrap();
+        let target_addresses = family_to_target.values();
+        let num_sections = family_to_target.len();
+
+        if let Some(target_address) = target_addresses.min() {
+            tracing::info!("Found {} loadable sections:", num_sections);
+            if num_sections > 1 {
+                tracing::warn!("More than 1 section found in UF2 file.  Using first section.");
+            }
+            flash_loader.add_data(*target_address, &converted)?;
+
+            Ok(())
+        } else {
+            tracing::warn!("No loadable segments were found in the UF2 file.");
+            Err(FileDownloadError::NoLoadableSegments)
+        }
+    }
+}
+
+/// Loads an esp-idf application into the loader by converting the main application to the esp-idf bootloader format,
+/// appending it to the loader along with the bootloader and partition table.
+///
+/// This does not create any flash loader instructions yet.
+struct IdfLoader(IdfOptions);
+
+impl ImageLoader for IdfLoader {
+    fn load(
+        &self,
+        flash_loader: &mut FlashLoader,
+        session: &mut Session,
+        file: &mut dyn ImageReader,
+    ) -> Result<(), FileDownloadError> {
+        let target = session.target();
+        let target_name = target
+            .name
+            .split_once('-')
+            .map(|(name, _)| name)
+            .unwrap_or(target.name.as_str());
+        let chip = espflash::targets::Chip::from_str(target_name)
+            .map_err(|_| FileDownloadError::IdfUnsupported(target.name.to_string()))?
+            .into_target();
+
+        // FIXME: Short-term hack until we can auto-detect the crystal frequency. ESP32 and ESP32-C2
+        // have 26MHz and 40MHz options, ESP32-H2 is 32MHz, the rest is 40MHz. We need to specify
+        // the frequency because different options require different bootloader images.
+        let xtal_frequency = if target_name.eq_ignore_ascii_case("esp32h2") {
+            XtalFrequency::_32Mhz
+        } else {
+            XtalFrequency::_40Mhz
+        };
+
+        let flash_size_result = session.halted_access(|session| {
+            // Figure out flash size from the memory map. We need a different bootloader for each size.
+            match session.target().debug_sequence.clone() {
+                DebugSequence::Riscv(sequence) => sequence.detect_flash_size(session),
+                DebugSequence::Xtensa(sequence) => sequence.detect_flash_size(session),
+                DebugSequence::Arm(_) => panic!("There are no ARM ESP targets."),
+            }
+        });
+
+        let flash_size = match flash_size_result.map_err(FileDownloadError::FlashSizeDetection)? {
+            Some(0x40000) => Some(FlashSize::_256Kb),
+            Some(0x80000) => Some(FlashSize::_512Kb),
+            Some(0x100000) => Some(FlashSize::_1Mb),
+            Some(0x200000) => Some(FlashSize::_2Mb),
+            Some(0x400000) => Some(FlashSize::_4Mb),
+            Some(0x800000) => Some(FlashSize::_8Mb),
+            Some(0x1000000) => Some(FlashSize::_16Mb),
+            Some(0x2000000) => Some(FlashSize::_32Mb),
+            Some(0x4000000) => Some(FlashSize::_64Mb),
+            Some(0x8000000) => Some(FlashSize::_128Mb),
+            Some(0x10000000) => Some(FlashSize::_256Mb),
+            _ => None,
+        };
+
+        let mut buf = Vec::new();
+        file.read_to_end(&mut buf)?;
+        let firmware = espflash::elf::ElfFirmwareImage::try_from(&buf[..])?;
+
+        let flash_data = FlashData::new(
+            self.0.bootloader.as_deref(),
+            self.0.partition_table.as_deref(),
+            None,
+            None,
+            {
+                let mut settings = FlashSettings::default();
+
+                settings.size = flash_size;
+
+                settings
+            },
+            0,
+        )?;
+
+        let image = chip.get_flash_image(&firmware, flash_data, None, xtal_frequency)?;
+
+        for data in image.flash_segments() {
+            flash_loader.add_data(data.addr.into(), &data.data)?;
+        }
+
+        Ok(())
+    }
+}
+
 /// `FlashLoader` is a struct which manages the flashing of any chunks of data onto any sections of flash.
 ///
 /// Use [add_data()](FlashLoader::add_data) to add a chunk of data.
@@ -117,207 +379,8 @@ impl FlashLoader {
                 });
             }
         }
-        match format {
-            Format::Bin(options) => self.load_bin_data(file, options),
-            Format::Elf => self.load_elf_data(file),
-            Format::Hex => self.load_hex_data(file),
-            Format::Idf(options) => self.load_idf_data(session, file, options),
-            Format::Uf2 => self.load_uf2_data(file),
-        }
-    }
 
-    /// Reads the data from the binary file and adds it to the loader without splitting it into flash instructions yet.
-    pub fn load_bin_data<T: Read + Seek>(
-        &mut self,
-        file: &mut T,
-        options: BinOptions,
-    ) -> Result<(), FileDownloadError> {
-        // Skip the specified bytes.
-        file.seek(SeekFrom::Start(u64::from(options.skip)))?;
-
-        let mut buf = Vec::new();
-        file.read_to_end(&mut buf)?;
-
-        self.add_data(
-            // If no base address is specified use the start of the boot memory.
-            // TODO: Implement this as soon as we know targets.
-            options.base_address.unwrap_or_default(),
-            &buf,
-        )?;
-
-        Ok(())
-    }
-
-    /// Loads an esp-idf application into the loader by converting the main application to the esp-idf bootloader format,
-    /// appending it to the loader along with the bootloader and partition table.
-    ///
-    /// This does not create any flash loader instructions yet.
-    pub fn load_idf_data<T: Read>(
-        &mut self,
-        session: &mut Session,
-        file: &mut T,
-        options: IdfOptions,
-    ) -> Result<(), FileDownloadError> {
-        let target = session.target();
-        let target_name = target
-            .name
-            .split_once('-')
-            .map(|(name, _)| name)
-            .unwrap_or(target.name.as_str());
-        let chip = espflash::targets::Chip::from_str(target_name)
-            .map_err(|_| FileDownloadError::IdfUnsupported(target.name.to_string()))?
-            .into_target();
-
-        // FIXME: Short-term hack until we can auto-detect the crystal frequency. ESP32 and ESP32-C2
-        // have 26MHz and 40MHz options, ESP32-H2 is 32MHz, the rest is 40MHz. We need to specify
-        // the frequency because different options require different bootloader images.
-        let xtal_frequency = if target_name.eq_ignore_ascii_case("esp32h2") {
-            XtalFrequency::_32Mhz
-        } else {
-            XtalFrequency::_40Mhz
-        };
-
-        let flash_size_result = session.halted_access(|session| {
-            // Figure out flash size from the memory map. We need a different bootloader for each size.
-            match session.target().debug_sequence.clone() {
-                DebugSequence::Riscv(sequence) => sequence.detect_flash_size(session),
-                DebugSequence::Xtensa(sequence) => sequence.detect_flash_size(session),
-                DebugSequence::Arm(_) => panic!("There are no ARM ESP targets."),
-            }
-        });
-
-        let flash_size = match flash_size_result.map_err(FileDownloadError::FlashSizeDetection)? {
-            Some(0x40000) => Some(FlashSize::_256Kb),
-            Some(0x80000) => Some(FlashSize::_512Kb),
-            Some(0x100000) => Some(FlashSize::_1Mb),
-            Some(0x200000) => Some(FlashSize::_2Mb),
-            Some(0x400000) => Some(FlashSize::_4Mb),
-            Some(0x800000) => Some(FlashSize::_8Mb),
-            Some(0x1000000) => Some(FlashSize::_16Mb),
-            Some(0x2000000) => Some(FlashSize::_32Mb),
-            Some(0x4000000) => Some(FlashSize::_64Mb),
-            Some(0x8000000) => Some(FlashSize::_128Mb),
-            Some(0x10000000) => Some(FlashSize::_256Mb),
-            _ => None,
-        };
-
-        let mut buf = Vec::new();
-        file.read_to_end(&mut buf)?;
-        let firmware = espflash::elf::ElfFirmwareImage::try_from(&buf[..])?;
-
-        let flash_data = FlashData::new(
-            options.bootloader.as_deref(),
-            options.partition_table.as_deref(),
-            None,
-            None,
-            {
-                let mut settings = FlashSettings::default();
-
-                settings.size = flash_size;
-
-                settings
-            },
-            0,
-        )?;
-
-        let image = chip.get_flash_image(&firmware, flash_data, None, xtal_frequency)?;
-
-        for data in image.flash_segments() {
-            self.add_data(data.addr.into(), &data.data)?;
-        }
-
-        Ok(())
-    }
-
-    /// Reads the HEX data segments and adds them as loadable data blocks to the loader.
-    /// This does not create any flash loader instructions yet.
-    pub fn load_hex_data<T: Read>(&mut self, file: &mut T) -> Result<(), FileDownloadError> {
-        let mut base_address = 0;
-
-        let mut data = String::new();
-        file.read_to_string(&mut data)?;
-
-        for record in ihex::Reader::new(&data) {
-            match record? {
-                Record::Data { offset, value } => {
-                    let offset = base_address + offset as u64;
-                    self.add_data(offset, &value)?;
-                }
-                Record::ExtendedSegmentAddress(address) => {
-                    base_address = (address as u64) * 16;
-                }
-                Record::ExtendedLinearAddress(address) => {
-                    base_address = (address as u64) << 16;
-                }
-
-                Record::EndOfFile
-                | Record::StartSegmentAddress { .. }
-                | Record::StartLinearAddress(_) => {}
-            }
-        }
-        Ok(())
-    }
-
-    /// Prepares the data sections that have to be loaded into flash from an ELF file.
-    /// This will validate the ELF file and transform all its data into sections but no flash loader commands yet.
-    pub fn load_elf_data<T: Read>(&mut self, file: &mut T) -> Result<(), FileDownloadError> {
-        let mut elf_buffer = Vec::new();
-        file.read_to_end(&mut elf_buffer)?;
-
-        let extracted_data = extract_from_elf(&elf_buffer)?;
-
-        if extracted_data.is_empty() {
-            tracing::warn!("No loadable segments were found in the ELF file.");
-            return Err(FileDownloadError::NoLoadableSegments);
-        }
-
-        tracing::info!("Found {} loadable sections:", extracted_data.len());
-
-        for section in &extracted_data {
-            let source = match section.section_names.len() {
-                0 => "Unknown",
-                1 => section.section_names[0].as_str(),
-                _ => "Multiple sections",
-            };
-
-            tracing::info!(
-                "    {} at {:#010X} ({} byte{})",
-                source,
-                section.address,
-                section.data.len(),
-                if section.data.len() == 1 { "" } else { "s" }
-            );
-        }
-
-        for data in extracted_data {
-            self.add_data(data.address.into(), data.data)?;
-        }
-
-        Ok(())
-    }
-
-    /// Prepares the data sections that have to be loaded into flash from an UF2 file.
-    /// This will validate the UF2 file and transform all its data into sections but no flash loader commands yet.
-    pub fn load_uf2_data<T: Read>(&mut self, file: &mut T) -> Result<(), FileDownloadError> {
-        let mut uf2_buffer = Vec::new();
-        file.read_to_end(&mut uf2_buffer)?;
-
-        let (converted, family_to_target) = uf2_decode::convert_from_uf2(&uf2_buffer).unwrap();
-        let target_addresses = family_to_target.values();
-        let num_sections = family_to_target.len();
-
-        if let Some(target_address) = target_addresses.min() {
-            tracing::info!("Found {} loadable sections:", num_sections);
-            if num_sections > 1 {
-                tracing::warn!("More than 1 section found in UF2 file.  Using first section.");
-            }
-            self.add_data(*target_address, &converted)?;
-
-            Ok(())
-        } else {
-            tracing::warn!("No loadable segments were found in the UF2 file.");
-            Err(FileDownloadError::NoLoadableSegments)
-        }
+        format.load(self, session, file)
     }
 
     /// Writes all the stored data chunks to flash.
