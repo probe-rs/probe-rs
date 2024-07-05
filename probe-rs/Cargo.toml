@@ -26,7 +26,7 @@ gdb-server = ["dep:gdbstub"]
 # Enable all built in targets.
 builtin-targets = []
 
-debug = ["dep:gimli", "dep:typed-path"]
+debug = ["dep:gimli", "dep:typed-path", "dep:parse_int", "dep:rmp-serde"]
 
 # Enable helpers for testing
 test = []
@@ -62,13 +62,11 @@ tracing = "0.1"
 uf2-decode = "0.2"
 espflash = { version = "3", default-features = false }
 dunce = "1"
-parse_int = "0.6"
 parking_lot = "0.12.2"
 zerocopy = { version = "0.7.32", features = ["derive"] }
 
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9"
-rmp-serde = "1"
 
 # optional
 hexdump = { version = "0.1", optional = true }
@@ -83,6 +81,8 @@ gimli = { version = "0.30", default-features = false, features = [
     "std",
 ], optional = true }
 typed-path = { version = "0.9", optional = true }
+parse_int = { version = "0.6", optional = true }
+rmp-serde = { version = "1", optional = true }
 
 [build-dependencies]
 probe-rs-target.workspace = true
