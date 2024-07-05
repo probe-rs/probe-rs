@@ -12,8 +12,6 @@ pub use probe_rs_target::{Architecture, CoreAccessOptions};
 use probe_rs_target::{
     ArmCoreAccessOptions, MemoryRegion, RiscvCoreAccessOptions, XtensaCoreAccessOptions,
 };
-#[cfg(feature = "debug")]
-use std::{collections::HashMap, ops::Range};
 use std::{sync::Arc, time::Duration};
 
 pub mod core_state;
@@ -27,9 +25,6 @@ pub use core_state::*;
 pub use core_status::*;
 pub use memory_mapped_registers::MemoryMappedRegister;
 pub use registers::*;
-
-#[cfg(feature = "debug")]
-use self::dump::CoreDump;
 
 /// An struct for storing the current state of a core.
 #[derive(Debug, Clone)]
@@ -619,44 +614,6 @@ impl<'probe> Core<'probe> {
     /// Disables vector catching for the given `condition`
     pub fn disable_vector_catch(&mut self, condition: VectorCatchCondition) -> Result<(), Error> {
         self.inner.disable_vector_catch(condition)
-    }
-
-    /// Dumps core info with the current state.
-    ///
-    /// # Arguments
-    ///
-    /// * `ranges`: Memory ranges that should be dumped.
-    #[cfg(feature = "debug")]
-    #[cfg_attr(probers_docsrs, doc(cfg(feature = "debug")))]
-    pub fn dump(&mut self, ranges: Vec<Range<u64>>) -> Result<CoreDump, Error> {
-        let instruction_set = self.instruction_set()?;
-        let core_type = self.core_type();
-        let supports_native_64bit_access = self.supports_native_64bit_access();
-        let fpu_support = self.fpu_support()?;
-        let floating_point_register_count = self.floating_point_register_count()?;
-
-        let mut registers = HashMap::new();
-        for register in self.registers().all_registers() {
-            let value = self.read_core_reg(register.id())?;
-            registers.insert(register.id(), value);
-        }
-
-        let mut data = Vec::new();
-        for range in ranges {
-            let mut values = vec![0; (range.end - range.start) as usize];
-            self.read(range.start, &mut values)?;
-            data.push((range, values));
-        }
-
-        Ok(CoreDump {
-            registers,
-            data,
-            instruction_set,
-            supports_native_64bit_access,
-            core_type,
-            fpu_support,
-            floating_point_register_count: Some(floating_point_register_count),
-        })
     }
 
     /// Check if the integer size is 64-bit
