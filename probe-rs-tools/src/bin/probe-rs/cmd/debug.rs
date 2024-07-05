@@ -15,6 +15,7 @@ use probe_rs::exception_handler_for_core;
 use probe_rs::flashing::FileDownloadError;
 use probe_rs::probe::list::Lister;
 use probe_rs::probe::DebugProbeError;
+use probe_rs::CoreDump;
 use probe_rs::CoreDumpError;
 use probe_rs::CoreInterface;
 use probe_rs::{
@@ -277,7 +278,7 @@ impl DebugCli {
                                                 println!("-> configurable priority exception has been escalated to hard fault!");
 
 
-                                                // read cfsr 
+                                                // read cfsr
                                                 let cfsr = cli_data.core.read_word_32(0xE000_ED28)?;
 
                                                 let ufsr = (cfsr >> 16) & 0xffff;
@@ -902,7 +903,7 @@ impl DebugCli {
 
                 println!("Dumping core");
 
-                cli_data.core.dump(ranges)?.store(location)?;
+                CoreDump::dump_core(&mut cli_data.core, ranges)?.store(location)?;
 
                 println!("Done.");
 
