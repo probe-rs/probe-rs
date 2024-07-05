@@ -648,7 +648,7 @@ impl JLink {
             tms_bit_count, tdi_bit_count,
             "TMS and TDI must have the same number of bits"
         );
-        let capacity = 1 + 1 + 2 + ((tms_bit_count + 7) / 8) * 2;
+        let capacity = 1 + 1 + 2 + tms_bit_count.div_ceil(8) * 2;
         let mut buf = Vec::with_capacity(capacity);
         buf.resize(4, 0);
         buf[0] = cmd as u8;
@@ -663,7 +663,7 @@ impl JLink {
         self.write_cmd(&buf)?;
 
         // Round bit count up to multple of 8 to get the number of response bytes.
-        let num_resp_bytes = (tms_bit_count + 7) / 8;
+        let num_resp_bytes = tms_bit_count.div_ceil(8);
         trace!(
             "{} TMS/TDI bits sent; reading {} response bytes",
             tms_bit_count,
@@ -721,7 +721,7 @@ impl JLink {
         let swdio = swdio.into_iter();
 
         let bit_count_hint = cmp::max(dir.size_hint().0, swdio.size_hint().0);
-        let capacity = 1 + 1 + 2 + ((bit_count_hint + 7) / 8) * 2;
+        let capacity = 1 + 1 + 2 + bit_count_hint.div_ceil(8) * 2;
         let mut buf = Vec::with_capacity(capacity);
         buf.resize(4, 0);
         buf[0] = Command::HwJtag3 as u8;

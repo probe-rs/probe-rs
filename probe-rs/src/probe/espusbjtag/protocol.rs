@@ -403,7 +403,7 @@ impl ProtocolHandler {
 
     /// Tries to receive pending in bits from the USB EP.
     fn receive_buffer(&mut self) -> Result<(), DebugProbeError> {
-        let count = ((self.pending_in_bits + 7) / 8).min(IN_EP_BUFFER_SIZE);
+        let count = self.pending_in_bits.div_ceil(8).min(IN_EP_BUFFER_SIZE);
         let mut incoming = [0; IN_EP_BUFFER_SIZE];
 
         tracing::trace!("Receiving buffer, pending bits: {}", self.pending_in_bits);

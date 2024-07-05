@@ -937,7 +937,7 @@ pub trait JTAGAccess: DebugProbe {
     ///
     /// This function emulates a read by performing a write with all zeros to the DR.
     fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError> {
-        let data = vec![0u8; (len as usize + 7) / 8];
+        let data = vec![0u8; len.div_ceil(8) as usize];
 
         self.write_register(address, &data, len)
     }

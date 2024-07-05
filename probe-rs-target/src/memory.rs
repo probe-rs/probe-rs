@@ -1,6 +1,6 @@
 use crate::serialize::{hex_range, hex_u_int};
 use serde::{Deserialize, Serialize};
-use std::ops::Range;
+use std::{iter::Peekable, ops::Range};
 
 /// Represents a region in non-volatile memory (e.g. flash or EEPROM).
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -139,6 +139,90 @@ impl RamRegion {
     /// Returns whether the region is boot memory.
     pub fn is_boot_memory(&self) -> bool {
         self.access().boot
+    }
+}
+
+/// Merges adjacent regions if they have the same access permissions.
+pub trait RegionMergeIterator: Iterator {
+    /// Merge adjacent regions.
+    fn merge_consecutive(self) -> MergeConsecutive<Self>
+    where
+        Self: Sized;
+}
+
+impl<'a, I> RegionMergeIterator for I
+where
+    I: Iterator<Item = &'a RamRegion>,
+    I: Sized,
+{
+    fn merge_consecutive(self) -> MergeConsecutive<Self>
+    where
+        Self: Sized,
+    {
+        MergeConsecutive::new(self)
+    }
+}
+
+pub struct MergeConsecutive<I>
+where
+    I: Iterator,
+{
+    iter: Peekable<I>,
+}
+
+impl<I> MergeConsecutive<I>
+where
+    I: Iterator,
+{
+    fn new(iter: I) -> Self {
+        MergeConsecutive {
+            iter: iter.peekable(),
+        }
+    }
+}
+
+impl<I: Clone> Clone for MergeConsecutive<I>
+where
+    I: Iterator,
+    Peekable<I>: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            iter: self.iter.clone(),
+        }
+    }
+}
+
+impl<'iter, I> Iterator for MergeConsecutive<I>
+where
+    I: Iterator<Item = &'iter RamRegion>,
+{
+    type Item = RamRegion;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut region = self.iter.next()?.clone();
+        while let Some(next) = self.iter.peek() {
+            if region.range.end != next.range.start || region.access != next.access {
+                break;
+            }
+
+            let common_cores = region
+                .cores
+                .iter()
+                .filter(|core| next.cores.contains(core))
+                .cloned()
+                .collect::<Vec<_>>();
+
+            // Do not return inaccessable regions.
+            if common_cores.is_empty() {
+                break;
+            }
+
+            region.cores = common_cores;
+            region.range.end = next.range.end;
+        }
+
+        Some(region)
     }
 }
 

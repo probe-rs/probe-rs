@@ -172,7 +172,7 @@ impl CoreRegisterAbstractCmdSupport {
 }
 
 /// Save stack of a scratch register.
-// TODO: we probably only need an Option, we don't seem to use scratch registers is nested situations.
+// TODO: we probably only need an Option, we don't seem to use scratch registers in nested situations.
 #[derive(Debug, Default)]
 struct ScratchState {
     stack: Vec<u32>,

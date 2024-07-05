@@ -29,5 +29,5 @@ pub use flash_algorithm::{RawFlashAlgorithm, TransferEncoding};
 pub use flash_properties::FlashProperties;
 pub use memory::{
     GenericRegion, MemoryAccess, MemoryRange, MemoryRegion, NvmRegion, PageInfo, RamRegion,
-    SectorDescription, SectorInfo,
+    RegionMergeIterator, SectorDescription, SectorInfo,
 };

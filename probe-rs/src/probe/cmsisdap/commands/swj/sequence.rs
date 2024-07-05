@@ -45,7 +45,7 @@ impl SequenceRequest {
             return Err(CmsisDapError::TooMuchData);
         }
 
-        if (bit_count as usize + 7) / 8 > data.len() {
+        if bit_count.div_ceil(8) as usize > data.len() {
             panic!("Data too short for given bit length. This is a bug, please report it.")
         }
 
