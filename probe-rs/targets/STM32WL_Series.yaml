@@ -2,8 +2,225 @@ name: STM32WL Series
 manufacturer:
   id: 0x20
   cc: 0x0
+generated_from_pack: true
+pack_file_release: 1.2.0
 variants:
-- name: STM32WLE5J8Ix
+- name: STM32WL54CCUx
+  cores:
+  - name: cm4
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  - name: cm0p
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - cm4
+    - cm0p
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20008000
+      end: 0x20010000
+    cores:
+    - cm4
+    - cm0p
+  - !Nvm
+    name: FLASH
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - cm4
+    - cm0p
+    access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32wlxx_cm4
+  - stm32wlxx_cm0+
+- name: STM32WL54JCIx
+  cores:
+  - name: cm4
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  - name: cm0p
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - cm4
+    - cm0p
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20008000
+      end: 0x20010000
+    cores:
+    - cm4
+    - cm0p
+  - !Nvm
+    name: FLASH
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - cm4
+    - cm0p
+    access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32wlxx_cm4
+  - stm32wlxx_cm0+
+- name: STM32WL55CCUx
+  cores:
+  - name: cm4
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  - name: cm0p
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - cm4
+    - cm0p
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20008000
+      end: 0x20010000
+    cores:
+    - cm4
+    - cm0p
+  - !Nvm
+    name: FLASH
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - cm4
+    - cm0p
+    access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32wlxx_cm4
+  - stm32wlxx_cm0+
+- name: STM32WL55JCIx
+  cores:
+  - name: cm4
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  - name: cm0p
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - cm4
+    - cm0p
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20008000
+      end: 0x20010000
+    cores:
+    - cm4
+    - cm0p
+  - !Nvm
+    name: FLASH
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - cm4
+    - cm0p
+    access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32wlxx_cm4
+  - stm32wlxx_cm0+
+- name: STM32WL5MOCHx
+  cores:
+  - name: cm4
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  - name: cm0p
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - cm4
+    - cm0p
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20008000
+      end: 0x20010000
+    cores:
+    - cm4
+    - cm0p
+  - !Nvm
+    name: FLASH
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - cm4
+    - cm0p
+    access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32wlxx_cm4
+  - stm32wlxx_cm0+
+- name: STM32WLE4C8Ux
   cores:
   - name: main
     type: armv7em
@@ -12,22 +229,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: SRAM2
     range:
-      start: 0x20000000
-      end: 0x20005000
+      start: 0x20008000
+      end: 0x2000d000
     cores:
     - main
   - !Nvm
+    name: FLASH
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32wlxx_cm4
-- name: STM32WLE5JBIx
+  - stm32wlexx_128
+- name: STM32WLE4CBUx
   cores:
   - name: main
     type: armv7em
@@ -36,22 +256,32 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: SRAM1
     range:
       start: 0x20000000
-      end: 0x2000c000
+      end: 0x20004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20008000
+      end: 0x20010000
     cores:
     - main
   - !Nvm
+    name: FLASH
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
-  - stm32wlxx_cm4
-- name: STM32WLE5JCIx
+  - stm32wlexx_128
+- name: STM32WLE4CCUx
   cores:
   - name: main
     type: armv7em
@@ -60,21 +290,187 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: SRAM1
     range:
       start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20008000
       end: 0x20010000
     cores:
     - main
   - !Nvm
+    name: FLASH
     range:
       start: 0x8000000
       end: 0x8040000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32wlxx_cm4
+- name: STM32WLE4J8Ix
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20008000
+      end: 0x2000d000
+    cores:
+    - main
+  - !Nvm
+    name: FLASH
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32wlexx_128
+- name: STM32WLE4JBIx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20008000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: FLASH
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32wlexx_128
+- name: STM32WLE4JCIx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20008000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: FLASH
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32wlxx_cm4
+- name: STM32WLE5C8Ux
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20008000
+      end: 0x2000d000
+    cores:
+    - main
+  - !Nvm
+    name: FLASH
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32wlexx_128
+- name: STM32WLE5CBUx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20008000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: FLASH
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32wlexx_128
 - name: STM32WLE5CCUx
   cores:
   - name: main
@@ -84,57 +480,132 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: SRAM1
     range:
       start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20008000
       end: 0x20010000
     cores:
     - main
   - !Nvm
+    name: FLASH
     range:
       start: 0x8000000
       end: 0x8040000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32wlxx_cm4
-- name: STM32WL55JCIx
+- name: STM32WLE5J8Ix
   cores:
   - name: main
     type: armv7em
     core_access_options: !Arm
       ap: 0
       psel: 0x0
-  - name: network
-    type: armv6m
+  memory_map:
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20008000
+      end: 0x2000d000
+    cores:
+    - main
+  - !Nvm
+    name: FLASH
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32wlexx_128
+- name: STM32WLE5JBIx
+  cores:
+  - name: main
+    type: armv7em
     core_access_options: !Arm
-      ap: 1
+      ap: 0
       psel: 0x0
   memory_map:
   - !Ram
+    name: SRAM1
     range:
       start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20008000
       end: 0x20010000
     cores:
     - main
-    - network
   - !Nvm
+    name: FLASH
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32wlexx_128
+- name: STM32WLE5JCIx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20008000
+      end: 0x20010000
+    cores:
+    - main
+  - !Nvm
+    name: FLASH
     range:
       start: 0x8000000
       end: 0x8040000
     cores:
     - main
-    - network
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32wlxx_cm4
 flash_algorithms:
 - name: stm32wlxx_cm4
-  description: STM32WLxx_CM4 Flash
+  description: STM32WLxx_CM4 Flash - cores missing from pack, manually added
   default: true
   instructions: kUhBaQApA9qQSYFgkEmBYAAgcEeMSEFpQfAAQUFhACBwR4lISvaqIYpKAOARYANp2wP71EDy/xICYQFpyQP81AFpCQP81AFpSQP81AFpEUMBYUFpQfAEAUFhQWlB9IAxQWEBackD/NQBaUkD/NQBaQkD/NRBaSHwBAFBYQAgcEdxSUDy/xIKYQphS2lB9vhyk0NLYQLqECMIacAD/NQIaUAD/NQIaQAD/NRIaUPwAgMYQ0hhSGlA9IAwSGEAvwC/CGnAA/zUCGlAA/zUCGkAA/zUSGkg8AIASGFIaSDwAgBIYUhpkENIYUhpIPSAMEhhT/AAYABoQBwD0QhoQPSAMAhgACBwRy3p/E3f+DyByR1A8v8bAPAHAyHwBwHI+BCw2PgUQETwAQTI+BRAbkZ04AgpQtPI+BCwW7PFGqpGACQD4BX4AXs3VWQcnEL50wAkw/EIBQbgBOsDDBL4AXsG+AxwZBylQvbYU0bY+BBA5AP71Nj4EEBkA/vU2PgQQCQD+9QAnBxgXGAAvwC/SRsoRAAj2PgQQOQD+9TY+BBAZAP71Nj4EEAkA/vUEMoQwBDKEMAIOQC/AL8j4AAkA+AS+AFbNVVkHIxC+dMAJP8lwfEIBwTgBOsBDGQcBvgMUKdC+NjY+BAQyQP71Nj4EBBJA/vU2PgQEAkD+9QAmQFgQWAAIdj4EEDkA/vU2PgQQGQD+9TY+BBAJAP71AApiNHY+BQAIPABAMj4FABP8ABgAGhAHAXQ2PgAACD0gDDI+AAAACC96PyNAAAAQABYIwFnRauJ780AMABAAAAAAA==
+  load_address: 0x20000020
   pc_init: 0x1
   pc_uninit: 0x15
   pc_program_page: 0x107
@@ -153,4 +624,51 @@ flash_algorithms:
     - size: 0x800
       address: 0x0
   cores:
-  - main
+    - main
+    - cm4
+- name: stm32wlxx_cm0+
+  description: STM32WLxx_CM0+ Flash - cores missing from pack, manually added
+  default: true
+  instructions: i0hBaQApA9qKSYFgikmBYAAgcEeGSEFpQgQRQ0FhACBwRxC1gkmFSIVKAOAQYAtp2wP71H5Ig0tAMANiAmrSA/zUAmoSA/zUCmlSA/zUAmoaQwJiQmoEIxpDQmJCapwDIkNCYgJq0gP81AppUgP81AFqCQP81EFqmUNBYgAgEL0wtWtKb0sTYWlJQDELYktqbUwjQEtiAArjQxhAC2rbA/zUC2pbA/zUC2obA/zUS2oCJShDA0NLYkhq6wMYQ0hiAL8AvwhqwAP81AhqQAP81AhqAAP81EhqqENIYkhqIEBIYkhqmENIYgEgwAYAaEAcAtEQaBhDEGAAIDC9/LXJHUMHyQhKTFsPyQBOTUA0JWJlagEmNUNlYnbgCClG00RNSEwsYQArLNDEGqZGACVuRgPgJ3h3VWQcbRydQvnTACQIJe0arEYF4BZ45xhtRlIc7lVkHKRF99g1THNGQDQlau0D/NQlam0D/NQlai0D/NQAnBxgXGAAvwC/Y0bJGmBEACMrTEA0JWrtA/zUJWptA/zUJWotA/zUFGgEYFRoRGAIMAg5CDIAvwC/IuAAJG1GA+AWeC5VUhxkHIxC+dMAJAgmdhq0RgPg/yZnGO5VZBykRfnYFklAMQxq5AP81AxqZAP81AxqJAP81ACZAWBBYAAhD0xANCVq7QP81CVqbQP81CVqLQP81AAphtEISEAwQWpJCEkAQWJABQBoQBwF0ANJCGgBIhIEkEMIYAAg/L0AQABYIwFnRauJ782qqgAAADAAQP8BAAAH4P//AAAAAA==
+  load_address: 0x20000020
+  pc_init: 0x1
+  pc_uninit: 0x15
+  pc_program_page: 0xfd
+  pc_erase_sector: 0x81
+  pc_erase_all: 0x23
+  data_section_offset: 0x24c
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0x8040000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 400
+    erase_sector_timeout: 400
+    sectors:
+    - size: 0x800
+      address: 0x0
+  cores:
+    - cm0p
+- name: stm32wlexx_128
+  description: STM32WLE5x Flash
+  default: true
+  instructions: kUhBaQApA9qQSYFgkEmBYAAgcEeMSEFpQfAAQUFhACBwR4lISvaqIYpKAOARYANp2wP71EDy/xICYQFpyQP81AFpCQP81AFpSQP81AFpEUMBYUFpQfAEAUFhQWlB9IAxQWEBackD/NQBaUkD/NQBaQkD/NRBaSHwBAFBYQAgcEdxSUDy/xIKYQphS2lB9vhyk0NLYQLqECMIacAD/NQIaUAD/NQIaQAD/NRIaUPwAgMYQ0hhSGlA9IAwSGEAvwC/CGnAA/zUCGlAA/zUCGkAA/zUSGkg8AIASGFIaSDwAgBIYUhpkENIYUhpIPSAMEhhT/AAYABoQBwD0QhoQPSAMAhgACBwRy3p/E3f+DyByR1A8v8bAPAHAyHwBwHI+BCw2PgUQETwAQTI+BRAbkZ04AgpQtPI+BCwW7PFGqpGACQD4BX4AXs3VWQcnEL50wAkw/EIBQbgBOsDDBL4AXsG+AxwZBylQvbYU0bY+BBA5AP71Nj4EEBkA/vU2PgQQCQD+9QAnBxgXGAAvwC/SRsoRAAj2PgQQOQD+9TY+BBAZAP71Nj4EEAkA/vUEMoQwBDKEMAIOQC/AL8j4AAkA+AS+AFbNVVkHIxC+dMAJP8lwfEIBwTgBOsBDGQcBvgMUKdC+NjY+BAQyQP71Nj4EBBJA/vU2PgQEAkD+9QAmQFgQWAAIdj4EEDkA/vU2PgQQGQD+9TY+BBAJAP71AApiNHY+BQAIPABAMj4FABP8ABgAGhAHAXQ2PgAACD0gDDI+AAAACC96PyNAAAAQABYIwFnRauJ780AMABAAAAAAA==
+  load_address: 0x20008020
+  pc_init: 0x1
+  pc_uninit: 0x15
+  pc_program_page: 0x107
+  pc_erase_sector: 0x81
+  pc_erase_all: 0x23
+  data_section_offset: 0x258
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0x8020000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 400
+    erase_sector_timeout: 400
+    sectors:
+    - size: 0x800
+      address: 0x0

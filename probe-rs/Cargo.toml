@@ -24,7 +24,7 @@ default = ["builtin-targets", "debug"]
 gdb-server = ["dep:gdbstub"]
 
 # Enable all built in targets.
-builtin-targets = []
+builtin-targets = ["dep:bincode", "dep:serde_yaml", "dep:probe-rs-target"]
 
 debug = ["dep:gimli", "dep:typed-path", "dep:parse_int", "dep:rmp-serde"]
 
@@ -37,7 +37,7 @@ docsplay.workspace = true
 thiserror.workspace = true
 probe-rs-target.workspace = true
 
-bincode = "1"
+bincode = { version = "1", optional = true }
 bitfield = "0.15"
 bitvec = "1"
 hidapi = { version = "2", default-features = false, features = [
@@ -85,10 +85,10 @@ parse_int = { version = "0.6", optional = true }
 rmp-serde = { version = "1", optional = true }
 
 [build-dependencies]
-probe-rs-target.workspace = true
+probe-rs-target = { workspace = true, optional = true }
 
-bincode = "1"
-serde_yaml = "0.9"
+bincode = { version = "1", optional = true }
+serde_yaml = { version = "0.9", optional = true }
 
 [dev-dependencies]
 pretty_env_logger = "0.5"

@@ -124,12 +124,22 @@ struct Registry {
     families: Vec<ChipFamily>,
 }
 
+#[cfg(feature = "builtin-targets")]
+fn builtin_targets() -> Vec<ChipFamily> {
+    const BUILTIN_TARGETS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/targets.bincode"));
+
+    bincode::deserialize(BUILTIN_TARGETS)
+        .expect("Failed to deserialize builtin targets. This is a bug")
+}
+
+#[cfg(not(feature = "builtin-targets"))]
+fn builtin_targets() -> Vec<ChipFamily> {
+    vec![]
+}
+
 impl Registry {
     fn from_builtin_families() -> Self {
-        const BUILTIN_TARGETS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/targets.bincode"));
-
-        let mut families = bincode::deserialize(BUILTIN_TARGETS)
-            .expect("Failed to deserialize builtin targets. This is a bug");
+        let mut families = builtin_targets();
 
         add_generic_targets(&mut families);
 

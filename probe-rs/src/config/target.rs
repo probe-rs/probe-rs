@@ -66,11 +66,21 @@ impl Target {
     pub(super) fn new(family: &ChipFamily, chip: &Chip) -> Target {
         let mut flash_algorithms = Vec::new();
         for algo_name in chip.flash_algorithms.iter() {
-            let algo = family.get_algorithm(algo_name).expect(
-                "The required flash algorithm was not found. This is a bug. Please report it.",
-            );
+            let mut algo = family
+                .get_algorithm(algo_name)
+                .expect(
+                    "The required flash algorithm was not found. This is a bug. Please report it.",
+                )
+                .clone();
 
-            flash_algorithms.push(algo.clone());
+            // only keep cores in the algo that are also in the chip
+            algo.cores.retain(|algo_core| {
+                chip.cores
+                    .iter()
+                    .any(|chip_core| &chip_core.name == algo_core)
+            });
+
+            flash_algorithms.push(algo);
         }
 
         let debug_sequence = crate::vendor::try_create_debug_sequence(chip).unwrap_or_else(|| {
