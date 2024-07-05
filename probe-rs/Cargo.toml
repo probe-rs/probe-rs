@@ -24,7 +24,7 @@ default = ["builtin-targets"]
 gdb-server = ["dep:gdbstub"]
 
 # Enable all built in targets.
-builtin-targets = []
+builtin-targets = ["dep:bincode", "dep:serde_yaml", "dep:probe-rs-target"]
 
 # Enable helpers for testing
 test = []
@@ -35,7 +35,7 @@ docsplay.workspace = true
 thiserror.workspace = true
 probe-rs-target.workspace = true
 
-bincode = "1"
+bincode = { version = "1", optional = true }
 bitfield = "0.15"
 bitvec = "1"
 gimli = { version = "0.30", default-features = false, features = [
@@ -81,10 +81,10 @@ hexdump = { version = "0.1", optional = true }
 gdbstub = { version = "0.7", optional = true }
 
 [build-dependencies]
-probe-rs-target.workspace = true
+probe-rs-target = { workspace = true, optional = true }
 
-bincode = "1"
-serde_yaml = "0.9"
+bincode = { version = "1", optional = true }
+serde_yaml = { version = "0.9", optional = true }
 
 [dev-dependencies]
 pretty_env_logger = "0.5"
