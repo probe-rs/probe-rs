@@ -107,6 +107,28 @@ pub(crate) struct CoreOptions {
 
 #[derive(clap::Parser, Clone, Serialize, Deserialize, Debug, Default)]
 #[serde(default)]
+pub struct BinaryCliOptions {
+    /// The address in memory where the binary will be put at. This is only considered when `bin` is selected as the format.
+    #[clap(long, value_parser = parse_u64, help_heading = "DOWNLOAD CONFIGURATION")]
+    base_address: Option<u64>,
+    /// The number of bytes to skip at the start of the binary file. This is only considered when `bin` is selected as the format.
+    #[clap(long, value_parser = parse_u32, default_value = "0", help_heading = "DOWNLOAD CONFIGURATION")]
+    skip: u32,
+}
+
+#[derive(clap::Parser, Clone, Serialize, Deserialize, Debug, Default)]
+#[serde(default)]
+pub struct IdfCliOptions {
+    /// The idf bootloader path
+    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION")]
+    idf_bootloader: Option<PathBuf>,
+    /// The idf partition table path
+    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION")]
+    idf_partition_table: Option<PathBuf>,
+}
+
+#[derive(clap::Parser, Clone, Serialize, Deserialize, Debug, Default)]
+#[serde(default)]
 pub struct FormatOptions {
     /// If a format is provided, use it.
     /// If a target has a preferred format, we use that.
@@ -118,18 +140,12 @@ pub struct FormatOptions {
         help_heading = "DOWNLOAD CONFIGURATION"
     )]
     binary_format: Option<FormatKind>,
-    /// The address in memory where the binary will be put at. This is only considered when `bin` is selected as the format.
-    #[clap(long, value_parser = parse_u64, help_heading = "DOWNLOAD CONFIGURATION")]
-    base_address: Option<u64>,
-    /// The number of bytes to skip at the start of the binary file. This is only considered when `bin` is selected as the format.
-    #[clap(long, value_parser = parse_u32, default_value = "0", help_heading = "DOWNLOAD CONFIGURATION")]
-    skip: u32,
-    /// The idf bootloader path
-    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION")]
-    idf_bootloader: Option<PathBuf>,
-    /// The idf partition table path
-    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION")]
-    idf_partition_table: Option<PathBuf>,
+
+    #[clap(flatten)]
+    bin_options: BinaryCliOptions,
+
+    #[clap(flatten)]
+    idf_options: IdfCliOptions,
 }
 
 impl FormatOptions {
@@ -148,15 +164,15 @@ impl FormatOptions {
 
         Ok(match kind {
             FormatKind::Bin => Format::Bin(BinOptions {
-                base_address: self.base_address,
-                skip: self.skip,
+                base_address: self.bin_options.base_address,
+                skip: self.bin_options.skip,
             }),
             FormatKind::Hex => Format::Hex,
             FormatKind::Elf => Format::Elf,
             FormatKind::Uf2 => Format::Uf2,
             FormatKind::Idf => Format::Idf(IdfOptions {
-                bootloader: self.idf_bootloader,
-                partition_table: self.idf_partition_table,
+                bootloader: self.idf_options.idf_bootloader,
+                partition_table: self.idf_options.idf_partition_table,
             }),
         })
     }
