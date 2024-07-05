@@ -62,7 +62,7 @@ impl Sequence {
             tck_cycles
         );
 
-        let num_bytes = (tdi.len() + 7) / 8;
+        let num_bytes = tdi.len().div_ceil(8);
         let mut data: [u8; 8] = [0; 8];
         data[0..num_bytes].copy_from_slice(&tdi.as_raw_slice()[0..num_bytes]);
 
@@ -89,7 +89,7 @@ impl Sequence {
             tck_cycles
         );
 
-        let num_bytes = (tdi.len() + 7) / 8;
+        let num_bytes = tdi.len().div_ceil(8);
         let mut data: [u8; 8] = [0; 8];
         data[0..num_bytes].copy_from_slice(&tdi.as_raw_slice()[0..num_bytes]);
 
@@ -144,7 +144,7 @@ impl Request for SequenceRequest {
             buffer[transfer_len_bytes] = sequence_info;
             transfer_len_bytes += 1;
 
-            let byte_count: usize = (tck_cycles as usize + 7) / 8;
+            let byte_count = tck_cycles.div_ceil(8) as usize;
             buffer[transfer_len_bytes..(transfer_len_bytes + byte_count)]
                 .copy_from_slice(&sequence.data[..byte_count]);
             transfer_len_bytes += byte_count;
@@ -160,7 +160,7 @@ impl Request for SequenceRequest {
             if sequence.tdo_capture {
                 let tck_cycles = sequence.tck_cycles & 0x3F;
                 let tck_cycles = if tck_cycles == 0 { 64 } else { tck_cycles };
-                let byte_count: usize = (tck_cycles as usize + 7) / 8;
+                let byte_count = tck_cycles.div_ceil(8) as usize;
                 received_len_bytes += byte_count;
             }
         });

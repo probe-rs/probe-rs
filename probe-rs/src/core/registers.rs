@@ -175,7 +175,7 @@ impl CoreRegister {
     /// Get the size, in bytes, of this register
     pub fn size_in_bytes(&self) -> usize {
         // Always round up
-        (self.size_in_bits() + 7) / 8
+        self.size_in_bits().div_ceil(8)
     }
 
     /// Get the width to format this register as a hex string

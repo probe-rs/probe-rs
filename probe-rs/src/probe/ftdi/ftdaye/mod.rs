@@ -280,7 +280,6 @@ pub struct Device {
 
 impl std::fmt::Debug for Device {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // TODO print more information
         f.debug_struct("Device")
             .field("chip_type", &self.chip_type)
             .finish()

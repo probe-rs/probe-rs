@@ -1,0 +1,1 @@
+Updated STM32H7 families.
