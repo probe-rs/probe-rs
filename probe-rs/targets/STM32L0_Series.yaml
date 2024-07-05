@@ -2,6 +2,8 @@ name: STM32L0 Series
 manufacturer:
   id: 0x20
   cc: 0x0
+generated_from_pack: true
+pack_file_release: 2.3.0
 variants:
 - name: STM32L010C6Tx
   cores:
@@ -12,18 +14,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -38,18 +43,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20000800
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8004000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -64,18 +72,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20000800
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8004000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -90,18 +101,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -116,18 +130,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
-      end: 0x20000800
+      end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -142,22 +159,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
-      end: 0x20000800
+      end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
-  - stm32l01_2x_eeprom
+  - stm32l010xb_eeprom
   - stm32l0xx_opt
 - name: STM32L011D3Px
   cores:
@@ -168,22 +188,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20000800
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8002000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
-  - stm32l01_2x_eeprom
+  - stm32l010xb_eeprom
   - stm32l0xx_opt
 - name: STM32L011D4Px
   cores:
@@ -194,22 +217,54 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20000800
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8004000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
-  - stm32l01_2x_eeprom
+  - stm32l010xb_eeprom
+  - stm32l0xx_opt
+- name: STM32L011E3Yx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20000800
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8002000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l010xb_eeprom
   - stm32l0xx_opt
 - name: STM32L011E4Yx
   cores:
@@ -220,22 +275,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20000800
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8004000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
-  - stm32l01_2x_eeprom
+  - stm32l010xb_eeprom
   - stm32l0xx_opt
 - name: STM32L011F3Px
   cores:
@@ -246,22 +304,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20000800
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8002000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
-  - stm32l01_2x_eeprom
+  - stm32l010xb_eeprom
   - stm32l0xx_opt
 - name: STM32L011F3Ux
   cores:
@@ -272,22 +333,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20000800
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8002000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
-  - stm32l01_2x_eeprom
+  - stm32l010xb_eeprom
   - stm32l0xx_opt
 - name: STM32L011F4Px
   cores:
@@ -298,22 +362,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20000800
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8004000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
-  - stm32l01_2x_eeprom
+  - stm32l010xb_eeprom
   - stm32l0xx_opt
 - name: STM32L011F4Ux
   cores:
@@ -324,22 +391,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20000800
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8004000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
-  - stm32l01_2x_eeprom
+  - stm32l010xb_eeprom
   - stm32l0xx_opt
 - name: STM32L011G3Ux
   cores:
@@ -350,22 +420,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20000800
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8002000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
-  - stm32l01_2x_eeprom
+  - stm32l010xb_eeprom
   - stm32l0xx_opt
 - name: STM32L011G4Ux
   cores:
@@ -376,22 +449,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20000800
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8004000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
-  - stm32l01_2x_eeprom
+  - stm32l010xb_eeprom
   - stm32l0xx_opt
 - name: STM32L011K3Tx
   cores:
@@ -402,22 +478,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20000800
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8002000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
-  - stm32l01_2x_eeprom
+  - stm32l010xb_eeprom
   - stm32l0xx_opt
 - name: STM32L011K3Ux
   cores:
@@ -428,22 +507,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20000800
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8002000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
-  - stm32l01_2x_eeprom
+  - stm32l010xb_eeprom
   - stm32l0xx_opt
 - name: STM32L011K4Tx
   cores:
@@ -454,22 +536,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20000800
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8004000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
-  - stm32l01_2x_eeprom
+  - stm32l010xb_eeprom
   - stm32l0xx_opt
 - name: STM32L011K4Ux
   cores:
@@ -480,22 +565,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20000800
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8004000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
-  - stm32l01_2x_eeprom
+  - stm32l010xb_eeprom
   - stm32l0xx_opt
 - name: STM32L021D4Px
   cores:
@@ -506,48 +594,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20000800
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8004000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
-  - stm32l01_2x_eeprom
-  - stm32l0xx_opt
-- name: STM32L021F4Px
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20000800
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8004000
-    cores:
-    - main
-    access:
-      boot: true
-  flash_algorithms:
-  - stm32l0xx_192
-  - stm32l01_2x_eeprom
+  - stm32l010xb_eeprom
   - stm32l0xx_opt
 - name: STM32L021F4Ux
   cores:
@@ -558,22 +623,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20000800
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8004000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
-  - stm32l01_2x_eeprom
+  - stm32l010xb_eeprom
   - stm32l0xx_opt
 - name: STM32L021G4Ux
   cores:
@@ -584,22 +652,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20000800
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8004000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
-  - stm32l01_2x_eeprom
+  - stm32l010xb_eeprom
   - stm32l0xx_opt
 - name: STM32L021K4Tx
   cores:
@@ -610,48 +681,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20000800
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8004000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
-  - stm32l01_2x_eeprom
-  - stm32l0xx_opt
-- name: STM32L021K4Ux
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20000800
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8004000
-    cores:
-    - main
-    access:
-      boot: true
-  flash_algorithms:
-  - stm32l0xx_192
-  - stm32l01_2x_eeprom
+  - stm32l010xb_eeprom
   - stm32l0xx_opt
 - name: STM32L031C4Tx
   cores:
@@ -662,18 +710,50 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8004000
     cores:
     - main
     access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l03_4x_eeprom
+  - stm32l0xx_opt
+- name: STM32L031C4Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    cores:
+    - main
+    access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -688,18 +768,50 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l03_4x_eeprom
+  - stm32l0xx_opt
+- name: STM32L031C6Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -714,18 +826,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8004000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -740,18 +855,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -766,18 +884,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8004000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -792,18 +913,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -818,18 +942,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8004000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -844,18 +971,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -870,44 +1000,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
-      boot: true
-  flash_algorithms:
-  - stm32l0xx_192
-  - stm32l03_4x_eeprom
-  - stm32l0xx_opt
-- name: STM32L031K4Tx
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8004000
-    cores:
-    - main
-    access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -922,18 +1029,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8004000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -948,18 +1058,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -974,44 +1087,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
-      boot: true
-  flash_algorithms:
-  - stm32l0xx_192
-  - stm32l03_4x_eeprom
-  - stm32l0xx_opt
-- name: STM32L041C4Tx
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8004000
-    cores:
-    - main
-    access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -1026,18 +1116,50 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l03_4x_eeprom
+  - stm32l0xx_opt
+- name: STM32L041C6Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -1052,18 +1174,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -1078,18 +1203,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -1104,18 +1232,50 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l03_4x_eeprom
+  - stm32l0xx_opt
+- name: STM32L041G6UxS
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -1130,18 +1290,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -1156,18 +1319,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -1182,18 +1348,50 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L051C6Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -1208,18 +1406,50 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L051C8Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -1234,18 +1464,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -1260,18 +1493,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -1286,18 +1522,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -1312,18 +1551,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -1338,18 +1580,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -1364,18 +1609,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -1390,18 +1638,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -1416,18 +1667,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -1442,18 +1696,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -1468,18 +1725,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -1494,18 +1754,50 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L052C6Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -1520,18 +1812,50 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L052C8Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -1546,18 +1870,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -1572,18 +1899,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -1598,18 +1928,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -1624,18 +1957,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -1650,18 +1986,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -1676,18 +2015,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -1702,18 +2044,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -1728,18 +2073,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -1754,18 +2102,50 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L052T8Fx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -1780,18 +2160,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -1806,18 +2189,50 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L053C6Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -1832,18 +2247,50 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L053C8Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -1858,18 +2305,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -1884,18 +2334,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -1910,18 +2363,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -1936,18 +2392,50 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L062C8Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -1962,18 +2450,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -1988,18 +2479,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -2014,18 +2508,50 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l05_6x_eeprom
+  - stm32l0xx_opt
+- name: STM32L063C8Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -2040,18 +2566,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20002000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -2066,18 +2595,50 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07x_64_eeprom
+  - stm32l0xx_opt
+- name: STM32L071C8Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -2092,18 +2653,50 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L071CBUx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -2118,18 +2711,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -2144,18 +2740,50 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8030000
     cores:
     - main
     access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L071CZUx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    cores:
+    - main
+    access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -2170,18 +2798,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8030000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -2196,18 +2827,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -2222,25 +2856,22 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
-  - !Nvm
-    range:
-      start: 0x8080000
-      end: 0x8080200
-    cores:
-    - main
   flash_algorithms:
   - stm32l0xx_192
   - stm32l07_8x_eeprom
@@ -2254,18 +2885,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -2280,18 +2914,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8030000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -2306,18 +2943,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8030000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -2332,18 +2972,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -2358,18 +3001,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -2384,31 +3030,22 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8030000
     cores:
     - main
     access:
+      write: false
       boot: true
-  - !Nvm
-    range:
-      start: 0x8080000
-      end: 0x8081800
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x1ff80000
-      end: 0x1ff80020
-    cores:
-    - main
   flash_algorithms:
   - stm32l0xx_192
   - stm32l07_8x_eeprom
@@ -2422,60 +3059,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8030000
     cores:
     - main
     access:
+      write: false
       boot: true
-  - !Nvm
-    range:
-      start: 0x8080000
-      end: 0x8081800
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x1ff80000
-      end: 0x1ff80020
-    cores:
-    - main
   flash_algorithms:
   - stm32l0xx_192
   - stm32l07_8x_eeprom
-  - stm32l0xx_opt
-- name: STM32L071V8Ix
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      boot: true
-  flash_algorithms:
-  - stm32l0xx_192
-  - stm32l07x_64_eeprom
   - stm32l0xx_opt
 - name: STM32L071V8Tx
   cores:
@@ -2486,48 +3088,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
   - stm32l07x_64_eeprom
-  - stm32l0xx_opt
-- name: STM32L071VBIx
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      boot: true
-  flash_algorithms:
-  - stm32l0xx_192
-  - stm32l07_8x_eeprom
   - stm32l0xx_opt
 - name: STM32L071VBTx
   cores:
@@ -2538,44 +3117,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
-      boot: true
-  flash_algorithms:
-  - stm32l0xx_192
-  - stm32l07_8x_eeprom
-  - stm32l0xx_opt
-- name: STM32L071VZIx
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8030000
-    cores:
-    - main
-    access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -2590,18 +3146,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8030000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -2616,18 +3175,50 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L072CBUx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -2642,18 +3233,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -2668,18 +3262,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8030000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -2694,18 +3291,50 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8030000
     cores:
     - main
     access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L072CZUx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    cores:
+    - main
+    access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -2720,44 +3349,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8030000
     cores:
     - main
     access:
-      boot: true
-  flash_algorithms:
-  - stm32l0xx_192
-  - stm32l07_8x_eeprom
-  - stm32l0xx_opt
-- name: STM32L072KBTx
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -2772,18 +3378,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -2798,18 +3407,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8030000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -2824,18 +3436,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8030000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -2850,18 +3465,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -2876,18 +3494,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -2902,18 +3523,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -2928,18 +3552,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8030000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -2954,18 +3581,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8030000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -2980,18 +3610,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8030000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -3006,18 +3639,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -3032,18 +3668,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -3058,18 +3697,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -3084,18 +3726,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -3110,18 +3755,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8030000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -3136,18 +3784,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8030000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -3162,18 +3813,50 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L073CBUx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -3188,18 +3871,79 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8030000
     cores:
     - main
     access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L073CZUx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L073CZYx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    cores:
+    - main
+    access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -3214,18 +3958,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -3240,18 +3987,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -3266,18 +4016,50 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8030000
     cores:
     - main
     access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L073RZIx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    cores:
+    - main
+    access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -3292,48 +4074,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8030000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
   - stm32l07_8x_eeprom
-  - stm32l0xx_opt
-- name: STM32L073V8Ix
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      boot: true
-  flash_algorithms:
-  - stm32l0xx_192
-  - stm32l07x_64_eeprom
   - stm32l0xx_opt
 - name: STM32L073V8Tx
   cores:
@@ -3344,48 +4103,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
   - stm32l07x_64_eeprom
-  - stm32l0xx_opt
-- name: STM32L073VBIx
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      boot: true
-  flash_algorithms:
-  - stm32l0xx_192
-  - stm32l07_8x_eeprom
   - stm32l0xx_opt
 - name: STM32L073VBTx
   cores:
@@ -3396,18 +4132,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -3422,18 +4161,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8030000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -3448,18 +4190,50 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8030000
     cores:
     - main
     access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L081CBTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -3474,18 +4248,50 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8030000
     cores:
     - main
     access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L081CZUx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    cores:
+    - main
+    access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -3500,18 +4306,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8030000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -3526,23 +4335,55 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8030000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
   - stm32l07_8x_eeprom
   - stm32l0xx_opt
+- name: STM32L082CZUx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l0xx_opt
+  - stm32l07_8x_eeprom
 - name: STM32L082CZYx
   cores:
   - name: main
@@ -3552,44 +4393,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8030000
     cores:
     - main
     access:
-      boot: true
-  flash_algorithms:
-  - stm32l0xx_192
-  - stm32l0xx_opt
-  - stm32l07_8x_eeprom
-- name: STM32L082KBTx
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -3604,18 +4422,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -3630,18 +4451,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8030000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -3656,18 +4480,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8030000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -3682,18 +4509,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -3708,18 +4538,50 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8030000
     cores:
     - main
     access:
+      write: false
+      boot: true
+  flash_algorithms:
+  - stm32l0xx_192
+  - stm32l07_8x_eeprom
+  - stm32l0xx_opt
+- name: STM32L083CZUx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    cores:
+    - main
+    access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -3734,18 +4596,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -3760,18 +4625,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -3786,18 +4654,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8030000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -3812,48 +4683,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8030000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
   - stm32l07_8x_eeprom
-  - stm32l0xx_opt
-- name: STM32L083V8Ix
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      boot: true
-  flash_algorithms:
-  - stm32l0xx_192
-  - stm32l07x_64_eeprom
   - stm32l0xx_opt
 - name: STM32L083V8Tx
   cores:
@@ -3864,48 +4712,25 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20050000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
   - stm32l07x_64_eeprom
-  - stm32l0xx_opt
-- name: STM32L083VBIx
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
-  - !Nvm
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      boot: true
-  flash_algorithms:
-  - stm32l0xx_192
-  - stm32l07_8x_eeprom
   - stm32l0xx_opt
 - name: STM32L083VBTx
   cores:
@@ -3916,18 +4741,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -3942,18 +4770,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8030000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -3968,18 +4799,21 @@ variants:
       psel: 0x0
   memory_map:
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   - !Nvm
+    name: IROM1
     range:
       start: 0x8000000
       end: 0x8030000
     cores:
     - main
     access:
+      write: false
       boot: true
   flash_algorithms:
   - stm32l0xx_192
@@ -4006,10 +4840,66 @@ flash_algorithms:
     sectors:
     - size: 0x80
       address: 0x0
-  cores:
-  - main
-- name: stm32l01_2x_eeprom
-  description: STM32L0 512 Byte Data EEPROM
+- name: stm32l010x6_8_eeprom
+  description: STM32L010 256 Byte Data EEPROM
+  instructions: ASoB0AIqE9E3SIFpDyISAhFDgWE1ScFgNUnBYMBpwAIG1DVIM0kBYAYhQWAzSYFgACBwRwEoAdACKATRKkhBaAEiEUNBYAAgcEfwtf8hATElTP8wAApiaAACTQAqQ2JgYmgQJzpDYmAlSiNLACYGYADgGmCmafYH+9GmaTYFNg8G0KBpDyEJAghDoGEBIPC9AB0JH+rRYGioQ2BgYGi4Q2BgACDwvQEgcEfwtf8jATMNTv8xCQp0aAkCnEN0YBBMDU0K4BdoB2AA4Cxgt2n/B/vRAB0JHxIdGx8AKQHQACvw0QAg8L0AAAAgAkDvzauJBQQDAlVVAAAAMABA/w8AAKqqAAAAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x35
+  pc_program_page: 0xab
+  pc_erase_sector: 0x4b
+  data_section_offset: 0x104
+  flash_properties:
+    address_range:
+      start: 0x8080000
+      end: 0x8080100
+    page_size: 0x100
+    erased_byte_value: 0x0
+    program_page_timeout: 500
+    erase_sector_timeout: 500
+    sectors:
+    - size: 0x100
+      address: 0x0
+- name: stm32l0xx_opt
+  description: STM32L0xx Flash Options
+  instructions: ASoB0AIqF9E/SIFpDyISAhFDgWE9ScFgPUnBYD1JQWE9SUFhwGnAAgbUPUg7SQFgBiFBYDtJgWAAIHBHASgB0AIoCNEwSEFoBCIRQ0FgQWgBIhFDQWAAIHBHNEgySQFgM0lBYDNJgWCBYCdIMkksSgDgEWCDadsH+9GBaQkFCQ8G0IFpDyISAhFDgWEBIHBHACBwRwAgcEcBIHBH8LUmTR9OGUwUIQdoE2ifQgLQA2AA4DVgo2nbB/vRo2kbBRsPBtCgaQ8hCQIIQ6BhASDwvQAdCR8SHQAp5dEAIPC98LUVTA9NCE4UIQNoF2i7QgnRAOAsYLNp2wf70QAdCR8SHQAp8dHwvQAAACACQO/Nq4kFBAMCyNnq+ycmJSRVVQAAADAAQP8PAACqAFX/AAD4H3CAj38AAP//qqoAAAAAAAA=
+  pc_init: 0x1
+  pc_uninit: 0x3d
+  pc_program_page: 0x9d
+  pc_erase_sector: 0x95
+  pc_erase_all: 0x5b
+  data_section_offset: 0x13c
+  flash_properties:
+    address_range:
+      start: 0x1ff80000
+      end: 0x1ff80014
+    page_size: 0xc
+    erased_byte_value: 0xff
+    program_page_timeout: 3000
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x14
+      address: 0x0
+- name: stm32l010x4_eeprom
+  description: STM32L010 128 Byte Data EEPROM
+  instructions: ASoB0AIqE9E3SIFpDyISAhFDgWE1ScFgNUnBYMBpwAIG1DVIM0kBYAYhQWAzSYFgACBwRwEoAdACKATRKkhBaAEiEUNBYAAgcEfwtf8hATElTP8wAApiaAACTQAqQ2JgYmgQJzpDYmAlSiNLACYGYADgGmCmafYH+9GmaTYFNg8G0KBpDyEJAghDoGEBIPC9AB0JH+rRYGioQ2BgYGi4Q2BgACDwvQEgcEfwtf8jATMNTv8xCQp0aAkCnEN0YBBMDU0K4BdoB2AA4Cxgt2n/B/vRAB0JHxIdGx8AKQHQACvw0QAg8L0AAAAgAkDvzauJBQQDAlVVAAAAMABA/w8AAKqqAAAAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x35
+  pc_program_page: 0xab
+  pc_erase_sector: 0x4b
+  data_section_offset: 0x104
+  flash_properties:
+    address_range:
+      start: 0x8080000
+      end: 0x8080080
+    page_size: 0x80
+    erased_byte_value: 0x0
+    program_page_timeout: 500
+    erase_sector_timeout: 500
+    sectors:
+    - size: 0x80
+      address: 0x0
+- name: stm32l010xb_eeprom
+  description: STM32L010 512 Byte Data EEPROM
   instructions: ASoB0AIqE9E3SIFpDyISAhFDgWE1ScFgNUnBYMBpwAIG1DVIM0kBYAYhQWAzSYFgACBwRwEoAdACKATRKkhBaAEiEUNBYAAgcEfwtf8hATElTP8wAApiaAACTQAqQ2JgYmgQJzpDYmAlSiNLACYGYADgGmCmafYH+9GmaTYFNg8G0KBpDyEJAghDoGEBIPC9AB0JH+rRYGioQ2BgYGi4Q2BgACDwvQEgcEfwtf8jATMNTv8xCQp0aAkCnEN0YBBMDU0K4BdoB2AA4Cxgt2n/B/vRAB0JHxIdGx8AKQHQACvw0QAg8L0AAAAgAkDvzauJBQQDAlVVAAAAMABA/w8AAKqqAAAAAAAA
   pc_init: 0x1
   pc_uninit: 0x35
@@ -4027,29 +4917,6 @@ flash_algorithms:
     sectors:
     - size: 0x200
       address: 0x0
-  cores:
-  - main
-- name: stm32l05_6x_eeprom
-  description: STM32L0 2 KByte Data EEPROM
-  instructions: ASoB0AIqE9E3SIFpDyISAhFDgWE1ScFgNUnBYMBpwAIG1DVIM0kBYAYhQWAzSYFgACBwRwEoAdACKATRKkhBaAEiEUNBYAAgcEfwtf8hATElTP8wAApiaAACTQAqQ2JgYmgQJzpDYmAlSiNLACYGYADgGmCmafYH+9GmaTYFNg8G0KBpDyEJAghDoGEBIPC9AB0JH+rRYGioQ2BgYGi4Q2BgACDwvQEgcEfwtf8jATMNTv8xCQp0aAkCnEN0YBBMDU0K4BdoB2AA4Cxgt2n/B/vRAB0JHxIdGx8AKQHQACvw0QAg8L0AAAAgAkDvzauJBQQDAlVVAAAAMABA/w8AAKqqAAAAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x35
-  pc_program_page: 0xab
-  pc_erase_sector: 0x4b
-  data_section_offset: 0x104
-  flash_properties:
-    address_range:
-      start: 0x8080000
-      end: 0x8080800
-    page_size: 0x100
-    erased_byte_value: 0x0
-    program_page_timeout: 500
-    erase_sector_timeout: 500
-    sectors:
-    - size: 0x800
-      address: 0x0
-  cores:
-  - main
 - name: stm32l03_4x_eeprom
   description: STM32L0 1KB Data EEPROM
   instructions: ASoB0AIqE9E3SIFpDyISAhFDgWE1ScFgNUnBYMBpwAIG1DVIM0kBYAYhQWAzSYFgACBwRwEoAdACKATRKkhBaAEiEUNBYAAgcEfwtf8hATElTP8wAApiaAACTQAqQ2JgYmgQJzpDYmAlSiNLACYGYADgGmCmafYH+9GmaTYFNg8G0KBpDyEJAghDoGEBIPC9AB0JH+rRYGioQ2BgYGi4Q2BgACDwvQEgcEfwtf8jATMNTv8xCQp0aAkCnEN0YBBMDU0K4BdoB2AA4Cxgt2n/B/vRAB0JHxIdGx8AKQHQACvw0QAg8L0AAAAgAkDvzauJBQQDAlVVAAAAMABA/w8AAKqqAAAAAAAA
@@ -4069,8 +4936,44 @@ flash_algorithms:
     sectors:
     - size: 0x400
       address: 0x0
-  cores:
-  - main
+- name: stm32l05_6x_eeprom
+  description: STM32L0 2 KByte Data EEPROM
+  instructions: ASoB0AIqE9E3SIFpDyISAhFDgWE1ScFgNUnBYMBpwAIG1DVIM0kBYAYhQWAzSYFgACBwRwEoAdACKATRKkhBaAEiEUNBYAAgcEfwtf8hATElTP8wAApiaAACTQAqQ2JgYmgQJzpDYmAlSiNLACYGYADgGmCmafYH+9GmaTYFNg8G0KBpDyEJAghDoGEBIPC9AB0JH+rRYGioQ2BgYGi4Q2BgACDwvQEgcEfwtf8jATMNTv8xCQp0aAkCnEN0YBBMDU0K4BdoB2AA4Cxgt2n/B/vRAB0JHxIdGx8AKQHQACvw0QAg8L0AAAAgAkDvzauJBQQDAlVVAAAAMABA/w8AAKqqAAAAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x35
+  pc_program_page: 0xab
+  pc_erase_sector: 0x4b
+  data_section_offset: 0x104
+  flash_properties:
+    address_range:
+      start: 0x8080000
+      end: 0x8080800
+    page_size: 0x100
+    erased_byte_value: 0x0
+    program_page_timeout: 500
+    erase_sector_timeout: 500
+    sectors:
+    - size: 0x800
+      address: 0x0
+- name: stm32l07x_64_eeprom
+  description: STM32L0 2 KByte Data EEPROM
+  instructions: ASoB0AIqE9E3SIFpDyISAhFDgWE1ScFgNUnBYMBpwAIG1DVIM0kBYAYhQWAzSYFgACBwRwEoAdACKATRKkhBaAEiEUNBYAAgcEfwtf8hATElTP8wAApiaAACTQAqQ2JgYmgQJzpDYmAlSiNLACYGYADgGmCmafYH+9GmaTYFNg8G0KBpDyEJAghDoGEBIPC9AB0JH+rRYGioQ2BgYGi4Q2BgACDwvQEgcEfwtf8jATMNTv8xCQp0aAkCnEN0YBBMDU0K4BdoB2AA4Cxgt2n/B/vRAB0JHxIdGx8AKQHQACvw0QAg8L0AAAAgAkDvzauJBQQDAlVVAAAAMABA/w8AAKqqAAAAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x35
+  pc_program_page: 0xab
+  pc_erase_sector: 0x4b
+  data_section_offset: 0x104
+  flash_properties:
+    address_range:
+      start: 0x8080c00
+      end: 0x8081800
+    page_size: 0x100
+    erased_byte_value: 0x0
+    program_page_timeout: 500
+    erase_sector_timeout: 500
+    sectors:
+    - size: 0xc00
+      address: 0x0
 - name: stm32l07_8x_eeprom
   description: STM32L0 2 KByte Data EEPROM
   instructions: ASoB0AIqE9E3SIFpDyISAhFDgWE1ScFgNUnBYMBpwAIG1DVIM0kBYAYhQWAzSYFgACBwRwEoAdACKATRKkhBaAEiEUNBYAAgcEfwtf8hATElTP8wAApiaAACTQAqQ2JgYmgQJzpDYmAlSiNLACYGYADgGmCmafYH+9GmaTYFNg8G0KBpDyEJAghDoGEBIPC9AB0JH+rRYGioQ2BgYGi4Q2BgACDwvQEgcEfwtf8jATMNTv8xCQp0aAkCnEN0YBBMDU0K4BdoB2AA4Cxgt2n/B/vRAB0JHxIdGx8AKQHQACvw0QAg8L0AAAAgAkDvzauJBQQDAlVVAAAAMABA/w8AAKqqAAAAAAAA
@@ -4092,90 +4995,3 @@ flash_algorithms:
       address: 0x0
     - size: 0xc00
       address: 0xc00
-  cores:
-  - main
-- name: stm32l010x6_8_eeprom
-  description: STM32L010 256 Byte Data EEPROM
-  instructions: ASoB0AIqE9E3SIFpDyISAhFDgWE1ScFgNUnBYMBpwAIG1DVIM0kBYAYhQWAzSYFgACBwRwEoAdACKATRKkhBaAEiEUNBYAAgcEfwtf8hATElTP8wAApiaAACTQAqQ2JgYmgQJzpDYmAlSiNLACYGYADgGmCmafYH+9GmaTYFNg8G0KBpDyEJAghDoGEBIPC9AB0JH+rRYGioQ2BgYGi4Q2BgACDwvQEgcEfwtf8jATMNTv8xCQp0aAkCnEN0YBBMDU0K4BdoB2AA4Cxgt2n/B/vRAB0JHxIdGx8AKQHQACvw0QAg8L0AAAAgAkDvzauJBQQDAlVVAAAAMABA/w8AAKqqAAAAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x35
-  pc_program_page: 0xab
-  pc_erase_sector: 0x4b
-  data_section_offset: 0x104
-  flash_properties:
-    address_range:
-      start: 0x8080000
-      end: 0x8080100
-    page_size: 0x100
-    erased_byte_value: 0x0
-    program_page_timeout: 500
-    erase_sector_timeout: 500
-    sectors:
-    - size: 0x100
-      address: 0x0
-  cores:
-  - main
-- name: stm32l07x_64_eeprom
-  description: STM32L0 2 KByte Data EEPROM
-  instructions: ASoB0AIqE9E3SIFpDyISAhFDgWE1ScFgNUnBYMBpwAIG1DVIM0kBYAYhQWAzSYFgACBwRwEoAdACKATRKkhBaAEiEUNBYAAgcEfwtf8hATElTP8wAApiaAACTQAqQ2JgYmgQJzpDYmAlSiNLACYGYADgGmCmafYH+9GmaTYFNg8G0KBpDyEJAghDoGEBIPC9AB0JH+rRYGioQ2BgYGi4Q2BgACDwvQEgcEfwtf8jATMNTv8xCQp0aAkCnEN0YBBMDU0K4BdoB2AA4Cxgt2n/B/vRAB0JHxIdGx8AKQHQACvw0QAg8L0AAAAgAkDvzauJBQQDAlVVAAAAMABA/w8AAKqqAAAAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x35
-  pc_program_page: 0xab
-  pc_erase_sector: 0x4b
-  data_section_offset: 0x104
-  flash_properties:
-    address_range:
-      start: 0x8080c00
-      end: 0x8081800
-    page_size: 0x100
-    erased_byte_value: 0x0
-    program_page_timeout: 500
-    erase_sector_timeout: 500
-    sectors:
-    - size: 0xc00
-      address: 0x0
-  cores:
-  - main
-- name: stm32l0xx_opt
-  description: STM32L0xx Flash Options
-  instructions: ASoB0AIqF9E/SIFpDyISAhFDgWE9ScFgPUnBYD1JQWE9SUFhwGnAAgbUPUg7SQFgBiFBYDtJgWAAIHBHASgB0AIoCNEwSEFoBCIRQ0FgQWgBIhFDQWAAIHBHNEgySQFgM0lBYDNJgWCBYCdIMkksSgDgEWCDadsH+9GBaQkFCQ8G0IFpDyISAhFDgWEBIHBHACBwRwAgcEcBIHBH8LUmTR9OGUwUIQdoE2ifQgLQA2AA4DVgo2nbB/vRo2kbBRsPBtCgaQ8hCQIIQ6BhASDwvQAdCR8SHQAp5dEAIPC98LUVTA9NCE4UIQNoF2i7QgnRAOAsYLNp2wf70QAdCR8SHQAp8dHwvQAAACACQO/Nq4kFBAMCyNnq+ycmJSRVVQAAADAAQP8PAACqAFX/AAD4H3CAj38AAP//qqoAAAAAAAA=
-  pc_init: 0x1
-  pc_uninit: 0x3d
-  pc_program_page: 0x9d
-  pc_erase_sector: 0x95
-  pc_erase_all: 0x5b
-  data_section_offset: 0x13c
-  flash_properties:
-    address_range:
-      start: 0x1ff80000
-      end: 0x1ff80020
-    page_size: 0xc
-    erased_byte_value: 0xff
-    program_page_timeout: 3000
-    erase_sector_timeout: 3000
-    sectors:
-    - size: 0x14
-      address: 0x0
-  cores:
-  - main
-- name: stm32l010x4_eeprom
-  description: STM32L010 128 Byte Data EEPROM
-  instructions: ASoB0AIqE9E3SIFpDyISAhFDgWE1ScFgNUnBYMBpwAIG1DVIM0kBYAYhQWAzSYFgACBwRwEoAdACKATRKkhBaAEiEUNBYAAgcEfwtf8hATElTP8wAApiaAACTQAqQ2JgYmgQJzpDYmAlSiNLACYGYADgGmCmafYH+9GmaTYFNg8G0KBpDyEJAghDoGEBIPC9AB0JH+rRYGioQ2BgYGi4Q2BgACDwvQEgcEfwtf8jATMNTv8xCQp0aAkCnEN0YBBMDU0K4BdoB2AA4Cxgt2n/B/vRAB0JHxIdGx8AKQHQACvw0QAg8L0AAAAgAkDvzauJBQQDAlVVAAAAMABA/w8AAKqqAAAAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x35
-  pc_program_page: 0xab
-  pc_erase_sector: 0x4b
-  data_section_offset: 0x104
-  flash_properties:
-    address_range:
-      start: 0x8080000
-      end: 0x8080080
-    page_size: 0x80
-    erased_byte_value: 0x0
-    program_page_timeout: 500
-    erase_sector_timeout: 500
-    sectors:
-    - size: 0x80
-      address: 0x0
-  cores:
-  - main
