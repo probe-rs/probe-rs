@@ -324,12 +324,9 @@ impl Registry {
     {
         let family: ChipFamily = serde_yaml::from_reader(yaml_reader)?;
 
-        if let Err(error) = family.validate() {
-            return Err(RegistryError::InvalidChipFamilyDefinition(
-                Box::new(family),
-                error,
-            ));
-        };
+        validate_family(&family).map_err(|error| {
+            RegistryError::InvalidChipFamilyDefinition(Box::new(family.clone()), error)
+        })?;
 
         let family_name = family.name.clone();
 
@@ -437,6 +434,18 @@ fn match_name_prefix(pattern: &str, name: &str) -> bool {
     true
 }
 
+fn validate_family(family: &ChipFamily) -> Result<(), String> {
+    family.validate()?;
+
+    // We can't have this in the `validate` method as we need information that is not available in
+    // probe-rs-target.
+    for target in family.variants() {
+        crate::flashing::Format::from_optional(target.default_binary_format.as_deref())?;
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use crate::flashing::FlashAlgorithm;
@@ -513,7 +522,7 @@ mod tests {
             .iter()
             .flat_map(|family| {
                 // Validate all chip descriptors.
-                family.validate().unwrap();
+                validate_family(family).unwrap();
 
                 // Make additional checks by creating a target for each chip.
                 family
