@@ -51,6 +51,18 @@ pub enum Format {
     Uf2,
 }
 
+impl Format {
+    /// Creates a new Format from an optional string.
+    ///
+    /// If the string is `None`, the default format is returned.
+    pub fn from_optional(s: Option<&str>) -> Result<Self, String> {
+        match s {
+            Some(format) => Self::from_str(format),
+            None => Ok(Self::default()),
+        }
+    }
+}
+
 impl FromStr for Format {
     type Err = String;
 

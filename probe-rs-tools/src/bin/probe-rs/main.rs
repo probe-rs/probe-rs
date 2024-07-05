@@ -149,12 +149,10 @@ impl FormatOptions {
     /// If a target has a preferred format, we use that.
     /// Finally, if neither of the above cases are true, we default to [`Format::default()`].
     pub fn into_format(self, target: &Target) -> Format {
-        let format = self
-            .binary_format
-            .unwrap_or_else(|| match target.default_format {
-                probe_rs_target::BinaryFormat::Idf => Format::Idf(Default::default()),
-                probe_rs_target::BinaryFormat::Raw => Default::default(),
-            });
+        let format = self.binary_format.unwrap_or_else(|| {
+            Format::from_optional(target.default_format.as_deref())
+                .expect("Failed to parse a default binary format. This shouldn't happen.")
+        });
 
         match format {
             Format::Bin(_) => Format::Bin(BinOptions {
