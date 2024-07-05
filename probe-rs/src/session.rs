@@ -248,8 +248,7 @@ impl Session {
 
                 let mut memory_interface = interface.memory_interface(&default_memory_ap)?;
 
-                // TODO: A timeout here indicates that the reset pin is probably not properly
-                //       connected.
+                // A timeout here indicates that the reset pin is probably not properly connected.
                 if let Err(e) = sequence_handle.reset_hardware_deassert(&mut *memory_interface) {
                     if matches!(e, ArmError::Timeout) {
                         tracing::warn!("Timeout while deasserting hardware reset pin. This indicates that the reset pin is not properly connected. Please check your hardware setup.");
@@ -784,7 +783,6 @@ const _: fn() = || {
     assert_impl_all::<Session>();
 };
 
-// TODO tiwalun: Enable again, after rework of Session::new is done.
 impl Drop for Session {
     #[tracing::instrument(name = "session_drop", skip(self))]
     fn drop(&mut self) {
