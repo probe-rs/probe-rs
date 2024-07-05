@@ -152,10 +152,13 @@ impl FormatOptions {
     pub fn into_format(self, target: &Target) -> anyhow::Result<Format> {
         let format = self
             .binary_format
-            .unwrap_or_else(|| match target.default_format {
-                probe_rs_target::BinaryFormat::Idf => Format::Idf(Default::default()),
-                probe_rs_target::BinaryFormat::Raw => Default::default(),
-            });
+            .map_or_else(
+                || Format::from_optional(target.default_format.as_deref()),
+                Ok,
+            )
+            .map_err(anyhow::Error::msg)
+            .context("Failed to parse binary format")?;
+
         Ok(match format {
             Format::Bin(_) => Format::Bin(BinOptions {
                 base_address: self.base_address,

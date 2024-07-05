@@ -4,7 +4,7 @@ use super::{Chip, ChipFamily, ChipInfo, Core, Target, TargetDescriptionSource};
 use crate::config::CoreType;
 use once_cell::sync::Lazy;
 use parking_lot::{RwLock, RwLockReadGuard};
-use probe_rs_target::{BinaryFormat, CoreAccessOptions, RiscvCoreAccessOptions};
+use probe_rs_target::{CoreAccessOptions, RiscvCoreAccessOptions};
 use std::collections::HashMap;
 use std::io::Read;
 use std::ops::Deref;
@@ -110,7 +110,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
                 flash_algorithms: vec![],
                 rtt_scan_ranges: None,
                 jtag: None,
-                default_binary_format: Some(BinaryFormat::Raw),
+                default_binary_format: None,
             }],
             flash_algorithms: vec![],
             source: TargetDescriptionSource::Generic,
