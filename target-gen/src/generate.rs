@@ -135,7 +135,7 @@ where
                         // device has.
                         if !memory_map.iter().any(|region| {
                             address_range.contains_range(&region.address_range())
-                                || region.address_range().contains_range(&address_range)
+                                || region.address_range().contains_range(address_range)
                         }) {
                             return None;
                         }
