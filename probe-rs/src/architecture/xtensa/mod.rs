@@ -261,7 +261,7 @@ impl<'probe> CoreInterface for Xtensa<'probe> {
     }
 
     fn core_halted(&mut self) -> Result<bool, Error> {
-        Ok(self.interface.is_halted()?)
+        Ok(self.interface.core_halted()?)
     }
 
     fn status(&mut self) -> Result<CoreStatus, Error> {

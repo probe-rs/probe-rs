@@ -184,7 +184,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
     }
 
     /// Returns whether the core is halted.
-    pub fn is_halted(&mut self) -> Result<bool, XtensaError> {
+    pub fn core_halted(&mut self) -> Result<bool, XtensaError> {
         if !self.state.is_halted {
             self.state.is_halted = self.xdm.status()?.stopped();
         }
@@ -196,16 +196,16 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
     ///
     /// This function lowers the interrupt level to allow halting on debug exceptions.
     pub fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), XtensaError> {
-        let now = Instant::now();
-        while !self.is_halted()? {
-            if now.elapsed() > timeout {
-                tracing::warn!("Timeout waiting for core to halt");
+        // Wait until halted state is active again.
+        let start = Instant::now();
+
+        while !self.core_halted()? {
+            if start.elapsed() >= timeout {
                 return Err(XtensaError::Timeout);
             }
-
+            // Wait a bit before polling again.
             std::thread::sleep(Duration::from_millis(1));
         }
-        tracing::debug!("Core halted");
 
         Ok(())
     }
@@ -501,7 +501,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
             return Ok(());
         }
 
-        let was_halted = self.is_halted()?;
+        let was_halted = self.core_halted()?;
         if !was_halted {
             self.xdm.schedule_halt();
             self.wait_for_core_halted(Duration::from_millis(100))?;
@@ -629,7 +629,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
             return Ok(());
         }
 
-        let was_halted = self.is_halted()?;
+        let was_halted = self.core_halted()?;
         if !was_halted {
             self.xdm.schedule_halt();
             self.wait_for_core_halted(Duration::from_millis(100))?;

@@ -140,15 +140,6 @@ impl JtagAdapter {
 
         let mut reply = Vec::with_capacity(self.in_bit_counts.len());
         while reply.len() < self.in_bit_counts.len() {
-            if t0.elapsed() > timeout {
-                tracing::warn!(
-                    "Read {} bytes, expected {}",
-                    reply.len(),
-                    self.in_bit_counts.len()
-                );
-                return Err(DebugProbeError::Timeout);
-            }
-
             let read = self
                 .device
                 .read_to_end(&mut reply)
@@ -156,6 +147,15 @@ impl JtagAdapter {
 
             if read > 0 {
                 t0 = Instant::now();
+            }
+
+            if t0.elapsed() > timeout {
+                tracing::warn!(
+                    "Read {} bytes, expected {}",
+                    reply.len(),
+                    self.in_bit_counts.len()
+                );
+                return Err(DebugProbeError::Timeout);
             }
         }
 

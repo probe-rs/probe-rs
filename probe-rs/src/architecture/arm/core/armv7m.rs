@@ -650,13 +650,13 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
         let start = Instant::now();
 
         while !self.core_halted()? {
-            if start.elapsed() < timeout {
-                // Wait a bit before polling again.
-                std::thread::sleep(Duration::from_millis(1));
-            } else {
+            if start.elapsed() >= timeout {
                 return Err(Error::Arm(ArmError::Timeout));
             }
+            // Wait a bit before polling again.
+            std::thread::sleep(Duration::from_millis(1));
         }
+
         Ok(())
     }
 

@@ -686,11 +686,9 @@ impl<O: Operation> ActiveFlasher<'_, O> {
         // Wait until halted state is active again.
         let start = Instant::now();
 
-        let mut timeout_ocurred = true;
-        while start.elapsed() < timeout {
+        loop {
             match self.core.status()? {
                 CoreStatus::Halted(_) => {
-                    timeout_ocurred = false;
                     // Once the core is halted we know for sure all RTT data is written
                     // so we can read all of it.
                     self.read_rtt()?;
@@ -705,18 +703,14 @@ impl<O: Operation> ActiveFlasher<'_, O> {
                     // All other statuses are okay: we'll just keep polling.
                 }
             }
-
-            // Periodically read RTT.
             self.read_rtt()?;
-
+            if start.elapsed() >= timeout {
+                return Err(FlashError::Core(Error::Timeout));
+            }
             std::thread::sleep(Duration::from_millis(1));
         }
 
         self.check_for_stack_overflow()?;
-
-        if timeout_ocurred {
-            return Err(FlashError::Core(Error::Timeout));
-        }
 
         let r: u32 = self.core.read_core_reg(regs.result_register(0))?;
         Ok(r)

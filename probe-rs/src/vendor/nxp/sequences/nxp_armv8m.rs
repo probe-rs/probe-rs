@@ -44,19 +44,14 @@ fn debug_port_start(
 
         let start = Instant::now();
 
-        let mut timeout = true;
-
-        while start.elapsed() < Duration::from_secs(1) {
+        loop {
             let ctrl = interface.read_dp_register::<Ctrl>(dp)?;
-
             if ctrl.csyspwrupack() && ctrl.cdbgpwrupack() {
-                timeout = false;
                 break;
             }
-        }
-
-        if timeout {
-            return Err(ArmError::Timeout);
+            if start.elapsed() >= Duration::from_secs(1) {
+                return Err(ArmError::Timeout);
+            }
         }
 
         // TODO: Handle JTAG Specific part
@@ -150,20 +145,16 @@ impl ArmDebugSequence for LPC55Sxx {
 
         let start = Instant::now();
 
-        let mut timeout = true;
-
-        while start.elapsed() < Duration::from_millis(100) {
+        loop {
             let value = interface.read_word_32(0x40034FE0)?;
-
             if (value & 0x4) == 0x4 {
-                timeout = false;
                 break;
             }
-        }
 
-        if timeout {
-            tracing::warn!("Failed: Wait for flash word read to finish");
-            return Err(ArmError::Timeout);
+            if start.elapsed() >= Duration::from_millis(100) {
+                tracing::warn!("Failed: Wait for flash word read to finish");
+                return Err(ArmError::Timeout);
+            }
         }
 
         if (interface.read_word_32(0x4003_4fe0)? & 0xB) == 0 {
@@ -244,25 +235,22 @@ impl ArmDebugSequence for LPC55Sxx {
 
         let start = Instant::now();
 
-        let mut timeout = true;
-
-        while start.elapsed() < Duration::from_millis(500) {
+        loop {
             if let Ok(v) = interface.read_word_32(Dhcsr::get_mmio_address()) {
                 let dhcsr = Dhcsr(v);
 
                 // Wait until the S_RESET_ST bit is cleared on a read
                 if !dhcsr.s_reset_st() {
-                    timeout = false;
                     break;
                 }
             }
+
+            if start.elapsed() >= Duration::from_millis(500) {
+                return wait_for_stop_after_reset(interface);
+            }
         }
 
-        if timeout {
-            wait_for_stop_after_reset(interface)
-        } else {
-            Ok(())
-        }
+        Ok(())
     }
 }
 
@@ -283,26 +271,23 @@ fn wait_for_stop_after_reset(memory: &mut dyn ArmProbe) -> Result<(), ArmError> 
         enable_debug_mailbox(interface, dp)?;
     }
 
-    let mut timeout = true;
-
     let start = Instant::now();
 
-    tracing::info!("Polling for reset");
+    tracing::debug!("Polling for reset");
 
-    while start.elapsed() < Duration::from_millis(500) {
+    loop {
         if let Ok(v) = memory.read_word_32(Dhcsr::get_mmio_address()) {
             let dhcsr = Dhcsr(v);
 
             // Wait until the S_RESET_ST bit is cleared on a read
             if !dhcsr.s_reset_st() {
-                timeout = false;
                 break;
             }
         }
-    }
 
-    if timeout {
-        return Err(ArmError::Timeout);
+        if start.elapsed() >= Duration::from_millis(500) {
+            return Err(ArmError::Timeout);
+        }
     }
 
     let dhcsr = Dhcsr(memory.read_word_32(Dhcsr::get_mmio_address())?);
@@ -716,7 +701,7 @@ impl ArmDebugSequence for MIMXRT5xxS {
             let start = Instant::now();
             let timeout_occured = || start.elapsed() > Duration::from_secs(1);
 
-            while assert_n_reset()? & n_reset == 0 || !timeout_occured() {
+            while assert_n_reset()? & n_reset == 0 && !timeout_occured() {
                 // Block until either condition passes
             }
         } else {

@@ -103,7 +103,7 @@ impl ArmDebugSequence for MIMXRT10xx {
         thread::sleep(Duration::from_millis(100));
 
         let start = Instant::now();
-        while start.elapsed() < Duration::from_millis(500) {
+        loop {
             let dhcsr = match interface.read_word_32(Dhcsr::get_mmio_address()) {
                 Ok(val) => Dhcsr(val),
                 Err(ArmError::AccessPort {
@@ -121,14 +121,14 @@ impl ArmDebugSequence for MIMXRT10xx {
                 }
                 Err(err) => return Err(err),
             };
-
-            // Wait until the S_RESET_ST bit is cleared on a read
             if !dhcsr.s_reset_st() {
                 return Ok(());
             }
-        }
 
-        Err(ArmError::Timeout)
+            if start.elapsed() >= Duration::from_millis(500) {
+                return Err(ArmError::Timeout);
+            }
+        }
     }
 }
 
@@ -206,22 +206,18 @@ impl MIMXRT11xx {
         let mut errors = 0usize;
         let mut disables = 0usize;
         loop {
-            if start.elapsed() > timeout {
-                tracing::debug!("Exceeded {}ms timeout while waiting for enable with {errors} errors and {disables} invalid statuses", timeout.as_millis());
-                return Err(ArmError::Timeout);
-            }
-
             match interface.read_ap_register(&ap) {
                 Ok(CSW { DeviceEn, .. }) if DeviceEn != 0 => {
                     tracing::debug!("Device enabled after {}ms with {errors} errors and {disables} invalid statuses", start.elapsed().as_millis());
                     return Ok(());
                 }
-                Ok(_) => {
-                    disables += 1;
-                }
-                Err(_) => {
-                    errors += 1;
-                }
+                Ok(_) => disables += 1,
+                Err(_) => errors += 1,
+            }
+
+            if start.elapsed() > timeout {
+                tracing::debug!("Exceeded {}ms timeout while waiting for enable with {errors} errors and {disables} invalid statuses", timeout.as_millis());
+                return Err(ArmError::Timeout);
             }
 
             thread::sleep(Duration::from_millis(1));
