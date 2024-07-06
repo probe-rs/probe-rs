@@ -3,7 +3,7 @@ fn main() {
     println!("cargo:rerun-if-changed=build.rs");
 
     // The `probers_docsrs` config is used to build docs for docs.rs.
-    // We can't use just `docsrs`because using that leads to a compile
+    // We can't use just `docsrs` because using that leads to a compile
     // error in hidapi, see <https://github.com/ruabmbua/hidapi-rs/pull/158>.
     println!("cargo::rustc-check-cfg=cfg(probers_docsrs)");
 
