@@ -5,8 +5,8 @@ use futures::StreamExt;
 use probe_rs::flashing::FlashAlgorithm;
 use probe_rs_target::{
     Architecture, ArmCoreAccessOptions, Chip, ChipFamily, Core as ProbeCore, CoreAccessOptions,
-    CoreType, GenericRegion, MemoryAccess, MemoryRegion, NvmRegion, RamRegion, RawFlashAlgorithm,
-    RiscvCoreAccessOptions, TargetDescriptionSource, XtensaCoreAccessOptions,
+    CoreType, GenericRegion, MemoryAccess, MemoryRange as _, MemoryRegion, NvmRegion, RamRegion,
+    RawFlashAlgorithm, RiscvCoreAccessOptions, TargetDescriptionSource, XtensaCoreAccessOptions,
 };
 use std::collections::HashMap;
 use std::{fs, io::Read, path::Path};
@@ -88,7 +88,7 @@ where
         {
             // We only want to continue if the chip family is already represented as supported probe_rs target chip family.
             log::debug!("Unsupprted chip family {}. Skipping ...", device.family);
-            return Ok(());
+            break;
         }
 
         // Check if this device family is already known.
@@ -113,6 +113,15 @@ where
             families.last_mut().unwrap()
         };
 
+        let cores = device
+            .processors
+            .iter()
+            .map(create_core)
+            .collect::<Result<Vec<_>>>()?;
+
+        let mut memory_map = get_mem_map(&device, &cores);
+        patch_memmap(&mut memory_map);
+
         // Extract the flash algorithm, block & sector size and the erased byte value from the ELF binary.
         let flash_algorithm_names = device
             .algorithms
@@ -120,13 +129,23 @@ where
             .filter_map(|flash_algorithm| {
                 match process_flash_algo(flash_algorithm, &mut kind) {
                     Ok(algo) => {
+                        let address_range = &algo.flash_properties.address_range;
+
+                        // Only add the algo to the device if it targets a memory region that the
+                        // device has.
+                        if !memory_map
+                            .iter()
+                            .any(|region| region.address_range().contains_range(address_range))
+                        {
+                            return None;
+                        }
+
+                        let algo_name = algo.name.clone();
                         // We add this algo directly to the algos of the family if it's not already added.
                         // Make sure we never add an algo twice to save file size.
-                        let algo_name = algo.name.clone();
                         if !family.flash_algorithms.contains(&algo) {
                             family.flash_algorithms.push(algo);
                         }
-
                         Some(algo_name)
                     }
                     Err(e) => {
@@ -149,15 +168,6 @@ where
             .filter(|(i, s)| !flash_algorithm_names[..*i].contains(s))
             .map(|(_, s)| s.clone())
             .collect::<Vec<_>>();
-
-        let cores = device
-            .processors
-            .iter()
-            .map(create_core)
-            .collect::<Result<Vec<_>>>()?;
-
-        let mut memory_map = get_mem_map(&device, &cores);
-        patch_memmap(&mut memory_map);
 
         family.variants.push(Chip {
             name: device_name,
