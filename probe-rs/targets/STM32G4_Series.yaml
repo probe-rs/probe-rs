@@ -31,8 +31,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G431C6Ux
   cores:
   - name: main
@@ -59,8 +57,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G431C8Tx
   cores:
   - name: main
@@ -87,8 +83,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G431C8Ux
   cores:
   - name: main
@@ -115,8 +109,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G431CBTx
   cores:
   - name: main
@@ -143,8 +135,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g4xx_128
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G431CBUx
   cores:
   - name: main
@@ -171,8 +161,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g4xx_128
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G431CBYx
   cores:
   - name: main
@@ -199,8 +187,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g4xx_128
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G431K6Tx
   cores:
   - name: main
@@ -227,8 +213,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G431K6Ux
   cores:
   - name: main
@@ -255,8 +239,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G431K8Tx
   cores:
   - name: main
@@ -283,8 +265,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G431K8Ux
   cores:
   - name: main
@@ -311,8 +291,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G431KBTx
   cores:
   - name: main
@@ -339,8 +317,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g4xx_128
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G431KBUx
   cores:
   - name: main
@@ -367,8 +343,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g4xx_128
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G431M6Tx
   cores:
   - name: main
@@ -395,8 +369,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G431M8Tx
   cores:
   - name: main
@@ -423,8 +395,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G431MBTx
   cores:
   - name: main
@@ -451,8 +421,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g4xx_128
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G431R6Ix
   cores:
   - name: main
@@ -479,8 +447,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G431R6Tx
   cores:
   - name: main
@@ -507,8 +473,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G431R8Ix
   cores:
   - name: main
@@ -535,8 +499,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G431R8Tx
   cores:
   - name: main
@@ -563,8 +525,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G431RBIx
   cores:
   - name: main
@@ -591,8 +551,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g4xx_128
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G431RBTx
   cores:
   - name: main
@@ -619,8 +577,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g4xx_128
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G431V6Tx
   cores:
   - name: main
@@ -647,8 +603,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G431V8Tx
   cores:
   - name: main
@@ -675,8 +629,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G431VBTx
   cores:
   - name: main
@@ -703,8 +655,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g4xx_128
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G441CBTx
   cores:
   - name: main
@@ -731,8 +681,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G441CBUx
   cores:
   - name: main
@@ -759,8 +707,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G441CBYx
   cores:
   - name: main
@@ -787,8 +733,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G441KBTx
   cores:
   - name: main
@@ -815,8 +759,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G441KBUx
   cores:
   - name: main
@@ -843,8 +785,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G441MBTx
   cores:
   - name: main
@@ -871,8 +811,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G441RBIx
   cores:
   - name: main
@@ -899,8 +837,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G441RBTx
   cores:
   - name: main
@@ -927,8 +863,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G441VBTx
   cores:
   - name: main
@@ -955,8 +889,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G471CCTx
   cores:
   - name: main
@@ -983,8 +915,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G471CCUx
   cores:
   - name: main
@@ -1011,8 +941,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G471CETx
   cores:
   - name: main
@@ -1039,8 +967,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G471CEUx
   cores:
   - name: main
@@ -1067,8 +993,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G471MCTx
   cores:
   - name: main
@@ -1095,8 +1019,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G471METx
   cores:
   - name: main
@@ -1123,8 +1045,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G471MEYx
   cores:
   - name: main
@@ -1151,8 +1071,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G471QCTx
   cores:
   - name: main
@@ -1179,8 +1097,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G471QETx
   cores:
   - name: main
@@ -1207,8 +1123,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G471RCTx
   cores:
   - name: main
@@ -1235,8 +1149,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G471RETx
   cores:
   - name: main
@@ -1263,8 +1175,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G471VCHx
   cores:
   - name: main
@@ -1291,8 +1201,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G471VCIx
   cores:
   - name: main
@@ -1319,8 +1227,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G471VCTx
   cores:
   - name: main
@@ -1347,8 +1253,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G471VEHx
   cores:
   - name: main
@@ -1375,8 +1279,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G471VEIx
   cores:
   - name: main
@@ -1403,8 +1305,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G471VETx
   cores:
   - name: main
@@ -1431,8 +1331,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G473CBTx
   cores:
   - name: main
@@ -1459,8 +1357,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G473CBUx
   cores:
   - name: main
@@ -1487,8 +1383,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G473CCTx
   cores:
   - name: main
@@ -1515,8 +1409,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G473CCUx
   cores:
   - name: main
@@ -1543,8 +1435,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G473CETx
   cores:
   - name: main
@@ -1571,8 +1461,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G473CEUx
   cores:
   - name: main
@@ -1599,8 +1487,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G473MBTx
   cores:
   - name: main
@@ -1627,8 +1513,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G473MCTx
   cores:
   - name: main
@@ -1655,8 +1539,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G473METx
   cores:
   - name: main
@@ -1683,8 +1565,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G473MEYx
   cores:
   - name: main
@@ -1711,8 +1591,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G473PBIx
   cores:
   - name: main
@@ -1739,8 +1617,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G473PCIx
   cores:
   - name: main
@@ -1767,8 +1643,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G473PEIx
   cores:
   - name: main
@@ -1795,8 +1669,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G473QBTx
   cores:
   - name: main
@@ -1823,8 +1695,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G473QCTx
   cores:
   - name: main
@@ -1851,8 +1721,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G473QETx
   cores:
   - name: main
@@ -1879,8 +1747,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G473RBTx
   cores:
   - name: main
@@ -1907,8 +1773,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G473RCTx
   cores:
   - name: main
@@ -1935,8 +1799,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G473RETx
   cores:
   - name: main
@@ -1963,8 +1825,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G473VBHx
   cores:
   - name: main
@@ -1991,8 +1851,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G473VBIx
   cores:
   - name: main
@@ -2019,8 +1877,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G473VBTx
   cores:
   - name: main
@@ -2047,8 +1903,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G473VCHx
   cores:
   - name: main
@@ -2075,8 +1929,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G473VCIx
   cores:
   - name: main
@@ -2103,8 +1955,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G473VCTx
   cores:
   - name: main
@@ -2131,8 +1981,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G473VEHx
   cores:
   - name: main
@@ -2159,8 +2007,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G473VEIx
   cores:
   - name: main
@@ -2187,8 +2033,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G473VETx
   cores:
   - name: main
@@ -2215,8 +2059,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G474CBTx
   cores:
   - name: main
@@ -2243,8 +2085,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G474CBUx
   cores:
   - name: main
@@ -2271,8 +2111,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G474CCTx
   cores:
   - name: main
@@ -2299,8 +2137,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G474CCUx
   cores:
   - name: main
@@ -2327,8 +2163,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G474CETx
   cores:
   - name: main
@@ -2355,8 +2189,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G474CEUx
   cores:
   - name: main
@@ -2383,8 +2215,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G474MBTx
   cores:
   - name: main
@@ -2411,8 +2241,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G474MCTx
   cores:
   - name: main
@@ -2439,8 +2267,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G474METx
   cores:
   - name: main
@@ -2467,8 +2293,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G474MEYx
   cores:
   - name: main
@@ -2495,8 +2319,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G474PBIx
   cores:
   - name: main
@@ -2523,8 +2345,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G474PCIx
   cores:
   - name: main
@@ -2551,8 +2371,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G474PEIx
   cores:
   - name: main
@@ -2579,8 +2397,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G474QBTx
   cores:
   - name: main
@@ -2607,8 +2423,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G474QCTx
   cores:
   - name: main
@@ -2635,8 +2449,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G474QETx
   cores:
   - name: main
@@ -2663,8 +2475,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G474RBTx
   cores:
   - name: main
@@ -2691,8 +2501,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G474RCTx
   cores:
   - name: main
@@ -2719,8 +2527,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G474RETx
   cores:
   - name: main
@@ -2747,8 +2553,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G474VBHx
   cores:
   - name: main
@@ -2775,8 +2579,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G474VBIx
   cores:
   - name: main
@@ -2803,8 +2605,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G474VBTx
   cores:
   - name: main
@@ -2831,8 +2631,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G474VCHx
   cores:
   - name: main
@@ -2859,8 +2657,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G474VCIx
   cores:
   - name: main
@@ -2887,8 +2683,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G474VCTx
   cores:
   - name: main
@@ -2915,8 +2709,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G474VEHx
   cores:
   - name: main
@@ -2943,8 +2735,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G474VEIx
   cores:
   - name: main
@@ -2971,8 +2761,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G474VETx
   cores:
   - name: main
@@ -2999,8 +2787,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G483CETx
   cores:
   - name: main
@@ -3027,8 +2813,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G483CEUx
   cores:
   - name: main
@@ -3055,8 +2839,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G483METx
   cores:
   - name: main
@@ -3083,8 +2865,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G483MEYx
   cores:
   - name: main
@@ -3111,8 +2891,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G483PEIx
   cores:
   - name: main
@@ -3139,8 +2917,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G483QETx
   cores:
   - name: main
@@ -3167,8 +2943,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G483RETx
   cores:
   - name: main
@@ -3195,8 +2969,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G483VEHx
   cores:
   - name: main
@@ -3223,8 +2995,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G483VEIx
   cores:
   - name: main
@@ -3251,8 +3021,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G483VETx
   cores:
   - name: main
@@ -3279,8 +3047,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G484CETx
   cores:
   - name: main
@@ -3307,8 +3073,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G484CEUx
   cores:
   - name: main
@@ -3335,8 +3099,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G484METx
   cores:
   - name: main
@@ -3363,8 +3125,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G484MEYx
   cores:
   - name: main
@@ -3391,8 +3151,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G484PEIx
   cores:
   - name: main
@@ -3419,8 +3177,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G484QETx
   cores:
   - name: main
@@ -3447,8 +3203,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G484RETx
   cores:
   - name: main
@@ -3475,8 +3229,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G484VEHx
   cores:
   - name: main
@@ -3503,8 +3255,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G484VEIx
   cores:
   - name: main
@@ -3531,8 +3281,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G484VETx
   cores:
   - name: main
@@ -3559,8 +3307,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G491CCTx
   cores:
   - name: main
@@ -3587,8 +3333,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G491CCUx
   cores:
   - name: main
@@ -3615,8 +3359,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G491CETx
   cores:
   - name: main
@@ -3643,8 +3385,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G491CEUx
   cores:
   - name: main
@@ -3671,8 +3411,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G491KCUx
   cores:
   - name: main
@@ -3699,8 +3437,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G491KEUx
   cores:
   - name: main
@@ -3727,8 +3463,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G491MCSx
   cores:
   - name: main
@@ -3755,8 +3489,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G491MCTx
   cores:
   - name: main
@@ -3783,8 +3515,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G491MESx
   cores:
   - name: main
@@ -3811,8 +3541,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G491METx
   cores:
   - name: main
@@ -3839,8 +3567,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G491RCIx
   cores:
   - name: main
@@ -3867,8 +3593,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G491RCTx
   cores:
   - name: main
@@ -3895,8 +3619,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G491REIx
   cores:
   - name: main
@@ -3923,8 +3645,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G491RETx
   cores:
   - name: main
@@ -3951,8 +3671,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G491REYx
   cores:
   - name: main
@@ -3979,8 +3697,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G491VCTx
   cores:
   - name: main
@@ -4007,8 +3723,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G491VETx
   cores:
   - name: main
@@ -4035,8 +3749,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G4A1CETx
   cores:
   - name: main
@@ -4063,8 +3775,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G4A1CEUx
   cores:
   - name: main
@@ -4091,8 +3801,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G4A1KEUx
   cores:
   - name: main
@@ -4119,8 +3827,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G4A1MESx
   cores:
   - name: main
@@ -4147,8 +3853,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G4A1METx
   cores:
   - name: main
@@ -4175,8 +3879,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G4A1REIx
   cores:
   - name: main
@@ -4203,8 +3905,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G4A1RETx
   cores:
   - name: main
@@ -4231,8 +3931,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G4A1REYx
   cores:
   - name: main
@@ -4259,8 +3957,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32G4A1VETx
   cores:
   - name: main
@@ -4287,8 +3983,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
 - name: STM32GBK1CBTx
   cores:
   - name: main
@@ -4315,7 +4009,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g47x-8x_512
-  - mt25ql512abb_stm32g474e-eval
 flash_algorithms:
 - name: stm32g47x-8x_512
   description: STM32G47x-8x 512 KB Flash
@@ -4338,69 +4031,6 @@ flash_algorithms:
     erase_sector_timeout: 400
     sectors:
     - size: 0x800
-      address: 0x0
-- name: stm32g4xx_sb_opt
-  description: STM32G4xx single bank Flash Options
-  instructions: YkhhSYFgYkmBYGJJwWBiScFgAWnJA/zUAGrAAwjUX0hF8lVRAWAGIUFgQPb/cYFgACBwR1VIQWlB8ABBQWG/80+PT/AAYUFhv/NPj0FpCQH81E/wgEFBYb/zT48AIHBHASBwR0lITkoCYU5JAWJJFUFiTUmBYm/0fwHBYgFjS0kBZ0/0ADFBYb/zT48BackD/NQBaRFCAtACYQEgcEcAIHBHACBwR/C10ukCFZaIF2jS6QQyNUg6TARhB2K2skZiOU72QzFAgWIF8P8RwWID8P8RAWM1SclDCkACZ0/0ADFBYb/zT49K9qohLEoA4BFgA2nbA/vUAWkhQgTQAWkhQwFhASDwvQAg8L3wtdLpAjXS6QB23/h04NLpBELe+CDAvEUG0d74JHA/BLfrBk8B0EAc8L3e+ChgG0//Qz5AO0CeQgHQgBzwvd74LDAF8P8VA/D/E6tCAdDAHPC93vgwMATw/xQD8P8To0IB0AAd8L3e+HBADUvbQxxAGkCUQgHQQB3wvQhE8L0jAWdFACACQKuJ7807KhkIf25dTAAwAED6QwEAqvjv/wAA/38A/v7/AAAAAAAAAAAAAAAAAAAAAAAAAAA=
-  load_address: 0x20000020
-  pc_init: 0x1
-  pc_uninit: 0x35
-  pc_program_page: 0xa7
-  pc_erase_sector: 0xa3
-  pc_erase_all: 0x65
-  data_section_offset: 0x1b0
-  flash_properties:
-    address_range:
-      start: 0x1fff7800
-      end: 0x1fff7818
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 3000
-    erase_sector_timeout: 3000
-    sectors:
-    - size: 0x18
-      address: 0x0
-- name: mt25ql512abb_stm32g474e-eval
-  description: MT25QL512ABB_STM32G474E-EVAL
-  instructions: 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
-  load_address: 0x20000020
-  pc_init: 0xdf
-  pc_uninit: 0xf5
-  pc_program_page: 0x127
-  pc_erase_sector: 0x10b
-  pc_erase_all: 0xfb
-  data_section_offset: 0x67b0
-  flash_properties:
-    address_range:
-      start: 0x90000000
-      end: 0x98000000
-    page_size: 0x1000
-    erased_byte_value: 0xff
-    program_page_timeout: 10000
-    erase_sector_timeout: 6000
-    sectors:
-    - size: 0x20000
-      address: 0x0
-- name: stm32g4xx_db_opt
-  description: STM32G4xx dual bank Flash Options
-  instructions: l0iWSYFgl0mBYJdJwWCXScFgAWnJA/zUAGrAAwjUlEhF8lVRAWAGIUFgQPb/cYFgACBwR4pIQWlB8ABBQWG/80+PT/AAYUFhv/NPj0FpCQH81E/wgEFBYb/zT48AIHBHASBwR35Ig0oCYYNJAWJJFUFigkuDYm/0fwPDYgNjgEsDZ0Fkf0mBZG/0/gHBZAFlfUlBZ0/0ADFBYb/zT48BackD/NQBaRFCAtACYQEgcEcAIHBHACBwRy3p+E3S6QI60ukEYdNGl4gVi7L4HODS+ADA0vggoM34AKDS6QlCYEjf+JCBwPgQgMD4IMC/skdiYk//QztAg2IL8P8Tw2IG8P8TA2NeS9tDGUABZ6myQWQf+o7xgWTd+ACgCvD/EcFkBPD/EQFlWEnJQwpAQmdP9AAxQWG/80+PSvaqIUxKAOARYANp2wP71AFpEeoIDwbQAWlB6ggBAWEBIL3o+I0AIPvnLen3TdLpAjGLRtLpBRTS6Qdl0ukAx9/45ICiRtL4EODS6QlC2PgggOBFCdHf+NDA3PgkgE/qCEi46wdPAtBAHL3o/o3c+Chw3/jQgG/qCAgH6ggHA+oIA59CAdCAHO/n3PgsMAPw/xcL8P8Tn0IB0MAc5efc+DAwA/D/Fw7w/xOfQgHQAB3b59z4cDAkT/9DO0A5QItCAdBAHdHn3PhEEAsEs+sKTwHQgB3J59z4SBAJBLHrBk8B0MAdwefc+EwQBfD/EwHw/xGZQgHQCDC359z4UBAE8P8TAfD/EZlCAdAJMK3n3Ph0EAkGsesCbwHQCjCl5wGZCESi5yMBZ0UAIAJAq4nvzTsqGQh/bl1MADAAQPpDAQCq+O//AAD/fwD+/v8AgP9/AP/+/wAAAAAAAAAAAAAAAAAAAAAAAAAA
-  load_address: 0x20000020
-  pc_init: 0x1
-  pc_uninit: 0x35
-  pc_program_page: 0xb9
-  pc_erase_sector: 0xb5
-  pc_erase_all: 0x65
-  data_section_offset: 0x28c
-  flash_properties:
-    address_range:
-      start: 0x1fff7800
-      end: 0x1fff7854
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 3000
-    erase_sector_timeout: 3000
-    sectors:
-    - size: 0x54
       address: 0x0
 - name: stm32g4xx_128
   description: STM32G4xx 128 Flash

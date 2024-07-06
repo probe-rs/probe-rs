@@ -28,7 +28,6 @@ variants:
       boot: true
   flash_algorithms:
   - air001xx_32
-  - air001xx_opt
 flash_algorithms:
 - name: air001xx_32
   description: AIR001xx 32kB Flash
@@ -51,27 +50,5 @@ flash_algorithms:
     erase_sector_timeout: 6000
     sectors:
     - size: 0x1000
-      address: 0x0
-  transfer_encoding: raw
-- name: air001xx_opt
-  description: AIR001xx Flash Options
-  instructions: bUhCaAchbUtJAwpAS0QaYEJoikMBIckDURhBYEFoaEpJCxJpSQPSBNIMEUNBYAFoSQX81WJIQDDBasqyYUkKYMJqEgQSDgphwmrSAdINSmACa9KyimACa1IBUg3KYEJr0gPSC0phgmvSA9ILimHCa5KyymHAawAMCGJwRxC1U0xRSKBgUkigYP/3uv9RSOBgUUjgYAAgIGAgaQEhCEMgYSBqwAQG1E5ITEkBYAYhQWBMSYFgACAQvT9IQmgHIUkDikM+SUlECWgKQ0JgASNbA8oaO0kY0NIaEdDSGgrQmkJCaAPRUgtSAwlpEeBSC1IDCWgN4EJoyWhSC1IDCOBCaIloUgtSAwPgQmhJaFILUgPJBMkMCkNCYAFoSQX81XBHALX/98n/KUhBaYIEEUNBYUFpQgQRQ0FhACAAvQAgcEcAIHBHASBwRzC1IEgTiJGIkokEaQElLEMEYZuyA2KJskFikbLBYkJpaQQKQ0JhQmnLARpDQmETTP8igDwiYL/zT49CaYpDQmFBaZlDQWEAIDC9MLUUaFNo0mgFaKVCA9FEaJxCAdAAHTC9w2iTQgHQDDAwvUAYML0AEAJABAAAAAAP/x8AIQJAIwFnRQAgAkCrie/NOyoZCH9uXUxVVQAAADAAQP8PAAAAAAAAAAAAAA==
-  load_address: 0x20000020
-  pc_init: 0x7d
-  pc_uninit: 0x121
-  pc_program_page: 0x149
-  pc_erase_sector: 0x141
-  pc_erase_all: 0x13d
-  data_section_offset: 0x1e8
-  flash_properties:
-    address_range:
-      start: 0x1fff0e80
-      end: 0x1fff0e90
-    page_size: 0x10
-    erased_byte_value: 0xff
-    program_page_timeout: 3000
-    erase_sector_timeout: 3000
-    sectors:
-    - size: 0x10
       address: 0x0
   transfer_encoding: raw

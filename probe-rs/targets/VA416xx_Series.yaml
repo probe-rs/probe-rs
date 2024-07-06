@@ -36,7 +36,6 @@ variants:
   flash_algorithms:
   - va416_spi_fram_256kb
   - va416_ebiboot_fram_256kb
-  - va416_ebi_fram_512kb
 flash_algorithms:
 - name: va416_spi_fram_256kb
   description: VA416_SPI_FRAM_256KB
@@ -72,26 +71,6 @@ flash_algorithms:
     address_range:
       start: 0x0
       end: 0x40000
-    page_size: 0x100
-    erased_byte_value: 0x0
-    program_page_timeout: 3000
-    erase_sector_timeout: 3000
-    sectors:
-    - size: 0x2000
-      address: 0x0
-- name: va416_ebi_fram_512kb
-  description: VA416_EBI_512KB
-  instructions: QfKAAsTyAQJS+CAwI/TAQ0PqQTFC+CAQcEcAv0HywALE8gECUvggMCP0wEND6kExQvggEHBHAL9B8gASxPIBAlL4IDAj9MBDQ+pBMUL4IBBwRwC/QfJAEsTyAQJS+CAwI/TAQ0PqQTFC+CAQcEcAv0HyiADE8gEAAmgBIWHzTjICYEJoYfNOMkJggmhh804ygmDCaGHzTjLCYAJpYfNOMgJhQmlh804yQmGCaWHzTjKCYcJpYfNOMsJhAmph804yAmJCamHzTjJCYoJqYfNOMoJiwmph804ywmICa2HzTjICY0JrYfNOMkJjgmth804ygmPCa2HzTjLCYwJsYfNOMgJkQmxh804yQmSCbGHzTjKCZMJsYfNOMsJkAm1h804yAmVCbWHzTjJCZYJtYfNOMoJlwm1h804ywmUCbmHzTjICZkJuYfNOMkJmgm5h804ygmbCbmHzTjLCZgJvYfNOMgJnQm9h804yQmeCb2HzTjKCZ8JvYfNOMsJn0PiAIGHzTjLA+IAg0PiEIGHzTjLA+IQg0PiIIGHzTjLA+Igg0PiMIGHzTjLA+Iwg0PiQIGHzTjLA+JAg0PiUIGHzTjLA+JQg0PiYIGHzTjLA+Jgg0PicIGHzTjLA+Jwg0PioIGHzTjLA+Kgg0PisIGHzTjLA+Kwg0PiwIGHzTjLA+LAg0Pi0IGHzTjLA+LQg0Pi4IGHzTjLA+Lgg0Pi8IGHzTjLA+LwgcEcQtVgkxPIBBCBoQPSAMCBgACDD9jlAYGD/9xj/T/YAcMDytjBgYU7yhBDO8gAAT/QAUQFgRvIAAb/zT4/E8gABGCC/82+PiGAwIgAgCmAQvQAgcEeAtU/wgFBP9AAhAPB4+AAggL0AvwAgcEcB8AEDGURLCCfQWR4DKQPwAwwT0yPwAwMy+AgbBDsg+AgbMvgGHCD4Bhwy+AQcIPgEHDL4Ahwg+AIc7dG88QAPC9ARiLzxAQ8BgAbQUYi88QIPQYAcv5GIgYAAIHBHAL8AIHBHLenwRQHwAQMZRF/qUQwr0OJGvPEBD5i/T/ABCsrxAA6q8QEIACMw+BNQMvgTYLVCItGYRRjQAutDBQDrQwZ3iGyIp0IT0Q7rAwe8HAzQtIipiIxCDdH5HAbQ8YjsiKFCCdEEM5pF3tFgRL3o8IUBMwLgAjMA4AMzT+pDDGBEvejwhU/wAAIAtRNGlEaWRiA5Ir+g6AxQoOgMULHxIAG/9PevCQcov6DoDFBIvwzAXfgE64kAKL9A+AQrCL9wR0i/IPgCKxHwgE8YvwD4AStwRwAAAAA=
-  pc_init: 0x225
-  pc_uninit: 0x275
-  pc_program_page: 0x291
-  pc_erase_sector: 0x28d
-  pc_erase_all: 0x279
-  data_section_offset: 0x3c4
-  flash_properties:
-    address_range:
-      start: 0x10000000
-      end: 0x10080000
     page_size: 0x100
     erased_byte_value: 0x0
     program_page_timeout: 3000

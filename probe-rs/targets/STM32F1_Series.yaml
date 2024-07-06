@@ -31,7 +31,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F100C6
   cores:
   - name: main
@@ -58,7 +57,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F100C8
   cores:
   - name: main
@@ -85,7 +83,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F100CB
   cores:
   - name: main
@@ -112,7 +109,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F100R4
   cores:
   - name: main
@@ -139,7 +135,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F100R6
   cores:
   - name: main
@@ -166,7 +161,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F100R8
   cores:
   - name: main
@@ -193,7 +187,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F100RB
   cores:
   - name: main
@@ -220,7 +213,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F100RC
   cores:
   - name: main
@@ -247,7 +239,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_512
-  - stm32f10x_opt
 - name: STM32F100RD
   cores:
   - name: main
@@ -274,7 +265,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_512
-  - stm32f10x_opt
 - name: STM32F100RE
   cores:
   - name: main
@@ -301,7 +291,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_512
-  - stm32f10x_opt
 - name: STM32F100V8
   cores:
   - name: main
@@ -328,7 +317,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F100VB
   cores:
   - name: main
@@ -355,7 +343,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F100VC
   cores:
   - name: main
@@ -382,7 +369,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_512
-  - stm32f10x_opt
 - name: STM32F100VD
   cores:
   - name: main
@@ -409,7 +395,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_512
-  - stm32f10x_opt
 - name: STM32F100VE
   cores:
   - name: main
@@ -436,7 +421,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_512
-  - stm32f10x_opt
 - name: STM32F100ZC
   cores:
   - name: main
@@ -463,7 +447,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_512
-  - stm32f10x_opt
 - name: STM32F100ZD
   cores:
   - name: main
@@ -490,7 +473,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_512
-  - stm32f10x_opt
 - name: STM32F100ZE
   cores:
   - name: main
@@ -517,7 +499,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_512
-  - stm32f10x_opt
 - name: STM32F101C4
   cores:
   - name: main
@@ -544,7 +525,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F101C6
   cores:
   - name: main
@@ -571,7 +551,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F101C8
   cores:
   - name: main
@@ -598,7 +577,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F101CB
   cores:
   - name: main
@@ -625,7 +603,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F101R4
   cores:
   - name: main
@@ -652,7 +629,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F101R6
   cores:
   - name: main
@@ -679,7 +655,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F101R8
   cores:
   - name: main
@@ -706,7 +681,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F101RB
   cores:
   - name: main
@@ -733,7 +707,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F101RC
   cores:
   - name: main
@@ -760,7 +733,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_512
-  - stm32f10x_opt
 - name: STM32F101RD
   cores:
   - name: main
@@ -787,7 +759,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_512
-  - stm32f10x_opt
 - name: STM32F101RE
   cores:
   - name: main
@@ -814,7 +785,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_512
-  - stm32f10x_opt
 - name: STM32F101RF
   cores:
   - name: main
@@ -841,7 +811,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_1024
-  - stm32f10x_opt
 - name: STM32F101RG
   cores:
   - name: main
@@ -868,7 +837,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_1024
-  - stm32f10x_opt
 - name: STM32F101T4
   cores:
   - name: main
@@ -895,7 +863,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F101T6
   cores:
   - name: main
@@ -922,7 +889,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F101T8
   cores:
   - name: main
@@ -949,7 +915,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F101TB
   cores:
   - name: main
@@ -976,7 +941,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F101V8
   cores:
   - name: main
@@ -1003,7 +967,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F101VB
   cores:
   - name: main
@@ -1030,7 +993,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F101VC
   cores:
   - name: main
@@ -1057,7 +1019,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_512
-  - stm32f10x_opt
 - name: STM32F101VD
   cores:
   - name: main
@@ -1084,7 +1045,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_512
-  - stm32f10x_opt
 - name: STM32F101VE
   cores:
   - name: main
@@ -1111,7 +1071,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_512
-  - stm32f10x_opt
 - name: STM32F101VF
   cores:
   - name: main
@@ -1138,7 +1097,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_1024
-  - stm32f10x_opt
 - name: STM32F101VG
   cores:
   - name: main
@@ -1165,7 +1123,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_1024
-  - stm32f10x_opt
 - name: STM32F101ZC
   cores:
   - name: main
@@ -1192,7 +1149,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_512
-  - stm32f10x_opt
 - name: STM32F101ZD
   cores:
   - name: main
@@ -1219,7 +1175,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_512
-  - stm32f10x_opt
 - name: STM32F101ZE
   cores:
   - name: main
@@ -1246,7 +1201,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_512
-  - stm32f10x_opt
 - name: STM32F101ZF
   cores:
   - name: main
@@ -1273,7 +1227,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_1024
-  - stm32f10x_opt
 - name: STM32F101ZG
   cores:
   - name: main
@@ -1300,7 +1253,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_1024
-  - stm32f10x_opt
 - name: STM32F102C4
   cores:
   - name: main
@@ -1327,7 +1279,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F102C6
   cores:
   - name: main
@@ -1354,7 +1305,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F102C8
   cores:
   - name: main
@@ -1381,7 +1331,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F102CB
   cores:
   - name: main
@@ -1408,7 +1357,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F102R4
   cores:
   - name: main
@@ -1435,7 +1383,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F102R6
   cores:
   - name: main
@@ -1462,7 +1409,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F102R8
   cores:
   - name: main
@@ -1489,7 +1435,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F102RB
   cores:
   - name: main
@@ -1516,7 +1461,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F103C4
   cores:
   - name: main
@@ -1543,7 +1487,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F103C6
   cores:
   - name: main
@@ -1570,7 +1513,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F103C8
   cores:
   - name: main
@@ -1597,7 +1539,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F103CB
   cores:
   - name: main
@@ -1624,7 +1565,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F103R4
   cores:
   - name: main
@@ -1651,7 +1591,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F103R6
   cores:
   - name: main
@@ -1678,7 +1617,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F103R8
   cores:
   - name: main
@@ -1705,7 +1643,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F103RB
   cores:
   - name: main
@@ -1732,7 +1669,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F103RC
   cores:
   - name: main
@@ -1759,7 +1695,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_512
-  - stm32f10x_opt
 - name: STM32F103RD
   cores:
   - name: main
@@ -1786,7 +1721,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_512
-  - stm32f10x_opt
 - name: STM32F103RE
   cores:
   - name: main
@@ -1813,7 +1747,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_512
-  - stm32f10x_opt
 - name: STM32F103RF
   cores:
   - name: main
@@ -1840,7 +1773,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_1024
-  - stm32f10x_opt
 - name: STM32F103RG
   cores:
   - name: main
@@ -1867,7 +1799,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_1024
-  - stm32f10x_opt
 - name: STM32F103T4
   cores:
   - name: main
@@ -1894,7 +1825,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F103T6
   cores:
   - name: main
@@ -1921,7 +1851,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F103T8
   cores:
   - name: main
@@ -1948,7 +1877,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F103TB
   cores:
   - name: main
@@ -1975,7 +1903,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F103V8
   cores:
   - name: main
@@ -2002,7 +1929,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F103VB
   cores:
   - name: main
@@ -2029,7 +1955,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_128
-  - stm32f10x_opt
 - name: STM32F103VC
   cores:
   - name: main
@@ -2056,7 +1981,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_512
-  - stm32f10x_opt
 - name: STM32F103VD
   cores:
   - name: main
@@ -2083,7 +2007,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_512
-  - stm32f10x_opt
 - name: STM32F103VE
   cores:
   - name: main
@@ -2110,7 +2033,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_512
-  - stm32f10x_opt
 - name: STM32F103VF
   cores:
   - name: main
@@ -2137,7 +2059,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_1024
-  - stm32f10x_opt
 - name: STM32F103VG
   cores:
   - name: main
@@ -2164,7 +2085,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_1024
-  - stm32f10x_opt
 - name: STM32F103ZC
   cores:
   - name: main
@@ -2191,7 +2111,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_512
-  - stm32f10x_opt
 - name: STM32F103ZD
   cores:
   - name: main
@@ -2218,7 +2137,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_512
-  - stm32f10x_opt
 - name: STM32F103ZE
   cores:
   - name: main
@@ -2245,7 +2163,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_512
-  - stm32f10x_opt
 - name: STM32F103ZF
   cores:
   - name: main
@@ -2272,7 +2189,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_1024
-  - stm32f10x_opt
 - name: STM32F103ZG
   cores:
   - name: main
@@ -2299,7 +2215,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_1024
-  - stm32f10x_opt
 - name: STM32F105R8
   cores:
   - name: main
@@ -2326,7 +2241,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_512
-  - stm32f10x_opt
 - name: STM32F105RB
   cores:
   - name: main
@@ -2353,7 +2267,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_512
-  - stm32f10x_opt
 - name: STM32F105RC
   cores:
   - name: main
@@ -2380,7 +2293,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_512
-  - stm32f10x_opt
 - name: STM32F105V8
   cores:
   - name: main
@@ -2407,7 +2319,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_512
-  - stm32f10x_opt
 - name: STM32F105VB
   cores:
   - name: main
@@ -2434,7 +2345,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_512
-  - stm32f10x_opt
 - name: STM32F105VC
   cores:
   - name: main
@@ -2461,7 +2371,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_512
-  - stm32f10x_opt
 - name: STM32F107RB
   cores:
   - name: main
@@ -2488,7 +2397,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_512
-  - stm32f10x_opt
 - name: STM32F107RC
   cores:
   - name: main
@@ -2515,7 +2423,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_512
-  - stm32f10x_opt
 - name: STM32F107VB
   cores:
   - name: main
@@ -2542,7 +2449,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_512
-  - stm32f10x_opt
 - name: STM32F107VC
   cores:
   - name: main
@@ -2569,7 +2475,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f10x_512
-  - stm32f10x_opt
 flash_algorithms:
 - name: stm32f10x_128
   description: STM32F10x Med-density Flash
@@ -2591,26 +2496,6 @@ flash_algorithms:
     erase_sector_timeout: 500
     sectors:
     - size: 0x400
-      address: 0x0
-- name: stm32f10x_opt
-  description: STM32F10x Flash Options
-  instructions: ELUDRgAgXkwgYF5IYGBeSGBgXEigYFxIoGAgRsBpEPAEDwjRRfJVUFhMIGAGIGBgQPb/cKBgACAQvQFGUEgAaSD0gHBOShBhEEYAaUDwgAAQYQAgcEdKSABpQPAgAEhJCGEIRgBpQPBAAAhhA+BK9qogRkkIYEJIwGgQ8AEP9tE/SABpIPAgAD1JCGEIRgBpQPAQAAhhRfalID1JCIAD4Er2qiA5SQhgNUjAaBDwAQ/20TNIAGkg8BAAMUkIYQhGwGgQ8BQPBtAIRsBoQPAUAMhgASBwRwAg/OcBRihIAGlA8CAAJkoQYRBGAGlA8EAAEGED4Er2qiAkShBgIEjAaBDwAQ/20R5IAGkg8CAAHEoQYQAgcEcDRgEgcEcQtQNGSBwg8AEBJuAVSABpQPAQABNMIGEQiBiAA+BK9qogE0wgYA9IwGgQ8AEP9tEMSABpIPAQAApMIGEgRsBoEPAUDwbQIEbAaEDwFADgYAEgEL2bHJIciR4AKdbRACD35wAAACACQCMBZ0Wrie/NADAAQAD4/x8AAAAA
-  pc_init: 0x1
-  pc_uninit: 0x3b
-  pc_program_page: 0x11d
-  pc_erase_sector: 0xdb
-  pc_erase_all: 0x57
-  data_section_offset: 0x194
-  flash_properties:
-    address_range:
-      start: 0x1ffff800
-      end: 0x1ffff810
-    page_size: 0x10
-    erased_byte_value: 0xff
-    program_page_timeout: 3000
-    erase_sector_timeout: 3000
-    sectors:
-    - size: 0x10
       address: 0x0
 - name: stm32f10x_512
   description: STM32F10x High-density Flash

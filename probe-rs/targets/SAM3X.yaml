@@ -49,7 +49,6 @@ variants:
     - main
   flash_algorithms:
   - atsam3x_256
-  - atsam3x_gpnvm
 - name: ATSAM3X4E
   cores:
   - name: main
@@ -97,7 +96,6 @@ variants:
     - main
   flash_algorithms:
   - atsam3x_256
-  - atsam3x_gpnvm
 - name: ATSAM3X8C
   cores:
   - name: main
@@ -145,7 +143,6 @@ variants:
     - main
   flash_algorithms:
   - atsam3x_512
-  - atsam3x_gpnvm
 - name: ATSAM3X8E
   cores:
   - name: main
@@ -193,7 +190,6 @@ variants:
     - main
   flash_algorithms:
   - atsam3x_512
-  - atsam3x_gpnvm
 - name: ATSAM3X8H
   cores:
   - name: main
@@ -241,7 +237,6 @@ variants:
     - main
   flash_algorithms:
   - atsam3x_512
-  - atsam3x_gpnvm
 flash_algorithms:
 - name: atsam3x_256
   description: ATSAM3X 256kB Flash
@@ -263,26 +258,6 @@ flash_algorithms:
     erase_sector_timeout: 1000
     sectors:
     - size: 0x100
-      address: 0x0
-- name: atsam3x_gpnvm
-  description: ATSAM3X GPNVM bits
-  instructions: UUlJRAhgDyBQSQACCGBQSQhgASBPScADSGFQS05IWGJOSk9IwDoQYkxIgDiBaskH/NARa4kIiQBJHBFjgWoJB/zVASERY4FqCQf81UJIQBxYYgAgcEcAIHBHACBwRwAgcEcAIHBHELUQeDhJPUpKYIpo0gf80MpowwfUB9sP5A+jQgrQwwcC0DZLmx4B4DVLWx5LYIto2wf80AIjBEYcQBNAnEIK0IMHAtUuS/4zAeAsS/8zS2CLaNsH/NAEIwRGHEAaQJRCCdBABwHVJkgB4CVIQBxIYIhowAf80AAgEL0wtRN4GUofTFRglGjkB/zQ0mjcB9UH5A/tD6xCBtECJB1GJUAUQKVCAdBAHDC9BCQjQCJAk0IB0IAcML1AGDC9ELUAIgJgCmAISg5MVGCTaNsH/NDSaAJgBUhEYIJo0gf80MBoCGAQvQQAAAAACg5AAAwOQEAaDkAAQ01QwAYOQAEPNwENAABaCwIAWgAAAAAAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x57
-  pc_program_page: 0x67
-  pc_erase_sector: 0x63
-  pc_erase_all: 0x5f
-  data_section_offset: 0x16c
-  flash_properties:
-    address_range:
-      start: 0x1ffffff0
-      end: 0x20000000
-    page_size: 0x10
-    erased_byte_value: 0xff
-    program_page_timeout: 100
-    erase_sector_timeout: 1000
-    sectors:
-    - size: 0x10
       address: 0x0
 - name: atsam3x_512
   description: ATSAM3X 512kB Flash

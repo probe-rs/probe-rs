@@ -300,7 +300,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32wb5x_m4_1024
-  - stm32wb55x_35x_m4_opt
 - name: STM32WB55CEUx
   cores:
   - name: main
@@ -327,7 +326,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32wb5x_m4_1024
-  - stm32wb55x_35x_m4_opt
 - name: STM32WB55CGUx
   cores:
   - name: main
@@ -354,7 +352,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32wb5x_m4_1024
-  - stm32wb55x_35x_m4_opt
 - name: STM32WB55RCVx
   cores:
   - name: main
@@ -381,7 +378,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32wb5x_m4_1024
-  - stm32wb55x_35x_m4_opt
 - name: STM32WB55REVx
   cores:
   - name: main
@@ -408,7 +404,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32wb5x_m4_1024
-  - stm32wb55x_35x_m4_opt
 - name: STM32WB55RGVx
   cores:
   - name: main
@@ -435,7 +430,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32wb5x_m4_1024
-  - stm32wb55x_35x_m4_opt
 - name: STM32WB55VCQx
   cores:
   - name: main
@@ -462,7 +456,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32wb5x_m4_1024
-  - stm32wb55x_35x_m4_opt
 - name: STM32WB55VCYx
   cores:
   - name: main
@@ -489,7 +482,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32wb5x_m4_1024
-  - stm32wb55x_35x_m4_opt
 - name: STM32WB55VEQx
   cores:
   - name: main
@@ -516,7 +508,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32wb5x_m4_1024
-  - stm32wb55x_35x_m4_opt
 - name: STM32WB55VEYx
   cores:
   - name: main
@@ -543,7 +534,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32wb5x_m4_1024
-  - stm32wb55x_35x_m4_opt
 - name: STM32WB55VGQx
   cores:
   - name: main
@@ -570,7 +560,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32wb5x_m4_1024
-  - stm32wb55x_35x_m4_opt
 - name: STM32WB55VGYx
   cores:
   - name: main
@@ -597,7 +586,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32wb5x_m4_1024
-  - stm32wb55x_35x_m4_opt
 - name: STM32WB55VYYx
   cores:
   - name: main
@@ -624,7 +612,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32wb5x_m4_1024
-  - stm32wb55x_35x_m4_opt
 - name: STM32WB5MMGHx
   cores:
   - name: main
@@ -717,25 +704,4 @@ flash_algorithms:
     erase_sector_timeout: 400
     sectors:
     - size: 0x1000
-      address: 0x0
-- name: stm32wb55x_35x_m4_opt
-  description: STM32WB55x/35x Flash Options
-  instructions: RPIQAMX2AAABackDQ/IAAcTyAAEH1EXyVVIKYAYiSmBA9v9yimBA8iMSxPJnUkD4CCxI9qsSzPbvUkD4CCy/80+PAmjSAxLUQvY7IsD2GQJA+AQsRvZ/YsT2XUJA+AQsv/NPjwJo0gMV1AAgcEdK9qoiCmADaNsD5tUKYANo2wNCvwpgA2hf6sMz3dUKYANo2wPu1NjnSvaqIgpgA2jbA+PVCmADaNsDQr8KYANoX+rDM9rVCmADaNsD7tTV5wC/RPIQAMX2AABP8IBBQWC/80+PAWjJA0PyAAHE8gABCdRP8ABCQmC/80+PAmjSAxXUACBwR0r2qiIKYANo2wPv1QpgA2jbA0K/CmADaF/qwzPm1QpgA2jbA+7U4edK9qoiCmADaNsD49UKYANo2wNCvwpgA2hf6sMz2tUKYANo2wPu1NXnACBwR0TyEABP8qoSxfYAAEzy+jzD9v9SwPgAwAJhQPL/Ek/wAENCYYNh/yPDYQNiQmIAIoJiTPIAAs/2/3LCYk/0ADJCYL/zT48CaNIDCdQBaBHqDA8PvwAgTPL6MQFgASBwR0PyAALE8gACSvaqIxNgAWjJA+vVE2ABaMkDQr8TYAFoX+rBMeLVE2ABaMkD7tTd5wAgcEct6fBNhLARfBBoAJERfUf2/2wCkRF+FXkDkVF+VnnXepL4DICS+A7gkvgSoJL4FbABkc72j3wTf1F/EokM6gAMRPIQAMX2AABM8vo0ReoGJk/2AGVC6gdiT/YAZwRgTPCAVM/2/3XH9v93RPThBC5DOkMEYUZhgmFI6g5CQvD/IsJhAJpD6gEhQuoKQkLw/yICYgKaQuoLIipDQmIDmgGfQuoHIipDgmKl9XhSEUPBYk/0ADG/80+PQWC/80+PAWjJAw3UAWhM8voyEUIg0AFoTPL6MhFDAWABIASwvejwjUPyAAHE8gABSvaqIwtgAmjSA+fVC2ACaNIDQr8LYAJoX+rCMt7VC2ACaNID7tTZ5wAgBLC96PCNELVI8gAMwfb/fNL4AOC/80+P3PgAMI7qAw5H9v9jzvaPcx7qAw8YvxC9kvgE4Nz4CDBUeW/zXyNk8wguc0UcvwEwEL2y+Ajg1Hrc+BAwTuoEZGNAQPL/FMjyAAQjQhy/AjAQvZL4DOCUe9z4GDBO6gREP/qD86NCHL8DMBC9kvgQ4JR83PggME7qBEQ/+oPzo0IcvwQwEL1UfZL4FODc+CgwJAIE9IB0b/NfI3REo0IcvwUwEL1UfpL4GODc+DAwJAIE9IB0b/NfI3REo0IcvwYwEL0Tf1J/3PhoQBICAvR8Um/znzQaRJRCHL8HMBC9CEQQvQAAAAA=
-  load_address: 0x20000020
-  pc_init: 0x1
-  pc_uninit: 0xc1
-  pc_program_page: 0x1dd
-  pc_erase_sector: 0x1d9
-  pc_erase_all: 0x149
-  data_section_offset: 0x3e8
-  flash_properties:
-    address_range:
-      start: 0x1fff8000
-      end: 0x1fff8020
-    page_size: 0x20
-    erased_byte_value: 0xff
-    program_page_timeout: 3000
-    erase_sector_timeout: 3000
-    sectors:
-    - size: 0x20
       address: 0x0

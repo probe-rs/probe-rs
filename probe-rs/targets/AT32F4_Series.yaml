@@ -31,11 +31,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32a403a_512
-  - at32a403a_usd
-  - at32a403a_ext_type1_reamp0_general
-  - at32a403a_ext_type1_reamp1_general
-  - at32a403a_ext_type2_reamp0_general
-  - at32a403a_ext_type2_reamp1_general
 - name: AT32A403ACCU7
   cores:
   - name: main
@@ -62,11 +57,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32a403a_512
-  - at32a403a_usd
-  - at32a403a_ext_type1_reamp0_general
-  - at32a403a_ext_type1_reamp1_general
-  - at32a403a_ext_type2_reamp0_general
-  - at32a403a_ext_type2_reamp1_general
 - name: AT32A403ACET7
   cores:
   - name: main
@@ -93,11 +83,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32a403a_512
-  - at32a403a_usd
-  - at32a403a_ext_type1_reamp0_general
-  - at32a403a_ext_type1_reamp1_general
-  - at32a403a_ext_type2_reamp0_general
-  - at32a403a_ext_type2_reamp1_general
 - name: AT32A403ACEU7
   cores:
   - name: main
@@ -124,11 +109,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32a403a_512
-  - at32a403a_usd
-  - at32a403a_ext_type1_reamp0_general
-  - at32a403a_ext_type1_reamp1_general
-  - at32a403a_ext_type2_reamp0_general
-  - at32a403a_ext_type2_reamp1_general
 - name: AT32A403ACGT7
   cores:
   - name: main
@@ -155,11 +135,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32a403a_1024
-  - at32a403a_usd
-  - at32a403a_ext_type1_reamp0_general
-  - at32a403a_ext_type1_reamp1_general
-  - at32a403a_ext_type2_reamp0_general
-  - at32a403a_ext_type2_reamp1_general
 - name: AT32A403ACGU7
   cores:
   - name: main
@@ -186,11 +161,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32a403a_1024
-  - at32a403a_usd
-  - at32a403a_ext_type1_reamp0_general
-  - at32a403a_ext_type1_reamp1_general
-  - at32a403a_ext_type2_reamp0_general
-  - at32a403a_ext_type2_reamp1_general
 - name: AT32A403ARCT7
   cores:
   - name: main
@@ -217,11 +187,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32a403a_512
-  - at32a403a_usd
-  - at32a403a_ext_type1_reamp0_general
-  - at32a403a_ext_type1_reamp1_general
-  - at32a403a_ext_type2_reamp0_general
-  - at32a403a_ext_type2_reamp1_general
 - name: AT32A403ARET7
   cores:
   - name: main
@@ -248,11 +213,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32a403a_512
-  - at32a403a_usd
-  - at32a403a_ext_type1_reamp0_general
-  - at32a403a_ext_type1_reamp1_general
-  - at32a403a_ext_type2_reamp0_general
-  - at32a403a_ext_type2_reamp1_general
 - name: AT32A403ARGT7
   cores:
   - name: main
@@ -279,11 +239,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32a403a_1024
-  - at32a403a_usd
-  - at32a403a_ext_type1_reamp0_general
-  - at32a403a_ext_type1_reamp1_general
-  - at32a403a_ext_type2_reamp0_general
-  - at32a403a_ext_type2_reamp1_general
 - name: AT32A403AVCT7
   cores:
   - name: main
@@ -310,11 +265,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32a403a_512
-  - at32a403a_usd
-  - at32a403a_ext_type1_reamp0_general
-  - at32a403a_ext_type1_reamp1_general
-  - at32a403a_ext_type2_reamp0_general
-  - at32a403a_ext_type2_reamp1_general
 - name: AT32A403AVET7
   cores:
   - name: main
@@ -341,11 +291,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32a403a_512
-  - at32a403a_usd
-  - at32a403a_ext_type1_reamp0_general
-  - at32a403a_ext_type1_reamp1_general
-  - at32a403a_ext_type2_reamp0_general
-  - at32a403a_ext_type2_reamp1_general
 - name: AT32A403AVGT7
   cores:
   - name: main
@@ -372,11 +317,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32a403a_1024
-  - at32a403a_usd
-  - at32a403a_ext_type1_reamp0_general
-  - at32a403a_ext_type1_reamp1_general
-  - at32a403a_ext_type2_reamp0_general
-  - at32a403a_ext_type2_reamp1_general
 - name: AT32F402CBT7
   cores:
   - name: main
@@ -403,8 +343,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f402_128
-  - at32f402_bootmem_ap
-  - at32f402_usd
 - name: AT32F402CBU7
   cores:
   - name: main
@@ -431,8 +369,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f402_128
-  - at32f402_bootmem_ap
-  - at32f402_usd
 - name: AT32F402CCT7
   cores:
   - name: main
@@ -459,8 +395,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f402_256
-  - at32f402_bootmem_ap
-  - at32f402_usd
 - name: AT32F402CCU7
   cores:
   - name: main
@@ -487,8 +421,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f402_256
-  - at32f402_bootmem_ap
-  - at32f402_usd
 - name: AT32F402KBU7-4
   cores:
   - name: main
@@ -515,8 +447,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f402_128
-  - at32f402_bootmem_ap
-  - at32f402_usd
 - name: AT32F402KCU7-4
   cores:
   - name: main
@@ -543,8 +473,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f402_256
-  - at32f402_bootmem_ap
-  - at32f402_usd
 - name: AT32F402RBT7
   cores:
   - name: main
@@ -571,8 +499,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f402_128
-  - at32f402_bootmem_ap
-  - at32f402_usd
 - name: AT32F402RBT7-7
   cores:
   - name: main
@@ -599,8 +525,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f402_128
-  - at32f402_bootmem_ap
-  - at32f402_usd
 - name: AT32F402RCT7
   cores:
   - name: main
@@ -627,8 +551,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f402_256
-  - at32f402_bootmem_ap
-  - at32f402_usd
 - name: AT32F402RCT7-7
   cores:
   - name: main
@@ -655,8 +577,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f402_256
-  - at32f402_bootmem_ap
-  - at32f402_usd
 - name: AT32F405CBT7
   cores:
   - name: main
@@ -683,8 +603,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f402_128
-  - at32f402_bootmem_ap
-  - at32f402_usd
 - name: AT32F405CBU7
   cores:
   - name: main
@@ -711,8 +629,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f402_128
-  - at32f402_bootmem_ap
-  - at32f402_usd
 - name: AT32F405CCT7
   cores:
   - name: main
@@ -739,8 +655,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f402_256
-  - at32f402_bootmem_ap
-  - at32f402_usd
 - name: AT32F405CCU7
   cores:
   - name: main
@@ -767,8 +681,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f402_256
-  - at32f402_bootmem_ap
-  - at32f402_usd
 - name: AT32F405KBU7-4
   cores:
   - name: main
@@ -795,8 +707,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f402_128
-  - at32f402_bootmem_ap
-  - at32f402_usd
 - name: AT32F405KCU7-4
   cores:
   - name: main
@@ -823,8 +733,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f402_256
-  - at32f402_bootmem_ap
-  - at32f402_usd
 - name: AT32F405RBT7
   cores:
   - name: main
@@ -851,8 +759,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f402_128
-  - at32f402_bootmem_ap
-  - at32f402_usd
 - name: AT32F405RBT7-7
   cores:
   - name: main
@@ -879,8 +785,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f402_128
-  - at32f402_bootmem_ap
-  - at32f402_usd
 - name: AT32F405RCT7
   cores:
   - name: main
@@ -907,8 +811,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f402_256
-  - at32f402_bootmem_ap
-  - at32f402_usd
 - name: AT32F405RCT7-7
   cores:
   - name: main
@@ -935,8 +837,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f402_256
-  - at32f402_bootmem_ap
-  - at32f402_usd
 - name: AT32F403CCT6
   cores:
   - name: main
@@ -963,9 +863,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f403_512
-  - at32f403_usd
-  - at32f403_ext_type1_general
-  - at32f403_ext_type2_general
 - name: AT32F403CCU6
   cores:
   - name: main
@@ -992,9 +889,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f403_512
-  - at32f403_usd
-  - at32f403_ext_type1_general
-  - at32f403_ext_type2_general
 - name: AT32F403CET6
   cores:
   - name: main
@@ -1021,9 +915,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f403_512
-  - at32f403_usd
-  - at32f403_ext_type1_general
-  - at32f403_ext_type2_general
 - name: AT32F403CEU6
   cores:
   - name: main
@@ -1050,9 +941,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f403_512
-  - at32f403_usd
-  - at32f403_ext_type1_general
-  - at32f403_ext_type2_general
 - name: AT32F403CGT6
   cores:
   - name: main
@@ -1079,9 +967,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f403_1024
-  - at32f403_usd
-  - at32f403_ext_type1_general
-  - at32f403_ext_type2_general
 - name: AT32F403CGU6
   cores:
   - name: main
@@ -1108,9 +993,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f403_1024
-  - at32f403_usd
-  - at32f403_ext_type1_general
-  - at32f403_ext_type2_general
 - name: AT32F403RCT6
   cores:
   - name: main
@@ -1137,9 +1019,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f403_512
-  - at32f403_usd
-  - at32f403_ext_type1_general
-  - at32f403_ext_type2_general
 - name: AT32F403RET6
   cores:
   - name: main
@@ -1166,9 +1045,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f403_512
-  - at32f403_usd
-  - at32f403_ext_type1_general
-  - at32f403_ext_type2_general
 - name: AT32F403RGT6
   cores:
   - name: main
@@ -1195,9 +1071,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f403_1024
-  - at32f403_usd
-  - at32f403_ext_type1_general
-  - at32f403_ext_type2_general
 - name: AT32F403VCT6
   cores:
   - name: main
@@ -1224,9 +1097,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f403_512
-  - at32f403_usd
-  - at32f403_ext_type1_general
-  - at32f403_ext_type2_general
 - name: AT32F403VET6
   cores:
   - name: main
@@ -1253,9 +1123,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f403_512
-  - at32f403_usd
-  - at32f403_ext_type1_general
-  - at32f403_ext_type2_general
 - name: AT32F403VGT6
   cores:
   - name: main
@@ -1282,9 +1149,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f403_1024
-  - at32f403_usd
-  - at32f403_ext_type1_general
-  - at32f403_ext_type2_general
 - name: AT32F403ZCT6
   cores:
   - name: main
@@ -1311,9 +1175,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f403_512
-  - at32f403_usd
-  - at32f403_ext_type1_general
-  - at32f403_ext_type2_general
 - name: AT32F403ZET6
   cores:
   - name: main
@@ -1340,9 +1201,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f403_512
-  - at32f403_usd
-  - at32f403_ext_type1_general
-  - at32f403_ext_type2_general
 - name: AT32F403ZGT6
   cores:
   - name: main
@@ -1369,9 +1227,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f403_1024
-  - at32f403_usd
-  - at32f403_ext_type1_general
-  - at32f403_ext_type2_general
 - name: AT32F403ACCT7
   cores:
   - name: main
@@ -1398,11 +1253,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32a403a_512
-  - at32a403a_usd
-  - at32a403a_ext_type1_reamp0_general
-  - at32a403a_ext_type1_reamp1_general
-  - at32a403a_ext_type2_reamp0_general
-  - at32a403a_ext_type2_reamp1_general
 - name: AT32F403ACCU7
   cores:
   - name: main
@@ -1429,11 +1279,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32a403a_512
-  - at32a403a_usd
-  - at32a403a_ext_type1_reamp0_general
-  - at32a403a_ext_type1_reamp1_general
-  - at32a403a_ext_type2_reamp0_general
-  - at32a403a_ext_type2_reamp1_general
 - name: AT32F403ACET7
   cores:
   - name: main
@@ -1460,11 +1305,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32a403a_512
-  - at32a403a_usd
-  - at32a403a_ext_type1_reamp0_general
-  - at32a403a_ext_type1_reamp1_general
-  - at32a403a_ext_type2_reamp0_general
-  - at32a403a_ext_type2_reamp1_general
 - name: AT32F403ACEU7
   cores:
   - name: main
@@ -1491,11 +1331,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32a403a_512
-  - at32a403a_usd
-  - at32a403a_ext_type1_reamp0_general
-  - at32a403a_ext_type1_reamp1_general
-  - at32a403a_ext_type2_reamp0_general
-  - at32a403a_ext_type2_reamp1_general
 - name: AT32F403ACGT7
   cores:
   - name: main
@@ -1522,11 +1357,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32a403a_1024
-  - at32a403a_usd
-  - at32a403a_ext_type1_reamp0_general
-  - at32a403a_ext_type1_reamp1_general
-  - at32a403a_ext_type2_reamp0_general
-  - at32a403a_ext_type2_reamp1_general
 - name: AT32F403ACGU7
   cores:
   - name: main
@@ -1553,11 +1383,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32a403a_1024
-  - at32a403a_usd
-  - at32a403a_ext_type1_reamp0_general
-  - at32a403a_ext_type1_reamp1_general
-  - at32a403a_ext_type2_reamp0_general
-  - at32a403a_ext_type2_reamp1_general
 - name: AT32F403ARCT7
   cores:
   - name: main
@@ -1584,11 +1409,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32a403a_512
-  - at32a403a_usd
-  - at32a403a_ext_type1_reamp0_general
-  - at32a403a_ext_type1_reamp1_general
-  - at32a403a_ext_type2_reamp0_general
-  - at32a403a_ext_type2_reamp1_general
 - name: AT32F403ARET7
   cores:
   - name: main
@@ -1615,11 +1435,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32a403a_512
-  - at32a403a_usd
-  - at32a403a_ext_type1_reamp0_general
-  - at32a403a_ext_type1_reamp1_general
-  - at32a403a_ext_type2_reamp0_general
-  - at32a403a_ext_type2_reamp1_general
 - name: AT32F403ARGT7
   cores:
   - name: main
@@ -1646,11 +1461,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32a403a_1024
-  - at32a403a_usd
-  - at32a403a_ext_type1_reamp0_general
-  - at32a403a_ext_type1_reamp1_general
-  - at32a403a_ext_type2_reamp0_general
-  - at32a403a_ext_type2_reamp1_general
 - name: AT32F403AVCT7
   cores:
   - name: main
@@ -1677,11 +1487,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32a403a_512
-  - at32a403a_usd
-  - at32a403a_ext_type1_reamp0_general
-  - at32a403a_ext_type1_reamp1_general
-  - at32a403a_ext_type2_reamp0_general
-  - at32a403a_ext_type2_reamp1_general
 - name: AT32F403AVET7
   cores:
   - name: main
@@ -1708,11 +1513,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32a403a_512
-  - at32a403a_usd
-  - at32a403a_ext_type1_reamp0_general
-  - at32a403a_ext_type1_reamp1_general
-  - at32a403a_ext_type2_reamp0_general
-  - at32a403a_ext_type2_reamp1_general
 - name: AT32F403AVGT7
   cores:
   - name: main
@@ -1739,11 +1539,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32a403a_1024
-  - at32a403a_usd
-  - at32a403a_ext_type1_reamp0_general
-  - at32a403a_ext_type1_reamp1_general
-  - at32a403a_ext_type2_reamp0_general
-  - at32a403a_ext_type2_reamp1_general
 - name: AT32F407AVCT7
   cores:
   - name: main
@@ -1770,11 +1565,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32a403a_512
-  - at32a403a_usd
-  - at32a403a_ext_type1_reamp0_general
-  - at32a403a_ext_type1_reamp1_general
-  - at32a403a_ext_type2_reamp0_general
-  - at32a403a_ext_type2_reamp1_general
 - name: AT32F407AVGT7
   cores:
   - name: main
@@ -1801,11 +1591,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32a403a_1024
-  - at32a403a_usd
-  - at32a403a_ext_type1_reamp0_general
-  - at32a403a_ext_type1_reamp1_general
-  - at32a403a_ext_type2_reamp0_general
-  - at32a403a_ext_type2_reamp1_general
 - name: AT32F407RCT7
   cores:
   - name: main
@@ -1832,11 +1617,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32a403a_512
-  - at32a403a_usd
-  - at32a403a_ext_type1_reamp0_general
-  - at32a403a_ext_type1_reamp1_general
-  - at32a403a_ext_type2_reamp0_general
-  - at32a403a_ext_type2_reamp1_general
 - name: AT32F407RET7
   cores:
   - name: main
@@ -1863,11 +1643,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32a403a_512
-  - at32a403a_usd
-  - at32a403a_ext_type1_reamp0_general
-  - at32a403a_ext_type1_reamp1_general
-  - at32a403a_ext_type2_reamp0_general
-  - at32a403a_ext_type2_reamp1_general
 - name: AT32F407RGT7
   cores:
   - name: main
@@ -1894,11 +1669,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32a403a_1024
-  - at32a403a_usd
-  - at32a403a_ext_type1_reamp0_general
-  - at32a403a_ext_type1_reamp1_general
-  - at32a403a_ext_type2_reamp0_general
-  - at32a403a_ext_type2_reamp1_general
 - name: AT32F407VCT7
   cores:
   - name: main
@@ -1925,11 +1695,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32a403a_512
-  - at32a403a_usd
-  - at32a403a_ext_type1_reamp0_general
-  - at32a403a_ext_type1_reamp1_general
-  - at32a403a_ext_type2_reamp0_general
-  - at32a403a_ext_type2_reamp1_general
 - name: AT32F407VET7
   cores:
   - name: main
@@ -1956,11 +1721,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32a403a_512
-  - at32a403a_usd
-  - at32a403a_ext_type1_reamp0_general
-  - at32a403a_ext_type1_reamp1_general
-  - at32a403a_ext_type2_reamp0_general
-  - at32a403a_ext_type2_reamp1_general
 - name: AT32F407VGT7
   cores:
   - name: main
@@ -1987,11 +1747,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32a403a_1024
-  - at32a403a_usd
-  - at32a403a_ext_type1_reamp0_general
-  - at32a403a_ext_type1_reamp1_general
-  - at32a403a_ext_type2_reamp0_general
-  - at32a403a_ext_type2_reamp1_general
 - name: AT32F413C8T7
   cores:
   - name: main
@@ -2018,27 +1773,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f413_128
-  - at32f413_usd
-  - at32f413_ext_type1_reamp0_1mb
-  - at32f413_ext_type1_reamp0_2mb
-  - at32f413_ext_type1_reamp0_4mb
-  - at32f413_ext_type1_reamp0_8mb
-  - at32f413_ext_type1_reamp0_16mb
-  - at32f413_ext_type1_reamp1_1mb
-  - at32f413_ext_type1_reamp1_2mb
-  - at32f413_ext_type1_reamp1_4mb
-  - at32f413_ext_type1_reamp1_8mb
-  - at32f413_ext_type1_reamp1_16mb
-  - at32f413_ext_type2_reamp0_1mb
-  - at32f413_ext_type2_reamp0_2mb
-  - at32f413_ext_type2_reamp0_4mb
-  - at32f413_ext_type2_reamp0_8mb
-  - at32f413_ext_type2_reamp0_16mb
-  - at32f413_ext_type2_reamp1_1mb
-  - at32f413_ext_type2_reamp1_2mb
-  - at32f413_ext_type2_reamp1_4mb
-  - at32f413_ext_type2_reamp1_8mb
-  - at32f413_ext_type2_reamp1_16mb
 - name: AT32F413CBT7
   cores:
   - name: main
@@ -2065,27 +1799,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f413_128
-  - at32f413_usd
-  - at32f413_ext_type1_reamp0_1mb
-  - at32f413_ext_type1_reamp0_2mb
-  - at32f413_ext_type1_reamp0_4mb
-  - at32f413_ext_type1_reamp0_8mb
-  - at32f413_ext_type1_reamp0_16mb
-  - at32f413_ext_type1_reamp1_1mb
-  - at32f413_ext_type1_reamp1_2mb
-  - at32f413_ext_type1_reamp1_4mb
-  - at32f413_ext_type1_reamp1_8mb
-  - at32f413_ext_type1_reamp1_16mb
-  - at32f413_ext_type2_reamp0_1mb
-  - at32f413_ext_type2_reamp0_2mb
-  - at32f413_ext_type2_reamp0_4mb
-  - at32f413_ext_type2_reamp0_8mb
-  - at32f413_ext_type2_reamp0_16mb
-  - at32f413_ext_type2_reamp1_1mb
-  - at32f413_ext_type2_reamp1_2mb
-  - at32f413_ext_type2_reamp1_4mb
-  - at32f413_ext_type2_reamp1_8mb
-  - at32f413_ext_type2_reamp1_16mb
 - name: AT32F413CBU7
   cores:
   - name: main
@@ -2112,27 +1825,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f413_128
-  - at32f413_usd
-  - at32f413_ext_type1_reamp0_1mb
-  - at32f413_ext_type1_reamp0_2mb
-  - at32f413_ext_type1_reamp0_4mb
-  - at32f413_ext_type1_reamp0_8mb
-  - at32f413_ext_type1_reamp0_16mb
-  - at32f413_ext_type1_reamp1_1mb
-  - at32f413_ext_type1_reamp1_2mb
-  - at32f413_ext_type1_reamp1_4mb
-  - at32f413_ext_type1_reamp1_8mb
-  - at32f413_ext_type1_reamp1_16mb
-  - at32f413_ext_type2_reamp0_1mb
-  - at32f413_ext_type2_reamp0_2mb
-  - at32f413_ext_type2_reamp0_4mb
-  - at32f413_ext_type2_reamp0_8mb
-  - at32f413_ext_type2_reamp0_16mb
-  - at32f413_ext_type2_reamp1_1mb
-  - at32f413_ext_type2_reamp1_2mb
-  - at32f413_ext_type2_reamp1_4mb
-  - at32f413_ext_type2_reamp1_8mb
-  - at32f413_ext_type2_reamp1_16mb
 - name: AT32F413CCT7
   cores:
   - name: main
@@ -2159,27 +1851,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f413_256
-  - at32f413_usd
-  - at32f413_ext_type1_reamp0_1mb
-  - at32f413_ext_type1_reamp0_2mb
-  - at32f413_ext_type1_reamp0_4mb
-  - at32f413_ext_type1_reamp0_8mb
-  - at32f413_ext_type1_reamp0_16mb
-  - at32f413_ext_type1_reamp1_1mb
-  - at32f413_ext_type1_reamp1_2mb
-  - at32f413_ext_type1_reamp1_4mb
-  - at32f413_ext_type1_reamp1_8mb
-  - at32f413_ext_type1_reamp1_16mb
-  - at32f413_ext_type2_reamp0_1mb
-  - at32f413_ext_type2_reamp0_2mb
-  - at32f413_ext_type2_reamp0_4mb
-  - at32f413_ext_type2_reamp0_8mb
-  - at32f413_ext_type2_reamp0_16mb
-  - at32f413_ext_type2_reamp1_1mb
-  - at32f413_ext_type2_reamp1_2mb
-  - at32f413_ext_type2_reamp1_4mb
-  - at32f413_ext_type2_reamp1_8mb
-  - at32f413_ext_type2_reamp1_16mb
 - name: AT32F413CCU7
   cores:
   - name: main
@@ -2206,27 +1877,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f413_256
-  - at32f413_usd
-  - at32f413_ext_type1_reamp0_1mb
-  - at32f413_ext_type1_reamp0_2mb
-  - at32f413_ext_type1_reamp0_4mb
-  - at32f413_ext_type1_reamp0_8mb
-  - at32f413_ext_type1_reamp0_16mb
-  - at32f413_ext_type1_reamp1_1mb
-  - at32f413_ext_type1_reamp1_2mb
-  - at32f413_ext_type1_reamp1_4mb
-  - at32f413_ext_type1_reamp1_8mb
-  - at32f413_ext_type1_reamp1_16mb
-  - at32f413_ext_type2_reamp0_1mb
-  - at32f413_ext_type2_reamp0_2mb
-  - at32f413_ext_type2_reamp0_4mb
-  - at32f413_ext_type2_reamp0_8mb
-  - at32f413_ext_type2_reamp0_16mb
-  - at32f413_ext_type2_reamp1_1mb
-  - at32f413_ext_type2_reamp1_2mb
-  - at32f413_ext_type2_reamp1_4mb
-  - at32f413_ext_type2_reamp1_8mb
-  - at32f413_ext_type2_reamp1_16mb
 - name: AT32F413KBU7-4
   cores:
   - name: main
@@ -2253,27 +1903,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f413_128
-  - at32f413_usd
-  - at32f413_ext_type1_reamp0_1mb
-  - at32f413_ext_type1_reamp0_2mb
-  - at32f413_ext_type1_reamp0_4mb
-  - at32f413_ext_type1_reamp0_8mb
-  - at32f413_ext_type1_reamp0_16mb
-  - at32f413_ext_type1_reamp1_1mb
-  - at32f413_ext_type1_reamp1_2mb
-  - at32f413_ext_type1_reamp1_4mb
-  - at32f413_ext_type1_reamp1_8mb
-  - at32f413_ext_type1_reamp1_16mb
-  - at32f413_ext_type2_reamp0_1mb
-  - at32f413_ext_type2_reamp0_2mb
-  - at32f413_ext_type2_reamp0_4mb
-  - at32f413_ext_type2_reamp0_8mb
-  - at32f413_ext_type2_reamp0_16mb
-  - at32f413_ext_type2_reamp1_1mb
-  - at32f413_ext_type2_reamp1_2mb
-  - at32f413_ext_type2_reamp1_4mb
-  - at32f413_ext_type2_reamp1_8mb
-  - at32f413_ext_type2_reamp1_16mb
 - name: AT32F413KCU7-4
   cores:
   - name: main
@@ -2300,27 +1929,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f413_256
-  - at32f413_usd
-  - at32f413_ext_type1_reamp0_1mb
-  - at32f413_ext_type1_reamp0_2mb
-  - at32f413_ext_type1_reamp0_4mb
-  - at32f413_ext_type1_reamp0_8mb
-  - at32f413_ext_type1_reamp0_16mb
-  - at32f413_ext_type1_reamp1_1mb
-  - at32f413_ext_type1_reamp1_2mb
-  - at32f413_ext_type1_reamp1_4mb
-  - at32f413_ext_type1_reamp1_8mb
-  - at32f413_ext_type1_reamp1_16mb
-  - at32f413_ext_type2_reamp0_1mb
-  - at32f413_ext_type2_reamp0_2mb
-  - at32f413_ext_type2_reamp0_4mb
-  - at32f413_ext_type2_reamp0_8mb
-  - at32f413_ext_type2_reamp0_16mb
-  - at32f413_ext_type2_reamp1_1mb
-  - at32f413_ext_type2_reamp1_2mb
-  - at32f413_ext_type2_reamp1_4mb
-  - at32f413_ext_type2_reamp1_8mb
-  - at32f413_ext_type2_reamp1_16mb
 - name: AT32F413RBT7
   cores:
   - name: main
@@ -2347,27 +1955,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f413_128
-  - at32f413_usd
-  - at32f413_ext_type1_reamp0_1mb
-  - at32f413_ext_type1_reamp0_2mb
-  - at32f413_ext_type1_reamp0_4mb
-  - at32f413_ext_type1_reamp0_8mb
-  - at32f413_ext_type1_reamp0_16mb
-  - at32f413_ext_type1_reamp1_1mb
-  - at32f413_ext_type1_reamp1_2mb
-  - at32f413_ext_type1_reamp1_4mb
-  - at32f413_ext_type1_reamp1_8mb
-  - at32f413_ext_type1_reamp1_16mb
-  - at32f413_ext_type2_reamp0_1mb
-  - at32f413_ext_type2_reamp0_2mb
-  - at32f413_ext_type2_reamp0_4mb
-  - at32f413_ext_type2_reamp0_8mb
-  - at32f413_ext_type2_reamp0_16mb
-  - at32f413_ext_type2_reamp1_1mb
-  - at32f413_ext_type2_reamp1_2mb
-  - at32f413_ext_type2_reamp1_4mb
-  - at32f413_ext_type2_reamp1_8mb
-  - at32f413_ext_type2_reamp1_16mb
 - name: AT32F413RCT7
   cores:
   - name: main
@@ -2394,27 +1981,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f413_256
-  - at32f413_usd
-  - at32f413_ext_type1_reamp0_1mb
-  - at32f413_ext_type1_reamp0_2mb
-  - at32f413_ext_type1_reamp0_4mb
-  - at32f413_ext_type1_reamp0_8mb
-  - at32f413_ext_type1_reamp0_16mb
-  - at32f413_ext_type1_reamp1_1mb
-  - at32f413_ext_type1_reamp1_2mb
-  - at32f413_ext_type1_reamp1_4mb
-  - at32f413_ext_type1_reamp1_8mb
-  - at32f413_ext_type1_reamp1_16mb
-  - at32f413_ext_type2_reamp0_1mb
-  - at32f413_ext_type2_reamp0_2mb
-  - at32f413_ext_type2_reamp0_4mb
-  - at32f413_ext_type2_reamp0_8mb
-  - at32f413_ext_type2_reamp0_16mb
-  - at32f413_ext_type2_reamp1_1mb
-  - at32f413_ext_type2_reamp1_2mb
-  - at32f413_ext_type2_reamp1_4mb
-  - at32f413_ext_type2_reamp1_8mb
-  - at32f413_ext_type2_reamp1_16mb
 - name: AT32F413TBU7
   cores:
   - name: main
@@ -2441,27 +2007,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f413_128
-  - at32f413_usd
-  - at32f413_ext_type1_reamp0_1mb
-  - at32f413_ext_type1_reamp0_2mb
-  - at32f413_ext_type1_reamp0_4mb
-  - at32f413_ext_type1_reamp0_8mb
-  - at32f413_ext_type1_reamp0_16mb
-  - at32f413_ext_type1_reamp1_1mb
-  - at32f413_ext_type1_reamp1_2mb
-  - at32f413_ext_type1_reamp1_4mb
-  - at32f413_ext_type1_reamp1_8mb
-  - at32f413_ext_type1_reamp1_16mb
-  - at32f413_ext_type2_reamp0_1mb
-  - at32f413_ext_type2_reamp0_2mb
-  - at32f413_ext_type2_reamp0_4mb
-  - at32f413_ext_type2_reamp0_8mb
-  - at32f413_ext_type2_reamp0_16mb
-  - at32f413_ext_type2_reamp1_1mb
-  - at32f413_ext_type2_reamp1_2mb
-  - at32f413_ext_type2_reamp1_4mb
-  - at32f413_ext_type2_reamp1_8mb
-  - at32f413_ext_type2_reamp1_16mb
 - name: AT32FEBKC8T7
   cores:
   - name: main
@@ -2488,27 +2033,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f413_128
-  - at32f413_usd
-  - at32f413_ext_type1_reamp0_1mb
-  - at32f413_ext_type1_reamp0_2mb
-  - at32f413_ext_type1_reamp0_4mb
-  - at32f413_ext_type1_reamp0_8mb
-  - at32f413_ext_type1_reamp0_16mb
-  - at32f413_ext_type1_reamp1_1mb
-  - at32f413_ext_type1_reamp1_2mb
-  - at32f413_ext_type1_reamp1_4mb
-  - at32f413_ext_type1_reamp1_8mb
-  - at32f413_ext_type1_reamp1_16mb
-  - at32f413_ext_type2_reamp0_1mb
-  - at32f413_ext_type2_reamp0_2mb
-  - at32f413_ext_type2_reamp0_4mb
-  - at32f413_ext_type2_reamp0_8mb
-  - at32f413_ext_type2_reamp0_16mb
-  - at32f413_ext_type2_reamp1_1mb
-  - at32f413_ext_type2_reamp1_2mb
-  - at32f413_ext_type2_reamp1_4mb
-  - at32f413_ext_type2_reamp1_8mb
-  - at32f413_ext_type2_reamp1_16mb
 - name: AT32F415C8T7
   cores:
   - name: main
@@ -2535,8 +2059,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f415_64
-  - at32f415_bootmem_ap
-  - at32f415_usd
 - name: AT32F415CBT7
   cores:
   - name: main
@@ -2563,8 +2085,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f415_128
-  - at32f415_bootmem_ap
-  - at32f415_usd
 - name: AT32F415CBU7
   cores:
   - name: main
@@ -2591,8 +2111,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f415_128
-  - at32f415_bootmem_ap
-  - at32f415_usd
 - name: AT32F415CCT7
   cores:
   - name: main
@@ -2619,8 +2137,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f415_256
-  - at32f415_bootmem_ap
-  - at32f415_usd
 - name: AT32F415CCU7
   cores:
   - name: main
@@ -2647,8 +2163,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f415_256
-  - at32f415_bootmem_ap
-  - at32f415_usd
 - name: AT32F415K8U7-4
   cores:
   - name: main
@@ -2675,8 +2189,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f415_64
-  - at32f415_bootmem_ap
-  - at32f415_usd
 - name: AT32F415KBU7-4
   cores:
   - name: main
@@ -2703,8 +2215,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f415_128
-  - at32f415_bootmem_ap
-  - at32f415_usd
 - name: AT32F415KCU7-4
   cores:
   - name: main
@@ -2731,8 +2241,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f415_256
-  - at32f415_bootmem_ap
-  - at32f415_usd
 - name: AT32F415R8T7
   cores:
   - name: main
@@ -2759,8 +2267,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f415_64
-  - at32f415_bootmem_ap
-  - at32f415_usd
 - name: AT32F415R8T7-7
   cores:
   - name: main
@@ -2787,8 +2293,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f415_64
-  - at32f415_bootmem_ap
-  - at32f415_usd
 - name: AT32F415RBT7
   cores:
   - name: main
@@ -2815,8 +2319,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f415_128
-  - at32f415_bootmem_ap
-  - at32f415_usd
 - name: AT32F415RBT7-7
   cores:
   - name: main
@@ -2843,8 +2345,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f415_128
-  - at32f415_bootmem_ap
-  - at32f415_usd
 - name: AT32F415RCT7
   cores:
   - name: main
@@ -2871,8 +2371,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f415_256
-  - at32f415_bootmem_ap
-  - at32f415_usd
 - name: AT32F415RCT7-7
   cores:
   - name: main
@@ -2899,8 +2397,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f415_256
-  - at32f415_bootmem_ap
-  - at32f415_usd
 - name: AT32F4212C8T7
   cores:
   - name: main
@@ -2927,8 +2423,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f415_64
-  - at32f4212_bootmem_ap
-  - at32f4212_usd
 - name: AT32F421C4T7
   cores:
   - name: main
@@ -2955,8 +2449,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f421_16
-  - at32f4212_bootmem_ap
-  - at32f4212_usd
 - name: AT32F421C6T7
   cores:
   - name: main
@@ -2983,8 +2475,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f421_32
-  - at32f4212_bootmem_ap
-  - at32f4212_usd
 - name: AT32F421C8T7
   cores:
   - name: main
@@ -3011,8 +2501,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f415_64
-  - at32f4212_bootmem_ap
-  - at32f4212_usd
 - name: AT32F421F4P7
   cores:
   - name: main
@@ -3039,8 +2527,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f421_16
-  - at32f4212_bootmem_ap
-  - at32f4212_usd
 - name: AT32F421F4U7
   cores:
   - name: main
@@ -3067,8 +2553,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f421_16
-  - at32f4212_bootmem_ap
-  - at32f4212_usd
 - name: AT32F421F6P7
   cores:
   - name: main
@@ -3095,8 +2579,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f421_32
-  - at32f4212_bootmem_ap
-  - at32f4212_usd
 - name: AT32F421F6U7
   cores:
   - name: main
@@ -3123,8 +2605,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f421_32
-  - at32f4212_bootmem_ap
-  - at32f4212_usd
 - name: AT32F421F8P7
   cores:
   - name: main
@@ -3151,8 +2631,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f415_64
-  - at32f4212_bootmem_ap
-  - at32f4212_usd
 - name: AT32F421F8U7
   cores:
   - name: main
@@ -3179,8 +2657,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f415_64
-  - at32f4212_bootmem_ap
-  - at32f4212_usd
 - name: AT32F421G4U7
   cores:
   - name: main
@@ -3207,8 +2683,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f421_16
-  - at32f4212_bootmem_ap
-  - at32f4212_usd
 - name: AT32F421G6U7
   cores:
   - name: main
@@ -3235,8 +2709,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f421_32
-  - at32f4212_bootmem_ap
-  - at32f4212_usd
 - name: AT32F421G8U7
   cores:
   - name: main
@@ -3263,8 +2735,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f415_64
-  - at32f4212_bootmem_ap
-  - at32f4212_usd
 - name: AT32F421K4T7
   cores:
   - name: main
@@ -3291,8 +2761,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f421_16
-  - at32f4212_bootmem_ap
-  - at32f4212_usd
 - name: AT32F421K4U7
   cores:
   - name: main
@@ -3319,8 +2787,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f421_16
-  - at32f4212_bootmem_ap
-  - at32f4212_usd
 - name: AT32F421K4U7-4
   cores:
   - name: main
@@ -3347,8 +2813,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f421_16
-  - at32f4212_bootmem_ap
-  - at32f4212_usd
 - name: AT32F421K6T7
   cores:
   - name: main
@@ -3375,8 +2839,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f421_32
-  - at32f4212_bootmem_ap
-  - at32f4212_usd
 - name: AT32F421K6U7
   cores:
   - name: main
@@ -3403,8 +2865,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f421_32
-  - at32f4212_bootmem_ap
-  - at32f4212_usd
 - name: AT32F421K6U7-4
   cores:
   - name: main
@@ -3431,8 +2891,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f421_32
-  - at32f4212_bootmem_ap
-  - at32f4212_usd
 - name: AT32F421K8T7
   cores:
   - name: main
@@ -3459,8 +2917,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f415_64
-  - at32f4212_bootmem_ap
-  - at32f4212_usd
 - name: AT32F421K8U7
   cores:
   - name: main
@@ -3487,8 +2943,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f415_64
-  - at32f4212_bootmem_ap
-  - at32f4212_usd
 - name: AT32F421K8U7-4
   cores:
   - name: main
@@ -3515,8 +2969,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f415_64
-  - at32f4212_bootmem_ap
-  - at32f4212_usd
 - name: AT32F421PF4P7
   cores:
   - name: main
@@ -3543,8 +2995,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f421_16
-  - at32f4212_bootmem_ap
-  - at32f4212_usd
 - name: AT32F421PF8P7
   cores:
   - name: main
@@ -3571,8 +3021,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f415_64
-  - at32f4212_bootmem_ap
-  - at32f4212_usd
 - name: AT32F423C8T7
   cores:
   - name: main
@@ -3599,8 +3047,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f423_128
-  - at32f423_bootmem_ap
-  - at32f423_usd
 - name: AT32F423C8U7
   cores:
   - name: main
@@ -3627,8 +3073,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f423_128
-  - at32f423_bootmem_ap
-  - at32f423_usd
 - name: AT32F423CBT7
   cores:
   - name: main
@@ -3655,8 +3099,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f423_128
-  - at32f423_bootmem_ap
-  - at32f423_usd
 - name: AT32F423CBU7
   cores:
   - name: main
@@ -3683,8 +3125,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f423_128
-  - at32f423_bootmem_ap
-  - at32f423_usd
 - name: AT32F423CBU7-7
   cores:
   - name: main
@@ -3711,8 +3151,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f423_128
-  - at32f423_bootmem_ap
-  - at32f423_usd
 - name: AT32F423CCT7
   cores:
   - name: main
@@ -3739,8 +3177,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f423_256
-  - at32f423_bootmem_ap
-  - at32f423_usd
 - name: AT32F423CCU7
   cores:
   - name: main
@@ -3767,8 +3203,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f423_256
-  - at32f423_bootmem_ap
-  - at32f423_usd
 - name: AT32F423K8U7-4
   cores:
   - name: main
@@ -3795,8 +3229,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f423_128
-  - at32f423_bootmem_ap
-  - at32f423_usd
 - name: AT32F423KBU7-4
   cores:
   - name: main
@@ -3823,8 +3255,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f423_128
-  - at32f423_bootmem_ap
-  - at32f423_usd
 - name: AT32F423KCU7-4
   cores:
   - name: main
@@ -3851,8 +3281,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f423_256
-  - at32f423_bootmem_ap
-  - at32f423_usd
 - name: AT32F423R8T7
   cores:
   - name: main
@@ -3879,8 +3307,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f423_128
-  - at32f423_bootmem_ap
-  - at32f423_usd
 - name: AT32F423R8T7-7
   cores:
   - name: main
@@ -3907,8 +3333,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f423_128
-  - at32f423_bootmem_ap
-  - at32f423_usd
 - name: AT32F423RBT7
   cores:
   - name: main
@@ -3935,8 +3359,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f423_128
-  - at32f423_bootmem_ap
-  - at32f423_usd
 - name: AT32F423RBT7-7
   cores:
   - name: main
@@ -3963,8 +3385,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f423_128
-  - at32f423_bootmem_ap
-  - at32f423_usd
 - name: AT32F423RCT7
   cores:
   - name: main
@@ -3991,8 +3411,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f423_256
-  - at32f423_bootmem_ap
-  - at32f423_usd
 - name: AT32F423RCT7-7
   cores:
   - name: main
@@ -4019,8 +3437,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f423_256
-  - at32f423_bootmem_ap
-  - at32f423_usd
 - name: AT32F423T8U7
   cores:
   - name: main
@@ -4047,8 +3463,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f423_128
-  - at32f423_bootmem_ap
-  - at32f423_usd
 - name: AT32F423TBU7
   cores:
   - name: main
@@ -4075,8 +3489,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f423_128
-  - at32f423_bootmem_ap
-  - at32f423_usd
 - name: AT32F423TCU7
   cores:
   - name: main
@@ -4103,8 +3515,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f423_256
-  - at32f423_bootmem_ap
-  - at32f423_usd
 - name: AT32F423V8T7
   cores:
   - name: main
@@ -4131,8 +3541,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f423_128
-  - at32f423_bootmem_ap
-  - at32f423_usd
 - name: AT32F423VBT7
   cores:
   - name: main
@@ -4159,8 +3567,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f423_128
-  - at32f423_bootmem_ap
-  - at32f423_usd
 - name: AT32F423VCT7
   cores:
   - name: main
@@ -4187,8 +3593,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f423_256
-  - at32f423_bootmem_ap
-  - at32f423_usd
 - name: AT32F425C6T7
   cores:
   - name: main
@@ -4215,8 +3619,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f425_32
-  - at32f425_bootmem_ap
-  - at32f425_usd
 - name: AT32F425C6U7
   cores:
   - name: main
@@ -4243,8 +3645,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f425_32
-  - at32f425_bootmem_ap
-  - at32f425_usd
 - name: AT32F425C8T7
   cores:
   - name: main
@@ -4271,8 +3671,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f425_64
-  - at32f425_bootmem_ap
-  - at32f425_usd
 - name: AT32F425C8U7
   cores:
   - name: main
@@ -4299,8 +3697,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f425_64
-  - at32f425_bootmem_ap
-  - at32f425_usd
 - name: AT32F425F6P7
   cores:
   - name: main
@@ -4327,8 +3723,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f425_32
-  - at32f425_bootmem_ap
-  - at32f425_usd
 - name: AT32F425F8P7
   cores:
   - name: main
@@ -4355,8 +3749,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f425_64
-  - at32f425_bootmem_ap
-  - at32f425_usd
 - name: AT32F425G6U7
   cores:
   - name: main
@@ -4383,8 +3775,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f425_32
-  - at32f425_bootmem_ap
-  - at32f425_usd
 - name: AT32F425G8U7
   cores:
   - name: main
@@ -4411,8 +3801,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f425_64
-  - at32f425_bootmem_ap
-  - at32f425_usd
 - name: AT32F425K6T7
   cores:
   - name: main
@@ -4439,8 +3827,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f425_32
-  - at32f425_bootmem_ap
-  - at32f425_usd
 - name: AT32F425K6U7-4
   cores:
   - name: main
@@ -4467,8 +3853,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f425_32
-  - at32f425_bootmem_ap
-  - at32f425_usd
 - name: AT32F425K8T7
   cores:
   - name: main
@@ -4495,8 +3879,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f425_64
-  - at32f425_bootmem_ap
-  - at32f425_usd
 - name: AT32F425K8U7-4
   cores:
   - name: main
@@ -4523,8 +3905,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f425_64
-  - at32f425_bootmem_ap
-  - at32f425_usd
 - name: AT32F425R6T7
   cores:
   - name: main
@@ -4551,8 +3931,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f425_32
-  - at32f425_bootmem_ap
-  - at32f425_usd
 - name: AT32F425R6T7-7
   cores:
   - name: main
@@ -4579,8 +3957,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f425_32
-  - at32f425_bootmem_ap
-  - at32f425_usd
 - name: AT32F425R8T7
   cores:
   - name: main
@@ -4607,8 +3983,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f425_64
-  - at32f425_bootmem_ap
-  - at32f425_usd
 - name: AT32F425R8T7-7
   cores:
   - name: main
@@ -4635,8 +4009,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f425_64
-  - at32f425_bootmem_ap
-  - at32f425_usd
 - name: AT32F435CCT7
   cores:
   - name: main
@@ -4663,7 +4035,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f435_256
-  - at32f435_usd_512
 - name: AT32F435CCU7
   cores:
   - name: main
@@ -4690,7 +4061,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f435_256
-  - at32f435_usd_512
 - name: AT32F435CDT7
   cores:
   - name: main
@@ -4717,7 +4087,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f435_448
-  - at32f435_usd_512
 - name: AT32F435CDU7
   cores:
   - name: main
@@ -4744,7 +4113,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f435_448
-  - at32f435_usd_512
 - name: AT32F435CGT7
   cores:
   - name: main
@@ -4771,7 +4139,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f435_1024
-  - at32f435_usd_512
 - name: AT32F435CGU7
   cores:
   - name: main
@@ -4798,7 +4165,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f435_1024
-  - at32f435_usd_512
 - name: AT32F435CMT7
   cores:
   - name: main
@@ -4825,7 +4191,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f435_4032
-  - at32f435_usd_4096
 - name: AT32F435CMU7
   cores:
   - name: main
@@ -4852,7 +4217,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f435_4032
-  - at32f435_usd_4096
 - name: AT32F435RCT7
   cores:
   - name: main
@@ -4879,7 +4243,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f435_256
-  - at32f435_usd_512
 - name: AT32F435RDT7
   cores:
   - name: main
@@ -4906,7 +4269,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f435_448
-  - at32f435_usd_512
 - name: AT32F435RGT7
   cores:
   - name: main
@@ -4933,7 +4295,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f435_1024
-  - at32f435_usd_512
 - name: AT32F435RMT7
   cores:
   - name: main
@@ -4960,7 +4321,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f435_4032
-  - at32f435_usd_4096
 - name: AT32F435VCT7
   cores:
   - name: main
@@ -4987,7 +4347,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f435_256
-  - at32f435_usd_512
 - name: AT32F435VDT7
   cores:
   - name: main
@@ -5014,7 +4373,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f435_448
-  - at32f435_usd_512
 - name: AT32F435VGT7
   cores:
   - name: main
@@ -5041,7 +4399,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f435_1024
-  - at32f435_usd_512
 - name: AT32F435VMT7
   cores:
   - name: main
@@ -5068,7 +4425,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f435_4032
-  - at32f435_usd_4096
 - name: AT32F435ZCT7
   cores:
   - name: main
@@ -5095,7 +4451,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f435_256
-  - at32f435_usd_512
 - name: AT32F435ZDT7
   cores:
   - name: main
@@ -5122,7 +4477,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f435_448
-  - at32f435_usd_512
 - name: AT32F435ZGT7
   cores:
   - name: main
@@ -5149,7 +4503,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f435_1024
-  - at32f435_usd_512
 - name: AT32F435ZMT7
   cores:
   - name: main
@@ -5176,7 +4529,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f435_4032
-  - at32f435_usd_4096
 - name: AT32F437RCT7
   cores:
   - name: main
@@ -5203,7 +4555,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f435_256
-  - at32f435_usd_512
 - name: AT32F437RDT7
   cores:
   - name: main
@@ -5230,7 +4581,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f435_448
-  - at32f435_usd_512
 - name: AT32F437RGT7
   cores:
   - name: main
@@ -5257,7 +4607,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f435_1024
-  - at32f435_usd_512
 - name: AT32F437RMT7
   cores:
   - name: main
@@ -5284,7 +4633,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f435_4032
-  - at32f435_usd_4096
 - name: AT32F437VCT7
   cores:
   - name: main
@@ -5311,7 +4659,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f435_256
-  - at32f435_usd_512
 - name: AT32F437VDT7
   cores:
   - name: main
@@ -5338,7 +4685,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f435_448
-  - at32f435_usd_512
 - name: AT32F437VGT7
   cores:
   - name: main
@@ -5365,7 +4711,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f435_1024
-  - at32f435_usd_512
 - name: AT32F437VMT7
   cores:
   - name: main
@@ -5392,7 +4737,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f435_4032
-  - at32f435_usd_4096
 - name: AT32F437ZCT7
   cores:
   - name: main
@@ -5419,7 +4763,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f435_256
-  - at32f435_usd_512
 - name: AT32F437ZDT7
   cores:
   - name: main
@@ -5446,7 +4789,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f435_256
-  - at32f435_usd_512
 - name: AT32F437ZGT7
   cores:
   - name: main
@@ -5473,7 +4815,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f435_1024
-  - at32f435_usd_512
 - name: AT32F437ZMT7
   cores:
   - name: main
@@ -5500,7 +4841,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f435_4032
-  - at32f435_usd_4096
 - name: AT32WB415CCU7-7
   cores:
   - name: main
@@ -5527,8 +4867,6 @@ variants:
       boot: true
   flash_algorithms:
   - at32f415_256
-  - at32f415_bootmem_ap
-  - at32f415_usd
 flash_algorithms:
 - name: at32a403a_512
   description: AT32A403A Int.Flash(Bank1)
@@ -5550,106 +4888,6 @@ flash_algorithms:
     erase_sector_timeout: 10000
     sectors:
     - size: 0x800
-      address: 0x0
-- name: at32a403a_usd
-  description: AT32A403A Flash user system data
-  instructions: DLUAIAGQAJCRSEBoQPQgEI9JSGAIRgBoQPCAcAhgAL+LSABoAPAAcAAo+dCISEBoIPADAIZJSGAIRkBoQPACAEhgAL+CSEBoAPAMAAgo+dEMvX9IQGgg9CAQfUlIYAhGAGgg8IBwCGAIRkBoIPADAEhgcEdwtQRGDUYWRnRIQGgg8PAAcklIYAhGQGhA8IAASGAIRkBoIPDwAEhgbUhAaED0gHBrSUhg//eq/2pIa0lIYGtISGBoSIhgaUiIYAhGwGkA8AQAQLlF8lVQZUkIYAYgSGBA9v9wiGAAIHC9ALUCRlxIQGgg9IBwWklIYP/3sP9aSABpIPQAcFhJCGEIRgBpQPCAAAhhACAAvUr2qiBUSQhgUUgAaUDwIABPSQhhCEYAaUDwQAAIYQPgSvaqIExJCGBJSMBoAPABAAAo9dFGSABpIPAgAERJCGEIRsBoAPAUABixFCDIYAEgcEcAIPznAUZK9qogPkoQYDtIAGlA8CAAOUoQYRBGAGlA8EAAEGED4Er2qiA2ShBgM0jAaADwAQAAKPXRMEgAaSDwIAAuShBhEEbAaADwFAAYsRQg0GABIHBHACD85xC1A0ZIHCDwAQE94CVIAGlA8BAAI0wgYSVIg0IQ0RB4pSga0RCIGIAD4Er2qiAeTCBgG0jAaADwAQAAKPXRDOAQiBiAA+BK9qogF0wgYBRIwGgA8AEAACj10RFIAGkg8BAAD0wgYUr2qiAPTCBgDEjAaADwFAAgsRQgCUzgYAEgEL2JHpsckhwAKb/RACD35wNGASBwRwAQAkAAIATgIwFnRQAgAkCrie/NADAAQAD4/x8AAAAA
-  pc_init: 0x75
-  pc_uninit: 0xdf
-  pc_program_page: 0x1bb
-  pc_erase_sector: 0x163
-  pc_erase_all: 0x10d
-  data_section_offset: 0x26c
-  flash_properties:
-    address_range:
-      start: 0x1ffff800
-      end: 0x1ffff830
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 40000
-    erase_sector_timeout: 1000
-    sectors:
-    - size: 0x30
-      address: 0x0
-- name: at32a403a_ext_type1_reamp0_general
-  description: AT32A403A Type 1 REMAP_0 Ext.Flash(SPIM)
-  instructions: DLUAIAGQAJClSEBoQPQgEKNJSGAIRgBoQPCAcAhgAL+fSABoAPAAcAAo+dCcSEBoIPADAJpJSGAIRkBoQPACAEhgAL+WSEBoAPAMAAgo+dEMvZNIQGgg9CAQkUlIYAhGAGgg8IBwCGAIRkBoIPADAEhgcEdwtQRGDUYWRohIQGgg8PAAhklIYAhGQGhA8IAASGAIRkBoIPDwAEhggUhAaED0gHB/SUhg//eq/w0gfEmIYX1IAGh9SQhAAPUqIAoweUkIYHpIAGh6SQhAekkIQ3dJCGB5SABrQPAIAHdJCGMBIHdJCGAD4Er2qiB1SQhgc0gAHQBoAPABAAAo9NFySG9JCR8IYHFIbUmIOcH4hAAIRsBpAPAEAEC5RfJVUGlJCGAGIEhgQPb/cIhgACBwvQC1AkZbSEBoIPSAcFlJSGD/94f/XkgIMABoQPCAAFxJiDnB+JAAACAAvUr2qiBZSQhgV0gIMABoQPAEAFRJiDnB+JAACEbQ+JAAQPBAAMH4kAAD4Er2qiBOSQhgTEgAHQBoAPABAAAo9NFJSAgwAGgg8AQARkmIOcH4kAAAIHBHAUZK9qogQ0oQYEFICDAAaEDwAgA+Sog6wviQABBGwPiUEND4kABA8EAAOUoIMhBgA+BK9qogN0oQYDVIAB0AaADwAQAAKPTRMUgIMABoIPACAC9KiDrC+JAALUgAHQBoAPAUACixFCApShIdEGABIHBHACD85xC1A0ZIHCDwAQEx4CNICDAAaEDwAQAgTAg0IGAQiBiAA+BK9qogHUwgYBtIAB0AaADwAQAAKPTRGEgIMABoIPABABVMiDzE+JAASvaqIBNMIGARSAAdAGgA8BQAKLEUIA5MJB0gYAEgEL2JHpsckhwAKcvRACD35wAAABACQAAgBOAECAFA8A/w/wAMAUAP//8AoAAAqgAAAUCIIAJAADAAQCMBZ0Wrie/NAAAAAA==
-  pc_init: 0x75
-  pc_uninit: 0x131
-  pc_program_page: 0x227
-  pc_erase_sector: 0x1b1
-  pc_erase_all: 0x15b
-  data_section_offset: 0x2d0
-  flash_properties:
-    address_range:
-      start: 0x8400000
-      end: 0x9400000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 1000
-    erase_sector_timeout: 100000
-    sectors:
-    - size: 0x1000
-      address: 0x0
-- name: at32a403a_ext_type1_reamp1_general
-  description: AT32A403A Type 1 REMAP_1 Ext.Flash(SPIM)
-  instructions: DLUAIAGQAJCpSEBoQPQgEKdJSGAIRgBoQPCAcAhgAL+jSABoAPAAcAAo+dCgSEBoIPADAJ5JSGAIRkBoQPACAEhgAL+aSEBoAPAMAAgo+dEMvZdIQGgg9CAQlUlIYAhGAGgg8IBwCGAIRkBoIPADAEhgcEdwtQRGDUYWRoxIQGgg8PAAiklIYAhGQGhA8IAASGAIRkBoIPDwAEhghUhAaED0gHCDSUhg//eq/w0ggEmIYYFIAGgg8A8AQPAKAH5JCGB+SABoIPR/QED0KkB7SQhgCB8AaHpJCEB6SQhDd0kJHwhgeEgAa0DwCQB2SQhjASB2SQhgA+BK9qogdEkIYHJIAB0AaADwAQAAKPTRcUhuSQkfCGBwSGxJiDnB+IQACEbAaQDwBABAuUXyVVBoSQhgBiBIYED2/3CIYAAgcL0AtQJGW0hAaCD0gHBZSUhg//d//11ICDAAaEDwgABbSYg5wfiQAAAgAL1K9qogWEkIYFZICDAAaEDwBABTSYg5wfiQAAhG0PiQAEDwQADB+JAAA+BK9qogTUkIYEtIAB0AaADwAQAAKPTRSEgIMABoIPAEAEVJiDnB+JAAACBwRwFGSvaqIEJKEGBASAgwAGhA8AIAPUqIOsL4kAAQRsD4lBDQ+JAAQPBAADhKCDIQYAPgSvaqIDZKEGA0SAAdAGgA8AEAACj00TBICDAAaCDwAgAuSog6wviQACxIAB0AaADwFAAosRQgKEoSHRBgASBwRwAg/OcQtQNGSBwg8AEBMeAiSAgwAGhA8AEAH0wINCBgEIgYgAPgSvaqIBxMIGAaSAAdAGgA8AEAACj00RdICDAAaCDwAQAUTIg8xPiQAEr2qiASTCBgEEgAHQBoAPAUACixFCANTCQdIGABIBC9iR6bHJIcACnL0QAg9+cAAAAQAkAAIATgBAgBQAQMAUAP//8AoAAAqgAAAUCIIAJAADAAQCMBZ0Wrie/NAAAAAA==
-  pc_init: 0x75
-  pc_uninit: 0x141
-  pc_program_page: 0x237
-  pc_erase_sector: 0x1c1
-  pc_erase_all: 0x16b
-  data_section_offset: 0x2dc
-  flash_properties:
-    address_range:
-      start: 0x8400000
-      end: 0x9400000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 1000
-    erase_sector_timeout: 100000
-    sectors:
-    - size: 0x1000
-      address: 0x0
-- name: at32a403a_ext_type2_reamp0_general
-  description: AT32A403A Type 2 REMAP_0 Ext.Flash(SPIM)
-  instructions: DLUAIAGQAJClSEBoQPQgEKNJSGAIRgBoQPCAcAhgAL+fSABoAPAAcAAo+dCcSEBoIPADAJpJSGAIRkBoQPACAEhgAL+WSEBoAPAMAAgo+dEMvZNIQGgg9CAQkUlIYAhGAGgg8IBwCGAIRkBoIPADAEhgcEdwtQRGDUYWRohIQGgg8PAAhklIYAhGQGhA8IAASGAIRkBoIPDwAEhggUhAaED0gHB/SUhg//eq/w0gfEmIYX1IAGh9SQhAAPUqIAoweUkIYHpIAGh6SQhAekkIQ3dJCGB5SABrQPAIAHdJCGMCIHdJCGAD4Er2qiB1SQhgc0gAHQBoAPABAAAo9NFySG9JCR8IYHFIbUmIOcH4hAAIRsBpAPAEAEC5RfJVUGlJCGAGIEhgQPb/cIhgACBwvQC1AkZbSEBoIPSAcFlJSGD/94f/XkgIMABoQPCAAFxJiDnB+JAAACAAvUr2qiBZSQhgV0gIMABoQPAEAFRJiDnB+JAACEbQ+JAAQPBAAMH4kAAD4Er2qiBOSQhgTEgAHQBoAPABAAAo9NFJSAgwAGgg8AQARkmIOcH4kAAAIHBHAUZK9qogQ0oQYEFICDAAaEDwAgA+Sog6wviQABBGwPiUEND4kABA8EAAOUoIMhBgA+BK9qogN0oQYDVIAB0AaADwAQAAKPTRMUgIMABoIPACAC9KiDrC+JAALUgAHQBoAPAUACixFCApShIdEGABIHBHACD85xC1A0ZIHCDwAQEx4CNICDAAaEDwAQAgTAg0IGAQiBiAA+BK9qogHUwgYBtIAB0AaADwAQAAKPTRGEgIMABoIPABABVMiDzE+JAASvaqIBNMIGARSAAdAGgA8BQAKLEUIA5MJB0gYAEgEL2JHpsckhwAKcvRACD35wAAABACQAAgBOAECAFA8A/w/wAMAUAP//8AoAAAqgAAAUCIIAJAADAAQCMBZ0Wrie/NAAAAAA==
-  pc_init: 0x75
-  pc_uninit: 0x131
-  pc_program_page: 0x227
-  pc_erase_sector: 0x1b1
-  pc_erase_all: 0x15b
-  data_section_offset: 0x2d0
-  flash_properties:
-    address_range:
-      start: 0x8400000
-      end: 0x9400000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 1000
-    erase_sector_timeout: 100000
-    sectors:
-    - size: 0x1000
-      address: 0x0
-- name: at32a403a_ext_type2_reamp1_general
-  description: AT32A403A Type 2 REMAP_1 Ext.Flash(SPIM)
-  instructions: DLUAIAGQAJCpSEBoQPQgEKdJSGAIRgBoQPCAcAhgAL+jSABoAPAAcAAo+dCgSEBoIPADAJ5JSGAIRkBoQPACAEhgAL+aSEBoAPAMAAgo+dEMvZdIQGgg9CAQlUlIYAhGAGgg8IBwCGAIRkBoIPADAEhgcEdwtQRGDUYWRoxIQGgg8PAAiklIYAhGQGhA8IAASGAIRkBoIPDwAEhghUhAaED0gHCDSUhg//eq/w0ggEmIYYFIAGgg8A8AQPAKAH5JCGB+SABoIPR/QED0KkB7SQhgCB8AaHpJCEB6SQhDd0kJHwhgeEgAa0DwCQB2SQhjAiB2SQhgA+BK9qogdEkIYHJIAB0AaADwAQAAKPTRcUhuSQkfCGBwSGxJiDnB+IQACEbAaQDwBABAuUXyVVBoSQhgBiBIYED2/3CIYAAgcL0AtQJGW0hAaCD0gHBZSUhg//d//11ICDAAaEDwgABbSYg5wfiQAAAgAL1K9qogWEkIYFZICDAAaEDwBABTSYg5wfiQAAhG0PiQAEDwQADB+JAAA+BK9qogTUkIYEtIAB0AaADwAQAAKPTRSEgIMABoIPAEAEVJiDnB+JAAACBwRwFGSvaqIEJKEGBASAgwAGhA8AIAPUqIOsL4kAAQRsD4lBDQ+JAAQPBAADhKCDIQYAPgSvaqIDZKEGA0SAAdAGgA8AEAACj00TBICDAAaCDwAgAuSog6wviQACxIAB0AaADwFAAosRQgKEoSHRBgASBwRwAg/OcQtQNGSBwg8AEBMeAiSAgwAGhA8AEAH0wINCBgEIgYgAPgSvaqIBxMIGAaSAAdAGgA8AEAACj00RdICDAAaCDwAQAUTIg8xPiQAEr2qiASTCBgEEgAHQBoAPAUACixFCANTCQdIGABIBC9iR6bHJIcACnL0QAg9+cAAAAQAkAAIATgBAgBQAQMAUAP//8AoAAAqgAAAUCIIAJAADAAQCMBZ0Wrie/NAAAAAA==
-  pc_init: 0x75
-  pc_uninit: 0x141
-  pc_program_page: 0x237
-  pc_erase_sector: 0x1c1
-  pc_erase_all: 0x16b
-  data_section_offset: 0x2dc
-  flash_properties:
-    address_range:
-      start: 0x8400000
-      end: 0x9400000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 1000
-    erase_sector_timeout: 100000
-    sectors:
-    - size: 0x1000
       address: 0x0
 - name: at32a403a_1024
   description: AT32A403A Int.Flash(Bank1,2)
@@ -5693,46 +4931,6 @@ flash_algorithms:
     sectors:
     - size: 0x400
       address: 0x0
-- name: at32f402_bootmem_ap
-  description: AT32F402 BOOTMEM AP.Flash
-  instructions: nEgAaEDwAQCaSQhgmkgAaJpJCECYSQhgCEYAaJhJCEOVSQhgCB8AaEDwgHAJHwhgAL+RSAAfAGgA8ABwACj40I1IAGhA8IBQi0kIYAgdAGgg8AMACR0IYAhGAGhA8AIACGAAv4RIAB0AaADwDAAIKPjRcEd/SABoIPABAH1JCGB9SAAdAGgg8AMAe0kJHQhgeUgAHwBoIPCAcHdJCR8IYAgdAGh1SQhAc0kIYHBHELUDRgxGcEgAHQBoIPDwAG5JCR0IYAhGAGhA8IAACGAIRgBoIPDwAAhgakiAaED0gFBoSYhg//eM/2dIYkkJHQhgZkgIYF9IHDAAaADwBABAuUXyVVBiSQhgBiBIYED2/3CIYAAgEL0AtQJGWkiAaCD0gFBYSYhg//el/1JIEDAAaEDwgABPSRAxCGAAIAC9TUgQMABoQPBEAEpJEDEIYAC/SEgMMABoAPABAAAo+NFFSBAwAGgg8AQAQkkQMQhgACBwRwFGsfEAXwHTACBwRz1IEDAAaEDwAgA6ShAyEGBBSBIdEGAQHwBoQPBAABIfEGAD4Er2qiA6ShBgMkgMMABoAPABAAAo9NEuSBAwAGgg8AIALEoQMhBgEB8AaADwFAAgsRQgEh8QYAEgz+cAIM3nELUDRkgcIPABAbPxAF8J0wTgEIgYgJsckhyJHgAp+NEAIBC9G0gQMABoQPABABlMEDQgYCLgEIgYgAC/FUgMMABoAPABAAAo+NFK9qogGEwgYBBIDDAAaADwFABYsRQgDEwMNCBgIB0AaCDwAQAkHSBgASDV54kemxySHAAp2tEESBAwAGgg8AEAAkwQNCBgACDG5wA8AkAEOAJAMIDw7wEYCAAAIATgIwFnRauJ780AMABAAKT/HwAAAAA=
-  pc_init: 0xaf
-  pc_uninit: 0x117
-  pc_program_page: 0x1e1
-  pc_erase_sector: 0x173
-  pc_erase_all: 0x13f
-  data_section_offset: 0x298
-  flash_properties:
-    address_range:
-      start: 0x1fffa400
-      end: 0x1ffff400
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 1000
-    erase_sector_timeout: 10000
-    sectors:
-    - size: 0x5000
-      address: 0x0
-- name: at32f402_usd
-  description: AT32F402 Flash user system data
-  instructions: okgAaEDwAQCgSQhgoEgAaKBJCECeSQhgCEYAaJ5JCEObSQhgCB8AaEDwgHAJHwhgAL+XSAAfAGgA8ABwACj40JNIAGhA8IBQkUkIYAgdAGgg8AMACR0IYAhGAGhA8AIACGAAv4pIAB0AaADwDAAIKPjRcEeFSABoIPABAINJCGCDSAAdAGgg8AMAgUkJHQhgf0gAHwBoIPCAcH1JCR8IYAgdAGh7SQhAeUkIYHBHELUDRgxGdkgAHQBoIPDwAHRJCR0IYAhGAGhA8IAACGAIRgBoIPDwAAhgcEiAaED0gFBuSYhg//eM/21IaEkJHQhgbEgIYGpICR0IYGpICGBjSBwwAGgA8AQAQLlF8lVQZkkIYAYgSGBA9v9wiGAAIBC9ALUCRl1IgGgg9IBQW0mIYP/3oP9VSBAwAGgg9ABwU0kQMQhgCEYAaEDwgAAIYAAgAL1K9qogVEkIYExIEDAAaEDwIABJSRAxCGAIRgBoQPBAAAhgA+BK9qogS0kIYENIDDAAaADwAQAAKPTRP0gQMABoIPAgAD1JEDEIYAgfAGgA8BQACLEBIHBHACD85wFGSvaqIDxKEGA0SBAwAGhA8CAAMkoQMhBgEEYAaEDwQAAQYAPgSvaqIDNKEGArSAwwAGgA8AEAACj00ShIEDAAaCDwIAAlShAyEGAQHwBoAPAUACCxFCASHxBgASBwRwAg/OcQtQNGSBwg8AEBG0gQMABoQPAQABlMEDQgYCLgEIgYgAC/FUgMMABoAPABAAAo+NFK9qogGEwgYBBIDDAAaADwFABYsRQgDEwMNCBgIB0AaCDwEAAkHSBgASAQvYkemxySHAAp2tEESBAwAGgg8BAAAkwQNCBgACDv5wA8AkAEOAJAMIDw7wEYCAAAIATgIwFnRauJ780AMABAAAAAAA==
-  pc_init: 0xaf
-  pc_uninit: 0x121
-  pc_program_page: 0x213
-  pc_erase_sector: 0x1af
-  pc_erase_all: 0x153
-  data_section_offset: 0x2ac
-  flash_properties:
-    address_range:
-      start: 0x1ffff800
-      end: 0x1ffffa00
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 40000
-    erase_sector_timeout: 1000
-    sectors:
-    - size: 0x200
-      address: 0x0
 - name: at32f402_256
   description: AT32F402 Int.Flash
   default: true
@@ -5774,66 +4972,6 @@ flash_algorithms:
     erase_sector_timeout: 40000
     sectors:
     - size: 0x800
-      address: 0x0
-- name: at32f403_usd
-  description: AT32F403 Flash user system data
-  instructions: ACEA4EkcgUL803BHHLUAIAGQAJCWSABoQPABAJRJCGAAv5NIAGgA8AIAAJABmEAcAZAAmCC5T/b/cQGYiELw0YtIQGiLSQhAiUlIYAhGQGhA9CAQSGAIRgBoQPCAcAhgAL+DSABoAPAAcAAo+dCASEBoIPADAH5JSGAIRkBoQPACAEhgAL96SEBoAPAMAAgo+dFP9Ppw//ez/xy9dEhAaCDwAwBySUhgCEYAaCDwgHAIYAhGQGhwSQhAbUlIYHBHcLUERg1GFkZpSEBoIPDwAGdJSGAIRkBoQPCAAEhgCEZAaCDw8ABIYGRIQGhA9IBwYklIYP/3iv9hSGJJSGBiSEhgX0iIYGBIiGAIRsBpAPAEAEC5RfJVUFxJCGAGIEhgQPb/cIhgACBwvQC1AkZTSEBoIPSAcFFJSGD/96//UUgAaSD0AHBPSQhhCEYAaUDwgAAIYQAgAL1K9qogS0kIYEhIAGlA8CAARkkIYQhGAGlA8EAACGED4Er2qiBDSQhgQEjAaADwAQAAKPXRPUgAaSDwIAA7SQhhCEbAaADwFAAIsQEgcEcAIPznAUZK9qogNkoQYDNIAGlA8CAAMUoQYRBGAGlA8EAAEGED4Er2qiAuShBgK0jAaADwAQAAKPXRKEgAaSDwIAAmShBhEEbAaADwFAAYsRQg0GABIHBHACD85xC1A0ZIHCDwAQEp4B1IAGlA8BAAG0wgYRCIGIAD4Er2qiAZTCBgFkjAaADwAQAAKPXRE0gAaSDwEAARTCBhSvaqIBFMIGAOSMBoAPAUACCxFCALTOBgASAQvYkemxySHAAp09EAIPfnA0YBIHBHABACQP//wB///8KfACAE4CMBZ0UAIAJAq4nvzQAwAEAAAAAA
-  pc_init: 0xc1
-  pc_uninit: 0x12b
-  pc_program_page: 0x203
-  pc_erase_sector: 0x1ab
-  pc_erase_all: 0x159
-  data_section_offset: 0x290
-  flash_properties:
-    address_range:
-      start: 0x1ffff800
-      end: 0x1ffff830
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 40000
-    erase_sector_timeout: 1000
-    sectors:
-    - size: 0x30
-      address: 0x0
-- name: at32f403_ext_type1_general
-  description: AT32F403 Type 1 Ext.Flash(SPIM)
-  instructions: ACEA4EkcgUL803BHHLUAIAGQAJC1SABoQPABALNJCGAAv7JIAGgA8AIAAJABmEAcAZAAmCC5T/b/cQGYiELw0apIQGiqSQhAqElIYAhGQGhA9CAQSGAIRgBoQPCAcAhgAL+iSABoAPAAcAAo+dCfSEBoIPADAJ1JSGAIRkBoQPACAEhgAL+ZSEBoAPAMAAgo+dFP9Ppw//ez/xy9k0hAaCDwAwCRSUhgCEYAaCDwgHAIYAhGQGiPSQhAjElIYHBHcLUERg1GFkaISEBoIPDwAIZJSGAIRkBoQPCAAEhgCEZAaCDw8ABIYINIQGhA9IBwgUlIYP/3iv8NIHxJiGF/SABof0kIQAD1KiAKMHtJCGB8SABofEkIQHxJCEN5SQhge0jAaUD0ABB5SchhASB5SQhgA+BK9qogd0kIYHVIAB0AaADwAQAAKPTRdEhxSQkfCGBzSG9JiDnB+IQACEbAaQDwBABAuUXyVVBrSQhgBiBIYED2/3CIYAAgcL0AtQJGXUhAaCD0gHBbSUhg//eG/2BICDAAaEDwgABeSYg5wfiQAAAgAL1K9qogW0kIYFlICDAAaEDwBABWSYg5wfiQAAhG0PiQAEDwQADB+JAAA+BK9qogUEkIYE5IAB0AaADwAQAAKPTRS0gIMABoIPAEAEhJiDnB+JAAACBwRwFGSvaqIEVKEGBDSAgwAGhA8AIAQEqIOsL4kAAQRsD4lBDQ+JAAQPBAADtKCDIQYAPgSvaqIDlKEGA3SAAdAGgA8AEAACj00TNICDAAaCDwAgAxSog6wviQAC9IAB0AaADwFAAosRQgK0oSHRBgASBwRwAg/OcQtQNGSBwg8AEBMeAlSAgwAGhA8AEAIkwINCBgEIgYgAPgSvaqIB9MIGAdSAAdAGgA8AEAACj00RpICDAAaCDwAQAXTIg8xPiQAEr2qiAVTCBgE0gAHQBoAPAUACixFCAQTCQdIGABIBC9iR6bHJIcACnL0QAg9+cAAAAQAkD//8Af///CnwAgBOAECAFA8A/w/wAMAUAP//8AoAAAqgAAAUCIIAJAADAAQCMBZ0Wrie/NAAAAAA==
-  pc_init: 0xc1
-  pc_uninit: 0x17d
-  pc_program_page: 0x273
-  pc_erase_sector: 0x1fd
-  pc_erase_all: 0x1a7
-  data_section_offset: 0x324
-  flash_properties:
-    address_range:
-      start: 0x8400000
-      end: 0x9400000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 1000
-    erase_sector_timeout: 100000
-    sectors:
-    - size: 0x1000
-      address: 0x0
-- name: at32f403_ext_type2_general
-  description: AT32F403 Type 2 Ext.Flash(SPIM)
-  instructions: ACEA4EkcgUL803BHHLUAIAGQAJC1SABoQPABALNJCGAAv7JIAGgA8AIAAJABmEAcAZAAmCC5T/b/cQGYiELw0apIQGiqSQhAqElIYAhGQGhA9CAQSGAIRgBoQPCAcAhgAL+iSABoAPAAcAAo+dCfSEBoIPADAJ1JSGAIRkBoQPACAEhgAL+ZSEBoAPAMAAgo+dFP9Ppw//ez/xy9k0hAaCDwAwCRSUhgCEYAaCDwgHAIYAhGQGiPSQhAjElIYHBHcLUERg1GFkaISEBoIPDwAIZJSGAIRkBoQPCAAEhgCEZAaCDw8ABIYINIQGhA9IBwgUlIYP/3iv8NIHxJiGF/SABof0kIQAD1KiAKMHtJCGB8SABofEkIQHxJCEN5SQhge0jAaUD0ABB5SchhAiB5SQhgA+BK9qogd0kIYHVIAB0AaADwAQAAKPTRdEhxSQkfCGBzSG9JiDnB+IQACEbAaQDwBABAuUXyVVBrSQhgBiBIYED2/3CIYAAgcL0AtQJGXUhAaCD0gHBbSUhg//eG/2BICDAAaEDwgABeSYg5wfiQAAAgAL1K9qogW0kIYFlICDAAaEDwBABWSYg5wfiQAAhG0PiQAEDwQADB+JAAA+BK9qogUEkIYE5IAB0AaADwAQAAKPTRS0gIMABoIPAEAEhJiDnB+JAAACBwRwFGSvaqIEVKEGBDSAgwAGhA8AIAQEqIOsL4kAAQRsD4lBDQ+JAAQPBAADtKCDIQYAPgSvaqIDlKEGA3SAAdAGgA8AEAACj00TNICDAAaCDwAgAxSog6wviQAC9IAB0AaADwFAAosRQgK0oSHRBgASBwRwAg/OcQtQNGSBwg8AEBMeAlSAgwAGhA8AEAIkwINCBgEIgYgAPgSvaqIB9MIGAdSAAdAGgA8AEAACj00RpICDAAaCDwAQAXTIg8xPiQAEr2qiAVTCBgE0gAHQBoAPAUACixFCAQTCQdIGABIBC9iR6bHJIcACnL0QAg9+cAAAAQAkD//8Af///CnwAgBOAECAFA8A/w/wAMAUAP//8AoAAAqgAAAUCIIAJAADAAQCMBZ0Wrie/NAAAAAA==
-  pc_init: 0xc1
-  pc_uninit: 0x17d
-  pc_program_page: 0x273
-  pc_erase_sector: 0x1fd
-  pc_erase_all: 0x1a7
-  data_section_offset: 0x324
-  flash_properties:
-    address_range:
-      start: 0x8400000
-      end: 0x9400000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 1000
-    erase_sector_timeout: 100000
-    sectors:
-    - size: 0x1000
       address: 0x0
 - name: at32f403_1024
   description: AT32F403 Int.Flash(Bank1,2)
@@ -5877,426 +5015,6 @@ flash_algorithms:
     sectors:
     - size: 0x400
       address: 0x0
-- name: at32f413_usd
-  description: AT32F413 Flash user system data
-  instructions: DLUAIAGQAJCJSEBoiUkIQIdJSGAIRkBoQPQgEEhgCEYAaEDwgHAIYAC/gUgAaADwAHAAKPnQfkhAaCDwAwB8SUhgCEZAaEDwAgBIYAC/eEhAaADwDAAIKPnRDL1wtQRGDUYWRnJIQGgg8PAAcElIYAhGQGhA8IAASGAIRkBoIPDwAEhgbEhAaED0gHBqSUhg//e2/2lIaklIYGpISGBnSIhgaEiIYAhGwGkA8AQAQLlF8lVQZEkIYAYgSGBA9v9wiGAAIHC9AUZbSEBoIPSAcFlKUGBaSABpIPQAcFhKEGEQRgBpQPCAABBhACBwR0r2qiBVSQhgUkgAaUDwIABQSQhhCEYAaUDwQAAIYQPgSvaqIE1JCGBKSMBoAPABAAAo9dFHSABpIPAgAEVJCGEIRsBoAPAUAAixASBwRwAg/OcBRkr2qiBAShBgPUgAaUDwIAA7ShBhEEYAaUDwQAAQYQPgSvaqIDhKEGA1SMBoAPABAAAo9dEySABpIPAgADBKEGEQRsBoAPAUABixFCDQYAEgcEcAIPznELUDRkgcIPABAT3gJkgAaUDwEAAkTCBhJkiDQhDREHilKBrREIgYgAPgSvaqICBMIGAdSMBoAPABAAAo9dEM4BCIGIAD4Er2qiAZTCBgFkjAaADwAQAAKPXRE0gAaSDwEAARTCBhSvaqIBFMIGAOSMBoAPAUACCxFCALTOBgASAQvYkemxySHAApv9EAIPfnA0YBIHBHAAAAEAJA///AHwAgBOAjAWdFACACQKuJ780AMABAAPj/HwAAAAA=
-  pc_init: 0x5d
-  pc_uninit: 0xc7
-  pc_program_page: 0x199
-  pc_erase_sector: 0x141
-  pc_erase_all: 0xef
-  data_section_offset: 0x250
-  flash_properties:
-    address_range:
-      start: 0x1ffff800
-      end: 0x1ffff830
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 40000
-    erase_sector_timeout: 1000
-    sectors:
-    - size: 0x30
-      address: 0x0
-- name: at32f413_ext_type1_reamp0_1mb
-  description: AT32F413 Ext.Flash(SPIM) Type 1 REMAP0 1MB
-  instructions: DLUAIAGQAJCpSEBoqUkIQKdJSGAIRkBoQPQgEEhgCEYAaEDwgHAIYAC/oUgAaADwAHAAKPnQnkhAaCDwAwCcSUhgCEZAaEDwAgBIYAC/mEhAaADwDAAIKPnRDL1wtQRGDUYWRpJIQGgg8PAAkElIYAhGQGhA8IAASGAIRkBoIPDwAEhgjEhAaED0gHCKSUhg//e2/w0ghkmIYYhIAGiISQhAAPUqIAowhEkIYIVIAGiFSQhAhUkIQ4JJCGCESABrQPAIAIJJCGMBIIJJCGAD4Er2qiCASQhgfkgAHQBoAPABAAAo9NF9SHpJCR8IYHxIeEmIOcH4hAAIRsBpAPAEAEC5RfJVUHRJCGAGIEhgQPb/cIhgACBwvQFGZ0hAaCD0gHBlSlBga0gIMABoQPCAAGhKiDrC+JAAACBwRwFGSvaqIGVKEGBjSAgwAGhA8AIAYEqIOsL4kAAQRsD4lBDQ+JAAQPBAAFtKCDIQYAPgSvaqIFlKEGBXSAAdAGgA8AEAACj00VNICDAAaCDwAgBRSog6wviQAE9IAB0AaADwFAAosRQgS0oSHRBgASBwRwAg/OcAtUr2qiBHSQhgRUhEMABoAPAIAICxACMK4E/wBGEB6wMw//ey/wixASAAvVgcg7L/K/LdACD45zpICDAAaEDwBAA3SYg5wfiQAAhG0PiQAEDwQADB+JAAA+BK9qogMUkIYC9IAB0AaADwAQAAKPTRLEgIMABoIPAEAClJiDnB+JAAACDR5xC1A0ZIHCDwAQEx4CNICDAAaEDwAQAhTAg0IGAQiBiAA+BK9qogHkwgYBxIAB0AaADwAQAAKPTRGEgIMABoIPABABZMiDzE+JAASvaqIBRMIGASSAAdAGgA8BQAKLEUIA5MJB0gYAEgEL2JHpsckhwAKcvRACD35wAQAkD//8AfACAE4AQIAUDwD/D/AAwBQA///wCgAACqAAABQIggAkAAMABAIwFnRauJ780AAAAA
-  pc_init: 0x5d
-  pc_uninit: 0x119
-  pc_program_page: 0x239
-  pc_erase_sector: 0x13d
-  pc_erase_all: 0x1b3
-  data_section_offset: 0x2e4
-  flash_properties:
-    address_range:
-      start: 0x8400000
-      end: 0x8500000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 1000
-    erase_sector_timeout: 100000
-    sectors:
-    - size: 0x1000
-      address: 0x0
-- name: at32f413_ext_type1_reamp0_2mb
-  description: AT32F413 Ext.Flash(SPIM) Type 1 REMAP0 2MB
-  instructions: DLUAIAGQAJCqSEBoqkkIQKhJSGAIRkBoQPQgEEhgCEYAaEDwgHAIYAC/okgAaADwAHAAKPnQn0hAaCDwAwCdSUhgCEZAaEDwAgBIYAC/mUhAaADwDAAIKPnRDL1wtQRGDUYWRpNIQGgg8PAAkUlIYAhGQGhA8IAASGAIRkBoIPDwAEhgjUhAaED0gHCLSUhg//e2/w0gh0mIYYlIAGiJSQhAAPUqIAowhUkIYIZIAGiGSQhAhkkIQ4NJCGCFSABrQPAIAINJCGMBIINJCGAD4Er2qiCBSQhgf0gAHQBoAPABAAAo9NF+SHtJCR8IYH1IeUmIOcH4hAAIRsBpAPAEAEC5RfJVUHVJCGAGIEhgQPb/cIhgACBwvQFGaEhAaCD0gHBmSlBgbEgIMABoQPCAAGlKiDrC+JAAACBwRwFGSvaqIGZKEGBkSAgwAGhA8AIAYUqIOsL4kAAQRsD4lBDQ+JAAQPBAAFxKCDIQYAPgSvaqIFpKEGBYSAAdAGgA8AEAACj00VRICDAAaCDwAgBSSog6wviQAFBIAB0AaADwFAAosRQgTEoSHRBgASBwRwAg/OcAtUr2qiBISQhgRkhEMABoAPAIAIixACMK4E/wBGEB6wMw//ey/wixASAAvVgcg7Kz9QB/8dsAIPfnOkgIMABoQPAEADhJiDnB+JAACEbQ+JAAQPBAAMH4kAAD4Er2qiAySQhgMEgAHQBoAPABAAAo9NEsSAgwAGgg8AQAKkmIOcH4kAAAINDnELUDRkgcIPABATHgJEgIMABoQPABACFMCDQgYBCIGIAD4Er2qiAeTCBgHEgAHQBoAPABAAAo9NEZSAgwAGgg8AEAFkyIPMT4kABK9qogFEwgYBJIAB0AaADwFAAosRQgD0wkHSBgASAQvYkemxySHAApy9EAIPfnAAAAEAJA///AHwAgBOAECAFA8A/w/wAMAUAP//8AoAAAqgAAAUCIIAJAADAAQCMBZ0Wrie/NAAAAAA==
-  pc_init: 0x5d
-  pc_uninit: 0x119
-  pc_program_page: 0x23b
-  pc_erase_sector: 0x13d
-  pc_erase_all: 0x1b3
-  data_section_offset: 0x2e8
-  flash_properties:
-    address_range:
-      start: 0x8400000
-      end: 0x8600000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 1000
-    erase_sector_timeout: 100000
-    sectors:
-    - size: 0x1000
-      address: 0x0
-- name: at32f413_ext_type1_reamp0_4mb
-  description: AT32F413 Ext.Flash(SPIM) Type 1 REMAP0 4MB
-  instructions: DLUAIAGQAJCqSEBoqkkIQKhJSGAIRkBoQPQgEEhgCEYAaEDwgHAIYAC/okgAaADwAHAAKPnQn0hAaCDwAwCdSUhgCEZAaEDwAgBIYAC/mUhAaADwDAAIKPnRDL1wtQRGDUYWRpNIQGgg8PAAkUlIYAhGQGhA8IAASGAIRkBoIPDwAEhgjUhAaED0gHCLSUhg//e2/w0gh0mIYYlIAGiJSQhAAPUqIAowhUkIYIZIAGiGSQhAhkkIQ4NJCGCFSABrQPAIAINJCGMBIINJCGAD4Er2qiCBSQhgf0gAHQBoAPABAAAo9NF+SHtJCR8IYH1IeUmIOcH4hAAIRsBpAPAEAEC5RfJVUHVJCGAGIEhgQPb/cIhgACBwvQFGaEhAaCD0gHBmSlBgbEgIMABoQPCAAGlKiDrC+JAAACBwRwFGSvaqIGZKEGBkSAgwAGhA8AIAYUqIOsL4kAAQRsD4lBDQ+JAAQPBAAFxKCDIQYAPgSvaqIFpKEGBYSAAdAGgA8AEAACj00VRICDAAaCDwAgBSSog6wviQAFBIAB0AaADwFAAosRQgTEoSHRBgASBwRwAg/OcAtUr2qiBISQhgRkhEMABoAPAIAIixACMK4E/wBGEB6wMw//ey/wixASAAvVgcg7Kz9YBv8dsAIPfnOkgIMABoQPAEADhJiDnB+JAACEbQ+JAAQPBAAMH4kAAD4Er2qiAySQhgMEgAHQBoAPABAAAo9NEsSAgwAGgg8AQAKkmIOcH4kAAAINDnELUDRkgcIPABATHgJEgIMABoQPABACFMCDQgYBCIGIAD4Er2qiAeTCBgHEgAHQBoAPABAAAo9NEZSAgwAGgg8AEAFkyIPMT4kABK9qogFEwgYBJIAB0AaADwFAAosRQgD0wkHSBgASAQvYkemxySHAApy9EAIPfnAAAAEAJA///AHwAgBOAECAFA8A/w/wAMAUAP//8AoAAAqgAAAUCIIAJAADAAQCMBZ0Wrie/NAAAAAA==
-  pc_init: 0x5d
-  pc_uninit: 0x119
-  pc_program_page: 0x23b
-  pc_erase_sector: 0x13d
-  pc_erase_all: 0x1b3
-  data_section_offset: 0x2e8
-  flash_properties:
-    address_range:
-      start: 0x8400000
-      end: 0x8800000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 1000
-    erase_sector_timeout: 100000
-    sectors:
-    - size: 0x1000
-      address: 0x0
-- name: at32f413_ext_type1_reamp0_8mb
-  description: AT32F413 Ext.Flash(SPIM) Type 1 REMAP0 8MB
-  instructions: DLUAIAGQAJCqSEBoqkkIQKhJSGAIRkBoQPQgEEhgCEYAaEDwgHAIYAC/okgAaADwAHAAKPnQn0hAaCDwAwCdSUhgCEZAaEDwAgBIYAC/mUhAaADwDAAIKPnRDL1wtQRGDUYWRpNIQGgg8PAAkUlIYAhGQGhA8IAASGAIRkBoIPDwAEhgjUhAaED0gHCLSUhg//e2/w0gh0mIYYlIAGiJSQhAAPUqIAowhUkIYIZIAGiGSQhAhkkIQ4NJCGCFSABrQPAIAINJCGMBIINJCGAD4Er2qiCBSQhgf0gAHQBoAPABAAAo9NF+SHtJCR8IYH1IeUmIOcH4hAAIRsBpAPAEAEC5RfJVUHVJCGAGIEhgQPb/cIhgACBwvQFGaEhAaCD0gHBmSlBgbEgIMABoQPCAAGlKiDrC+JAAACBwRwFGSvaqIGZKEGBkSAgwAGhA8AIAYUqIOsL4kAAQRsD4lBDQ+JAAQPBAAFxKCDIQYAPgSvaqIFpKEGBYSAAdAGgA8AEAACj00VRICDAAaCDwAgBSSog6wviQAFBIAB0AaADwFAAosRQgTEoSHRBgASBwRwAg/OcAtUr2qiBISQhgRkhEMABoAPAIAIixACMK4E/wBGEB6wMw//ey/wixASAAvVgcg7Kz9QBv8dsAIPfnOkgIMABoQPAEADhJiDnB+JAACEbQ+JAAQPBAAMH4kAAD4Er2qiAySQhgMEgAHQBoAPABAAAo9NEsSAgwAGgg8AQAKkmIOcH4kAAAINDnELUDRkgcIPABATHgJEgIMABoQPABACFMCDQgYBCIGIAD4Er2qiAeTCBgHEgAHQBoAPABAAAo9NEZSAgwAGgg8AEAFkyIPMT4kABK9qogFEwgYBJIAB0AaADwFAAosRQgD0wkHSBgASAQvYkemxySHAApy9EAIPfnAAAAEAJA///AHwAgBOAECAFA8A/w/wAMAUAP//8AoAAAqgAAAUCIIAJAADAAQCMBZ0Wrie/NAAAAAA==
-  pc_init: 0x5d
-  pc_uninit: 0x119
-  pc_program_page: 0x23b
-  pc_erase_sector: 0x13d
-  pc_erase_all: 0x1b3
-  data_section_offset: 0x2e8
-  flash_properties:
-    address_range:
-      start: 0x8400000
-      end: 0x8c00000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 1000
-    erase_sector_timeout: 100000
-    sectors:
-    - size: 0x1000
-      address: 0x0
-- name: at32f413_ext_type1_reamp0_16mb
-  description: AT32F413 Ext.Flash(SPIM) Type 1 REMAP0 16MB
-  instructions: DLUAIAGQAJCqSEBoqkkIQKhJSGAIRkBoQPQgEEhgCEYAaEDwgHAIYAC/okgAaADwAHAAKPnQn0hAaCDwAwCdSUhgCEZAaEDwAgBIYAC/mUhAaADwDAAIKPnRDL1wtQRGDUYWRpNIQGgg8PAAkUlIYAhGQGhA8IAASGAIRkBoIPDwAEhgjUhAaED0gHCLSUhg//e2/w0gh0mIYYlIAGiJSQhAAPUqIAowhUkIYIZIAGiGSQhAhkkIQ4NJCGCFSABrQPAIAINJCGMBIINJCGAD4Er2qiCBSQhgf0gAHQBoAPABAAAo9NF+SHtJCR8IYH1IeUmIOcH4hAAIRsBpAPAEAEC5RfJVUHVJCGAGIEhgQPb/cIhgACBwvQFGaEhAaCD0gHBmSlBgbEgIMABoQPCAAGlKiDrC+JAAACBwRwFGSvaqIGZKEGBkSAgwAGhA8AIAYUqIOsL4kAAQRsD4lBDQ+JAAQPBAAFxKCDIQYAPgSvaqIFpKEGBYSAAdAGgA8AEAACj00VRICDAAaCDwAgBSSog6wviQAFBIAB0AaADwFAAosRQgTEoSHRBgASBwRwAg/OcAtUr2qiBISQhgRkhEMABoAPAIAIixACMK4E/wBGEB6wMw//ey/wixASAAvVgcg7Kz9YBf8dsAIPfnOkgIMABoQPAEADhJiDnB+JAACEbQ+JAAQPBAAMH4kAAD4Er2qiAySQhgMEgAHQBoAPABAAAo9NEsSAgwAGgg8AQAKkmIOcH4kAAAINDnELUDRkgcIPABATHgJEgIMABoQPABACFMCDQgYBCIGIAD4Er2qiAeTCBgHEgAHQBoAPABAAAo9NEZSAgwAGgg8AEAFkyIPMT4kABK9qogFEwgYBJIAB0AaADwFAAosRQgD0wkHSBgASAQvYkemxySHAApy9EAIPfnAAAAEAJA///AHwAgBOAECAFA8A/w/wAMAUAP//8AoAAAqgAAAUCIIAJAADAAQCMBZ0Wrie/NAAAAAA==
-  pc_init: 0x5d
-  pc_uninit: 0x119
-  pc_program_page: 0x23b
-  pc_erase_sector: 0x13d
-  pc_erase_all: 0x1b3
-  data_section_offset: 0x2e8
-  flash_properties:
-    address_range:
-      start: 0x8400000
-      end: 0x9400000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 1000
-    erase_sector_timeout: 100000
-    sectors:
-    - size: 0x1000
-      address: 0x0
-- name: at32f413_ext_type1_reamp1_1mb
-  description: AT32F413 Ext.Flash(SPIM) Type 1 REMAP1 1MB
-  instructions: DLUAIAGQAJCtSEBorUkIQKtJSGAIRkBoQPQgEEhgCEYAaEDwgHAIYAC/pUgAaADwAHAAKPnQokhAaCDwAwCgSUhgCEZAaEDwAgBIYAC/nEhAaADwDAAIKPnRDL1wtQRGDUYWRpZIQGgg8PAAlElIYAhGQGhA8IAASGAIRkBoIPDwAEhgkEhAaED0gHCOSUhg//e2/w0gikmIYYxIAGgg8A8AQPAKAIlJCGCJSABoIPR/QED0KkCGSQhgCB8AaIVJCECFSQhDgkkJHwhgg0gAa0DwCQCBSQhjASCBSQhgA+BK9qogf0kIYH1IAB0AaADwAQAAKPTRfEh5SQkfCGB7SHdJiDnB+IQACEbAaQDwBABAuUXyVVBzSQhgBiBIYED2/3CIYAAgcL0BRmdIQGgg9IBwZUpQYGpICDAAaEDwgABnSog6wviQAAAgcEcBRkr2qiBkShBgYkgIMABoQPACAF9KiDrC+JAAEEbA+JQQ0PiQAEDwQABaSggyEGAD4Er2qiBYShBgVkgAHQBoAPABAAAo9NFSSAgwAGgg8AIAUEqIOsL4kABOSAAdAGgA8BQAKLEUIEpKEh0QYAEgcEcAIPznALVK9qogRkkIYERIRDAAaADwCACAsQAjCuBP8ARhAesDMP/3sv8IsQEgAL1YHIOy/yvy3QAg+Oc5SAgwAGhA8AQANkmIOcH4kAAIRtD4kABA8EAAwfiQAAPgSvaqIDBJCGAuSAAdAGgA8AEAACj00StICDAAaCDwBAAoSYg5wfiQAAAg0ecQtQNGSBwg8AEBMeAiSAgwAGhA8AEAIEwINCBgEIgYgAPgSvaqIB1MIGAbSAAdAGgA8AEAACj00RdICDAAaCDwAQAVTIg8xPiQAEr2qiATTCBgEUgAHQBoAPAUACixFCANTCQdIGABIBC9iR6bHJIcACnL0QAg9+cAEAJA///AHwAgBOAECAFABAwBQA///wCgAACqAAABQIggAkAAMABAIwFnRauJ780AAAAA
-  pc_init: 0x5d
-  pc_uninit: 0x129
-  pc_program_page: 0x249
-  pc_erase_sector: 0x14d
-  pc_erase_all: 0x1c3
-  data_section_offset: 0x2f0
-  flash_properties:
-    address_range:
-      start: 0x8400000
-      end: 0x8500000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 1000
-    erase_sector_timeout: 100000
-    sectors:
-    - size: 0x1000
-      address: 0x0
-- name: at32f413_ext_type1_reamp1_2mb
-  description: AT32F413 Ext.Flash(SPIM) Type 1 REMAP1 2MB
-  instructions: DLUAIAGQAJCuSEBorkkIQKxJSGAIRkBoQPQgEEhgCEYAaEDwgHAIYAC/pkgAaADwAHAAKPnQo0hAaCDwAwChSUhgCEZAaEDwAgBIYAC/nUhAaADwDAAIKPnRDL1wtQRGDUYWRpdIQGgg8PAAlUlIYAhGQGhA8IAASGAIRkBoIPDwAEhgkUhAaED0gHCPSUhg//e2/w0gi0mIYY1IAGgg8A8AQPAKAIpJCGCKSABoIPR/QED0KkCHSQhgCB8AaIZJCECGSQhDg0kJHwhghEgAa0DwCQCCSQhjASCCSQhgA+BK9qoggEkIYH5IAB0AaADwAQAAKPTRfUh6SQkfCGB8SHhJiDnB+IQACEbAaQDwBABAuUXyVVB0SQhgBiBIYED2/3CIYAAgcL0BRmhIQGgg9IBwZkpQYGtICDAAaEDwgABoSog6wviQAAAgcEcBRkr2qiBlShBgY0gIMABoQPACAGBKiDrC+JAAEEbA+JQQ0PiQAEDwQABbSggyEGAD4Er2qiBZShBgV0gAHQBoAPABAAAo9NFTSAgwAGgg8AIAUUqIOsL4kABPSAAdAGgA8BQAKLEUIEtKEh0QYAEgcEcAIPznALVK9qogR0kIYEVIRDAAaADwCACIsQAjCuBP8ARhAesDMP/3sv8IsQEgAL1YHIOys/UAf/HbACD35zlICDAAaEDwBAA3SYg5wfiQAAhG0PiQAEDwQADB+JAAA+BK9qogMUkIYC9IAB0AaADwAQAAKPTRK0gIMABoIPAEAClJiDnB+JAAACDQ5xC1A0ZIHCDwAQEx4CNICDAAaEDwAQAgTAg0IGAQiBiAA+BK9qogHUwgYBtIAB0AaADwAQAAKPTRGEgIMABoIPABABVMiDzE+JAASvaqIBNMIGARSAAdAGgA8BQAKLEUIA5MJB0gYAEgEL2JHpsckhwAKcvRACD35wAAABACQP//wB8AIATgBAgBQAQMAUAP//8AoAAAqgAAAUCIIAJAADAAQCMBZ0Wrie/NAAAAAA==
-  pc_init: 0x5d
-  pc_uninit: 0x129
-  pc_program_page: 0x24b
-  pc_erase_sector: 0x14d
-  pc_erase_all: 0x1c3
-  data_section_offset: 0x2f4
-  flash_properties:
-    address_range:
-      start: 0x8400000
-      end: 0x8600000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 1000
-    erase_sector_timeout: 100000
-    sectors:
-    - size: 0x1000
-      address: 0x0
-- name: at32f413_ext_type1_reamp1_4mb
-  description: AT32F413 Ext.Flash(SPIM) Type 1 REMAP1 4MB
-  instructions: DLUAIAGQAJCuSEBorkkIQKxJSGAIRkBoQPQgEEhgCEYAaEDwgHAIYAC/pkgAaADwAHAAKPnQo0hAaCDwAwChSUhgCEZAaEDwAgBIYAC/nUhAaADwDAAIKPnRDL1wtQRGDUYWRpdIQGgg8PAAlUlIYAhGQGhA8IAASGAIRkBoIPDwAEhgkUhAaED0gHCPSUhg//e2/w0gi0mIYY1IAGgg8A8AQPAKAIpJCGCKSABoIPR/QED0KkCHSQhgCB8AaIZJCECGSQhDg0kJHwhghEgAa0DwCQCCSQhjASCCSQhgA+BK9qoggEkIYH5IAB0AaADwAQAAKPTRfUh6SQkfCGB8SHhJiDnB+IQACEbAaQDwBABAuUXyVVB0SQhgBiBIYED2/3CIYAAgcL0BRmhIQGgg9IBwZkpQYGtICDAAaEDwgABoSog6wviQAAAgcEcBRkr2qiBlShBgY0gIMABoQPACAGBKiDrC+JAAEEbA+JQQ0PiQAEDwQABbSggyEGAD4Er2qiBZShBgV0gAHQBoAPABAAAo9NFTSAgwAGgg8AIAUUqIOsL4kABPSAAdAGgA8BQAKLEUIEtKEh0QYAEgcEcAIPznALVK9qogR0kIYEVIRDAAaADwCACIsQAjCuBP8ARhAesDMP/3sv8IsQEgAL1YHIOys/WAb/HbACD35zlICDAAaEDwBAA3SYg5wfiQAAhG0PiQAEDwQADB+JAAA+BK9qogMUkIYC9IAB0AaADwAQAAKPTRK0gIMABoIPAEAClJiDnB+JAAACDQ5xC1A0ZIHCDwAQEx4CNICDAAaEDwAQAgTAg0IGAQiBiAA+BK9qogHUwgYBtIAB0AaADwAQAAKPTRGEgIMABoIPABABVMiDzE+JAASvaqIBNMIGARSAAdAGgA8BQAKLEUIA5MJB0gYAEgEL2JHpsckhwAKcvRACD35wAAABACQP//wB8AIATgBAgBQAQMAUAP//8AoAAAqgAAAUCIIAJAADAAQCMBZ0Wrie/NAAAAAA==
-  pc_init: 0x5d
-  pc_uninit: 0x129
-  pc_program_page: 0x24b
-  pc_erase_sector: 0x14d
-  pc_erase_all: 0x1c3
-  data_section_offset: 0x2f4
-  flash_properties:
-    address_range:
-      start: 0x8400000
-      end: 0x8800000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 1000
-    erase_sector_timeout: 100000
-    sectors:
-    - size: 0x1000
-      address: 0x0
-- name: at32f413_ext_type1_reamp1_8mb
-  description: AT32F413 Ext.Flash(SPIM) Type 1 REMAP1 8MB
-  instructions: DLUAIAGQAJCuSEBorkkIQKxJSGAIRkBoQPQgEEhgCEYAaEDwgHAIYAC/pkgAaADwAHAAKPnQo0hAaCDwAwChSUhgCEZAaEDwAgBIYAC/nUhAaADwDAAIKPnRDL1wtQRGDUYWRpdIQGgg8PAAlUlIYAhGQGhA8IAASGAIRkBoIPDwAEhgkUhAaED0gHCPSUhg//e2/w0gi0mIYY1IAGgg8A8AQPAKAIpJCGCKSABoIPR/QED0KkCHSQhgCB8AaIZJCECGSQhDg0kJHwhghEgAa0DwCQCCSQhjASCCSQhgA+BK9qoggEkIYH5IAB0AaADwAQAAKPTRfUh6SQkfCGB8SHhJiDnB+IQACEbAaQDwBABAuUXyVVB0SQhgBiBIYED2/3CIYAAgcL0BRmhIQGgg9IBwZkpQYGtICDAAaEDwgABoSog6wviQAAAgcEcBRkr2qiBlShBgY0gIMABoQPACAGBKiDrC+JAAEEbA+JQQ0PiQAEDwQABbSggyEGAD4Er2qiBZShBgV0gAHQBoAPABAAAo9NFTSAgwAGgg8AIAUUqIOsL4kABPSAAdAGgA8BQAKLEUIEtKEh0QYAEgcEcAIPznALVK9qogR0kIYEVIRDAAaADwCACIsQAjCuBP8ARhAesDMP/3sv8IsQEgAL1YHIOys/UAb/HbACD35zlICDAAaEDwBAA3SYg5wfiQAAhG0PiQAEDwQADB+JAAA+BK9qogMUkIYC9IAB0AaADwAQAAKPTRK0gIMABoIPAEAClJiDnB+JAAACDQ5xC1A0ZIHCDwAQEx4CNICDAAaEDwAQAgTAg0IGAQiBiAA+BK9qogHUwgYBtIAB0AaADwAQAAKPTRGEgIMABoIPABABVMiDzE+JAASvaqIBNMIGARSAAdAGgA8BQAKLEUIA5MJB0gYAEgEL2JHpsckhwAKcvRACD35wAAABACQP//wB8AIATgBAgBQAQMAUAP//8AoAAAqgAAAUCIIAJAADAAQCMBZ0Wrie/NAAAAAA==
-  pc_init: 0x5d
-  pc_uninit: 0x129
-  pc_program_page: 0x24b
-  pc_erase_sector: 0x14d
-  pc_erase_all: 0x1c3
-  data_section_offset: 0x2f4
-  flash_properties:
-    address_range:
-      start: 0x8400000
-      end: 0x8c00000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 1000
-    erase_sector_timeout: 100000
-    sectors:
-    - size: 0x1000
-      address: 0x0
-- name: at32f413_ext_type1_reamp1_16mb
-  description: AT32F413 Ext.Flash(SPIM) Type 1 REMAP1 16MB
-  instructions: DLUAIAGQAJCuSEBorkkIQKxJSGAIRkBoQPQgEEhgCEYAaEDwgHAIYAC/pkgAaADwAHAAKPnQo0hAaCDwAwChSUhgCEZAaEDwAgBIYAC/nUhAaADwDAAIKPnRDL1wtQRGDUYWRpdIQGgg8PAAlUlIYAhGQGhA8IAASGAIRkBoIPDwAEhgkUhAaED0gHCPSUhg//e2/w0gi0mIYY1IAGgg8A8AQPAKAIpJCGCKSABoIPR/QED0KkCHSQhgCB8AaIZJCECGSQhDg0kJHwhghEgAa0DwCQCCSQhjASCCSQhgA+BK9qoggEkIYH5IAB0AaADwAQAAKPTRfUh6SQkfCGB8SHhJiDnB+IQACEbAaQDwBABAuUXyVVB0SQhgBiBIYED2/3CIYAAgcL0BRmhIQGgg9IBwZkpQYGtICDAAaEDwgABoSog6wviQAAAgcEcBRkr2qiBlShBgY0gIMABoQPACAGBKiDrC+JAAEEbA+JQQ0PiQAEDwQABbSggyEGAD4Er2qiBZShBgV0gAHQBoAPABAAAo9NFTSAgwAGgg8AIAUUqIOsL4kABPSAAdAGgA8BQAKLEUIEtKEh0QYAEgcEcAIPznALVK9qogR0kIYEVIRDAAaADwCACIsQAjCuBP8ARhAesDMP/3sv8IsQEgAL1YHIOys/WAX/HbACD35zlICDAAaEDwBAA3SYg5wfiQAAhG0PiQAEDwQADB+JAAA+BK9qogMUkIYC9IAB0AaADwAQAAKPTRK0gIMABoIPAEAClJiDnB+JAAACDQ5xC1A0ZIHCDwAQEx4CNICDAAaEDwAQAgTAg0IGAQiBiAA+BK9qogHUwgYBtIAB0AaADwAQAAKPTRGEgIMABoIPABABVMiDzE+JAASvaqIBNMIGARSAAdAGgA8BQAKLEUIA5MJB0gYAEgEL2JHpsckhwAKcvRACD35wAAABACQP//wB8AIATgBAgBQAQMAUAP//8AoAAAqgAAAUCIIAJAADAAQCMBZ0Wrie/NAAAAAA==
-  pc_init: 0x5d
-  pc_uninit: 0x129
-  pc_program_page: 0x24b
-  pc_erase_sector: 0x14d
-  pc_erase_all: 0x1c3
-  data_section_offset: 0x2f4
-  flash_properties:
-    address_range:
-      start: 0x8400000
-      end: 0x9400000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 1000
-    erase_sector_timeout: 100000
-    sectors:
-    - size: 0x1000
-      address: 0x0
-- name: at32f413_ext_type2_reamp0_1mb
-  description: AT32F413 Ext.Flash(SPIM) Type 2 REMAP0 1MB
-  instructions: DLUAIAGQAJCpSEBoqUkIQKdJSGAIRkBoQPQgEEhgCEYAaEDwgHAIYAC/oUgAaADwAHAAKPnQnkhAaCDwAwCcSUhgCEZAaEDwAgBIYAC/mEhAaADwDAAIKPnRDL1wtQRGDUYWRpJIQGgg8PAAkElIYAhGQGhA8IAASGAIRkBoIPDwAEhgjEhAaED0gHCKSUhg//e2/w0ghkmIYYhIAGiISQhAAPUqIAowhEkIYIVIAGiFSQhAhUkIQ4JJCGCESABrQPAIAIJJCGMCIIJJCGAD4Er2qiCASQhgfkgAHQBoAPABAAAo9NF9SHpJCR8IYHxIeEmIOcH4hAAIRsBpAPAEAEC5RfJVUHRJCGAGIEhgQPb/cIhgACBwvQFGZ0hAaCD0gHBlSlBga0gIMABoQPCAAGhKiDrC+JAAACBwRwFGSvaqIGVKEGBjSAgwAGhA8AIAYEqIOsL4kAAQRsD4lBDQ+JAAQPBAAFtKCDIQYAPgSvaqIFlKEGBXSAAdAGgA8AEAACj00VNICDAAaCDwAgBRSog6wviQAE9IAB0AaADwFAAosRQgS0oSHRBgASBwRwAg/OcAtUr2qiBHSQhgRUhEMABoAPAIAICxACMK4E/wBGEB6wMw//ey/wixASAAvVgcg7L/K/LdACD45zpICDAAaEDwBAA3SYg5wfiQAAhG0PiQAEDwQADB+JAAA+BK9qogMUkIYC9IAB0AaADwAQAAKPTRLEgIMABoIPAEAClJiDnB+JAAACDR5xC1A0ZIHCDwAQEx4CNICDAAaEDwAQAhTAg0IGAQiBiAA+BK9qogHkwgYBxIAB0AaADwAQAAKPTRGEgIMABoIPABABZMiDzE+JAASvaqIBRMIGASSAAdAGgA8BQAKLEUIA5MJB0gYAEgEL2JHpsckhwAKcvRACD35wAQAkD//8AfACAE4AQIAUDwD/D/AAwBQA///wCgAACqAAABQIggAkAAMABAIwFnRauJ780AAAAA
-  pc_init: 0x5d
-  pc_uninit: 0x119
-  pc_program_page: 0x239
-  pc_erase_sector: 0x13d
-  pc_erase_all: 0x1b3
-  data_section_offset: 0x2e4
-  flash_properties:
-    address_range:
-      start: 0x8400000
-      end: 0x8500000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 1000
-    erase_sector_timeout: 100000
-    sectors:
-    - size: 0x1000
-      address: 0x0
-- name: at32f413_ext_type2_reamp0_2mb
-  description: AT32F413 Ext.Flash(SPIM) Type 2 REMAP0 2MB
-  instructions: DLUAIAGQAJCqSEBoqkkIQKhJSGAIRkBoQPQgEEhgCEYAaEDwgHAIYAC/okgAaADwAHAAKPnQn0hAaCDwAwCdSUhgCEZAaEDwAgBIYAC/mUhAaADwDAAIKPnRDL1wtQRGDUYWRpNIQGgg8PAAkUlIYAhGQGhA8IAASGAIRkBoIPDwAEhgjUhAaED0gHCLSUhg//e2/w0gh0mIYYlIAGiJSQhAAPUqIAowhUkIYIZIAGiGSQhAhkkIQ4NJCGCFSABrQPAIAINJCGMCIINJCGAD4Er2qiCBSQhgf0gAHQBoAPABAAAo9NF+SHtJCR8IYH1IeUmIOcH4hAAIRsBpAPAEAEC5RfJVUHVJCGAGIEhgQPb/cIhgACBwvQFGaEhAaCD0gHBmSlBgbEgIMABoQPCAAGlKiDrC+JAAACBwRwFGSvaqIGZKEGBkSAgwAGhA8AIAYUqIOsL4kAAQRsD4lBDQ+JAAQPBAAFxKCDIQYAPgSvaqIFpKEGBYSAAdAGgA8AEAACj00VRICDAAaCDwAgBSSog6wviQAFBIAB0AaADwFAAosRQgTEoSHRBgASBwRwAg/OcAtUr2qiBISQhgRkhEMABoAPAIAIixACMK4E/wBGEB6wMw//ey/wixASAAvVgcg7Kz9QB/8dsAIPfnOkgIMABoQPAEADhJiDnB+JAACEbQ+JAAQPBAAMH4kAAD4Er2qiAySQhgMEgAHQBoAPABAAAo9NEsSAgwAGgg8AQAKkmIOcH4kAAAINDnELUDRkgcIPABATHgJEgIMABoQPABACFMCDQgYBCIGIAD4Er2qiAeTCBgHEgAHQBoAPABAAAo9NEZSAgwAGgg8AEAFkyIPMT4kABK9qogFEwgYBJIAB0AaADwFAAosRQgD0wkHSBgASAQvYkemxySHAApy9EAIPfnAAAAEAJA///AHwAgBOAECAFA8A/w/wAMAUAP//8AoAAAqgAAAUCIIAJAADAAQCMBZ0Wrie/NAAAAAA==
-  pc_init: 0x5d
-  pc_uninit: 0x119
-  pc_program_page: 0x23b
-  pc_erase_sector: 0x13d
-  pc_erase_all: 0x1b3
-  data_section_offset: 0x2e8
-  flash_properties:
-    address_range:
-      start: 0x8400000
-      end: 0x8600000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 1000
-    erase_sector_timeout: 100000
-    sectors:
-    - size: 0x1000
-      address: 0x0
-- name: at32f413_ext_type2_reamp0_4mb
-  description: AT32F413 Ext.Flash(SPIM) Type 2 REMAP0 4MB
-  instructions: DLUAIAGQAJCqSEBoqkkIQKhJSGAIRkBoQPQgEEhgCEYAaEDwgHAIYAC/okgAaADwAHAAKPnQn0hAaCDwAwCdSUhgCEZAaEDwAgBIYAC/mUhAaADwDAAIKPnRDL1wtQRGDUYWRpNIQGgg8PAAkUlIYAhGQGhA8IAASGAIRkBoIPDwAEhgjUhAaED0gHCLSUhg//e2/w0gh0mIYYlIAGiJSQhAAPUqIAowhUkIYIZIAGiGSQhAhkkIQ4NJCGCFSABrQPAIAINJCGMCIINJCGAD4Er2qiCBSQhgf0gAHQBoAPABAAAo9NF+SHtJCR8IYH1IeUmIOcH4hAAIRsBpAPAEAEC5RfJVUHVJCGAGIEhgQPb/cIhgACBwvQFGaEhAaCD0gHBmSlBgbEgIMABoQPCAAGlKiDrC+JAAACBwRwFGSvaqIGZKEGBkSAgwAGhA8AIAYUqIOsL4kAAQRsD4lBDQ+JAAQPBAAFxKCDIQYAPgSvaqIFpKEGBYSAAdAGgA8AEAACj00VRICDAAaCDwAgBSSog6wviQAFBIAB0AaADwFAAosRQgTEoSHRBgASBwRwAg/OcAtUr2qiBISQhgRkhEMABoAPAIAIixACMK4E/wBGEB6wMw//ey/wixASAAvVgcg7Kz9YBv8dsAIPfnOkgIMABoQPAEADhJiDnB+JAACEbQ+JAAQPBAAMH4kAAD4Er2qiAySQhgMEgAHQBoAPABAAAo9NEsSAgwAGgg8AQAKkmIOcH4kAAAINDnELUDRkgcIPABATHgJEgIMABoQPABACFMCDQgYBCIGIAD4Er2qiAeTCBgHEgAHQBoAPABAAAo9NEZSAgwAGgg8AEAFkyIPMT4kABK9qogFEwgYBJIAB0AaADwFAAosRQgD0wkHSBgASAQvYkemxySHAApy9EAIPfnAAAAEAJA///AHwAgBOAECAFA8A/w/wAMAUAP//8AoAAAqgAAAUCIIAJAADAAQCMBZ0Wrie/NAAAAAA==
-  pc_init: 0x5d
-  pc_uninit: 0x119
-  pc_program_page: 0x23b
-  pc_erase_sector: 0x13d
-  pc_erase_all: 0x1b3
-  data_section_offset: 0x2e8
-  flash_properties:
-    address_range:
-      start: 0x8400000
-      end: 0x8800000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 1000
-    erase_sector_timeout: 100000
-    sectors:
-    - size: 0x1000
-      address: 0x0
-- name: at32f413_ext_type2_reamp0_8mb
-  description: AT32F413 Ext.Flash(SPIM) Type 2 REMAP0 8MB
-  instructions: DLUAIAGQAJCqSEBoqkkIQKhJSGAIRkBoQPQgEEhgCEYAaEDwgHAIYAC/okgAaADwAHAAKPnQn0hAaCDwAwCdSUhgCEZAaEDwAgBIYAC/mUhAaADwDAAIKPnRDL1wtQRGDUYWRpNIQGgg8PAAkUlIYAhGQGhA8IAASGAIRkBoIPDwAEhgjUhAaED0gHCLSUhg//e2/w0gh0mIYYlIAGiJSQhAAPUqIAowhUkIYIZIAGiGSQhAhkkIQ4NJCGCFSABrQPAIAINJCGMCIINJCGAD4Er2qiCBSQhgf0gAHQBoAPABAAAo9NF+SHtJCR8IYH1IeUmIOcH4hAAIRsBpAPAEAEC5RfJVUHVJCGAGIEhgQPb/cIhgACBwvQFGaEhAaCD0gHBmSlBgbEgIMABoQPCAAGlKiDrC+JAAACBwRwFGSvaqIGZKEGBkSAgwAGhA8AIAYUqIOsL4kAAQRsD4lBDQ+JAAQPBAAFxKCDIQYAPgSvaqIFpKEGBYSAAdAGgA8AEAACj00VRICDAAaCDwAgBSSog6wviQAFBIAB0AaADwFAAosRQgTEoSHRBgASBwRwAg/OcAtUr2qiBISQhgRkhEMABoAPAIAIixACMK4E/wBGEB6wMw//ey/wixASAAvVgcg7Kz9QBv8dsAIPfnOkgIMABoQPAEADhJiDnB+JAACEbQ+JAAQPBAAMH4kAAD4Er2qiAySQhgMEgAHQBoAPABAAAo9NEsSAgwAGgg8AQAKkmIOcH4kAAAINDnELUDRkgcIPABATHgJEgIMABoQPABACFMCDQgYBCIGIAD4Er2qiAeTCBgHEgAHQBoAPABAAAo9NEZSAgwAGgg8AEAFkyIPMT4kABK9qogFEwgYBJIAB0AaADwFAAosRQgD0wkHSBgASAQvYkemxySHAApy9EAIPfnAAAAEAJA///AHwAgBOAECAFA8A/w/wAMAUAP//8AoAAAqgAAAUCIIAJAADAAQCMBZ0Wrie/NAAAAAA==
-  pc_init: 0x5d
-  pc_uninit: 0x119
-  pc_program_page: 0x23b
-  pc_erase_sector: 0x13d
-  pc_erase_all: 0x1b3
-  data_section_offset: 0x2e8
-  flash_properties:
-    address_range:
-      start: 0x8400000
-      end: 0x8c00000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 1000
-    erase_sector_timeout: 100000
-    sectors:
-    - size: 0x1000
-      address: 0x0
-- name: at32f413_ext_type2_reamp0_16mb
-  description: AT32F413 Ext.Flash(SPIM) Type 2 REMAP0 16MB
-  instructions: DLUAIAGQAJCqSEBoqkkIQKhJSGAIRkBoQPQgEEhgCEYAaEDwgHAIYAC/okgAaADwAHAAKPnQn0hAaCDwAwCdSUhgCEZAaEDwAgBIYAC/mUhAaADwDAAIKPnRDL1wtQRGDUYWRpNIQGgg8PAAkUlIYAhGQGhA8IAASGAIRkBoIPDwAEhgjUhAaED0gHCLSUhg//e2/w0gh0mIYYlIAGiJSQhAAPUqIAowhUkIYIZIAGiGSQhAhkkIQ4NJCGCFSABrQPAIAINJCGMCIINJCGAD4Er2qiCBSQhgf0gAHQBoAPABAAAo9NF+SHtJCR8IYH1IeUmIOcH4hAAIRsBpAPAEAEC5RfJVUHVJCGAGIEhgQPb/cIhgACBwvQFGaEhAaCD0gHBmSlBgbEgIMABoQPCAAGlKiDrC+JAAACBwRwFGSvaqIGZKEGBkSAgwAGhA8AIAYUqIOsL4kAAQRsD4lBDQ+JAAQPBAAFxKCDIQYAPgSvaqIFpKEGBYSAAdAGgA8AEAACj00VRICDAAaCDwAgBSSog6wviQAFBIAB0AaADwFAAosRQgTEoSHRBgASBwRwAg/OcAtUr2qiBISQhgRkhEMABoAPAIAIixACMK4E/wBGEB6wMw//ey/wixASAAvVgcg7Kz9YBf8dsAIPfnOkgIMABoQPAEADhJiDnB+JAACEbQ+JAAQPBAAMH4kAAD4Er2qiAySQhgMEgAHQBoAPABAAAo9NEsSAgwAGgg8AQAKkmIOcH4kAAAINDnELUDRkgcIPABATHgJEgIMABoQPABACFMCDQgYBCIGIAD4Er2qiAeTCBgHEgAHQBoAPABAAAo9NEZSAgwAGgg8AEAFkyIPMT4kABK9qogFEwgYBJIAB0AaADwFAAosRQgD0wkHSBgASAQvYkemxySHAApy9EAIPfnAAAAEAJA///AHwAgBOAECAFA8A/w/wAMAUAP//8AoAAAqgAAAUCIIAJAADAAQCMBZ0Wrie/NAAAAAA==
-  pc_init: 0x5d
-  pc_uninit: 0x119
-  pc_program_page: 0x23b
-  pc_erase_sector: 0x13d
-  pc_erase_all: 0x1b3
-  data_section_offset: 0x2e8
-  flash_properties:
-    address_range:
-      start: 0x8400000
-      end: 0x9400000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 1000
-    erase_sector_timeout: 100000
-    sectors:
-    - size: 0x1000
-      address: 0x0
-- name: at32f413_ext_type2_reamp1_1mb
-  description: AT32F413 Ext.Flash(SPIM) Type 2 REMAP1 1MB
-  instructions: DLUAIAGQAJCtSEBorUkIQKtJSGAIRkBoQPQgEEhgCEYAaEDwgHAIYAC/pUgAaADwAHAAKPnQokhAaCDwAwCgSUhgCEZAaEDwAgBIYAC/nEhAaADwDAAIKPnRDL1wtQRGDUYWRpZIQGgg8PAAlElIYAhGQGhA8IAASGAIRkBoIPDwAEhgkEhAaED0gHCOSUhg//e2/w0gikmIYYxIAGgg8A8AQPAKAIlJCGCJSABoIPR/QED0KkCGSQhgCB8AaIVJCECFSQhDgkkJHwhgg0gAa0DwCQCBSQhjAiCBSQhgA+BK9qogf0kIYH1IAB0AaADwAQAAKPTRfEh5SQkfCGB7SHdJiDnB+IQACEbAaQDwBABAuUXyVVBzSQhgBiBIYED2/3CIYAAgcL0BRmdIQGgg9IBwZUpQYGpICDAAaEDwgABnSog6wviQAAAgcEcBRkr2qiBkShBgYkgIMABoQPACAF9KiDrC+JAAEEbA+JQQ0PiQAEDwQABaSggyEGAD4Er2qiBYShBgVkgAHQBoAPABAAAo9NFSSAgwAGgg8AIAUEqIOsL4kABOSAAdAGgA8BQAKLEUIEpKEh0QYAEgcEcAIPznALVK9qogRkkIYERIRDAAaADwCACAsQAjCuBP8ARhAesDMP/3sv8IsQEgAL1YHIOy/yvy3QAg+Oc5SAgwAGhA8AQANkmIOcH4kAAIRtD4kABA8EAAwfiQAAPgSvaqIDBJCGAuSAAdAGgA8AEAACj00StICDAAaCDwBAAoSYg5wfiQAAAg0ecQtQNGSBwg8AEBMeAiSAgwAGhA8AEAIEwINCBgEIgYgAPgSvaqIB1MIGAbSAAdAGgA8AEAACj00RdICDAAaCDwAQAVTIg8xPiQAEr2qiATTCBgEUgAHQBoAPAUACixFCANTCQdIGABIBC9iR6bHJIcACnL0QAg9+cAEAJA///AHwAgBOAECAFABAwBQA///wCgAACqAAABQIggAkAAMABAIwFnRauJ780AAAAA
-  pc_init: 0x5d
-  pc_uninit: 0x129
-  pc_program_page: 0x249
-  pc_erase_sector: 0x14d
-  pc_erase_all: 0x1c3
-  data_section_offset: 0x2f0
-  flash_properties:
-    address_range:
-      start: 0x8400000
-      end: 0x8500000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 1000
-    erase_sector_timeout: 100000
-    sectors:
-    - size: 0x1000
-      address: 0x0
-- name: at32f413_ext_type2_reamp1_2mb
-  description: AT32F413 Ext.Flash(SPIM) Type 2 REMAP1 2MB
-  instructions: DLUAIAGQAJCuSEBorkkIQKxJSGAIRkBoQPQgEEhgCEYAaEDwgHAIYAC/pkgAaADwAHAAKPnQo0hAaCDwAwChSUhgCEZAaEDwAgBIYAC/nUhAaADwDAAIKPnRDL1wtQRGDUYWRpdIQGgg8PAAlUlIYAhGQGhA8IAASGAIRkBoIPDwAEhgkUhAaED0gHCPSUhg//e2/w0gi0mIYY1IAGgg8A8AQPAKAIpJCGCKSABoIPR/QED0KkCHSQhgCB8AaIZJCECGSQhDg0kJHwhghEgAa0DwCQCCSQhjAiCCSQhgA+BK9qoggEkIYH5IAB0AaADwAQAAKPTRfUh6SQkfCGB8SHhJiDnB+IQACEbAaQDwBABAuUXyVVB0SQhgBiBIYED2/3CIYAAgcL0BRmhIQGgg9IBwZkpQYGtICDAAaEDwgABoSog6wviQAAAgcEcBRkr2qiBlShBgY0gIMABoQPACAGBKiDrC+JAAEEbA+JQQ0PiQAEDwQABbSggyEGAD4Er2qiBZShBgV0gAHQBoAPABAAAo9NFTSAgwAGgg8AIAUUqIOsL4kABPSAAdAGgA8BQAKLEUIEtKEh0QYAEgcEcAIPznALVK9qogR0kIYEVIRDAAaADwCACIsQAjCuBP8ARhAesDMP/3sv8IsQEgAL1YHIOys/UAf/HbACD35zlICDAAaEDwBAA3SYg5wfiQAAhG0PiQAEDwQADB+JAAA+BK9qogMUkIYC9IAB0AaADwAQAAKPTRK0gIMABoIPAEAClJiDnB+JAAACDQ5xC1A0ZIHCDwAQEx4CNICDAAaEDwAQAgTAg0IGAQiBiAA+BK9qogHUwgYBtIAB0AaADwAQAAKPTRGEgIMABoIPABABVMiDzE+JAASvaqIBNMIGARSAAdAGgA8BQAKLEUIA5MJB0gYAEgEL2JHpsckhwAKcvRACD35wAAABACQP//wB8AIATgBAgBQAQMAUAP//8AoAAAqgAAAUCIIAJAADAAQCMBZ0Wrie/NAAAAAA==
-  pc_init: 0x5d
-  pc_uninit: 0x129
-  pc_program_page: 0x24b
-  pc_erase_sector: 0x14d
-  pc_erase_all: 0x1c3
-  data_section_offset: 0x2f4
-  flash_properties:
-    address_range:
-      start: 0x8400000
-      end: 0x8600000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 1000
-    erase_sector_timeout: 100000
-    sectors:
-    - size: 0x1000
-      address: 0x0
-- name: at32f413_ext_type2_reamp1_4mb
-  description: AT32F413 Ext.Flash(SPIM) Type 2 REMAP1 4MB
-  instructions: DLUAIAGQAJCuSEBorkkIQKxJSGAIRkBoQPQgEEhgCEYAaEDwgHAIYAC/pkgAaADwAHAAKPnQo0hAaCDwAwChSUhgCEZAaEDwAgBIYAC/nUhAaADwDAAIKPnRDL1wtQRGDUYWRpdIQGgg8PAAlUlIYAhGQGhA8IAASGAIRkBoIPDwAEhgkUhAaED0gHCPSUhg//e2/w0gi0mIYY1IAGgg8A8AQPAKAIpJCGCKSABoIPR/QED0KkCHSQhgCB8AaIZJCECGSQhDg0kJHwhghEgAa0DwCQCCSQhjAiCCSQhgA+BK9qoggEkIYH5IAB0AaADwAQAAKPTRfUh6SQkfCGB8SHhJiDnB+IQACEbAaQDwBABAuUXyVVB0SQhgBiBIYED2/3CIYAAgcL0BRmhIQGgg9IBwZkpQYGtICDAAaEDwgABoSog6wviQAAAgcEcBRkr2qiBlShBgY0gIMABoQPACAGBKiDrC+JAAEEbA+JQQ0PiQAEDwQABbSggyEGAD4Er2qiBZShBgV0gAHQBoAPABAAAo9NFTSAgwAGgg8AIAUUqIOsL4kABPSAAdAGgA8BQAKLEUIEtKEh0QYAEgcEcAIPznALVK9qogR0kIYEVIRDAAaADwCACIsQAjCuBP8ARhAesDMP/3sv8IsQEgAL1YHIOys/WAb/HbACD35zlICDAAaEDwBAA3SYg5wfiQAAhG0PiQAEDwQADB+JAAA+BK9qogMUkIYC9IAB0AaADwAQAAKPTRK0gIMABoIPAEAClJiDnB+JAAACDQ5xC1A0ZIHCDwAQEx4CNICDAAaEDwAQAgTAg0IGAQiBiAA+BK9qogHUwgYBtIAB0AaADwAQAAKPTRGEgIMABoIPABABVMiDzE+JAASvaqIBNMIGARSAAdAGgA8BQAKLEUIA5MJB0gYAEgEL2JHpsckhwAKcvRACD35wAAABACQP//wB8AIATgBAgBQAQMAUAP//8AoAAAqgAAAUCIIAJAADAAQCMBZ0Wrie/NAAAAAA==
-  pc_init: 0x5d
-  pc_uninit: 0x129
-  pc_program_page: 0x24b
-  pc_erase_sector: 0x14d
-  pc_erase_all: 0x1c3
-  data_section_offset: 0x2f4
-  flash_properties:
-    address_range:
-      start: 0x8400000
-      end: 0x8800000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 1000
-    erase_sector_timeout: 100000
-    sectors:
-    - size: 0x1000
-      address: 0x0
-- name: at32f413_ext_type2_reamp1_8mb
-  description: AT32F413 Ext.Flash(SPIM) Type 2 REMAP1 8MB
-  instructions: DLUAIAGQAJCuSEBorkkIQKxJSGAIRkBoQPQgEEhgCEYAaEDwgHAIYAC/pkgAaADwAHAAKPnQo0hAaCDwAwChSUhgCEZAaEDwAgBIYAC/nUhAaADwDAAIKPnRDL1wtQRGDUYWRpdIQGgg8PAAlUlIYAhGQGhA8IAASGAIRkBoIPDwAEhgkUhAaED0gHCPSUhg//e2/w0gi0mIYY1IAGgg8A8AQPAKAIpJCGCKSABoIPR/QED0KkCHSQhgCB8AaIZJCECGSQhDg0kJHwhghEgAa0DwCQCCSQhjAiCCSQhgA+BK9qoggEkIYH5IAB0AaADwAQAAKPTRfUh6SQkfCGB8SHhJiDnB+IQACEbAaQDwBABAuUXyVVB0SQhgBiBIYED2/3CIYAAgcL0BRmhIQGgg9IBwZkpQYGtICDAAaEDwgABoSog6wviQAAAgcEcBRkr2qiBlShBgY0gIMABoQPACAGBKiDrC+JAAEEbA+JQQ0PiQAEDwQABbSggyEGAD4Er2qiBZShBgV0gAHQBoAPABAAAo9NFTSAgwAGgg8AIAUUqIOsL4kABPSAAdAGgA8BQAKLEUIEtKEh0QYAEgcEcAIPznALVK9qogR0kIYEVIRDAAaADwCACIsQAjCuBP8ARhAesDMP/3sv8IsQEgAL1YHIOys/UAb/HbACD35zlICDAAaEDwBAA3SYg5wfiQAAhG0PiQAEDwQADB+JAAA+BK9qogMUkIYC9IAB0AaADwAQAAKPTRK0gIMABoIPAEAClJiDnB+JAAACDQ5xC1A0ZIHCDwAQEx4CNICDAAaEDwAQAgTAg0IGAQiBiAA+BK9qogHUwgYBtIAB0AaADwAQAAKPTRGEgIMABoIPABABVMiDzE+JAASvaqIBNMIGARSAAdAGgA8BQAKLEUIA5MJB0gYAEgEL2JHpsckhwAKcvRACD35wAAABACQP//wB8AIATgBAgBQAQMAUAP//8AoAAAqgAAAUCIIAJAADAAQCMBZ0Wrie/NAAAAAA==
-  pc_init: 0x5d
-  pc_uninit: 0x129
-  pc_program_page: 0x24b
-  pc_erase_sector: 0x14d
-  pc_erase_all: 0x1c3
-  data_section_offset: 0x2f4
-  flash_properties:
-    address_range:
-      start: 0x8400000
-      end: 0x8c00000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 1000
-    erase_sector_timeout: 100000
-    sectors:
-    - size: 0x1000
-      address: 0x0
-- name: at32f413_ext_type2_reamp1_16mb
-  description: AT32F413 Ext.Flash(SPIM) Type 2 REMAP1 16MB
-  instructions: DLUAIAGQAJCuSEBorkkIQKxJSGAIRkBoQPQgEEhgCEYAaEDwgHAIYAC/pkgAaADwAHAAKPnQo0hAaCDwAwChSUhgCEZAaEDwAgBIYAC/nUhAaADwDAAIKPnRDL1wtQRGDUYWRpdIQGgg8PAAlUlIYAhGQGhA8IAASGAIRkBoIPDwAEhgkUhAaED0gHCPSUhg//e2/w0gi0mIYY1IAGgg8A8AQPAKAIpJCGCKSABoIPR/QED0KkCHSQhgCB8AaIZJCECGSQhDg0kJHwhghEgAa0DwCQCCSQhjAiCCSQhgA+BK9qoggEkIYH5IAB0AaADwAQAAKPTRfUh6SQkfCGB8SHhJiDnB+IQACEbAaQDwBABAuUXyVVB0SQhgBiBIYED2/3CIYAAgcL0BRmhIQGgg9IBwZkpQYGtICDAAaEDwgABoSog6wviQAAAgcEcBRkr2qiBlShBgY0gIMABoQPACAGBKiDrC+JAAEEbA+JQQ0PiQAEDwQABbSggyEGAD4Er2qiBZShBgV0gAHQBoAPABAAAo9NFTSAgwAGgg8AIAUUqIOsL4kABPSAAdAGgA8BQAKLEUIEtKEh0QYAEgcEcAIPznALVK9qogR0kIYEVIRDAAaADwCACIsQAjCuBP8ARhAesDMP/3sv8IsQEgAL1YHIOys/WAX/HbACD35zlICDAAaEDwBAA3SYg5wfiQAAhG0PiQAEDwQADB+JAAA+BK9qogMUkIYC9IAB0AaADwAQAAKPTRK0gIMABoIPAEAClJiDnB+JAAACDQ5xC1A0ZIHCDwAQEx4CNICDAAaEDwAQAgTAg0IGAQiBiAA+BK9qogHUwgYBtIAB0AaADwAQAAKPTRGEgIMABoIPABABVMiDzE+JAASvaqIBNMIGARSAAdAGgA8BQAKLEUIA5MJB0gYAEgEL2JHpsckhwAKcvRACD35wAAABACQP//wB8AIATgBAgBQAQMAUAP//8AoAAAqgAAAUCIIAJAADAAQCMBZ0Wrie/NAAAAAA==
-  pc_init: 0x5d
-  pc_uninit: 0x129
-  pc_program_page: 0x24b
-  pc_erase_sector: 0x14d
-  pc_erase_all: 0x1c3
-  data_section_offset: 0x2f4
-  flash_properties:
-    address_range:
-      start: 0x8400000
-      end: 0x9400000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 1000
-    erase_sector_timeout: 100000
-    sectors:
-    - size: 0x1000
-      address: 0x0
 - name: at32f413_256
   description: AT32F413 Int.Flash
   default: true
@@ -6336,46 +5054,6 @@ flash_algorithms:
     erased_byte_value: 0xff
     program_page_timeout: 1000
     erase_sector_timeout: 10000
-    sectors:
-    - size: 0x400
-      address: 0x0
-- name: at32f415_bootmem_ap
-  description: AT32F415 BOOTMEM AP.Flash
-  instructions: DLUAIAGQAJARIJtJCGCbSEBom0kIQJlJSGAIRkBoQPQgEEhgCEYAaEDwgHAIYAC/kkgAaADwAHAAKPnQj0hAaCDwAwCNSUhgCEZAaEDwAgBIYAC/iUhAaADwDAAIKPnRDL1wtQRGDUYWRoRIQGgg8PAAgklIYAhGQGhA8IAASGAIRkBoIPDwAEhgfkhAaED0gHB8SUhg//ez/3tIdklIYHpISGAIRsBpAPAEAEC5RfJVUHdJCGAGIEhgQPb/cIhgACBwvQFGb0hAaCD0gHBtSlBgaUgAaUDwgABnShBhACBwR2VIQG8A8AEAcLNiSEBvAPAMAAwoAdEAIHBHXkgAaUDwAgBcSQhhYkhIYQhGAGlA8EAACGED4Er2qiBcSQhgVUjAaADwAQAAKPXRUkgAaSDwAgBQSQhhCEbAaADwFAAAsxQgyGABINfn/+dKSABpQPAEAEhJCGEIRgBpQPBAAAhhA+BK9qogSUkIYEJIwGgA8AEAACj10T9IAGkg8AQAPUkIYQAguOcBRrHxAF8B0wAgcEc4SEBvAPAMAAwoAdEAIPbnNEgAaUDwAgAyShBhOEhQYRBGAGlA8EAAEGED4Er2qiAyShBgK0jAaADwAQAAKPXRKEgAaSDwAgAmShBhEEbAaADwFAAYsRQg0GABIM/nACDN5xC1A0ZIHCDwAQGz8QBfCdME4BCIGICbHJIciR4AKfjRACAQvSngFkgAaUDwAQAUTCBhEIgYgAPgSvaqIBdMIGAQSMBoAPABAAAo9dENSABpIPABAAtMIGFK9qogD0wgYAhIwGgA8BQAILEUIAVM4GABINbniR6bHJIcACnT0QAgz+cAIAJAABACQP//wB8AIATgIwFnRauJ780AMABAAKz/HwAAAAA=
-  pc_init: 0x63
-  pc_uninit: 0xc5
-  pc_program_page: 0x1f7
-  pc_erase_sector: 0x189
-  pc_erase_all: 0xe3
-  data_section_offset: 0x298
-  flash_properties:
-    address_range:
-      start: 0x1fffac00
-      end: 0x1ffff400
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 1000
-    erase_sector_timeout: 10000
-    sectors:
-    - size: 0x800
-      address: 0x0
-- name: at32f415_usd
-  description: AT32F415 Flash user system data
-  instructions: DLUAIAGQAJARIHxJCGB8SEBofEkIQHpJSGAIRkBoQPQgEEhgCEYAaEDwgHAIYAC/c0gAaADwAHAAKPnQcEhAaCDwAwBuSUhgCEZAaEDwAgBIYAC/akhAaADwDAAIKPnRDL1wtQRGDUYWRmVIQGgg8PAAY0lIYAhGQGhA8IAASGAIRkBoIPDwAEhgX0hAaED0gHBdSUhg//ez/1xIV0lIYFtISGBZSIhgWUiIYAhGwGkA8AQAQLlF8lVQVkkIYAYgSGBA9v9wiGAAIHC9AUZOSEBoIPSAcExKUGBISABpIPQAcEZKEGEQRgBpQPCAABBhACBwR0FIAGlA8CAAP0kIYQhGAGlA8EAACGED4Er2qiBASQhgOUjAaADwAQAAKPXRNkgAaSDwIAA0SQhhCEbAaADwFAAIsQEgcEcAIPznAUYuSABpQPAgACxKEGEQRgBpQPBAABBhA+BK9qogLUoQYCZIwGgA8AEAACj10SNIAGkg8CAAIUoQYRBGwGgA8BQAGLEUINBgASBwRwAg/OcQtQNGSBwg8AEBKeAYSABpQPAQABZMIGEQiBiAA+BK9qogGEwgYBFIwGgA8AEAACj10Q5IAGkg8BAADEwgYUr2qiAQTCBgCUjAaADwFAAgsRQgBkzgYAEgEL2JHpsckhwAKdPRACD35wNGASBwRwAgAkAAEAJA///AHwAgBOAjAWdFq4nvzQAwAEAAAAAA
-  pc_init: 0x63
-  pc_uninit: 0xcd
-  pc_program_page: 0x18f
-  pc_erase_sector: 0x13f
-  pc_erase_all: 0xf5
-  data_section_offset: 0x218
-  flash_properties:
-    address_range:
-      start: 0x1ffff800
-      end: 0x1ffffc00
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 40000
-    erase_sector_timeout: 1000
     sectors:
     - size: 0x400
       address: 0x0
@@ -6420,46 +5098,6 @@ flash_algorithms:
     erase_sector_timeout: 10000
     sectors:
     - size: 0x800
-      address: 0x0
-- name: at32f4212_bootmem_ap
-  description: AT32F4212 BOOTMEM AP.Flash
-  instructions: DLUAIAGQAJARIJtJCGCbSEBom0kIQJlJSGAIRkBoQPQgEEhgCEYAaEDwgHAIYAC/kkgAaADwAHAAKPnQj0hAaCDwAwCNSUhgCEZAaEDwAgBIYAC/iUhAaADwDAAIKPnRDL1wtQRGDUYWRoRIQGgg8PAAgklIYAhGQGhA8IAASGAIRkBoIPDwAEhgfkhAaED0gHB8SUhg//ez/3tIdklIYHpISGAIRsBpAPAEAEC5RfJVUHdJCGAGIEhgQPb/cIhgACBwvQFGb0hAaCD0gHBtSlBgaUgAaUDwgABnShBhACBwR2VIQG8A8AEAcLNiSEBvAPAMAAwoAdEAIHBHXkgAaUDwAgBcSQhhYkhIYQhGAGlA8EAACGED4Er2qiBcSQhgVUjAaADwAQAAKPXRUkgAaSDwAgBQSQhhCEbAaADwFAAAsxQgyGABINfn/+dKSABpQPAEAEhJCGEIRgBpQPBAAAhhA+BK9qogSUkIYEJIwGgA8AEAACj10T9IAGkg8AQAPUkIYQAguOcBRrHxAF8B0wAgcEc4SEBvAPAMAAwoAdEAIPbnNEgAaUDwAgAyShBhOEhQYRBGAGlA8EAAEGED4Er2qiAyShBgK0jAaADwAQAAKPXRKEgAaSDwAgAmShBhEEbAaADwFAAYsRQg0GABIM/nACDN5xC1A0ZIHCDwAQGz8QBfCdME4BCIGICbHJIciR4AKfjRACAQvSngFkgAaUDwAQAUTCBhEIgYgAPgSvaqIBdMIGAQSMBoAPABAAAo9dENSABpIPABAAtMIGFK9qogD0wgYAhIwGgA8BQAILEUIAVM4GABINbniR6bHJIcACnT0QAgz+cAIAJAABACQP//wB8AIATgIwFnRauJ780AMABAAOT/HwAAAAA=
-  pc_init: 0x63
-  pc_uninit: 0xc5
-  pc_program_page: 0x1f7
-  pc_erase_sector: 0x189
-  pc_erase_all: 0xe3
-  data_section_offset: 0x298
-  flash_properties:
-    address_range:
-      start: 0x1fffe400
-      end: 0x1ffff400
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 1000
-    erase_sector_timeout: 10000
-    sectors:
-    - size: 0x400
-      address: 0x0
-- name: at32f4212_usd
-  description: AT32F4212 Flash user system data
-  instructions: DLUAIAGQAJARIHxJCGB8SEBofEkIQHpJSGAIRkBoQPQgEEhgCEYAaEDwgHAIYAC/c0gAaADwAHAAKPnQcEhAaCDwAwBuSUhgCEZAaEDwAgBIYAC/akhAaADwDAAIKPnRDL1wtQRGDUYWRmVIQGgg8PAAY0lIYAhGQGhA8IAASGAIRkBoIPDwAEhgX0hAaED0gHBdSUhg//ez/1xIV0lIYFtISGBZSIhgWUiIYAhGwGkA8AQAQLlF8lVQVkkIYAYgSGBA9v9wiGAAIHC9AUZOSEBoIPSAcExKUGBISABpIPQAcEZKEGEQRgBpQPCAABBhACBwR0FIAGlA8CAAP0kIYQhGAGlA8EAACGED4Er2qiBASQhgOUjAaADwAQAAKPXRNkgAaSDwIAA0SQhhCEbAaADwFAAIsQEgcEcAIPznAUYuSABpQPAgACxKEGEQRgBpQPBAABBhA+BK9qogLUoQYCZIwGgA8AEAACj10SNIAGkg8CAAIUoQYRBGwGgA8BQAGLEUINBgASBwRwAg/OcQtQNGSBwg8AEBKeAYSABpQPAQABZMIGEQiBiAA+BK9qogGEwgYBFIwGgA8AEAACj10Q5IAGkg8BAADEwgYUr2qiAQTCBgCUjAaADwFAAgsRQgBkzgYAEgEL2JHpsckhwAKdPRACD35wNGASBwRwAgAkAAEAJA///AHwAgBOAjAWdFq4nvzQAwAEAAAAAA
-  pc_init: 0x63
-  pc_uninit: 0xcd
-  pc_program_page: 0x18f
-  pc_erase_sector: 0x13f
-  pc_erase_all: 0xf5
-  data_section_offset: 0x218
-  flash_properties:
-    address_range:
-      start: 0x1ffff800
-      end: 0x1ffffa00
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 40000
-    erase_sector_timeout: 1000
-    sectors:
-    - size: 0x200
       address: 0x0
 - name: at32f421_16
   description: AT32F421 Int.Flash
@@ -6524,46 +5162,6 @@ flash_algorithms:
     sectors:
     - size: 0x400
       address: 0x0
-- name: at32f423_bootmem_ap
-  description: AT32F423 BOOTMEM AP.Flash
-  instructions: lEgAaEDwAQCSSQhgkkiTSQhgCB8AaEDwgHAJHwhgAL+OSAAfAGgA8ABwACj40ItIAB0AaCDwAwCISQkdCGAIRgBoQPACAAhgAL+ESAAdAGgA8AwACCj40XBHfkgAaCDwAQB8SQhgfUgAHQBoIPADAHpJCR0IYHlIAB8AaCDwgHB2SQkfCGB2SAkdCGBwRxC1A0YMRnFIAB0AaCDw8ABvSQkdCGAIRgBoQPCAAAhgCEYAaCDw8AAIYGpIgGhA9IBQaEmIYP/3nP9nSGJJCR0IYGZICGBfSBwwAGgA8AQAQLlF8lVQYkkIYAYgSGBA9v9wiGAAIBC9ALUCRlpIgGgg9IBQWEmIYP/3qP9SSBAwAGhA8IAAT0kQMQhgACAAvU1IEDAAaEDwRABKSRAxCGAAv0hIDDAAaADwAQAAKPjRRUgQMABoIPAEAEJJEDEIYAAgcEcBRrHxAF8B0wAgcEc9SBAwAGhA8AIAOkoQMhBgQUgSHRBgEB8AaEDwQAASHxBgA+BK9qogOkoQYDJIDDAAaADwAQAAKPTRLkgQMABoIPACACxKEDIQYBAfAGgA8BQAILEUIBIfEGABIM/nACDN5xC1A0ZIHCDwAQGz8QBfCdME4BCIGICbHJIciR4AKfjRACAQvRtIEDAAaEDwAQAZTBA0IGAi4BCIGIAAvxVIDDAAaADwAQAAKPjRSvaqIBhMIGAQSAwwAGgA8BQAWLEUIAxMDDQgYCAdAGgg8AEAJB0gYAEg1eeJHpsckhwAKdrRBEgQMABoIPABAAJMEDQgYAAgxucAPAJAARgDAAQ4AkACMAMAACAE4CMBZ0Wrie/NADAAQACk/x8AAAAA
-  pc_init: 0x8f
-  pc_uninit: 0xf7
-  pc_program_page: 0x1c1
-  pc_erase_sector: 0x153
-  pc_erase_all: 0x11f
-  data_section_offset: 0x278
-  flash_properties:
-    address_range:
-      start: 0x1fffa400
-      end: 0x1ffff400
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 1000
-    erase_sector_timeout: 10000
-    sectors:
-    - size: 0x5000
-      address: 0x0
-- name: at32f423_usd
-  description: AT32F423 Flash user system data
-  instructions: mkgAaEDwAQCYSQhgmEiZSQhgCB8AaEDwgHAJHwhgAL+USAAfAGgA8ABwACj40JFIAB0AaCDwAwCOSQkdCGAIRgBoQPACAAhgAL+KSAAdAGgA8AwACCj40XBHhEgAaCDwAQCCSQhgg0gAHQBoIPADAIBJCR0IYH9IAB8AaCDwgHB8SQkfCGB8SAkdCGBwRxC1A0YMRndIAB0AaCDw8AB1SQkdCGAIRgBoQPCAAAhgCEYAaCDw8AAIYHBIgGhA9IBQbkmIYP/3nP9tSGhJCR0IYGxICGBqSAkdCGBqSAhgY0gcMABoAPAEAEC5RfJVUGZJCGAGIEhgQPb/cIhgACAQvQC1AkZdSIBoIPSAUFtJiGD/96P/VUgQMABoIPQAcFNJEDEIYAhGAGhA8IAACGAAIAC9SvaqIFRJCGBMSBAwAGhA8CAASUkQMQhgCEYAaEDwQAAIYAPgSvaqIEtJCGBDSAwwAGgA8AEAACj00T9IEDAAaCDwIAA9SRAxCGAIHwBoAPAUAAixASBwRwAg/OcBRkr2qiA8ShBgNEgQMABoQPAgADJKEDIQYBBGAGhA8EAAEGAD4Er2qiAzShBgK0gMMABoAPABAAAo9NEoSBAwAGgg8CAAJUoQMhBgEB8AaADwFAAgsRQgEh8QYAEgcEcAIPznELUDRkgcIPABARtIEDAAaEDwEAAZTBA0IGAi4BCIGIAAvxVIDDAAaADwAQAAKPjRSvaqIBhMIGAQSAwwAGgA8BQAWLEUIAxMDDQgYCAdAGgg8BAAJB0gYAEgEL2JHpsckhwAKdrRBEgQMABoIPAQAAJMEDQgYAAg7+cAPAJAARgDAAQ4AkACMAMAACAE4CMBZ0Wrie/NADAAQAAAAAA=
-  pc_init: 0x8f
-  pc_uninit: 0x101
-  pc_program_page: 0x1f3
-  pc_erase_sector: 0x18f
-  pc_erase_all: 0x133
-  data_section_offset: 0x28c
-  flash_properties:
-    address_range:
-      start: 0x1ffff800
-      end: 0x1ffffa00
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 40000
-    erase_sector_timeout: 1000
-    sectors:
-    - size: 0x200
-      address: 0x0
 - name: at32f423_256
   description: AT32F423 Int.Flash
   default: true
@@ -6606,46 +5204,6 @@ flash_algorithms:
     sectors:
     - size: 0x400
       address: 0x0
-- name: at32f425_bootmem_ap
-  description: AT32F425 BOOTMEM AP.Flash
-  instructions: q0gAaEDwAQCpSQhgqUhAaED0IBCnSUhgCEYAaEDwgHAIYAC/o0gAaADwAHAAKPnQoEhAaCDwAwCeSUhgCEZAaEDwAgBIYAC/mkhAaADwDAAIKPnRcEeWSABoIPABAJRJCGCUSEBoIPQgEJJJSGAIRgBoIPCAcAhgCEZAaCDwAwBIYHBHELUDRgxGikhAaCDw8ACISUhgCEZAaEDwgABIYAhGQGgg8PAASGCDSEBoQPSAcIFJSGD/96P/gEh8SUhgf0hIYAhGwGkA8AQAQLlF8lVQfEkIYAYgSGBA9v9wiGAAIBC9ALUCRnNIQGgg9IBwcUlIYP/3r/9tSABpQPCAAGtJCGEAIAC9aUhAbwDwAQBws2dIQG8A8AwADCgB0QAgcEdjSABpQPACAGFJCGFmSEhhCEYAaUDwQAAIYQPgSvaqIGBJCGBaSMBoAPABAAAo9dFXSABpIPACAFVJCGEIRsBoAPAUAECzFCDIYAEg1+dPSABpQPAEAE1JCGEIRgBpQPBAAAhhA+BK9qogTUkIYEdIwGgA8AEAACj10URIAGkg8AQAQkkIYQhGwGgA8BQAGLEUIMhgASCy5wAgsOcBRrHxAF8B0wAgcEc5SEBvAPAMAAwoAdEAIPbnNUgAaUDwAgAzShBhOEhQYRBGAGlA8EAAEGED4Er2qiAyShBgLEjAaADwAQAAKPXRKUgAaSDwAgAnShBhEEbAaADwFAAYsRQg0GABIM/nACDN5xC1A0ZIHCDwAQGz8QBfCdME4BCIGICbHJIciR4AKfjRACAQvSngF0gAaUDwAQAVTCBhEIgYgAPgSvaqIBZMIGAQSMBoAPABAAAo9dENSABpIPABAAtMIGFK9qogDkwgYAhIwGgA8BQAILEUIAVM4GABINbniR6bHJIcACnT0QAgz+cAAAAgAkAAEAJAACAE4CMBZ0Wrie/NADAAQADk/x8AAAAA
-  pc_init: 0x85
-  pc_uninit: 0xe5
-  pc_program_page: 0x22d
-  pc_erase_sector: 0x1bf
-  pc_erase_all: 0x109
-  data_section_offset: 0x2cc
-  flash_properties:
-    address_range:
-      start: 0x1fffe400
-      end: 0x1ffff400
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 1000
-    erase_sector_timeout: 10000
-    sectors:
-    - size: 0x400
-      address: 0x0
-- name: at32f425_usd
-  description: AT32F425 Flash user system data
-  instructions: iUgAaEDwAQCHSQhgh0hAaED0IBCFSUhgCEYAaEDwgHAIYAC/gUgAaADwAHAAKPnQfkhAaCDwAwB8SUhgCEZAaEDwAgBIYAC/eEhAaADwDAAIKPnRcEd0SABoIPABAHJJCGBySEBoIPQgEHBJSGAIRgBoIPCAcAhgCEZAaCDwAwBIYHBHELUDRgxGaEhAaCDw8ABmSUhgCEZAaEDwgABIYAhGQGgg8PAASGBhSEBoQPSAcF9JSGD/96P/XkhaSUhgXUhIYFtIiGBbSIhgCEbAaQDwBABAuUXyVVBYSQhgBiBIYED2/3CIYAAgEL0AtQJGT0hAaCD0gHBNSUhg//er/0lIAGkg9ABwR0kIYQhGAGlA8IAACGEAIAC9Q0gAaUDwIABBSQhhCEYAaUDwQAAIYQPgSvaqIEFJCGA7SMBoAPABAAAo9dE4SABpIPAgADZJCGEIRsBoAPAUABixFCDIYAEgcEcAIPznAUYvSABpQPAgAC1KEGEQRgBpQPBAABBhA+BK9qogLUoQYCdIwGgA8AEAACj10SRIAGkg8CAAIkoQYRBGwGgA8BQAGLEUINBgASBwRwAg/OcQtQNGSBwg8AEBKeAYSABpQPAQABZMIGEQiBiAA+BK9qogGEwgYBJIwGgA8AEAACj10Q9IAGkg8BAADUwgYUr2qiAQTCBgCkjAaADwFAAgsRQgB0zgYAEgEL2JHpsckhwAKdPRACD35wNGASBwRwAAACACQAAQAkAAIATgIwFnRauJ780AMABAAAAAAA==
-  pc_init: 0x85
-  pc_uninit: 0xed
-  pc_program_page: 0x1b9
-  pc_erase_sector: 0x169
-  pc_erase_all: 0x11b
-  data_section_offset: 0x240
-  flash_properties:
-    address_range:
-      start: 0x1ffff800
-      end: 0x1ffffa00
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 40000
-    erase_sector_timeout: 1000
-    sectors:
-    - size: 0x200
-      address: 0x0
 - name: at32f425_64
   description: AT32F425 Int.Flash
   default: true
@@ -6687,26 +5245,6 @@ flash_algorithms:
     erase_sector_timeout: 10000
     sectors:
     - size: 0x800
-      address: 0x0
-- name: at32f435_usd_512
-  description: AT32F435 Flash USD 512B
-  instructions: nkifSQhgCB8AaEDwgHAJHwhgAL+aSAAfAGgA8ABwACj40JdIAB0AaCDwAwCUSQkdCGAIRgBoQPACAAhgAL+QSAAdAGgA8AwACCj40XBHjEgAHQBoIPADAIlJCR0IYIhIAB8AaCDwgHCFSQkfCGCFSAkdCGBwRxC1A0YMRoBIAB0AaCDw8AB+SQkdCGAIRgBoQPCAAAhgCEYAaCDw8AAIYHlIgGhA9IBQd0mIYP/3qP92SHdJCGB3SAhgdEgJHQhgdEgIYHJIGDAAaADwBABAuUXyVVBwSQhgBiBIYED2/3CIYAAgEL0AtQJGZ0iAaCD0gFBlSYhg//eq/2VIDDAAaCD0AHBiSQwxCGAIRgBoQPCAAAhgACAAvUr2qiBeSQhgW0gMMABoQPAgAFlJDDEIYAhGAGhA8EAACGAD4Er2qiBVSQhgUkgIMABoAPABAAAo9NFPSAwwAGgg8CAATEkMMQhgCB8AaADwFAAIsQEgcEcAIPznAUZK9qogR0oQYERIDDAAaEDwIABBSgwyEGAQRgBoQPBAABBgA+BK9qogPkoQYDtICDAAaADwAQAAKPTRN0gMMABoIPAgADVKDDIQYBAfAGgA8BQAILEUIBIfEGABIHBHACD85xC1A0ZIHCDwAQErSAwwAGhA8BAAKEwMNCBgN+ApSINCEdEQeKUoHNEQiBiAA+BK9qogI0wgYCBICDAAaADwAQAAKPTRDeAQiBiAA+BK9qogG0wgYBhICDAAaADwAQAAKPTRFUgIMABoAPAUAFixFCARTAg0IGAgHQBoIPAQACQdIGABIBC9iR6bHJIcACnF0QlIDDAAaCDwEAAHTAw0IGAAIO/nARgDAAQ4AkACMAMAACAE4CMBZ0UEPAJAq4nvzQAwAEAAwP8fAAAAAA==
-  pc_init: 0x77
-  pc_uninit: 0xe7
-  pc_program_page: 0x1d9
-  pc_erase_sector: 0x175
-  pc_erase_all: 0x119
-  data_section_offset: 0x2a0
-  flash_properties:
-    address_range:
-      start: 0x1fffc000
-      end: 0x1fffc200
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 40000
-    erase_sector_timeout: 1000
-    sectors:
-    - size: 0x200
       address: 0x0
 - name: at32f435_448
   description: AT32F435 Int.Flash
@@ -6768,26 +5306,6 @@ flash_algorithms:
     erased_byte_value: 0xff
     program_page_timeout: 1000
     erase_sector_timeout: 40000
-    sectors:
-    - size: 0x1000
-      address: 0x0
-- name: at32f435_usd_4096
-  description: AT32F435 Flash USD 4KB
-  instructions: nkifSQhgCB8AaEDwgHAJHwhgAL+aSAAfAGgA8ABwACj40JdIAB0AaCDwAwCUSQkdCGAIRgBoQPACAAhgAL+QSAAdAGgA8AwACCj40XBHjEgAHQBoIPADAIlJCR0IYIhIAB8AaCDwgHCFSQkfCGCFSAkdCGBwRxC1A0YMRoBIAB0AaCDw8AB+SQkdCGAIRgBoQPCAAAhgCEYAaCDw8AAIYHlIgGhA9IBQd0mIYP/3qP92SHdJCGB3SAhgdEgJHQhgdEgIYHJIGDAAaADwBABAuUXyVVBwSQhgBiBIYED2/3CIYAAgEL0AtQJGZ0iAaCD0gFBlSYhg//eq/2VIDDAAaCD0AHBiSQwxCGAIRgBoQPCAAAhgACAAvUr2qiBeSQhgW0gMMABoQPAgAFlJDDEIYAhGAGhA8EAACGAD4Er2qiBVSQhgUkgIMABoAPABAAAo9NFPSAwwAGgg8CAATEkMMQhgCB8AaADwFAAIsQEgcEcAIPznAUZK9qogR0oQYERIDDAAaEDwIABBSgwyEGAQRgBoQPBAABBgA+BK9qogPkoQYDtICDAAaADwAQAAKPTRN0gMMABoIPAgADVKDDIQYBAfAGgA8BQAILEUIBIfEGABIHBHACD85xC1A0ZIHCDwAQErSAwwAGhA8BAAKEwMNCBgN+ApSINCEdEQeKUoHNEQiBiAA+BK9qogI0wgYCBICDAAaADwAQAAKPTRDeAQiBiAA+BK9qogG0wgYBhICDAAaADwAQAAKPTRFUgIMABoAPAUAFixFCARTAg0IGAgHQBoIPAQACQdIGABIBC9iR6bHJIcACnF0QlIDDAAaCDwEAAHTAw0IGAAIO/nARgDAAQ4AkACMAMAACAE4CMBZ0UEPAJAq4nvzQAwAEAAwP8fAAAAAA==
-  pc_init: 0x77
-  pc_uninit: 0xe7
-  pc_program_page: 0x1d9
-  pc_erase_sector: 0x175
-  pc_erase_all: 0x119
-  data_section_offset: 0x2a0
-  flash_properties:
-    address_range:
-      start: 0x1fffc000
-      end: 0x1fffd000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 40000
-    erase_sector_timeout: 1000
     sectors:
     - size: 0x1000
       address: 0x0

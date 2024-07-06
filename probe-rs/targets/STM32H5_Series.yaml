@@ -209,7 +209,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
 - name: STM32H523CCUx
   cores:
   - name: main
@@ -244,7 +243,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
 - name: STM32H523CETx
   cores:
   - name: main
@@ -279,7 +277,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
 - name: STM32H523CEUx
   cores:
   - name: main
@@ -314,7 +311,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
 - name: STM32H523HEYxT
   cores:
   - name: main
@@ -349,7 +345,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
 - name: STM32H523RCTx
   cores:
   - name: main
@@ -384,7 +379,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
 - name: STM32H523RETx
   cores:
   - name: main
@@ -419,7 +413,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
 - name: STM32H523VCIx
   cores:
   - name: main
@@ -454,7 +447,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
 - name: STM32H523VCTx
   cores:
   - name: main
@@ -489,7 +481,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
 - name: STM32H523VEIx
   cores:
   - name: main
@@ -524,7 +515,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
 - name: STM32H523VETx
   cores:
   - name: main
@@ -559,7 +549,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
 - name: STM32H523ZCJx
   cores:
   - name: main
@@ -594,7 +583,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
 - name: STM32H523ZCTx
   cores:
   - name: main
@@ -629,7 +617,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
 - name: STM32H523ZEJx
   cores:
   - name: main
@@ -664,7 +651,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
 - name: STM32H523ZETx
   cores:
   - name: main
@@ -699,7 +685,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
 - name: STM32H533CETx
   cores:
   - name: main
@@ -734,7 +719,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
 - name: STM32H533CEUx
   cores:
   - name: main
@@ -769,7 +753,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
 - name: STM32H533HEYxT
   cores:
   - name: main
@@ -804,7 +787,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
 - name: STM32H533RETx
   cores:
   - name: main
@@ -839,7 +821,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
 - name: STM32H533VEIx
   cores:
   - name: main
@@ -874,7 +855,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
 - name: STM32H533VETx
   cores:
   - name: main
@@ -909,7 +889,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
 - name: STM32H533ZEJx
   cores:
   - name: main
@@ -944,7 +923,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
 - name: STM32H533ZETx
   cores:
   - name: main
@@ -979,7 +957,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
 - name: STM32H562AGIx
   cores:
   - name: main
@@ -1014,7 +991,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
 - name: STM32H562AIIx
   cores:
   - name: main
@@ -1049,7 +1025,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
 - name: STM32H562IGKx
   cores:
   - name: main
@@ -1084,7 +1059,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
 - name: STM32H562IGTx
   cores:
   - name: main
@@ -1119,7 +1093,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
 - name: STM32H562IIKx
   cores:
   - name: main
@@ -1154,7 +1127,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
 - name: STM32H562IITx
   cores:
   - name: main
@@ -1189,7 +1161,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
 - name: STM32H562RGTx
   cores:
   - name: main
@@ -1224,7 +1195,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
 - name: STM32H562RGVx
   cores:
   - name: main
@@ -1259,7 +1229,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
 - name: STM32H562RITx
   cores:
   - name: main
@@ -1294,7 +1263,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
 - name: STM32H562RIVx
   cores:
   - name: main
@@ -1329,7 +1297,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
 - name: STM32H562VGTx
   cores:
   - name: main
@@ -1364,7 +1331,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
 - name: STM32H562VITx
   cores:
   - name: main
@@ -1399,7 +1365,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
 - name: STM32H562ZGTx
   cores:
   - name: main
@@ -1434,7 +1399,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
 - name: STM32H562ZITx
   cores:
   - name: main
@@ -1469,7 +1433,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
 - name: STM32H563AGIx
   cores:
   - name: main
@@ -1504,7 +1467,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
 - name: STM32H563AIIx
   cores:
   - name: main
@@ -1539,7 +1501,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
 - name: STM32H563AIIxQ
   cores:
   - name: main
@@ -1574,7 +1535,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
 - name: STM32H563IGKx
   cores:
   - name: main
@@ -1609,7 +1569,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
 - name: STM32H563IGTx
   cores:
   - name: main
@@ -1644,7 +1603,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
 - name: STM32H563IIKx
   cores:
   - name: main
@@ -1679,7 +1637,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
 - name: STM32H563IIKxQ
   cores:
   - name: main
@@ -1714,7 +1671,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
 - name: STM32H563IITx
   cores:
   - name: main
@@ -1749,7 +1705,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
 - name: STM32H563IITxQ
   cores:
   - name: main
@@ -1784,7 +1739,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
 - name: STM32H563MIYxQ
   cores:
   - name: main
@@ -1819,7 +1773,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
 - name: STM32H563RGTx
   cores:
   - name: main
@@ -1854,7 +1807,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
 - name: STM32H563RGVx
   cores:
   - name: main
@@ -1889,7 +1841,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
 - name: STM32H563RITx
   cores:
   - name: main
@@ -1924,7 +1875,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
 - name: STM32H563RIVx
   cores:
   - name: main
@@ -1959,7 +1909,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
 - name: STM32H563VGTx
   cores:
   - name: main
@@ -1994,7 +1943,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
 - name: STM32H563VITx
   cores:
   - name: main
@@ -2029,7 +1977,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
 - name: STM32H563VITxQ
   cores:
   - name: main
@@ -2064,7 +2011,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
 - name: STM32H563ZGTx
   cores:
   - name: main
@@ -2099,7 +2045,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
 - name: STM32H563ZITx
   cores:
   - name: main
@@ -2134,7 +2079,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
 - name: STM32H563ZITxQ
   cores:
   - name: main
@@ -2169,7 +2113,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
 - name: STM32H573AIIx
   cores:
   - name: main
@@ -2204,7 +2147,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
 - name: STM32H573AIIxQ
   cores:
   - name: main
@@ -2239,7 +2181,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
 - name: STM32H573IIKx
   cores:
   - name: main
@@ -2274,7 +2215,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
 - name: STM32H573IIKxQ
   cores:
   - name: main
@@ -2309,7 +2249,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
 - name: STM32H573IITx
   cores:
   - name: main
@@ -2344,7 +2283,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
 - name: STM32H573IITxQ
   cores:
   - name: main
@@ -2379,7 +2317,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
 - name: STM32H573MIYxQ
   cores:
   - name: main
@@ -2414,7 +2351,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
 - name: STM32H573RITx
   cores:
   - name: main
@@ -2449,7 +2385,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
 - name: STM32H573RIVx
   cores:
   - name: main
@@ -2484,7 +2419,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
 - name: STM32H573VITx
   cores:
   - name: main
@@ -2519,7 +2453,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
 - name: STM32H573VITxQ
   cores:
   - name: main
@@ -2554,7 +2487,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
 - name: STM32H573ZITx
   cores:
   - name: main
@@ -2589,7 +2521,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
 - name: STM32H573ZITxQ
   cores:
   - name: main
@@ -2624,7 +2555,6 @@ variants:
     - main
   flash_algorithms:
   - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
 flash_algorithms:
 - name: stm32h503_128k_0800
   description: STM32H503 128k NSecure Flash
@@ -2663,50 +2593,6 @@ flash_algorithms:
     address_range:
       start: 0x8000000
       end: 0x8200000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 400
-    erase_sector_timeout: 400
-    sectors:
-    - size: 0x2000
-      address: 0x0
-- name: stm32h5xx_1m_0c00
-  description: STM32H5xx 1M Secure Flash
-  default: true
-  instructions: sLVC8iADxPICA1ptSParHgLwf0JA8iMRT/YADLLxNE9A8hQCzPbvXsTyZ1HA9v8MwPIAAh3RQPIQBQPxDATA8gAFSfgFQBwdQPIMBUn4AkAD8RQEwPIABUn4BUBD+BgcQ/gY7L/zT49ZaMkHH9AAv/rnQPIQBQPxCATA8gAFSfgFQEDyDAUD8RAEwPIABUn4AjBJ+AVAQ/gcHEP4HOy/80+PAL8ZaMkHINAAv/rnT/D/McP4gBDD+IQQw/iIEMP4jBDD+IARw/iEEcP4iBHD+IwRTvbQUc7yAAEAI4tgDPHhA8H4DMALYQEjC2BZ+AIQCWjJBwbQAL8Av1n4AhAJaMkH+dFA8gQBwPIAAUn4AQDc+AwAT/YAQcDy/zFA8ggCAeqAIcDyAAIAIEn4AhCwvUDyEADA8gAAWfgAAAEhAWBA8hQAwPIAAL/zT49Z+AAQCWjJBwbQAL8Av1n4ABAJaMkH+dEAIHBHASBwR0DyDADA8gAAWfgAAE/0/AEBYEDyEADA8gAAWfgAAE/0AEEBYAFoQfAgAQFgQPIUAMDyAAC/80+PWfgAEAloyQcG0AC/AL9Z+AAQCWjJB/nRACBwRxC1QPIEAUDyCALA8gABwPIAAln4ARBZ+AIgT/D/PAHrUg5A8hQBwPIAAVn4ATAM61ICG2gCQNsHBtAAvwC/WfgBMBto2wf50UDyDAzA8gAMWfgMME/0/AQcYG/wPwMD6tISBCOGRUDyEADI8gADwPIAAIi/BCNZ+AAAGkQCYAJoQvAgAgJgv/NPjwC/WfgBAAJo0gcB0AC/+OcAaBD0/A8PvwAgWfgMAE/0/AEBYBi/ASAQvbC1QPIUA8DyAANZ+ANADzEkaCHwDwHkBwbQAL8Av1n4A0AkaOQH+dFA8gwMwPIADFn4DOBP9PwEzvgAQEDyEA7A8gAOWfgOQAIlJWDpsQC/FGgEYFRoRGCUaIRg1GjEYL/zT49Z+ANAJWjtBwLQAL/45wC/JGgU9PwPCdEQMBA5AvEQAuTRWfgOQAAgIGCwvVn4DABP9PwBAWABILC9AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
-  load_address: 0x20000020
-  pc_init: 0x1
-  pc_uninit: 0x131
-  pc_program_page: 0x275
-  pc_erase_sector: 0x1c1
-  pc_erase_all: 0x16d
-  data_section_offset: 0x314
-  flash_properties:
-    address_range:
-      start: 0xc000000
-      end: 0xc100000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 400
-    erase_sector_timeout: 400
-    sectors:
-    - size: 0x2000
-      address: 0x0
-- name: stm32h5xx_2m_0c00
-  description: STM32H5xx 2M Secure Flash
-  default: true
-  instructions: ASBwR0DyDADA8gAAWfgAAE/0/AEBYEDyEADA8gAAWfgAAE/0AEEBYAFoQfAgAQFgQPIUAMDyAAC/80+PWfgAEAloyQcG0AC/AL9Z+AAQCWjJB/nRACBwRxC1QPIEAUDyCALA8gABwPIAAln4ARBZ+AIgT/D/PAHrUg5A8hQBwPIAAVn4ATAM61ICG2gCQNsHBtAAvwC/WfgBMBto2wf50UDyDAzA8gAMWfgMME/0/AQcYG/wPwMD6tISBCOGRUDyEADI8gADwPIAAIi/BCNZ+AAAGkQCYAJoQvAgAgJgv/NPjwC/WfgBAAJo0gcB0AC/+OcAaBD0/A8PvwAgWfgMAE/0/AEBYBi/ASAQvbC1QvIgA8TyAgNabUj2qx4C8H9CQPIjEU/2AAyy8TRPQPIUAsz2717E8mdRwPb/DMDyAAId0UDyEAUD8QwEwPIABUn4BUAcHUDyDAVJ+AJAA/EUBMDyAAVJ+AVAQ/gYHEP4GOy/80+PWWjJBx/QAL/650DyEAUD8QgEwPIABUn4BUBA8gwFA/EQBMDyAAVJ+AIwSfgFQEP4HBxD+Bzsv/NPjwC/GWjJByDQAL/650/w/zHD+IAQw/iEEMP4iBDD+IwQw/iAEcP4hBHD+IgRw/iMEU720FHO8gABACOLYAzx4QPB+AzAC2EBIwtgWfgCEAloyQcG0AC/AL9Z+AIQCWjJB/nRQPIEAcDyAAFJ+AEA3PgMAE/2AEHA8v8xQPIIAgHqgCHA8gACACBJ+AIQsL2wtUDyFAPA8gADWfgDQA8xJGgh8A8B5AcG0AC/AL9Z+ANAJGjkB/nRQPIMDMDyAAxZ+AzgT/T8BM74AEBA8hAOwPIADln4DkACJSVg6bEAvxRoBGBUaERglGiEYNRoxGC/80+PWfgDQCVo7QcC0AC/+OcAvyRoFPT8DwnREDAQOQLxEALk0Vn4DkAAICBgsL1Z+AwAT/T8AQFgASCwvQAAQPIQAMDyAABZ+AAAASEBYEDyFADA8gAAv/NPj1n4ABAJaMkHBtAAvwC/WfgAEAloyQf50QAgcEcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
-  load_address: 0x20000020
-  pc_init: 0x10d
-  pc_uninit: 0x2dd
-  pc_program_page: 0x23d
-  pc_erase_sector: 0x59
-  pc_erase_all: 0x5
-  data_section_offset: 0x314
-  flash_properties:
-    address_range:
-      start: 0xc000000
-      end: 0xc200000
     page_size: 0x400
     erased_byte_value: 0xff
     program_page_timeout: 400

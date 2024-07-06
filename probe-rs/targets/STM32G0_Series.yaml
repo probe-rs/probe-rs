@@ -31,9 +31,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x0_sb_opt
-  - stm32g0x0_db_opt
 - name: STM32G030C8Tx
   cores:
   - name: main
@@ -60,9 +57,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x0_sb_opt
-  - stm32g0x0_db_opt
 - name: STM32G030F6Px
   cores:
   - name: main
@@ -89,9 +83,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x0_sb_opt
-  - stm32g0x0_db_opt
 - name: STM32G030J6Mx
   cores:
   - name: main
@@ -118,9 +109,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x0_sb_opt
-  - stm32g0x0_db_opt
 - name: STM32G030K6Tx
   cores:
   - name: main
@@ -147,9 +135,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x0_sb_opt
-  - stm32g0x0_db_opt
 - name: STM32G030K8Tx
   cores:
   - name: main
@@ -176,9 +161,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x0_sb_opt
-  - stm32g0x0_db_opt
 - name: STM32G031C4Tx
   cores:
   - name: main
@@ -205,9 +187,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G031C4Ux
   cores:
   - name: main
@@ -234,9 +213,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G031C6Tx
   cores:
   - name: main
@@ -263,9 +239,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G031C6Ux
   cores:
   - name: main
@@ -292,9 +265,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G031C8Tx
   cores:
   - name: main
@@ -321,9 +291,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G031C8Ux
   cores:
   - name: main
@@ -350,9 +317,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G031F4Px
   cores:
   - name: main
@@ -379,9 +343,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G031F6Px
   cores:
   - name: main
@@ -408,9 +369,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G031F8Px
   cores:
   - name: main
@@ -437,9 +395,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G031G4Ux
   cores:
   - name: main
@@ -466,9 +421,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G031G6Ux
   cores:
   - name: main
@@ -495,9 +447,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G031G8Ux
   cores:
   - name: main
@@ -524,9 +473,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G031J4Mx
   cores:
   - name: main
@@ -553,9 +499,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G031J6Mx
   cores:
   - name: main
@@ -582,9 +525,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G031K4Tx
   cores:
   - name: main
@@ -611,9 +551,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G031K4Ux
   cores:
   - name: main
@@ -640,9 +577,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G031K6Tx
   cores:
   - name: main
@@ -669,9 +603,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G031K6Ux
   cores:
   - name: main
@@ -698,9 +629,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G031K8Tx
   cores:
   - name: main
@@ -727,9 +655,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G031K8Ux
   cores:
   - name: main
@@ -756,9 +681,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G031Y8Yx
   cores:
   - name: main
@@ -785,9 +707,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G041C6Tx
   cores:
   - name: main
@@ -814,9 +733,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G041C6Ux
   cores:
   - name: main
@@ -843,9 +759,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G041C8Tx
   cores:
   - name: main
@@ -872,9 +785,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G041C8Ux
   cores:
   - name: main
@@ -901,9 +811,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G041F6Px
   cores:
   - name: main
@@ -930,9 +837,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G041F8Px
   cores:
   - name: main
@@ -959,9 +863,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G041G6Ux
   cores:
   - name: main
@@ -988,9 +889,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G041G8Ux
   cores:
   - name: main
@@ -1017,9 +915,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G041J6Mx
   cores:
   - name: main
@@ -1046,9 +941,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G041K6Tx
   cores:
   - name: main
@@ -1075,9 +967,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G041K6Ux
   cores:
   - name: main
@@ -1104,9 +993,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G041K8Tx
   cores:
   - name: main
@@ -1133,9 +1019,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G041K8Ux
   cores:
   - name: main
@@ -1162,9 +1045,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G041Y8Yx
   cores:
   - name: main
@@ -1191,9 +1071,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G050C6Tx
   cores:
   - name: main
@@ -1220,9 +1097,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x0_sb_opt
-  - stm32g0x0_db_opt
 - name: STM32G050C8Tx
   cores:
   - name: main
@@ -1249,9 +1123,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x0_sb_opt
-  - stm32g0x0_db_opt
 - name: STM32G050F6Px
   cores:
   - name: main
@@ -1278,9 +1149,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x0_sb_opt
-  - stm32g0x0_db_opt
 - name: STM32G050K6Tx
   cores:
   - name: main
@@ -1307,9 +1175,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x0_sb_opt
-  - stm32g0x0_db_opt
 - name: STM32G050K8Tx
   cores:
   - name: main
@@ -1336,9 +1201,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x0_sb_opt
-  - stm32g0x0_db_opt
 - name: STM32G051C6Tx
   cores:
   - name: main
@@ -1365,9 +1227,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G051C6Ux
   cores:
   - name: main
@@ -1394,9 +1253,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G051C8Tx
   cores:
   - name: main
@@ -1423,9 +1279,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G051C8Ux
   cores:
   - name: main
@@ -1452,9 +1305,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G051F6Px
   cores:
   - name: main
@@ -1481,9 +1331,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G051F8Px
   cores:
   - name: main
@@ -1510,9 +1357,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G051F8Yx
   cores:
   - name: main
@@ -1539,9 +1383,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G051G6Ux
   cores:
   - name: main
@@ -1568,9 +1409,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G051G8Ux
   cores:
   - name: main
@@ -1597,9 +1435,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G051K6Tx
   cores:
   - name: main
@@ -1626,9 +1461,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G051K6Ux
   cores:
   - name: main
@@ -1655,9 +1487,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G051K8Tx
   cores:
   - name: main
@@ -1684,9 +1513,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G051K8Ux
   cores:
   - name: main
@@ -1713,9 +1539,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G061C6Tx
   cores:
   - name: main
@@ -1742,9 +1565,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G061C6Ux
   cores:
   - name: main
@@ -1771,9 +1591,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G061C8Tx
   cores:
   - name: main
@@ -1800,9 +1617,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G061C8Ux
   cores:
   - name: main
@@ -1829,9 +1643,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G061F6Px
   cores:
   - name: main
@@ -1858,9 +1669,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G061F8Px
   cores:
   - name: main
@@ -1887,9 +1695,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G061F8Yx
   cores:
   - name: main
@@ -1916,9 +1721,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G061G6Ux
   cores:
   - name: main
@@ -1945,9 +1747,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G061G8Ux
   cores:
   - name: main
@@ -1974,9 +1773,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G061K6Tx
   cores:
   - name: main
@@ -2003,9 +1799,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G061K6Ux
   cores:
   - name: main
@@ -2032,9 +1825,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G061K8Tx
   cores:
   - name: main
@@ -2061,9 +1851,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G061K8Ux
   cores:
   - name: main
@@ -2090,9 +1877,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G070CBTx
   cores:
   - name: main
@@ -2119,9 +1903,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x0_sb_opt
-  - stm32g0x0_db_opt
 - name: STM32G070KBTx
   cores:
   - name: main
@@ -2148,9 +1929,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x0_sb_opt
-  - stm32g0x0_db_opt
 - name: STM32G070RBTx
   cores:
   - name: main
@@ -2177,9 +1955,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x0_sb_opt
-  - stm32g0x0_db_opt
 - name: STM32G071C8Tx
   cores:
   - name: main
@@ -2206,9 +1981,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G071C8Ux
   cores:
   - name: main
@@ -2235,9 +2007,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G071CBTx
   cores:
   - name: main
@@ -2264,9 +2033,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G071CBUx
   cores:
   - name: main
@@ -2293,9 +2059,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G071EBYx
   cores:
   - name: main
@@ -2322,9 +2085,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G071G8Ux
   cores:
   - name: main
@@ -2351,9 +2111,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G071G8UxN
   cores:
   - name: main
@@ -2380,9 +2137,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G071GBUx
   cores:
   - name: main
@@ -2409,9 +2163,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G071GBUxN
   cores:
   - name: main
@@ -2438,9 +2189,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G071K8Tx
   cores:
   - name: main
@@ -2467,9 +2215,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G071K8TxN
   cores:
   - name: main
@@ -2496,9 +2241,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G071K8Ux
   cores:
   - name: main
@@ -2525,9 +2267,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G071K8UxN
   cores:
   - name: main
@@ -2554,9 +2293,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G071KBTx
   cores:
   - name: main
@@ -2583,9 +2319,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G071KBTxN
   cores:
   - name: main
@@ -2612,9 +2345,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G071KBUx
   cores:
   - name: main
@@ -2641,9 +2371,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G071KBUxN
   cores:
   - name: main
@@ -2670,9 +2397,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G071R8Tx
   cores:
   - name: main
@@ -2699,9 +2423,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G071RBIx
   cores:
   - name: main
@@ -2728,9 +2449,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G071RBTx
   cores:
   - name: main
@@ -2757,9 +2475,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G081CBTx
   cores:
   - name: main
@@ -2786,9 +2501,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G081CBUx
   cores:
   - name: main
@@ -2815,9 +2527,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G081EBYx
   cores:
   - name: main
@@ -2844,9 +2553,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G081GBUx
   cores:
   - name: main
@@ -2873,9 +2579,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G081GBUxN
   cores:
   - name: main
@@ -2902,9 +2605,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G081KBTx
   cores:
   - name: main
@@ -2931,9 +2631,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G081KBTxN
   cores:
   - name: main
@@ -2960,9 +2657,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G081KBUx
   cores:
   - name: main
@@ -2989,9 +2683,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G081KBUxN
   cores:
   - name: main
@@ -3018,9 +2709,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G081RBIx
   cores:
   - name: main
@@ -3047,9 +2735,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G081RBTx
   cores:
   - name: main
@@ -3076,9 +2761,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B0CETx
   cores:
   - name: main
@@ -3105,9 +2787,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x0_sb_opt
-  - stm32g0x0_db_opt
 - name: STM32G0B0KETx
   cores:
   - name: main
@@ -3134,9 +2813,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x0_sb_opt
-  - stm32g0x0_db_opt
 - name: STM32G0B0RETx
   cores:
   - name: main
@@ -3163,9 +2839,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x0_sb_opt
-  - stm32g0x0_db_opt
 - name: STM32G0B0VETx
   cores:
   - name: main
@@ -3192,9 +2865,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x0_sb_opt
-  - stm32g0x0_db_opt
 - name: STM32G0B1CBTx
   cores:
   - name: main
@@ -3221,9 +2891,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1CBTxN
   cores:
   - name: main
@@ -3250,9 +2917,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1CBUx
   cores:
   - name: main
@@ -3279,9 +2943,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1CBUxN
   cores:
   - name: main
@@ -3308,9 +2969,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1CCTx
   cores:
   - name: main
@@ -3337,9 +2995,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1CCTxN
   cores:
   - name: main
@@ -3366,9 +3021,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1CCUx
   cores:
   - name: main
@@ -3395,9 +3047,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1CCUxN
   cores:
   - name: main
@@ -3424,9 +3073,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1CETx
   cores:
   - name: main
@@ -3453,9 +3099,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1CETxN
   cores:
   - name: main
@@ -3482,9 +3125,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1CEUx
   cores:
   - name: main
@@ -3511,9 +3151,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1CEUxN
   cores:
   - name: main
@@ -3540,9 +3177,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1KBTx
   cores:
   - name: main
@@ -3569,9 +3203,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1KBTxN
   cores:
   - name: main
@@ -3598,9 +3229,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1KBUx
   cores:
   - name: main
@@ -3627,9 +3255,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1KBUxN
   cores:
   - name: main
@@ -3656,9 +3281,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1KCTx
   cores:
   - name: main
@@ -3685,9 +3307,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1KCTxN
   cores:
   - name: main
@@ -3714,9 +3333,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1KCUx
   cores:
   - name: main
@@ -3743,9 +3359,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1KCUxN
   cores:
   - name: main
@@ -3772,9 +3385,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1KETx
   cores:
   - name: main
@@ -3801,9 +3411,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1KETxN
   cores:
   - name: main
@@ -3830,9 +3437,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1KEUx
   cores:
   - name: main
@@ -3859,9 +3463,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1KEUxN
   cores:
   - name: main
@@ -3888,9 +3489,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1MBTx
   cores:
   - name: main
@@ -3917,9 +3515,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1MCTx
   cores:
   - name: main
@@ -3946,9 +3541,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1METx
   cores:
   - name: main
@@ -3975,9 +3567,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1NEYx
   cores:
   - name: main
@@ -4004,9 +3593,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1RBIxN
   cores:
   - name: main
@@ -4033,9 +3619,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1RBTx
   cores:
   - name: main
@@ -4062,9 +3645,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1RBTxN
   cores:
   - name: main
@@ -4091,9 +3671,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1RCIxN
   cores:
   - name: main
@@ -4120,9 +3697,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1RCTx
   cores:
   - name: main
@@ -4149,9 +3723,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1RCTxN
   cores:
   - name: main
@@ -4178,9 +3749,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1REIxN
   cores:
   - name: main
@@ -4207,9 +3775,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1RETx
   cores:
   - name: main
@@ -4236,9 +3801,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1RETxN
   cores:
   - name: main
@@ -4265,9 +3827,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1VBIx
   cores:
   - name: main
@@ -4294,9 +3853,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1VBTx
   cores:
   - name: main
@@ -4323,9 +3879,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1VCIx
   cores:
   - name: main
@@ -4352,9 +3905,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1VCTx
   cores:
   - name: main
@@ -4381,9 +3931,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1VEIx
   cores:
   - name: main
@@ -4410,9 +3957,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0B1VETx
   cores:
   - name: main
@@ -4439,9 +3983,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0C1CCTx
   cores:
   - name: main
@@ -4468,9 +4009,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0C1CCTxN
   cores:
   - name: main
@@ -4497,9 +4035,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0C1CCUx
   cores:
   - name: main
@@ -4526,9 +4061,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0C1CCUxN
   cores:
   - name: main
@@ -4555,9 +4087,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0C1CETx
   cores:
   - name: main
@@ -4584,9 +4113,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0C1CETxN
   cores:
   - name: main
@@ -4613,9 +4139,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0C1CEUx
   cores:
   - name: main
@@ -4642,9 +4165,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0C1CEUxN
   cores:
   - name: main
@@ -4671,9 +4191,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0C1KCTx
   cores:
   - name: main
@@ -4700,9 +4217,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0C1KCTxN
   cores:
   - name: main
@@ -4729,9 +4243,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0C1KCUx
   cores:
   - name: main
@@ -4758,9 +4269,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0C1KCUxN
   cores:
   - name: main
@@ -4787,9 +4295,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0C1KETx
   cores:
   - name: main
@@ -4816,9 +4321,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0C1KETxN
   cores:
   - name: main
@@ -4845,9 +4347,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0C1KEUx
   cores:
   - name: main
@@ -4874,9 +4373,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0C1KEUxN
   cores:
   - name: main
@@ -4903,9 +4399,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0C1MCTx
   cores:
   - name: main
@@ -4932,9 +4425,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0C1METx
   cores:
   - name: main
@@ -4961,9 +4451,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0C1NEYx
   cores:
   - name: main
@@ -4990,9 +4477,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0C1RCIxN
   cores:
   - name: main
@@ -5019,9 +4503,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0C1RCTx
   cores:
   - name: main
@@ -5048,9 +4529,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0C1RCTxN
   cores:
   - name: main
@@ -5077,9 +4555,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0C1REIxN
   cores:
   - name: main
@@ -5106,9 +4581,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0C1RETx
   cores:
   - name: main
@@ -5135,9 +4607,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0C1RETxN
   cores:
   - name: main
@@ -5164,9 +4633,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0C1VCIx
   cores:
   - name: main
@@ -5193,9 +4659,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0C1VCTx
   cores:
   - name: main
@@ -5222,9 +4685,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0C1VEIx
   cores:
   - name: main
@@ -5251,9 +4711,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 - name: STM32G0C1VETx
   cores:
   - name: main
@@ -5280,9 +4737,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32g0bx_512
-  - stm32g0xx_otp
-  - stm32g0x1_sb_opt
-  - stm32g0x1_db_opt
 flash_algorithms:
 - name: stm32g0bx_512
   description: STM32G0Bx_512
@@ -5304,103 +4758,4 @@ flash_algorithms:
     erase_sector_timeout: 400
     sectors:
     - size: 0x800
-      address: 0x0
-- name: stm32g0xx_otp
-  description: STM32G0xx Flash OTP
-  instructions: v/NPj3BHG0gZSYFgGkmBYBpJAWEAIHBHASAWScAHSGEAIHBHASBwRwAgcEfwtckdEEzJCBFNyQAlYQEmACcT4GZhE2gDYFNoQ2C/80+PI2nbA/zUZ2EjaStCAtAlYQEg8L0IMAg5CDIAKenRACDwvSMBZ0UAIAJAq4nvzfrDAAAAAAAA
-  pc_init: 0x7
-  pc_uninit: 0x19
-  pc_program_page: 0x2d
-  pc_erase_sector: 0x29
-  data_section_offset: 0x80
-  flash_properties:
-    address_range:
-      start: 0x1fff7000
-      end: 0x1fff7400
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 3000
-    erase_sector_timeout: 3000
-    sectors:
-    - size: 0x400
-      address: 0x0
-- name: stm32g0x0_sb_opt
-  description: STM32G0x0 SB Flash Options
-  instructions: v/NPj3BHLUgrSYFgLEmBYCxJwWAsScFgLEkBYQAgcEcBISZIyQdBYUEEQWEAIHBHASBwRyFIJUoCYSVJAWJ/IcFiAWMBIUkEQWG/80+PAWnJA/zUACFBYQFpEUIE0AFpEUMBYQEgcEcAIHBHACBwRzC1lGgTaFFoEEgUSgJhFU0rQANiFEsZQMFiHEAEYwEhSQRBYb/zT48BackD/NQBaRFCBNABaRFDAWEBIDC9ACAwvUAYcEcAACMBZ0UAIAJAq4nvzTsqGQh/bl1M+sMAAKr+/////38/fwB/AAAAAAA=
-  pc_init: 0x7
-  pc_uninit: 0x21
-  pc_program_page: 0x71
-  pc_erase_sector: 0x6d
-  pc_erase_all: 0x35
-  data_section_offset: 0xdc
-  flash_properties:
-    address_range:
-      start: 0x1fff7800
-      end: 0x1fff780c
-    page_size: 0xc
-    erased_byte_value: 0xff
-    program_page_timeout: 3000
-    erase_sector_timeout: 3000
-    sectors:
-    - size: 0xc
-      address: 0x0
-- name: stm32g0x0_db_opt
-  description: STM32G0x0 DB Flash Options
-  instructions: v/NPj3BHM0gxSYFgMkmBYDJJwWAyScFgMkkBYQAgcEcBISxIyQdBYUEEQWEAIHBHASBwRydIK0oCYStJAWJ/IcFiAWMjS0Az2WAZYQEhSQRBYb/zT48BackD/NQAIUFhAWkRQgTQAWkRQwFhASBwRwAgcEcAIHBH8LUVaFRok2jRaBRIEmkXTwdhGE41QAViF00sQMRiK0ADYw5LKUBAM9lgKkAaYQEhSQRBYb/zT48BackD/NQBaTlCBNABaTlDAWEBIPC9ACDwvUAYcEcAACMBZ0UAIAJAq4nvzTsqGQh/bl1M+sMAAKr+/////38/fwB/AAAAAAA=
-  pc_init: 0x7
-  pc_uninit: 0x21
-  pc_program_page: 0x79
-  pc_erase_sector: 0x75
-  pc_erase_all: 0x35
-  data_section_offset: 0xf4
-  flash_properties:
-    address_range:
-      start: 0x1fff7800
-      end: 0x1fff7814
-    page_size: 0x14
-    erased_byte_value: 0xff
-    program_page_timeout: 3000
-    erase_sector_timeout: 3000
-    sectors:
-    - size: 0x14
-      address: 0x0
-- name: stm32g0x1_sb_opt
-  description: STM32G0x1 SB Flash Options
-  instructions: v/NPj3BHPkg8SYFgPUmBYD1JwWA9ScFgPUkBYQAgcEcBITdIyQdBYUEEQWEAIHBHASBwRzJINksDYTZJAWL/IcFiAWM0SUFiACKCYkFjgmMrSYAxCmABIUkEQWG/80+PAWnJA/zUQmEBaRlCBNABaRlDAWEBIHBHACBwRwAgcEfwtZeJloq8RheLFWi+RlRok2gRaRpI0mkdTwdhH089QAViH00sQMRiK0ADY2dG+wXbDUNiG0sZQIFi8QXJDUFjd0b5BckNgWMXSQpADEmAMQpgmQtBYb/zT48BackD/NQCaQtJCkIE0AJpCkMCYQEg8L0AIPC9QBhwRwAAIwFnRQAgAkCrie/NOyoZCH9uXUz6wwAAqv7///8BAAD//38/fwB/AP8BAID/APEPAAAAAA==
-  pc_init: 0x7
-  pc_uninit: 0x21
-  pc_program_page: 0x81
-  pc_erase_sector: 0x7d
-  pc_erase_all: 0x35
-  data_section_offset: 0x12c
-  flash_properties:
-    address_range:
-      start: 0x1fff7800
-      end: 0x1fff7820
-    page_size: 0x20
-    erased_byte_value: 0xff
-    program_page_timeout: 3000
-    erase_sector_timeout: 3000
-    sectors:
-    - size: 0x20
-      address: 0x0
-- name: stm32g0x1_db_opt
-  description: STM32G0x1 DB Flash Options
-  instructions: v/NPj3BHVUhTSYFgVEmBYFRJwWBUScFgVEkBYQAgcEcBIU5IyQdBYUEEQWEAIHBHASBwRzC1SUhMTQVhTEkBYv8kxGIEY8sNQ2IAIoJiQ2OCY0JJgDEKYEBJQDHMYAxhS2CKYEthimEBIUkEQWG/80+PAWnJA/zUQmEBaSlCBNABaSlDAWEBIDC9ACAwvQAgcEfwtYawF2hWaJBoBZCQiQSQEGmERpCKA5AQiwKQEI3VaRRqU2oBkBCO0WqGRpKOAJImSClKAmEqShdAB2IqShZAxmIFnhZABmMEnvYF9g1GYiZPZkY+QIZiA572BfYNRmMCnvYF9g2GYyFONUAXToA2NWAVTRRAQDXsYBNAK2EBmtIF0g1qYDlAqWBxRskFyQ1pYQCa0QXJDalhuQtBYb/zT48BackD/NQBaQtKEUIF0AFpEUMBYQEgBrDwvQAg++dAGHBHAAAjAWdFACACQKuJ7807KhkIf25dTPrDAACq/v////9/P38AfwD/AQCA/wDxDwAAAAA=
-  pc_init: 0x7
-  pc_uninit: 0x21
-  pc_program_page: 0x93
-  pc_erase_sector: 0x8f
-  pc_erase_all: 0x35
-  data_section_offset: 0x184
-  flash_properties:
-    address_range:
-      start: 0x1fff7800
-      end: 0x1fff7838
-    page_size: 0x38
-    erased_byte_value: 0xff
-    program_page_timeout: 3000
-    erase_sector_timeout: 3000
-    sectors:
-    - size: 0x38
       address: 0x0

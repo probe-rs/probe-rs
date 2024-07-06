@@ -31,7 +31,6 @@ variants:
       boot: true
   flash_algorithms:
   - py32f0xx_64
-  - py32f0xx_opt
 - name: PY32F002Bx5
   cores:
   - name: main
@@ -58,7 +57,6 @@ variants:
       boot: true
   flash_algorithms:
   - py32f002bxx_24
-  - py32f002bxx_opt
 - name: PY32F003x4
   cores:
   - name: main
@@ -85,7 +83,6 @@ variants:
       boot: true
   flash_algorithms:
   - py32f0xx_64
-  - py32f0xx_opt
 - name: PY32F003x6
   cores:
   - name: main
@@ -112,7 +109,6 @@ variants:
       boot: true
   flash_algorithms:
   - py32f0xx_64
-  - py32f0xx_opt
 - name: PY32F003x8
   cores:
   - name: main
@@ -139,7 +135,6 @@ variants:
       boot: true
   flash_algorithms:
   - py32f0xx_64
-  - py32f0xx_opt
 - name: PY32F030x3
   cores:
   - name: main
@@ -166,7 +161,6 @@ variants:
       boot: true
   flash_algorithms:
   - py32f0xx_64
-  - py32f0xx_opt
 - name: PY32F030x4
   cores:
   - name: main
@@ -193,7 +187,6 @@ variants:
       boot: true
   flash_algorithms:
   - py32f0xx_64
-  - py32f0xx_opt
 - name: PY32F030x6
   cores:
   - name: main
@@ -220,7 +213,6 @@ variants:
       boot: true
   flash_algorithms:
   - py32f0xx_64
-  - py32f0xx_opt
 - name: PY32F030x7
   cores:
   - name: main
@@ -247,7 +239,6 @@ variants:
       boot: true
   flash_algorithms:
   - py32f0xx_64
-  - py32f0xx_opt
 - name: PY32F030x8
   cores:
   - name: main
@@ -274,7 +265,6 @@ variants:
       boot: true
   flash_algorithms:
   - py32f0xx_64
-  - py32f0xx_opt
 - name: PY32F031x3
   cores:
   - name: main
@@ -301,7 +291,6 @@ variants:
       boot: true
   flash_algorithms:
   - py32f0xx_64
-  - py32f0xx_opt
 - name: PY32F031x4
   cores:
   - name: main
@@ -328,7 +317,6 @@ variants:
       boot: true
   flash_algorithms:
   - py32f0xx_64
-  - py32f0xx_opt
 - name: PY32F031x6
   cores:
   - name: main
@@ -355,7 +343,6 @@ variants:
       boot: true
   flash_algorithms:
   - py32f0xx_64
-  - py32f0xx_opt
 - name: PY32F031x7
   cores:
   - name: main
@@ -382,7 +369,6 @@ variants:
       boot: true
   flash_algorithms:
   - py32f0xx_64
-  - py32f0xx_opt
 - name: PY32F031x8
   cores:
   - name: main
@@ -409,7 +395,6 @@ variants:
       boot: true
   flash_algorithms:
   - py32f0xx_64
-  - py32f0xx_opt
 - name: PY32F071x6
   cores:
   - name: main
@@ -436,7 +421,6 @@ variants:
       boot: true
   flash_algorithms:
   - py32f071xx_128
-  - py32f071xx_opt
 - name: PY32F071x8
   cores:
   - name: main
@@ -463,7 +447,6 @@ variants:
       boot: true
   flash_algorithms:
   - py32f071xx_128
-  - py32f071xx_opt
 - name: PY32F071x9
   cores:
   - name: main
@@ -490,7 +473,6 @@ variants:
       boot: true
   flash_algorithms:
   - py32f071xx_128
-  - py32f071xx_opt
 - name: PY32F071xB
   cores:
   - name: main
@@ -517,7 +499,6 @@ variants:
       boot: true
   flash_algorithms:
   - py32f071xx_128
-  - py32f071xx_opt
 - name: PY32F072x6
   cores:
   - name: main
@@ -544,7 +525,6 @@ variants:
       boot: true
   flash_algorithms:
   - py32f072xx_128
-  - py32f072xx_opt
 - name: PY32F072x8
   cores:
   - name: main
@@ -571,7 +551,6 @@ variants:
       boot: true
   flash_algorithms:
   - py32f072xx_128
-  - py32f072xx_opt
 - name: PY32F072x9
   cores:
   - name: main
@@ -598,7 +577,6 @@ variants:
       boot: true
   flash_algorithms:
   - py32f072xx_128
-  - py32f072xx_opt
 - name: PY32F072xB
   cores:
   - name: main
@@ -625,7 +603,6 @@ variants:
       boot: true
   flash_algorithms:
   - py32f072xx_128
-  - py32f072xx_opt
 flash_algorithms:
 - name: py32f0xx_64
   description: PY32F0xx 64kB Flash
@@ -648,26 +625,6 @@ flash_algorithms:
     sectors:
     - size: 0x1000
       address: 0x0
-- name: py32f0xx_opt
-  description: PY32F0xx Flash Options
-  instructions: bUhCaAchbUtJAwpAS0QaYEJoikMBIckDURhBYEFoaEpJCxJpSQPSBNIMEUNBYAFoSQX81WJIQDDBasqyYUkKYMJqEgQSDgphwmrSAdINSmACa9KyimACa1IBUg3KYEJr0gPSC0phgmvSA9ILimHCa5KyymHAawAMCGJwRxC1U0xRSKBgUkigYP/3uv9RSOBgUUjgYAAgIGAgaQEhCEMgYSBqwAQG1E5ITEkBYAYhQWBMSYFgACAQvT9IQmgHIUkDikM+SUlECWgKQ0JgASNbA8oaO0kY0NIaEdDSGgrQmkJCaAPRUgtSAwlpEeBSC1IDCWgN4EJoyWhSC1IDCOBCaIloUgtSAwPgQmhJaFILUgPJBMkMCkNCYAFoSQX81XBHALX/98n/KUhBaYIEEUNBYUFpQgQRQ0FhACAAvQAgcEcAIHBHASBwRzC1IEgTiJGIkokEaQElLEMEYZuyA2KJskFikbLBYkJpaQQKQ0JhQmnLARpDQmETTP8igDwiYL/zT49CaYpDQmFBaZlDQWEAIDC9MLUUaFNo0mgFaKVCA9FEaJxCAdAAHTC9w2iTQgHQDDAwvUAYML0AEAJABAAAAAAP/x8AIQJAIwFnRQAgAkCrie/NOyoZCH9uXUxVVQAAADAAQP8PAAAAAAAAAAAAAA==
-  pc_init: 0x7d
-  pc_uninit: 0x121
-  pc_program_page: 0x149
-  pc_erase_sector: 0x141
-  pc_erase_all: 0x13d
-  data_section_offset: 0x1e8
-  flash_properties:
-    address_range:
-      start: 0x1fff0e80
-      end: 0x1fff0e90
-    page_size: 0x10
-    erased_byte_value: 0xff
-    program_page_timeout: 3000
-    erase_sector_timeout: 3000
-    sectors:
-    - size: 0x10
-      address: 0x0
 - name: py32f002bxx_24
   description: PY32F002Bxx 24kB Flash
   default: true
@@ -688,26 +645,6 @@ flash_algorithms:
     erase_sector_timeout: 6000
     sectors:
     - size: 0x1000
-      address: 0x0
-- name: py32f002bxx_opt
-  description: PY32F002Bxx Flash Options
-  instructions: cEdFSENJgWBESYFgREnBYERJwWAAIQFgAWkBIhFDAWEAasAEBtRBSD9JAWAGIUFgP0mBYAAgcEdwRzdIQWmCBBFDQWFBaUIEEUNBYQAgcEcAIHBHACBwRwEgcEdwtS5IFIiTiBGJkokFaQEmNUMFYaSyBGKbskNiibKBYpGywWJCaXEECkNCYUJpywEaQ0JhIUz/IoA0ImC/80+PQmmKQ0JhQWmZQ0FhACBwvTC1FGhTaNJoBWilQgPRRGicQgHQAB0wvcNok0IB0AwwML1AGDC9MLUQSQppASMaQwphSmkCJCJDSmFKaR0GKkNKYf8iAmC/80+PD0gMSgDgEGALadsD+9RIaaBDSGFIaahDSGEAIDC9IwFnRQAgAkCrie/NOyoZCH9uXUxVVQAAADAAQP8PAACqqgAAAAAAAAAAAAA=
-  pc_init: 0x3
-  pc_uninit: 0x3b
-  pc_program_page: 0x5d
-  pc_erase_sector: 0x55
-  pc_erase_all: 0x51
-  data_section_offset: 0x138
-  flash_properties:
-    address_range:
-      start: 0x1fff0080
-      end: 0x1fff0090
-    page_size: 0x10
-    erased_byte_value: 0xff
-    program_page_timeout: 3000
-    erase_sector_timeout: 3000
-    sectors:
-    - size: 0x10
       address: 0x0
 - name: py32f071xx_128
   description: PY32F071xx 128kB Flash
@@ -730,23 +667,6 @@ flash_algorithms:
     sectors:
     - size: 0x2000
       address: 0x0
-- name: py32f071xx_opt
-  description: PY32F071xx Flash Options
-  instructions: QLpwR8C6cEcoIUFDYEqJGIlrybJfShFgKCFBQ1xKiRiJawkECQ5bShFhKCFBQ1hKiRiJa8kByQ1WSlFgKCFBQ1NKiRgJbMmyUkqRYCghQUNPSokYCWxJAUkNTkrRYCghQUNLSokYiWzJA8kLSUpRYSghQUNGSokYCW3JA8kLRUqRYSghQUNCSokYiW2JskFK0WEoIUFDPkqJGIltCQw9ShFicEcAtTxIQGgHIUkDCEA6SUlECGA4SEBoAAwABDRJCWoIQzRJSGAAvzNIAGgBIYkCCECIQvjRBCD/95X/AL0tSEBoByFJA4hDLElJRAloCEMpSUhgKUhIRABoASFJA0AaI9BAGhfQQBoL0EAaJ9EhSEBoAAwABB1JCWoIQx5JSGAn4BxIQGgADAAEGEmJaQhDGUlIYB3gF0hAaAAMAAQTSQlpCEMUSUhgE+ASSEBoAAwABA5JiWgIQw9JSGAJ4A1IQGgADAAECUkJaAhDCklIYAC/AL8AvwdIAGgBIYkCCECIQvjRcEcDRgEgcEcAAAAy/x8AIQJAABACQAQAAAAAAAAAAAAAAA==
-  pc_program_page: 0x0
-  pc_erase_sector: 0x0
-  data_section_offset: 0x1a0
-  flash_properties:
-    address_range:
-      start: 0x1fff3100
-      end: 0x1fff3120
-    page_size: 0x20
-    erased_byte_value: 0xff
-    program_page_timeout: 3000
-    erase_sector_timeout: 3000
-    sectors:
-    - size: 0x20
-      address: 0x0
 - name: py32f072xx_128
   description: PY32F072xx 128kB Flash
   default: true
@@ -767,24 +687,4 @@ flash_algorithms:
     erase_sector_timeout: 6000
     sectors:
     - size: 0x2000
-      address: 0x0
-- name: py32f072xx_opt
-  description: PY32F072xx Flash Options
-  instructions: QLpwR8C6cEepSapKkWCqSZFgKCFBQ6lKiRiJa8myqEoRYCghQUOlSokYiWsJBAkOo0oRYSghQUOgSokYiWvJAckNn0pRYCghQUOcSokYCWzJsptKkWAoIUFDmEqJGAlsSQFJDZZK0WAoIUFDk0qJGIlsyQPJC5JKUWEoIUFDj0qJGAltyQPJC41KkWEoIUFDikqJGIltibKJStFhKCFBQ4ZKiRiJbQkMhUoRYnBHALWESEBoByFJAwhAg0lJRAhggEhAaAAMAAR8SQlqCEN9SUhgAL97SABoASGJAghAiEL40QQg//eQ/wC9dkhAaAchSQOIQ3RJSUQJaAhDcUlIYHFISEQAaAEhSQNAGiPQQBoX0EAaC9BAGifRakhAaAAMAARmSQlqCENmSUhgJ+BlSEBoAAwABGFJiWkIQ2FJSGAd4GBIQGgADAAEXEkJaQhDXElIYBPgW0hAaAAMAARXSYloCENXSUhgCeBWSEBoAAwABFJJCWgIQ1JJSGAAvwC/AL9QSABoASGJAghAiEL40XBHMLUDRgxGFUb/94j/REhESYhgREiIYEhIyGBISMhgCEYAaQEhCEM+SQhhCEYAaskUCEAAKAbRQkhDSQhgBiBIYEJIiGAAIDC9ALUCRv/3hP80SEBpASHJBwhDMUlIYQhGQGlJBAhDLklIYQAgAL0AIHBHAUYAIHBHA0YBIHBH8LUFRg5GEWiTaJRpJUgAaQEnOEMjTzhhiLI4YixIGEB4YqCy+GI4RkBpASd/BDhDHE94YThGQGkBJz8GOEMZT3hh/yAXT4A3OGC/80+PFUhAaQEnfwS4QxJPeGE4RkBpASc/BrhDD094YQAg8L1wtQNGFGiVaJZpGGigQgHQGEZwvZhoqEIC0BhGCDD455hpsEIC0BhGGDDy51gY8OcAACMBZ0UAIAJAq4nvzQAy/x8AIQJAABACQAQAAAA7KhkIf25dTFVVAAAAMABA/w8AAB8fAAAAAAAAAAAAAA==
-  pc_init: 0x193
-  pc_uninit: 0x1db
-  pc_program_page: 0x211
-  pc_erase_sector: 0x205
-  pc_erase_all: 0x201
-  data_section_offset: 0x2e4
-  flash_properties:
-    address_range:
-      start: 0x1fff3100
-      end: 0x1fff3120
-    page_size: 0x20
-    erased_byte_value: 0xff
-    program_page_timeout: 3000
-    erase_sector_timeout: 3000
-    sectors:
-    - size: 0x20
       address: 0x0

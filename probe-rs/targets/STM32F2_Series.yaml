@@ -31,8 +31,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F205RCTx
   cores:
   - name: main
@@ -59,8 +57,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F205RETx
   cores:
   - name: main
@@ -87,8 +83,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F205REYx
   cores:
   - name: main
@@ -115,8 +109,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F205RFTx
   cores:
   - name: main
@@ -143,8 +135,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F205RGEx
   cores:
   - name: main
@@ -171,8 +161,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F205RGTx
   cores:
   - name: main
@@ -199,8 +187,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F205RGYx
   cores:
   - name: main
@@ -227,8 +213,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F205VBTx
   cores:
   - name: main
@@ -255,8 +239,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F205VCTx
   cores:
   - name: main
@@ -283,8 +265,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F205VETx
   cores:
   - name: main
@@ -311,8 +291,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F205VFTx
   cores:
   - name: main
@@ -339,8 +317,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F205VGTx
   cores:
   - name: main
@@ -367,8 +343,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F205ZCTx
   cores:
   - name: main
@@ -395,8 +369,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F205ZETx
   cores:
   - name: main
@@ -423,8 +395,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F205ZFTx
   cores:
   - name: main
@@ -451,8 +421,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F205ZGTx
   cores:
   - name: main
@@ -479,8 +447,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F207ICHx
   cores:
   - name: main
@@ -507,8 +473,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F207ICTx
   cores:
   - name: main
@@ -535,8 +499,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F207IEHx
   cores:
   - name: main
@@ -563,8 +525,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F207IETx
   cores:
   - name: main
@@ -591,8 +551,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F207IFHx
   cores:
   - name: main
@@ -619,8 +577,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F207IFTx
   cores:
   - name: main
@@ -647,8 +603,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F207IGHx
   cores:
   - name: main
@@ -675,8 +629,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F207IGTx
   cores:
   - name: main
@@ -703,8 +655,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F207VCTx
   cores:
   - name: main
@@ -731,8 +681,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F207VETx
   cores:
   - name: main
@@ -759,8 +707,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F207VFTx
   cores:
   - name: main
@@ -787,8 +733,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F207VGTx
   cores:
   - name: main
@@ -815,8 +759,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F207ZCTx
   cores:
   - name: main
@@ -843,8 +785,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F207ZETx
   cores:
   - name: main
@@ -871,8 +811,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F207ZFTx
   cores:
   - name: main
@@ -899,8 +837,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F207ZGTx
   cores:
   - name: main
@@ -927,8 +863,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F215RETx
   cores:
   - name: main
@@ -955,8 +889,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F215RGTx
   cores:
   - name: main
@@ -983,8 +915,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F215VETx
   cores:
   - name: main
@@ -1011,8 +941,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F215VGTx
   cores:
   - name: main
@@ -1039,8 +967,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F215ZETx
   cores:
   - name: main
@@ -1067,8 +993,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F215ZGTx
   cores:
   - name: main
@@ -1095,8 +1019,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F217IEHx
   cores:
   - name: main
@@ -1123,8 +1045,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F217IETx
   cores:
   - name: main
@@ -1151,8 +1071,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F217IGHx
   cores:
   - name: main
@@ -1179,8 +1097,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F217IGTx
   cores:
   - name: main
@@ -1207,8 +1123,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F217VETx
   cores:
   - name: main
@@ -1235,8 +1149,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F217VGTx
   cores:
   - name: main
@@ -1263,8 +1175,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F217ZETx
   cores:
   - name: main
@@ -1291,8 +1201,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 - name: STM32F217ZGTx
   cores:
   - name: main
@@ -1319,8 +1227,6 @@ variants:
       boot: true
   flash_algorithms:
   - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
 flash_algorithms:
 - name: stm32f2xx_1024
   description: STM32F2xx Flash
@@ -1347,42 +1253,3 @@ flash_algorithms:
       address: 0x10000
     - size: 0x20000
       address: 0x20000
-- name: stm32f2xx_opt
-  description: STM32F2xx Flash Options
-  instructions: AAMADiAoAtNACQAdcEcQKALTAAnAHHBHgAhwRylIKEmBYClJgWDBaPAiEUPBYEBpgAYG1CZIJUkBYAYhQWAlSYFgACBwRx9IQWkBIhFDQWEAIHBHG0jCaPAhCkPCYB5KQmFCaQIjGkNCYcJoEgYSDwTQwmgKQ8JgASBwRwAgcEcAIHBHEYkQiAkFCQmACIAAAUMMSMNo8CITQ8NgAiMZQ0FhwWjJA/zUwWgJBgkPBNDBaBFDwWABIHBHACBwRwAAOyoZCAA8AkB/bl1MVVUAAAAwAED/DwAA7Kr/DwAAAAA=
-  pc_init: 0x1d
-  pc_uninit: 0x47
-  pc_program_page: 0x85
-  pc_erase_sector: 0x81
-  pc_erase_all: 0x55
-  data_section_offset: 0xdc
-  flash_properties:
-    address_range:
-      start: 0x1fffc000
-      end: 0x1fffc010
-    page_size: 0x10
-    erased_byte_value: 0xff
-    program_page_timeout: 3000
-    erase_sector_timeout: 3000
-    sectors:
-    - size: 0x10
-      address: 0x0
-- name: stm32f2xx_otp
-  description: STM32F2xx Flash OTP
-  instructions: AAMADiAoAtNACQAdcEcQKALTAAnAHHBHgAhwRyVIJElBYCVJQWAAIQFgwWjwIhFDwWBAaYAGBtQhSCBJAWAGIUFgIEmBYAAgcEcaSAFpQgURQwFhACBwRwAgcEdwtRVNyRyJCOtoiQDwJjND62AAIythFUsX4CxpHEMsYRRoBGDsaOQD/NQsaWQIZAAsYexoJAYkDwTQ6GgwQ+hgASBwvQAdEh0JHwAp5dEAIHC9AAAjAWdFADwCQKuJ781VVQAAADAAQP8PAAABAgAAAAAAAA==
-  pc_init: 0x1d
-  pc_uninit: 0x4b
-  pc_program_page: 0x5d
-  pc_erase_sector: 0x59
-  data_section_offset: 0xcc
-  flash_properties:
-    address_range:
-      start: 0x1fff7800
-      end: 0x1fff7a10
-    page_size: 0x210
-    erased_byte_value: 0xff
-    program_page_timeout: 3000
-    erase_sector_timeout: 3000
-    sectors:
-    - size: 0x210
-      address: 0x0
