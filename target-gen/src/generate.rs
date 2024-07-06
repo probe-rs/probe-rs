@@ -133,10 +133,10 @@ where
 
                         // Only add the algo to the device if it targets a memory region that the
                         // device has.
-                        if !memory_map
-                            .iter()
-                            .any(|region| region.address_range().contains_range(address_range))
-                        {
+                        if !memory_map.iter().any(|region| {
+                            address_range.contains_range(&region.address_range())
+                                || region.address_range().contains_range(&address_range)
+                        }) {
                             return None;
                         }
 

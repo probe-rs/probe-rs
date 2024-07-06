@@ -166,9 +166,12 @@ fn remove_unused_flash_algos(out: &mut ChipFamily) {
 
             // Does the flash algo target a memory region that is present in the device?
             variant.memory_map.iter().any(|region| {
-                region
-                    .address_range()
-                    .contains_range(&algo.flash_properties.address_range)
+                algo.flash_properties
+                    .address_range
+                    .contains_range(&region.address_range())
+                    || region
+                        .address_range()
+                        .contains_range(&algo.flash_properties.address_range)
             })
         });
     }
