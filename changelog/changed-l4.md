@@ -1,0 +1,1 @@
+Updated STM32L4 family information.
