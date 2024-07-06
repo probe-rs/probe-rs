@@ -2,6 +2,7 @@ use anyhow::{anyhow, bail, Context, Error, Result};
 use cmsis_pack::pdsc::{AccessPort, Algorithm, Core, Device, Package, Processor};
 use cmsis_pack::{pack_index::PdscRef, utils::FromElem};
 use futures::StreamExt;
+use jep106::JEP106Code;
 use probe_rs::flashing::FlashAlgorithm;
 use probe_rs_target::{
     Architecture, ArmCoreAccessOptions, Chip, ChipFamily, Core as ProbeCore, CoreAccessOptions,
@@ -101,7 +102,7 @@ where
         } else {
             families.push(ChipFamily {
                 name: device.family.clone(),
-                manufacturer: None,
+                manufacturer: try_parse_vendor(device.vendor.as_deref()),
                 generated_from_pack: true,
                 chip_detection: vec![],
                 pack_file_release: Some(pdsc.releases.latest_release().version.clone()),
@@ -174,6 +175,17 @@ where
     }
 
     Ok(())
+}
+
+fn try_parse_vendor(vendor: Option<&str>) -> Option<JEP106Code> {
+    let jep = match vendor? {
+        "Atmel:3" => JEP106Code::new(0, 0x1f),
+        "NXP:11" => JEP106Code::new(0, 0x15),
+        "STMicroelectronics:13" => JEP106Code::new(0, 0x20),
+        _ => return None,
+    };
+
+    Some(jep)
 }
 
 fn create_core(processor: &Processor) -> Result<ProbeCore> {
