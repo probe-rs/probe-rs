@@ -227,6 +227,7 @@ pub fn serialize_to_yaml_string(family: &ChipFamily) -> Result<String> {
                 "read: false",
                 "write: false",
                 "execute: false",
+                "stack_overflow_check: false",
             ];
             if !keep_default.contains(&trimmed_line) {
                 // Skip the line
@@ -234,7 +235,12 @@ pub fn serialize_to_yaml_string(family: &ChipFamily) -> Result<String> {
             }
         } else {
             // Some fields have different default values than the type may indicate.
-            let trim_nondefault = ["read: true", "write: true", "execute: true"];
+            let trim_nondefault = [
+                "read: true",
+                "write: true",
+                "execute: true",
+                "stack_overflow_check: true",
+            ];
             if trim_nondefault.contains(&trimmed_line) {
                 // Skip the line
                 continue;
