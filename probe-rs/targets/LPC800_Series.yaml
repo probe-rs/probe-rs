@@ -756,7 +756,6 @@ flash_algorithms:
   pc_erase_sector: 0x6d
   pc_erase_all: 0x2d
   data_section_offset: 0x130
-  stack_size: 256
   flash_properties:
     address_range:
       start: 0x0
@@ -770,6 +769,7 @@ flash_algorithms:
       address: 0x0
   cores:
   - main
+  stack_size: 256
 - name: lpc8xx_16
   description: LPC8xx IAP 16kB Flash
   default: true

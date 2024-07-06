@@ -624,8 +624,8 @@ flash_algorithms:
     - size: 0x800
       address: 0x0
   cores:
-    - main
-    - cm4
+  - main
+  - cm4
 - name: stm32wlxx_cm0+
   description: STM32WLxx_CM0+ Flash - cores missing from pack, manually added
   default: true
@@ -649,7 +649,7 @@ flash_algorithms:
     - size: 0x800
       address: 0x0
   cores:
-    - cm0p
+  - cm0p
 - name: stm32wlexx_128
   description: STM32WLE5x Flash
   default: true
