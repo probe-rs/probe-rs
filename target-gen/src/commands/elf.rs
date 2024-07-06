@@ -1,7 +1,7 @@
 use anyhow::{bail, Context, Result};
 use probe_rs_target::{
     ArmCoreAccessOptions, Chip, ChipFamily, Core, CoreAccessOptions, CoreType, MemoryAccess,
-    MemoryRegion, NvmRegion, RamRegion, RawFlashAlgorithm, TargetDescriptionSource,
+    MemoryRange, MemoryRegion, NvmRegion, RamRegion, RawFlashAlgorithm, TargetDescriptionSource,
 };
 use std::{
     borrow::Cow,
@@ -144,9 +144,36 @@ pub fn cmd_elf(
 fn compact(family: &ChipFamily) -> ChipFamily {
     let mut out = family.clone();
 
+    remove_unused_flash_algos(&mut out);
     compact_flash_algos(&mut out);
 
     out
+}
+
+fn remove_unused_flash_algos(out: &mut ChipFamily) {
+    // First, remove unusable algos from devices
+    for variant in &mut out.variants {
+        variant.flash_algorithms.retain(|algo| {
+            let Some(algo) = out.flash_algorithms.iter().find(|a| &a.name == algo) else {
+                // Flash algo does not exist with this name
+                return false;
+            };
+
+            // Does the flash algo target a memory region that is present in the device?
+            variant.memory_map.iter().any(|region| {
+                region
+                    .address_range()
+                    .contains_range(&algo.flash_properties.address_range)
+            })
+        });
+    }
+
+    // Next, remove algos that are not used by any device
+    out.flash_algorithms.retain(|algo| {
+        out.variants
+            .iter()
+            .any(|variant| variant.flash_algorithms.contains(&algo.name))
+    });
 }
 
 fn compact_flash_algos(out: &mut ChipFamily) {
