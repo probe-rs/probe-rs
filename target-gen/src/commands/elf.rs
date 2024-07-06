@@ -151,6 +151,11 @@ fn compact(family: &ChipFamily) -> ChipFamily {
 }
 
 fn remove_unused_flash_algos(out: &mut ChipFamily) {
+    if !out.generated_from_pack {
+        // Only remove data if it was pack-generated, so it's easy to restore in the future.
+        return;
+    }
+
     // First, remove unusable algos from devices
     for variant in &mut out.variants {
         variant.flash_algorithms.retain(|algo| {
