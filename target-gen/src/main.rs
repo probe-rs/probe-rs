@@ -1,10 +1,3 @@
-pub mod algorithm_binary;
-pub mod commands;
-pub mod fetch;
-pub mod flash_device;
-pub mod generate;
-pub mod parser;
-
 use anyhow::{ensure, Context, Result};
 use clap::Parser;
 use probe_rs_target::ChipFamily;
@@ -16,9 +9,12 @@ use std::{
 };
 use tracing_subscriber::{filter::LevelFilter, EnvFilter};
 
-use crate::commands::{
-    elf::{cmd_elf, serialize_to_yaml_string},
-    test::cmd_test,
+use target_gen::{
+    commands::{
+        elf::{cmd_elf, serialize_to_yaml_string},
+        test::cmd_test,
+    },
+    generate,
 };
 
 #[derive(clap::Parser)]
@@ -239,7 +235,7 @@ fn cmd_pack(input: &Path, out_dir: &Path) -> Result<()> {
 /// Generated target descriptions will be placed in `out_dir`.
 async fn cmd_arm(out_dir: Option<PathBuf>, chip_family: Option<String>, list: bool) -> Result<()> {
     if list {
-        let mut packs = crate::fetch::get_vidx().await?;
+        let mut packs = target_gen::fetch::get_vidx().await?;
         println!("Available ARM CMSIS Pack files:");
         packs.pdsc_index.sort_by(|a, b| a.name.cmp(&b.name));
         for pack in packs.pdsc_index.iter() {
