@@ -100,13 +100,8 @@ impl<'session> Flasher<'session> {
             .core(self.core_index)
             .map_err(FlashError::Core)?;
 
-        // TODO: Halt & reset target.
-        tracing::debug!("Halting core {}", self.core_index);
-        let cpu_info = core
-            .halt(Duration::from_millis(100))
-            .map_err(FlashError::Core)?;
-        tracing::debug!("PC = {:010x}", cpu_info.pc);
-        tracing::debug!("Reset and halt");
+        // TODO: we probably want a full system reset here to make sure peripherals don't interfere.
+        tracing::debug!("Reset and halt core {}", self.core_index);
         core.reset_and_halt(Duration::from_millis(500))
             .map_err(FlashError::Core)?;
 
