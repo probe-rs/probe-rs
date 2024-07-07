@@ -11,7 +11,7 @@ use crate::cmd::dap_server::{server::core_data::CoreHandle, DebuggerError};
 use itertools::Itertools;
 use probe_rs::{
     debug::{ObjectRef, VariableName},
-    CoreStatus, HaltReason,
+    CoreDump, CoreStatus, HaltReason,
 };
 use std::{fmt::Display, ops::Range, path::Path, str::FromStr, time::Duration};
 
@@ -466,7 +466,7 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
                 range_string = range_string.trim_end_matches(", ").to_string();
                 range_string = format!("(Includes memory ranges: {range_string})");
             }
-            target_core.core.dump(ranges)?.store(location)?;
+            CoreDump::dump_core(&mut target_core.core, ranges)?.store(location)?;
 
             Ok(Response {
                 command: "dump".to_string(),

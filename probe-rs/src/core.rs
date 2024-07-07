@@ -4,7 +4,6 @@ use crate::{
         xtensa::sequences::XtensaDebugSequence,
     },
     config::DebugSequence,
-    debug::{DebugInfo, DebugRegisters, StackFrame},
     error::Error,
     CoreType, InstructionSet, MemoryInterface, Target,
 };
@@ -13,10 +12,11 @@ pub use probe_rs_target::{Architecture, CoreAccessOptions};
 use probe_rs_target::{
     ArmCoreAccessOptions, MemoryRegion, RiscvCoreAccessOptions, XtensaCoreAccessOptions,
 };
-use std::{collections::HashMap, ops::Range, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 
 pub mod core_state;
 pub mod core_status;
+#[cfg(feature = "debug")]
 pub(crate) mod dump;
 pub mod memory_mapped_registers;
 pub mod registers;
@@ -25,8 +25,6 @@ pub use core_state::*;
 pub use core_status::*;
 pub use memory_mapped_registers::MemoryMappedRegister;
 pub use registers::*;
-
-use self::dump::CoreDump;
 
 /// An struct for storing the current state of a core.
 #[derive(Debug, Clone)]
@@ -264,114 +262,6 @@ impl<'probe> MemoryInterface for Core<'probe> {
 
     fn flush(&mut self) -> Result<(), Error> {
         self.inner.flush()
-    }
-}
-
-/// A struct containing key information about an exception.
-/// The exception details are architecture specific, and the abstraction is handled in the
-/// architecture specific implementations of [`crate::core::ExceptionInterface`].
-#[derive(PartialEq)]
-pub struct ExceptionInfo {
-    /// The exception number.
-    /// This is architecture specific and can be used to decode the architecture specific exception reason.
-    pub raw_exception: u32,
-    /// A human readable explanation for the exception.
-    pub description: String,
-    /// A populated [`StackFrame`] to represent the stack data in the exception handler.
-    pub handler_frame: StackFrame,
-}
-
-/// A generic interface to identify and decode exceptions during unwind processing.
-pub trait ExceptionInterface {
-    /// Using the `stackframe_registers` for a "called frame",
-    /// determine if the given frame was called from an exception handler,
-    /// and resolve the relevant details about the exception, including the reason for the exception,
-    /// and the stackframe registers for the frame that triggered the exception.
-    /// A return value of `Ok(None)` indicates that the given frame was called from within the current thread,
-    /// and the unwind should continue normally.
-    fn exception_details(
-        &self,
-        memory: &mut dyn MemoryInterface,
-        stackframe_registers: &DebugRegisters,
-        debug_info: &DebugInfo,
-    ) -> Result<Option<ExceptionInfo>, Error>;
-
-    /// Using the `stackframe_registers` for a "called frame", retrieve updated register values for the "calling frame".
-    fn calling_frame_registers(
-        &self,
-        memory: &mut dyn MemoryInterface,
-        stackframe_registers: &crate::debug::DebugRegisters,
-        raw_exception: u32,
-    ) -> Result<crate::debug::DebugRegisters, crate::Error>;
-
-    /// Retrieve the architecture specific exception number.
-    fn raw_exception(
-        &self,
-        stackframe_registers: &crate::debug::DebugRegisters,
-    ) -> Result<u32, crate::Error>;
-
-    /// Convert the architecture specific exception number into a human readable description.
-    /// Where possible, the implementation may read additional registers from the core, to provide additional context.
-    fn exception_description(
-        &self,
-        raw_exception: u32,
-        memory: &mut dyn MemoryInterface,
-    ) -> Result<String, crate::Error>;
-}
-
-/// Placeholder for exception handling for cores where handling exceptions is not yet supported.
-pub struct UnimplementedExceptionHandler;
-
-impl ExceptionInterface for UnimplementedExceptionHandler {
-    fn exception_details(
-        &self,
-        _memory: &mut dyn MemoryInterface,
-        _stackframe_registers: &DebugRegisters,
-        _debug_info: &DebugInfo,
-    ) -> Result<Option<ExceptionInfo>, Error> {
-        // For architectures where the exception handling has not been implemented in probe-rs,
-        // this will result in maintaining the current `unwind` behavior, i.e. unwinding will include up
-        // to the first frame that was called from an exception handler.
-        Ok(None)
-    }
-
-    fn calling_frame_registers(
-        &self,
-        _memory: &mut dyn MemoryInterface,
-        _stackframe_registers: &crate::debug::DebugRegisters,
-        _raw_exception: u32,
-    ) -> Result<crate::debug::DebugRegisters, crate::Error> {
-        Err(Error::NotImplemented("calling frame registers"))
-    }
-
-    fn raw_exception(
-        &self,
-        _stackframe_registers: &crate::debug::DebugRegisters,
-    ) -> Result<u32, crate::Error> {
-        Err(Error::NotImplemented(
-            "Not implemented for this architecture.",
-        ))
-    }
-
-    fn exception_description(
-        &self,
-        _raw_exception: u32,
-        _memory: &mut dyn MemoryInterface,
-    ) -> Result<String, crate::Error> {
-        Err(Error::NotImplemented("exception description"))
-    }
-}
-
-/// Creates a new exception interface for the [`CoreType`] at hand.
-pub fn exception_handler_for_core(core_type: CoreType) -> Box<dyn ExceptionInterface> {
-    use crate::architecture::arm::core::exception_handling::{armv6m, armv7m, armv8m};
-    match core_type {
-        CoreType::Armv6m => Box::new(armv6m::ArmV6MExceptionHandler),
-        CoreType::Armv7m | CoreType::Armv7em => Box::new(armv7m::ArmV7MExceptionHandler),
-        CoreType::Armv8m => Box::new(armv8m::ArmV8MExceptionHandler),
-        CoreType::Armv7a | CoreType::Armv8a | CoreType::Riscv | CoreType::Xtensa => {
-            Box::new(UnimplementedExceptionHandler)
-        }
     }
 }
 
@@ -724,42 +614,6 @@ impl<'probe> Core<'probe> {
     /// Disables vector catching for the given `condition`
     pub fn disable_vector_catch(&mut self, condition: VectorCatchCondition) -> Result<(), Error> {
         self.inner.disable_vector_catch(condition)
-    }
-
-    /// Dumps core info with the current state.
-    ///
-    /// # Arguments
-    ///
-    /// * `ranges`: Memory ranges that should be dumped.
-    pub fn dump(&mut self, ranges: Vec<Range<u64>>) -> Result<CoreDump, Error> {
-        let instruction_set = self.instruction_set()?;
-        let core_type = self.core_type();
-        let supports_native_64bit_access = self.supports_native_64bit_access();
-        let fpu_support = self.fpu_support()?;
-        let floating_point_register_count = self.floating_point_register_count()?;
-
-        let mut registers = HashMap::new();
-        for register in self.registers().all_registers() {
-            let value = self.read_core_reg(register.id())?;
-            registers.insert(register.id(), value);
-        }
-
-        let mut data = Vec::new();
-        for range in ranges {
-            let mut values = vec![0; (range.end - range.start) as usize];
-            self.read(range.start, &mut values)?;
-            data.push((range, values));
-        }
-
-        Ok(CoreDump {
-            registers,
-            data,
-            instruction_set,
-            supports_native_64bit_access,
-            core_type,
-            fpu_support,
-            floating_point_register_count: Some(floating_point_register_count),
-        })
     }
 
     /// Check if the integer size is 64-bit

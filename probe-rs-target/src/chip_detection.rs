@@ -150,7 +150,7 @@ pub struct InfinionScuDetection {
     #[serde(serialize_with = "hex_u_int")]
     pub part: u16,
 
-    /// SCU_IDCHIP register value, bits [19:4]
+    /// SCU_IDCHIP register value, bits \[19:4\]
     #[serde(serialize_with = "hex_u_int")]
     pub scu_id: u32,
 

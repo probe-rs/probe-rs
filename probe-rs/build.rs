@@ -2,6 +2,11 @@
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
 
+    // The `probers_docsrs` config is used to build docs for docs.rs.
+    // We can't use just `docsrs` because using that leads to a compile
+    // error in hidapi, see <https://github.com/ruabmbua/hidapi-rs/pull/158>.
+    println!("cargo::rustc-check-cfg=cfg(probers_docsrs)");
+
     // Only rerun build.rs if something inside targets/ or `PROBE_RS_TARGETS_DIR`
     // has changed. (By default cargo reruns build.rs if any file under the crate
     // root has changed) This improves build times and IDE responsivity when not

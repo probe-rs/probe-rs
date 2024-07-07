@@ -12,7 +12,7 @@ use crate::{
         xtensa::registers::XTENSA_CORE_REGSISTERS,
     },
     debug::{DebugRegister, DebugRegisters},
-    CoreType, InstructionSet, MemoryInterface,
+    Core, CoreType, Error, InstructionSet, MemoryInterface,
 };
 use crate::{RegisterId, RegisterValue};
 use anyhow::anyhow;
@@ -49,6 +49,42 @@ pub struct CoreDump {
 }
 
 impl CoreDump {
+    /// Dump the core info with the current state.
+    ///
+    /// # Arguments
+    /// * `core`: The core to dump.
+    /// * `ranges`: Memory ranges that should be dumped.
+    pub fn dump_core(core: &mut Core, ranges: Vec<Range<u64>>) -> Result<Self, Error> {
+        let instruction_set = core.instruction_set()?;
+        let core_type = core.core_type();
+        let supports_native_64bit_access = core.supports_native_64bit_access();
+        let fpu_support = core.fpu_support()?;
+        let floating_point_register_count = core.floating_point_register_count()?;
+
+        let mut registers = HashMap::new();
+        for register in core.registers().all_registers() {
+            let value = core.read_core_reg(register.id())?;
+            registers.insert(register.id(), value);
+        }
+
+        let mut data = Vec::new();
+        for range in ranges {
+            let mut values = vec![0; (range.end - range.start) as usize];
+            core.read(range.start, &mut values)?;
+            data.push((range, values));
+        }
+
+        Ok(CoreDump {
+            registers,
+            data,
+            instruction_set,
+            supports_native_64bit_access,
+            core_type,
+            fpu_support,
+            floating_point_register_count: Some(floating_point_register_count),
+        })
+    }
+
     /// Store the dumped core to a file.
     pub fn store(&self, path: &Path) -> Result<(), CoreDumpError> {
         let mut file = OpenOptions::new()

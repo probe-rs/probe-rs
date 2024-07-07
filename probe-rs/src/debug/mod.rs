@@ -24,6 +24,8 @@ pub mod variable;
 /// The hierarchical cache of all variables for a given scope.
 pub mod variable_cache;
 
+pub(crate) mod exception_handling;
+
 pub use self::{
     debug_info::*, debug_step::SteppingMode, registers::*, source_instructions::SourceLocation,
     source_instructions::VerifiedBreakpoint, stack_frame::StackFrame, variable::*,
