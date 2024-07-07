@@ -103,7 +103,7 @@ impl<'session> Flasher<'session> {
         // TODO: we probably want a full system reset here to make sure peripherals don't interfere.
         tracing::debug!("Reset and halt core {}", self.core_index);
         core.reset_and_halt(Duration::from_millis(500))
-            .map_err(FlashError::Core)?;
+            .map_err(FlashError::ResetAndHalt)?;
 
         // TODO: Possible special preparation of the target such as enabling faster clocks for the flash e.g.
 
@@ -493,6 +493,7 @@ fn into_reg(val: u64) -> Result<u32, FlashError> {
 
 pub(super) struct ActiveFlasher<'op, O: Operation> {
     core: Core<'op>,
+    instruction_set: InstructionSet,
     rtt: Option<Rtt>,
     progress: &'op FlashProgress,
     flash_algorithm: &'op FlashAlgorithm,
@@ -638,10 +639,20 @@ impl<O: Operation> ActiveFlasher<'_, O> {
 
         for (description, value) in registers {
             if let Some(v) = value {
-                self.core.write_core_reg(description, v)?;
+                self.core.write_core_reg(description, v).map_err(|error| {
+                    FlashError::WriteRegister {
+                        register: description.to_string(),
+                        source: error,
+                    }
+                })?;
 
                 if tracing::enabled!(Level::DEBUG) {
-                    let value: u32 = self.core.read_core_reg(description)?;
+                    let value: u32 = self.core.read_core_reg(description).map_err(|error| {
+                        FlashError::ReadRegister {
+                            register: description.to_string(),
+                            source: error,
+                        }
+                    })?;
 
                     tracing::debug!(
                         "content of {} {:#x}: {:#010x} should be: {:#010x}",
@@ -656,10 +667,12 @@ impl<O: Operation> ActiveFlasher<'_, O> {
 
         // Ensure RISC-V `ebreak` instructions enter debug mode,
         // this is necessary for soft breakpoints to work.
-        self.core.debug_on_sw_breakpoint(true)?;
+        self.core
+            .debug_on_sw_breakpoint(true)
+            .map_err(FlashError::Core)?;
 
         // Resume target operation.
-        self.core.run()?;
+        self.core.run().map_err(FlashError::Run)?;
 
         if let Some(rtt_address) = self.flash_algorithm.rtt_control_block {
             match rtt::try_attach_to_rtt(
@@ -685,7 +698,11 @@ impl<O: Operation> ActiveFlasher<'_, O> {
         let start = Instant::now();
 
         loop {
-            match self.core.status()? {
+            match self
+                .core
+                .status()
+                .map_err(FlashError::UnableToReadCoreStatus)?
+            {
                 CoreStatus::Halted(_) => {
                     // Once the core is halted we know for sure all RTT data is written
                     // so we can read all of it.
@@ -710,8 +727,12 @@ impl<O: Operation> ActiveFlasher<'_, O> {
 
         self.check_for_stack_overflow()?;
 
-        let r: u32 = self.core.read_core_reg(regs.result_register(0))?;
-        Ok(r)
+        self.core
+            .read_core_reg::<u32>(regs.result_register(0))
+            .map_err(|error| FlashError::ReadRegister {
+                register: regs.result_register(0).to_string(),
+                source: error,
+            })
     }
 
     fn read_rtt(&mut self) -> Result<(), FlashError> {
