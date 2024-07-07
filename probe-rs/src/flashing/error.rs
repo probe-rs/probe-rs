@@ -48,7 +48,7 @@ pub enum FlashError {
     /// Initializing the flash algorithm failed.
     #[error("The initialization of the flash algorithm failed.")]
     Init(#[source] Box<dyn std::error::Error + 'static + Send + Sync>),
-    /// Uninizializing the flash algorithm failed.
+    /// Uninitializing the flash algorithm failed.
     #[error("The uninitialization of the flash algorithm failed.")]
     Uninit(#[source] Box<dyn std::error::Error + 'static + Send + Sync>),
     /// This target does not support full chip flash erases.
