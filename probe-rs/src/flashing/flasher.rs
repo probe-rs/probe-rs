@@ -505,85 +505,66 @@ impl<O: Operation> ActiveFlasher<'_, O> {
     pub(super) fn init(&mut self, clock: Option<u32>) -> Result<(), FlashError> {
         let algo = &self.flash_algorithm;
 
-        let address = self.flash_algorithm.flash_properties.address_range.start;
-
-        // Execute init routine if one is present.
-        if let Some(pc_init) = algo.pc_init {
-            let error_code = self
-                .call_function_and_wait(
-                    &Registers {
-                        pc: into_reg(pc_init)?,
-                        r0: Some(into_reg(address)?),
-                        r1: clock.or(Some(0)),
-                        r2: Some(O::OPERATION),
-                        r3: None,
-                    },
-                    true,
-                    Duration::from_secs(2),
-                )
-                .map_err(|error| FlashError::Init(Box::new(error)))?;
-
-            if error_code != 0 {
-                return Err(FlashError::RoutineCallFailed {
-                    name: "init",
-                    error_code,
-                });
-            }
-        }
-
-        Ok(())
-    }
-
-    fn check_for_stack_overflow(&mut self) -> Result<(), FlashError> {
-        let algo = &self.flash_algorithm;
-
-        if !algo.stack_overflow_check {
+        // Skip init routine if not present.
+        let Some(pc_init) = algo.pc_init else {
             return Ok(());
-        }
+        };
 
-        let stack_bottom = algo.stack_top - algo.stack_size;
-        let read_back = self
-            .core
-            .read_word_8(stack_bottom)
-            .map_err(FlashError::Core)?;
+        let address = self.flash_algorithm.flash_properties.address_range.start;
+        let error_code = self
+            .call_function_and_wait(
+                &Registers {
+                    pc: into_reg(pc_init)?,
+                    r0: Some(into_reg(address)?),
+                    r1: clock.or(Some(0)),
+                    r2: Some(O::OPERATION),
+                    r3: None,
+                },
+                true,
+                Duration::from_secs(2),
+            )
+            .map_err(|error| FlashError::Init(Box::new(error)))?;
 
-        if read_back != STACK_FILL_BYTE {
-            return Err(FlashError::StackOverflowDetected { operation: O::NAME });
+        if error_code != 0 {
+            return Err(FlashError::RoutineCallFailed {
+                name: "init",
+                error_code,
+            });
         }
 
         Ok(())
     }
-
-    // pub(super) fn session_mut(&mut self) -> &mut Session {
-    //     &mut self.session
-    // }
 
     pub(super) fn uninit(&mut self) -> Result<(), FlashError> {
         tracing::debug!("Running uninit routine.");
         let algo = &self.flash_algorithm;
 
-        if let Some(pc_uninit) = algo.pc_uninit {
-            let error_code = self
-                .call_function_and_wait(
-                    &Registers {
-                        pc: into_reg(pc_uninit)?,
-                        r0: Some(O::OPERATION),
-                        r1: None,
-                        r2: None,
-                        r3: None,
-                    },
-                    false,
-                    Duration::from_secs(2),
-                )
-                .map_err(|error| FlashError::Uninit(Box::new(error)))?;
+        // Skip uninit routine if not present.
+        let Some(pc_uninit) = algo.pc_uninit else {
+            return Ok(());
+        };
 
-            if error_code != 0 {
-                return Err(FlashError::RoutineCallFailed {
-                    name: "uninit",
-                    error_code,
-                });
-            }
+        let error_code = self
+            .call_function_and_wait(
+                &Registers {
+                    pc: into_reg(pc_uninit)?,
+                    r0: Some(O::OPERATION),
+                    r1: None,
+                    r2: None,
+                    r3: None,
+                },
+                false,
+                Duration::from_secs(2),
+            )
+            .map_err(|error| FlashError::Uninit(Box::new(error)))?;
+
+        if error_code != 0 {
+            return Err(FlashError::RoutineCallFailed {
+                name: "uninit",
+                error_code,
+            });
         }
+
         Ok(())
     }
 
@@ -714,9 +695,7 @@ impl<O: Operation> ActiveFlasher<'_, O> {
                         status: CoreStatus::LockedUp,
                     });
                 }
-                _ => {
-                    // All other statuses are okay: we'll just keep polling.
-                }
+                _ => {} // All other statuses are okay: we'll just keep polling.
             }
             self.read_rtt()?;
             if start.elapsed() >= timeout {
@@ -736,21 +715,44 @@ impl<O: Operation> ActiveFlasher<'_, O> {
     }
 
     fn read_rtt(&mut self) -> Result<(), FlashError> {
-        if let Some(rtt) = &mut self.rtt {
-            for channel in rtt.up_channels().iter() {
-                let mut buffer = vec![0; channel.buffer_size()];
-                match channel.read(&mut self.core, &mut buffer) {
-                    Ok(read) if read > 0 => {
-                        let message = String::from_utf8_lossy(&buffer[..read]).to_string();
-                        let channel = channel.name().unwrap_or("unnamed");
-                        tracing::debug!("RTT({channel}): {message}");
-                        self.progress.message(message);
-                    }
-                    Ok(_) => (),
-                    Err(error) => tracing::debug!("Reading RTT failed: {error}"),
+        let Some(rtt) = &mut self.rtt else {
+            return Ok(());
+        };
+
+        for channel in rtt.up_channels().iter() {
+            let mut buffer = vec![0; channel.buffer_size()];
+            match channel.read(&mut self.core, &mut buffer) {
+                Ok(read) if read > 0 => {
+                    let message = String::from_utf8_lossy(&buffer[..read]).to_string();
+                    let channel = channel.name().unwrap_or("unnamed");
+                    tracing::debug!("RTT({channel}): {message}");
+                    self.progress.message(message);
                 }
+                Ok(_) => (),
+                Err(error) => tracing::debug!("Reading RTT failed: {error}"),
             }
         }
+
+        Ok(())
+    }
+
+    fn check_for_stack_overflow(&mut self) -> Result<(), FlashError> {
+        let algo = &self.flash_algorithm;
+
+        if !algo.stack_overflow_check {
+            return Ok(());
+        }
+
+        let stack_bottom = algo.stack_top - algo.stack_size;
+        let read_back = self
+            .core
+            .read_word_8(stack_bottom)
+            .map_err(FlashError::Core)?;
+
+        if read_back != STACK_FILL_BYTE {
+            return Err(FlashError::StackOverflowDetected { operation: O::NAME });
+        }
+
         Ok(())
     }
 }
