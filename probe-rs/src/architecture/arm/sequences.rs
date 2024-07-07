@@ -377,7 +377,7 @@ fn cortex_m_reset_system(interface: &mut dyn ArmProbe) -> Result<(), ArmError> {
 
     let start = Instant::now();
 
-    while start.elapsed() < Duration::from_millis(500) {
+    loop {
         let dhcsr = match interface.read_word_32(Dhcsr::get_mmio_address()) {
             Ok(val) => Dhcsr(val),
             // Some combinations of debug probe and target (in
@@ -390,14 +390,13 @@ fn cortex_m_reset_system(interface: &mut dyn ArmProbe) -> Result<(), ArmError> {
             }) => continue,
             Err(err) => return Err(err),
         };
-
-        // Wait until the S_RESET_ST bit is cleared on a read
         if !dhcsr.s_reset_st() {
             return Ok(());
         }
+        if start.elapsed() >= Duration::from_millis(500) {
+            return Err(ArmError::Timeout);
+        }
     }
-
-    Err(ArmError::Timeout)
 }
 
 /// A interface to operate debug sequences for ARM targets.
@@ -433,15 +432,15 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         if can_read_pins {
             let start = Instant::now();
 
-            while start.elapsed() < Duration::from_secs(1) {
+            loop {
                 if Pins(memory.swj_pins(n_reset, n_reset, 0)? as u8).nreset() {
                     return Ok(());
                 }
-
+                if start.elapsed() >= Duration::from_secs(1) {
+                    return Err(ArmError::Timeout);
+                }
                 thread::sleep(Duration::from_millis(100));
             }
-
-            Err(ArmError::Timeout)
         } else {
             thread::sleep(Duration::from_millis(100));
             Ok(())
@@ -599,17 +598,14 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
             interface.write_dp_register(dp, ctrl)?;
 
             let start = Instant::now();
-            let mut timeout = true;
-            while start.elapsed() < Duration::from_secs(1) {
+            loop {
                 let ctrl = interface.read_dp_register::<Ctrl>(dp)?;
                 if ctrl.csyspwrupack() && ctrl.cdbgpwrupack() {
-                    timeout = false;
                     break;
                 }
-            }
-
-            if timeout {
-                return Err(ArmError::Timeout);
+                if start.elapsed() >= Duration::from_secs(1) {
+                    return Err(ArmError::Timeout);
+                }
             }
 
             // TODO: Handle JTAG Specific part
@@ -830,15 +826,17 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
 
         // Wait for the power domains to go away
         let start = Instant::now();
-        while start.elapsed() < Duration::from_secs(1) {
+        loop {
             let ctrl = interface.raw_read_register(PortType::DebugPort, Ctrl::ADDRESS)?;
             let ctrl = Ctrl(ctrl);
             if !(ctrl.csyspwrupack() || ctrl.cdbgpwrupack()) {
                 return Ok(());
             }
-        }
 
-        Err(ArmError::Timeout)
+            if start.elapsed() >= Duration::from_secs(1) {
+                return Err(ArmError::Timeout);
+            }
+        }
     }
 
     /// Perform a SWD line reset or enter the JTAG Run-Test-Idle state, and then try to connect to a debug port.

@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::{fmt::Debug, time::Duration};
 
 use crate::{
     architecture::xtensa::arch::instruction::{Instruction, InstructionEncoding},
@@ -194,7 +194,7 @@ impl<'probe> Xdm<'probe> {
                 break;
             }
 
-            if now.elapsed().as_millis() > 500 {
+            if now.elapsed() > Duration::from_millis(500) {
                 return Err(XtensaError::Timeout);
             }
         }

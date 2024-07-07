@@ -1028,16 +1028,15 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
         // Wait until halted state is active again.
         let start = Instant::now();
 
-        let address = Edscr::get_mmio_address_from_base(self.base_address)?;
-
-        while start.elapsed() < timeout {
-            let edscr = Edscr(self.memory.read_word_32(address)?);
-            if edscr.halted() {
-                return Ok(());
+        while !self.core_halted()? {
+            if start.elapsed() >= timeout {
+                return Err(Error::Arm(ArmError::Timeout));
             }
+            // Wait a bit before polling again.
             std::thread::sleep(Duration::from_millis(1));
         }
-        Err(Error::Arm(ArmError::Timeout))
+
+        Ok(())
     }
 
     fn core_halted(&mut self) -> Result<bool, Error> {

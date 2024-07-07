@@ -314,7 +314,8 @@ impl ArmDebugSequence for XMC4000 {
             if !dhcsr.s_reset_st() {
                 tracing::debug!("Detected reset via S_RESET_ST");
                 break;
-            } else if start.elapsed() > Duration::from_millis(500) {
+            }
+            if start.elapsed() > Duration::from_millis(500) {
                 tracing::error!("XMC4000 did not reset as commanded");
                 return Err(ArmError::Timeout);
             }

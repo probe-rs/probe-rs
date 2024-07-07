@@ -313,7 +313,7 @@ impl AtSAM {
 
         // Wait for it to finish
         let start = Instant::now();
-        while start.elapsed() < Duration::from_secs(8) {
+        loop {
             let current_dsu_statusa = DsuStatusA::from(memory.read_word_8(DsuStatusA::ADDRESS)?);
             if current_dsu_statusa.done() {
                 tracing::info!("Chip-Erase complete");
@@ -334,11 +334,14 @@ impl AtSAM {
             } else if current_dsu_statusa.fail() {
                 return Err(ArmError::ChipEraseFailed);
             }
+
+            if start.elapsed() >= Duration::from_secs(8) {
+                tracing::error!("Chip-Erase failed to complete within 8 seconds");
+                return Err(ArmError::Timeout);
+            }
+
             thread::sleep(Duration::from_millis(250));
         }
-
-        tracing::error!("Chip-Erase failed to complete within 8 seconds");
-        Err(ArmError::Timeout)
     }
 
     /// Perform a hardware reset in a way that puts the core into CPU Reset Extension
@@ -392,14 +395,16 @@ impl AtSAM {
         memory.write_8(DsuStatusA::ADDRESS, &[dsu_statusa.0])?;
 
         let start = Instant::now();
-        while start.elapsed() < Duration::from_millis(100) {
+        loop {
             let current_dsu_statusa = DsuStatusA::from(memory.read_word_8(DsuStatusA::ADDRESS)?);
             if !current_dsu_statusa.crstext() {
                 return Ok(());
             }
-        }
 
-        Err(ArmError::Timeout)
+            if start.elapsed() >= Duration::from_millis(100) {
+                return Err(ArmError::Timeout);
+            }
+        }
     }
 
     /// Perform a normal hardware reset without triggering a Reset extension

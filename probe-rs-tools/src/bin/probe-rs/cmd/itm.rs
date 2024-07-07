@@ -1,5 +1,7 @@
 //! Provides ITM tracing capabilities.
 
+use std::time::{Duration, Instant};
+
 use probe_rs::architecture::arm::{component::TraceSink, swo::SwoConfig};
 use probe_rs::probe::list::Lister;
 
@@ -102,13 +104,13 @@ impl Cmd {
                     itm::DecoderOptions { ignore_eof: true },
                 );
 
-                let start = std::time::Instant::now();
-                let stop = std::time::Duration::from_millis(duration);
+                let start = Instant::now();
+                let stop = Duration::from_millis(duration);
                 for packet in decoder.singles() {
+                    println!("{packet:?}");
                     if start.elapsed() > stop {
                         return Ok(());
                     }
-                    println!("{packet:?}");
                 }
             }
         };
