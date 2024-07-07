@@ -3387,6 +3387,7 @@ dependencies = [
  "futures",
  "goblin",
  "insta",
+ "jep106",
  "log",
  "parse_int",
  "predicates",
