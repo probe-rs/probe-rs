@@ -16,6 +16,9 @@ use std::{
     time::{Duration, Instant},
 };
 
+/// The timeout for init/uninit routines.
+const INIT_TIMEOUT: Duration = Duration::from_secs(2);
+
 pub(super) trait Operation {
     const OPERATION: u32;
     const NAME: &'static str;
@@ -392,31 +395,23 @@ impl<'session> Flasher<'session> {
             let mut last_page_address = 0;
             for page in flash_encoder.pages() {
                 // At the start of each loop cycle load the next page buffer into RAM.
-                active.load_page_buffer(page.address(), page.data(), current_buf)?;
+                let buffer_address = active.load_page_buffer(page.data(), current_buf)?;
 
                 // Then wait for the active RAM -> Flash copy process to finish.
                 // Also check if it finished properly. If it didn't, return an error.
-                let result =
-                    active
-                        .wait_for_completion(Duration::from_secs(2))
-                        .map_err(|error| FlashError::PageWrite {
-                            page_address: last_page_address,
-                            source: Box::new(error),
-                        })?;
+                active.wait_for_write_end(last_page_address)?;
 
                 last_page_address = page.address();
                 active.progress.page_programmed(page.size(), t.elapsed());
 
                 t = Instant::now();
-                if result != 0 {
-                    return Err(FlashError::RoutineCallFailed {
-                        name: "program_page",
-                        error_code: result,
-                    });
-                }
 
                 // Start the next copy process.
-                active.start_program_page_with_buffer(page.address(), current_buf)?;
+                active.start_program_page_with_buffer(
+                    buffer_address,
+                    page.address(),
+                    page.size(),
+                )?;
 
                 // Swap the buffers
                 if current_buf == 1 {
@@ -426,21 +421,7 @@ impl<'session> Flasher<'session> {
                 }
             }
 
-            let result = active
-                .wait_for_completion(Duration::from_secs(2))
-                .map_err(|error| FlashError::PageWrite {
-                    page_address: last_page_address,
-                    source: Box::new(error),
-                })?;
-
-            if result != 0 {
-                Err(FlashError::RoutineCallFailed {
-                    name: "wait_for_completion",
-                    error_code: result,
-                })
-            } else {
-                Ok(())
-            }
+            active.wait_for_write_end(last_page_address)
         });
 
         match result.is_ok() {
@@ -521,7 +502,7 @@ impl<O: Operation> ActiveFlasher<'_, O> {
                     r3: None,
                 },
                 true,
-                Duration::from_secs(2),
+                INIT_TIMEOUT,
             )
             .map_err(|error| FlashError::Init(Box::new(error)))?;
 
@@ -554,7 +535,7 @@ impl<O: Operation> ActiveFlasher<'_, O> {
                     r3: None,
                 },
                 false,
-                Duration::from_secs(2),
+                INIT_TIMEOUT,
             )
             .map_err(|error| FlashError::Uninit(Box::new(error)))?;
 
@@ -883,67 +864,28 @@ impl<'p> ActiveFlasher<'p, Program> {
         );
 
         // Transfer the bytes to RAM.
-        let begin_data = self.buffer_address(0);
-        self.load_data(begin_data, bytes)?;
+        let begin_data = self.load_page_buffer(bytes, 0)?;
 
-        let error_code = self
-            .call_function_and_wait(
-                &Registers {
-                    pc: into_reg(self.flash_algorithm.pc_program_page)?,
-                    r0: Some(into_reg(address)?),
-                    r1: Some(bytes.len() as u32),
-                    r2: Some(into_reg(begin_data)?),
-                    r3: None,
-                },
-                false,
-                Duration::from_millis(
-                    self.flash_algorithm.flash_properties.program_page_timeout as u64,
-                ),
-            )
-            .map_err(|error| FlashError::PageWrite {
-                page_address: address,
-                source: Box::new(error),
-            })?;
+        self.start_program_page_with_buffer(begin_data, address, bytes.len() as u32)?;
+        self.wait_for_write_end(address)?;
+
         tracing::info!("Flashing took: {:?}", t1.elapsed());
 
-        if error_code != 0 {
-            Err(FlashError::PageWrite {
-                page_address: address,
-                source: Box::new(FlashError::RoutineCallFailed {
-                    name: "program_page",
-                    error_code,
-                }),
-            })
-        } else {
-            self.progress.page_programmed(page.size(), t1.elapsed());
-            Ok(())
-        }
-    }
-
-    fn buffer_address(&self, buffer_number: usize) -> u64 {
-        // Ensure the buffer number is valid, otherwise there is a bug somewhere
-        // in the flashing code.
-        assert!(
-            buffer_number < self.flash_algorithm.page_buffers.len(),
-            "Trying to use non-existing buffer ({}/{}) for flashing. This is a bug. Please report it.",
-            buffer_number, self.flash_algorithm.page_buffers.len()
-        );
-
-        self.flash_algorithm.page_buffers[buffer_number]
+        self.progress.page_programmed(page.size(), t1.elapsed());
+        Ok(())
     }
 
     pub(super) fn start_program_page_with_buffer(
         &mut self,
+        buffer_address: u64,
         page_address: u64,
-        buffer_number: usize,
+        data_size: u32,
     ) -> Result<(), FlashError> {
-        let buffer_address = self.buffer_address(buffer_number);
-
         self.call_function(
             &Registers {
                 pc: into_reg(self.flash_algorithm.pc_program_page)?,
                 r0: Some(into_reg(page_address)?),
-                r1: Some(self.flash_algorithm.flash_properties.page_size),
+                r1: Some(data_size),
                 r2: Some(into_reg(buffer_address)?),
                 r3: None,
             },
@@ -959,13 +901,41 @@ impl<'p> ActiveFlasher<'p, Program> {
 
     pub(super) fn load_page_buffer(
         &mut self,
-        _address: u64,
         bytes: &[u8],
         buffer_number: usize,
-    ) -> Result<(), FlashError> {
-        let buffer_address = self.buffer_address(buffer_number);
+    ) -> Result<u64, FlashError> {
+        // Ensure the buffer number is valid, otherwise there is a bug somewhere
+        // in the flashing code.
+        assert!(
+            buffer_number < self.flash_algorithm.page_buffers.len(),
+            "Trying to use non-existing buffer ({}/{}) for flashing. This is a bug. Please report it.",
+            buffer_number, self.flash_algorithm.page_buffers.len()
+        );
+
+        let buffer_address = self.flash_algorithm.page_buffers[buffer_number];
         self.load_data(buffer_address, bytes)?;
 
-        Ok(())
+        Ok(buffer_address)
+    }
+
+    fn wait_for_write_end(&mut self, last_page_address: u64) -> Result<(), FlashError> {
+        let timeout = Duration::from_millis(
+            self.flash_algorithm.flash_properties.program_page_timeout as u64,
+        );
+        self.wait_for_completion(timeout)
+            .and_then(|result| {
+                if result == 0 {
+                    Ok(())
+                } else {
+                    Err(FlashError::RoutineCallFailed {
+                        name: "program_page",
+                        error_code: result,
+                    })
+                }
+            })
+            .map_err(|error| FlashError::PageWrite {
+                page_address: last_page_address,
+                source: Box::new(error),
+            })
     }
 }
