@@ -154,14 +154,17 @@ impl<'session> Flasher<'session> {
         clock: Option<u32>,
     ) -> Result<ActiveFlasher<'_, O>, FlashError> {
         // Attach to memory and core.
-        let core = self
+        let mut core = self
             .session
             .core(self.core_index)
             .map_err(FlashError::Core)?;
 
+        let instruction_set = core.instruction_set().map_err(FlashError::Core)?;
+
         tracing::debug!("Preparing Flasher for operation {}", O::NAME);
         let mut flasher = ActiveFlasher::<O> {
             core,
+            instruction_set,
             rtt: None,
             progress: &self.progress,
             flash_algorithm: &self.flash_algorithm,
@@ -625,7 +628,7 @@ impl<O: Operation> ActiveFlasher<'_, O> {
                 self.core.return_address(),
                 // For ARM Cortex-M cores, we have to add 1 to the return address,
                 // to ensure that we stay in Thumb mode.
-                if self.core.instruction_set()? == InstructionSet::Thumb2 {
+                if self.instruction_set == InstructionSet::Thumb2 {
                     Some(into_reg(algo.load_address + 1)?)
                 } else {
                     Some(into_reg(algo.load_address)?)
