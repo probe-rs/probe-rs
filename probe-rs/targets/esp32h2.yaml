@@ -57,7 +57,6 @@ flash_algorithms:
   pc_erase_sector: 0x14
   pc_erase_all: 0x1c
   data_section_offset: 0x408102a0
-  stack_overflow_check: false
   flash_properties:
     address_range:
       start: 0x0
@@ -71,4 +70,5 @@ flash_algorithms:
       address: 0x0
   cores:
   - main
+  stack_overflow_check: false
   transfer_encoding: miniz

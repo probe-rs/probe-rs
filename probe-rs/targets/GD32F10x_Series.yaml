@@ -17,8 +17,6 @@ variants:
       end: 0x20001000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -46,8 +44,6 @@ variants:
       end: 0x20001800
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -75,8 +71,6 @@ variants:
       end: 0x20002800
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -104,8 +98,6 @@ variants:
       end: 0x20004000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -133,8 +125,6 @@ variants:
       end: 0x20001000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -162,8 +152,6 @@ variants:
       end: 0x20001800
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -191,8 +179,6 @@ variants:
       end: 0x20002800
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -220,8 +206,6 @@ variants:
       end: 0x20004000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -249,8 +233,6 @@ variants:
       end: 0x20008000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -278,8 +260,6 @@ variants:
       end: 0x2000c000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -307,8 +287,6 @@ variants:
       end: 0x2000c000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -336,8 +314,6 @@ variants:
       end: 0x20014000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -365,8 +341,6 @@ variants:
       end: 0x20014000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -394,8 +368,6 @@ variants:
       end: 0x20014000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -423,8 +395,6 @@ variants:
       end: 0x20014000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -452,8 +422,6 @@ variants:
       end: 0x20001000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -481,8 +449,6 @@ variants:
       end: 0x20001800
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -510,8 +476,6 @@ variants:
       end: 0x20002800
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -539,8 +503,6 @@ variants:
       end: 0x20004000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -568,8 +530,6 @@ variants:
       end: 0x20002800
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -597,8 +557,6 @@ variants:
       end: 0x20004000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -626,8 +584,6 @@ variants:
       end: 0x20008000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -655,8 +611,6 @@ variants:
       end: 0x2000c000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -684,8 +638,6 @@ variants:
       end: 0x2000c000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -713,8 +665,6 @@ variants:
       end: 0x20014000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -742,8 +692,6 @@ variants:
       end: 0x20014000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -771,8 +719,6 @@ variants:
       end: 0x20014000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -800,8 +746,6 @@ variants:
       end: 0x20014000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -829,8 +773,6 @@ variants:
       end: 0x20008000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -858,8 +800,6 @@ variants:
       end: 0x2000c000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -887,8 +827,6 @@ variants:
       end: 0x2000c000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -916,8 +854,6 @@ variants:
       end: 0x20014000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -945,8 +881,6 @@ variants:
       end: 0x20014000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -974,8 +908,6 @@ variants:
       end: 0x20014000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -1003,8 +935,6 @@ variants:
       end: 0x20014000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -1032,8 +962,6 @@ variants:
       end: 0x20001800
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -1061,8 +989,6 @@ variants:
       end: 0x20002800
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -1090,8 +1016,6 @@ variants:
       end: 0x20005000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -1119,8 +1043,6 @@ variants:
       end: 0x20005000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -1148,8 +1070,6 @@ variants:
       end: 0x20001800
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -1177,8 +1097,6 @@ variants:
       end: 0x20002800
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -1206,8 +1124,6 @@ variants:
       end: 0x20005000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -1235,8 +1151,6 @@ variants:
       end: 0x20005000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -1264,8 +1178,6 @@ variants:
       end: 0x2000c000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -1293,8 +1205,6 @@ variants:
       end: 0x20010000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -1322,8 +1232,6 @@ variants:
       end: 0x20010000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -1351,8 +1259,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -1380,8 +1286,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -1409,8 +1313,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -1438,8 +1340,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -1467,8 +1367,6 @@ variants:
       end: 0x20001800
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -1496,8 +1394,6 @@ variants:
       end: 0x20002800
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -1525,8 +1421,6 @@ variants:
       end: 0x20005000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -1554,8 +1448,6 @@ variants:
       end: 0x20005000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -1583,8 +1475,6 @@ variants:
       end: 0x20005000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -1612,8 +1502,6 @@ variants:
       end: 0x20005000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -1641,8 +1529,6 @@ variants:
       end: 0x2000c000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -1670,8 +1556,6 @@ variants:
       end: 0x20010000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -1699,8 +1583,6 @@ variants:
       end: 0x20010000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -1728,8 +1610,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -1757,8 +1637,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -1786,8 +1664,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -1815,8 +1691,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -1844,8 +1718,6 @@ variants:
       end: 0x2000c000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -1873,8 +1745,6 @@ variants:
       end: 0x20010000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -1902,8 +1772,6 @@ variants:
       end: 0x20010000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -1931,8 +1799,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -1960,8 +1826,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -1989,8 +1853,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -2018,8 +1880,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -2047,8 +1907,6 @@ variants:
       end: 0x20010000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -2076,8 +1934,6 @@ variants:
       end: 0x20010000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -2105,8 +1961,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -2134,8 +1988,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -2163,8 +2015,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -2192,8 +2042,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -2221,8 +2069,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -2250,8 +2096,6 @@ variants:
       end: 0x20010000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -2279,8 +2123,6 @@ variants:
       end: 0x20010000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -2308,8 +2150,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -2337,8 +2177,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -2366,8 +2204,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -2395,8 +2231,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -2424,8 +2258,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -2453,8 +2285,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -2482,8 +2312,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -2511,8 +2339,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -2540,8 +2366,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -2569,8 +2393,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -2598,8 +2420,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -2627,8 +2447,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -2656,8 +2474,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -2685,8 +2501,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -2714,8 +2528,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -2743,8 +2555,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -2772,8 +2582,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -2801,8 +2609,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -2830,8 +2636,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -2859,8 +2663,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -2888,8 +2690,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -2917,8 +2717,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -2946,8 +2744,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -2975,8 +2771,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -3004,8 +2798,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -3033,8 +2825,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:
@@ -3062,8 +2852,6 @@ variants:
       end: 0x20018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: IROM1
     range:

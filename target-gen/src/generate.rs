@@ -12,7 +12,7 @@ use probe_rs_target::{
 use std::collections::HashMap;
 use std::{fs, io::Read, path::Path};
 
-pub(crate) enum Kind<'a, T>
+pub enum Kind<'a, T>
 where
     T: std::io::Seek + std::io::Read,
 {
@@ -235,7 +235,7 @@ fn core_to_probe_core(value: &Core) -> Result<CoreType, Error> {
 }
 
 // Process all `.pdsc` files in the given directory.
-pub(crate) fn visit_dirs(path: &Path, families: &mut Vec<ChipFamily>) -> Result<()> {
+pub fn visit_dirs(path: &Path, families: &mut Vec<ChipFamily>) -> Result<()> {
     walk_files(path, &mut |path| {
         if has_extension(path, "pack") {
             log::info!("Found .pdsc file: {}", path.display());
@@ -269,7 +269,7 @@ fn has_extension(path: &Path, ext: &str) -> bool {
     path.extension().map_or(false, |e| e == ext)
 }
 
-pub(crate) fn visit_file(path: &Path, families: &mut Vec<ChipFamily>) -> Result<()> {
+pub fn visit_file(path: &Path, families: &mut Vec<ChipFamily>) -> Result<()> {
     log::info!("Trying to open pack file: {}.", path.display());
     // If we get a file, try to unpack it.
     let file = fs::File::open(path)?;
@@ -295,10 +295,7 @@ pub(crate) fn visit_file(path: &Path, families: &mut Vec<ChipFamily>) -> Result<
     extract_families(package, Kind::Archive(&mut archive), families, false)
 }
 
-pub(crate) async fn visit_arm_files(
-    families: &mut Vec<ChipFamily>,
-    filter: Option<String>,
-) -> Result<()> {
+pub async fn visit_arm_files(families: &mut Vec<ChipFamily>, filter: Option<String>) -> Result<()> {
     //TODO: The multi-threaded logging makes it very difficult to track which errors/warnings belong where - needs some rework.
     let packs = crate::fetch::get_vidx().await?;
 
