@@ -13,7 +13,10 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use colored::Colorize;
 use itertools::Itertools;
-use probe_rs::flashing::{BinOptions, Format, FormatKind, IdfOptions};
+use probe_rs::flashing::{
+    BinLoader, BinOptions, ElfLoader, Format, FormatKind, HexLoader, IdfLoader, IdfOptions,
+    Uf2Loader,
+};
 use probe_rs::{probe::list::Lister, Target};
 use report::Report;
 use serde::Deserialize;
@@ -163,17 +166,17 @@ impl FormatOptions {
             .context("Failed to parse binary format")?;
 
         Ok(match kind {
-            FormatKind::Bin => Format::Bin(BinOptions {
+            FormatKind::Bin => Format::from(BinLoader(BinOptions {
                 base_address: self.bin_options.base_address,
                 skip: self.bin_options.skip,
-            }),
-            FormatKind::Hex => Format::Hex,
-            FormatKind::Elf => Format::Elf,
-            FormatKind::Uf2 => Format::Uf2,
-            FormatKind::Idf => Format::Idf(IdfOptions {
+            })),
+            FormatKind::Hex => Format::from(HexLoader),
+            FormatKind::Elf => Format::from(ElfLoader),
+            FormatKind::Uf2 => Format::from(Uf2Loader),
+            FormatKind::Idf => Format::from(IdfLoader(IdfOptions {
                 bootloader: self.idf_options.idf_bootloader,
                 partition_table: self.idf_options.idf_partition_table,
-            }),
+            })),
         })
     }
 }

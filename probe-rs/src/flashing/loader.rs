@@ -16,7 +16,7 @@ use super::{
     IdfOptions,
 };
 use crate::config::DebugSequence;
-use crate::flashing::{FlashLayout, FlashProgress, Format};
+use crate::flashing::{FlashLayout, FlashProgress, FormatKind};
 use crate::memory::MemoryInterface;
 use crate::session::Session;
 use crate::Target;
@@ -38,25 +38,32 @@ pub trait ImageLoader {
     ) -> Result<(), FileDownloadError>;
 }
 
-impl ImageLoader for Format {
-    fn load(
-        &self,
-        flash_loader: &mut FlashLoader,
-        session: &mut Session,
-        file: &mut dyn ImageReader,
-    ) -> Result<(), FileDownloadError> {
-        match self {
-            Format::Bin(options) => BinLoader(options.clone()).load(flash_loader, session, file),
-            Format::Elf => ElfLoader.load(flash_loader, session, file),
-            Format::Hex => HexLoader.load(flash_loader, session, file),
-            Format::Idf(options) => IdfLoader(options.clone()).load(flash_loader, session, file),
-            Format::Uf2 => Uf2Loader.load(flash_loader, session, file),
+/// An initialized firmware image loader.
+pub struct Format(Box<dyn ImageLoader>);
+
+impl From<FormatKind> for Format {
+    fn from(kind: FormatKind) -> Self {
+        match kind {
+            FormatKind::Bin => Self::from(BinLoader(BinOptions::default())),
+            FormatKind::Hex => Self::from(HexLoader),
+            FormatKind::Elf => Self::from(ElfLoader),
+            FormatKind::Uf2 => Self::from(Uf2Loader),
+            FormatKind::Idf => Self::from(IdfLoader(IdfOptions::default())),
         }
     }
 }
 
+impl<I> From<I> for Format
+where
+    I: ImageLoader + 'static,
+{
+    fn from(loader: I) -> Self {
+        Self(Box::new(loader))
+    }
+}
+
 /// Reads the data from the binary file and adds it to the loader without splitting it into flash instructions yet.
-struct BinLoader(BinOptions);
+pub struct BinLoader(pub BinOptions);
 
 impl ImageLoader for BinLoader {
     fn load(
@@ -84,7 +91,7 @@ impl ImageLoader for BinLoader {
 
 /// Prepares the data sections that have to be loaded into flash from an ELF file.
 /// This will validate the ELF file and transform all its data into sections but no flash loader commands yet.
-struct ElfLoader;
+pub struct ElfLoader;
 
 impl ImageLoader for ElfLoader {
     fn load(
@@ -131,7 +138,7 @@ impl ImageLoader for ElfLoader {
 
 /// Reads the HEX data segments and adds them as loadable data blocks to the loader.
 /// This does not create any flash loader instructions yet.
-struct HexLoader;
+pub struct HexLoader;
 
 impl ImageLoader for HexLoader {
     fn load(
@@ -169,7 +176,7 @@ impl ImageLoader for HexLoader {
 
 /// Prepares the data sections that have to be loaded into flash from an UF2 file.
 /// This will validate the UF2 file and transform all its data into sections but no flash loader commands yet.
-struct Uf2Loader;
+pub struct Uf2Loader;
 
 impl ImageLoader for Uf2Loader {
     fn load(
@@ -205,7 +212,7 @@ impl ImageLoader for Uf2Loader {
 /// partition table.
 ///
 /// This does not create any flash loader instructions yet.
-struct IdfLoader(IdfOptions);
+pub struct IdfLoader(pub IdfOptions);
 
 impl ImageLoader for IdfLoader {
     fn load(
@@ -356,7 +363,7 @@ impl FlashLoader {
         &mut self,
         session: &mut Session,
         file: &mut T,
-        format: Format,
+        loader: Format,
         image_instruction_set: Option<InstructionSet>,
     ) -> Result<(), FileDownloadError> {
         if let Some(instr_set) = image_instruction_set {
@@ -383,7 +390,7 @@ impl FlashLoader {
             }
         }
 
-        format.load(self, session, file)
+        loader.0.load(self, session, file)
     }
 
     /// Writes all the stored data chunks to flash.

@@ -78,37 +78,6 @@ impl FromStr for FormatKind {
     }
 }
 
-/// A finite list of all the available binary formats probe-rs understands.
-#[derive(Debug, Default, Serialize, Deserialize, PartialEq, Eq, Clone)]
-pub enum Format {
-    /// Marks a file in binary format. This means that the file contains the contents of the flash 1:1.
-    /// [BinOptions] can be used to define the location in flash where the file contents should be put at.
-    /// Additionally using the same config struct, you can skip the first N bytes of the binary file to have them not put into the flash.
-    Bin(BinOptions),
-    /// Marks a file in [Intel HEX](https://en.wikipedia.org/wiki/Intel_HEX) format.
-    Hex,
-    /// Marks a file in the [ELF](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format) format.
-    #[default]
-    Elf,
-    /// Marks a file in the [ESP-IDF bootloader](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/app_image_format.html#app-image-structures) format.
-    /// Use [IdfOptions] to configure flashing.
-    Idf(IdfOptions),
-    /// Marks a file in the [UF2](https://github.com/microsoft/uf2) format.
-    Uf2,
-}
-
-impl From<FormatKind> for Format {
-    fn from(kind: FormatKind) -> Self {
-        match kind {
-            FormatKind::Bin => Format::Bin(BinOptions::default()),
-            FormatKind::Hex => Format::Hex,
-            FormatKind::Elf => Format::Elf,
-            FormatKind::Uf2 => Format::Uf2,
-            FormatKind::Idf => Format::Idf(IdfOptions::default()),
-        }
-    }
-}
-
 /// A finite list of all the errors that can occur when flashing a given file.
 ///
 /// This includes corrupt file issues,
