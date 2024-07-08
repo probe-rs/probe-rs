@@ -62,7 +62,7 @@ pub trait Vendor: Send + Sync + std::fmt::Display {
         Ok(None)
     }
 
-    ///
+    /// Tries to parse an image format.
     fn try_parse_image_format_name(&self, _format: &str) -> Option<ImageFormat> {
         None
     }
