@@ -173,10 +173,13 @@ impl FormatOptions {
             FormatKind::Hex => Format::from(HexLoader),
             FormatKind::Elf => Format::from(ElfLoader),
             FormatKind::Uf2 => Format::from(Uf2Loader),
-            FormatKind::Idf => Format::from(IdfLoader(IdfOptions {
+            FormatKind::VendorSpecific(f) if f == "idf" => Format::from(IdfLoader(IdfOptions {
                 bootloader: self.idf_options.idf_bootloader,
                 partition_table: self.idf_options.idf_partition_table,
             })),
+            FormatKind::VendorSpecific(other) => unreachable!(
+                "Unknown image format {other}. This should have been rejected earlier."
+            ),
         })
     }
 }

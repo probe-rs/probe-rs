@@ -44,11 +44,10 @@ pub enum FormatKind {
     /// Marks a file in the [ELF](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format) format.
     #[default]
     Elf,
-    /// Marks a file in the [ESP-IDF bootloader](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/app_image_format.html#app-image-structures) format.
-    /// Use [IdfOptions] to configure flashing.
-    Idf,
     /// Marks a file in the [UF2](https://github.com/microsoft/uf2) format.
     Uf2,
+    /// A vendor-specific image format.
+    VendorSpecific(String),
 }
 
 impl FormatKind {
@@ -72,7 +71,7 @@ impl FromStr for FormatKind {
             "hex" | "ihex" | "intelhex" => Ok(Self::Hex),
             "elf" => Ok(Self::Elf),
             "uf2" => Ok(Self::Uf2),
-            "idf" | "esp-idf" | "espidf" => Ok(Self::Idf),
+            "idf" | "esp-idf" | "espidf" => Ok(Self::VendorSpecific(String::from("idf"))),
             _ => Err(format!("Format '{s}' is unknown.")),
         }
     }
@@ -361,10 +360,22 @@ mod tests {
         assert_eq!(FormatKind::from_str("Binary"), Ok(FormatKind::Bin));
         assert_eq!(FormatKind::from_str("Elf"), Ok(FormatKind::Elf));
         assert_eq!(FormatKind::from_str("elf"), Ok(FormatKind::Elf));
-        assert_eq!(FormatKind::from_str("idf"), Ok(FormatKind::Idf));
-        assert_eq!(FormatKind::from_str("espidf"), Ok(FormatKind::Idf));
-        assert_eq!(FormatKind::from_str("esp-idf"), Ok(FormatKind::Idf));
-        assert_eq!(FormatKind::from_str("ESP-IDF"), Ok(FormatKind::Idf));
+        assert_eq!(
+            FormatKind::from_str("idf"),
+            Ok(FormatKind::VendorSpecific(String::from("idf")))
+        );
+        assert_eq!(
+            FormatKind::from_str("espidf"),
+            Ok(FormatKind::VendorSpecific(String::from("idf")))
+        );
+        assert_eq!(
+            FormatKind::from_str("esp-idf"),
+            Ok(FormatKind::VendorSpecific(String::from("idf")))
+        );
+        assert_eq!(
+            FormatKind::from_str("ESP-IDF"),
+            Ok(FormatKind::VendorSpecific(String::from("idf")))
+        );
         assert_eq!(
             FormatKind::from_str("elfbin"),
             Err("Format 'elfbin' is unknown.".to_string())

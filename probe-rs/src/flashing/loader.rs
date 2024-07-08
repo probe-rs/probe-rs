@@ -48,7 +48,12 @@ impl From<FormatKind> for Format {
             FormatKind::Hex => Self::from(HexLoader),
             FormatKind::Elf => Self::from(ElfLoader),
             FormatKind::Uf2 => Self::from(Uf2Loader),
-            FormatKind::Idf => Self::from(IdfLoader(IdfOptions::default())),
+            FormatKind::VendorSpecific(f) if f == "idf" => {
+                Self::from(IdfLoader(IdfOptions::default()))
+            }
+            FormatKind::VendorSpecific(other) => unreachable!(
+                "Unknown image format {other}. This should have been rejected earlier."
+            ),
         }
     }
 }
