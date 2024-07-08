@@ -7,12 +7,11 @@ use espflash::flasher::{FlashData, FlashSettings, FlashSize};
 use espflash::targets::XtalFrequency;
 use serde::{Deserialize, Serialize};
 
-use crate::flashing::{FileDownloadError, ImageReader};
-use crate::{
-    config::DebugSequence,
-    flashing::{FlashLoader, ImageFormatDefinition, ImageLoader},
-    Session,
+use crate::flashing::{
+    image::{ImageFormatDefinition, ImageLoader, ImageReader},
+    FileDownloadError,
 };
+use crate::{config::DebugSequence, flashing::FlashLoader, Session};
 
 /// Extended options for flashing a ESP-IDF format file.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Default)]

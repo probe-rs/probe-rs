@@ -50,6 +50,7 @@ mod erase;
 mod error;
 mod flash_algorithm;
 mod flasher;
+pub mod image;
 mod loader;
 mod progress;
 mod visualizer;

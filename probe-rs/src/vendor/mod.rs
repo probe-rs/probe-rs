@@ -15,7 +15,7 @@ use crate::{
         },
     },
     config::{registry, ChipInfo, DebugSequence},
-    flashing::ImageFormat,
+    flashing::image::ImageFormat,
     probe::{DebugProbeError, Probe},
     Error, Target,
 };

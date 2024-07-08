@@ -3,69 +3,13 @@ use object::{
     read::elf::ProgramHeader, Endianness, Object, ObjectSection,
 };
 use probe_rs_target::{InstructionSet, MemoryRange};
-use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DisplayFromStr};
 
-use std::{fs::File, path::Path, str::FromStr};
+use std::{fs::File, path::Path};
 
 use crate::{
-    flashing::{FlashError, FlashProgress, Format, ImageFormat},
+    flashing::{image::Format, FlashError, FlashProgress},
     session::Session,
 };
-
-/// Extended options for flashing a binary file.
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Default)]
-pub struct BinOptions {
-    /// The address in memory where the binary will be put at.
-    pub base_address: Option<u64>,
-    /// The number of bytes to skip at the start of the binary file.
-    pub skip: u32,
-}
-
-/// A finite list of all the available binary formats probe-rs understands.
-#[serde_as]
-#[derive(Debug, Default, Serialize, Deserialize, PartialEq, Eq, Clone)]
-pub enum FormatKind {
-    /// Marks a file in binary format. This means that the file contains the contents of the flash 1:1.
-    /// [BinOptions] can be used to define the location in flash where the file contents should be put at.
-    /// Additionally using the same config struct, you can skip the first N bytes of the binary file to have them not put into the flash.
-    Bin,
-    /// Marks a file in [Intel HEX](https://en.wikipedia.org/wiki/Intel_HEX) format.
-    Hex,
-    /// Marks a file in the [ELF](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format) format.
-    #[default]
-    Elf,
-    /// Marks a file in the [UF2](https://github.com/microsoft/uf2) format.
-    Uf2,
-    /// A vendor-specific image format.
-    VendorSpecific(#[serde_as(as = "DisplayFromStr")] ImageFormat),
-}
-
-impl FormatKind {
-    /// Creates a new Format from an optional string.
-    ///
-    /// If the string is `None`, the default format is returned.
-    pub fn from_optional(s: Option<&str>) -> Result<Self, String> {
-        match s {
-            Some(format) => Self::from_str(format),
-            None => Ok(Self::default()),
-        }
-    }
-}
-
-impl FromStr for FormatKind {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match &s.to_lowercase()[..] {
-            "bin" | "binary" => Ok(Self::Bin),
-            "hex" | "ihex" | "intelhex" => Ok(Self::Hex),
-            "elf" => Ok(Self::Elf),
-            "uf2" => Ok(Self::Uf2),
-            other => Ok(Self::VendorSpecific(ImageFormat::from_str(other)?)),
-        }
-    }
-}
 
 /// A finite list of all the errors that can occur when flashing a given file.
 ///
@@ -324,65 +268,5 @@ pub(super) fn extract_from_elf(
             extract_from_elf_inner(elf_header, binary, elf_data)
         }
         _ => Err(FileDownloadError::Object("Unsupported file type")),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn parse_format() {
-        assert_eq!(FormatKind::from_str("hex"), Ok(FormatKind::Hex));
-        assert_eq!(FormatKind::from_str("Hex"), Ok(FormatKind::Hex));
-        assert_eq!(FormatKind::from_str("Ihex"), Ok(FormatKind::Hex));
-        assert_eq!(FormatKind::from_str("IHex"), Ok(FormatKind::Hex));
-        assert_eq!(FormatKind::from_str("iHex"), Ok(FormatKind::Hex));
-        assert_eq!(FormatKind::from_str("IntelHex"), Ok(FormatKind::Hex));
-        assert_eq!(FormatKind::from_str("intelhex"), Ok(FormatKind::Hex));
-        assert_eq!(FormatKind::from_str("intelHex"), Ok(FormatKind::Hex));
-        assert_eq!(FormatKind::from_str("Intelhex"), Ok(FormatKind::Hex));
-        assert_eq!(FormatKind::from_str("bin"), Ok(FormatKind::Bin));
-        assert_eq!(FormatKind::from_str("Bin"), Ok(FormatKind::Bin));
-        assert_eq!(FormatKind::from_str("binary"), Ok(FormatKind::Bin));
-        assert_eq!(FormatKind::from_str("Binary"), Ok(FormatKind::Bin));
-        assert_eq!(FormatKind::from_str("Elf"), Ok(FormatKind::Elf));
-        assert_eq!(FormatKind::from_str("elf"), Ok(FormatKind::Elf));
-        assert_eq!(
-            FormatKind::from_str("idf"),
-            Ok(FormatKind::VendorSpecific(
-                ImageFormat::from_str("idf").unwrap()
-            ))
-        );
-        assert_eq!(
-            FormatKind::from_str("espidf"),
-            Ok(FormatKind::VendorSpecific(
-                ImageFormat::from_str("espidf").unwrap()
-            ))
-        );
-        assert_eq!(
-            FormatKind::from_str("esp-idf"),
-            Ok(FormatKind::VendorSpecific(
-                ImageFormat::from_str("esp-idf").unwrap()
-            ))
-        );
-        assert_eq!(
-            FormatKind::from_str("ESP-IDF"),
-            Ok(FormatKind::VendorSpecific(
-                ImageFormat::from_str("ESP-IDF").unwrap()
-            ))
-        );
-        assert_eq!(
-            FormatKind::from_str("elfbin"),
-            Err("Format 'elfbin' is unknown.".to_string())
-        );
-        assert_eq!(
-            FormatKind::from_str(""),
-            Err("Format '' is unknown.".to_string())
-        );
-        assert_eq!(
-            FormatKind::from_str("asdasdf"),
-            Err("Format 'asdasdf' is unknown.".to_string())
-        );
     }
 }

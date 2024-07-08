@@ -4,7 +4,7 @@ use colored::Colorize;
 use linkme::distributed_slice;
 use probe_rs::{
     config::MemoryRegion,
-    flashing::{download_file_with_options, DownloadOptions, FlashProgress, FormatKind},
+    flashing::{download_file_with_options, image::FormatKind, DownloadOptions, FlashProgress},
     Architecture, Core, MemoryInterface, Session,
 };
 

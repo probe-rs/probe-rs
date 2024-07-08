@@ -13,7 +13,7 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use colored::Colorize;
 use itertools::Itertools;
-use probe_rs::flashing::{
+use probe_rs::flashing::image::{
     BinLoader, BinOptions, ElfLoader, Format, FormatKind, HexLoader, Uf2Loader,
 };
 use probe_rs::{
