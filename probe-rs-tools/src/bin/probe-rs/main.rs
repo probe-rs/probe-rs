@@ -14,10 +14,13 @@ use clap::Parser;
 use colored::Colorize;
 use itertools::Itertools;
 use probe_rs::flashing::{
-    BinLoader, BinOptions, ElfLoader, Format, FormatKind, HexLoader, IdfLoader, IdfOptions,
-    Uf2Loader,
+    BinLoader, BinOptions, ElfLoader, Format, FormatKind, HexLoader, Uf2Loader,
 };
-use probe_rs::{probe::list::Lister, Target};
+use probe_rs::{
+    probe::list::Lister,
+    vendor::espressif::formats::{IdfLoader, IdfOptions},
+    Target,
+};
 use report::Report;
 use serde::Deserialize;
 use serde::Serialize;
@@ -173,10 +176,13 @@ impl FormatOptions {
             FormatKind::Hex => Format::from(HexLoader),
             FormatKind::Elf => Format::from(ElfLoader),
             FormatKind::Uf2 => Format::from(Uf2Loader),
-            FormatKind::VendorSpecific(f) if f == "idf" => Format::from(IdfLoader(IdfOptions {
-                bootloader: self.idf_options.idf_bootloader,
-                partition_table: self.idf_options.idf_partition_table,
-            })),
+            // FIXME: remove this hard-coded vendor-specific format
+            FormatKind::VendorSpecific(f) if f.name() == "idf" => {
+                Format::from(IdfLoader(IdfOptions {
+                    bootloader: self.idf_options.idf_bootloader,
+                    partition_table: self.idf_options.idf_partition_table,
+                }))
+            }
             FormatKind::VendorSpecific(other) => unreachable!(
                 "Unknown image format {other}. This should have been rejected earlier."
             ),

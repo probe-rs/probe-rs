@@ -15,6 +15,7 @@ use crate::{
         },
     },
     config::{registry, ChipInfo, DebugSequence},
+    flashing::ImageFormat,
     probe::{DebugProbeError, Probe},
     Error, Target,
 };
@@ -59,6 +60,11 @@ pub trait Vendor: Send + Sync + std::fmt::Display {
         _idcode: u32,
     ) -> Result<Option<String>, Error> {
         Ok(None)
+    }
+
+    ///
+    fn try_parse_image_format_name(&self, _format: &str) -> Option<ImageFormat> {
+        None
     }
 }
 
@@ -295,4 +301,16 @@ pub(crate) fn auto_determine_target(mut probe: Probe) -> Result<(Probe, Option<T
     probe.detach()?;
 
     Ok((probe, found_target))
+}
+
+/// Tries to parse an image format.
+pub fn try_parse_image_format(format: &str) -> Option<ImageFormat> {
+    let vendors = vendors();
+    for vendor in vendors.iter() {
+        if let Some(image_format) = vendor.try_parse_image_format_name(format) {
+            return Some(image_format);
+        }
+    }
+
+    None
 }

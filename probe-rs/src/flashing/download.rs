@@ -4,15 +4,14 @@ use object::{
 };
 use probe_rs_target::{InstructionSet, MemoryRange};
 use serde::{Deserialize, Serialize};
+use serde_with::{serde_as, DisplayFromStr};
 
-use std::{
-    fs::File,
-    path::{Path, PathBuf},
-    str::FromStr,
+use std::{fs::File, path::Path, str::FromStr};
+
+use crate::{
+    flashing::{FlashError, FlashProgress, Format, ImageFormat},
+    session::Session,
 };
-
-use super::*;
-use crate::session::Session;
 
 /// Extended options for flashing a binary file.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Default)]
@@ -23,16 +22,8 @@ pub struct BinOptions {
     pub skip: u32,
 }
 
-/// Extended options for flashing a ESP-IDF format file.
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Default)]
-pub struct IdfOptions {
-    /// The bootloader
-    pub bootloader: Option<PathBuf>,
-    /// The partition table
-    pub partition_table: Option<PathBuf>,
-}
-
 /// A finite list of all the available binary formats probe-rs understands.
+#[serde_as]
 #[derive(Debug, Default, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub enum FormatKind {
     /// Marks a file in binary format. This means that the file contains the contents of the flash 1:1.
@@ -47,7 +38,7 @@ pub enum FormatKind {
     /// Marks a file in the [UF2](https://github.com/microsoft/uf2) format.
     Uf2,
     /// A vendor-specific image format.
-    VendorSpecific(String),
+    VendorSpecific(#[serde_as(as = "DisplayFromStr")] ImageFormat),
 }
 
 impl FormatKind {
@@ -71,8 +62,7 @@ impl FromStr for FormatKind {
             "hex" | "ihex" | "intelhex" => Ok(Self::Hex),
             "elf" => Ok(Self::Elf),
             "uf2" => Ok(Self::Uf2),
-            "idf" | "esp-idf" | "espidf" => Ok(Self::VendorSpecific(String::from("idf"))),
-            _ => Err(format!("Format '{s}' is unknown.")),
+            other => Ok(Self::VendorSpecific(ImageFormat::from_str(other)?)),
         }
     }
 }
@@ -339,9 +329,7 @@ pub(super) fn extract_from_elf(
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
-
-    use super::FormatKind;
+    use super::*;
 
     #[test]
     fn parse_format() {
@@ -362,19 +350,27 @@ mod tests {
         assert_eq!(FormatKind::from_str("elf"), Ok(FormatKind::Elf));
         assert_eq!(
             FormatKind::from_str("idf"),
-            Ok(FormatKind::VendorSpecific(String::from("idf")))
+            Ok(FormatKind::VendorSpecific(
+                ImageFormat::from_str("idf").unwrap()
+            ))
         );
         assert_eq!(
             FormatKind::from_str("espidf"),
-            Ok(FormatKind::VendorSpecific(String::from("idf")))
+            Ok(FormatKind::VendorSpecific(
+                ImageFormat::from_str("espidf").unwrap()
+            ))
         );
         assert_eq!(
             FormatKind::from_str("esp-idf"),
-            Ok(FormatKind::VendorSpecific(String::from("idf")))
+            Ok(FormatKind::VendorSpecific(
+                ImageFormat::from_str("esp-idf").unwrap()
+            ))
         );
         assert_eq!(
             FormatKind::from_str("ESP-IDF"),
-            Ok(FormatKind::VendorSpecific(String::from("idf")))
+            Ok(FormatKind::VendorSpecific(
+                ImageFormat::from_str("ESP-IDF").unwrap()
+            ))
         );
         assert_eq!(
             FormatKind::from_str("elfbin"),
