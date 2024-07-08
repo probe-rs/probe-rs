@@ -89,6 +89,15 @@ impl Clone for Box<dyn ImageFormatDefinition> {
 #[derive(Clone)]
 pub struct ImageFormat(Box<dyn ImageFormatDefinition>);
 
+impl<T> From<T> for ImageFormat
+where
+    T: ImageFormatDefinition + 'static,
+{
+    fn from(format: T) -> Self {
+        Self(Box::new(format))
+    }
+}
+
 impl ImageFormat {
     /// Returns the name of the image format.
     pub fn name(&self) -> &'static str {
