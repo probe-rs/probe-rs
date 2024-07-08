@@ -134,7 +134,7 @@ impl FromStr for ImageFormat {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         crate::vendor::try_parse_image_format(s)
-            .ok_or_else(|| format!("Unknown image format '{s}'"))
+            .ok_or_else(|| format!("Unknown image format '{s}'."))
     }
 }
 
@@ -375,32 +375,32 @@ mod tests {
         assert_eq!(
             FormatKind::from_str("espidf"),
             Ok(FormatKind::VendorSpecific(
-                ImageFormat::from_str("espidf").unwrap()
+                ImageFormat::from_str("idf").unwrap()
             ))
         );
         assert_eq!(
             FormatKind::from_str("esp-idf"),
             Ok(FormatKind::VendorSpecific(
-                ImageFormat::from_str("esp-idf").unwrap()
+                ImageFormat::from_str("idf").unwrap()
             ))
         );
         assert_eq!(
             FormatKind::from_str("ESP-IDF"),
             Ok(FormatKind::VendorSpecific(
-                ImageFormat::from_str("ESP-IDF").unwrap()
+                ImageFormat::from_str("idf").unwrap()
             ))
         );
         assert_eq!(
             FormatKind::from_str("elfbin"),
-            Err("Format 'elfbin' is unknown.".to_string())
+            Err("Unknown image format 'elfbin'.".to_string())
         );
         assert_eq!(
             FormatKind::from_str(""),
-            Err("Format '' is unknown.".to_string())
+            Err("Unknown image format ''.".to_string())
         );
         assert_eq!(
             FormatKind::from_str("asdasdf"),
-            Err("Format 'asdasdf' is unknown.".to_string())
+            Err("Unknown image format 'asdasdf'.".to_string())
         );
     }
 }

@@ -18,7 +18,7 @@
 //!
 //! let mut session = Session::auto_attach("nrf51822", Permissions::default())?;
 //!
-//! flashing::download_file(&mut session, "binary.hex", flashing::Format::Hex)?;
+//! flashing::download_file(&mut session, "binary.hex", flashing::image::FormatKind::Hex)?;
 //!
 //! # Ok::<(), anyhow::Error>(())
 //! ```
@@ -27,7 +27,6 @@
 //!
 //! ```no_run
 //! use probe_rs::{Session, flashing::{FlashLoader, DownloadOptions}, Permissions};
-//!
 //!
 //! let mut session = Session::auto_attach("nrf51822", Permissions::default())?;
 //!
