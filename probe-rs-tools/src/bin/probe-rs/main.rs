@@ -153,11 +153,11 @@ impl FormatOptions {
     /// Finally, if neither of the above cases are true, we default to [`Format::default()`].
     pub fn into_format(self, target: &Target) -> Format {
         let format = self.binary_format.unwrap_or_else(|| {
-            Format::from_optional(target.default_format.as_deref())
+            FormatKind::from_optional(target.default_format.as_deref())
                 .expect("Failed to parse a default binary format. This shouldn't happen.")
         });
 
-        match kind {
+        match format {
             FormatKind::Bin => Format::Bin(BinOptions {
                 base_address: self.bin_options.base_address,
                 skip: self.bin_options.skip,
