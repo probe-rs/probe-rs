@@ -26,6 +26,8 @@ pub trait ImageReader: Read + Seek {}
 impl<T> ImageReader for T where T: Read + Seek {}
 
 /// Load and parse a firmware in a particular format, and add it to the flash loader.
+///
+/// Based on the image loader, probe-rs may apply certain transformations to the firmware.
 pub trait ImageLoader {
     /// Loads the given image.
     fn load(
@@ -198,8 +200,9 @@ impl ImageLoader for Uf2Loader {
     }
 }
 
-/// Loads an esp-idf application into the loader by converting the main application to the esp-idf bootloader format,
-/// appending it to the loader along with the bootloader and partition table.
+/// Loads an ELF file as an esp-idf application into the loader by converting the main application
+/// to the esp-idf bootloader format, appending it to the loader along with the bootloader and
+/// partition table.
 ///
 /// This does not create any flash loader instructions yet.
 struct IdfLoader(IdfOptions);
