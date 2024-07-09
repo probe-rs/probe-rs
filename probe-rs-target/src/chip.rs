@@ -78,6 +78,7 @@ pub struct Chip {
     #[serde(default)]
     pub jtag: Option<Jtag>,
     /// The default binary format for this chip
+    // TODO: rename to default_platform
     #[serde(default)]
     pub default_binary_format: Option<String>,
 }
