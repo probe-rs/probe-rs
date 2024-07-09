@@ -530,14 +530,14 @@ impl FlashLoader {
             let mut some = false;
             for (address, data) in self.builder.data_in_range(&region.range) {
                 some = true;
-                tracing::debug!(
+                tracing::info!(
                     "     -- writing: {:#010X}..{:#010X} ({} bytes)",
                     address,
                     address + data.len() as u64,
                     data.len()
                 );
                 // Write data to memory.
-                core.write_8(address, data).map_err(FlashError::Core)?;
+                core.write(address, data).map_err(FlashError::Core)?;
             }
 
             if !some {
