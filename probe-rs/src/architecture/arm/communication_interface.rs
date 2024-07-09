@@ -276,7 +276,7 @@ impl ApInformation {
 
             probe.write_ap_register(access_port, old_csw)?;
 
-            let only_32bit_data_size = csw.SIZE != DataSize::U8;
+            let only_32bit_data_size = csw.SIZE == DataSize::U32;
 
             let supports_hnonsec = csw.HNONSEC == 1;
 

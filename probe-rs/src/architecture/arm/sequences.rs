@@ -12,11 +12,13 @@ use probe_rs_target::CoreType;
 
 use crate::{
     architecture::arm::{
+        armv7m::Vtor,
+        core::registers::cortex_m::{PC, SP},
         dp::{DLPIDR, TARGETID},
         ArmProbeInterface,
     },
     probe::{DebugProbeError, WireProtocol},
-    MemoryMappedRegister,
+    CoreInterface, MemoryMappedRegister,
 };
 
 use super::{
@@ -961,6 +963,40 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
             }
         }
 
+        Ok(())
+    }
+
+    /// This ARM sequence is called if an image was flashed to RAM directly.
+    /// It will perform the necessary preparation to run that image.
+    fn ram_flash_start(
+        &self,
+        vector_table_offset: u64,
+        interface: &mut dyn ArmProbe,
+        core: &mut dyn CoreInterface,
+        core_type: CoreType,
+    ) -> Result<(), crate::Error> {
+        const SP_MAIN_OFFSET: usize = 0;
+        const RESET_VECTOR_OFFSET: usize = 1;
+        match core_type {
+            CoreType::Armv7a => unimplemented!(),
+            CoreType::Armv8a => unimplemented!(),
+            CoreType::Armv6m | CoreType::Armv7m | CoreType::Armv7em | CoreType::Armv8m => {
+                // See ARMv7-M Architecture Reference Manual Chapter B1.5 for more details.
+                let vtor = Vtor(vector_table_offset as u32);
+                let mut first_table_entries: [u32; 2] = [0; 2];
+                interface.read_32(vector_table_offset, &mut first_table_entries)?;
+                // The first entry in the vector table is the SP_main reset value of the main stack pointer,
+                // so we set the stack pointer register accordingly.
+                core.write_core_reg(SP.id, first_table_entries[SP_MAIN_OFFSET].into())?;
+                // The second entry in the vector table is the reset vector. It needs to be loaded
+                // as the initial PC value on a reset, see chapter A2.3.1 of the reference manual.
+                core.write_core_reg(PC.id, first_table_entries[RESET_VECTOR_OFFSET].into())?;
+                interface.write_word_32(Vtor::get_mmio_address(), vtor.0)?;
+            }
+            _ => {
+                panic!("Logic inconsistency bug - non ARM core type passed {core_type:?}");
+            }
+        }
         Ok(())
     }
 

@@ -233,6 +233,32 @@ impl MemoryMappedRegister<u32> for Dcrdr {
 }
 
 bitfield! {
+    /// Vector Table Offset Register, VTOR (see armv7-M Architecture Reference Manual B3.2.5)
+    #[derive(Copy, Clone)]
+    pub struct Vtor(u32);
+    impl Debug;
+    /// This fields holds bits [31:7] of the table offset.
+    pub tbloff, set_tbloff: 31, 7;
+}
+
+impl From<u32> for Vtor  {
+    fn from(value: u32) -> Self {
+        Self(value)
+    }
+}
+
+impl From<Vtor> for u32 {
+    fn from(value: Vtor) -> Self {
+        value.0
+    }
+}
+
+impl MemoryMappedRegister<u32> for Vtor{
+    const ADDRESS_OFFSET: u64 = 0xE000_ED08;
+    const NAME: &'static str = "VTOR";
+}
+
+bitfield! {
     /// Application Interrupt and Reset Control Register, AIRCR (see armv7-M Architecture Reference Manual B3.2.6)
     ///
     /// [`Aircr::vectkey`] must be called before this register can effectively be written!
