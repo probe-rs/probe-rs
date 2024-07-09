@@ -25,32 +25,22 @@ static RUSTLIB_SOURCE_MAP: Lazy<Option<(TypedPathBuf, TypedPathBuf)>> = Lazy::ne
     let rustc = rustc_binary();
 
     // Call rustc --version --verbose to get hash
-    let cmd = subprocess::Exec::cmd(&rustc)
-        .args(&["--version", "--verbose"])
-        .communicate()
+    let cmd = std::process::Command::new(&rustc)
+        .args(["--version", "--verbose"])
+        .output()
         .ok()?;
-    let stdout = cmd
-        .limit_time(std::time::Duration::from_secs(5))
-        .limit_size(1024)
-        .read_string()
-        .ok()?
-        .0?;
+    let stdout = String::from_utf8(cmd.stdout).ok()?;
     let hash = stdout
         .lines()
         .find_map(|line| line.strip_prefix("commit-hash:"))?
         .trim();
 
     // Call rustc --print sysroot to get the sysroot
-    let cmd = subprocess::Exec::cmd(&rustc)
-        .args(&["--print", "sysroot"])
-        .communicate()
+    let cmd = std::process::Command::new(&rustc)
+        .args(["--print", "sysroot"])
+        .output()
         .ok()?;
-    let stdout = cmd
-        .limit_time(std::time::Duration::from_secs(5))
-        .limit_size(1024)
-        .read_string()
-        .ok()?
-        .0?;
+    let stdout = String::from_utf8(cmd.stdout).ok()?;
     let sysroot = TypedPathBuf::from(stdout.trim());
 
     // from is always a Unix path, to is a native path
