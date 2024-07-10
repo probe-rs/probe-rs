@@ -171,6 +171,26 @@ impl DownloadOptions {
     }
 }
 
+/// Builds a new flash loader for the given target and path. This
+/// will check the path for validity and check what pages have to be
+/// flashed etc.
+pub fn build_loader(
+    session: &mut Session,
+    path: impl AsRef<Path>,
+    format: Format,
+    image_instruction_set: Option<InstructionSet>,
+) -> Result<FlashLoader, FileDownloadError> {
+    // Create the flash loader
+    let mut loader = session.target().flash_loader();
+
+    // Add data from the BIN.
+    let mut file = File::open(path).map_err(FileDownloadError::IO)?;
+
+    loader.load_image(session, &mut file, format, image_instruction_set)?;
+
+    Ok(loader)
+}
+
 /// Downloads a file of given `format` at `path` to the flash of the target given in `session`.
 ///
 /// This will ensure that memory boundaries are honored and does unlocking, erasing and programming of the flash for you.
@@ -195,11 +215,7 @@ pub fn download_file_with_options<P: AsRef<Path>>(
     format: Format,
     options: DownloadOptions,
 ) -> Result<(), FileDownloadError> {
-    let mut file = File::open(path.as_ref()).map_err(FileDownloadError::IO)?;
-
-    let mut loader = session.target().flash_loader();
-
-    loader.load_image(session, &mut file, format, None)?;
+    let loader = build_loader(session, path, format, None)?;
 
     loader
         .commit(session, options)

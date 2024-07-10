@@ -4,7 +4,6 @@ use super::common_options::{BinaryDownloadOptions, LoadedProbeOptions, Operation
 use super::logging;
 
 use std::cell::RefCell;
-use std::fs::File;
 use std::time::Duration;
 use std::{path::Path, time::Instant};
 
@@ -161,16 +160,9 @@ pub fn build_loader(
     format_options: FormatOptions,
     image_instruction_set: Option<InstructionSet>,
 ) -> Result<FlashLoader, FileDownloadError> {
-    // Create the flash loader
-    let mut loader = session.target().flash_loader();
-
-    // Add data from the BIN.
-    let mut file = File::open(path).map_err(FileDownloadError::IO)?;
-
     let format = format_options.into_format(session.target());
-    loader.load_image(session, &mut file, format, image_instruction_set)?;
 
-    Ok(loader)
+    probe_rs::flashing::build_loader(session, path, format, image_instruction_set)
 }
 
 struct ProgressBars {
