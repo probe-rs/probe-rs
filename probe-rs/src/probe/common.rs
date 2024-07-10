@@ -2,7 +2,6 @@
 
 use std::iter;
 
-use anyhow::anyhow;
 use bitfield::bitfield;
 use bitvec::prelude::*;
 use probe_rs_target::ScanChainElement;
@@ -496,7 +495,7 @@ fn shift_ir(
 
     // Check the bit length, enough data has to be available
     if data.len() * 8 < len || len == 0 {
-        return Err(DebugProbeError::Other(anyhow!(
+        return Err(DebugProbeError::Other(format!(
             "Invalid data length. IR bits: {}, expected: {}",
             data.len(),
             len
@@ -550,7 +549,7 @@ fn shift_dr(
 
     // Check the bit length, enough data has to be available
     if data.len() * 8 < register_bits || register_bits == 0 {
-        return Err(DebugProbeError::Other(anyhow!(
+        return Err(DebugProbeError::Other(format!(
             "Invalid data length. DR bits: {}, expected: {}",
             data.len(),
             register_bits
@@ -614,7 +613,7 @@ fn prepare_write_register(
 ) -> Result<usize, DebugProbeError> {
     if protocol.state().current_ir_reg != address {
         if address > protocol.state().max_ir_address {
-            return Err(DebugProbeError::Other(anyhow!(
+            return Err(DebugProbeError::Other(format!(
                 "Invalid instruction register access: {}",
                 address
             )));
@@ -644,7 +643,7 @@ impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
 
         tracing::debug!("DR: {:?}", response);
 
-        let idcodes = extract_idcodes(&response).map_err(|e| DebugProbeError::Other(e.into()))?;
+        let idcodes = extract_idcodes(&response)?;
 
         tracing::info!(
             "JTAG DR scan complete, found {} TAPs. {:?}",
@@ -692,8 +691,7 @@ impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
                         .collect::<Vec<usize>>()
                 })
                 .as_deref(),
-        )
-        .map_err(|e| DebugProbeError::Other(e.into()))?;
+        )?;
 
         tracing::info!("Found {} TAPs on reset scan", idcodes.len());
         tracing::debug!("Detected IR lens: {:?}", ir_lens);

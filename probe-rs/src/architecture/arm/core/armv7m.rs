@@ -18,10 +18,9 @@ use crate::{
     },
     error::Error,
     memory::valid_32bit_address,
-    probe::DebugProbeError,
     BreakpointCause, CoreRegister, CoreType, InstructionSet, MemoryInterface,
 };
-use anyhow::{anyhow, Result};
+use anyhow::anyhow;
 use bitfield::bitfield;
 use std::{
     mem::size_of,
@@ -504,7 +503,7 @@ impl FpRev1CompX {
         } else if fp1_val.replace() == 0b10 {
             Ok((fp1_val.comp() << 2) | 0x2)
         } else {
-            Err(Error::Probe(DebugProbeError::Other(anyhow::anyhow!("Unsupported breakpoint comparator value {:#08x} for HW breakpoint. Breakpoint must be on half-word boundaries", fp1_val.0))))
+            Err(Error::Arm(ArmError::Other(format!("Unsupported breakpoint comparator value {:#08x} for HW breakpoint. Breakpoint must be on half-word boundaries", fp1_val.0))))
         }
     }
     /// Get the correct register configuration which enables
@@ -907,7 +906,8 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
 
     fn write_core_reg(&mut self, address: RegisterId, value: RegisterValue) -> Result<(), Error> {
         if self.state.current_state.is_halted() {
-            super::cortex_m::write_core_reg(&mut *self.memory, address, value.try_into()?)
+            super::cortex_m::write_core_reg(&mut *self.memory, address, value.try_into()?)?;
+            Ok(())
         } else {
             Err(Error::Arm(ArmError::CoreNotHalted))
         }
@@ -922,9 +922,9 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
             Ok(reg.num_code())
         } else {
             tracing::warn!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", reg.rev());
-            Err(Error::Probe(DebugProbeError::CommandNotSupportedByProbe {
-                command_name: "get_available_breakpoint_units",
-            }))
+            Err(
+                Error::Arm(ArmError::Other(format!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", reg.rev())))
+            )
         }
     }
 

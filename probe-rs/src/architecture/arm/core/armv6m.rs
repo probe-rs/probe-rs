@@ -8,11 +8,9 @@ use crate::{
     core::{CoreRegisters, RegisterId, RegisterValue, VectorCatchCondition},
     error::Error,
     memory::valid_32bit_address,
-    probe::DebugProbeError,
     Architecture, BreakpointCause, CoreInformation, CoreInterface, CoreRegister, CoreStatus,
     CoreType, HaltReason, InstructionSet, MemoryInterface, MemoryMappedRegister,
 };
-use anyhow::Result;
 use bitfield::bitfield;
 use std::{
     mem::size_of,
@@ -295,7 +293,7 @@ impl BpCompx {
         } else if bp_val.bp_match() == 0b10 {
             Ok((bp_val.comp() << 2) | 0x2)
         } else {
-            Err(Error::Probe(DebugProbeError::Other(anyhow::anyhow!("Unsupported breakpoint comparator value {:#08x} for HW breakpoint. Breakpoint must be on half-word boundaries", bp_val.0))))
+            Err(Error::Arm(ArmError::Other(format!("Unsupported breakpoint comparator value {:#08x} for HW breakpoint. Breakpoint must be on half-word boundaries", bp_val.0) )))
         }
     }
 }
@@ -707,7 +705,8 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
 
     fn write_core_reg(&mut self, address: RegisterId, value: RegisterValue) -> Result<(), Error> {
         if self.state.current_state.is_halted() {
-            super::cortex_m::write_core_reg(&mut *self.memory, address, value.try_into()?)
+            super::cortex_m::write_core_reg(&mut *self.memory, address, value.try_into()?)?;
+            Ok(())
         } else {
             Err(Error::Arm(ArmError::CoreNotHalted))
         }
@@ -762,7 +761,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
         // The highest 3 bits of the address have to be zero, otherwise the breakpoint cannot
         // be set at the address.
         if addr >= 0x2000_0000 {
-            return Err(Error::Probe(DebugProbeError::Other(anyhow::anyhow!("Unsupported address {:#08x} for HW breakpoint. Breakpoint must be at address < 0x2000_0000.", addr))));
+            return Err(Error::Arm(ArmError::Other(format!("Unsupported address {:#08x} for HW breakpoint. Breakpoint must be at address < 0x2000_0000.", addr))));
         }
 
         let mut value = BpCompx(0);

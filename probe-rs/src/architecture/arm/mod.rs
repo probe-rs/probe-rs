@@ -19,7 +19,7 @@ use self::{
     sequences::ArmDebugSequenceError,
     {armv7a::Armv7aError, armv8a::Armv8aError},
 };
-use crate::probe::DebugProbeError;
+use crate::{core::memory_mapped_registers::RegisterAddressOutOfBounds, probe::DebugProbeError};
 pub use communication_interface::{
     ApInformation, ArmChipInfo, ArmCommunicationInterface, ArmProbeInterface, DapError,
     MemoryApInformation, Register,
@@ -156,9 +156,17 @@ pub enum ArmError {
     #[error("The operation requires the following extension(s): {0:?}.")]
     ExtensionRequired(&'static [&'static str]),
 
-    /// Some other error occurred.
-    #[error(transparent)]
-    Other(#[from] anyhow::Error),
+    /// An error occured while calculating the address of a register.
+    #[error("Error calculating register address.")]
+    RegisterAddressOutOfBounds(#[from] RegisterAddressOutOfBounds),
+
+    /// Some required functionality is not implemented.
+    #[error("Not implemented: {0}")]
+    NotImplemented(&'static str),
+
+    /// Another ARM error occured
+    #[error("{0}")]
+    Other(String),
 }
 
 impl ArmError {

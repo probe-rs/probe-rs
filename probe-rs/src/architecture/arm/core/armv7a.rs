@@ -25,7 +25,6 @@ use crate::{
     Architecture, CoreInformation, CoreInterface, CoreRegister, CoreStatus, CoreType,
     InstructionSet, MemoryInterface,
 };
-use anyhow::Result;
 use std::{
     mem::size_of,
     sync::Arc,
@@ -132,9 +131,9 @@ impl<'probe> Armv7a<'probe> {
     }
 
     /// Execute an instruction
-    fn execute_instruction(&mut self, instruction: u32) -> Result<Dbgdscr, Error> {
+    fn execute_instruction(&mut self, instruction: u32) -> Result<Dbgdscr, ArmError> {
         if !self.state.current_state.is_halted() {
-            return Err(Error::Arm(ArmError::CoreNotHalted));
+            return Err(ArmError::CoreNotHalted);
         }
 
         // Enable ITR if needed
@@ -168,7 +167,7 @@ impl<'probe> Armv7a<'probe> {
 
             self.memory.write_word_32(address, dbgdrcr.into())?;
 
-            return Err(Error::Arm(Armv7aError::DataAbort.into()));
+            return Err(Armv7aError::DataAbort.into());
         }
 
         Ok(dbgdscr)

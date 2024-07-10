@@ -17,7 +17,6 @@ use crate::{
         ProbeCreationError, ProbeFactory, ScanChainElement, WireProtocol,
     },
 };
-use anyhow::anyhow;
 use bitvec::prelude::*;
 use nusb::DeviceInfo;
 use std::{
@@ -160,7 +159,7 @@ impl JtagAdapter {
         }
 
         if reply.len() != self.in_bit_counts.len() {
-            return Err(DebugProbeError::Other(anyhow!(
+            return Err(DebugProbeError::Other(format!(
                 "Read more data than expected. Expected {} bytes, got {} bytes",
                 self.in_bit_counts.len(),
                 reply.len()

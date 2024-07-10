@@ -151,7 +151,7 @@ impl IdPfr1 {
     }
 }
 
-pub(crate) fn read_core_reg(memory: &mut dyn ArmProbe, addr: RegisterId) -> Result<u32, Error> {
+pub(crate) fn read_core_reg(memory: &mut dyn ArmProbe, addr: RegisterId) -> Result<u32, ArmError> {
     // Write the DCRSR value to select the register we want to read.
     let mut dcrsr_val = Dcrsr(0);
     dcrsr_val.set_regwnr(false); // Perform a read.
@@ -170,7 +170,7 @@ pub(crate) fn write_core_reg(
     memory: &mut dyn ArmProbe,
     addr: RegisterId,
     value: u32,
-) -> Result<(), Error> {
+) -> Result<(), ArmError> {
     memory.write_word_32(Dcrdr::get_mmio_address(), value)?;
 
     // write the DCRSR value to select the register we want to write.

@@ -231,7 +231,6 @@ impl MIMXRT11xx {
         reg: crate::core::registers::CoreRegister,
     ) -> Result<u32, ArmError> {
         crate::architecture::arm::core::cortex_m::read_core_reg(probe, reg.into())
-            .map_err(|err| ArmError::Other(err.into()))
     }
 
     /// Assumes that the core is halted.
@@ -241,8 +240,7 @@ impl MIMXRT11xx {
         reg: crate::core::registers::CoreRegister,
         value: u32,
     ) -> Result<(), ArmError> {
-        crate::architecture::arm::core::cortex_m::write_core_reg(probe, reg.into(), value)
-            .map_err(|err| ArmError::Other(err.into()))?;
+        crate::architecture::arm::core::cortex_m::write_core_reg(probe, reg.into(), value)?;
         probe.flush()?;
         Ok(())
     }

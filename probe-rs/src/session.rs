@@ -336,7 +336,7 @@ impl Session {
                     // Already initialised.
                     continue;
                 }
-                return Err(Error::Probe(DebugProbeError::Other(anyhow::anyhow!(
+                return Err(Error::Probe(DebugProbeError::Other(format!(
                     "{core_arch:?} core can not be mixed with a {debug_arch:?} debug module.",
                 ))));
             }
@@ -364,7 +364,7 @@ impl Session {
                     JtagInterface::Xtensa(state)
                 }
                 _ => {
-                    return Err(Error::Probe(DebugProbeError::Other(anyhow::anyhow!(
+                    return Err(Error::Probe(DebugProbeError::Other(format!(
                         "Unsupported core architecture {core_arch:?}",
                     ))));
                 }
@@ -633,20 +633,18 @@ impl Session {
     /// Err(e) if the custom erase sequence failed
     pub fn sequence_erase_all(&mut self) -> Result<(), Error> {
         let ArchitectureInterface::Arm(ref mut interface) = self.interfaces else {
-            return Err(Error::Probe(DebugProbeError::NotImplemented {
-                function_name: "Debug Erase Sequence",
-            }));
+            return Err(Error::NotImplemented(
+                "Debug Erase Sequence is not implemented for non-ARM targets.",
+            ));
         };
 
         let DebugSequence::Arm(ref debug_sequence) = self.target.debug_sequence else {
             unreachable!("This should never happen. Please file a bug if it does.");
         };
 
-        let Some(erase_sequence) = debug_sequence.debug_erase_sequence() else {
-            return Err(Error::Probe(DebugProbeError::NotImplemented {
-                function_name: "Debug Erase Sequence",
-            }));
-        };
+        let erase_sequence = debug_sequence
+            .debug_erase_sequence()
+            .ok_or(Error::Arm(ArmError::NotImplemented("Debug Erase Sequence")))?;
 
         tracing::info!("Trying Debug Erase Sequence");
         let erase_result = erase_sequence.erase_all(interface.deref_mut());

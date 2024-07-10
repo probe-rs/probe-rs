@@ -12,7 +12,7 @@ use crate::{
     CoreInterface, CoreRegister, CoreStatus, CoreType, Error, HaltReason, InstructionSet,
     MemoryInterface, MemoryMappedRegister, SemihostingCommand,
 };
-use anyhow::{anyhow, Result};
+use anyhow::anyhow;
 use bitfield::bitfield;
 use communication_interface::{AbstractCommandErrorKind, RiscvCommunicationInterface, RiscvError};
 use registers::{FP, RA, RISCV_CORE_REGSISTERS, SP};

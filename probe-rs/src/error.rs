@@ -2,6 +2,7 @@ use crate::architecture::arm::ArmError;
 use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::architecture::xtensa::communication_interface::XtensaError;
 use crate::config::RegistryError;
+use crate::core::memory_mapped_registers::RegisterAddressOutOfBounds;
 use crate::probe::DebugProbeError;
 
 /// The overarching error type which contains all possible errors as variants.
@@ -29,6 +30,9 @@ pub enum Error {
     GenericCoreError(String),
     /// Errors accessing core register: {0}
     Register(String),
+
+    /// Error calculating the address of a register
+    RegisterAddressOutOfBounds(#[from] RegisterAddressOutOfBounds),
     /// The {0} capability has not yet been implemented for this architecture.
     ///
     /// Because of the large varieties of supported architectures, it is not always possible for

@@ -26,6 +26,7 @@ use crate::config::RegistryError;
 use crate::config::TargetSelector;
 use crate::probe::common::IdCode;
 use crate::{Error, Permissions, Session};
+use common::ScanChainError;
 use nusb::DeviceInfo;
 use probe_rs_target::ScanChainElement;
 use serde::{Deserialize, Serialize};
@@ -39,7 +40,7 @@ const LOW_TARGET_VOLTAGE_WARNING_THRESHOLD: f32 = 1.4;
 
 /// The protocol that is to be used by the probe when communicating with the target.
 ///
-/// For ARM select `Swd` and for RISC-V select `Jtag`.
+/// For ARM select `Swd` or `Jtag`, for RISC-V select `Jtag`.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub enum WireProtocol {
     /// Serial Wire Debug is ARMs proprietary standard for communicating with ARM cores.
@@ -177,9 +178,11 @@ pub enum DebugProbeError {
         command_name: &'static str,
     },
 
-    /// Some other error occurred.
-    #[display("{0}")]
-    Other(#[from] anyhow::Error),
+    /// An error occured handling the JTAG scan chain.
+    JtagScanChain(#[from] ScanChainError),
+
+    /// Another error occurred.
+    Other(String),
 
     /// A timeout occurred during probe operation.
     Timeout,
@@ -703,9 +706,9 @@ pub trait DebugProbe: Send + fmt::Debug {
 
     /// Try to get a J-Link interface from the debug probe.
     fn try_into_jlink(&mut self) -> Result<&mut jlink::JLink, DebugProbeError> {
-        Err(DebugProbeError::Other(anyhow::anyhow!(
-            "This probe does not support J-Link functionality."
-        )))
+        Err(DebugProbeError::Other(
+            "This probe is not a J-Link.".to_string(),
+        ))
     }
 }
 
