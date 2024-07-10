@@ -316,7 +316,7 @@ fn armv8a_core_start(
 }
 
 /// DebugCoreStart for Cortex-M devices
-fn cortex_m_core_start(core: &mut dyn ArmProbe) -> Result<(), ArmError> {
+pub(crate) fn cortex_m_core_start(core: &mut dyn ArmProbe) -> Result<(), ArmError> {
     use crate::architecture::arm::core::armv7m::Dhcsr;
 
     let current_dhcsr = Dhcsr(core.read_word_32(Dhcsr::get_mmio_address())?);
