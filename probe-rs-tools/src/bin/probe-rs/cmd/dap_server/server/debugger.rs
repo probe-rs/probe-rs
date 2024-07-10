@@ -785,7 +785,7 @@ impl Debugger {
                 if let Some(id) = progress_id {
                     let _ = debug_adapter.end_progress(id);
                 }
-                let error = DebuggerError::Other(error);
+                let error = DebuggerError::FileDownload(error);
                 debug_adapter.send_response::<()>(launch_attach_request, Err(&error))?;
                 return Err(error);
             }
