@@ -150,14 +150,14 @@ impl FormatOptions {
     /// If a format is provided, use it.
     /// If a target has a preferred format, we use that.
     /// Finally, if neither of the above cases are true, we default to [`Format::default()`].
-    pub fn into_format(self, target: &Target) -> anyhow::Result<Format> {
+    pub fn into_format(self, target: &Target) -> Format {
         let format = self
             .binary_format
             .unwrap_or_else(|| match target.default_format {
                 probe_rs_target::BinaryFormat::Idf => Format::Idf(Default::default()),
                 probe_rs_target::BinaryFormat::Raw => Default::default(),
             });
-        Ok(match format {
+        match format {
             Format::Bin(_) => Format::Bin(BinOptions {
                 base_address: self.base_address,
                 skip: self.skip,
@@ -169,7 +169,7 @@ impl FormatOptions {
                 partition_table: self.idf_partition_table,
             }),
             Format::Uf2 => Format::Uf2,
-        })
+        }
     }
 }
 

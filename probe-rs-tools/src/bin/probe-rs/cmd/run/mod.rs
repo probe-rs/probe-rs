@@ -24,7 +24,7 @@ use signal_hook::consts::signal;
 use time::UtcOffset;
 
 use crate::util::common_options::{BinaryDownloadOptions, ProbeOptions};
-use crate::util::flash::{build_loader, run_flash_download};
+use crate::util::flash::run_flash_download;
 use crate::util::rtt::{
     self, ChannelDataCallbacks, DefmtState, RttActiveTarget, RttChannelConfig, RttConfig,
 };
@@ -100,19 +100,14 @@ impl Cmd {
         let core_id = rtt::get_target_core_id(&mut session, &self.shared_options.path);
 
         if run_download {
-            let loader = build_loader(
-                &mut session,
-                &self.shared_options.path,
-                self.shared_options.format_options,
-                None,
-            )?;
             run_flash_download(
                 &mut session,
                 &self.shared_options.path,
                 &self.shared_options.download_options,
                 &probe_options,
-                loader,
                 self.shared_options.chip_erase,
+                self.shared_options.format_options,
+                None,
             )?;
 
             // reset the core to leave it in a consistent state after flashing

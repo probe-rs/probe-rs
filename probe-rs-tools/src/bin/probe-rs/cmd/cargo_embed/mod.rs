@@ -25,7 +25,7 @@ use time::{OffsetDateTime, UtcOffset};
 
 use crate::util::cargo::target_instruction_set;
 use crate::util::common_options::{BinaryDownloadOptions, OperationError, ProbeOptions};
-use crate::util::flash::{build_loader, run_flash_download};
+use crate::util::flash::run_flash_download;
 use crate::util::logging::setup_logging;
 use crate::util::rtt::{self, DefmtState, RttActiveTarget, RttChannelConfig, RttConfig};
 use crate::util::{cargo::build_artifact, common_options::CargoOptions, logging, rtt::DataFormat};
@@ -234,15 +234,14 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
             flash_layout_output_path: None,
             verify: config.flashing.verify,
         };
-        let format_options = FormatOptions::default();
-        let loader = build_loader(&mut session, &path, format_options, image_instr_set)?;
         run_flash_download(
             &mut session,
             &path,
             &download_options,
             &probe_options,
-            loader,
             config.flashing.do_chip_erase,
+            FormatOptions::default(),
+            image_instr_set,
         )?;
     }
 

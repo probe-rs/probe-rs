@@ -129,15 +129,14 @@ fn main_try(args: &[OsString]) -> Result<(), OperationError> {
     let (mut session, probe_options) = opt.probe_options.simple_attach(&lister)?;
 
     // Flash the binary
-    let loader =
-        flash::build_loader(&mut session, &path, opt.format_options, image_instr_set).unwrap();
     flash::run_flash_download(
         &mut session,
         &path,
         &opt.download_options,
         &probe_options,
-        loader,
         false,
+        opt.format_options,
+        image_instr_set,
     )?;
 
     // Reset target according to CLI options

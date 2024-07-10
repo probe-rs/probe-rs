@@ -460,7 +460,7 @@ pub enum OperationError {
 
     #[error("Failed to load the ELF data.")]
     #[allow(dead_code)]
-    FailedToLoadElfData(#[source] FileDownloadError),
+    FailedToLoadElfData(#[from] FileDownloadError),
 
     #[error("Failed to open the debug probe.")]
     FailedToOpenProbe(#[from] DebugProbeError),

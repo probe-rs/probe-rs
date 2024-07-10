@@ -10,14 +10,12 @@ use std::{path::Path, time::Instant};
 
 use colored::Colorize;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
-use probe_rs::flashing::FlashLayout;
+use probe_rs::flashing::{FlashLayout, FlashLoader};
 use probe_rs::InstructionSet;
 use probe_rs::{
-    flashing::{DownloadOptions, FileDownloadError, FlashLoader, FlashProgress, ProgressEvent},
+    flashing::{DownloadOptions, FileDownloadError, FlashProgress, ProgressEvent},
     Session,
 };
-
-use anyhow::Context;
 
 /// Performs the flash download with the given loader. Ensure that the loader has the data to load already stored.
 /// This function also manages the update and display of progress bars.
@@ -26,8 +24,9 @@ pub fn run_flash_download(
     path: impl AsRef<Path>,
     download_options: &BinaryDownloadOptions,
     probe_options: &LoadedProbeOptions,
-    loader: FlashLoader,
     do_chip_erase: bool,
+    format_options: FormatOptions,
+    image_instruction_set: Option<InstructionSet>,
 ) -> Result<(), OperationError> {
     let mut options = DownloadOptions::default();
     options.keep_unwritten_bytes = download_options.restore_unwritten;
@@ -133,6 +132,14 @@ pub fn run_flash_download(
     // Start timer.
     let flash_timer = Instant::now();
 
+    // Create the flash loader
+    let loader = build_loader(
+        session,
+        path.as_ref(),
+        format_options,
+        image_instruction_set,
+    )?;
+
     loader
         .commit(session, options)
         .map_err(|error| OperationError::FlashingFailed {
@@ -162,17 +169,14 @@ pub fn build_loader(
     path: impl AsRef<Path>,
     format_options: FormatOptions,
     image_instruction_set: Option<InstructionSet>,
-) -> anyhow::Result<FlashLoader> {
+) -> Result<FlashLoader, FileDownloadError> {
     // Create the flash loader
     let mut loader = session.target().flash_loader();
 
     // Add data from the BIN.
-    let mut file = match File::open(path) {
-        Ok(file) => file,
-        Err(e) => return Err(FileDownloadError::IO(e)).context("Failed to open binary file."),
-    };
+    let mut file = File::open(path.as_ref()).map_err(FileDownloadError::IO)?;
 
-    let format = format_options.into_format(session.target())?;
+    let format = format_options.into_format(session.target());
     loader.load_image(session, &mut file, format, image_instruction_set)?;
 
     Ok(loader)

@@ -15,7 +15,7 @@ use probe_rs::{
     probe::list::Lister,
 };
 
-use crate::util::flash::{build_loader, run_flash_download};
+use crate::util::flash::run_flash_download;
 use tracing::info;
 
 #[derive(clap::Parser)]
@@ -73,13 +73,6 @@ impl ProfileCmd {
             .probe_options
             .simple_attach(lister)?;
 
-        let loader = build_loader(
-            &mut session,
-            &self.run.shared_options.path,
-            self.run.shared_options.format_options,
-            None,
-        )?;
-
         let file_location = self.run.shared_options.path.as_path();
 
         // The error returned from try_from cannot be converted directly to anyhow::Error unfortunately,
@@ -95,11 +88,12 @@ impl ProfileCmd {
         if self.flash {
             run_flash_download(
                 &mut session,
-                file_location,
+                &self.run.shared_options.path,
                 &self.run.shared_options.download_options,
                 &probe_options,
-                loader,
                 self.run.shared_options.chip_erase,
+                self.run.shared_options.format_options,
+                None,
             )?;
         }
 
