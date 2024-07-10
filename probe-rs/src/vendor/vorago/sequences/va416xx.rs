@@ -1,5 +1,5 @@
 //! Support for the Vorago VA416xx device family.
-use std::sync::Arc;
+use std::{sync::Arc, thread, time::Duration};
 
 use probe_rs_target::CoreType;
 
@@ -69,7 +69,7 @@ impl ArmDebugSequence for Va416xx {
         aircr.vectkey();
         aircr.set_sysresetreq(true);
 
-        // Ingore errors directly after the reset, the debug connection goes down for unknown
+        // Ignore errors directly after the reset, the debug connection goes down for unknown
         // reasons.
         interface
             .write_word_32(Aircr::get_mmio_address(), aircr.into())
@@ -80,8 +80,20 @@ impl ArmDebugSequence for Va416xx {
 
         // Re-initializing the core(s) is on us.
         let ap = interface.ap();
+
         let arm_interface = interface.get_arm_communication_interface()?;
-        arm_interface.reinitialize()?;
+        const NUM_RETRIES: u32 = 10;
+        for i in 0..NUM_RETRIES {
+            match arm_interface.reinitialize() {
+                Ok(_) => break,
+                Err(e) => {
+                    if i == NUM_RETRIES - 1 {
+                        return Err(e);
+                    }
+                    thread::sleep(Duration::from_millis(50));
+                }
+            }
+        }
 
         assert!(debug_base.is_none());
         self.debug_core_start(arm_interface, ap, core_type, None, None)?;
@@ -93,8 +105,20 @@ impl ArmDebugSequence for Va416xx {
             value.set_c_debugen(true);
             value.enable_write();
 
-            interface.write_word_32(Dhcsr::get_mmio_address(), value.into())?;
+            const NUM_HALT_RETRIES: u32 = 10;
+            for i in 0..NUM_HALT_RETRIES {
+                interface.write_word_32(Dhcsr::get_mmio_address(), value.into())?;
+                let dhcsr = Dhcsr(interface.read_word_32(Dhcsr::get_mmio_address())?);
+                if dhcsr.s_halt() {
+                    break;
+                }
+                if i >= NUM_HALT_RETRIES - 1 {
+                    return Err(ArmError::Timeout);
+                }
+                thread::sleep(Duration::from_millis(50));
+            }
         }
+
         Ok(())
     }
 }
