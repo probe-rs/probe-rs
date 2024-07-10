@@ -47,7 +47,7 @@ pub enum ArmError {
     NoArmTarget,
 
     /// Error using a specific AP.
-    #[error("Error using access port.")]
+    #[error("Error using access port {address:?}.")]
     AccessPort {
         /// Address of the access port
         address: FullyQualifiedApAddress,
