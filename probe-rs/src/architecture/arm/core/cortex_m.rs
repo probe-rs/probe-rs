@@ -10,6 +10,14 @@ use crate::{
 use std::time::{Duration, Instant};
 
 memory_mapped_bitfield_register! {
+    pub struct Vtor(u32);
+    0xE000_ED08, "VTOR",
+    impl From;
+    /// This fields holds bits [31:7] of the table offset.
+    pub tbloff, set_tbloff: 31, 7;
+}
+
+memory_mapped_bitfield_register! {
     pub struct Dhcsr(u32);
     0xE000_EDF0, "DHCSR",
     impl From;
