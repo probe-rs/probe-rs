@@ -603,7 +603,7 @@ impl FlashLoader {
                     data.len()
                 );
                 // Write data to memory.
-                core.write_8(address, data).map_err(FlashError::Core)?;
+                core.write(address, data).map_err(FlashError::Core)?;
             }
 
             if !some {
