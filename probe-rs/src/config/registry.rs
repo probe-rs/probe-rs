@@ -110,7 +110,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
                 flash_algorithms: vec![],
                 rtt_scan_ranges: None,
                 jtag: None,
-                default_binary_format: None,
+                default_platform: None,
             }],
             flash_algorithms: vec![],
             source: TargetDescriptionSource::Generic,
@@ -440,7 +440,7 @@ fn validate_family(family: &ChipFamily) -> Result<(), String> {
     // We can't have this in the `validate` method as we need information that is not available in
     // probe-rs-target.
     for target in family.variants() {
-        crate::flashing::FormatKind::from_optional(target.default_binary_format.as_deref())?;
+        crate::flashing::FormatKind::from_optional(target.default_platform.as_deref())?;
     }
 
     Ok(())

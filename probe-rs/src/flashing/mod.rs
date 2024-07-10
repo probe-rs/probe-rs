@@ -51,6 +51,7 @@ mod error;
 mod flash_algorithm;
 mod flasher;
 mod loader;
+pub mod platform;
 mod progress;
 mod visualizer;
 

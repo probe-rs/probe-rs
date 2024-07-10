@@ -17,6 +17,7 @@ use super::{
     IdfOptions,
 };
 use crate::config::DebugSequence;
+use crate::flashing::platform::PlatformLoader;
 use crate::flashing::{FlashLayout, FlashProgress, Format};
 use crate::memory::MemoryInterface;
 use crate::session::Session;
@@ -34,7 +35,6 @@ pub trait ImageLoader {
     fn load(
         &self,
         flash_loader: &mut FlashLoader,
-        session: &mut Session,
         file: &mut dyn ImageReader,
     ) -> Result<(), FileDownloadError>;
 }
@@ -43,15 +43,13 @@ impl ImageLoader for Format {
     fn load(
         &self,
         flash_loader: &mut FlashLoader,
-        session: &mut Session,
         file: &mut dyn ImageReader,
     ) -> Result<(), FileDownloadError> {
         match self {
-            Format::Bin(options) => BinLoader(options.clone()).load(flash_loader, session, file),
-            Format::Elf => ElfLoader.load(flash_loader, session, file),
-            Format::Hex => HexLoader.load(flash_loader, session, file),
-            Format::Idf(options) => IdfLoader(options.clone()).load(flash_loader, session, file),
-            Format::Uf2 => Uf2Loader.load(flash_loader, session, file),
+            Format::Bin(options) => BinLoader(options.clone()).load(flash_loader, file),
+            Format::Elf => ElfLoader.load(flash_loader, file),
+            Format::Hex => HexLoader.load(flash_loader, file),
+            Format::Uf2 => Uf2Loader.load(flash_loader, file),
         }
     }
 }
@@ -63,7 +61,6 @@ impl ImageLoader for BinLoader {
     fn load(
         &self,
         flash_loader: &mut FlashLoader,
-        _session: &mut Session,
         file: &mut dyn ImageReader,
     ) -> Result<(), FileDownloadError> {
         // Skip the specified bytes.
@@ -91,7 +88,6 @@ impl ImageLoader for ElfLoader {
     fn load(
         &self,
         flash_loader: &mut FlashLoader,
-        _session: &mut Session,
         file: &mut dyn ImageReader,
     ) -> Result<(), FileDownloadError> {
         let mut elf_buffer = Vec::new();
@@ -138,7 +134,6 @@ impl ImageLoader for HexLoader {
     fn load(
         &self,
         flash_loader: &mut FlashLoader,
-        _session: &mut Session,
         file: &mut dyn ImageReader,
     ) -> Result<(), FileDownloadError> {
         let mut base_address = 0;
@@ -176,7 +171,6 @@ impl ImageLoader for Uf2Loader {
     fn load(
         &self,
         flash_loader: &mut FlashLoader,
-        _session: &mut Session,
         file: &mut dyn ImageReader,
     ) -> Result<(), FileDownloadError> {
         let mut uf2_buffer = Vec::new();
@@ -206,15 +200,23 @@ impl ImageLoader for Uf2Loader {
 /// partition table.
 ///
 /// This does not create any flash loader instructions yet.
-struct IdfLoader(IdfOptions);
+pub struct IdfLoader(pub IdfOptions);
 
-impl ImageLoader for IdfLoader {
-    fn load(
+impl IdfLoader {
+    pub(crate) fn load(
         &self,
+        format: Format,
         flash_loader: &mut FlashLoader,
         session: &mut Session,
         file: &mut dyn ImageReader,
     ) -> Result<(), FileDownloadError> {
+        if !matches!(format, Format::Elf) {
+            return Err(FileDownloadError::IncompatibleFormat {
+                platform: String::from("esp-idf"),
+                format: format.to_str().to_string(),
+            });
+        }
+
         let target = session.target();
         let target_name = target
             .name
@@ -358,6 +360,7 @@ impl FlashLoader {
         session: &mut Session,
         file: &mut T,
         format: Format,
+        platform: PlatformLoader,
         image_instruction_set: Option<InstructionSet>,
     ) -> Result<(), FileDownloadError> {
         if let Some(instr_set) = image_instruction_set {
@@ -384,7 +387,7 @@ impl FlashLoader {
             }
         }
 
-        format.load(self, session, file)
+        platform.load(self, format, session, file)
     }
 
     /// Writes all the stored data chunks to flash.

@@ -41,8 +41,8 @@ pub struct Target {
     /// manually in the target.yaml file. It is used by some probes to determine
     /// the number devices in the scan chain and their ir lengths.
     pub jtag: Option<Jtag>,
-    /// The default executable format for the target.
-    pub default_format: Option<String>,
+    /// The default platform of the target.
+    pub default_platform: Option<String>,
 }
 
 impl std::fmt::Debug for Target {
@@ -109,7 +109,7 @@ impl Target {
             debug_sequence,
             rtt_scan_regions,
             jtag: chip.jtag.clone(),
-            default_format: chip.default_binary_format.clone(),
+            default_platform: chip.default_platform.clone(),
         }
     }
 

@@ -6,7 +6,7 @@ use crate::util::common_options::BinaryDownloadOptions;
 use crate::util::common_options::ProbeOptions;
 use crate::util::flash::build_loader;
 use crate::util::flash::run_flash_download;
-use crate::FormatOptions;
+use crate::FirmwareOptions;
 
 #[derive(clap::Parser)]
 pub struct Cmd {
@@ -24,7 +24,7 @@ pub struct Cmd {
     download_options: BinaryDownloadOptions,
 
     #[clap(flatten)]
-    format_options: FormatOptions,
+    format_options: FirmwareOptions,
 }
 
 impl Cmd {

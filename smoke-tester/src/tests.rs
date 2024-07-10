@@ -224,9 +224,9 @@ pub fn test_flashing(tracker: &TestTracker, session: &mut Session) -> Result<(),
 
     let start_time = Instant::now();
 
-    let format = FormatKind::from_optional(session.target().default_format.as_deref()).unwrap();
+    let format = FormatKind::from_optional(session.target().default_platform.as_deref()).unwrap();
 
-    let result = download_file_with_options(session, test_binary, format, options);
+    let result = download_file_with_options(session, test_binary, None, format, options);
 
     println!();
 

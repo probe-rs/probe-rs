@@ -113,7 +113,7 @@ pub fn cmd_elf(
                 flash_algorithms: vec![algorithm_name],
                 rtt_scan_ranges: None,
                 jtag: None,
-                default_binary_format: None,
+                default_platform: None,
             }],
             flash_algorithms: vec![algorithm],
             source: TargetDescriptionSource::BuiltIn,

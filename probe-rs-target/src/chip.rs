@@ -77,10 +77,9 @@ pub struct Chip {
     /// JTAG-specific options
     #[serde(default)]
     pub jtag: Option<Jtag>,
-    /// The default binary format for this chip
-    // TODO: rename to default_platform
+    /// The default platform used for this chip
     #[serde(default)]
-    pub default_binary_format: Option<String>,
+    pub default_platform: Option<String>,
 }
 
 impl Chip {
@@ -102,7 +101,7 @@ impl Chip {
             flash_algorithms: vec![],
             rtt_scan_ranges: None,
             jtag: None,
-            default_binary_format: None,
+            default_platform: None,
         }
     }
 }

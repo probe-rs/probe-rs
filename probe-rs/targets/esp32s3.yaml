@@ -75,7 +75,7 @@ variants:
       ir_len: 5
     - name: cpu1
       ir_len: 5
-  default_binary_format: idf
+  default_platform: idf
 flash_algorithms:
 - name: esp32s3-flashloader
   description: A flasher loader for the esp32s3.

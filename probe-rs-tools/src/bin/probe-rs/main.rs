@@ -13,7 +13,8 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use colored::Colorize;
 use itertools::Itertools;
-use probe_rs::flashing::{BinOptions, Format, FormatKind, IdfOptions};
+use probe_rs::flashing::platform::{IdfPlatformLoader, RawLoader};
+use probe_rs::flashing::{platform::PlatformLoader, BinOptions, Format, FormatKind, IdfOptions};
 use probe_rs::{probe::list::Lister, Target};
 use report::Report;
 use serde::Deserialize;
@@ -127,9 +128,33 @@ pub struct IdfCliOptions {
     idf_partition_table: Option<PathBuf>,
 }
 
+// TODO: This type needs to be automatically generated or replaced with runtime code using the
+//       Platform struct.
+#[derive(clap::ValueEnum, Clone, Copy, Serialize, Deserialize, Debug, Default)]
+pub enum PlatformKind {
+    #[default]
+    Raw,
+    #[clap(alias = "esp-idf")]
+    Idf,
+}
+
+impl PlatformKind {
+    fn loader(self, options: &FirmwareOptions) -> PlatformLoader {
+        // TODO: this needs to be automatic
+
+        match self {
+            PlatformKind::Raw => PlatformLoader::from(RawLoader),
+            PlatformKind::Idf => PlatformLoader::from(IdfPlatformLoader(IdfOptions {
+                bootloader: options.idf_options.idf_bootloader.clone(),
+                partition_table: options.idf_options.idf_partition_table.clone(),
+            })),
+        }
+    }
+}
+
 #[derive(clap::Parser, Clone, Serialize, Deserialize, Debug, Default)]
 #[serde(default)]
-pub struct FormatOptions {
+pub struct FirmwareOptions {
     /// If a format is provided, use it.
     /// If a target has a preferred format, we use that.
     /// Finally, if neither of the above cases are true, we default to ELF.
@@ -141,6 +166,16 @@ pub struct FormatOptions {
     )]
     binary_format: Option<FormatKind>,
 
+    /// The platform of the target system. When omitted, the platform is determined by the target
+    /// chip.
+    #[clap(
+        value_enum,
+        ignore_case = true,
+        long,
+        help_heading = "DOWNLOAD CONFIGURATION"
+    )]
+    platform_kind: Option<PlatformKind>,
+
     #[clap(flatten)]
     bin_options: BinaryCliOptions,
 
@@ -148,7 +183,7 @@ pub struct FormatOptions {
     idf_options: IdfCliOptions,
 }
 
-impl FormatOptions {
+impl FirmwareOptions {
     /// If a format is provided, use it.
     /// If a target has a preferred format, we use that.
     /// Finally, if neither of the above cases are true, we default to [`Format::default()`].
@@ -156,7 +191,7 @@ impl FormatOptions {
         let kind = self
             .binary_format
             .map_or_else(
-                || FormatKind::from_optional(target.default_format.as_deref()),
+                || FormatKind::from_optional(target.default_platform.as_deref()),
                 Ok,
             )
             .map_err(anyhow::Error::msg)
@@ -170,11 +205,11 @@ impl FormatOptions {
             FormatKind::Hex => Format::Hex,
             FormatKind::Elf => Format::Elf,
             FormatKind::Uf2 => Format::Uf2,
-            FormatKind::Idf => Format::Idf(IdfOptions {
-                bootloader: self.idf_options.idf_bootloader,
-                partition_table: self.idf_options.idf_partition_table,
-            }),
         })
+    }
+
+    pub fn platform(&self) -> Option<PlatformLoader> {
+        self.platform_kind.map(|kind| kind.loader(self))
     }
 }
 

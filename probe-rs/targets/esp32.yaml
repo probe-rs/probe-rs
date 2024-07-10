@@ -57,7 +57,7 @@ variants:
     is_alias: true
   flash_algorithms:
   - esp32-flashloader
-  default_binary_format: idf
+  default_platform: idf
 flash_algorithms:
 - name: esp32-flashloader
   description: A flash loader for the esp32.

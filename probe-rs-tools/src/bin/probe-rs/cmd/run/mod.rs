@@ -28,7 +28,7 @@ use crate::util::flash::{build_loader, run_flash_download};
 use crate::util::rtt::{
     self, ChannelDataCallbacks, DefmtState, RttActiveTarget, RttChannelConfig, RttConfig,
 };
-use crate::FormatOptions;
+use crate::FirmwareOptions;
 
 #[derive(clap::Parser)]
 pub struct Cmd {
@@ -75,7 +75,7 @@ pub struct SharedOptions {
     pub(crate) no_location: bool,
 
     #[clap(flatten)]
-    pub(crate) format_options: FormatOptions,
+    pub(crate) format_options: FirmwareOptions,
 
     /// The default format string to use for decoding defmt logs.
     #[clap(long)]

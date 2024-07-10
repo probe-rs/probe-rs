@@ -52,7 +52,7 @@ struct CliOptions {
     pub download_options: BinaryDownloadOptions,
 
     #[command(flatten)]
-    pub format_options: crate::FormatOptions,
+    pub format_options: crate::FirmwareOptions,
 }
 
 pub fn main(args: &[OsString]) {

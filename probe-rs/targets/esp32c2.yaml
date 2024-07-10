@@ -60,7 +60,7 @@ variants:
     scan_chain:
     - name: main
       ir_len: 5
-  default_binary_format: idf
+  default_platform: idf
 flash_algorithms:
 - name: esp32c2-flashloader
   description: A flash loader for the esp32c2.

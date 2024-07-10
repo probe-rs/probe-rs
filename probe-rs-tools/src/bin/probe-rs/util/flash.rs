@@ -1,4 +1,4 @@
-use crate::FormatOptions;
+use crate::FirmwareOptions;
 
 use super::common_options::{BinaryDownloadOptions, LoadedProbeOptions, OperationError};
 use super::logging;
@@ -10,6 +10,7 @@ use std::{path::Path, time::Instant};
 
 use colored::Colorize;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
+use probe_rs::flashing::platform::Platform;
 use probe_rs::flashing::FlashLayout;
 use probe_rs::InstructionSet;
 use probe_rs::{
@@ -160,7 +161,7 @@ pub fn run_flash_download(
 pub fn build_loader(
     session: &mut Session,
     path: impl AsRef<Path>,
-    format_options: FormatOptions,
+    format_options: FirmwareOptions,
     image_instruction_set: Option<InstructionSet>,
 ) -> anyhow::Result<FlashLoader> {
     // Create the flash loader
@@ -172,8 +173,16 @@ pub fn build_loader(
         Err(e) => return Err(FileDownloadError::IO(e)).context("Failed to open binary file."),
     };
 
+    let platform = match format_options.platform() {
+        Some(platform) => platform,
+        None => Platform::from_optional(session.target().default_platform.as_deref())
+            .map(|result| result.expect("Unknown platform. This should not have passed tests."))
+            .unwrap_or_default()
+            .default_loader(),
+    };
+
     let format = format_options.into_format(session.target())?;
-    loader.load_image(session, &mut file, format, image_instruction_set)?;
+    loader.load_image(session, &mut file, format, platform, image_instruction_set)?;
 
     Ok(loader)
 }

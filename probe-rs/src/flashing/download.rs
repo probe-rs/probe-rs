@@ -12,7 +12,10 @@ use std::{
 };
 
 use super::*;
-use crate::session::Session;
+use crate::{
+    flashing::platform::{Platform, PlatformLoader},
+    session::Session,
+};
 
 /// Extended options for flashing a binary file.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Default)]
@@ -44,9 +47,6 @@ pub enum FormatKind {
     /// Marks a file in the [ELF](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format) format.
     #[default]
     Elf,
-    /// Marks a file in the [ESP-IDF bootloader](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/app_image_format.html#app-image-structures) format.
-    /// Use [IdfOptions] to configure flashing.
-    Idf,
     /// Marks a file in the [UF2](https://github.com/microsoft/uf2) format.
     Uf2,
 }
@@ -72,7 +72,6 @@ impl FromStr for FormatKind {
             "hex" | "ihex" | "intelhex" => Ok(Self::Hex),
             "elf" => Ok(Self::Elf),
             "uf2" => Ok(Self::Uf2),
-            "idf" | "esp-idf" | "espidf" => Ok(Self::Idf),
             _ => Err(format!("Format '{s}' is unknown.")),
         }
     }
@@ -90,11 +89,19 @@ pub enum Format {
     /// Marks a file in the [ELF](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format) format.
     #[default]
     Elf,
-    /// Marks a file in the [ESP-IDF bootloader](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/app_image_format.html#app-image-structures) format.
-    /// Use [IdfOptions] to configure flashing.
-    Idf(IdfOptions),
     /// Marks a file in the [UF2](https://github.com/microsoft/uf2) format.
     Uf2,
+}
+
+impl Format {
+    pub(crate) fn to_str(&self) -> &'static str {
+        match self {
+            Format::Bin(_) => "bin",
+            Format::Hex => "hex",
+            Format::Elf => "elf",
+            Format::Uf2 => "uf2",
+        }
+    }
 }
 
 impl From<FormatKind> for Format {
@@ -104,7 +111,6 @@ impl From<FormatKind> for Format {
             FormatKind::Hex => Format::Hex,
             FormatKind::Elf => Format::Elf,
             FormatKind::Uf2 => Format::Uf2,
-            FormatKind::Idf => Format::Idf(IdfOptions::default()),
         }
     }
 }
@@ -135,6 +141,14 @@ pub enum FileDownloadError {
 
     /// Failed to format as esp-idf binary
     Idf(#[from] espflash::error::Error),
+
+    /// The {platform} platform does not support the {format} format.
+    IncompatibleFormat {
+        /// The platform that does not support the format.
+        platform: String,
+        /// The format that is not supported.
+        format: String,
+    },
 
     /// Target {0} does not support the esp-idf format
     IdfUnsupported(String),
@@ -221,7 +235,7 @@ pub fn download_file(
     path: impl AsRef<Path>,
     format: impl Into<Format>,
 ) -> Result<(), FileDownloadError> {
-    download_file_with_options(session, path, format, DownloadOptions::default())
+    download_file_with_options(session, path, None, format, DownloadOptions::default())
 }
 
 /// Downloads a file of given `format` at `path` to the flash of the target given in `session`.
@@ -232,6 +246,7 @@ pub fn download_file(
 pub fn download_file_with_options(
     session: &mut Session,
     path: impl AsRef<Path>,
+    platform: Option<PlatformLoader>,
     format: impl Into<Format>,
     options: DownloadOptions,
 ) -> Result<(), FileDownloadError> {
@@ -239,7 +254,15 @@ pub fn download_file_with_options(
 
     let mut loader = session.target().flash_loader();
 
-    loader.load_image(session, &mut file, format.into(), None)?;
+    let platform = match platform {
+        Some(platform) => platform,
+        None => Platform::from_optional(session.target().default_platform.as_deref())
+            .map(|result| result.expect("Unknown platform. This should not have passed tests."))
+            .unwrap_or_default()
+            .default_loader(),
+    };
+
+    loader.load_image(session, &mut file, format.into(), platform, None)?;
 
     loader
         .commit(session, options)
@@ -392,10 +415,6 @@ mod tests {
         assert_eq!(FormatKind::from_str("Binary"), Ok(FormatKind::Bin));
         assert_eq!(FormatKind::from_str("Elf"), Ok(FormatKind::Elf));
         assert_eq!(FormatKind::from_str("elf"), Ok(FormatKind::Elf));
-        assert_eq!(FormatKind::from_str("idf"), Ok(FormatKind::Idf));
-        assert_eq!(FormatKind::from_str("espidf"), Ok(FormatKind::Idf));
-        assert_eq!(FormatKind::from_str("esp-idf"), Ok(FormatKind::Idf));
-        assert_eq!(FormatKind::from_str("ESP-IDF"), Ok(FormatKind::Idf));
         assert_eq!(
             FormatKind::from_str("elfbin"),
             Err("Format 'elfbin' is unknown.".to_string())
