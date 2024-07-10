@@ -343,6 +343,7 @@ impl<'probe> Core<'probe> {
     /// returns a [`DebugProbeError::Timeout`](crate::probe::DebugProbeError::Timeout) otherwise.
     #[tracing::instrument(skip(self))]
     pub fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
+        tracing::info!("halting");
         self.inner.halt(timeout)
     }
 
@@ -367,6 +368,7 @@ impl<'probe> Core<'probe> {
     /// [`reset`]: Core::reset
     #[tracing::instrument(skip(self))]
     pub fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
+        tracing::info!("resetting and halting");
         self.inner.reset_and_halt(timeout)
     }
 

@@ -5,8 +5,11 @@ use probe_rs_target::CoreType;
 
 use crate::{
     architecture::arm::{
-        armv7m::Demcr, memory::adi_v5_memory_interface::ArmProbe, sequences::ArmDebugSequence,
-        ArmError,
+        ap::MemoryAp,
+        armv7m::Demcr,
+        memory::adi_v5_memory_interface::ArmProbe,
+        sequences::{cortex_m_core_start, ArmDebugSequence},
+        ArmError, ArmProbeInterface,
     },
     MemoryMappedRegister,
 };
@@ -23,6 +26,27 @@ impl Va416xx {
 }
 
 impl ArmDebugSequence for Va416xx {
+    fn debug_core_start(
+        &self,
+        interface: &mut dyn ArmProbeInterface,
+        core_ap: MemoryAp,
+        _core_type: CoreType,
+        _debug_base: Option<u64>,
+        _cti_base: Option<u64>,
+    ) -> Result<(), ArmError> {
+        tracing::info!("vorago specific debug core start");
+        let mut core = interface.memory_interface(&core_ap)?;
+        cortex_m_core_start(&mut *core)?;
+        // Disable ROM protection
+        core.write_32(0x4001_0010, &[0x000_0001]).unwrap();
+        // Disable watchdog
+        // WDOGLOCK = 0x1ACCE551
+        core.write_32(0x400210C0, &[0x1ACCE551]).unwrap();
+        // WDOGCONTROL = 0x0 (diable)
+        core.write_32(0x40021008, &[0]).unwrap();
+        Ok(())
+    }
+
     /// Resetting the VA416XX breaks the debug connection.
     ///
     /// This custom implementation is similar to the

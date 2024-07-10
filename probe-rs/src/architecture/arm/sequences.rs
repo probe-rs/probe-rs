@@ -18,7 +18,7 @@ use crate::{
         ArmProbeInterface,
     },
     probe::{DebugProbeError, WireProtocol},
-    CoreInterface, MemoryMappedRegister,
+    MemoryInterface, MemoryMappedRegister, Session,
 };
 
 use super::{
@@ -318,7 +318,7 @@ fn armv8a_core_start(
 }
 
 /// DebugCoreStart for Cortex-M devices
-fn cortex_m_core_start(core: &mut dyn ArmProbe) -> Result<(), ArmError> {
+pub(crate) fn cortex_m_core_start(core: &mut dyn ArmProbe) -> Result<(), ArmError> {
     use crate::architecture::arm::core::armv7m::Dhcsr;
 
     let current_dhcsr = Dhcsr(core.read_word_32(Dhcsr::get_mmio_address())?);
@@ -971,27 +971,41 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     fn ram_flash_start(
         &self,
         vector_table_offset: u64,
-        interface: &mut dyn ArmProbe,
-        core: &mut dyn CoreInterface,
-        core_type: CoreType,
+        session: &mut Session,
     ) -> Result<(), crate::Error> {
         const SP_MAIN_OFFSET: usize = 0;
         const RESET_VECTOR_OFFSET: usize = 1;
+
+        if session.list_cores().len() > 1 {
+            return Err(crate::Error::NotImplemented(
+                "multi-core ram flash start not implemented yet",
+            ));
+        }
+
+        let (_, core_type) = session.list_cores()[0];
         match core_type {
-            CoreType::Armv7a => unimplemented!(),
-            CoreType::Armv8a => unimplemented!(),
+            CoreType::Armv7a | CoreType::Armv8a => {
+                return Err(crate::Error::NotImplemented(
+                    "RAM flash not implemented for ARM Cortex-A",
+                ));
+            }
             CoreType::Armv6m | CoreType::Armv7m | CoreType::Armv7em | CoreType::Armv8m => {
-                // See ARMv7-M Architecture Reference Manual Chapter B1.5 for more details.
+                tracing::info!("ram flash setup");
+                let mut core = session.core(0)?;
+                // Ensure the core is halted in any case.
+                core.halt(Duration::from_millis(500))?;
+                // See ARMv7-M Architecture Reference Manual Chapter B1.5 for more details. The
+                // process appears to be the same for the other Cortex-M architectures as well.
                 let vtor = Vtor(vector_table_offset as u32);
                 let mut first_table_entries: [u32; 2] = [0; 2];
-                interface.read_32(vector_table_offset, &mut first_table_entries)?;
+                core.read_32(vector_table_offset, &mut first_table_entries)?;
                 // The first entry in the vector table is the SP_main reset value of the main stack pointer,
                 // so we set the stack pointer register accordingly.
-                core.write_core_reg(SP.id, first_table_entries[SP_MAIN_OFFSET].into())?;
+                core.write_core_reg(SP.id, first_table_entries[SP_MAIN_OFFSET])?;
                 // The second entry in the vector table is the reset vector. It needs to be loaded
                 // as the initial PC value on a reset, see chapter A2.3.1 of the reference manual.
-                core.write_core_reg(PC.id, first_table_entries[RESET_VECTOR_OFFSET].into())?;
-                interface.write_word_32(Vtor::get_mmio_address(), vtor.0)?;
+                core.write_core_reg(PC.id, first_table_entries[RESET_VECTOR_OFFSET])?;
+                core.write_word_32(Vtor::get_mmio_address(), vtor.0)?;
             }
             _ => {
                 panic!("Logic inconsistency bug - non ARM core type passed {core_type:?}");

@@ -25,9 +25,9 @@ pub(crate) mod registry;
 mod target;
 
 pub use probe_rs_target::{
-    Chip, ChipFamily, Core, CoreType, FlashProperties, GenericRegion, InstructionSet, MemoryRange,
-    MemoryRegion, NvmRegion, PageInfo, RamRegion, RawFlashAlgorithm, ScanChainElement,
-    SectorDescription, SectorInfo, TargetDescriptionSource, MemoryAccess
+    Chip, ChipFamily, Core, CoreType, FlashProperties, GenericRegion, InstructionSet, MemoryAccess,
+    MemoryRange, MemoryRegion, NvmRegion, PageInfo, RamRegion, RawFlashAlgorithm, ScanChainElement,
+    SectorDescription, SectorInfo, TargetDescriptionSource,
 };
 
 pub use registry::{

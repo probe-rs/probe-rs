@@ -614,6 +614,15 @@ impl Session {
         Ok(())
     }
 
+    pub fn ram_flash_start(&mut self, entry_point: u64) -> Result<(), crate::Error> {
+        match &self.target.debug_sequence.clone() {
+            crate::config::DebugSequence::Arm(arm) => arm.ram_flash_start(entry_point, self),
+            _ => Err(crate::Error::NotImplemented(
+                "ram flash not implemented for non-ARM architectures",
+            )),
+        }
+    }
+
     /// Check if the connected device has a debug erase sequence defined
     pub fn has_sequence_erase_all(&self) -> bool {
         match &self.target.debug_sequence {

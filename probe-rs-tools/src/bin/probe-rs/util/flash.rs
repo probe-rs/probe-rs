@@ -10,7 +10,7 @@ use std::{path::Path, time::Instant};
 
 use colored::Colorize;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
-use probe_rs::flashing::FlashLayout;
+use probe_rs::flashing::{FlashCommitInfo, FlashLayout};
 use probe_rs::InstructionSet;
 use probe_rs::{
     flashing::{DownloadOptions, FileDownloadError, FlashLoader, FlashProgress, ProgressEvent},
@@ -28,7 +28,7 @@ pub fn run_flash_download(
     probe_options: &LoadedProbeOptions,
     loader: FlashLoader,
     do_chip_erase: bool,
-) -> Result<(), OperationError> {
+) -> Result<FlashCommitInfo, OperationError> {
     let mut options = DownloadOptions::default();
     options.keep_unwritten_bytes = download_options.restore_unwritten;
     options.dry_run = probe_options.dry_run();
@@ -133,7 +133,7 @@ pub fn run_flash_download(
     // Start timer.
     let flash_timer = Instant::now();
 
-    loader
+    let info = loader
         .commit(session, options)
         .map_err(|error| OperationError::FlashingFailed {
             source: error,
@@ -151,7 +151,7 @@ pub fn run_flash_download(
         flash_timer.elapsed().as_secs_f32(),
     ));
 
-    Ok(())
+    Ok(info)
 }
 
 /// Builds a new flash loader for the given target and path. This

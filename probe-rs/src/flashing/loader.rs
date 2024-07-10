@@ -5,6 +5,7 @@ use probe_rs_target::{
     InstructionSet, MemoryRange, MemoryRegion, NvmRegion, RawFlashAlgorithm,
     TargetDescriptionSource,
 };
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::io::{Read, Seek, SeekFrom};
 use std::ops::Range;
@@ -21,6 +22,12 @@ use crate::memory::MemoryInterface;
 use crate::session::Session;
 use crate::Target;
 
+#[derive(Debug, Default)]
+pub struct FlashCommitInfo {
+    pub entry_point_in_ram: bool,
+    pub entry_point: Option<u64>,
+}
+
 /// `FlashLoader` is a struct which manages the flashing of any chunks of data onto any sections of flash.
 ///
 /// Use [add_data()](FlashLoader::add_data) to add a chunk of data.
@@ -34,6 +41,7 @@ pub struct FlashLoader {
     /// Source of the flash description,
     /// used for diagnostics.
     source: TargetDescriptionSource,
+    entry_point: Option<u64>,
 }
 
 impl FlashLoader {
@@ -43,6 +51,7 @@ impl FlashLoader {
             memory_map,
             builder: FlashBuilder::new(),
             source,
+            entry_point: None,
         }
     }
 
@@ -76,6 +85,15 @@ impl FlashLoader {
         );
 
         self.check_data_in_memory_map(address..address + data.len() as u64)?;
+        match &mut self.entry_point {
+            Some(current_entry_point) => {
+                if address < *current_entry_point {
+                    *current_entry_point = address;
+                }
+            }
+            None => self.entry_point = Some(address),
+        }
+
         self.builder.add_data(address, data)
     }
 
@@ -327,7 +345,8 @@ impl FlashLoader {
         &self,
         session: &mut Session,
         options: DownloadOptions,
-    ) -> Result<(), FlashError> {
+    ) -> Result<FlashCommitInfo, FlashError> {
+        let mut commit_info = FlashCommitInfo::default();
         tracing::debug!("Committing FlashLoader!");
 
         tracing::debug!("Contents of builder:");
@@ -338,6 +357,14 @@ impl FlashLoader {
                 address + data.len() as u64,
                 data.len()
             );
+        }
+        if let Some(entry_point) = self.entry_point {
+            if let Some(MemoryRegion::Ram(_)) =
+                Self::get_region_for_address(&self.memory_map, entry_point)
+            {
+                commit_info.entry_point_in_ram = true;
+                commit_info.entry_point = self.entry_point;
+            }
         }
 
         tracing::debug!("Flash algorithms:");
@@ -422,7 +449,7 @@ impl FlashLoader {
             progress.failed_erasing();
             progress.failed_programming();
 
-            return Ok(());
+            return Ok(commit_info);
         }
 
         let mut do_chip_erase = options.do_chip_erase;
@@ -573,7 +600,7 @@ impl FlashLoader {
             }
         }
 
-        Ok(())
+        Ok(commit_info)
     }
 
     /// Try to find a flash algorithm for the given NvmRegion.

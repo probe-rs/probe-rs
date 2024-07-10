@@ -241,7 +241,7 @@ bitfield! {
     pub tbloff, set_tbloff: 31, 7;
 }
 
-impl From<u32> for Vtor  {
+impl From<u32> for Vtor {
     fn from(value: u32) -> Self {
         Self(value)
     }
@@ -253,7 +253,7 @@ impl From<Vtor> for u32 {
     }
 }
 
-impl MemoryMappedRegister<u32> for Vtor{
+impl MemoryMappedRegister<u32> for Vtor {
     const ADDRESS_OFFSET: u64 = 0xE000_ED08;
     const NAME: &'static str = "VTOR";
 }
