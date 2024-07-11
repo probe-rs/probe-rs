@@ -374,7 +374,6 @@ impl JtagState {
 #[derive(Debug)]
 pub(crate) struct JtagDriverState {
     pub state: JtagState,
-    pub current_ir_reg: u32,
     // The maximum IR address
     pub max_ir_address: u32,
     pub expected_scan_chain: Option<Vec<ScanChainElement>>,
@@ -389,7 +388,6 @@ impl Default for JtagDriverState {
     fn default() -> Self {
         Self {
             state: JtagState::Reset,
-            current_ir_reg: 1,
             max_ir_address: 0x0F,
             expected_scan_chain: None,
             scan_chain: Vec::new(),
@@ -611,18 +609,15 @@ fn prepare_write_register(
     len: u32,
     capture: bool,
 ) -> Result<usize, DebugProbeError> {
-    if protocol.state().current_ir_reg != address {
-        if address > protocol.state().max_ir_address {
-            return Err(DebugProbeError::Other(format!(
-                "Invalid instruction register access: {}",
-                address
-            )));
-        }
-
-        let ir_len = protocol.state().chain_params.irlen;
-        shift_ir(protocol, &address.to_le_bytes(), ir_len, false)?;
-        protocol.state_mut().current_ir_reg = address;
+    if address > protocol.state().max_ir_address {
+        return Err(DebugProbeError::Other(format!(
+            "Invalid instruction register access: {}",
+            address
+        )));
     }
+
+    let ir_len = protocol.state().chain_params.irlen;
+    shift_ir(protocol, &address.to_le_bytes(), ir_len, false)?;
 
     // read DR register by transfering len bits to the chain
     shift_dr(protocol, data, len as usize, capture)
