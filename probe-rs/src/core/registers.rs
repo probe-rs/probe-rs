@@ -1,7 +1,6 @@
 //! Core registers are represented by the `CoreRegister` struct, and collected in a `RegisterFile` for each of the supported architectures.
 
 use crate::Error;
-use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
@@ -248,10 +247,9 @@ impl RegisterValue {
                     *value = reg_val;
                     Ok(())
                 } else {
-                    Err(Error::Other(anyhow!(
+                    Err(Error::Other(format!(
                         "Overflow error: Attempting to add {} bytes to Register value {}",
-                        bytes,
-                        self
+                        bytes, self
                     )))
                 }
             }
@@ -260,10 +258,9 @@ impl RegisterValue {
                     *value = reg_val;
                     Ok(())
                 } else {
-                    Err(Error::Other(anyhow!(
+                    Err(Error::Other(format!(
                         "Overflow error: Attempting to add {} bytes to Register value {}",
-                        bytes,
-                        self
+                        bytes, self
                     )))
                 }
             }
@@ -272,10 +269,9 @@ impl RegisterValue {
                     *value = reg_val;
                     Ok(())
                 } else {
-                    Err(Error::Other(anyhow!(
+                    Err(Error::Other(format!(
                         "Overflow error: Attempting to add {} bytes to Register value {}",
-                        bytes,
-                        self
+                        bytes, self
                     )))
                 }
             }
@@ -290,10 +286,9 @@ impl RegisterValue {
                     *value = reg_val;
                     Ok(())
                 } else {
-                    Err(Error::Other(anyhow!(
+                    Err(Error::Other(format!(
                         "Overflow error: Attempting to subtract {} bytes to Register value {}",
-                        bytes,
-                        self
+                        bytes, self
                     )))
                 }
             }
@@ -302,10 +297,9 @@ impl RegisterValue {
                     *value = reg_val;
                     Ok(())
                 } else {
-                    Err(Error::Other(anyhow!(
+                    Err(Error::Other(format!(
                         "Overflow error: Attempting to subtract {} bytes to Register value {}",
-                        bytes,
-                        self
+                        bytes, self
                     )))
                 }
             }
@@ -314,10 +308,9 @@ impl RegisterValue {
                     *value = reg_val;
                     Ok(())
                 } else {
-                    Err(Error::Other(anyhow!(
+                    Err(Error::Other(format!(
                         "Overflow error: Attempting to subtract {} bytes to Register value {}",
-                        bytes,
-                        self
+                        bytes, self
                     )))
                 }
             }
@@ -417,10 +410,10 @@ impl TryInto<u32> for RegisterValue {
             Self::U32(v) => Ok(v),
             Self::U64(v) => v
                 .try_into()
-                .map_err(|_| crate::Error::Other(anyhow!("Value '{}' too large for u32", v))),
+                .map_err(|_| crate::Error::Other(format!("Value '{}' too large for u32", v))),
             Self::U128(v) => v
                 .try_into()
-                .map_err(|_| crate::Error::Other(anyhow!("Value '{}' too large for u32", v))),
+                .map_err(|_| crate::Error::Other(format!("Value '{}' too large for u32", v))),
         }
     }
 }
@@ -434,7 +427,7 @@ impl TryInto<u64> for RegisterValue {
             Self::U64(v) => Ok(v),
             Self::U128(v) => v
                 .try_into()
-                .map_err(|_| crate::Error::Other(anyhow!("Value '{}' too large for u64", v))),
+                .map_err(|_| crate::Error::Other(format!("Value '{}' too large for u64", v))),
         }
     }
 }

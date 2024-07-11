@@ -20,7 +20,6 @@ use crate::{
     memory::valid_32bit_address,
     BreakpointCause, CoreRegister, CoreType, InstructionSet, MemoryInterface,
 };
-use anyhow::anyhow;
 use bitfield::bitfield;
 use std::{
     mem::size_of,
@@ -949,7 +948,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
                     breakpoint = FpRev2CompX::from(register_value).bpaddr() << 1;
                 } else {
                     tracing::warn!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", ctrl_reg.rev());
-                    return Err(Error::Other(anyhow!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", ctrl_reg.rev())));
+                    return Err(Error::Other(format!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", ctrl_reg.rev())));
                 }
                 breakpoints.push(Some(breakpoint as u64));
             } else {
@@ -979,7 +978,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
 
         // First make sure they are asking for a breakpoint on a half-word boundary.
         if (addr & 0x1) > 0 {
-            return Err(Error::Other(anyhow!(
+            return Err(Error::Other(format!(
                 "The requested breakpoint address 0x{:08x} is not on a half-word boundary",
                 addr
             )));
@@ -995,7 +994,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
             val = FpRev2CompX::breakpoint_configuration(addr).into();
         } else {
             tracing::warn!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", ctrl_reg.rev());
-            return Err(Error::Other(anyhow!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", ctrl_reg.rev())));
+            return Err(Error::Other(format!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", ctrl_reg.rev())));
         }
 
         // This is fine as FpRev1CompX and Rev2CompX are just two different

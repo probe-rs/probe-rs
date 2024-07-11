@@ -998,7 +998,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                         "Error in access {}/{} of block access: {:?}",
                         i + 1,
                         values.len(),
-                        anyhow::anyhow!(err)
+                        err
                     );
                     return Err(err.into());
                 }

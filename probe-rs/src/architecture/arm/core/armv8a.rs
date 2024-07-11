@@ -1339,12 +1339,10 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
     }
 
     fn clear_hw_breakpoint(&mut self, bp_unit_index: usize) -> Result<(), Error> {
-        let bp_value_addr = Dbgbvr::get_mmio_address_from_base(self.base_address)
-            .map_err(ArmError::from)?
-            + (bp_unit_index * 16) as u64;
-        let bp_control_addr = Dbgbcr::get_mmio_address_from_base(self.base_address)
-            .map_err(ArmError::from)?
-            + (bp_unit_index * 16) as u64;
+        let bp_value_addr =
+            Dbgbvr::get_mmio_address_from_base(self.base_address)? + (bp_unit_index * 16) as u64;
+        let bp_control_addr =
+            Dbgbcr::get_mmio_address_from_base(self.base_address)? + (bp_unit_index * 16) as u64;
 
         self.memory.write_word_32(bp_value_addr, 0)?;
         self.memory.write_word_32(bp_value_addr + 4, 0)?;

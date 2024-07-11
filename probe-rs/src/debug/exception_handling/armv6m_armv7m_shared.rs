@@ -77,7 +77,7 @@ pub(crate) fn exception_details(
     memory_interface: &mut dyn MemoryInterface,
     stackframe_registers: &DebugRegisters,
     debug_info: &DebugInfo,
-) -> Result<Option<ExceptionInfo>, Error> {
+) -> Result<Option<ExceptionInfo>, DebugError> {
     let frame_return_address = get_stack_frame_return_address(stackframe_registers)?;
 
     if ExcReturn(frame_return_address).is_exception_flag() != 0xF {
@@ -120,8 +120,7 @@ pub(crate) fn exception_details(
             &mut unwind_context,
             &debug_info.frame_section,
             exception_frame_pc,
-        )
-        .map_err(|error: DebugError| Error::Other(error.into()))?;
+        )?;
         handler_frame.canonical_frame_address =
             determine_cfa(&handler_frame.registers, unwind_info)?;
         let Ok((_, functions)) = debug_info.get_function_dies(exception_frame_pc) else {
@@ -142,17 +141,15 @@ pub(crate) fn exception_details(
                 handler_frame,
             }));
         }
-        handler_frame.frame_base = functions[0]
-            .frame_base(
-                debug_info,
-                memory_interface,
-                StackFrameInfo {
-                    registers: &handler_frame.registers,
-                    frame_base: None,
-                    canonical_frame_address: handler_frame.canonical_frame_address,
-                },
-            )
-            .map_err(|error: DebugError| Error::Other(error.into()))?;
+        handler_frame.frame_base = functions[0].frame_base(
+            debug_info,
+            memory_interface,
+            StackFrameInfo {
+                registers: &handler_frame.registers,
+                frame_base: None,
+                canonical_frame_address: handler_frame.canonical_frame_address,
+            },
+        )?;
         let callee_frame_registers = handler_frame.registers.clone();
         if let ControlFlow::Break(error) = unwind_register(
             handler_frame

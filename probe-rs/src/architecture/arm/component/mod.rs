@@ -120,7 +120,7 @@ pub fn get_arm_components(
             ApInformation::MemoryAp(MemoryApInformation {
                 debug_base_address: 0,
                 ..
-            }) => Err(Error::Other(anyhow::anyhow!("AP has a base address of 0"))),
+            }) => Err(Error::Other("AP has a base address of 0".to_string())),
             ApInformation::MemoryAp(MemoryApInformation {
                 address,
                 debug_base_address,
@@ -133,7 +133,7 @@ pub fn get_arm_components(
             }
             ApInformation::Other { address, .. } => {
                 // Return an error, only possible to get Component from MemoryAP
-                Err(Error::Other(anyhow::anyhow!(
+                Err(Error::Other(format!(
                     "AP {:#x?} is not a MemoryAP, unable to get ARM component.",
                     address
                 )))

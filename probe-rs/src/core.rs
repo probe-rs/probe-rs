@@ -7,7 +7,6 @@ use crate::{
     error::Error,
     CoreType, InstructionSet, MemoryInterface, Target,
 };
-use anyhow::anyhow;
 pub use probe_rs_target::{Architecture, CoreAccessOptions};
 use probe_rs_target::{
     ArmCoreAccessOptions, MemoryRegion, RiscvCoreAccessOptions, XtensaCoreAccessOptions,
@@ -484,7 +483,7 @@ impl<'probe> Core<'probe> {
                 next_available_hw_breakpoint += 1;
             }
         }
-        Err(Error::Other(anyhow!("No available hardware breakpoints")))
+        Err(Error::Other(format!("No available hardware breakpoints")))
     }
 
     /// Set a hardware breakpoint
@@ -544,7 +543,7 @@ impl<'probe> Core<'probe> {
                 self.inner.clear_hw_breakpoint(bp_position)?;
                 Ok(())
             }
-            None => Err(Error::Other(anyhow!(
+            None => Err(Error::Other(format!(
                 "No breakpoint found at address {:#010x}",
                 address
             ))),

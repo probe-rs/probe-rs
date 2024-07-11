@@ -54,7 +54,7 @@ impl UnitInfo {
     }
 
     pub(crate) fn debug_info_offset(&self) -> Result<DebugInfoOffset, DebugError> {
-        self.unit.header.offset().as_debug_info_offset().ok_or_else(|| DebugError::Other(anyhow::anyhow!(
+        self.unit.header.offset().as_debug_info_offset().ok_or_else(|| DebugError::Other(format!(
             "Failed to convert unit header offset to debug info offset. This is a bug, please report it."
         )))
     }
@@ -822,7 +822,7 @@ impl UnitInfo {
                 gimli::DW_AT_lower_bound => match attr.value().udata_value() {
                     Some(bound) => lower_bound = Some(bound),
                     None => {
-                        return Err(DebugError::Other(anyhow::anyhow!(
+                        return Err(DebugError::Other(format!(
                             "Unimplemented: Attribute Value for DW_AT_lower_bound: {:?}",
                             attr.value()
                         )));
@@ -831,7 +831,7 @@ impl UnitInfo {
                 gimli::DW_AT_count => match attr.value().udata_value() {
                     Some(count) => upper_bound = Some(count),
                     None => {
-                        return Err(DebugError::Other(anyhow::anyhow!(
+                        return Err(DebugError::Other(format!(
                             "Unimplemented: Attribute Value for DW_AT_count: {:?}",
                             attr.value()
                         )));
@@ -842,7 +842,7 @@ impl UnitInfo {
                         // Rust ranges are exclusive, but the DWARF upper bound is inclusive.
                         Some(bound) => upper_bound = Some(bound + 1),
                         None => {
-                            return Err(DebugError::Other(anyhow::anyhow!(
+                            return Err(DebugError::Other(format!(
                                 "Unimplemented: Attribute Value for DW_AT_upper_bound: {:?}",
                                 attr.value()
                             )));

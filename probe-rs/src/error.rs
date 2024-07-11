@@ -32,6 +32,7 @@ pub enum Error {
     Register(String),
 
     /// Error calculating the address of a register
+    #[error(transparent)]
     RegisterAddressOutOfBounds(#[from] RegisterAddressOutOfBounds),
     /// The {0} capability has not yet been implemented for this architecture.
     ///
@@ -42,7 +43,7 @@ pub enum Error {
     NotImplemented(&'static str),
     /// Some uncategorized error occurred.
     #[display("{0}")]
-    Other(#[from] anyhow::Error),
+    Other(String),
     /// A timeout occurred.
     // TODO: Errors below should be core specific
     Timeout,

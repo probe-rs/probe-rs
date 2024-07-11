@@ -41,15 +41,13 @@ impl SteppingMode {
         core: &mut impl CoreInterface,
         debug_info: &DebugInfo,
     ) -> Result<(CoreStatus, u64), DebugError> {
-        let mut core_status = core
-            .status()
-            .map_err(|error| DebugError::Other(anyhow::anyhow!(error)))?;
+        let mut core_status = core.status()?;
         let mut program_counter = match core_status {
             CoreStatus::Halted(_) => core
                 .read_core_reg(core.program_counter().id())?
                 .try_into()?,
             _ => {
-                return Err(DebugError::Other(anyhow::anyhow!(
+                return Err(DebugError::Other(format!(
                     "Core must be halted before stepping."
                 )))
             }
@@ -264,7 +262,7 @@ impl SteppingMode {
                             .attribute(debug_info, gimli::DW_AT_noreturn)
                             .is_some()
                         {
-                            return Err(DebugError::Other(anyhow::anyhow!(
+                            return Err(DebugError::Other(format!(
                                 "Function {:?} is marked as `noreturn`. Cannot step out of this function.",
                                 function.function_name(debug_info).as_deref().unwrap_or("<unknown>")
                             )));
@@ -361,7 +359,7 @@ fn run_to_address(
                     (core.status()?, program_counter)
                 } else {
                     // Something else is wrong.
-                    return Err(DebugError::Other(anyhow::anyhow!(
+                    return Err(DebugError::Other(format!(
                         "Unexpected error while waiting for the core to halt after stepping to {:#010X}. Forced a halt at {:#010X}. {:?}.",
                         program_counter,
                         target_address,
@@ -407,7 +405,7 @@ fn step_to_address(
             },
             // This is not a recoverable error, and will result in the debug session ending (we have no predicatable way of successfully continuing the session)
             other_status => return Err(DebugError::Other(
-                anyhow::anyhow!("Target failed to reach the destination address of a step operation: {:?}", other_status))
+                format!("Target failed to reach the destination address of a step operation: {:?}", other_status))
             ),
         }
     }

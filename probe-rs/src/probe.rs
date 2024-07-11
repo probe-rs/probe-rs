@@ -181,7 +181,8 @@ pub enum DebugProbeError {
     /// An error occured handling the JTAG scan chain.
     JtagScanChain(#[from] ScanChainError),
 
-    /// Another error occurred.
+    /// Some other error occured
+    #[display("{0}")]
     Other(String),
 
     /// A timeout occurred during probe operation.
@@ -315,7 +316,7 @@ impl Probe {
             |e| match e {
                 Error::Arm(ArmError::Timeout)
                 | Error::Riscv(RiscvError::Timeout)
-                | Error::Xtensa(XtensaError::Timeout) => Error::Other(anyhow::anyhow!(
+                | Error::Xtensa(XtensaError::Timeout) => Error::Other(format!(
                     "Timeout while attaching to target under reset. \
                     This can happen if the target is not responding to the reset sequence. \
                     Ensure the chip's reset pin is connected, or try attaching without reset \

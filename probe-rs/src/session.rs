@@ -24,7 +24,6 @@ use crate::{
     probe::{list::Lister, AttachMethod, DebugProbeError, Probe},
     Core, CoreType, Error,
 };
-use anyhow::anyhow;
 use std::ops::DerefMut;
 use std::{fmt, sync::Arc, time::Duration};
 
@@ -177,7 +176,7 @@ impl Session {
         let default_core = target.default_core();
 
         let default_memory_ap = default_core.memory_ap().ok_or_else(|| {
-            Error::Other(anyhow::anyhow!(
+            Error::Other(format!(
                 "Unable to connect to core {default_core:?}, no memory AP configured"
             ))
         })?;
@@ -785,20 +784,14 @@ impl Drop for Session {
     #[tracing::instrument(name = "session_drop", skip(self))]
     fn drop(&mut self) {
         if let Err(err) = self.clear_all_hw_breakpoints() {
-            tracing::warn!(
-                "Could not clear all hardware breakpoints: {:?}",
-                anyhow!(err)
-            );
+            tracing::warn!("Could not clear all hardware breakpoints: {:?}", err);
         }
 
         // Call any necessary deconfiguration/shutdown hooks.
         if let Err(err) = { 0..self.cores.len() }
             .try_for_each(|i| self.core(i).and_then(|mut core| core.debug_core_stop()))
         {
-            tracing::warn!(
-                "Failed to deconfigure device during shutdown: {:?}",
-                anyhow!(err)
-            );
+            tracing::warn!("Failed to deconfigure device during shutdown: {:?}", err);
         }
     }
 }

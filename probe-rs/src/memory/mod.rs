@@ -1,6 +1,5 @@
 use crate::error::Error;
 
-use anyhow::{anyhow, Result};
 use scroll::Pread;
 
 /// An interface to be implemented for drivers that allow target memory access.
@@ -67,7 +66,7 @@ pub trait MemoryInterface {
         // provide an implementation that avoids heap allocation and endian
         // conversions. Must be overridden for big endian targets.
         if data.len() % 8 != 0 {
-            return Err(Error::Other(anyhow!(
+            return Err(Error::Other(format!(
                 "Call to read_mem_64bit with data.len() not a multiple of 8"
             )));
         }
@@ -89,7 +88,7 @@ pub trait MemoryInterface {
         // provide an implementation that avoids heap allocation and endian
         // conversions. Must be overridden for big endian targets.
         if data.len() % 4 != 0 {
-            return Err(Error::Other(anyhow!(
+            return Err(Error::Other(format!(
                 "Call to read_mem_32bit with data.len() not a multiple of 4"
             )));
         }
@@ -180,7 +179,7 @@ pub trait MemoryInterface {
         // provide an implementation that avoids heap allocation and endian
         // conversions. Must be overridden for big endian targets.
         if data.len() % 8 != 0 {
-            return Err(Error::Other(anyhow!(
+            return Err(Error::Other(format!(
                 "Call to read_mem_64bit with data.len() not a multiple of 8"
             )));
         }
@@ -203,7 +202,7 @@ pub trait MemoryInterface {
         // provide an implementation that avoids heap allocation and endian
         // conversions. Must be overridden for big endian targets.
         if data.len() % 4 != 0 {
-            return Err(Error::Other(anyhow!(
+            return Err(Error::Other(format!(
                 "Call to read_mem_32bit with data.len() not a multiple of 4"
             )));
         }
@@ -370,7 +369,7 @@ where
 pub(crate) fn valid_32bit_address(address: u64) -> Result<u32, Error> {
     let address: u32 = address
         .try_into()
-        .map_err(|_| anyhow!("Address {:#08x} out of range", address))?;
+        .map_err(|_| Error::Other(format!("Address {:#08x} out of range", address)))?;
 
     Ok(address)
 }

@@ -1,7 +1,6 @@
 use crate::debug::{language::ProgrammingLanguage, unit_info::UnitInfo};
 
 use super::*;
-use anyhow::anyhow;
 use gimli::{DebugInfoOffset, DwLang, UnitOffset};
 use itertools::Itertools;
 use std::ops::Range;
@@ -558,10 +557,10 @@ impl Variable {
         let valid_memory = self.memory_location.valid();
         if !valid_value || !valid_type || !valid_memory {
             // Insufficient data available.
-            Err(anyhow!(
+            Err(DebugError::Other(format!(
                 "Cannot update variable: {:?}, with supplied information (value={:?}, type={:?}, memory location={:#010x?}).",
                 self.name, self.value, self.type_name, self.memory_location
-            ).into())
+            )))
         } else {
             // We have everything we need to update the variable value.
             language::from_dwarf(self.language)

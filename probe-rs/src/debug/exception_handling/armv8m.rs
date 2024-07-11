@@ -1,5 +1,5 @@
 use crate::{
-    debug::{get_object_reference, DebugInfo, DebugRegisters, StackFrame},
+    debug::{get_object_reference, DebugError, DebugInfo, DebugRegisters, StackFrame},
     memory::MemoryInterface,
     memory_mapped_bitfield_register, Error, MemoryMappedRegister, RegisterRole, RegisterValue,
 };
@@ -195,6 +195,9 @@ memory_mapped_bitfield_register! {
 
 impl Sfsr {
     /// Additional information about a Secure Fault, or Ok(None) if the fault was not a Secure Fault.
+    ///
+    /// This function will access the memory interface to determine the address of the fault,
+    /// if necessary.
     fn secure_fault_description(
         &self,
         memory: &mut dyn MemoryInterface,
@@ -307,7 +310,7 @@ impl From<u32> for ExceptionReason {
 impl ExceptionReason {
     /// Expands the exception reason, by providing additional information about the exception from the
     /// HFSR, CFSR, and SFSR registers.
-    fn expanded_description(&self, memory: &mut dyn MemoryInterface) -> Result<String, Error> {
+    fn expanded_description(&self, memory: &mut dyn MemoryInterface) -> Result<String, DebugError> {
         match self {
             ExceptionReason::ThreadMode => Ok("<No active exception>".to_string()),
             ExceptionReason::Reset => Ok("Reset".to_string()),
@@ -390,7 +393,7 @@ impl ExceptionInterface for ArmV8MExceptionHandler {
         memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &DebugRegisters,
         _raw_exception: u32,
-    ) -> Result<DebugRegisters, Error> {
+    ) -> Result<DebugRegisters, DebugError> {
         let mut calling_stack_registers = vec![0u32; EXCEPTION_STACK_REGISTERS.len()];
         let stack_frame_return_address: u32 = get_stack_frame_return_address(stackframe_registers)?;
         let exc_return = ExcReturn(stack_frame_return_address);
@@ -437,7 +440,7 @@ impl ExceptionInterface for ArmV8MExceptionHandler {
         Ok(calling_frame_registers)
     }
 
-    fn raw_exception(&self, stackframe_registers: &DebugRegisters) -> Result<u32, Error> {
+    fn raw_exception(&self, stackframe_registers: &DebugRegisters) -> Result<u32, DebugError> {
         // Load the provided xPSR register as a bitfield.
         let exception_number = Xpsr(
             stackframe_registers
@@ -453,7 +456,7 @@ impl ExceptionInterface for ArmV8MExceptionHandler {
         &self,
         raw_exception: u32,
         memory_interface: &mut dyn MemoryInterface,
-    ) -> Result<String, Error> {
+    ) -> Result<String, DebugError> {
         ExceptionReason::from(raw_exception).expanded_description(memory_interface)
     }
 
@@ -462,7 +465,7 @@ impl ExceptionInterface for ArmV8MExceptionHandler {
         memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &DebugRegisters,
         _debug_info: &DebugInfo,
-    ) -> Result<Option<ExceptionInfo>, Error> {
+    ) -> Result<Option<ExceptionInfo>, DebugError> {
         let stack_frame_return_address: u32 = get_stack_frame_return_address(stackframe_registers)?;
         if ExcReturn(stack_frame_return_address).is_exception_flag() == 0xFF {
             // This is an exception frame.

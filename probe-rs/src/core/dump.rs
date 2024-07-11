@@ -15,7 +15,6 @@ use crate::{
     Core, CoreType, Error, InstructionSet, MemoryInterface,
 };
 use crate::{RegisterId, RegisterValue};
-use anyhow::anyhow;
 use probe_rs_target::MemoryRange;
 use scroll::Cread;
 use serde::{Deserialize, Serialize};
@@ -203,7 +202,7 @@ impl CoreDump {
             }
         }
         // If we get here, then no range with the requested memory address and size was found.
-        Err(crate::Error::Other(anyhow!("The coredump does not include the memory for address {address:#x} of size {size_in_bytes:#x}")))
+        Err(crate::Error::Other(format!("The coredump does not include the memory for address {address:#x} of size {size_in_bytes:#x}")))
     }
 
     /// Read the requested memory range from the coredump, and return the data in the requested buffer.
@@ -218,9 +217,7 @@ impl CoreDump {
         let value_size = std::mem::size_of::<T>();
 
         for (n, data) in data.iter_mut().enumerate() {
-            let x: T = memory.cread_with::<T>(n * value_size, scroll::LE);
-
-            *data = x;
+            *data = memory.cread_with::<T>(n * value_size, scroll::LE);
         }
         Ok(())
     }
