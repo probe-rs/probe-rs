@@ -50,7 +50,7 @@ pub mod commands {
 
     // Parameters for JTAG_ENTER2.
     pub const JTAG_ENTER_SWD: u8 = 0xa3;
-    pub const JTAG_ENTER_JTAG_NO_CORE_RESET: u8 = 0xa3;
+    pub const JTAG_ENTER_JTAG_NO_CORE_RESET: u8 = 0xa4;
 
     // Parameters for JTAG_DRIVE_NRST.
     pub const JTAG_DRIVE_NRST_LOW: u8 = 0x00;
