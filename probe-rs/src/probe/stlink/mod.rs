@@ -218,7 +218,7 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
             TIMEOUT,
         )?;
 
-        tracing::debug!("Successfully initialized SWD.");
+        tracing::debug!("Successfully initialized {}.", self.protocol);
 
         // If the speed is not manually set, the probe will
         // use whatever speed has been configured before.
