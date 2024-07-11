@@ -54,9 +54,9 @@ impl UnitInfo {
     }
 
     pub(crate) fn debug_info_offset(&self) -> Result<DebugInfoOffset, DebugError> {
-        self.unit.header.offset().as_debug_info_offset().ok_or_else(|| DebugError::Other(format!(
-            "Failed to convert unit header offset to debug info offset. This is a bug, please report it."
-        )))
+        self.unit.header.offset().as_debug_info_offset().ok_or_else(|| DebugError::Other(
+            "Failed to convert unit header offset to debug info offset. This is a bug, please report it.".to_string()
+        ))
     }
 
     /// Get the compilation unit DIEs for the function containing the given address.

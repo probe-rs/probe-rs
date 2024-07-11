@@ -9,8 +9,11 @@ mod test;
 
 use anyhow::Result;
 use probe_rs::{
-    architecture::arm::ap::AccessPortError, flashing::FileDownloadError, probe::list::Lister,
-    probe::DebugProbeError, CoreDumpError, Error,
+    architecture::arm::ap::AccessPortError,
+    debug::DebugError,
+    flashing::FileDownloadError,
+    probe::{list::Lister, DebugProbeError},
+    CoreDumpError, Error,
 };
 use server::startup::debug;
 use std::{
@@ -33,6 +36,8 @@ pub enum DebuggerError {
     },
     #[error(transparent)]
     DebugProbe(#[from] DebugProbeError),
+    #[error(transparent)]
+    DebugError(#[from] DebugError),
     #[error(transparent)]
     FileDownload(#[from] FileDownloadError),
     #[error("Received an invalid requeset")]

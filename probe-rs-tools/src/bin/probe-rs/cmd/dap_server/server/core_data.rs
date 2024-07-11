@@ -25,7 +25,7 @@ use probe_rs::{
         debug_info::DebugInfo, stack_frame::StackFrameInfo, ColumnType, ObjectRef, VariableCache,
     },
     rtt::{Rtt, ScanRegion},
-    Core, CoreStatus, Error, HaltReason,
+    Core, CoreStatus, HaltReason,
 };
 use time::UtcOffset;
 use typed_path::TypedPathBuf;
@@ -78,7 +78,7 @@ impl<'p> CoreHandle<'p> {
     pub(crate) fn poll_core<P: ProtocolAdapter>(
         &mut self,
         debug_adapter: &mut DebugAdapter<P>,
-    ) -> Result<CoreStatus, Error> {
+    ) -> Result<CoreStatus, DebuggerError> {
         if debug_adapter.configuration_is_done() {
             match self.core.status() {
                 Ok(status) => {
@@ -131,7 +131,7 @@ impl<'p> CoreHandle<'p> {
                                     MessageSeverity::Error,
                                     status.short_long_status(None).1,
                                 );
-                                return Err(Error::Other(anyhow!(
+                                return Err(DebuggerError::Other(anyhow!(
                                     status.short_long_status(None).1
                                 )));
                             }
@@ -140,7 +140,7 @@ impl<'p> CoreHandle<'p> {
                                     anyhow!("Unknown Device status reveived from Probe-rs"),
                                 ))?;
 
-                                return Err(Error::Other(anyhow!(
+                                return Err(DebuggerError::Other(anyhow!(
                                     "Unknown Device status reveived from Probe-rs"
                                 )));
                             }
@@ -151,7 +151,7 @@ impl<'p> CoreHandle<'p> {
                 }
                 Err(error) => {
                     self.core_data.last_known_status = CoreStatus::Unknown;
-                    Err(error)
+                    Err(error.into())
                 }
             }
         } else {
@@ -431,7 +431,7 @@ fn try_attach_rtt(
     elf_file: &Path,
     rtt_config: &RttConfig,
     timestamp_offset: UtcOffset,
-) -> Result<RttActiveTarget, Error> {
+) -> Result<RttActiveTarget, DebuggerError> {
     let elf = std::fs::read(elf_file)
         .map_err(|error| anyhow!("Error attempting to attach to RTT: {}", error))?;
 

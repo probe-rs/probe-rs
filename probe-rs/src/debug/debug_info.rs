@@ -1122,18 +1122,18 @@ pub fn unwind_register(
                         .get_register_value_by_role(&RegisterRole::ProgramCounter)
                     else {
                         return ControlFlow::Break(
-                            crate::Error::Other(format!(
-                                "UNWIND: Tried to unwind return address value where current program counter is unknown."
-                            ))
+                            crate::Error::Other(
+                                "UNWIND: Tried to unwind return address value where current program counter is unknown.".to_string()
+                            )
                         );
                     };
                     let Ok(current_lr) = callee_frame_registers
                         .get_register_value_by_role(&RegisterRole::ReturnAddress)
                     else {
                         return ControlFlow::Break(
-                            crate::Error::Other(format!(
-                                "UNWIND: Tried to unwind return address value where current return address is unknown."
-                            ))
+                            crate::Error::Other(
+                                "UNWIND: Tried to unwind return address value where current return address is unknown.".to_string()
+                            )
                         );
                     };
                     *unwound_return_address = if current_pc == current_lr & !0b1 {
@@ -1197,9 +1197,9 @@ pub fn unwind_register(
         RegisterRule::Offset(address_offset) => {
             // "The previous value of this register is saved at the address CFA+N where CFA is the current CFA value and N is a signed offset"
             let Some(unwind_cfa) = unwind_cfa else {
-                return ControlFlow::Break(crate::Error::Other(format!(
-                    "UNWIND: Tried to unwind `RegisterRule` at CFA = None."
-                )));
+                return ControlFlow::Break(crate::Error::Other(
+                    "UNWIND: Tried to unwind `RegisterRule` at CFA = None.".to_string(),
+                ));
             };
             let address_size = callee_frame_registers.get_address_size_bytes();
             let previous_frame_register_address =

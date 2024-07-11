@@ -84,6 +84,7 @@ pub enum DebugError {
         message: String,
     },
 
+    /// Required functionality is not implemented
     #[error("Not implemented: {0}")]
     NotImplemented(&'static str),
 

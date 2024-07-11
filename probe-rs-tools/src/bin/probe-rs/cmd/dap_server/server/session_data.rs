@@ -232,11 +232,10 @@ impl SessionData {
             };
 
             // We need to poll the core to determine its status.
-            let current_core_status = target_core.poll_core(debug_adapter).map_err(|error| {
-                let error = DebuggerError::ProbeRs(error);
-                let _ = debug_adapter.show_error_message(&error);
-                error
-            })?;
+            let current_core_status =
+                target_core.poll_core(debug_adapter).inspect_err(|error| {
+                    let _ = debug_adapter.show_error_message(&error);
+                })?;
 
             // If appropriate, check for RTT data.
             if core_config.rtt_config.enabled {

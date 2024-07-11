@@ -47,9 +47,9 @@ impl SteppingMode {
                 .read_core_reg(core.program_counter().id())?
                 .try_into()?,
             _ => {
-                return Err(DebugError::Other(format!(
-                    "Core must be halted before stepping."
-                )))
+                return Err(DebugError::Other(
+                    "Core must be halted before stepping.".to_string(),
+                ))
             }
         };
         let origin_program_counter = program_counter;
