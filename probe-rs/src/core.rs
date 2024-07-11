@@ -483,7 +483,9 @@ impl<'probe> Core<'probe> {
                 next_available_hw_breakpoint += 1;
             }
         }
-        Err(Error::Other(format!("No available hardware breakpoints")))
+        Err(Error::Other(
+            "No available hardware breakpoints".to_string(),
+        ))
     }
 
     /// Set a hardware breakpoint

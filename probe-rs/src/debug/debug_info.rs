@@ -288,7 +288,7 @@ impl DebugInfo {
 
                 let Some(unit_info) = unit_infos.next() else {
                     // No unit infos
-                    return Err(DebugError::Other(format!("Missing unit infos")));
+                    return Err(DebugError::Other("Missing unit infos".to_string()));
                 };
 
                 let mut entries = unit_info.unit.entries();

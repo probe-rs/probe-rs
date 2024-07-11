@@ -244,8 +244,7 @@ impl<'state> CoreInterface for Riscv32<'state> {
         } else {
             Err(Error::Other(
                 "Some cores are running while some are halted, this should not happen.".to_string(),
-            )
-            .into())
+            ))
         }
     }
 

@@ -66,10 +66,9 @@ pub trait MemoryInterface {
         // provide an implementation that avoids heap allocation and endian
         // conversions. Must be overridden for big endian targets.
         if data.len() % 8 != 0 {
-            return Err(
-                Error::Other("Call to read_mem_64bit with data.len() not a multiple of 8")
-                    .to_string()),
-            );
+            return Err(Error::Other(
+                "Call to read_mem_64bit with data.len() not a multiple of 8".to_string(),
+            ));
         }
         let mut buffer = vec![0u64; data.len() / 8];
         self.read_64(address, &mut buffer)?;
@@ -89,9 +88,9 @@ pub trait MemoryInterface {
         // provide an implementation that avoids heap allocation and endian
         // conversions. Must be overridden for big endian targets.
         if data.len() % 4 != 0 {
-            return Err(Error::Other(format!(
-                "Call to read_mem_32bit with data.len() not a multiple of 4"
-            )));
+            return Err(Error::Other(
+                "Call to read_mem_32bit with data.len() not a multiple of 4".to_string(),
+            ));
         }
         let mut buffer = vec![0u32; data.len() / 4];
         self.read_32(address, &mut buffer)?;
@@ -203,9 +202,9 @@ pub trait MemoryInterface {
         // provide an implementation that avoids heap allocation and endian
         // conversions. Must be overridden for big endian targets.
         if data.len() % 4 != 0 {
-            return Err(Error::Other(format!(
-                "Call to read_mem_32bit with data.len() not a multiple of 4"
-            )));
+            return Err(Error::Other(
+                "Call to read_mem_32bit with data.len() not a multiple of 4".to_string(),
+            ));
         }
         let mut buffer = vec![0u32; data.len() / 4];
         for (bytes, value) in data.chunks_exact(4).zip(buffer.iter_mut()) {
