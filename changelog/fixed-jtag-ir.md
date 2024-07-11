@@ -1,0 +1,1 @@
+Fixed an issue using JTAG with FTDI and J-Link probes
