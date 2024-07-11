@@ -26,9 +26,10 @@ impl TargetDescriptionXmlOverride for RuntimeTarget<'_> {
     ) -> gdbstub::target::TargetResult<usize, Self> {
         let annex = String::from_utf8_lossy(annex);
         if annex != "target.xml" {
-            return Err(TargetError::Fatal(
-                anyhow!("Unsupported annex: '{}'", annex).into(),
-            ));
+            return Err(TargetError::Fatal(anyhow!(
+                "Unsupported annex: '{}'",
+                annex
+            )));
         }
 
         let xml = self.target_desc.get_target_xml();

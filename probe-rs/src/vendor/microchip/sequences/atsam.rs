@@ -24,8 +24,6 @@ use std::{
     time::{Duration, Instant},
 };
 
-use anyhow::Result;
-
 bitfield! {
     /// Device Service Unit Control Register, DSU - CTRL
     #[derive(Copy, Clone)]

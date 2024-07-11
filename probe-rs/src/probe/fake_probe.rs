@@ -319,9 +319,9 @@ impl DebugProbe for FakeProbe {
     fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
         match &self.scan_chain {
             Some(chain) => Ok(chain),
-            None => Err(DebugProbeError::Other(anyhow::anyhow!(
-                "No scan chain set for fake probe"
-            ))),
+            None => Err(DebugProbeError::Other(
+                "No scan chain set for fake probe".to_string(),
+            )),
         }
     }
 

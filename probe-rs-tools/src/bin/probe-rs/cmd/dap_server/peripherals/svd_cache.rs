@@ -1,9 +1,7 @@
 use std::collections::BTreeMap;
 
-use probe_rs::debug::{get_object_reference, ObjectRef};
-use probe_rs::{Error, MemoryInterface};
-
-use anyhow::anyhow;
+use probe_rs::debug::{get_object_reference, DebugError, ObjectRef};
+use probe_rs::MemoryInterface;
 
 /// VariableCache stores available `Variable`s, and provides methods to create and navigate the parent-child relationships of the Variables.
 #[derive(Debug, Clone, PartialEq)]
@@ -106,7 +104,7 @@ impl SvdVariableCache {
         parent_key: ObjectRef,
         name: String,
         variable: SvdVariable,
-    ) -> Result<ObjectRef, Error> {
+    ) -> Result<ObjectRef, DebugError> {
         let cache_variable = {
             let variable_key = get_object_reference();
             Variable {
@@ -119,7 +117,7 @@ impl SvdVariableCache {
 
         // Validate that the parent_key exists ...
         if !self.variable_hash_map.contains_key(&parent_key) {
-            return Err(anyhow!("SvdVariableCache: Attempted to add a new variable: {} with non existent `parent_key`: {:?}. Please report this as a bug", cache_variable.name, parent_key).into());
+            return Err(DebugError::Other(format!("SvdVariableCache: Attempted to add a new variable: {} with non existent `parent_key`: {:?}. Please report this as a bug", cache_variable.name, parent_key)));
         }
 
         tracing::trace!(
@@ -133,7 +131,7 @@ impl SvdVariableCache {
             .variable_hash_map
             .insert(cache_variable.variable_key, cache_variable.clone())
         {
-            return Err(anyhow!("Attempt to insert a new `SvdVariable`:{:?} with a duplicate cache key: {:?}. Please report this as a bug.", cache_variable.name, old_variable.variable_key).into());
+            return Err(DebugError::Other(format!("Attempt to insert a new `SvdVariable`:{:?} with a duplicate cache key: {:?}. Please report this as a bug.", cache_variable.name, old_variable.variable_key)));
         }
 
         Ok(cache_variable.variable_key)

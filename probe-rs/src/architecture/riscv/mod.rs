@@ -12,7 +12,6 @@ use crate::{
     CoreInterface, CoreRegister, CoreStatus, CoreType, Error, HaltReason, InstructionSet,
     MemoryInterface, MemoryMappedRegister, SemihostingCommand,
 };
-use anyhow::{anyhow, Result};
 use bitfield::bitfield;
 use communication_interface::{AbstractCommandErrorKind, RiscvCommunicationInterface, RiscvError};
 use registers::{FP, RA, RISCV_CORE_REGSISTERS, SP};
@@ -243,10 +242,9 @@ impl<'state> CoreInterface for Riscv32<'state> {
         } else if status.allrunning() {
             Ok(CoreStatus::Running)
         } else {
-            Err(
-                anyhow!("Some cores are running while some are halted, this should not happen.")
-                    .into(),
-            )
+            Err(Error::Other(
+                "Some cores are running while some are halted, this should not happen.".to_string(),
+            ))
         }
     }
 

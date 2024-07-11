@@ -21,7 +21,6 @@ use crate::{
     Architecture, CoreInformation, CoreInterface, CoreRegister, CoreStatus, CoreType,
     InstructionSet, MemoryInterface,
 };
-use anyhow::Result;
 use std::{
     sync::Arc,
     time::{Duration, Instant},

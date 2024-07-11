@@ -1,6 +1,6 @@
 use super::{armv6m_armv7m_shared, ExceptionInfo, ExceptionInterface};
 use crate::{
-    debug::{DebugInfo, DebugRegisters},
+    debug::{DebugError, DebugInfo, DebugRegisters},
     memory_mapped_bitfield_register, Error, MemoryInterface, MemoryMappedRegister,
 };
 
@@ -321,7 +321,7 @@ impl ExceptionInterface for ArmV7MExceptionHandler {
         memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &DebugRegisters,
         debug_info: &DebugInfo,
-    ) -> Result<Option<ExceptionInfo>, Error> {
+    ) -> Result<Option<ExceptionInfo>, DebugError> {
         armv6m_armv7m_shared::exception_details(
             self,
             memory_interface,
@@ -335,7 +335,7 @@ impl ExceptionInterface for ArmV7MExceptionHandler {
         memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &crate::debug::DebugRegisters,
         raw_exception: u32,
-    ) -> Result<crate::debug::DebugRegisters, crate::Error> {
+    ) -> Result<crate::debug::DebugRegisters, DebugError> {
         let mut updated_registers = stackframe_registers.clone();
 
         // Identify the correct location for the exception context. This is different between Armv6-M and Armv7-M.
@@ -359,15 +359,18 @@ impl ExceptionInterface for ArmV7MExceptionHandler {
     fn raw_exception(
         &self,
         stackframe_registers: &crate::debug::DebugRegisters,
-    ) -> Result<u32, Error> {
-        armv6m_armv7m_shared::raw_exception(stackframe_registers)
+    ) -> Result<u32, DebugError> {
+        let value = armv6m_armv7m_shared::raw_exception(stackframe_registers)?;
+        Ok(value)
     }
 
     fn exception_description(
         &self,
         raw_exception: u32,
         memory_interface: &mut dyn MemoryInterface,
-    ) -> Result<String, crate::Error> {
-        ExceptionReason::from(raw_exception).expanded_description(memory_interface)
+    ) -> Result<String, DebugError> {
+        let description =
+            ExceptionReason::from(raw_exception).expanded_description(memory_interface)?;
+        Ok(description)
     }
 }

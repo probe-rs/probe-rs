@@ -158,7 +158,7 @@ impl VerifiedBreakpoint {
             }
         }
         // If we get here, we have not found a valid breakpoint location.
-        Err(DebugError::Other(anyhow::anyhow!("No valid breakpoint information found for file: {}, line: {line:?}, column: {column:?}", path.to_path().display())))
+        Err(DebugError::Other(format!("No valid breakpoint information found for file: {}, line: {line:?}, column: {column:?}", path.to_path().display())))
     }
 }
 

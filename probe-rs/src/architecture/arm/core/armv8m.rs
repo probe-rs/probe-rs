@@ -18,7 +18,6 @@ use crate::{
     Architecture, BreakpointCause, CoreInformation, CoreInterface, CoreRegister, CoreStatus,
     CoreType, HaltReason, InstructionSet, MemoryInterface, MemoryMappedRegister,
 };
-use anyhow::Result;
 use bitfield::bitfield;
 use std::{
     mem::size_of,
@@ -331,7 +330,9 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
 
     fn write_core_reg(&mut self, address: RegisterId, value: RegisterValue) -> Result<(), Error> {
         if self.state.current_state.is_halted() {
-            super::cortex_m::write_core_reg(&mut *self.memory, address, value.try_into()?)
+            super::cortex_m::write_core_reg(&mut *self.memory, address, value.try_into()?)?;
+
+            Ok(())
         } else {
             Err(Error::Arm(ArmError::CoreNotHalted))
         }

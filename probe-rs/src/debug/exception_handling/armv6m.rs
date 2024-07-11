@@ -1,5 +1,5 @@
 use crate::{
-    debug::{DebugInfo, DebugRegisters},
+    debug::{DebugError, DebugInfo, DebugRegisters},
     Error, MemoryInterface,
 };
 
@@ -47,21 +47,18 @@ impl From<u32> for ExceptionReason {
 impl ExceptionReason {
     /// Expands the exception reason, by providing additional information about the exception from the
     /// HFSR and CFSR registers.
-    pub(crate) fn expanded_description(
-        &self,
-        _memory: &mut dyn MemoryInterface,
-    ) -> Result<String, Error> {
+    pub(crate) fn expanded_description(&self) -> String {
         match self {
-            ExceptionReason::ThreadMode => Ok("<No active exception>".to_string()),
-            ExceptionReason::Reset => Ok("Reset".to_string()),
-            ExceptionReason::NonMaskableInterrupt => Ok("NMI".to_string()),
-            ExceptionReason::HardFault => Ok("HardFault".to_string()),
-            ExceptionReason::SVCall => Ok("SVC".to_string()),
-            ExceptionReason::PendSV => Ok("PendSV".to_string()),
-            ExceptionReason::SysTick => Ok("SysTick".to_string()),
-            ExceptionReason::ExternalInterrupt(exti) => Ok(format!("External interrupt #{exti}")),
+            ExceptionReason::ThreadMode => "<No active exception>".to_string(),
+            ExceptionReason::Reset => "Reset".to_string(),
+            ExceptionReason::NonMaskableInterrupt => "NMI".to_string(),
+            ExceptionReason::HardFault => "HardFault".to_string(),
+            ExceptionReason::SVCall => "SVC".to_string(),
+            ExceptionReason::PendSV => "PendSV".to_string(),
+            ExceptionReason::SysTick => "SysTick".to_string(),
+            ExceptionReason::ExternalInterrupt(exti) => format!("External interrupt #{exti}"),
             ExceptionReason::Reserved => {
-                Ok("<Reserved by the ISA, and not usable by software>".to_string())
+                "<Reserved by the ISA, and not usable by software>".to_string()
             }
         }
     }
@@ -92,7 +89,7 @@ impl ExceptionInterface for ArmV6MExceptionHandler {
         memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &DebugRegisters,
         debug_info: &DebugInfo,
-    ) -> Result<Option<ExceptionInfo>, Error> {
+    ) -> Result<Option<ExceptionInfo>, DebugError> {
         armv6m_armv7m_shared::exception_details(
             self,
             memory_interface,
@@ -106,7 +103,7 @@ impl ExceptionInterface for ArmV6MExceptionHandler {
         memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &crate::debug::DebugRegisters,
         raw_exception: u32,
-    ) -> Result<crate::debug::DebugRegisters, Error> {
+    ) -> Result<crate::debug::DebugRegisters, DebugError> {
         let mut updated_registers = stackframe_registers.clone();
 
         // Identify the correct location for the exception context. This is different between Armv6-M and Armv7-M.
@@ -131,20 +128,21 @@ impl ExceptionInterface for ArmV6MExceptionHandler {
     fn raw_exception(
         &self,
         stackframe_registers: &crate::debug::DebugRegisters,
-    ) -> Result<u32, Error> {
-        armv6m_armv7m_shared::raw_exception(stackframe_registers)
+    ) -> Result<u32, DebugError> {
+        let value = armv6m_armv7m_shared::raw_exception(stackframe_registers)?;
+        Ok(value)
     }
 
     fn exception_description(
         &self,
         raw_exception: u32,
-        memory_interface: &mut dyn MemoryInterface,
-    ) -> Result<String, Error> {
+        _memory_interface: &mut dyn MemoryInterface,
+    ) -> Result<String, DebugError> {
         // TODO: Some ARMv6-M cores (e.g. the Cortex-M0) do not have HFSR and CFGR registers, so we cannot
         //       determine the cause of the hard fault. We should add a check for this, and return a more
         //       helpful error message in this case (I'm not sure this is possible).
         //       Until then, this will return a generic error message for all hard faults on this architecture.
-        ExceptionReason::from(raw_exception).expanded_description(memory_interface)
+        Ok(ExceptionReason::from(raw_exception).expanded_description())
     }
 }
 

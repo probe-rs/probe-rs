@@ -26,7 +26,7 @@ use gdbstub::target::ext::monitor_cmd::MonitorCmdOps;
 use gdbstub::target::ext::target_description_xml_override::TargetDescriptionXmlOverrideOps;
 use gdbstub::target::Target;
 
-pub(crate) use traits::{GdbErrorExt, ProbeRsErrorExt};
+pub(crate) use traits::GdbErrorExt;
 
 use desc::TargetDescription;
 
@@ -65,9 +65,9 @@ impl<'a> RuntimeTarget<'a> {
         session: &'a FairMutex<Session>,
         cores: Vec<usize>,
         addrs: &[SocketAddr],
-    ) -> Result<Self, Error> {
-        let listener = TcpListener::bind(addrs).into_error()?;
-        listener.set_nonblocking(true).into_error()?;
+    ) -> Result<Self, anyhow::Error> {
+        let listener = TcpListener::bind(addrs)?;
+        listener.set_nonblocking(true)?;
 
         Ok(Self {
             session,
@@ -82,7 +82,7 @@ impl<'a> RuntimeTarget<'a> {
     /// Process any pending work for this target
     ///
     /// Returns: Duration to wait before processing this target again
-    pub fn process(&mut self) -> Result<Duration, Error> {
+    pub fn process(&mut self) -> Result<Duration, anyhow::Error> {
         // State 1 - unconnected
         if self.gdb.is_none() {
             // See if we have a connection
@@ -96,7 +96,7 @@ impl<'a> RuntimeTarget<'a> {
                     return Ok(Duration::from_millis(10));
                 }
                 // Fatal error
-                Err(e) => return Err(anyhow::anyhow!(e).into()),
+                Err(e) => return Err(e.into()),
             };
 
             // When we first attach to the core, GDB expects us to halt the core,
@@ -151,7 +151,7 @@ impl<'a> RuntimeTarget<'a> {
         &mut self,
         mut state: GdbStubStateMachineInner<'b, state::Idle<Self>, Self, TcpStream>,
         wait_time: &mut Duration,
-    ) -> Result<Option<GdbStubStateMachine<'b, Self, TcpStream>>, Error> {
+    ) -> Result<Option<GdbStubStateMachine<'b, Self, TcpStream>>, anyhow::Error> {
         let next_byte = {
             let conn = state.borrow_conn();
 
@@ -159,7 +159,7 @@ impl<'a> RuntimeTarget<'a> {
         };
 
         let next_state = if let Some(b) = next_byte {
-            state.incoming_data(self, b).into_error()?
+            state.incoming_data(self, b)?
         } else {
             *wait_time = Duration::from_millis(10);
             state.into()
@@ -172,7 +172,7 @@ impl<'a> RuntimeTarget<'a> {
         &mut self,
         mut state: GdbStubStateMachineInner<'b, state::Running, Self, TcpStream>,
         wait_time: &mut Duration,
-    ) -> Result<Option<GdbStubStateMachine<'b, Self, TcpStream>>, Error> {
+    ) -> Result<Option<GdbStubStateMachine<'b, Self, TcpStream>>, anyhow::Error> {
         let next_byte = {
             let conn = state.borrow_conn();
 
@@ -180,7 +180,7 @@ impl<'a> RuntimeTarget<'a> {
         };
 
         if let Some(b) = next_byte {
-            return Ok(Some(state.incoming_data(self, b).into_error()?));
+            return Ok(Some(state.incoming_data(self, b)?));
         }
 
         // Check for break
@@ -217,7 +217,7 @@ impl<'a> RuntimeTarget<'a> {
             // Halt all remaining cores that are still running.
             // GDB expects all or nothing stops.
             self.halt_all_cores()?;
-            state.report_stop(self, reason).into_error()?
+            state.report_stop(self, reason)?
         } else {
             *wait_time = Duration::from_millis(10);
             state.into()
@@ -229,11 +229,10 @@ impl<'a> RuntimeTarget<'a> {
     fn handle_ctrl_c<'b>(
         &mut self,
         state: GdbStubStateMachineInner<'b, state::CtrlCInterrupt, Self, TcpStream>,
-    ) -> Result<Option<GdbStubStateMachine<'b, Self, TcpStream>>, Error> {
+    ) -> Result<Option<GdbStubStateMachine<'b, Self, TcpStream>>, anyhow::Error> {
         self.halt_all_cores()?;
-        let next_state = state
-            .interrupt_handled(self, Some(MultiThreadStopReason::Signal(Signal::SIGINT)))
-            .into_error()?;
+        let next_state =
+            state.interrupt_handled(self, Some(MultiThreadStopReason::Signal(Signal::SIGINT)))?;
 
         Ok(Some(next_state))
     }
@@ -241,7 +240,7 @@ impl<'a> RuntimeTarget<'a> {
 
 impl Target for RuntimeTarget<'_> {
     type Arch = RuntimeArch;
-    type Error = Error;
+    type Error = anyhow::Error;
 
     fn base_ops(&mut self) -> BaseOps<'_, Self::Arch, Self::Error> {
         BaseOps::MultiThread(self)
@@ -271,16 +270,16 @@ impl Target for RuntimeTarget<'_> {
 }
 
 /// Read a byte from a stream if available, otherwise return None
-fn read_if_available(conn: &mut TcpStream) -> Result<Option<u8>, Error> {
+fn read_if_available(conn: &mut TcpStream) -> Result<Option<u8>, anyhow::Error> {
     match conn.peek() {
         Ok(p) => {
             // Unwrap is safe because peek already showed
             // there's data in the buffer
             match p {
-                Some(_) => conn.read().map(Some).into_error(),
+                Some(_) => conn.read().map(Some).map_err(|e| e.into()),
                 None => Ok(None),
             }
         }
-        Err(e) => Err(anyhow::Error::from(e).into()),
+        Err(e) => Err(anyhow::Error::from(e)),
     }
 }

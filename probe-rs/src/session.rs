@@ -24,7 +24,6 @@ use crate::{
     probe::{list::Lister, AttachMethod, DebugProbeError, Probe},
     Core, CoreType, Error,
 };
-use anyhow::anyhow;
 use std::ops::DerefMut;
 use std::{fmt, sync::Arc, time::Duration};
 
@@ -177,7 +176,7 @@ impl Session {
         let default_core = target.default_core();
 
         let default_memory_ap = default_core.memory_ap().ok_or_else(|| {
-            Error::Other(anyhow::anyhow!(
+            Error::Other(format!(
                 "Unable to connect to core {default_core:?}, no memory AP configured"
             ))
         })?;
@@ -336,7 +335,7 @@ impl Session {
                     // Already initialised.
                     continue;
                 }
-                return Err(Error::Probe(DebugProbeError::Other(anyhow::anyhow!(
+                return Err(Error::Probe(DebugProbeError::Other(format!(
                     "{core_arch:?} core can not be mixed with a {debug_arch:?} debug module.",
                 ))));
             }
@@ -364,7 +363,7 @@ impl Session {
                     JtagInterface::Xtensa(state)
                 }
                 _ => {
-                    return Err(Error::Probe(DebugProbeError::Other(anyhow::anyhow!(
+                    return Err(Error::Probe(DebugProbeError::Other(format!(
                         "Unsupported core architecture {core_arch:?}",
                     ))));
                 }
@@ -633,20 +632,18 @@ impl Session {
     /// Err(e) if the custom erase sequence failed
     pub fn sequence_erase_all(&mut self) -> Result<(), Error> {
         let ArchitectureInterface::Arm(ref mut interface) = self.interfaces else {
-            return Err(Error::Probe(DebugProbeError::NotImplemented {
-                function_name: "Debug Erase Sequence",
-            }));
+            return Err(Error::NotImplemented(
+                "Debug Erase Sequence is not implemented for non-ARM targets.",
+            ));
         };
 
         let DebugSequence::Arm(ref debug_sequence) = self.target.debug_sequence else {
             unreachable!("This should never happen. Please file a bug if it does.");
         };
 
-        let Some(erase_sequence) = debug_sequence.debug_erase_sequence() else {
-            return Err(Error::Probe(DebugProbeError::NotImplemented {
-                function_name: "Debug Erase Sequence",
-            }));
-        };
+        let erase_sequence = debug_sequence
+            .debug_erase_sequence()
+            .ok_or(Error::Arm(ArmError::NotImplemented("Debug Erase Sequence")))?;
 
         tracing::info!("Trying Debug Erase Sequence");
         let erase_result = erase_sequence.erase_all(interface.deref_mut());
@@ -787,20 +784,14 @@ impl Drop for Session {
     #[tracing::instrument(name = "session_drop", skip(self))]
     fn drop(&mut self) {
         if let Err(err) = self.clear_all_hw_breakpoints() {
-            tracing::warn!(
-                "Could not clear all hardware breakpoints: {:?}",
-                anyhow!(err)
-            );
+            tracing::warn!("Could not clear all hardware breakpoints: {:?}", err);
         }
 
         // Call any necessary deconfiguration/shutdown hooks.
         if let Err(err) = { 0..self.cores.len() }
             .try_for_each(|i| self.core(i).and_then(|mut core| core.debug_core_stop()))
         {
-            tracing::warn!(
-                "Failed to deconfigure device during shutdown: {:?}",
-                anyhow!(err)
-            );
+            tracing::warn!("Failed to deconfigure device during shutdown: {:?}", err);
         }
     }
 }

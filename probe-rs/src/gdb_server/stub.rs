@@ -1,5 +1,4 @@
 use crate::{CoreType, Session};
-use anyhow::Result;
 use parking_lot::FairMutex;
 
 use std::net::{SocketAddr, ToSocketAddrs};
@@ -84,7 +83,7 @@ impl GdbInstanceConfiguration {
 pub fn run<'a>(
     session: &FairMutex<Session>,
     instances: impl Iterator<Item = &'a GdbInstanceConfiguration>,
-) -> Result<()> {
+) -> anyhow::Result<()> {
     // Turn our group list into GDB targets
     let mut targets = instances
         .map(|instance| {

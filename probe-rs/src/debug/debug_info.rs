@@ -12,9 +12,8 @@ use crate::{
         registers, stack_frame::StackFrameInfo, unit_info::RangeExt, SourceLocation,
         VerifiedBreakpoint,
     },
-    MemoryInterface,
+    Error, MemoryInterface,
 };
-use anyhow::anyhow;
 use gimli::{
     BaseAddresses, DebugFrame, DebugInfoOffset, UnwindContext, UnwindSection, UnwindTableRow,
 };
@@ -289,7 +288,7 @@ impl DebugInfo {
 
                 let Some(unit_info) = unit_infos.next() else {
                     // No unit infos
-                    return Err(DebugError::Other(anyhow::anyhow!("Missing unit infos")));
+                    return Err(DebugError::Other("Missing unit infos".to_string()));
                 };
 
                 let mut entries = unit_info.unit.entries();
@@ -917,7 +916,7 @@ impl DebugInfo {
                 return Ok((unit_info, function_dies));
             }
         }
-        Err(DebugError::Other(anyhow::anyhow!(
+        Err(DebugError::Other(format!(
             "No function DIE's at address {address:#x}."
         )))
     }
@@ -927,16 +926,15 @@ impl DebugInfo {
         for unit_info in &self.unit_infos {
             if let Some(unit_offset) = offset.to_unit_offset(&unit_info.unit.header) {
                 return unit_info.unit.entry(unit_offset).map_err(|error| {
-                    DebugError::Other(anyhow::anyhow!(
+                    DebugError::Other(format!(
                         "Error reading DIE at debug info offset {:#x} : {}",
-                        offset.0,
-                        error
+                        offset.0, error
                     ))
                 });
             }
         }
 
-        Err(DebugError::Other(anyhow::anyhow!(
+        Err(DebugError::Other(format!(
             "DIE at debug info offset {:#010x} not found",
             offset.0
         )))
@@ -989,10 +987,9 @@ pub fn get_unwind_info<'a>(
     frame_program_counter: u64,
 ) -> Result<&'a gimli::UnwindTableRow<GimliReaderOffset>, DebugError> {
     let transform_error = |error| {
-        DebugError::Other(anyhow::anyhow!(
+        DebugError::Other(format!(
             "UNWIND: Error reading FrameDescriptorEntry at PC={} : {}",
-            frame_program_counter,
-            error
+            frame_program_counter, error
         ))
     };
 
@@ -1125,20 +1122,18 @@ pub fn unwind_register(
                         .get_register_value_by_role(&RegisterRole::ProgramCounter)
                     else {
                         return ControlFlow::Break(
-                            anyhow!(
-                                "UNWIND: Tried to unwind return address value where current program counter is unknown."
+                            crate::Error::Other(
+                                "UNWIND: Tried to unwind return address value where current program counter is unknown.".to_string()
                             )
-                            .into(),
                         );
                     };
                     let Ok(current_lr) = callee_frame_registers
                         .get_register_value_by_role(&RegisterRole::ReturnAddress)
                     else {
                         return ControlFlow::Break(
-                            anyhow!(
-                                "UNWIND: Tried to unwind return address value where current return address is unknown."
+                            crate::Error::Other(
+                                "UNWIND: Tried to unwind return address value where current return address is unknown.".to_string()
                             )
-                            .into(),
                         );
                     };
                     *unwound_return_address = if current_pc == current_lr & !0b1 {
@@ -1202,9 +1197,9 @@ pub fn unwind_register(
         RegisterRule::Offset(address_offset) => {
             // "The previous value of this register is saved at the address CFA+N where CFA is the current CFA value and N is a signed offset"
             let Some(unwind_cfa) = unwind_cfa else {
-                return ControlFlow::Break(
-                    anyhow!("UNWIND: Tried to unwind `RegisterRule` at CFA = None.").into(),
-                );
+                return ControlFlow::Break(crate::Error::Other(
+                    "UNWIND: Tried to unwind `RegisterRule` at CFA = None.".to_string(),
+                ));
             };
             let address_size = callee_frame_registers.get_address_size_bytes();
             let previous_frame_register_address =
@@ -1225,9 +1220,10 @@ pub fn unwind_register(
                         .map(|_| RegisterValue::U64(u64::from_le_bytes(buff)))
                 }
                 _ => {
-                    return ControlFlow::Break(
-                        anyhow!("UNWIND: Address size {} not supported.", address_size).into(),
-                    );
+                    return ControlFlow::Break(Error::Other(format!(
+                        "UNWIND: Address size {} not supported.",
+                        address_size
+                    )));
                 }
             };
 
@@ -1250,14 +1246,13 @@ pub fn unwind_register(
                     );
 
                     return ControlFlow::Break(
-                        anyhow!(
+                        Error::Other(format!(
                             "UNWIND: Failed to read value for register {} from address {} ({} bytes): {}",
                             debug_register.get_register_name(),
                             RegisterValue::from(previous_frame_register_address),
                             4,
                             error
-                        )
-                        .into(),
+                        )),
                     );
                 }
             }

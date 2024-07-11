@@ -939,9 +939,9 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
                     target_id,
                     dlpidr
                 );
-                return Err(ArmError::Other(anyhow::anyhow!(
-                    "Target ID and DLPIDR do not match, failed to select debug port"
-                )));
+                return Err(ArmError::Other(
+                    "Target ID and DLPIDR do not match, failed to select debug port".to_string(),
+                ));
             }
         }
 
@@ -982,10 +982,7 @@ pub trait DebugEraseSequence: Send + Sync {
     /// Some devices require the probe to be disconnected and re-attached after a successful chip-erase in
     /// which case it will return `Error::Probe(DebugProbeError::ReAttachRequired)`
     fn erase_all(&self, _interface: &mut dyn ArmProbeInterface) -> Result<(), ArmError> {
-        Err(DebugProbeError::NotImplemented {
-            function_name: "erase_all",
-        }
-        .into())
+        Err(ArmError::NotImplemented("erase_all"))
     }
 }
 

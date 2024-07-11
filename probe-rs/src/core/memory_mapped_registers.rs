@@ -1,3 +1,11 @@
+#[derive(Debug, thiserror::Error)]
+#[error("Overflow while attempting to determine the MMIO address for register {register} at offset {offset:#x} from base address {base_address:#x}")]
+pub struct RegisterAddressOutOfBounds {
+    register: &'static str,
+    base_address: u64,
+    offset: u64,
+}
+
 /// A memory mapped register, for instance ARM debug registers (DHCSR, etc).
 pub trait MemoryMappedRegister<T>: Clone + From<T> + Into<T> + Sized + std::fmt::Debug {
     /// The register's address in the target memory.
@@ -9,11 +17,15 @@ pub trait MemoryMappedRegister<T>: Clone + From<T> + Into<T> + Sized + std::fmt:
     /// Get the register's address in the memory map.
     /// For architectures like ARM Cortex-A, this address is offset from a base address, which must be supplied when calling this method.
     /// For others (e.g. ARM Cortex-M, RISC-V) where this address is a constant, please use [`MemoryMappedRegister::get_mmio_address`].
-    fn get_mmio_address_from_base(base_address: u64) -> Result<u64, anyhow::Error> {
+    fn get_mmio_address_from_base(base_address: u64) -> Result<u64, RegisterAddressOutOfBounds> {
         if let Some(mmio_address) = base_address.checked_add(Self::ADDRESS_OFFSET) {
             Ok(mmio_address)
         } else {
-            Err(anyhow::anyhow!("Overflow while attempting to determine the MMIO address for register {} at offset {:#x} from base address {:#x}", Self::NAME, Self::ADDRESS_OFFSET, base_address))
+            Err(RegisterAddressOutOfBounds {
+                register: Self::NAME,
+                base_address,
+                offset: Self::ADDRESS_OFFSET,
+            })
         }
     }
     /// Get the register's address in the memory map.

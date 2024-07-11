@@ -99,7 +99,7 @@ impl ProgrammingLanguage for UnknownLanguage {
         _memory: &mut dyn MemoryInterface,
         _new_value: &str,
     ) -> Result<(), DebugError> {
-        Err(DebugError::Other(anyhow::anyhow!(
+        Err(DebugError::Other(format!(
             "Updating variables for language {} is not supported.",
             self.0
         )))

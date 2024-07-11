@@ -39,6 +39,7 @@ use gimli::EvaluationResult;
 use serde::Serialize;
 use typed_path::TypedPathBuf;
 
+use std::num::ParseIntError;
 use std::{
     io,
     num::NonZeroU32,
@@ -82,9 +83,14 @@ pub enum DebugError {
         /// A message that can be displayed to the user to help them understand the reason for the incomplete results.
         message: String,
     },
+
+    /// Required functionality is not implemented
+    #[error("Not implemented: {0}")]
+    NotImplemented(&'static str),
+
     /// Some other error occurred.
-    #[error(transparent)]
-    Other(#[from] anyhow::Error),
+    #[error("{0}")]
+    Other(String),
 }
 
 /// A copy of [`gimli::ColumnType`] which uses [`u64`] instead of [`NonZeroU64`](std::num::NonZeroU64).
@@ -156,7 +162,7 @@ impl From<i64> for ObjectRef {
 }
 
 impl std::str::FromStr for ObjectRef {
-    type Err = anyhow::Error;
+    type Err = ParseIntError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let value = s.parse::<i64>()?;

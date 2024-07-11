@@ -746,7 +746,7 @@ impl JLink {
         tracing::debug!("Buffer length for j-link transfer: {}", buf.len());
 
         if buf.len() > self.max_mem_block_size as usize {
-            return Err(DebugProbeError::Other(anyhow::anyhow!("Maximum transfer size for this probe is {} bytes, but current transfer is {} bytes", self.max_mem_block_size, buf.len())));
+            return Err(DebugProbeError::Other(format!("Maximum transfer size for this probe is {} bytes, but current transfer is {} bytes", self.max_mem_block_size, buf.len())));
         } else {
             tracing::debug!(
                 "Transferring {} bytes, max is {}",

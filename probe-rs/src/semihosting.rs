@@ -1,5 +1,4 @@
 use crate::{CoreInterface, Error, RegisterValue};
-use anyhow::{bail, Result};
 
 /// Indicates the operation the target would like the debugger to perform.
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
@@ -59,12 +58,12 @@ pub struct UnknownCommandDetails {
 
 impl UnknownCommandDetails {
     /// Returns the buffer pointed-to by the parameter of the semihosting operation
-    pub fn get_buffer(&self, core: &mut dyn CoreInterface) -> Result<Buffer> {
+    pub fn get_buffer(&self, core: &mut dyn CoreInterface) -> Result<Buffer, Error> {
         Buffer::from_block_at(core, self.parameter)
     }
 
     /// Writes the status of the semihosting operation to the return register of the target
-    pub fn write_status(&self, core: &mut dyn CoreInterface, status: i32) -> Result<()> {
+    pub fn write_status(&self, core: &mut dyn CoreInterface, status: i32) -> Result<(), Error> {
         write_status(core, status)
     }
 }
@@ -79,7 +78,7 @@ impl GetCommandLineRequest {
         &self,
         core: &mut dyn CoreInterface,
         cmdline: &str,
-    ) -> Result<()> {
+    ) -> Result<(), Error> {
         let mut buf = cmdline.to_owned().into_bytes();
         buf.push(0);
         self.0.write(core, &buf)?;
@@ -91,7 +90,7 @@ impl GetCommandLineRequest {
     }
 }
 
-fn write_status(core: &mut dyn CoreInterface, value: i32) -> Result<()> {
+fn write_status(core: &mut dyn CoreInterface, value: i32) -> Result<(), crate::Error> {
     let reg = core.registers().get_argument_register(0).unwrap();
     core.write_core_reg(reg.into(), RegisterValue::U32(value as u32))?;
 
@@ -110,7 +109,10 @@ pub struct Buffer {
 
 impl Buffer {
     /// Constructs a new buffer, reading the address and length from the target.
-    pub fn from_block_at(core: &mut dyn CoreInterface, block_addr: u32) -> Result<Self> {
+    pub fn from_block_at(
+        core: &mut dyn CoreInterface,
+        block_addr: u32,
+    ) -> Result<Self, crate::Error> {
         let mut block: [u32; 2] = [0, 0];
         core.read_32(block_addr as u64, &mut block)?;
         Ok(Self {
@@ -121,7 +123,7 @@ impl Buffer {
     }
 
     /// Reads the buffer contents from the target.
-    pub fn read(&self, core: &mut dyn CoreInterface) -> Result<Vec<u8>> {
+    pub fn read(&self, core: &mut dyn CoreInterface) -> Result<Vec<u8>, Error> {
         let mut buf = vec![0u8; self.len as usize];
         core.read(self.address as u64, &mut buf[..])?;
         Ok(buf)
@@ -129,12 +131,12 @@ impl Buffer {
 
     /// Writes the passed buffer to the target buffer.
     /// The buffer must end with \0. Length written to target will not include \0.
-    pub fn write(&self, core: &mut dyn CoreInterface, buf: &[u8]) -> Result<()> {
+    pub fn write(&self, core: &mut dyn CoreInterface, buf: &[u8]) -> Result<(), Error> {
         if buf.len() > self.len as usize {
-            bail!("buffer not large enough")
+            return Err(Error::Other("buffer not large enough".to_string()));
         }
         if buf.last() != Some(&0) {
-            bail!("last byte of buffer must be 0");
+            return Err(Error::Other("last byte of buffer must be 0".to_string()));
         }
         core.write_8(self.address as u64, buf)?;
         let block: [u32; 2] = [self.address, (buf.len() - 1) as u32];
