@@ -9,6 +9,7 @@ use std::collections::HashMap;
 use std::io::{Read, Seek, SeekFrom};
 use std::ops::Range;
 use std::str::FromStr;
+use std::time::Duration;
 
 use super::builder::FlashBuilder;
 use super::{
@@ -592,6 +593,14 @@ impl FlashLoader {
                 .unwrap();
             // Attach to memory and core.
             let mut core = session.core(region_core_index).map_err(FlashError::Core)?;
+
+            // If this is a RAM only flash, the core might still be running. This can be
+            // problematic if the instruction RAM is flashed while an application is running, so
+            // the core is halted here in any case.
+            if !core.core_halted().map_err(FlashError::Core)? {
+                core.halt(Duration::from_millis(500))
+                    .map_err(FlashError::Core)?;
+            }
 
             let mut some = false;
             for (address, data) in self.builder.data_in_range(&region.range) {
