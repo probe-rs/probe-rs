@@ -180,7 +180,7 @@ pub fn download_file<P: AsRef<Path>>(
     session: &mut Session,
     path: P,
     format: Format,
-) -> Result<(), FileDownloadError> {
+) -> Result<FlashCommitInfo, FileDownloadError> {
     download_file_with_options(session, path, format, DownloadOptions::default())
 }
 
@@ -194,7 +194,7 @@ pub fn download_file_with_options<P: AsRef<Path>>(
     path: P,
     format: Format,
     options: DownloadOptions,
-) -> Result<(), FileDownloadError> {
+) -> Result<FlashCommitInfo, FileDownloadError> {
     let mut file = File::open(path.as_ref()).map_err(FileDownloadError::IO)?;
 
     let mut loader = session.target().flash_loader();

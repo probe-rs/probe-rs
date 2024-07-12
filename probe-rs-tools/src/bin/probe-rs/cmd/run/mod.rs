@@ -106,7 +106,7 @@ impl Cmd {
                 self.shared_options.format_options,
                 None,
             )?;
-            run_flash_download(
+            let flash_info = run_flash_download(
                 &mut session,
                 &self.shared_options.path,
                 &self.shared_options.download_options,
@@ -115,10 +115,14 @@ impl Cmd {
                 self.shared_options.chip_erase,
             )?;
 
-            // reset the core to leave it in a consistent state after flashing
-            session
-                .core(core_id)?
-                .reset_and_halt(Duration::from_millis(100))?;
+            if flash_info.entry_point_in_ram {
+                session.ram_flash_start(flash_info.entry_point.unwrap())?;
+            } else {
+                // reset the core to leave it in a consistent state after flashing
+                session
+                    .core(core_id)?
+                    .reset_and_halt(Duration::from_millis(100))?;
+            }
         }
 
         let rtt_scan_regions = match self.shared_options.rtt_scan_memory {

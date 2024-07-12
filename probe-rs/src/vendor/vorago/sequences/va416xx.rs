@@ -87,7 +87,7 @@ impl ArmDebugSequence for Va416xx {
             match arm_interface.reinitialize() {
                 Ok(_) => break,
                 Err(e) => {
-                    if i == NUM_RETRIES - 1 {
+                    if i >= NUM_RETRIES - 1 {
                         return Err(e);
                     }
                     thread::sleep(Duration::from_millis(50));
