@@ -11,6 +11,7 @@ use crate::{
         xtensa::communication_interface::XtensaCommunicationInterface,
     },
     config::{registry, DebugSequence},
+    flashing::platform::Platform,
     vendor::{
         espressif::sequences::{
             esp32::ESP32, esp32c2::ESP32C2, esp32c3::ESP32C3, esp32c6::ESP32C6, esp32h2::ESP32H2,
@@ -109,5 +110,12 @@ impl Vendor for Espressif {
         idcode: u32,
     ) -> Result<Option<String>, Error> {
         try_detect_espressif_chip(probe, idcode)
+    }
+
+    fn try_parse_platform(&self, format: &str) -> Option<Platform> {
+        match format {
+            "idf" | "espidf" | "esp-idf" => Some(platform::IdfPlatform.into()),
+            _ => None,
+        }
     }
 }

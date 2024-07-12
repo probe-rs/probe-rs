@@ -4,7 +4,6 @@ use std::str::FromStr;
 
 use crate::{
     flashing::{FileDownloadError, FlashLoader, Format, ImageReader},
-    vendor::espressif::platform::IdfPlatform,
     Session,
 };
 
@@ -101,11 +100,13 @@ impl Platform {
 impl FromStr for Platform {
     type Err = String;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
+    fn from_str(name: &str) -> Result<Self, Self::Err> {
+        match name.to_lowercase().as_str() {
             "raw" => Ok(Self::from(RawPlatform)),
-            "idf" | "esp-idf" | "espidf" => Ok(Self::from(IdfPlatform)),
-            other => Err(format!("Platform '{other}' is unknown.")),
+            other => match crate::vendor::try_parse_platform(other) {
+                Some(platform) => Ok(platform),
+                None => Err(format!("Platform '{other}' is unknown.")),
+            },
         }
     }
 }
