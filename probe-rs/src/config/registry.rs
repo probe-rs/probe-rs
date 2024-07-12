@@ -435,12 +435,17 @@ fn match_name_prefix(pattern: &str, name: &str) -> bool {
 }
 
 fn validate_family(family: &ChipFamily) -> Result<(), String> {
+    use crate::flashing::platform::Platform;
+    use std::str::FromStr;
+
     family.validate()?;
 
     // We can't have this in the `validate` method as we need information that is not available in
     // probe-rs-target.
     for target in family.variants() {
-        crate::flashing::FormatKind::from_optional(target.default_platform.as_deref())?;
+        if let Some(platform) = target.default_platform.as_deref() {
+            Platform::from_str(platform)?;
+        }
     }
 
     Ok(())
