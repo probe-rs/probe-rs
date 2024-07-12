@@ -1,7 +1,7 @@
 //! Traits for platform-specific firmware loading.
 
 use crate::{
-    flashing::{FileDownloadError, FlashLoader, Format, ImageLoader, ImageReader},
+    flashing::{FileDownloadError, FlashLoader, Format, ImageReader},
     vendor::espressif::platform::IdfPlatform,
     Session,
 };

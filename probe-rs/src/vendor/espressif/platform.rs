@@ -50,7 +50,7 @@ impl PlatformImageLoader for IdfPlatformLoader {
         if !matches!(format, Format::Elf) {
             return Err(FileDownloadError::IncompatibleFormat {
                 platform: String::from("esp-idf"),
-                format: format.to_str().to_string(),
+                format: format.kind(),
             });
         }
 

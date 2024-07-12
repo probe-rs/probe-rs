@@ -5,7 +5,7 @@ use object::{
 use probe_rs_target::{InstructionSet, MemoryRange};
 use serde::{Deserialize, Serialize};
 
-use std::{fs::File, path::Path, str::FromStr};
+use std::{fmt, fs::File, path::Path, str::FromStr};
 
 use super::*;
 use crate::{
@@ -64,40 +64,13 @@ impl FromStr for FormatKind {
     }
 }
 
-/// A finite list of all the available binary formats probe-rs understands.
-#[derive(Debug, Default, Serialize, Deserialize, PartialEq, Eq, Clone)]
-pub enum Format {
-    /// Marks a file in binary format. This means that the file contains the contents of the flash 1:1.
-    /// [BinOptions] can be used to define the location in flash where the file contents should be put at.
-    /// Additionally using the same config struct, you can skip the first N bytes of the binary file to have them not put into the flash.
-    Bin(BinOptions),
-    /// Marks a file in [Intel HEX](https://en.wikipedia.org/wiki/Intel_HEX) format.
-    Hex,
-    /// Marks a file in the [ELF](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format) format.
-    #[default]
-    Elf,
-    /// Marks a file in the [UF2](https://github.com/microsoft/uf2) format.
-    Uf2,
-}
-
-impl Format {
-    pub(crate) fn to_str(&self) -> &'static str {
+impl fmt::Display for FormatKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Format::Bin(_) => "bin",
-            Format::Hex => "hex",
-            Format::Elf => "elf",
-            Format::Uf2 => "uf2",
-        }
-    }
-}
-
-impl From<FormatKind> for Format {
-    fn from(kind: FormatKind) -> Self {
-        match kind {
-            FormatKind::Bin => Format::Bin(BinOptions::default()),
-            FormatKind::Hex => Format::Hex,
-            FormatKind::Elf => Format::Elf,
-            FormatKind::Uf2 => Format::Uf2,
+            FormatKind::Bin => f.write_str("bin"),
+            FormatKind::Hex => f.write_str("hex"),
+            FormatKind::Elf => f.write_str("elf"),
+            FormatKind::Uf2 => f.write_str("uf2"),
         }
     }
 }
@@ -134,7 +107,7 @@ pub enum FileDownloadError {
         /// The platform that does not support the format.
         platform: String,
         /// The format that is not supported.
-        format: String,
+        format: FormatKind,
     },
 
     /// Target {0} does not support the esp-idf format
@@ -263,8 +236,8 @@ pub(super) struct ExtractedFlashData<'data> {
     pub(super) data: &'data [u8],
 }
 
-impl std::fmt::Debug for ExtractedFlashData<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Debug for ExtractedFlashData<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut helper = f.debug_struct("ExtractedFlashData");
 
         helper

@@ -40,8 +40,6 @@
 //!
 //! # Ok::<(), anyhow::Error>(())
 //! ```
-//!
-//!
 
 mod builder;
 mod download;
@@ -50,6 +48,7 @@ mod erase;
 mod error;
 mod flash_algorithm;
 mod flasher;
+pub mod image;
 mod loader;
 pub mod platform;
 mod progress;
@@ -63,6 +62,7 @@ pub use download::*;
 pub use erase::*;
 pub use error::*;
 pub use flash_algorithm::*;
+pub use image::*;
 pub use loader::*;
 pub use progress::*;
 pub use visualizer::*;
