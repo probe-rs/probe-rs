@@ -21,6 +21,7 @@ use crate::{
     Error, MemoryInterface,
 };
 
+pub mod platform;
 pub mod sequences;
 
 // A magic number that resides in the ROM of Espressif chips. This points to 4 bytes that are mostly

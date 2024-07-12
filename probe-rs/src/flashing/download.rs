@@ -5,11 +5,7 @@ use object::{
 use probe_rs_target::{InstructionSet, MemoryRange};
 use serde::{Deserialize, Serialize};
 
-use std::{
-    fs::File,
-    path::{Path, PathBuf},
-    str::FromStr,
-};
+use std::{fs::File, path::Path, str::FromStr};
 
 use super::*;
 use crate::{
@@ -24,15 +20,6 @@ pub struct BinOptions {
     pub base_address: Option<u64>,
     /// The number of bytes to skip at the start of the binary file.
     pub skip: u32,
-}
-
-/// Extended options for flashing a ESP-IDF format file.
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Default)]
-pub struct IdfOptions {
-    /// The bootloader
-    pub bootloader: Option<PathBuf>,
-    /// The partition table
-    pub partition_table: Option<PathBuf>,
 }
 
 /// A finite list of all the available binary formats probe-rs understands.

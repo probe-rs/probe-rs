@@ -1,9 +1,8 @@
 //! Traits for platform-specific firmware loading.
 
 use crate::{
-    flashing::{
-        FileDownloadError, FlashLoader, Format, IdfLoader, IdfOptions, ImageLoader, ImageReader,
-    },
+    flashing::{FileDownloadError, FlashLoader, Format, ImageLoader, ImageReader},
+    vendor::espressif::platform::IdfPlatform,
     Session,
 };
 
@@ -157,33 +156,5 @@ impl PlatformImageLoader for RawLoader {
         file: &mut dyn ImageReader,
     ) -> Result<(), FileDownloadError> {
         format.load(flash_loader, file)
-    }
-}
-
-/// The firmware relies on the ESP-IDF bootloader and partition table. Probe-rs will add
-/// the bootloader and partition table to the firmware before flashing it.
-#[derive(Clone)]
-pub struct IdfPlatform;
-
-impl PlatformImpl for IdfPlatform {
-    fn default_loader(&self) -> PlatformLoader {
-        PlatformLoader::from(IdfPlatformLoader(IdfOptions::default()))
-    }
-}
-
-/// The firmware relies on the ESP-IDF bootloader and partition table. Probe-rs will add
-/// the bootloader and partition table to the firmware before flashing it.
-#[derive(Clone)]
-pub struct IdfPlatformLoader(pub IdfOptions);
-
-impl PlatformImageLoader for IdfPlatformLoader {
-    fn load(
-        &self,
-        flash_loader: &mut FlashLoader,
-        format: Format,
-        session: &mut Session,
-        file: &mut dyn ImageReader,
-    ) -> Result<(), FileDownloadError> {
-        IdfLoader(self.0.clone()).load(format, flash_loader, session, file)
     }
 }
