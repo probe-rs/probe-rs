@@ -1,5 +1,7 @@
 //! Traits for platform-specific firmware loading.
 
+use std::str::FromStr;
+
 use crate::{
     flashing::{FileDownloadError, FlashLoader, Format, ImageReader},
     vendor::espressif::platform::IdfPlatform,
@@ -86,19 +88,25 @@ where
 
 impl Platform {
     /// Tries to parse a string into a platform.
-    pub fn from_optional(s: Option<&str>) -> Option<Result<Self, String>> {
-        let result = match s? {
-            "raw" => Ok(Self::from(RawPlatform)),
-            "idf" | "esp-idf" | "espidf" => Ok(Self::from(IdfPlatform)),
-            other => Err(format!("Platform '{other}' is unknown.")),
-        };
-
-        Some(result)
+    pub fn from_optional(name: Option<&str>) -> Option<Result<Self, String>> {
+        Some(name?.parse())
     }
 
     /// Returns the default image loader for the given platform.
     pub fn default_loader(&self) -> PlatformLoader {
         self.0.default_loader()
+    }
+}
+
+impl FromStr for Platform {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "raw" => Ok(Self::from(RawPlatform)),
+            "idf" | "esp-idf" | "espidf" => Ok(Self::from(IdfPlatform)),
+            other => Err(format!("Platform '{other}' is unknown.")),
+        }
     }
 }
 
