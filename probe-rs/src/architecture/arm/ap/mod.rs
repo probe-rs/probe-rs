@@ -22,7 +22,7 @@ use super::{
 #[derive(Debug, thiserror::Error)]
 pub enum AccessPortError {
     /// An error occurred when trying to read a register.
-    #[error("Failed to read register {name} at address 0x{address:08x}")]
+    #[error("Failed to read register {name} at address {address:#04x}")]
     RegisterRead {
         /// The address of the register.
         address: u8,
@@ -33,7 +33,7 @@ pub enum AccessPortError {
         source: Box<dyn std::error::Error + Send + Sync>,
     },
     /// An error occurred when trying to write a register.
-    #[error("Failed to write register {name} at address 0x{address:08x}")]
+    #[error("Failed to write register {name} at address {address:#04x}")]
     RegisterWrite {
         /// The address of the register.
         address: u8,
