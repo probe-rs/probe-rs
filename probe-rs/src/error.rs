@@ -54,6 +54,20 @@ pub enum Error {
         /// The required alignment in bytes (address increments).
         alignment: usize,
     },
+    /// Failed to write CPU register {register}.
+    WriteRegister {
+        /// The name of the register that was tried to be written.
+        register: String,
+        /// The source error of this error.
+        source: Box<dyn std::error::Error + 'static + Send + Sync>,
+    },
+    /// Failed to read CPU register {register}.
+    ReadRegister {
+        /// The name of the register that was tried to be read.
+        register: String,
+        /// The source error of this error.
+        source: Box<dyn std::error::Error + 'static + Send + Sync>,
+    },
 }
 
 impl From<ArmError> for Error {

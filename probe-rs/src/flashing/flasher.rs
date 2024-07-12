@@ -410,7 +410,7 @@ impl<'session> Flasher<'session> {
                 active.start_program_page_with_buffer(
                     buffer_address,
                     page.address(),
-                    page.size(),
+                    page.size() as u64,
                 )?;
 
                 // Swap the buffers
@@ -602,18 +602,18 @@ impl<O: Operation> ActiveFlasher<'_, O> {
         for (description, value) in registers {
             if let Some(v) = value {
                 self.core.write_core_reg(description, v).map_err(|error| {
-                    FlashError::WriteRegister {
+                    FlashError::Core(Error::WriteRegister {
                         register: description.to_string(),
-                        source: error,
-                    }
+                        source: Box::new(error),
+                    })
                 })?;
 
                 if tracing::enabled!(Level::DEBUG) {
                     let value: u32 = self.core.read_core_reg(description).map_err(|error| {
-                        FlashError::ReadRegister {
+                        FlashError::Core(Error::ReadRegister {
                             register: description.to_string(),
-                            source: error,
-                        }
+                            source: Box::new(error),
+                        })
                     })?;
 
                     tracing::debug!(
@@ -689,9 +689,11 @@ impl<O: Operation> ActiveFlasher<'_, O> {
 
         self.core
             .read_core_reg::<u32>(regs.result_register(0))
-            .map_err(|error| FlashError::ReadRegister {
-                register: regs.result_register(0).to_string(),
-                source: error,
+            .map_err(|error| {
+                FlashError::Core(Error::ReadRegister {
+                    register: regs.result_register(0).to_string(),
+                    source: Box::new(error),
+                })
             })
     }
 
@@ -866,7 +868,7 @@ impl<'p> ActiveFlasher<'p, Program> {
         // Transfer the bytes to RAM.
         let begin_data = self.load_page_buffer(bytes, 0)?;
 
-        self.start_program_page_with_buffer(begin_data, address, bytes.len() as u32)?;
+        self.start_program_page_with_buffer(begin_data, address, bytes.len() as u64)?;
         self.wait_for_write_end(address)?;
 
         tracing::info!("Flashing took: {:?}", t1.elapsed());
@@ -879,13 +881,13 @@ impl<'p> ActiveFlasher<'p, Program> {
         &mut self,
         buffer_address: u64,
         page_address: u64,
-        data_size: u32,
+        data_size: u64,
     ) -> Result<(), FlashError> {
         self.call_function(
             &Registers {
                 pc: into_reg(self.flash_algorithm.pc_program_page)?,
                 r0: Some(into_reg(page_address)?),
-                r1: Some(data_size),
+                r1: Some(into_reg(data_size)?),
                 r2: Some(into_reg(buffer_address)?),
                 r3: None,
             },
@@ -899,6 +901,7 @@ impl<'p> ActiveFlasher<'p, Program> {
         Ok(())
     }
 
+    /// Returns the address of the buffer that was used.
     pub(super) fn load_page_buffer(
         &mut self,
         bytes: &[u8],
