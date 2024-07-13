@@ -1,0 +1,1 @@
+Increased the potential throughput of J-Link and FTDI probes when communicating with ARM chips using JTAG.

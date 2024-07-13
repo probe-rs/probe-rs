@@ -6,10 +6,15 @@
 
 use crate::{
     architecture::arm::{
-        dp::{Abort, Ctrl, DpRegister, RdBuff, DPIDR},
-        ArmError, DapError, PortType, RawDapAccess, Register,
+        ap::AccessPortError,
+        dp::{Abort, Ctrl, DebugPortError, DpRegister, RdBuff, DPIDR},
+        ArmError, DapError, FullyQualifiedApAddress, PortType, RawDapAccess, Register,
     },
-    probe::{common::bits_to_byte, DebugProbe, DebugProbeError, JTAGAccess, WireProtocol},
+    probe::{
+        common::bits_to_byte, CommandResult, DebugProbe, DebugProbeError, JTAGAccess,
+        JtagCommandQueue, JtagWriteCommand, WireProtocol,
+    },
+    Error,
 };
 
 #[derive(Debug)]
@@ -121,7 +126,7 @@ impl ProbeStatistics {
 const JTAG_ABORT_VALUE: u64 = 0x8;
 
 // IR values for JTAG registers
-const JTAG_ABORT_IR_VALUE: u32 = 0x8;
+const JTAG_ABORT_IR_VALUE: u32 = 0x8; // A DAP abort, compatible with DPv0
 const JTAG_DEBUG_PORT_IR_VALUE: u32 = 0xA;
 const JTAG_ACCESS_PORT_IR_VALUE: u32 = 0xB;
 
@@ -220,72 +225,129 @@ fn perform_jtag_transfers<P: JTAGAccess + RawProtocolIo>(
     probe: &mut P,
     transfers: &mut [DapTransfer],
 ) -> Result<(), DebugProbeError> {
-    for i in 0..transfers.len() {
-        // Send payload
-        let (received_value, status) = perform_jtag_transfer(probe, &transfers[i])?;
+    // Set up the command queue.
+    let mut queue = JtagCommandQueue::new();
 
-        // Each response is read in the next transaction
-        if i > 0 {
-            let previous_transfer = &mut transfers[i - 1];
-            previous_transfer.status =
-                if previous_transfer.is_abort() || previous_transfer.is_rdbuff() {
-                    // No status
-                    TransferStatus::Ok
-                } else {
-                    if status == TransferStatus::Ok
-                        && previous_transfer.direction == TransferDirection::Read
-                    {
-                        previous_transfer.value = received_value;
-                    }
-                    status
-                };
-        }
+    let mut results = vec![];
+
+    for transfer in transfers.iter() {
+        results.push(queue.schedule(transfer.jtag_write()));
     }
 
-    // We need to do a final read to get the status for the last transaction
-    let last_transfer = &mut transfers[transfers.len() - 1];
-    if last_transfer.is_abort() || last_transfer.is_rdbuff() {
-        // No acknowledgement, so need need for another transfer
-        last_transfer.status = TransferStatus::Ok;
-    } else {
+    let last_is_abort = transfers[transfers.len() - 1].is_abort();
+    let last_is_rdbuff = transfers[transfers.len() - 1].is_rdbuff();
+    if !last_is_abort && !last_is_rdbuff {
         // Need to issue a fake read to get final ack
-        let rdbuff_transfer = DapTransfer::read(PortType::DebugPort, RdBuff::ADDRESS);
+        results.push(
+            queue.schedule(DapTransfer::read(PortType::DebugPort, RdBuff::ADDRESS).jtag_write()),
+        );
+    }
 
-        let (received_value, status) = perform_jtag_transfer(probe, &rdbuff_transfer)?;
+    if !last_is_abort {
+        // Check CTRL/STATUS to make sure OK/FAULT meant OK
+        results.push(
+            queue.schedule(DapTransfer::read(PortType::DebugPort, Ctrl::ADDRESS).jtag_write()),
+        );
+        results.push(
+            queue.schedule(DapTransfer::read(PortType::DebugPort, RdBuff::ADDRESS).jtag_write()),
+        );
+    }
 
-        last_transfer.status = status;
-        if last_transfer.status == TransferStatus::Ok
-            && last_transfer.direction == TransferDirection::Read
-        {
-            last_transfer.value = received_value;
+    let mut status_responses = vec![TransferStatus::Pending; results.len()];
+
+    // Simplification: use the maximum idle cycles of all transfers, because the batched API
+    // doesn't allow for individual values.
+    let max_idle_cycles = transfers
+        .iter()
+        .map(|t| t.idle_cycles_after)
+        .max()
+        .unwrap_or(0);
+    let idle_cycles = probe.idle_cycles();
+    probe.set_idle_cycles(max_idle_cycles.min(255) as u8);
+
+    // Execute as much of the queue as we can. We'll handle the rest in a following iteration
+    // if we can.
+    let mut jtag_results;
+    match probe.write_register_batch(&queue) {
+        Ok(r) => {
+            status_responses.fill(TransferStatus::Ok);
+            jtag_results = r;
+        }
+        Err(e) => {
+            let current_idx = e.results.len();
+            status_responses[..current_idx].fill(TransferStatus::Ok);
+            jtag_results = e.results;
+
+            match e.error {
+                Error::Arm(ArmError::AccessPort {
+                    address: _,
+                    source: AccessPortError::DebugPort(DebugPortError::Dap(failure)),
+                }) => {
+                    // Mark all subsequent transactions with the same failure.
+                    status_responses[current_idx..].fill(TransferStatus::Failed(failure));
+                    jtag_results.push(&results[current_idx], CommandResult::None);
+                }
+                Error::Probe(error) => return Err(error),
+                _other => unreachable!(),
+            }
         }
     }
 
-    if !last_transfer.is_abort() {
+    probe.set_idle_cycles(idle_cycles);
+
+    // Process the results. At this point we should only have OK/FAULT responses.
+    for (i, transfer) in transfers.iter_mut().enumerate() {
+        transfer.status = *status_responses.get(i + 1).unwrap_or(&TransferStatus::Ok);
+    }
+
+    // Pluck off the extra 2 results that do error checking
+    let ctrl_value = if !last_is_abort {
+        _ = results
+            .pop()
+            .expect("Failed to pop value that was pushed here.");
+        let rdbuff_result = results
+            .pop()
+            .expect("Failed to pop value that was pushed here.");
+
+        Some(rdbuff_result)
+    } else {
+        None
+    };
+
+    // Shift the results.
+    // Each response is read in the next transaction, so skip 1
+    for (i, result) in results.into_iter().skip(1).enumerate() {
+        let transfer = &mut transfers[i];
+        if transfer.is_abort() || transfer.is_rdbuff() {
+            transfer.status = TransferStatus::Ok;
+            continue;
+        }
+
+        if transfer.status == TransferStatus::Ok && transfer.direction == TransferDirection::Read {
+            let response = jtag_results.take(result).unwrap();
+            transfer.value = response.into_u32();
+        }
+    }
+
+    if let Some(ctrl_value) = ctrl_value {
         // Check CTRL/STATUS to make sure OK/FAULT meant OK
-        let (_, _) = perform_jtag_transfer(
-            probe,
-            &DapTransfer::read(PortType::DebugPort, Ctrl::ADDRESS),
-        )?;
-        let (received_value, _) = perform_jtag_transfer(
-            probe,
-            &DapTransfer::read(PortType::DebugPort, RdBuff::ADDRESS),
-        )?;
+        if let Ok(CommandResult::U32(received_value)) = jtag_results.take(ctrl_value) {
+            if Ctrl(received_value).sticky_err() {
+                tracing::debug!("JTAG transaction set failed: {:#X?}", transfers);
 
-        if Ctrl(received_value).sticky_err() {
-            tracing::debug!("JTAG transaction set failed: {:#X?}", transfers);
+                // Clear the sticky bit so future transactions succeed
+                let (_, _) = perform_jtag_transfer(
+                    probe,
+                    &DapTransfer::write(PortType::DebugPort, Ctrl::ADDRESS, received_value),
+                )?;
 
-            // Clear the sticky bit so future transactions succeed
-            let (_, _) = perform_jtag_transfer(
-                probe,
-                &DapTransfer::write(PortType::DebugPort, Ctrl::ADDRESS, received_value),
-            )?;
-
-            // Mark OK/FAULT transactions as failed
-            // The caller will reset the sticky flag and retry if needed
-            for transfer in transfers {
-                if transfer.status == TransferStatus::Ok {
-                    transfer.status = TransferStatus::Failed(DapError::FaultResponse);
+                // Mark OK/FAULT transactions as failed. Since the error is sticky, we can assume that
+                // if we received a WAIT, the previous transactions were successful.
+                // The caller will reset the sticky flag and retry if needed
+                for transfer in transfers.iter_mut() {
+                    if transfer.status == TransferStatus::Ok {
+                        transfer.status = TransferStatus::Failed(DapError::FaultResponse);
+                    }
                 }
             }
         }
@@ -630,6 +692,63 @@ impl DapTransfer {
         }
 
         seq
+    }
+
+    fn jtag_write(&self) -> JtagWriteCommand {
+        let (payload, address) = if self.is_abort() {
+            (JTAG_ABORT_VALUE, JTAG_ABORT_IR_VALUE)
+        } else {
+            let address = match self.port {
+                PortType::DebugPort => JTAG_DEBUG_PORT_IR_VALUE,
+                PortType::AccessPort => JTAG_ACCESS_PORT_IR_VALUE,
+            };
+
+            let mut payload = 0u64;
+
+            // 32-bit value, bits 35:3
+            payload |= (self.value as u64) << 3;
+            // A[3:2], bits 2:1
+            payload |= (self.address as u64 & 0b1000) >> 1;
+            payload |= (self.address as u64 & 0b0100) >> 1;
+            // RnW, bit 0
+            payload |= u64::from(self.direction == TransferDirection::Read);
+
+            (payload, address)
+        };
+
+        JtagWriteCommand {
+            address,
+            data: payload.to_le_bytes().to_vec(),
+            len: JTAG_DR_BIT_LENGTH,
+            transform: |command, response| {
+                // No responses returned for aborts.
+                if command.address == JTAG_ABORT_IR_VALUE {
+                    return Ok(CommandResult::None);
+                }
+
+                let received = parse_jtag_response(&response);
+
+                // Received value is bits [35:3]
+                let received_value = (received >> 3) as u32;
+                // Status is bits [2:0]
+                let status = (received & 0b111) as u32;
+
+                let error = match status {
+                    s if s == JTAG_STATUS_OK => return Ok(CommandResult::U32(received_value)),
+                    s if s == JTAG_STATUS_WAIT => DapError::WaitResponse,
+                    _ => {
+                        tracing::debug!("Unexpected DAP response: {}", status);
+
+                        DapError::NoAcknowledge
+                    }
+                };
+
+                Err(Error::Arm(ArmError::AccessPort {
+                    address: FullyQualifiedApAddress::v1_with_default_dp(0), // Dummy value, unused
+                    source: AccessPortError::DebugPort(DebugPortError::Dap(error)),
+                }))
+            },
+        }
     }
 
     // Helper functions for combining transfers
@@ -1634,9 +1753,6 @@ mod test {
         // Read
         mock.add_jtag_response(PortType::AccessPort, 4, true, DapAcknowledge::Ok, 0, 0);
         mock.add_jtag_response(PortType::DebugPort, 12, true, DapAcknowledge::Wait, 0, 0);
-        // Check CTRL
-        mock.add_jtag_response(PortType::DebugPort, 4, true, DapAcknowledge::Ok, 0, 0);
-        mock.add_jtag_response(PortType::DebugPort, 12, true, DapAcknowledge::Ok, 0, 0);
 
         //  When a wait response is received, the sticky overrun bit has to be cleared
         mock.add_jtag_abort();
@@ -1755,9 +1871,6 @@ mod test {
             0x0,
             0x0,
         );
-        // Check CTRL
-        mock.add_jtag_response(PortType::DebugPort, 4, true, DapAcknowledge::Ok, 0, 0);
-        mock.add_jtag_response(PortType::DebugPort, 12, true, DapAcknowledge::Ok, 0, 0);
 
         // Expect a Write to the ABORT register.
         mock.add_jtag_abort();
