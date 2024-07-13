@@ -14,7 +14,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8040000
@@ -23,28 +23,11 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: IROM2
-    range:
-      start: 0xc000000
-      end: 0xc040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x30000000
-      end: 0x30040000
     cores:
     - main
   flash_algorithms:
@@ -63,7 +46,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8040000
@@ -72,28 +55,11 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: IROM2
-    range:
-      start: 0xc000000
-      end: 0xc040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x30000000
-      end: 0x30040000
     cores:
     - main
   flash_algorithms:
@@ -112,7 +78,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -121,28 +87,11 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: IROM2
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x30000000
-      end: 0x30040000
     cores:
     - main
   flash_algorithms:
@@ -161,7 +110,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -170,28 +119,11 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: IROM2
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x30000000
-      end: 0x30040000
     cores:
     - main
   flash_algorithms:
@@ -210,7 +142,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -219,28 +151,11 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: IROM2
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x30000000
-      end: 0x30040000
     cores:
     - main
   flash_algorithms:
@@ -259,7 +174,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -268,28 +183,11 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: IROM2
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x30000000
-      end: 0x30040000
     cores:
     - main
   flash_algorithms:
@@ -308,7 +206,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -317,28 +215,11 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: IROM2
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x30000000
-      end: 0x30040000
     cores:
     - main
   flash_algorithms:
@@ -357,7 +238,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -366,28 +247,11 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: IROM2
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x30000000
-      end: 0x30040000
     cores:
     - main
   flash_algorithms:
@@ -406,7 +270,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8040000
@@ -415,28 +279,11 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: IROM2
-    range:
-      start: 0xc000000
-      end: 0xc040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x30000000
-      end: 0x30040000
     cores:
     - main
   flash_algorithms:
@@ -455,7 +302,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -464,28 +311,11 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: IROM2
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x30000000
-      end: 0x30040000
     cores:
     - main
   flash_algorithms:
@@ -504,7 +334,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -513,28 +343,11 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: IROM2
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x30000000
-      end: 0x30040000
     cores:
     - main
   flash_algorithms:
@@ -553,7 +366,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -562,28 +375,11 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: IROM2
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x30000000
-      end: 0x30040000
     cores:
     - main
   flash_algorithms:
@@ -602,7 +398,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8040000
@@ -611,28 +407,11 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: IROM2
-    range:
-      start: 0xc000000
-      end: 0xc040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x30000000
-      end: 0x30040000
     cores:
     - main
   flash_algorithms:
@@ -651,7 +430,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -660,28 +439,11 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: IROM2
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x30000000
-      end: 0x30040000
     cores:
     - main
   flash_algorithms:
@@ -700,7 +462,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -709,28 +471,11 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: IROM2
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x30000000
-      end: 0x30040000
     cores:
     - main
   flash_algorithms:
@@ -749,7 +494,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -758,28 +503,11 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: IROM2
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x30000000
-      end: 0x30040000
     cores:
     - main
   flash_algorithms:
@@ -798,7 +526,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8040000
@@ -807,28 +535,11 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: IROM2
-    range:
-      start: 0xc000000
-      end: 0xc040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x30000000
-      end: 0x30040000
     cores:
     - main
   flash_algorithms:
@@ -847,7 +558,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -856,28 +567,11 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: IROM2
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x30000000
-      end: 0x30040000
     cores:
     - main
   flash_algorithms:
@@ -896,7 +590,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -905,28 +599,11 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: IROM2
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x30000000
-      end: 0x30040000
     cores:
     - main
   flash_algorithms:
@@ -945,7 +622,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8040000
@@ -954,28 +631,11 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: IROM2
-    range:
-      start: 0xc000000
-      end: 0xc040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x30000000
-      end: 0x30040000
     cores:
     - main
   flash_algorithms:
@@ -994,7 +654,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -1003,28 +663,11 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: IROM2
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x30000000
-      end: 0x30040000
     cores:
     - main
   flash_algorithms:
@@ -1043,7 +686,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -1052,28 +695,11 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: IROM2
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x30000000
-      end: 0x30040000
     cores:
     - main
   flash_algorithms:
@@ -1092,7 +718,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -1101,28 +727,11 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: IROM2
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x30000000
-      end: 0x30040000
     cores:
     - main
   flash_algorithms:
@@ -1141,7 +750,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -1150,28 +759,11 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: IROM2
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x30000000
-      end: 0x30040000
     cores:
     - main
   flash_algorithms:
@@ -1190,7 +782,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -1199,28 +791,11 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: IROM2
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x30000000
-      end: 0x30040000
     cores:
     - main
   flash_algorithms:
@@ -1239,7 +814,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -1248,28 +823,11 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: IROM2
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x30000000
-      end: 0x30040000
     cores:
     - main
   flash_algorithms:
@@ -1288,7 +846,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -1297,28 +855,11 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: IROM2
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x30000000
-      end: 0x30040000
     cores:
     - main
   flash_algorithms:
@@ -1337,7 +878,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -1346,28 +887,11 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: IROM2
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x30000000
-      end: 0x30040000
     cores:
     - main
   flash_algorithms:
@@ -1386,7 +910,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -1395,28 +919,11 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: IROM2
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x30000000
-      end: 0x30040000
     cores:
     - main
   flash_algorithms:
@@ -1435,7 +942,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -1444,28 +951,11 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: IROM2
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x30000000
-      end: 0x30040000
     cores:
     - main
   flash_algorithms:
@@ -1484,7 +974,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -1493,28 +983,11 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: IROM2
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x30000000
-      end: 0x30040000
     cores:
     - main
   flash_algorithms:
@@ -1533,7 +1006,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -1542,28 +1015,11 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: IROM2
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x30000000
-      end: 0x30040000
     cores:
     - main
   flash_algorithms:
@@ -1582,7 +1038,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -1591,28 +1047,11 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: IROM2
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x30000000
-      end: 0x30040000
     cores:
     - main
   flash_algorithms:
@@ -1631,7 +1070,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -1640,28 +1079,11 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: IROM2
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x30000000
-      end: 0x30040000
     cores:
     - main
   flash_algorithms:
@@ -1680,7 +1102,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -1689,28 +1111,11 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: IROM2
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x30000000
-      end: 0x30040000
     cores:
     - main
   flash_algorithms:
@@ -1729,7 +1134,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -1738,28 +1143,11 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: IROM2
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x30000000
-      end: 0x30040000
     cores:
     - main
   flash_algorithms:
@@ -1778,7 +1166,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -1787,28 +1175,11 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: IROM2
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x30000000
-      end: 0x30040000
     cores:
     - main
   flash_algorithms:
@@ -1827,7 +1198,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -1836,28 +1207,11 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: IROM2
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x30000000
-      end: 0x30040000
     cores:
     - main
   flash_algorithms:

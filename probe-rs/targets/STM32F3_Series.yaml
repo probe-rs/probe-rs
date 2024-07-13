@@ -12,16 +12,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
@@ -39,16 +40,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
@@ -66,16 +68,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
@@ -93,16 +96,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
@@ -120,16 +124,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
@@ -147,16 +152,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
@@ -174,16 +180,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
@@ -201,16 +208,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
@@ -228,16 +236,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
@@ -255,16 +264,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
@@ -282,16 +292,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
@@ -309,16 +320,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20008000
@@ -336,16 +348,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8040000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x2000a000
@@ -363,16 +376,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
@@ -390,16 +404,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
@@ -417,16 +432,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
@@ -444,16 +460,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
@@ -471,16 +488,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20008000
@@ -498,16 +516,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8040000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x2000a000
@@ -525,16 +544,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8060000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20010000
@@ -552,16 +572,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20010000
@@ -579,16 +600,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20008000
@@ -606,16 +628,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8040000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x2000a000
@@ -633,16 +656,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8040000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x2000a000
@@ -660,16 +684,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8060000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20010000
@@ -687,16 +712,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8060000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20010000
@@ -714,16 +740,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20010000
@@ -741,16 +768,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20010000
@@ -768,16 +796,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8060000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20010000
@@ -795,16 +824,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20010000
@@ -822,23 +852,24 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20003000
@@ -856,23 +887,24 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20003000
@@ -890,23 +922,24 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10002000
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20008000
@@ -924,23 +957,24 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8040000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10002000
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x2000a000
@@ -958,23 +992,24 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20003000
@@ -992,23 +1027,24 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20003000
@@ -1026,23 +1062,24 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20003000
@@ -1060,23 +1097,24 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20003000
@@ -1094,23 +1132,24 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20003000
@@ -1128,23 +1167,24 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20003000
@@ -1162,23 +1202,24 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10002000
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20008000
@@ -1196,23 +1237,24 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8040000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10002000
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x2000a000
@@ -1230,23 +1272,24 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8060000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10004000
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20010000
@@ -1264,23 +1307,24 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10004000
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20010000
@@ -1298,23 +1342,24 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10002000
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20008000
@@ -1332,23 +1377,24 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8040000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10002000
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x2000a000
@@ -1366,23 +1412,24 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8040000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10002000
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x2000a000
@@ -1400,23 +1447,24 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8060000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10004000
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20010000
@@ -1434,23 +1482,24 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8060000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10004000
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20010000
@@ -1468,23 +1517,24 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10004000
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20010000
@@ -1502,23 +1552,24 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10004000
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20010000
@@ -1536,23 +1587,24 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10004000
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20010000
@@ -1570,23 +1622,24 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8060000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10004000
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20010000
@@ -1604,23 +1657,24 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10004000
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20010000
@@ -1638,16 +1692,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
@@ -1665,16 +1720,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
@@ -1692,16 +1748,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
@@ -1719,23 +1776,24 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20003000
@@ -1753,23 +1811,24 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8004000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20003000
@@ -1787,23 +1846,24 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20003000
@@ -1821,23 +1881,24 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20003000
@@ -1855,23 +1916,24 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20003000
@@ -1889,23 +1951,24 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8004000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20003000
@@ -1923,23 +1986,24 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8004000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20003000
@@ -1957,23 +2021,24 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20003000
@@ -1991,23 +2056,24 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20003000
@@ -2025,23 +2091,24 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20003000
@@ -2059,23 +2126,24 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20003000
@@ -2093,23 +2161,24 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20003000
@@ -2127,23 +2196,24 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10001000
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20003000
@@ -2161,23 +2231,24 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8040000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10002000
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x2000a000
@@ -2195,23 +2266,24 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8040000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10002000
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x2000a000
@@ -2229,23 +2301,24 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8040000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: CCM SRAM
+    name: CCMRAM
     range:
       start: 0x10000000
       end: 0x10002000
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x2000a000
@@ -2263,16 +2336,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
@@ -2290,16 +2364,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20006000
@@ -2317,16 +2392,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8040000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20008000
@@ -2344,16 +2420,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
@@ -2371,16 +2448,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20006000
@@ -2398,16 +2476,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8040000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20008000
@@ -2425,16 +2504,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
@@ -2452,16 +2532,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20004000
@@ -2479,16 +2560,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20006000
@@ -2506,16 +2588,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20006000
@@ -2533,16 +2616,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8040000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20008000
@@ -2560,16 +2644,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8040000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20008000
@@ -2587,16 +2672,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8040000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20008000
@@ -2614,16 +2700,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8040000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20008000
@@ -2641,16 +2728,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8040000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20008000
@@ -2668,16 +2756,17 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8040000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20008000
@@ -2695,16 +2784,24 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
-    name: IRAM1
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20010000
