@@ -13,13 +13,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -29,6 +22,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B110F2048GQ64
@@ -39,13 +39,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -55,6 +48,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B110F2048IM64
@@ -65,13 +65,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -81,6 +74,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B110F2048IQ64
@@ -91,13 +91,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -107,6 +100,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B120F2048GM64
@@ -117,13 +117,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -133,6 +126,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B120F2048GQ64
@@ -143,13 +143,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -159,6 +152,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B120F2048IM64
@@ -169,13 +169,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -185,6 +178,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B120F2048IQ64
@@ -195,13 +195,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -211,6 +204,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B310F2048GL112
@@ -221,13 +221,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -237,6 +230,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B310F2048GQ100
@@ -247,13 +247,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -263,6 +256,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B320F2048GL112
@@ -273,13 +273,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -289,6 +282,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B320F2048GQ100
@@ -299,13 +299,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -315,6 +308,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B420F2048GL112
@@ -325,13 +325,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -341,6 +334,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B420F2048GL120
@@ -351,13 +351,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -367,6 +360,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B420F2048GM64
@@ -377,13 +377,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -393,6 +386,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B420F2048GQ100
@@ -403,13 +403,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -419,6 +412,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B420F2048GQ64
@@ -429,13 +429,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -445,6 +438,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B420F2048IL112
@@ -455,13 +455,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -471,6 +464,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B420F2048IL120
@@ -481,13 +481,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -497,6 +490,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B420F2048IM64
@@ -507,13 +507,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -523,6 +516,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B420F2048IQ100
@@ -533,13 +533,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -549,6 +542,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B420F2048IQ64
@@ -559,13 +559,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -575,6 +568,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B510F2048GL120
@@ -585,13 +585,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -601,6 +594,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B510F2048GM64
@@ -611,13 +611,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -627,6 +620,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B510F2048GQ100
@@ -637,13 +637,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -653,6 +646,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B510F2048GQ64
@@ -663,13 +663,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -679,6 +672,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B510F2048IL120
@@ -689,13 +689,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -705,6 +698,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B510F2048IM64
@@ -715,13 +715,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -731,6 +724,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B510F2048IQ100
@@ -741,13 +741,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -757,6 +750,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B510F2048IQ64
@@ -767,13 +767,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -783,6 +776,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B520F2048GL120
@@ -793,13 +793,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -809,6 +802,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B520F2048GM64
@@ -819,13 +819,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -835,6 +828,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B520F2048GQ100
@@ -845,13 +845,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -861,6 +854,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B520F2048GQ64
@@ -871,13 +871,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -887,6 +880,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B520F2048IL120
@@ -897,13 +897,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -913,6 +906,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B520F2048IM64
@@ -923,13 +923,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -939,6 +932,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B520F2048IQ100
@@ -949,13 +949,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -965,6 +958,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B520F2048IQ64
@@ -975,13 +975,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -991,6 +984,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B820F2048GL120
@@ -1001,13 +1001,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1017,6 +1010,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B820F2048GL152
@@ -1027,13 +1027,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1043,6 +1036,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B820F2048GL192
@@ -1053,13 +1053,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1069,6 +1062,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B820F2048GM64
@@ -1079,13 +1079,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1095,6 +1088,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B820F2048GQ100
@@ -1105,13 +1105,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1121,6 +1114,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B820F2048GQ64
@@ -1131,13 +1131,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1147,6 +1140,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B820F2048IL120
@@ -1157,13 +1157,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1173,6 +1166,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B820F2048IL152
@@ -1183,13 +1183,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1199,6 +1192,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B820F2048IM64
@@ -1209,13 +1209,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1225,6 +1218,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B820F2048IQ100
@@ -1235,13 +1235,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1251,6 +1244,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B820F2048IQ64
@@ -1261,13 +1261,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1277,6 +1270,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B840F1024GL120
@@ -1287,13 +1287,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1303,6 +1296,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B840F1024GL152
@@ -1313,13 +1313,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1329,6 +1322,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B840F1024GL192
@@ -1339,13 +1339,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1355,6 +1348,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B840F1024GM64
@@ -1365,13 +1365,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1381,6 +1374,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B840F1024GQ100
@@ -1391,13 +1391,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1407,6 +1400,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B840F1024GQ64
@@ -1417,13 +1417,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1433,6 +1426,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B840F1024IL120
@@ -1443,13 +1443,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1459,6 +1452,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B840F1024IL152
@@ -1469,13 +1469,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1485,6 +1478,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B840F1024IM64
@@ -1495,13 +1495,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1511,6 +1504,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B840F1024IQ100
@@ -1521,13 +1521,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1537,6 +1530,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 - name: EFM32GG11B840F1024IQ64
@@ -1547,13 +1547,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1563,6 +1556,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - geckog1
 flash_algorithms:

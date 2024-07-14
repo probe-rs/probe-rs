@@ -10,13 +10,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -40,6 +33,13 @@ variants:
       end: 0x8002000
     cores:
     - main
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - ra6e1_512k
   - ra6e1_data_c512k
@@ -52,13 +52,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Generic
     name: Flash_Upper
     range:
@@ -80,6 +73,13 @@ variants:
       end: 0x8002000
     cores:
     - main
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - ra6e1_512k_dual_lower
   - ra6e1_512k_dual_upper
@@ -93,13 +93,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -123,6 +116,13 @@ variants:
       end: 0x8002000
     cores:
     - main
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
   flash_algorithms:
   - ra6e1_1m
   - ra6e1_data_c512k
@@ -135,13 +135,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Generic
     name: Flash_Upper
     range:
@@ -161,6 +154,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8002000
+    cores:
+    - main
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
     cores:
     - main
   flash_algorithms:

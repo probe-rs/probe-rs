@@ -26,12 +26,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -40,6 +34,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
   flash_algorithms:
   - atsamd51_1024
 - name: ATSAMD51G19A
@@ -50,12 +50,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -64,6 +58,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
   flash_algorithms:
   - atsamd51_1024
 - name: ATSAMD51J18A
@@ -74,12 +74,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -88,6 +82,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
   flash_algorithms:
   - atsamd51_1024
 - name: ATSAMD51J19A
@@ -98,12 +98,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -112,6 +106,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
   flash_algorithms:
   - atsamd51_1024
 - name: ATSAMD51J20A
@@ -122,12 +122,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -136,6 +130,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
   flash_algorithms:
   - atsamd51_1024
 - name: ATSAMD51N19A
@@ -146,12 +146,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -160,6 +154,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
   flash_algorithms:
   - atsamd51_1024
 - name: ATSAMD51N20A
@@ -170,12 +170,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -184,6 +178,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
   flash_algorithms:
   - atsamd51_1024
 - name: ATSAMD51P19A
@@ -194,12 +194,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -208,6 +202,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
   flash_algorithms:
   - atsamd51_1024
 - name: ATSAMD51P20A
@@ -218,12 +218,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -232,6 +226,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
   flash_algorithms:
   - atsamd51_1024
 flash_algorithms:

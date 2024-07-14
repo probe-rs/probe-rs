@@ -9,12 +9,6 @@ variants:
     type: riscv
     core_access_options: !Riscv
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x8000000
@@ -23,6 +17,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32vf103
 flash_algorithms:

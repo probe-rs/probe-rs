@@ -10,13 +10,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -40,6 +33,13 @@ variants:
       end: 0x20000000
     cores:
     - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
   - !Generic
     name: DataFlash
     range:
@@ -59,13 +59,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -87,6 +80,13 @@ variants:
     range:
       start: 0x1ffe0000
       end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20000000
+      end: 0x20080000
     cores:
     - main
   - !Generic

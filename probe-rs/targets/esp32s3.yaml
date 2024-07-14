@@ -23,6 +23,14 @@ variants:
     - cpu0
     access:
       boot: true
+  - !Nvm
+    name: External data bus
+    range:
+      start: 0x3c000000
+      end: 0x3e000000
+    cores:
+    - cpu0
+    is_alias: true
   - !Ram
     name: SRAM1 Data bus
     range:
@@ -56,14 +64,6 @@ variants:
     range:
       start: 0x42000000
       end: 0x44000000
-    cores:
-    - cpu0
-    is_alias: true
-  - !Nvm
-    name: External data bus
-    range:
-      start: 0x3c000000
-      end: 0x3e000000
     cores:
     - cpu0
     is_alias: true

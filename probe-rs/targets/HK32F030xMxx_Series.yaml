@@ -10,13 +10,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -26,6 +19,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f030mxx_16
   - hk32f030mxx_opt
@@ -38,13 +38,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -54,6 +47,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -66,13 +66,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -82,6 +75,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f0301mxxc_16
   - hk32f0301mxxc_opt
@@ -93,13 +93,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -109,6 +102,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -121,13 +121,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -137,6 +130,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -149,13 +149,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -165,6 +158,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -177,13 +177,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -193,6 +186,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -205,13 +205,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -221,6 +214,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -233,13 +233,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -249,6 +242,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -261,13 +261,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -277,6 +270,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f0301mxxc_16
   - hk32f0301mxxc_opt
@@ -288,13 +288,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -304,6 +297,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f030mxx_16
   - hk32f030mxx_opt
@@ -316,13 +316,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -332,6 +325,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -344,13 +344,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -360,6 +353,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f0301mxxc_16
   - hk32f0301mxxc_opt
@@ -371,13 +371,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -387,6 +380,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f030mxx_16
   - hk32f030mxx_opt
@@ -399,13 +399,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -415,6 +408,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -427,13 +427,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -443,6 +436,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f0301mxxc_16
   - hk32f0301mxxc_opt
@@ -454,13 +454,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -470,6 +463,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -482,13 +482,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -498,6 +491,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -510,13 +510,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -526,6 +519,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -538,13 +538,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -554,6 +547,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -566,13 +566,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -582,6 +575,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -594,13 +594,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -610,6 +603,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -622,13 +622,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -638,6 +631,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -650,13 +650,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -666,6 +659,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f030mxx_16
   - hk32f030mxx_opt
@@ -678,13 +678,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -694,6 +687,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -706,13 +706,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -722,6 +715,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f0301mxxc_16
   - hk32f0301mxxc_opt
@@ -733,13 +733,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -749,6 +742,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -761,13 +761,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20000800
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -777,6 +770,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20000800
+    cores:
+    - main
   flash_algorithms:
   - hk32f030mxx_16
   - hk32f030mxx_opt
@@ -789,13 +789,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -805,6 +798,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -817,13 +817,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -833,6 +826,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -845,13 +845,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -861,6 +854,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -873,13 +873,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -889,6 +882,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -901,13 +901,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -917,6 +910,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -929,13 +929,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -945,6 +938,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -957,13 +957,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -973,6 +966,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -985,13 +985,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20000800
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -1001,6 +994,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20000800
+    cores:
+    - main
   flash_algorithms:
   - hk32f030mxx_16
   - hk32f030mxx_opt
@@ -1013,13 +1013,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -1029,6 +1022,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -1041,13 +1041,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20000800
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -1057,6 +1050,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20000800
+    cores:
+    - main
   flash_algorithms:
   - hk32f030mxx_16
   - hk32f030mxx_opt
@@ -1069,13 +1069,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -1085,6 +1078,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -1097,13 +1097,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -1113,6 +1106,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -1125,13 +1125,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -1141,6 +1134,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -1153,13 +1153,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -1169,6 +1162,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -1181,13 +1181,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -1197,6 +1190,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -1209,13 +1209,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -1225,6 +1218,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -1237,13 +1237,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -1253,6 +1246,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -1265,13 +1265,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -1281,6 +1274,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -1293,13 +1293,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20000800
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -1309,6 +1302,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20000800
+    cores:
+    - main
   flash_algorithms:
   - hk32f030mxx_16
   - hk32f030mxx_opt
@@ -1321,13 +1321,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -1337,6 +1330,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt
@@ -1349,13 +1349,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -1365,6 +1358,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - hk32f030xmxxa_32
   - hk32f030xmxxa_opt

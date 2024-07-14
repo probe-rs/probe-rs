@@ -13,6 +13,32 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
+  - !Generic
+    name: ITCM_RAM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: DTCM_RAM
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+    access:
+      execute: false
   - !Ram
     name: AXI_SRAM
     range:
@@ -25,32 +51,6 @@ variants:
     range:
       start: 0x30000000
       end: 0x30008000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: ITCM_RAM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Generic
-    name: DTCM_RAM
-    range:
-      start: 0x20000000
-      end: 0x20010000
     cores:
     - main
     access:
@@ -77,6 +77,32 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
+  - !Generic
+    name: ITCM_RAM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: DTCM_RAM
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+    access:
+      execute: false
   - !Ram
     name: AXI_SRAM
     range:
@@ -89,32 +115,6 @@ variants:
     range:
       start: 0x30000000
       end: 0x30008000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: ITCM_RAM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Generic
-    name: DTCM_RAM
-    range:
-      start: 0x20000000
-      end: 0x20010000
     cores:
     - main
     access:
@@ -141,6 +141,32 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
+  - !Generic
+    name: ITCM_RAM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: DTCM_RAM
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+    access:
+      execute: false
   - !Ram
     name: AXI_SRAM
     range:
@@ -153,32 +179,6 @@ variants:
     range:
       start: 0x30000000
       end: 0x30008000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: ITCM_RAM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Generic
-    name: DTCM_RAM
-    range:
-      start: 0x20000000
-      end: 0x20010000
     cores:
     - main
     access:
@@ -205,6 +205,32 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
+  - !Generic
+    name: ITCM_RAM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: DTCM_RAM
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+    access:
+      execute: false
   - !Ram
     name: AXI_SRAM
     range:
@@ -217,32 +243,6 @@ variants:
     range:
       start: 0x30000000
       end: 0x30008000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: ITCM_RAM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Generic
-    name: DTCM_RAM
-    range:
-      start: 0x20000000
-      end: 0x20010000
     cores:
     - main
     access:
@@ -269,6 +269,32 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
+  - !Generic
+    name: ITCM_RAM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: DTCM_RAM
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+    access:
+      execute: false
   - !Ram
     name: AXI_SRAM
     range:
@@ -281,32 +307,6 @@ variants:
     range:
       start: 0x30000000
       end: 0x30008000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: ITCM_RAM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Generic
-    name: DTCM_RAM
-    range:
-      start: 0x20000000
-      end: 0x20010000
     cores:
     - main
     access:
@@ -333,6 +333,32 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
+  - !Generic
+    name: ITCM_RAM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: DTCM_RAM
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+    access:
+      execute: false
   - !Ram
     name: AXI_SRAM
     range:
@@ -345,32 +371,6 @@ variants:
     range:
       start: 0x30000000
       end: 0x30008000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: ITCM_RAM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Generic
-    name: DTCM_RAM
-    range:
-      start: 0x20000000
-      end: 0x20010000
     cores:
     - main
     access:
@@ -397,6 +397,32 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
+  - !Generic
+    name: ITCM_RAM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: DTCM_RAM
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+    access:
+      execute: false
   - !Ram
     name: AXI_SRAM
     range:
@@ -409,32 +435,6 @@ variants:
     range:
       start: 0x30000000
       end: 0x30008000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: ITCM_RAM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Generic
-    name: DTCM_RAM
-    range:
-      start: 0x20000000
-      end: 0x20010000
     cores:
     - main
     access:
@@ -461,6 +461,32 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
+  - !Generic
+    name: ITCM_RAM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: DTCM_RAM
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+    access:
+      execute: false
   - !Ram
     name: AXI_SRAM
     range:
@@ -473,32 +499,6 @@ variants:
     range:
       start: 0x30000000
       end: 0x30008000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: ITCM_RAM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Generic
-    name: DTCM_RAM
-    range:
-      start: 0x20000000
-      end: 0x20010000
     cores:
     - main
     access:
@@ -525,6 +525,32 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
+  - !Generic
+    name: ITCM_RAM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: DTCM_RAM
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+    access:
+      execute: false
   - !Ram
     name: AXI_SRAM
     range:
@@ -537,32 +563,6 @@ variants:
     range:
       start: 0x30000000
       end: 0x30008000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: ITCM_RAM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Generic
-    name: DTCM_RAM
-    range:
-      start: 0x20000000
-      end: 0x20010000
     cores:
     - main
     access:
@@ -589,6 +589,32 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
+  - !Generic
+    name: ITCM_RAM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: DTCM_RAM
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+    access:
+      execute: false
   - !Ram
     name: AXI_SRAM
     range:
@@ -601,32 +627,6 @@ variants:
     range:
       start: 0x30000000
       end: 0x30008000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: ITCM_RAM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Generic
-    name: DTCM_RAM
-    range:
-      start: 0x20000000
-      end: 0x20010000
     cores:
     - main
     access:
@@ -653,6 +653,32 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
+  - !Generic
+    name: ITCM_RAM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: DTCM_RAM
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+    access:
+      execute: false
   - !Ram
     name: AXI_SRAM
     range:
@@ -665,32 +691,6 @@ variants:
     range:
       start: 0x30000000
       end: 0x30008000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: ITCM_RAM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Generic
-    name: DTCM_RAM
-    range:
-      start: 0x20000000
-      end: 0x20010000
     cores:
     - main
     access:
@@ -717,6 +717,23 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
+  - !Generic
+    name: ITCM_RAM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
   - !Ram
     name: DTCM_RAM
     range:
@@ -736,23 +753,6 @@ variants:
     range:
       start: 0x30000000
       end: 0x30008000
-    cores:
-    - main
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: ITCM_RAM
-    range:
-      start: 0x0
-      end: 0x10000
     cores:
     - main
   - !Generic
@@ -775,6 +775,23 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
+  - !Generic
+    name: ITCM_RAM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
   - !Ram
     name: DTCM_RAM
     range:
@@ -794,23 +811,6 @@ variants:
     range:
       start: 0x30000000
       end: 0x30008000
-    cores:
-    - main
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: ITCM_RAM
-    range:
-      start: 0x0
-      end: 0x10000
     cores:
     - main
   - !Generic
@@ -833,6 +833,23 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
+  - !Generic
+    name: ITCM_RAM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
   - !Ram
     name: DTCM_RAM
     range:
@@ -852,23 +869,6 @@ variants:
     range:
       start: 0x30000000
       end: 0x30008000
-    cores:
-    - main
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: ITCM_RAM
-    range:
-      start: 0x0
-      end: 0x10000
     cores:
     - main
   - !Generic
@@ -891,6 +891,23 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
+  - !Generic
+    name: ITCM_RAM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
   - !Ram
     name: DTCM_RAM
     range:
@@ -910,23 +927,6 @@ variants:
     range:
       start: 0x30000000
       end: 0x30008000
-    cores:
-    - main
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: ITCM_RAM
-    range:
-      start: 0x0
-      end: 0x10000
     cores:
     - main
   - !Generic
@@ -949,6 +949,23 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
+  - !Generic
+    name: ITCM_RAM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
   - !Ram
     name: DTCM_RAM
     range:
@@ -968,23 +985,6 @@ variants:
     range:
       start: 0x30000000
       end: 0x30008000
-    cores:
-    - main
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: ITCM_RAM
-    range:
-      start: 0x0
-      end: 0x10000
     cores:
     - main
   - !Generic
@@ -1007,6 +1007,23 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
+  - !Generic
+    name: ITCM_RAM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
   - !Ram
     name: DTCM_RAM
     range:
@@ -1026,23 +1043,6 @@ variants:
     range:
       start: 0x30000000
       end: 0x30008000
-    cores:
-    - main
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: ITCM_RAM
-    range:
-      start: 0x0
-      end: 0x10000
     cores:
     - main
   - !Generic
@@ -1065,6 +1065,23 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
+  - !Generic
+    name: ITCM_RAM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
   - !Ram
     name: DTCM_RAM
     range:
@@ -1084,23 +1101,6 @@ variants:
     range:
       start: 0x30000000
       end: 0x30008000
-    cores:
-    - main
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: ITCM_RAM
-    range:
-      start: 0x0
-      end: 0x10000
     cores:
     - main
   - !Generic
@@ -1123,6 +1123,23 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
+  - !Generic
+    name: ITCM_RAM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
   - !Ram
     name: DTCM_RAM
     range:
@@ -1142,23 +1159,6 @@ variants:
     range:
       start: 0x30000000
       end: 0x30008000
-    cores:
-    - main
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: ITCM_RAM
-    range:
-      start: 0x0
-      end: 0x10000
     cores:
     - main
   - !Generic
@@ -1181,6 +1181,23 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
+  - !Generic
+    name: ITCM_RAM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
   - !Ram
     name: DTCM_RAM
     range:
@@ -1200,23 +1217,6 @@ variants:
     range:
       start: 0x30000000
       end: 0x30008000
-    cores:
-    - main
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: ITCM_RAM
-    range:
-      start: 0x0
-      end: 0x10000
     cores:
     - main
   - !Generic
@@ -1239,6 +1239,23 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
+  - !Generic
+    name: ITCM_RAM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
   - !Ram
     name: DTCM_RAM
     range:
@@ -1258,23 +1275,6 @@ variants:
     range:
       start: 0x30000000
       end: 0x30008000
-    cores:
-    - main
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: ITCM_RAM
-    range:
-      start: 0x0
-      end: 0x10000
     cores:
     - main
   - !Generic
@@ -1297,6 +1297,23 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
+  - !Generic
+    name: ITCM_RAM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
   - !Ram
     name: DTCM_RAM
     range:
@@ -1316,23 +1333,6 @@ variants:
     range:
       start: 0x30000000
       end: 0x30008000
-    cores:
-    - main
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: ITCM_RAM
-    range:
-      start: 0x0
-      end: 0x10000
     cores:
     - main
   - !Generic
@@ -1355,6 +1355,23 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
+  - !Generic
+    name: ITCM_RAM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
   - !Ram
     name: DTCM_RAM
     range:
@@ -1374,23 +1391,6 @@ variants:
     range:
       start: 0x30000000
       end: 0x30008000
-    cores:
-    - main
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: ITCM_RAM
-    range:
-      start: 0x0
-      end: 0x10000
     cores:
     - main
   - !Generic
@@ -1413,6 +1413,23 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
+  - !Generic
+    name: ITCM_RAM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
   - !Ram
     name: DTCM_RAM
     range:
@@ -1432,23 +1449,6 @@ variants:
     range:
       start: 0x30000000
       end: 0x30008000
-    cores:
-    - main
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: ITCM_RAM
-    range:
-      start: 0x0
-      end: 0x10000
     cores:
     - main
   - !Generic
@@ -1471,6 +1471,23 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
+  - !Generic
+    name: ITCM_RAM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
   - !Ram
     name: DTCM_RAM
     range:
@@ -1490,23 +1507,6 @@ variants:
     range:
       start: 0x30000000
       end: 0x30008000
-    cores:
-    - main
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: ITCM_RAM
-    range:
-      start: 0x0
-      end: 0x10000
     cores:
     - main
   - !Generic
@@ -1529,6 +1529,23 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
+  - !Generic
+    name: ITCM_RAM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
   - !Ram
     name: DTCM_RAM
     range:
@@ -1548,23 +1565,6 @@ variants:
     range:
       start: 0x30000000
       end: 0x30008000
-    cores:
-    - main
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: ITCM_RAM
-    range:
-      start: 0x0
-      end: 0x10000
     cores:
     - main
   - !Generic
@@ -1587,6 +1587,23 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
+  - !Generic
+    name: ITCM_RAM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
   - !Ram
     name: DTCM_RAM
     range:
@@ -1606,23 +1623,6 @@ variants:
     range:
       start: 0x30000000
       end: 0x30008000
-    cores:
-    - main
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: ITCM_RAM
-    range:
-      start: 0x0
-      end: 0x10000
     cores:
     - main
   - !Generic
@@ -1645,6 +1645,23 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
+  - !Generic
+    name: ITCM_RAM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
   - !Ram
     name: DTCM_RAM
     range:
@@ -1664,23 +1681,6 @@ variants:
     range:
       start: 0x30000000
       end: 0x30008000
-    cores:
-    - main
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: ITCM_RAM
-    range:
-      start: 0x0
-      end: 0x10000
     cores:
     - main
   - !Generic
@@ -1703,6 +1703,23 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
+  - !Generic
+    name: ITCM_RAM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
   - !Ram
     name: DTCM_RAM
     range:
@@ -1722,23 +1739,6 @@ variants:
     range:
       start: 0x30000000
       end: 0x30008000
-    cores:
-    - main
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: ITCM_RAM
-    range:
-      start: 0x0
-      end: 0x10000
     cores:
     - main
   - !Generic
@@ -1761,6 +1761,23 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
+  - !Generic
+    name: ITCM_RAM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
   - !Ram
     name: DTCM_RAM
     range:
@@ -1780,23 +1797,6 @@ variants:
     range:
       start: 0x30000000
       end: 0x30008000
-    cores:
-    - main
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: ITCM_RAM
-    range:
-      start: 0x0
-      end: 0x10000
     cores:
     - main
   - !Generic
@@ -1819,6 +1819,23 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
+  - !Generic
+    name: ITCM_RAM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
   - !Ram
     name: DTCM_RAM
     range:
@@ -1838,23 +1855,6 @@ variants:
     range:
       start: 0x30000000
       end: 0x30008000
-    cores:
-    - main
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: ITCM_RAM
-    range:
-      start: 0x0
-      end: 0x10000
     cores:
     - main
   - !Generic
@@ -1877,6 +1877,23 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
+  - !Generic
+    name: ITCM_RAM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
   - !Ram
     name: DTCM_RAM
     range:
@@ -1896,23 +1913,6 @@ variants:
     range:
       start: 0x30000000
       end: 0x30008000
-    cores:
-    - main
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: ITCM_RAM
-    range:
-      start: 0x0
-      end: 0x10000
     cores:
     - main
   - !Generic
@@ -1935,6 +1935,23 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
+  - !Generic
+    name: ITCM_RAM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
   - !Ram
     name: DTCM_RAM
     range:
@@ -1954,23 +1971,6 @@ variants:
     range:
       start: 0x30000000
       end: 0x30008000
-    cores:
-    - main
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: ITCM_RAM
-    range:
-      start: 0x0
-      end: 0x10000
     cores:
     - main
   - !Generic
@@ -1993,6 +1993,23 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
+  - !Generic
+    name: ITCM_RAM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
   - !Ram
     name: DTCM_RAM
     range:
@@ -2012,23 +2029,6 @@ variants:
     range:
       start: 0x30000000
       end: 0x30008000
-    cores:
-    - main
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: ITCM_RAM
-    range:
-      start: 0x0
-      end: 0x10000
     cores:
     - main
   - !Generic

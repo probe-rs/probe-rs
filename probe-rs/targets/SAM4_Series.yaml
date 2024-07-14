@@ -11,12 +11,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -25,6 +19,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
   flash_algorithms:
   - atsam4e_1024
 - name: ATSAM4E16E
@@ -35,12 +35,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -49,6 +43,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
   flash_algorithms:
   - atsam4e_1024
 - name: ATSAM4E8C
@@ -59,12 +59,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -73,6 +67,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
   flash_algorithms:
   - atsam4e_1024
 - name: ATSAM4E8E
@@ -83,12 +83,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -97,6 +91,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
   flash_algorithms:
   - atsam4e_1024
 - name: ATSAM4LC2A
@@ -107,12 +107,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -121,6 +115,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - atsam4l_512
 - name: ATSAM4LC2B
@@ -131,12 +131,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -145,6 +139,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - atsam4l_512
 - name: ATSAM4LC2C
@@ -155,12 +155,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -169,6 +163,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - atsam4l_512
 - name: ATSAM4LC4A
@@ -179,12 +179,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -193,6 +187,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - atsam4l_512
 - name: ATSAM4LC4B
@@ -203,12 +203,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -217,6 +211,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - atsam4l_512
 - name: ATSAM4LC4C
@@ -227,12 +227,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -241,6 +235,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - atsam4l_512
 - name: ATSAM4LC8A
@@ -251,12 +251,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -265,6 +259,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - atsam4l_512
 - name: ATSAM4LC8B
@@ -275,12 +275,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -289,6 +283,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - atsam4l_512
 - name: ATSAM4LC8C
@@ -299,12 +299,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -313,6 +307,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - atsam4l_512
 - name: ATSAM4LS2A
@@ -323,12 +323,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -337,6 +331,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - atsam4l_512
 - name: ATSAM4LS2B
@@ -347,12 +347,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -361,6 +355,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - atsam4l_512
 - name: ATSAM4LS2C
@@ -371,12 +371,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -385,6 +379,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - atsam4l_512
 - name: ATSAM4LS4A
@@ -395,12 +395,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -409,6 +403,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - atsam4l_512
 - name: ATSAM4LS4B
@@ -419,12 +419,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -433,6 +427,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - atsam4l_512
 - name: ATSAM4LS4C
@@ -443,12 +443,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -457,6 +451,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - atsam4l_512
 - name: ATSAM4LS8A
@@ -467,12 +467,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -481,6 +475,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - atsam4l_512
 - name: ATSAM4LS8B
@@ -491,12 +491,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -505,6 +499,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - atsam4l_512
 - name: ATSAM4LS8C
@@ -515,12 +515,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -529,6 +523,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - atsam4l_512
 - name: ATSAM4N16B
@@ -539,12 +539,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -553,6 +547,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20014000
+    cores:
+    - main
   flash_algorithms:
   - atsam4n_1024
 - name: ATSAM4N16C
@@ -563,12 +563,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -577,6 +571,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20014000
+    cores:
+    - main
   flash_algorithms:
   - atsam4n_1024
 - name: ATSAM4N8A
@@ -587,12 +587,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -601,6 +595,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - atsam4n_1024
 - name: ATSAM4N8B
@@ -611,12 +611,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -625,6 +619,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - atsam4n_1024
 - name: ATSAM4N8C
@@ -635,12 +635,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -649,6 +643,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - atsam4n_1024
 - name: ATSAM4S16B
@@ -659,12 +659,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -673,6 +667,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
   flash_algorithms:
   - atsam4n_1024
   - atsam4s_gpnvm
@@ -684,12 +684,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -698,6 +692,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
   flash_algorithms:
   - atsam4n_1024
   - atsam4s_gpnvm
@@ -709,12 +709,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -723,6 +717,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - atsam4n_1024
   - atsam4s_gpnvm
@@ -734,12 +734,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -748,6 +742,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - atsam4n_1024
   - atsam4s_gpnvm
@@ -759,12 +759,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -773,6 +767,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - atsam4n_1024
   - atsam4s_gpnvm
@@ -784,12 +784,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -798,6 +792,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - atsam4n_1024
   - atsam4s_gpnvm
@@ -809,12 +809,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -823,6 +817,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - atsam4n_1024
   - atsam4s_gpnvm
@@ -834,12 +834,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -848,6 +842,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - atsam4n_1024
   - atsam4s_gpnvm
@@ -859,12 +859,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -873,6 +867,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
   flash_algorithms:
   - atsam4n_1024
   - atsam4s_gpnvm
@@ -884,12 +884,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -898,6 +892,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
   flash_algorithms:
   - atsam4n_1024
   - atsam4s_gpnvm
@@ -909,12 +909,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20028000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -923,6 +917,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20028000
+    cores:
+    - main
   flash_algorithms:
   - atsam4n_1024
   - atsam4s_gpnvm
@@ -934,12 +934,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20028000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -948,6 +942,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20028000
+    cores:
+    - main
   flash_algorithms:
   - atsam4n_1024
   - atsam4s_gpnvm
@@ -959,12 +959,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20028000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -973,6 +967,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20028000
+    cores:
+    - main
   flash_algorithms:
   - atsam4sd_1024
   - atsam4s_gpnvm
@@ -984,12 +984,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20028000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -998,6 +992,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20028000
+    cores:
+    - main
   flash_algorithms:
   - atsam4sd_1024
   - atsam4s_gpnvm
@@ -1009,12 +1009,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20028000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -1023,6 +1017,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20028000
+    cores:
+    - main
   flash_algorithms:
   - atsam4sd_2048
   - atsam4s_gpnvm
@@ -1034,12 +1034,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20028000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -1048,6 +1042,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20028000
+    cores:
+    - main
   flash_algorithms:
   - atsam4sd_2048
   - atsam4s_gpnvm
@@ -1059,12 +1059,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20028000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -1073,6 +1067,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20028000
+    cores:
+    - main
   flash_algorithms:
   - atsam4sd_2048
 flash_algorithms:

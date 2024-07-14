@@ -10,13 +10,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x2000a000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -40,6 +33,13 @@ variants:
       end: 0x8001000
     cores:
     - main
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000a000
+    cores:
+    - main
   flash_algorithms:
   - ra4t1_128k
   - ra4t1_data_c128k
@@ -52,13 +52,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x2000a000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -80,6 +73,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8001000
+    cores:
+    - main
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000a000
     cores:
     - main
   flash_algorithms:

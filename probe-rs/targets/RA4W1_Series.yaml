@@ -10,13 +10,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -31,6 +24,13 @@ variants:
     range:
       start: 0x1010000
       end: 0x1010034
+    cores:
+    - main
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
     cores:
     - main
   - !Generic

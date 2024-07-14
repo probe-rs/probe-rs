@@ -13,13 +13,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -30,6 +23,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
   - !Ram
     name: SRAM2
     range:
@@ -47,13 +47,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -64,6 +57,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
   - !Ram
     name: SRAM2
     range:
@@ -81,13 +81,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -98,6 +91,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
   - !Ram
     name: SRAM2
     range:
@@ -115,13 +115,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -132,6 +125,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
   - !Ram
     name: SRAM2
     range:
@@ -149,13 +149,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -166,6 +159,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
   - !Ram
     name: SRAM2
     range:
@@ -183,13 +183,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20034000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -200,6 +193,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20034000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -218,13 +218,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20034000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -235,6 +228,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20034000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -253,13 +253,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20034000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -270,6 +263,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20034000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -288,13 +288,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20034000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -305,6 +298,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20034000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -323,13 +323,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20034000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -340,6 +333,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20034000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -358,13 +358,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20034000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -375,6 +368,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20034000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -393,13 +393,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20034000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -410,6 +403,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20034000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -428,13 +428,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20034000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -445,6 +438,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20034000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -463,13 +463,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20034000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -480,6 +473,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20034000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -498,13 +498,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20034000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -515,6 +508,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20034000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -533,13 +533,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20034000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -550,6 +543,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20034000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -568,13 +568,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20034000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -585,6 +578,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20034000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -603,13 +603,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20034000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -620,6 +613,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20034000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -638,13 +638,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20034000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -655,6 +648,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20034000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -673,13 +673,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20034000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -690,6 +683,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20034000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -708,13 +708,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20034000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -725,6 +718,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20034000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -743,13 +743,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20034000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -760,6 +753,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20034000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -778,13 +778,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20034000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -795,6 +788,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20034000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -813,13 +813,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20034000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -830,6 +823,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20034000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -848,13 +848,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20034000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -865,6 +858,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20034000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -883,13 +883,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20034000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -900,6 +893,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20034000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -918,13 +918,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20034000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -935,6 +928,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20034000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -953,13 +953,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20034000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -970,6 +963,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20034000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -988,13 +988,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -1005,6 +998,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -1023,13 +1023,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -1040,6 +1033,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -1058,13 +1058,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -1075,6 +1068,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -1093,13 +1093,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -1110,6 +1103,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -1128,13 +1128,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -1145,6 +1138,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -1163,13 +1163,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -1180,6 +1173,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -1198,13 +1198,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -1215,6 +1208,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -1233,13 +1233,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -1250,6 +1243,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -1268,13 +1268,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -1285,6 +1278,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -1303,13 +1303,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -1320,6 +1313,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -1338,13 +1338,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -1355,6 +1348,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -1373,13 +1373,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -1390,6 +1383,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -1408,13 +1408,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -1425,6 +1418,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -1443,13 +1443,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -1460,6 +1453,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -1478,13 +1478,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -1495,6 +1488,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -1513,13 +1513,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -1530,6 +1523,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -1548,13 +1548,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -1565,6 +1558,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -1583,13 +1583,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -1600,6 +1593,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -1618,13 +1618,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -1635,6 +1628,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -1653,13 +1653,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -1670,6 +1663,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -1688,13 +1688,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -1705,6 +1698,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -1723,13 +1723,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -1740,6 +1733,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -1758,13 +1758,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -1775,6 +1768,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -1793,13 +1793,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -1810,6 +1803,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -1828,13 +1828,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -1845,6 +1838,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -1863,13 +1863,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -1880,6 +1873,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -1898,13 +1898,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -1915,6 +1908,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -1933,13 +1933,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -1950,6 +1943,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -1968,13 +1968,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -1985,6 +1978,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -2003,13 +2003,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -2020,6 +2013,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -2038,13 +2038,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -2055,6 +2048,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -2073,13 +2073,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -2090,6 +2083,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -2108,13 +2108,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -2125,6 +2118,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -2143,13 +2143,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -2160,6 +2153,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -2178,13 +2178,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -2195,6 +2188,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -2213,13 +2213,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -2230,6 +2223,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -2248,13 +2248,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -2265,6 +2258,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -2283,13 +2283,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -2300,6 +2293,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -2318,13 +2318,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -2335,6 +2328,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -2353,13 +2353,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -2370,6 +2363,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -2388,13 +2388,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -2405,6 +2398,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -2423,13 +2423,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -2440,6 +2433,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -2458,13 +2458,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -2475,6 +2468,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -2493,13 +2493,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -2510,6 +2503,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -2528,13 +2528,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -2545,6 +2538,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -2563,13 +2563,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -2580,6 +2573,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:
@@ -2598,13 +2598,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -2615,6 +2608,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
   - !Ram
     name: SRAM3
     range:

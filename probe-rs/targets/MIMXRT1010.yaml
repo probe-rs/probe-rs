@@ -11,6 +11,13 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: OCRAM
+    range:
+      start: 0x20200000
+      end: 0x20210000
+    cores:
+    - main
   - !Nvm
     name: FlexSPI
     range:
@@ -20,13 +27,6 @@ variants:
     - main
     access:
       boot: true
-  - !Ram
-    name: OCRAM
-    range:
-      start: 0x20200000
-      end: 0x20210000
-    cores:
-    - main
   flash_algorithms:
   - mimxrt1011_quadspi_4kb_sec
 flash_algorithms:

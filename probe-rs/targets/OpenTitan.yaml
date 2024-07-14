@@ -15,6 +15,13 @@ variants:
     - ibex
     access:
       boot: true
+  - !Ram
+    name: Main SRAM
+    range:
+      start: 0x10000000
+      end: 0x10020000
+    cores:
+    - ibex
   - !Nvm
     name: Flash
     range:
@@ -27,12 +34,5 @@ variants:
     range:
       start: 0x40600000
       end: 0x40601000
-    cores:
-    - ibex
-  - !Ram
-    name: Main SRAM
-    range:
-      start: 0x10000000
-      end: 0x10020000
     cores:
     - ibex

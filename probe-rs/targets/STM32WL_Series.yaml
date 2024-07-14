@@ -18,6 +18,17 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: FLASH
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - cm4
+    - cm0p
+    access:
+      write: false
+      boot: true
   - !Ram
     name: SRAM1
     range:
@@ -34,17 +45,6 @@ variants:
     cores:
     - cm4
     - cm0p
-  - !Nvm
-    name: FLASH
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - cm4
-    - cm0p
-    access:
-      write: false
-      boot: true
   flash_algorithms:
   - stm32wlxx_cm4
   - stm32wlxx_cm0+
@@ -61,6 +61,17 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: FLASH
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - cm4
+    - cm0p
+    access:
+      write: false
+      boot: true
   - !Ram
     name: SRAM1
     range:
@@ -77,17 +88,6 @@ variants:
     cores:
     - cm4
     - cm0p
-  - !Nvm
-    name: FLASH
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - cm4
-    - cm0p
-    access:
-      write: false
-      boot: true
   flash_algorithms:
   - stm32wlxx_cm4
   - stm32wlxx_cm0+
@@ -104,6 +104,17 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: FLASH
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - cm4
+    - cm0p
+    access:
+      write: false
+      boot: true
   - !Ram
     name: SRAM1
     range:
@@ -120,17 +131,6 @@ variants:
     cores:
     - cm4
     - cm0p
-  - !Nvm
-    name: FLASH
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - cm4
-    - cm0p
-    access:
-      write: false
-      boot: true
   flash_algorithms:
   - stm32wlxx_cm4
   - stm32wlxx_cm0+
@@ -147,6 +147,17 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: FLASH
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - cm4
+    - cm0p
+    access:
+      write: false
+      boot: true
   - !Ram
     name: SRAM1
     range:
@@ -163,17 +174,6 @@ variants:
     cores:
     - cm4
     - cm0p
-  - !Nvm
-    name: FLASH
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - cm4
-    - cm0p
-    access:
-      write: false
-      boot: true
   flash_algorithms:
   - stm32wlxx_cm4
   - stm32wlxx_cm0+
@@ -190,6 +190,17 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: FLASH
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - cm4
+    - cm0p
+    access:
+      write: false
+      boot: true
   - !Ram
     name: SRAM1
     range:
@@ -206,17 +217,6 @@ variants:
     cores:
     - cm4
     - cm0p
-  - !Nvm
-    name: FLASH
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - cm4
-    - cm0p
-    access:
-      write: false
-      boot: true
   flash_algorithms:
   - stm32wlxx_cm4
   - stm32wlxx_cm0+
@@ -228,13 +228,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20008000
-      end: 0x2000d000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -245,6 +238,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20008000
+      end: 0x2000d000
+    cores:
+    - main
   flash_algorithms:
   - stm32wlexx_128
 - name: STM32WLE4CBUx
@@ -255,6 +255,16 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: FLASH
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
   - !Ram
     name: SRAM1
     range:
@@ -269,16 +279,6 @@ variants:
       end: 0x20010000
     cores:
     - main
-  - !Nvm
-    name: FLASH
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   flash_algorithms:
   - stm32wlexx_128
 - name: STM32WLE4CCUx
@@ -289,6 +289,16 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: FLASH
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
   - !Ram
     name: SRAM1
     range:
@@ -303,16 +313,6 @@ variants:
       end: 0x20010000
     cores:
     - main
-  - !Nvm
-    name: FLASH
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   flash_algorithms:
   - stm32wlxx_cm4
 - name: STM32WLE4J8Ix
@@ -323,13 +323,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20008000
-      end: 0x2000d000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -340,6 +333,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20008000
+      end: 0x2000d000
+    cores:
+    - main
   flash_algorithms:
   - stm32wlexx_128
 - name: STM32WLE4JBIx
@@ -350,6 +350,16 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: FLASH
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
   - !Ram
     name: SRAM1
     range:
@@ -364,16 +374,6 @@ variants:
       end: 0x20010000
     cores:
     - main
-  - !Nvm
-    name: FLASH
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   flash_algorithms:
   - stm32wlexx_128
 - name: STM32WLE4JCIx
@@ -384,6 +384,16 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: FLASH
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
   - !Ram
     name: SRAM1
     range:
@@ -398,16 +408,6 @@ variants:
       end: 0x20010000
     cores:
     - main
-  - !Nvm
-    name: FLASH
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   flash_algorithms:
   - stm32wlxx_cm4
 - name: STM32WLE5C8Ux
@@ -418,13 +418,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20008000
-      end: 0x2000d000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -435,6 +428,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20008000
+      end: 0x2000d000
+    cores:
+    - main
   flash_algorithms:
   - stm32wlexx_128
 - name: STM32WLE5CBUx
@@ -445,6 +445,16 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: FLASH
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
   - !Ram
     name: SRAM1
     range:
@@ -459,16 +469,6 @@ variants:
       end: 0x20010000
     cores:
     - main
-  - !Nvm
-    name: FLASH
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   flash_algorithms:
   - stm32wlexx_128
 - name: STM32WLE5CCUx
@@ -479,6 +479,16 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: FLASH
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
   - !Ram
     name: SRAM1
     range:
@@ -493,16 +503,6 @@ variants:
       end: 0x20010000
     cores:
     - main
-  - !Nvm
-    name: FLASH
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   flash_algorithms:
   - stm32wlxx_cm4
 - name: STM32WLE5J8Ix
@@ -513,13 +513,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20008000
-      end: 0x2000d000
-    cores:
-    - main
   - !Nvm
     name: FLASH
     range:
@@ -530,6 +523,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20008000
+      end: 0x2000d000
+    cores:
+    - main
   flash_algorithms:
   - stm32wlexx_128
 - name: STM32WLE5JBIx
@@ -540,6 +540,16 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: FLASH
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
   - !Ram
     name: SRAM1
     range:
@@ -554,16 +564,6 @@ variants:
       end: 0x20010000
     cores:
     - main
-  - !Nvm
-    name: FLASH
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   flash_algorithms:
   - stm32wlexx_128
 - name: STM32WLE5JCIx
@@ -574,6 +574,16 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: FLASH
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
   - !Ram
     name: SRAM1
     range:
@@ -588,16 +598,6 @@ variants:
       end: 0x20010000
     cores:
     - main
-  - !Nvm
-    name: FLASH
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
   flash_algorithms:
   - stm32wlxx_cm4
 flash_algorithms:

@@ -21,14 +21,6 @@ variants:
     cores:
     - main
   - !Nvm
-    name: External instruction bus
-    range:
-      start: 0x40080000
-      end: 0x40800000
-    cores:
-    - main
-    is_alias: true
-  - !Nvm
     name: External data bus 1
     range:
       start: 0x3f000000
@@ -72,6 +64,14 @@ variants:
       end: 0x40070000
     cores:
     - main
+  - !Nvm
+    name: External instruction bus
+    range:
+      start: 0x40080000
+      end: 0x40800000
+    cores:
+    - main
+    is_alias: true
   flash_algorithms:
   - esp32s2-flashloader
   jtag:

@@ -98,18 +98,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20006000
-    cores:
-    - main
-  - !Ram
-    range:
-      start: 0x800000
-      end: 0x806000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -118,10 +106,22 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x800000
+      end: 0x806000
+    cores:
+    - main
   - !Nvm
     range:
       start: 0x10001000
       end: 0x10002000
+    cores:
+    - main
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20006000
     cores:
     - main
   flash_algorithms:
@@ -134,18 +134,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20006000
-    cores:
-    - main
-  - !Ram
-    range:
-      start: 0x800000
-      end: 0x806000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -154,10 +142,22 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x800000
+      end: 0x806000
+    cores:
+    - main
   - !Nvm
     range:
       start: 0x10001000
       end: 0x10002000
+    cores:
+    - main
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20006000
     cores:
     - main
   flash_algorithms:
@@ -170,18 +170,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20006000
-    cores:
-    - main
-  - !Ram
-    range:
-      start: 0x800000
-      end: 0x806000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -190,10 +178,22 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x800000
+      end: 0x806000
+    cores:
+    - main
   - !Nvm
     range:
       start: 0x10001000
       end: 0x10002000
+    cores:
+    - main
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20006000
     cores:
     - main
   flash_algorithms:
@@ -206,18 +206,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Ram
-    range:
-      start: 0x800000
-      end: 0x808000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -226,10 +214,22 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x800000
+      end: 0x808000
+    cores:
+    - main
   - !Nvm
     range:
       start: 0x10001000
       end: 0x10002000
+    cores:
+    - main
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20008000
     cores:
     - main
   flash_algorithms:
@@ -242,18 +242,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Ram
-    range:
-      start: 0x800000
-      end: 0x810000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -262,10 +250,22 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x800000
+      end: 0x810000
+    cores:
+    - main
   - !Nvm
     range:
       start: 0x10001000
       end: 0x10002000
+    cores:
+    - main
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20010000
     cores:
     - main
   flash_algorithms:
@@ -278,18 +278,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Ram
-    range:
-      start: 0x800000
-      end: 0x808000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -298,10 +286,22 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x800000
+      end: 0x808000
+    cores:
+    - main
   - !Nvm
     range:
       start: 0x10001000
       end: 0x10002000
+    cores:
+    - main
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20008000
     cores:
     - main
   flash_algorithms:
@@ -314,18 +314,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    range:
-      start: 0x800000
-      end: 0x820000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -334,10 +322,22 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x800000
+      end: 0x820000
+    cores:
+    - main
   - !Nvm
     range:
       start: 0x10001000
       end: 0x10002000
+    cores:
+    - main
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20020000
     cores:
     - main
   flash_algorithms:
@@ -350,18 +350,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    range:
-      start: 0x800000
-      end: 0x840000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -370,10 +358,22 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x800000
+      end: 0x840000
+    cores:
+    - main
   - !Nvm
     range:
       start: 0x10001000
       end: 0x10002000
+    cores:
+    - main
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20040000
     cores:
     - main
   flash_algorithms:

@@ -23,6 +23,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x40800000
+      end: 0x40880000
+    cores:
+    - main
   - !Nvm
     name: External flash (Read Only)
     range:
@@ -31,12 +37,6 @@ variants:
     cores:
     - main
     is_alias: true
-  - !Ram
-    range:
-      start: 0x40800000
-      end: 0x40880000
-    cores:
-    - main
   flash_algorithms:
   - esp32h2-flashloader
   jtag:

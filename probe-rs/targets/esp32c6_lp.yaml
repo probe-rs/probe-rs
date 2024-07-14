@@ -19,6 +19,12 @@ variants:
     - lp
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x40800000
+      end: 0x40880000
+    cores:
+    - lp
   - !Nvm
     name: External flash (Read Only)
     range:
@@ -27,12 +33,6 @@ variants:
     cores:
     - lp
     is_alias: true
-  - !Ram
-    range:
-      start: 0x40800000
-      end: 0x40880000
-    cores:
-    - lp
   - !Ram
     range:
       start: 0x50000000

@@ -11,12 +11,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x2008c000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x10000000
@@ -25,6 +19,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x2008c000
+    cores:
+    - main
   flash_algorithms:
   - max32665
 - name: MAX32666
@@ -35,12 +35,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x2008c000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x10000000
@@ -49,6 +43,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x2008c000
+    cores:
+    - main
   flash_algorithms:
   - max32665
 flash_algorithms:

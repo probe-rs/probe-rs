@@ -20,13 +20,6 @@ variants:
       end: 0xa0000
     cores:
     - core0
-  - !Ram
-    name: AHB_SRAM
-    range:
-      start: 0xf0400000
-      end: 0xf0408000
-    cores:
-    - core0
   - !Nvm
     name: XPI0
     range:
@@ -36,6 +29,13 @@ variants:
     - core0
     access:
       boot: true
+  - !Ram
+    name: AHB_SRAM
+    range:
+      start: 0xf0400000
+      end: 0xf0408000
+    cores:
+    - core0
   flash_algorithms:
   - flash-algo-hpm53x1
 - name: HPM5331
@@ -58,13 +58,6 @@ variants:
       end: 0xa0000
     cores:
     - core0
-  - !Ram
-    name: AHB_SRAM
-    range:
-      start: 0xf0400000
-      end: 0xf0408000
-    cores:
-    - core0
   - !Nvm
     name: XPI0
     range:
@@ -74,6 +67,13 @@ variants:
     - core0
     access:
       boot: true
+  - !Ram
+    name: AHB_SRAM
+    range:
+      start: 0xf0400000
+      end: 0xf0408000
+    cores:
+    - core0
   flash_algorithms:
   - flash-algo-hpm53x1
 - name: HPM5321
@@ -96,13 +96,6 @@ variants:
       end: 0xa0000
     cores:
     - core0
-  - !Ram
-    name: AHB_SRAM
-    range:
-      start: 0xf0400000
-      end: 0xf0408000
-    cores:
-    - core0
   - !Nvm
     name: XPI0
     range:
@@ -112,6 +105,13 @@ variants:
     - core0
     access:
       boot: true
+  - !Ram
+    name: AHB_SRAM
+    range:
+      start: 0xf0400000
+      end: 0xf0408000
+    cores:
+    - core0
   flash_algorithms:
   - flash-algo-hpm53x1
 - name: HPM5301
@@ -134,13 +134,6 @@ variants:
       end: 0xa0000
     cores:
     - core0
-  - !Ram
-    name: AHB_SRAM
-    range:
-      start: 0xf0400000
-      end: 0xf0408000
-    cores:
-    - core0
   - !Nvm
     name: XPI0
     range:
@@ -150,6 +143,13 @@ variants:
     - core0
     access:
       boot: true
+  - !Ram
+    name: AHB_SRAM
+    range:
+      start: 0xf0400000
+      end: 0xf0408000
+    cores:
+    - core0
   flash_algorithms:
   - flash-algo-hpm53x1
 flash_algorithms:

@@ -24,13 +24,14 @@ variants:
     - main
     access:
       boot: true
-  - !Ram
-    name: SRAM1 Instruction bus
+  - !Nvm
+    name: External data bus
     range:
-      start: 0x40380000
-      end: 0x403c0000
+      start: 0x3c000000
+      end: 0x3c400000
     cores:
     - main
+    is_alias: true
   - !Ram
     name: SRAM1 Data bus
     range:
@@ -38,19 +39,18 @@ variants:
       end: 0x3fce0000
     cores:
     - main
+  - !Ram
+    name: SRAM1 Instruction bus
+    range:
+      start: 0x40380000
+      end: 0x403c0000
+    cores:
+    - main
   - !Nvm
     name: External instruction bus
     range:
       start: 0x42000000
       end: 0x42400000
-    cores:
-    - main
-    is_alias: true
-  - !Nvm
-    name: External data bus
-    range:
-      start: 0x3c000000
-      end: 0x3c400000
     cores:
     - main
     is_alias: true

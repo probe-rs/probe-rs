@@ -13,13 +13,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -29,6 +22,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - max32660
 flash_algorithms:
