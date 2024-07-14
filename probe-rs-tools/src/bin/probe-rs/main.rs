@@ -13,7 +13,7 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use colored::Colorize;
 use itertools::Itertools;
-use probe_rs::flashing::platform::RawLoader;
+use probe_rs::flashing::platform::{Platform, RawLoader};
 use probe_rs::flashing::{platform::PlatformLoader, BinOptions, Format, FormatKind};
 use probe_rs::vendor::espressif::platform::{IdfOptions, IdfPlatformLoader};
 use probe_rs::{probe::list::Lister, Target};
@@ -156,9 +156,7 @@ impl PlatformKind {
 #[derive(clap::Parser, Clone, Serialize, Deserialize, Debug, Default)]
 #[serde(default)]
 pub struct FirmwareOptions {
-    /// If a format is provided, use it.
-    /// If a target has a preferred format, we use that.
-    /// Finally, if neither of the above cases are true, we default to ELF.
+    /// If a format is provided, use it. Otherwise, we default to ELF.
     #[clap(
         value_enum,
         ignore_case = true,
@@ -185,20 +183,12 @@ pub struct FirmwareOptions {
 }
 
 impl FirmwareOptions {
-    /// If a format is provided, use it.
-    /// If a target has a preferred format, we use that.
-    /// Finally, if neither of the above cases are true, we default to [`Format::default()`].
-    pub fn into_format(self, target: &Target) -> anyhow::Result<Format> {
-        let kind = self
-            .binary_format
-            .map_or_else(
-                || FormatKind::from_optional(target.default_platform.as_deref()),
-                Ok,
-            )
-            .map_err(anyhow::Error::msg)
-            .context("Failed to parse binary format")?;
+    /// If a format is provided, use it. Otherwise, we default to ELF.
+    pub fn into_format(self) -> Format {
+        // TODO: platform-preferred format?
+        let kind = self.binary_format.unwrap_or_default();
 
-        Ok(match kind {
+        match kind {
             FormatKind::Bin => Format::Bin(BinOptions {
                 base_address: self.bin_options.base_address,
                 skip: self.bin_options.skip,
@@ -206,11 +196,23 @@ impl FirmwareOptions {
             FormatKind::Hex => Format::Hex,
             FormatKind::Elf => Format::Elf,
             FormatKind::Uf2 => Format::Uf2,
-        })
+        }
     }
 
-    pub fn platform(&self) -> Option<PlatformLoader> {
-        self.platform_kind.map(|kind| kind.loader(self))
+    pub fn platform(&self, target: &Target) -> PlatformLoader {
+        self.platform_kind
+            .map(|kind| kind.loader(self))
+            .unwrap_or_else(|| {
+                let platform = match Platform::from_optional(target.default_platform.as_deref()) {
+                    Some(Ok(result)) => result,
+                    Some(Err(error)) => {
+                        unreachable!("Unknown platform. This should not have passed tests. {error}")
+                    }
+                    None => Platform::default(),
+                };
+
+                platform.default_loader()
+            })
     }
 }
 
