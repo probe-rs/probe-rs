@@ -11,12 +11,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x80000
@@ -25,6 +19,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
   flash_algorithms:
   - atsam3u_128
   - atsam3u_gpnvm
@@ -36,12 +36,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x80000
@@ -50,6 +44,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
   flash_algorithms:
   - atsam3u_128
   - atsam3u_gpnvm
@@ -61,12 +61,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x80000
@@ -75,6 +69,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
   flash_algorithms:
   - atsam3u_128
   - atsam3u_gpnvm
@@ -86,12 +86,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x80000
@@ -100,6 +94,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
   flash_algorithms:
   - atsam3u_128
   - atsam3u_gpnvm
@@ -111,12 +111,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x80000
@@ -125,6 +119,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - atsam3u_128
   - atsam3u_128_b1
@@ -137,12 +137,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x80000
@@ -151,6 +145,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - atsam3u_128
   - atsam3u_128_b1

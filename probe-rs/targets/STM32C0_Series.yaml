@@ -13,13 +13,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001800
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -29,6 +22,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
   flash_algorithms:
   - stm32c0x_32
 - name: STM32C011F4Px
@@ -39,13 +39,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001800
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -55,6 +48,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
   flash_algorithms:
   - stm32c0x_32
 - name: STM32C011F4Ux
@@ -65,13 +65,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001800
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -81,6 +74,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
   flash_algorithms:
   - stm32c0x_32
 - name: STM32C011F6Px
@@ -91,13 +91,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001800
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -107,6 +100,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
   flash_algorithms:
   - stm32c0x_32
 - name: STM32C011F6Ux
@@ -117,13 +117,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001800
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -133,6 +126,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
   flash_algorithms:
   - stm32c0x_32
 - name: STM32C011J4Mx
@@ -143,13 +143,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001800
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -159,6 +152,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
   flash_algorithms:
   - stm32c0x_32
 - name: STM32C011J6Mx
@@ -169,13 +169,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001800
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -185,6 +178,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
   flash_algorithms:
   - stm32c0x_32
 - name: STM32C031C4Tx
@@ -195,13 +195,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20003000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -211,6 +204,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - stm32c0x_32
 - name: STM32C031C4Ux
@@ -221,13 +221,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20003000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -237,6 +230,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - stm32c0x_32
 - name: STM32C031C6Tx
@@ -247,13 +247,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20003000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -263,6 +256,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - stm32c0x_32
 - name: STM32C031C6Ux
@@ -273,13 +273,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20003000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -289,6 +282,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - stm32c0x_32
 - name: STM32C031F4Px
@@ -299,13 +299,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20003000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -315,6 +308,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - stm32c0x_32
 - name: STM32C031F6Px
@@ -325,13 +325,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20003000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -341,6 +334,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - stm32c0x_32
 - name: STM32C031G4Ux
@@ -351,13 +351,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20003000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -367,6 +360,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - stm32c0x_32
 - name: STM32C031G6Ux
@@ -377,13 +377,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20003000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -393,6 +386,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - stm32c0x_32
 - name: STM32C031K4Tx
@@ -403,13 +403,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20003000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -419,6 +412,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - stm32c0x_32
 - name: STM32C031K4Ux
@@ -429,13 +429,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20003000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -445,6 +438,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - stm32c0x_32
 - name: STM32C031K6Tx
@@ -455,13 +455,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20003000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -471,6 +464,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - stm32c0x_32
 - name: STM32C031K6Ux
@@ -481,13 +481,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20003000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -497,6 +490,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - stm32c0x_32
 flash_algorithms:

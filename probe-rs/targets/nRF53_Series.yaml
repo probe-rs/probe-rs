@@ -24,18 +24,6 @@ variants:
       ap: 1
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - application
-  - !Ram
-    range:
-      start: 0x21000000
-      end: 0x21020000
-    cores:
-    - network
   - !Nvm
     range:
       start: 0x0
@@ -52,6 +40,18 @@ variants:
     - network
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - application
+  - !Ram
+    range:
+      start: 0x21000000
+      end: 0x21020000
+    cores:
+    - network
   flash_algorithms:
   - nrf53xx_application
   - nrf53xx_application_uicr

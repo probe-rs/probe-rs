@@ -10,13 +10,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -40,6 +33,13 @@ variants:
       end: 0x8002000
     cores:
     - main
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
   flash_algorithms:
   - ra6m5_1_dot_5m
   - ra6m5_data_c1dot5m
@@ -52,13 +52,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -82,6 +75,13 @@ variants:
       end: 0x8002000
     cores:
     - main
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
   flash_algorithms:
   - ra6m5_2m
   - ra6m5_data_c2m
@@ -94,13 +94,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -124,6 +117,13 @@ variants:
       end: 0x8002000
     cores:
     - main
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
   flash_algorithms:
   - ra6m5_1m
   - ra6m5_data_c1m
@@ -136,13 +136,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -166,6 +159,13 @@ variants:
       end: 0x8002000
     cores:
     - main
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
   flash_algorithms:
   - ra6m5_1_dot_5m
   - ra6m5_data_c1dot5m
@@ -178,13 +178,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
   - !Nvm
     name: Flash
     range:
@@ -206,6 +199,13 @@ variants:
     range:
       start: 0x8000000
       end: 0x8002000
+    cores:
+    - main
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20040000
     cores:
     - main
   flash_algorithms:

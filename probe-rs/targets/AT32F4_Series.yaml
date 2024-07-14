@@ -13,13 +13,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -29,6 +22,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -44,13 +44,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -60,6 +53,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -75,13 +75,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -91,6 +84,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -106,13 +106,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -122,6 +115,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -137,13 +137,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -153,6 +146,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32a403a_1024
   - at32a403a_usd
@@ -168,13 +168,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -184,6 +177,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32a403a_1024
   - at32a403a_usd
@@ -199,13 +199,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -215,6 +208,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -230,13 +230,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -246,6 +239,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -261,13 +261,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -277,6 +270,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32a403a_1024
   - at32a403a_usd
@@ -292,13 +292,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -308,6 +301,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -323,13 +323,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -339,6 +332,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -354,13 +354,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -370,6 +363,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32a403a_1024
   - at32a403a_usd
@@ -385,13 +385,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -401,6 +394,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - at32f402_128
   - at32f402_bootmem_ap
@@ -413,13 +413,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -429,6 +422,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - at32f402_128
   - at32f402_bootmem_ap
@@ -441,13 +441,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -457,6 +450,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - at32f402_256
   - at32f402_bootmem_ap
@@ -469,13 +469,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -485,6 +478,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - at32f402_256
   - at32f402_bootmem_ap
@@ -497,13 +497,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -513,6 +506,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - at32f402_128
   - at32f402_bootmem_ap
@@ -525,13 +525,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -541,6 +534,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - at32f402_256
   - at32f402_bootmem_ap
@@ -553,13 +553,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -569,6 +562,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - at32f402_128
   - at32f402_bootmem_ap
@@ -581,13 +581,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -597,6 +590,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - at32f402_128
   - at32f402_bootmem_ap
@@ -609,13 +609,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -625,6 +618,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - at32f402_256
   - at32f402_bootmem_ap
@@ -637,13 +637,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -653,6 +646,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - at32f402_256
   - at32f402_bootmem_ap
@@ -665,13 +665,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -681,6 +674,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - at32f402_128
   - at32f402_bootmem_ap
@@ -693,13 +693,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -709,6 +702,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - at32f402_128
   - at32f402_bootmem_ap
@@ -721,13 +721,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -737,6 +730,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - at32f402_256
   - at32f402_bootmem_ap
@@ -749,13 +749,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -765,6 +758,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - at32f402_256
   - at32f402_bootmem_ap
@@ -777,13 +777,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -793,6 +786,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - at32f402_128
   - at32f402_bootmem_ap
@@ -805,13 +805,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -821,6 +814,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - at32f402_256
   - at32f402_bootmem_ap
@@ -833,13 +833,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -849,6 +842,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - at32f402_128
   - at32f402_bootmem_ap
@@ -861,13 +861,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -877,6 +870,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - at32f402_128
   - at32f402_bootmem_ap
@@ -889,13 +889,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -905,6 +898,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - at32f402_256
   - at32f402_bootmem_ap
@@ -917,13 +917,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -933,6 +926,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - at32f402_256
   - at32f402_bootmem_ap
@@ -945,13 +945,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -961,6 +954,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32f403_512
   - at32f403_usd
@@ -974,13 +974,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -990,6 +983,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32f403_512
   - at32f403_usd
@@ -1003,13 +1003,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1019,6 +1012,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32f403_512
   - at32f403_usd
@@ -1032,13 +1032,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1048,6 +1041,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32f403_512
   - at32f403_usd
@@ -1061,13 +1061,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1077,6 +1070,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32f403_1024
   - at32f403_usd
@@ -1090,13 +1090,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1106,6 +1099,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32f403_1024
   - at32f403_usd
@@ -1119,13 +1119,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1135,6 +1128,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32f403_512
   - at32f403_usd
@@ -1148,13 +1148,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1164,6 +1157,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32f403_512
   - at32f403_usd
@@ -1177,13 +1177,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1193,6 +1186,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32f403_1024
   - at32f403_usd
@@ -1206,13 +1206,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1222,6 +1215,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32f403_512
   - at32f403_usd
@@ -1235,13 +1235,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1251,6 +1244,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32f403_512
   - at32f403_usd
@@ -1264,13 +1264,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1280,6 +1273,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32f403_1024
   - at32f403_usd
@@ -1293,13 +1293,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1309,6 +1302,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32f403_512
   - at32f403_usd
@@ -1322,13 +1322,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1338,6 +1331,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32f403_512
   - at32f403_usd
@@ -1351,13 +1351,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1367,6 +1360,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32f403_1024
   - at32f403_usd
@@ -1380,13 +1380,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1396,6 +1389,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -1411,13 +1411,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1427,6 +1420,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -1442,13 +1442,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1458,6 +1451,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -1473,13 +1473,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1489,6 +1482,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -1504,13 +1504,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1520,6 +1513,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32a403a_1024
   - at32a403a_usd
@@ -1535,13 +1535,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1551,6 +1544,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32a403a_1024
   - at32a403a_usd
@@ -1566,13 +1566,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1582,6 +1575,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -1597,13 +1597,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1613,6 +1606,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -1628,13 +1628,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1644,6 +1637,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32a403a_1024
   - at32a403a_usd
@@ -1659,13 +1659,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1675,6 +1668,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -1690,13 +1690,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1706,6 +1699,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -1721,13 +1721,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1737,6 +1730,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32a403a_1024
   - at32a403a_usd
@@ -1752,13 +1752,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1768,6 +1761,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -1783,13 +1783,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1799,6 +1792,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32a403a_1024
   - at32a403a_usd
@@ -1814,13 +1814,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1830,6 +1823,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -1845,13 +1845,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1861,6 +1854,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -1876,13 +1876,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1892,6 +1885,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32a403a_1024
   - at32a403a_usd
@@ -1907,13 +1907,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1923,6 +1916,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -1938,13 +1938,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1954,6 +1947,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32a403a_512
   - at32a403a_usd
@@ -1969,13 +1969,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20038000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1985,6 +1978,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20038000
+    cores:
+    - main
   flash_algorithms:
   - at32a403a_1024
   - at32a403a_usd
@@ -2000,13 +2000,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2016,6 +2009,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - at32f413_128
   - at32f413_usd
@@ -2047,13 +2047,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2063,6 +2056,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - at32f413_128
   - at32f413_usd
@@ -2094,13 +2094,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2110,6 +2103,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - at32f413_128
   - at32f413_usd
@@ -2141,13 +2141,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2157,6 +2150,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - at32f413_256
   - at32f413_usd
@@ -2188,13 +2188,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2204,6 +2197,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - at32f413_256
   - at32f413_usd
@@ -2235,13 +2235,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2251,6 +2244,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - at32f413_128
   - at32f413_usd
@@ -2282,13 +2282,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2298,6 +2291,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - at32f413_256
   - at32f413_usd
@@ -2329,13 +2329,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2345,6 +2338,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - at32f413_128
   - at32f413_usd
@@ -2376,13 +2376,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2392,6 +2385,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - at32f413_256
   - at32f413_usd
@@ -2423,13 +2423,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2439,6 +2432,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - at32f413_128
   - at32f413_usd
@@ -2470,13 +2470,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2486,6 +2479,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - at32f413_128
   - at32f413_usd
@@ -2517,13 +2517,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2533,6 +2526,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - at32f415_64
   - at32f415_bootmem_ap
@@ -2545,13 +2545,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2561,6 +2554,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - at32f415_128
   - at32f415_bootmem_ap
@@ -2573,13 +2573,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2589,6 +2582,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - at32f415_128
   - at32f415_bootmem_ap
@@ -2601,13 +2601,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2617,6 +2610,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - at32f415_256
   - at32f415_bootmem_ap
@@ -2629,13 +2629,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2645,6 +2638,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - at32f415_256
   - at32f415_bootmem_ap
@@ -2657,13 +2657,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2673,6 +2666,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - at32f415_64
   - at32f415_bootmem_ap
@@ -2685,13 +2685,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2701,6 +2694,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - at32f415_128
   - at32f415_bootmem_ap
@@ -2713,13 +2713,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2729,6 +2722,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - at32f415_256
   - at32f415_bootmem_ap
@@ -2741,13 +2741,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2757,6 +2750,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - at32f415_64
   - at32f415_bootmem_ap
@@ -2769,13 +2769,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2785,6 +2778,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - at32f415_64
   - at32f415_bootmem_ap
@@ -2797,13 +2797,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2813,6 +2806,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - at32f415_128
   - at32f415_bootmem_ap
@@ -2825,13 +2825,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2841,6 +2834,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - at32f415_128
   - at32f415_bootmem_ap
@@ -2853,13 +2853,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2869,6 +2862,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - at32f415_256
   - at32f415_bootmem_ap
@@ -2881,13 +2881,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2897,6 +2890,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - at32f415_256
   - at32f415_bootmem_ap
@@ -2909,13 +2909,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2925,6 +2918,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
   flash_algorithms:
   - at32f415_64
   - at32f4212_bootmem_ap
@@ -2937,13 +2937,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2953,6 +2946,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
   flash_algorithms:
   - at32f421_16
   - at32f4212_bootmem_ap
@@ -2965,13 +2965,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2981,6 +2974,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
   flash_algorithms:
   - at32f421_32
   - at32f4212_bootmem_ap
@@ -2993,13 +2993,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -3009,6 +3002,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
   flash_algorithms:
   - at32f415_64
   - at32f4212_bootmem_ap
@@ -3021,13 +3021,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -3037,6 +3030,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
   flash_algorithms:
   - at32f421_16
   - at32f4212_bootmem_ap
@@ -3049,13 +3049,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -3065,6 +3058,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
   flash_algorithms:
   - at32f421_16
   - at32f4212_bootmem_ap
@@ -3077,13 +3077,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -3093,6 +3086,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
   flash_algorithms:
   - at32f421_32
   - at32f4212_bootmem_ap
@@ -3105,13 +3105,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -3121,6 +3114,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
   flash_algorithms:
   - at32f421_32
   - at32f4212_bootmem_ap
@@ -3133,13 +3133,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -3149,6 +3142,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
   flash_algorithms:
   - at32f415_64
   - at32f4212_bootmem_ap
@@ -3161,13 +3161,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -3177,6 +3170,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
   flash_algorithms:
   - at32f415_64
   - at32f4212_bootmem_ap
@@ -3189,13 +3189,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -3205,6 +3198,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
   flash_algorithms:
   - at32f421_16
   - at32f4212_bootmem_ap
@@ -3217,13 +3217,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -3233,6 +3226,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
   flash_algorithms:
   - at32f421_32
   - at32f4212_bootmem_ap
@@ -3245,13 +3245,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -3261,6 +3254,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
   flash_algorithms:
   - at32f415_64
   - at32f4212_bootmem_ap
@@ -3273,13 +3273,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -3289,6 +3282,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
   flash_algorithms:
   - at32f421_16
   - at32f4212_bootmem_ap
@@ -3301,13 +3301,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -3317,6 +3310,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
   flash_algorithms:
   - at32f421_16
   - at32f4212_bootmem_ap
@@ -3329,13 +3329,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -3345,6 +3338,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
   flash_algorithms:
   - at32f421_16
   - at32f4212_bootmem_ap
@@ -3357,13 +3357,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -3373,6 +3366,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
   flash_algorithms:
   - at32f421_32
   - at32f4212_bootmem_ap
@@ -3385,13 +3385,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -3401,6 +3394,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
   flash_algorithms:
   - at32f421_32
   - at32f4212_bootmem_ap
@@ -3413,13 +3413,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -3429,6 +3422,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
   flash_algorithms:
   - at32f421_32
   - at32f4212_bootmem_ap
@@ -3441,13 +3441,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -3457,6 +3450,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
   flash_algorithms:
   - at32f415_64
   - at32f4212_bootmem_ap
@@ -3469,13 +3469,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -3485,6 +3478,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
   flash_algorithms:
   - at32f415_64
   - at32f4212_bootmem_ap
@@ -3497,13 +3497,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -3513,6 +3506,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
   flash_algorithms:
   - at32f415_64
   - at32f4212_bootmem_ap
@@ -3525,13 +3525,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -3541,6 +3534,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
   flash_algorithms:
   - at32f421_16
   - at32f4212_bootmem_ap
@@ -3553,13 +3553,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -3569,6 +3562,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
   flash_algorithms:
   - at32f415_64
   - at32f4212_bootmem_ap
@@ -3581,13 +3581,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -3597,6 +3590,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - at32f423_128
   - at32f423_bootmem_ap
@@ -3609,13 +3609,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -3625,6 +3618,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - at32f423_128
   - at32f423_bootmem_ap
@@ -3637,13 +3637,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -3653,6 +3646,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
   flash_algorithms:
   - at32f423_128
   - at32f423_bootmem_ap
@@ -3665,13 +3665,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -3681,6 +3674,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
   flash_algorithms:
   - at32f423_128
   - at32f423_bootmem_ap
@@ -3693,13 +3693,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -3709,6 +3702,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
   flash_algorithms:
   - at32f423_128
   - at32f423_bootmem_ap
@@ -3721,13 +3721,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -3737,6 +3730,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
   flash_algorithms:
   - at32f423_256
   - at32f423_bootmem_ap
@@ -3749,13 +3749,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -3765,6 +3758,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
   flash_algorithms:
   - at32f423_256
   - at32f423_bootmem_ap
@@ -3777,13 +3777,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -3793,6 +3786,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - at32f423_128
   - at32f423_bootmem_ap
@@ -3805,13 +3805,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -3821,6 +3814,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
   flash_algorithms:
   - at32f423_128
   - at32f423_bootmem_ap
@@ -3833,13 +3833,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -3849,6 +3842,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
   flash_algorithms:
   - at32f423_256
   - at32f423_bootmem_ap
@@ -3861,13 +3861,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -3877,6 +3870,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - at32f423_128
   - at32f423_bootmem_ap
@@ -3889,13 +3889,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -3905,6 +3898,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - at32f423_128
   - at32f423_bootmem_ap
@@ -3917,13 +3917,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -3933,6 +3926,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
   flash_algorithms:
   - at32f423_128
   - at32f423_bootmem_ap
@@ -3945,13 +3945,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -3961,6 +3954,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
   flash_algorithms:
   - at32f423_128
   - at32f423_bootmem_ap
@@ -3973,13 +3973,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -3989,6 +3982,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
   flash_algorithms:
   - at32f423_256
   - at32f423_bootmem_ap
@@ -4001,13 +4001,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -4017,6 +4010,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
   flash_algorithms:
   - at32f423_256
   - at32f423_bootmem_ap
@@ -4029,13 +4029,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -4045,6 +4038,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - at32f423_128
   - at32f423_bootmem_ap
@@ -4057,13 +4057,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -4073,6 +4066,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
   flash_algorithms:
   - at32f423_128
   - at32f423_bootmem_ap
@@ -4085,13 +4085,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -4101,6 +4094,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
   flash_algorithms:
   - at32f423_256
   - at32f423_bootmem_ap
@@ -4113,13 +4113,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -4129,6 +4122,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - at32f423_128
   - at32f423_bootmem_ap
@@ -4141,13 +4141,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -4157,6 +4150,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
   flash_algorithms:
   - at32f423_128
   - at32f423_bootmem_ap
@@ -4169,13 +4169,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -4185,6 +4178,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
   flash_algorithms:
   - at32f423_256
   - at32f423_bootmem_ap
@@ -4197,13 +4197,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -4213,6 +4206,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
   flash_algorithms:
   - at32f425_32
   - at32f425_bootmem_ap
@@ -4225,13 +4225,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -4241,6 +4234,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
   flash_algorithms:
   - at32f425_32
   - at32f425_bootmem_ap
@@ -4253,13 +4253,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -4269,6 +4262,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
   flash_algorithms:
   - at32f425_64
   - at32f425_bootmem_ap
@@ -4281,13 +4281,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -4297,6 +4290,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
   flash_algorithms:
   - at32f425_64
   - at32f425_bootmem_ap
@@ -4309,13 +4309,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -4325,6 +4318,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
   flash_algorithms:
   - at32f425_32
   - at32f425_bootmem_ap
@@ -4337,13 +4337,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -4353,6 +4346,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
   flash_algorithms:
   - at32f425_64
   - at32f425_bootmem_ap
@@ -4365,13 +4365,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -4381,6 +4374,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
   flash_algorithms:
   - at32f425_32
   - at32f425_bootmem_ap
@@ -4393,13 +4393,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -4409,6 +4402,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
   flash_algorithms:
   - at32f425_64
   - at32f425_bootmem_ap
@@ -4421,13 +4421,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -4437,6 +4430,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
   flash_algorithms:
   - at32f425_32
   - at32f425_bootmem_ap
@@ -4449,13 +4449,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -4465,6 +4458,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
   flash_algorithms:
   - at32f425_32
   - at32f425_bootmem_ap
@@ -4477,13 +4477,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -4493,6 +4486,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
   flash_algorithms:
   - at32f425_64
   - at32f425_bootmem_ap
@@ -4505,13 +4505,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -4521,6 +4514,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
   flash_algorithms:
   - at32f425_64
   - at32f425_bootmem_ap
@@ -4533,13 +4533,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -4549,6 +4542,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
   flash_algorithms:
   - at32f425_32
   - at32f425_bootmem_ap
@@ -4561,13 +4561,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -4577,6 +4570,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
   flash_algorithms:
   - at32f425_32
   - at32f425_bootmem_ap
@@ -4589,13 +4589,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -4605,6 +4598,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
   flash_algorithms:
   - at32f425_64
   - at32f425_bootmem_ap
@@ -4617,13 +4617,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -4633,6 +4626,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
   flash_algorithms:
   - at32f425_64
   - at32f425_bootmem_ap
@@ -4645,13 +4645,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -4661,6 +4654,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - at32f435_256
   - at32f435_usd_512
@@ -4672,13 +4672,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -4688,6 +4681,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - at32f435_256
   - at32f435_usd_512
@@ -4699,13 +4699,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -4715,6 +4708,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - at32f435_448
   - at32f435_usd_512
@@ -4726,13 +4726,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -4742,6 +4735,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - at32f435_448
   - at32f435_usd_512
@@ -4753,13 +4753,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -4769,6 +4762,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - at32f435_1024
   - at32f435_usd_512
@@ -4780,13 +4780,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -4796,6 +4789,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - at32f435_1024
   - at32f435_usd_512
@@ -4807,13 +4807,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -4823,6 +4816,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - at32f435_4032
   - at32f435_usd_4096
@@ -4834,13 +4834,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -4850,6 +4843,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - at32f435_4032
   - at32f435_usd_4096
@@ -4861,13 +4861,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -4877,6 +4870,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - at32f435_256
   - at32f435_usd_512
@@ -4888,13 +4888,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -4904,6 +4897,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - at32f435_448
   - at32f435_usd_512
@@ -4915,13 +4915,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -4931,6 +4924,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - at32f435_1024
   - at32f435_usd_512
@@ -4942,13 +4942,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -4958,6 +4951,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - at32f435_4032
   - at32f435_usd_4096
@@ -4969,13 +4969,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -4985,6 +4978,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - at32f435_256
   - at32f435_usd_512
@@ -4996,13 +4996,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -5012,6 +5005,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - at32f435_448
   - at32f435_usd_512
@@ -5023,13 +5023,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -5039,6 +5032,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - at32f435_1024
   - at32f435_usd_512
@@ -5050,13 +5050,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -5066,6 +5059,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - at32f435_4032
   - at32f435_usd_4096
@@ -5077,13 +5077,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -5093,6 +5086,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - at32f435_256
   - at32f435_usd_512
@@ -5104,13 +5104,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -5120,6 +5113,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - at32f435_448
   - at32f435_usd_512
@@ -5131,13 +5131,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -5147,6 +5140,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - at32f435_1024
   - at32f435_usd_512
@@ -5158,13 +5158,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -5174,6 +5167,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - at32f435_4032
   - at32f435_usd_4096
@@ -5185,13 +5185,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -5201,6 +5194,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - at32f435_256
   - at32f435_usd_512
@@ -5212,13 +5212,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -5228,6 +5221,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - at32f435_448
   - at32f435_usd_512
@@ -5239,13 +5239,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -5255,6 +5248,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - at32f435_1024
   - at32f435_usd_512
@@ -5266,13 +5266,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -5282,6 +5275,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - at32f435_4032
   - at32f435_usd_4096
@@ -5293,13 +5293,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -5309,6 +5302,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - at32f435_256
   - at32f435_usd_512
@@ -5320,13 +5320,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -5336,6 +5329,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - at32f435_448
   - at32f435_usd_512
@@ -5347,13 +5347,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -5363,6 +5356,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - at32f435_1024
   - at32f435_usd_512
@@ -5374,13 +5374,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -5390,6 +5383,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - at32f435_4032
   - at32f435_usd_4096
@@ -5401,13 +5401,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -5417,6 +5410,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - at32f435_256
   - at32f435_usd_512
@@ -5428,13 +5428,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -5444,6 +5437,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - at32f435_256
   - at32f435_usd_512
@@ -5455,13 +5455,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -5471,6 +5464,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - at32f435_1024
   - at32f435_usd_512
@@ -5482,13 +5482,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20060000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -5498,6 +5491,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
   flash_algorithms:
   - at32f435_4032
   - at32f435_usd_4096
@@ -5509,13 +5509,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -5525,6 +5518,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - at32f415_256
   - at32f415_bootmem_ap

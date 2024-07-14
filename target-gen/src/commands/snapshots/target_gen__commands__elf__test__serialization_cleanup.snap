@@ -12,6 +12,13 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
   - !Ram
     name: SRAM
     range:
@@ -22,17 +29,10 @@ variants:
   - !Ram
     name: CCMRAM
     range:
-      start: 0x20000000
-      end: 0x20004000
+      start: 0x20004000
+      end: 0x20008000
     cores:
     - main
     access:
       execute: false
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
   default_binary_format: raw

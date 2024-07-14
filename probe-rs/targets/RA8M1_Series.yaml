@@ -10,11 +10,11 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
+  - !Generic
+    name: ITCM
     range:
-      start: 0x22000000
-      end: 0x220e0000
+      start: 0x0
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -26,13 +26,6 @@ variants:
     - main
     access:
       boot: true
-  - !Generic
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
   - !Generic
     name: ConfigROM
     range:
@@ -52,6 +45,13 @@ variants:
     range:
       start: 0x20000000
       end: 0x20010000
+    cores:
+    - main
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x22000000
+      end: 0x220e0000
     cores:
     - main
   - !Generic
@@ -73,11 +73,11 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAM
+  - !Generic
+    name: ITCM
     range:
-      start: 0x22000000
-      end: 0x220e0000
+      start: 0x0
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -89,13 +89,6 @@ variants:
     - main
     access:
       boot: true
-  - !Generic
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
   - !Generic
     name: ConfigROM
     range:
@@ -115,6 +108,13 @@ variants:
     range:
       start: 0x20000000
       end: 0x20010000
+    cores:
+    - main
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x22000000
+      end: 0x220e0000
     cores:
     - main
   - !Generic

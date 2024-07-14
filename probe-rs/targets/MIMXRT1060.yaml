@@ -11,15 +11,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Nvm
-    name: FlexSPI1
-    range:
-      start: 0x60000000
-      end: 0x60800000
-    cores:
-    - main
-    access:
-      boot: true
   - !Ram
     name: ITCM
     range:
@@ -34,6 +25,15 @@ variants:
       end: 0x202c0000
     cores:
     - main
+  - !Nvm
+    name: FlexSPI1
+    range:
+      start: 0x60000000
+      end: 0x60800000
+    cores:
+    - main
+    access:
+      boot: true
   flash_algorithms:
   - mimxrt106x_qspi_4kb_sec
 flash_algorithms:

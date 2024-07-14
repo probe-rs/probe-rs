@@ -13,13 +13,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -29,6 +22,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -40,13 +40,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -56,6 +49,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -67,13 +67,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -83,6 +76,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -94,13 +94,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -110,6 +103,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -121,13 +121,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -137,6 +130,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -148,13 +148,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -164,6 +157,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -175,13 +175,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -191,6 +184,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -202,13 +202,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -218,6 +211,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -229,13 +229,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20006000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -245,6 +238,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
@@ -256,13 +256,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -272,6 +265,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
@@ -283,13 +283,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -299,6 +292,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
@@ -310,13 +310,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -326,6 +319,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -337,13 +337,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -353,6 +346,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -364,13 +364,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20006000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -380,6 +373,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
@@ -391,13 +391,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -407,6 +400,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
@@ -418,13 +418,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -434,6 +427,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
@@ -445,13 +445,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20006000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -461,6 +454,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
@@ -472,13 +472,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -488,6 +481,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
@@ -499,13 +499,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -515,6 +508,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
@@ -526,13 +526,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -542,6 +535,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -553,13 +553,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20001800
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -569,6 +562,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -580,13 +580,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20002800
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -596,6 +589,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002800
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -607,13 +607,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -623,6 +616,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -634,13 +634,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -650,6 +643,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -661,13 +661,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20001800
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -677,6 +670,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -688,13 +688,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20002800
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -704,6 +697,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002800
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -715,13 +715,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -731,6 +724,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -742,13 +742,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -758,6 +751,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
@@ -769,13 +769,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -785,6 +778,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
@@ -796,13 +796,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -812,6 +805,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
@@ -823,13 +823,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -839,6 +832,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20014000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_1024
   - stm32f10x_opt
@@ -850,13 +850,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -866,6 +859,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20014000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_1024
   - stm32f10x_opt
@@ -877,13 +877,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -893,6 +886,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -904,13 +904,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20001800
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -920,6 +913,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -931,13 +931,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20002800
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -947,6 +940,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002800
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -958,13 +958,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -974,6 +967,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -985,13 +985,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20002800
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1001,6 +994,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002800
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -1012,13 +1012,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1028,6 +1021,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -1039,13 +1039,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1055,6 +1048,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
@@ -1066,13 +1066,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1082,6 +1075,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
@@ -1093,13 +1093,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1109,6 +1102,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
@@ -1120,13 +1120,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1136,6 +1129,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20014000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_1024
   - stm32f10x_opt
@@ -1147,13 +1147,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1163,6 +1156,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20014000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_1024
   - stm32f10x_opt
@@ -1174,13 +1174,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1190,6 +1183,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
@@ -1201,13 +1201,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1217,6 +1210,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
@@ -1228,13 +1228,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1244,6 +1237,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
@@ -1255,13 +1255,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1271,6 +1264,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20014000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_1024
   - stm32f10x_opt
@@ -1282,13 +1282,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1298,6 +1291,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20014000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_1024
   - stm32f10x_opt
@@ -1309,13 +1309,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1325,6 +1318,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -1336,13 +1336,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20001800
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1352,6 +1345,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -1363,13 +1363,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20002800
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1379,6 +1372,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002800
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -1390,13 +1390,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1406,6 +1399,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -1417,13 +1417,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1433,6 +1426,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -1444,13 +1444,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20001800
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1460,6 +1453,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -1471,13 +1471,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20002800
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1487,6 +1480,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002800
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -1498,13 +1498,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1514,6 +1507,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -1525,13 +1525,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20001800
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1541,6 +1534,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -1552,13 +1552,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20002800
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1568,6 +1561,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002800
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -1579,13 +1579,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1595,6 +1588,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -1606,13 +1606,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1622,6 +1615,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -1633,13 +1633,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20001800
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1649,6 +1642,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -1660,13 +1660,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20002800
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1676,6 +1669,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002800
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -1687,13 +1687,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1703,6 +1696,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -1714,13 +1714,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1730,6 +1723,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -1741,13 +1741,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1757,6 +1750,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
@@ -1768,13 +1768,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1784,6 +1777,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
@@ -1795,13 +1795,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1811,6 +1804,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
@@ -1822,13 +1822,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1838,6 +1831,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_1024
   - stm32f10x_opt
@@ -1849,13 +1849,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1865,6 +1858,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_1024
   - stm32f10x_opt
@@ -1876,13 +1876,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20001800
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1892,6 +1885,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -1903,13 +1903,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20002800
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1919,6 +1912,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002800
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -1930,13 +1930,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1946,6 +1939,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -1957,13 +1957,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1973,6 +1966,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -1984,13 +1984,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2000,6 +1993,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -2011,13 +2011,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2027,6 +2020,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_128
   - stm32f10x_opt
@@ -2038,13 +2038,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2054,6 +2047,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
@@ -2065,13 +2065,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2081,6 +2074,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
@@ -2092,13 +2092,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2108,6 +2101,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
@@ -2119,13 +2119,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2135,6 +2128,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_1024
   - stm32f10x_opt
@@ -2146,13 +2146,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2162,6 +2155,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_1024
   - stm32f10x_opt
@@ -2173,13 +2173,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2189,6 +2182,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
@@ -2200,13 +2200,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2216,6 +2209,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
@@ -2227,13 +2227,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2243,6 +2236,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
@@ -2254,13 +2254,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2270,6 +2263,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_1024
   - stm32f10x_opt
@@ -2281,13 +2281,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2297,6 +2290,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_1024
   - stm32f10x_opt
@@ -2308,13 +2308,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2324,6 +2317,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
@@ -2335,13 +2335,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2351,6 +2344,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
@@ -2362,13 +2362,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2378,6 +2371,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
@@ -2389,13 +2389,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2405,6 +2398,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
@@ -2416,13 +2416,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2432,6 +2425,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
@@ -2443,13 +2443,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2459,6 +2452,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
@@ -2470,13 +2470,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2486,6 +2479,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
@@ -2497,13 +2497,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2513,6 +2506,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
@@ -2524,13 +2524,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2540,6 +2533,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt
@@ -2551,13 +2551,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2567,6 +2560,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - stm32f10x_512
   - stm32f10x_opt

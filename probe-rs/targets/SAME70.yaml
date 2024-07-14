@@ -11,12 +11,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20400000
-      end: 0x20440000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -25,6 +19,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20400000
+      end: 0x20440000
+    cores:
+    - main
   flash_algorithms:
   - atsame7x_2048
   - atsame7x_gpnvm
@@ -36,12 +36,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20400000
-      end: 0x20440000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -50,6 +44,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20400000
+      end: 0x20440000
+    cores:
+    - main
   flash_algorithms:
   - atsame7x_2048
   - atsame7x_gpnvm
@@ -61,12 +61,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20400000
-      end: 0x20460000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -75,6 +69,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20400000
+      end: 0x20460000
+    cores:
+    - main
   flash_algorithms:
   - atsame7x_2048
   - atsame7x_gpnvm
@@ -86,12 +86,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20400000
-      end: 0x20460000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -100,6 +94,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20400000
+      end: 0x20460000
+    cores:
+    - main
   flash_algorithms:
   - atsame7x_2048
   - atsame7x_gpnvm
@@ -111,12 +111,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20400000
-      end: 0x20460000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -125,6 +119,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20400000
+      end: 0x20460000
+    cores:
+    - main
   flash_algorithms:
   - atsame7x_2048
   - atsame7x_gpnvm
@@ -136,12 +136,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20400000
-      end: 0x20460000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -150,6 +144,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20400000
+      end: 0x20460000
+    cores:
+    - main
   flash_algorithms:
   - atsame7x_2048
   - atsame7x_gpnvm
@@ -161,12 +161,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20400000
-      end: 0x20440000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -175,6 +169,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20400000
+      end: 0x20440000
+    cores:
+    - main
   flash_algorithms:
   - atsame7x_2048
   - atsame7x_gpnvm
@@ -186,12 +186,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20400000
-      end: 0x20440000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -200,6 +194,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20400000
+      end: 0x20440000
+    cores:
+    - main
   flash_algorithms:
   - atsame7x_2048
   - atsame7x_gpnvm
@@ -211,12 +211,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20400000
-      end: 0x20460000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -225,6 +219,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20400000
+      end: 0x20460000
+    cores:
+    - main
   flash_algorithms:
   - atsame7x_2048
   - atsame7x_gpnvm
@@ -236,12 +236,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20400000
-      end: 0x20460000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -250,6 +244,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20400000
+      end: 0x20460000
+    cores:
+    - main
   flash_algorithms:
   - atsame7x_2048
   - atsame7x_gpnvm
@@ -261,12 +261,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20400000
-      end: 0x20460000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -275,6 +269,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20400000
+      end: 0x20460000
+    cores:
+    - main
   flash_algorithms:
   - atsame7x_2048
   - atsame7x_gpnvm
@@ -286,12 +286,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20400000
-      end: 0x20460000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -300,6 +294,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20400000
+      end: 0x20460000
+    cores:
+    - main
   flash_algorithms:
   - atsame7x_2048
   - atsame7x_gpnvm
@@ -311,12 +311,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20400000
-      end: 0x20440000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -325,6 +319,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20400000
+      end: 0x20440000
+    cores:
+    - main
   flash_algorithms:
   - atsame7x_2048
   - atsame7x_gpnvm
@@ -336,12 +336,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20400000
-      end: 0x20440000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -350,6 +344,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20400000
+      end: 0x20440000
+    cores:
+    - main
   flash_algorithms:
   - atsame7x_2048
   - atsame7x_gpnvm
@@ -361,12 +361,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20400000
-      end: 0x20460000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -375,6 +369,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20400000
+      end: 0x20460000
+    cores:
+    - main
   flash_algorithms:
   - atsame7x_2048
   - atsame7x_gpnvm
@@ -386,12 +386,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20400000
-      end: 0x20460000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -400,6 +394,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20400000
+      end: 0x20460000
+    cores:
+    - main
   flash_algorithms:
   - atsame7x_2048
   - atsame7x_gpnvm
@@ -411,12 +411,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20400000
-      end: 0x20460000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -425,6 +419,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20400000
+      end: 0x20460000
+    cores:
+    - main
   flash_algorithms:
   - atsame7x_2048
   - atsame7x_gpnvm
@@ -436,12 +436,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20400000
-      end: 0x20460000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x400000
@@ -450,6 +444,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20400000
+      end: 0x20460000
+    cores:
+    - main
   flash_algorithms:
   - atsame7x_2048
   - atsame7x_gpnvm

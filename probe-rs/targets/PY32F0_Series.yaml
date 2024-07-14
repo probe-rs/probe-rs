@@ -13,13 +13,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20000c00
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -29,6 +22,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20000c00
+    cores:
+    - main
   flash_algorithms:
   - py32f0xx_64
   - py32f0xx_opt
@@ -40,13 +40,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20000c00
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -56,6 +49,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20000c00
+    cores:
+    - main
   flash_algorithms:
   - py32f002bxx_24
   - py32f002bxx_opt
@@ -67,13 +67,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20000800
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -83,6 +76,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20000800
+    cores:
+    - main
   flash_algorithms:
   - py32f0xx_64
   - py32f0xx_opt
@@ -94,13 +94,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -110,6 +103,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - py32f0xx_64
   - py32f0xx_opt
@@ -121,13 +121,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -137,6 +130,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
   flash_algorithms:
   - py32f0xx_64
   - py32f0xx_opt
@@ -148,13 +148,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20000800
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -164,6 +157,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20000800
+    cores:
+    - main
   flash_algorithms:
   - py32f0xx_64
   - py32f0xx_opt
@@ -175,13 +175,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20000800
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -191,6 +184,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20000800
+    cores:
+    - main
   flash_algorithms:
   - py32f0xx_64
   - py32f0xx_opt
@@ -202,13 +202,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -218,6 +211,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - py32f0xx_64
   - py32f0xx_opt
@@ -229,13 +229,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20001800
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -245,6 +238,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
   flash_algorithms:
   - py32f0xx_64
   - py32f0xx_opt
@@ -256,13 +256,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -272,6 +265,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
   flash_algorithms:
   - py32f0xx_64
   - py32f0xx_opt
@@ -283,13 +283,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20000800
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -299,6 +292,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20000800
+    cores:
+    - main
   flash_algorithms:
   - py32f0xx_64
   - py32f0xx_opt
@@ -310,13 +310,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20000800
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -326,6 +319,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20000800
+    cores:
+    - main
   flash_algorithms:
   - py32f0xx_64
   - py32f0xx_opt
@@ -337,13 +337,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -353,6 +346,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - py32f0xx_64
   - py32f0xx_opt
@@ -364,13 +364,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20001800
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -380,6 +373,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
   flash_algorithms:
   - py32f0xx_64
   - py32f0xx_opt
@@ -391,13 +391,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -407,6 +400,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
   flash_algorithms:
   - py32f0xx_64
   - py32f0xx_opt
@@ -418,13 +418,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -434,6 +427,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - py32f071xx_128
   - py32f071xx_opt
@@ -445,13 +445,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -461,6 +454,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
   flash_algorithms:
   - py32f071xx_128
   - py32f071xx_opt
@@ -472,13 +472,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20003000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -488,6 +481,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - py32f071xx_128
   - py32f071xx_opt
@@ -499,13 +499,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -515,6 +508,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
   flash_algorithms:
   - py32f071xx_128
   - py32f071xx_opt
@@ -526,13 +526,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -542,6 +535,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - py32f072xx_128
   - py32f072xx_opt
@@ -553,13 +553,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -569,6 +562,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
   flash_algorithms:
   - py32f072xx_128
   - py32f072xx_opt
@@ -580,13 +580,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20003000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -596,6 +589,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - py32f072xx_128
   - py32f072xx_opt
@@ -607,13 +607,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -623,6 +616,13 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
   flash_algorithms:
   - py32f072xx_128
   - py32f072xx_opt

@@ -42,13 +42,6 @@ variants:
     cores:
     - cm33
   - !Generic
-    name: USB_RAM
-    range:
-      start: 0x40140000
-      end: 0x40144000
-    cores:
-    - cm33
-  - !Generic
     name: BootROM
     range:
       start: 0x3000000
@@ -144,6 +137,13 @@ variants:
     range:
       start: 0x30200000
       end: 0x30480000
+    cores:
+    - cm33
+  - !Generic
+    name: USB_RAM
+    range:
+      start: 0x40140000
+      end: 0x40144000
     cores:
     - cm33
   - !Generic
@@ -195,13 +195,6 @@ variants:
     cores:
     - cm33
   - !Generic
-    name: USB_RAM
-    range:
-      start: 0x40140000
-      end: 0x40144000
-    cores:
-    - cm33
-  - !Generic
     name: BootROM
     range:
       start: 0x3000000
@@ -297,6 +290,13 @@ variants:
     range:
       start: 0x30200000
       end: 0x30480000
+    cores:
+    - cm33
+  - !Generic
+    name: USB_RAM
+    range:
+      start: 0x40140000
+      end: 0x40144000
     cores:
     - cm33
   - !Generic
@@ -348,17 +348,17 @@ variants:
     cores:
     - cm33
   - !Generic
-    name: USB_RAM
-    range:
-      start: 0x40140000
-      end: 0x40144000
-    cores:
-    - cm33
-  - !Generic
     name: BootROM
     range:
       start: 0x3000000
       end: 0x3040000
+    cores:
+    - cm33
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0xc000000
     cores:
     - cm33
   - !Ram
@@ -453,17 +453,17 @@ variants:
     cores:
     - cm33
   - !Generic
+    name: USB_RAM
+    range:
+      start: 0x40140000
+      end: 0x40144000
+    cores:
+    - cm33
+  - !Generic
     name: USB_RAM_alias
     range:
       start: 0x50140000
       end: 0x50144000
-    cores:
-    - cm33
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0xc000000
     cores:
     - cm33
   flash_algorithms:

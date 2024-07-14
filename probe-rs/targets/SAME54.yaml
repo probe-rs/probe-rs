@@ -21,12 +21,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -35,6 +29,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
   flash_algorithms:
   - atsame54_1024
 - name: ATSAME54N20A
@@ -45,12 +45,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -59,6 +53,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
   flash_algorithms:
   - atsame54_1024
 - name: ATSAME54P19A
@@ -69,12 +69,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -83,6 +77,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
   flash_algorithms:
   - atsame54_1024
 - name: ATSAME54P20A
@@ -93,12 +93,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -107,6 +101,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
   flash_algorithms:
   - atsame54_1024
 flash_algorithms:

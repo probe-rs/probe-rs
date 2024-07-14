@@ -10,13 +10,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -27,6 +20,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_md
 - name: GD32F101C6
@@ -37,13 +37,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20001800
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -54,6 +47,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_md
 - name: GD32F101C8
@@ -64,13 +64,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20002800
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -81,6 +74,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002800
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_md
 - name: GD32F101CB
@@ -91,13 +91,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -108,6 +101,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_md
 - name: GD32F101R4
@@ -118,13 +118,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -135,6 +128,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_md
 - name: GD32F101R6
@@ -145,13 +145,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20001800
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -162,6 +155,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_md
 - name: GD32F101R8
@@ -172,13 +172,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20002800
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -189,6 +182,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002800
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_md
 - name: GD32F101RB
@@ -199,13 +199,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -216,6 +209,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_md
 - name: GD32F101RC
@@ -226,13 +226,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -243,6 +236,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_hd
 - name: GD32F101RD
@@ -253,13 +253,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -270,6 +263,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_hd
 - name: GD32F101RE
@@ -280,13 +280,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -297,6 +290,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_hd
 - name: GD32F101RF
@@ -307,13 +307,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -324,6 +317,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20014000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F101RG
@@ -334,13 +334,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -351,6 +344,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20014000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F101RI
@@ -361,13 +361,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -378,6 +371,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20014000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F101RK
@@ -388,13 +388,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -405,6 +398,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20014000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F101T4
@@ -415,13 +415,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20001000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -432,6 +425,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_md
 - name: GD32F101T6
@@ -442,13 +442,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20001800
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -459,6 +452,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_md
 - name: GD32F101T8
@@ -469,13 +469,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20002800
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -486,6 +479,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002800
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_md
 - name: GD32F101TB
@@ -496,13 +496,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -513,6 +506,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_md
 - name: GD32F101V8
@@ -523,13 +523,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20002800
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -540,6 +533,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002800
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_md
 - name: GD32F101VB
@@ -550,13 +550,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -567,6 +560,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_md
 - name: GD32F101VC
@@ -577,13 +577,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -594,6 +587,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_hd
 - name: GD32F101VD
@@ -604,13 +604,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -621,6 +614,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_hd
 - name: GD32F101VE
@@ -631,13 +631,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -648,6 +641,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_hd
 - name: GD32F101VF
@@ -658,13 +658,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -675,6 +668,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20014000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F101VG
@@ -685,13 +685,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -702,6 +695,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20014000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F101VI
@@ -712,13 +712,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -729,6 +722,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20014000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F101VK
@@ -739,13 +739,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -756,6 +749,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20014000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F101ZC
@@ -766,13 +766,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -783,6 +776,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_hd
 - name: GD32F101ZD
@@ -793,13 +793,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -810,6 +803,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_hd
 - name: GD32F101ZE
@@ -820,13 +820,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -837,6 +830,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_hd
 - name: GD32F101ZF
@@ -847,13 +847,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -864,6 +857,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20014000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F101ZG
@@ -874,13 +874,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -891,6 +884,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20014000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F101ZI
@@ -901,13 +901,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -918,6 +911,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20014000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F101ZK
@@ -928,13 +928,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -945,6 +938,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20014000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F103C4
@@ -955,13 +955,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20001800
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -972,6 +965,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_md
 - name: GD32F103C6
@@ -982,13 +982,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20002800
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -999,6 +992,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002800
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_md
 - name: GD32F103C8
@@ -1009,13 +1009,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1026,6 +1019,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_md
 - name: GD32F103CB
@@ -1036,13 +1036,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1053,6 +1046,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_md
 - name: GD32F103R4
@@ -1063,13 +1063,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20001800
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1080,6 +1073,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_md
 - name: GD32F103R6
@@ -1090,13 +1090,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20002800
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1107,6 +1100,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002800
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_md
 - name: GD32F103R8
@@ -1117,13 +1117,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1134,6 +1127,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_md
 - name: GD32F103RB
@@ -1144,13 +1144,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1161,6 +1154,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_md
 - name: GD32F103RC
@@ -1171,13 +1171,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1188,6 +1181,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_hd
 - name: GD32F103RD
@@ -1198,13 +1198,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1215,6 +1208,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_hd
 - name: GD32F103RE
@@ -1225,13 +1225,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1242,6 +1235,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_hd
 - name: GD32F103RF
@@ -1252,13 +1252,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1269,6 +1262,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F103RG
@@ -1279,13 +1279,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1296,6 +1289,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F103RI
@@ -1306,13 +1306,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1323,6 +1316,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F103RK
@@ -1333,13 +1333,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1350,6 +1343,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F103T4
@@ -1360,13 +1360,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20001800
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1377,6 +1370,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_md
 - name: GD32F103T6
@@ -1387,13 +1387,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20002800
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1404,6 +1397,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002800
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_md
 - name: GD32F103T8
@@ -1414,13 +1414,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1431,6 +1424,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_md
 - name: GD32F103TB
@@ -1441,13 +1441,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1458,6 +1451,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_md
 - name: GD32F103V8
@@ -1468,13 +1468,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1485,6 +1478,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_md
 - name: GD32F103VB
@@ -1495,13 +1495,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20005000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1512,6 +1505,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_md
 - name: GD32F103VC
@@ -1522,13 +1522,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1539,6 +1532,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_hd
 - name: GD32F103VD
@@ -1549,13 +1549,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1566,6 +1559,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_hd
 - name: GD32F103VE
@@ -1576,13 +1576,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1593,6 +1586,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_hd
 - name: GD32F103VF
@@ -1603,13 +1603,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1620,6 +1613,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F103VG
@@ -1630,13 +1630,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1647,6 +1640,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F103VI
@@ -1657,13 +1657,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1674,6 +1667,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F103VK
@@ -1684,13 +1684,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1701,6 +1694,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F103ZC
@@ -1711,13 +1711,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1728,6 +1721,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_hd
 - name: GD32F103ZD
@@ -1738,13 +1738,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1755,6 +1748,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_hd
 - name: GD32F103ZE
@@ -1765,13 +1765,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1782,6 +1775,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_hd
 - name: GD32F103ZF
@@ -1792,13 +1792,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1809,6 +1802,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F103ZG
@@ -1819,13 +1819,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1836,6 +1829,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F103ZI
@@ -1846,13 +1846,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1863,6 +1856,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F103ZK
@@ -1873,13 +1873,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1890,6 +1883,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F105R8
@@ -1900,13 +1900,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1917,6 +1910,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F105RB
@@ -1927,13 +1927,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1944,6 +1937,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F105RC
@@ -1954,13 +1954,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1971,6 +1964,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F105RD
@@ -1981,13 +1981,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -1998,6 +1991,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F105RE
@@ -2008,13 +2008,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2025,6 +2018,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F105RF
@@ -2035,13 +2035,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2052,6 +2045,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F105RG
@@ -2062,13 +2062,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2079,6 +2072,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F105V8
@@ -2089,13 +2089,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2106,6 +2099,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F105VB
@@ -2116,13 +2116,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2133,6 +2126,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F105VC
@@ -2143,13 +2143,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2160,6 +2153,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F105VD
@@ -2170,13 +2170,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2187,6 +2180,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F105VE
@@ -2197,13 +2197,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2214,6 +2207,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F105VF
@@ -2224,13 +2224,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2241,6 +2234,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F105VG
@@ -2251,13 +2251,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2268,6 +2261,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F105ZC
@@ -2278,13 +2278,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2295,6 +2288,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F105ZD
@@ -2305,13 +2305,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2322,6 +2315,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F105ZE
@@ -2332,13 +2332,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2349,6 +2342,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F105ZF
@@ -2359,13 +2359,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2376,6 +2369,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F105ZG
@@ -2386,13 +2386,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2403,6 +2396,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F107RB
@@ -2413,13 +2413,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2430,6 +2423,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F107RC
@@ -2440,13 +2440,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2457,6 +2450,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F107RD
@@ -2467,13 +2467,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2484,6 +2477,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F107RE
@@ -2494,13 +2494,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2511,6 +2504,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F107RF
@@ -2521,13 +2521,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2538,6 +2531,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F107RG
@@ -2548,13 +2548,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2565,6 +2558,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F107VB
@@ -2575,13 +2575,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2592,6 +2585,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F107VC
@@ -2602,13 +2602,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2619,6 +2612,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F107VD
@@ -2629,13 +2629,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2646,6 +2639,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F107VE
@@ -2656,13 +2656,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2673,6 +2666,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F107VF
@@ -2683,13 +2683,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2700,6 +2693,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F107VG
@@ -2710,13 +2710,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2727,6 +2720,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F107ZC
@@ -2737,13 +2737,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2754,6 +2747,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F107ZD
@@ -2764,13 +2764,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2781,6 +2774,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F107ZE
@@ -2791,13 +2791,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2808,6 +2801,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F107ZF
@@ -2818,13 +2818,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2835,6 +2828,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 - name: GD32F107ZG
@@ -2845,13 +2845,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -2862,6 +2855,13 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
   flash_algorithms:
   - gd32f10x_xd
 flash_algorithms:

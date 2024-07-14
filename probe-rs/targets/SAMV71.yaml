@@ -11,13 +11,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20400000
-      end: 0x20440000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -32,6 +25,13 @@ variants:
     range:
       start: 0x800000
       end: 0x804000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20400000
+      end: 0x20440000
     cores:
     - main
   flash_algorithms:
@@ -45,13 +45,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20400000
-      end: 0x20440000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -66,6 +59,13 @@ variants:
     range:
       start: 0x800000
       end: 0x804000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20400000
+      end: 0x20440000
     cores:
     - main
   flash_algorithms:
@@ -79,13 +79,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20400000
-      end: 0x20460000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -100,6 +93,13 @@ variants:
     range:
       start: 0x800000
       end: 0x804000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20400000
+      end: 0x20460000
     cores:
     - main
   flash_algorithms:
@@ -113,13 +113,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20400000
-      end: 0x20460000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -134,6 +127,13 @@ variants:
     range:
       start: 0x800000
       end: 0x804000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20400000
+      end: 0x20460000
     cores:
     - main
   flash_algorithms:
@@ -147,13 +147,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20400000
-      end: 0x20460000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -168,6 +161,13 @@ variants:
     range:
       start: 0x800000
       end: 0x804000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20400000
+      end: 0x20460000
     cores:
     - main
   flash_algorithms:
@@ -181,13 +181,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20400000
-      end: 0x20460000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -202,6 +195,13 @@ variants:
     range:
       start: 0x800000
       end: 0x804000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20400000
+      end: 0x20460000
     cores:
     - main
   flash_algorithms:
@@ -215,13 +215,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20400000
-      end: 0x20440000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -236,6 +229,13 @@ variants:
     range:
       start: 0x800000
       end: 0x804000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20400000
+      end: 0x20440000
     cores:
     - main
   flash_algorithms:
@@ -249,13 +249,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20400000
-      end: 0x20440000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -270,6 +263,13 @@ variants:
     range:
       start: 0x800000
       end: 0x804000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20400000
+      end: 0x20440000
     cores:
     - main
   flash_algorithms:
@@ -283,13 +283,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20400000
-      end: 0x20460000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -304,6 +297,13 @@ variants:
     range:
       start: 0x800000
       end: 0x804000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20400000
+      end: 0x20460000
     cores:
     - main
   flash_algorithms:
@@ -317,13 +317,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20400000
-      end: 0x20460000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -338,6 +331,13 @@ variants:
     range:
       start: 0x800000
       end: 0x804000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20400000
+      end: 0x20460000
     cores:
     - main
   flash_algorithms:
@@ -351,13 +351,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20400000
-      end: 0x20460000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -372,6 +365,13 @@ variants:
     range:
       start: 0x800000
       end: 0x804000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20400000
+      end: 0x20460000
     cores:
     - main
   flash_algorithms:
@@ -385,13 +385,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20400000
-      end: 0x20460000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -406,6 +399,13 @@ variants:
     range:
       start: 0x800000
       end: 0x804000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20400000
+      end: 0x20460000
     cores:
     - main
   flash_algorithms:
@@ -419,13 +419,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20400000
-      end: 0x20440000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -440,6 +433,13 @@ variants:
     range:
       start: 0x800000
       end: 0x804000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20400000
+      end: 0x20440000
     cores:
     - main
   flash_algorithms:
@@ -453,13 +453,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20400000
-      end: 0x20440000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -476,6 +469,13 @@ variants:
       end: 0x804000
     cores:
     - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20400000
+      end: 0x20440000
+    cores:
+    - main
   flash_algorithms:
   - atsamv7x_2048
   - atsamv7x_gpnvm
@@ -487,13 +487,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20400000
-      end: 0x20460000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -508,6 +501,13 @@ variants:
     range:
       start: 0x800000
       end: 0x804000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20400000
+      end: 0x20460000
     cores:
     - main
   flash_algorithms:
@@ -521,13 +521,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20400000
-      end: 0x20460000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -544,6 +537,13 @@ variants:
       end: 0x804000
     cores:
     - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20400000
+      end: 0x20460000
+    cores:
+    - main
   flash_algorithms:
   - atsamv7x_2048
   - atsamv7x_gpnvm
@@ -555,13 +555,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20400000
-      end: 0x20460000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -576,6 +569,13 @@ variants:
     range:
       start: 0x800000
       end: 0x804000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20400000
+      end: 0x20460000
     cores:
     - main
   flash_algorithms:
@@ -589,13 +589,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: IRAM1
-    range:
-      start: 0x20400000
-      end: 0x20460000
-    cores:
-    - main
   - !Nvm
     name: IROM1
     range:
@@ -610,6 +603,13 @@ variants:
     range:
       start: 0x800000
       end: 0x804000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20400000
+      end: 0x20460000
     cores:
     - main
   flash_algorithms:

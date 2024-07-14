@@ -10,34 +10,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAMX
-    range:
-      start: 0x4000000
-      end: 0x4008000
-    cores:
-    - cm33_core0
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - cm33_core0
-  - !Ram
-    name: SRAM4
-    range:
-      start: 0x20040000
-      end: 0x20044000
-    cores:
-    - cm33_core0
-  - !Ram
-    name: USB_RAM
-    range:
-      start: 0x40100000
-      end: 0x40104000
-    cores:
-    - cm33_core0
   - !Nvm
     name: PROGRAM_FLASH
     range:
@@ -52,6 +24,13 @@ variants:
     range:
       start: 0x3000000
       end: 0x3020000
+    cores:
+    - cm33_core0
+  - !Ram
+    name: SRAMX
+    range:
+      start: 0x4000000
+      end: 0x4008000
     cores:
     - cm33_core0
   - !Nvm
@@ -75,6 +54,20 @@ variants:
       end: 0x14008000
     cores:
     - cm33_core0
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - cm33_core0
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x20040000
+      end: 0x20044000
+    cores:
+    - cm33_core0
   - !Generic
     name: SRAM_alias
     range:
@@ -87,6 +80,13 @@ variants:
     range:
       start: 0x30040000
       end: 0x30044000
+    cores:
+    - cm33_core0
+  - !Ram
+    name: USB_RAM
+    range:
+      start: 0x40100000
+      end: 0x40104000
     cores:
     - cm33_core0
   - !Generic
@@ -107,34 +107,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAMX
-    range:
-      start: 0x4000000
-      end: 0x4008000
-    cores:
-    - cm33_core0
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - cm33_core0
-  - !Ram
-    name: SRAM4
-    range:
-      start: 0x20040000
-      end: 0x20044000
-    cores:
-    - cm33_core0
-  - !Ram
-    name: USB_RAM
-    range:
-      start: 0x40100000
-      end: 0x40104000
-    cores:
-    - cm33_core0
   - !Nvm
     name: PROGRAM_FLASH
     range:
@@ -149,6 +121,13 @@ variants:
     range:
       start: 0x3000000
       end: 0x3020000
+    cores:
+    - cm33_core0
+  - !Ram
+    name: SRAMX
+    range:
+      start: 0x4000000
+      end: 0x4008000
     cores:
     - cm33_core0
   - !Nvm
@@ -172,6 +151,20 @@ variants:
       end: 0x14008000
     cores:
     - cm33_core0
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - cm33_core0
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x20040000
+      end: 0x20044000
+    cores:
+    - cm33_core0
   - !Generic
     name: SRAM_alias
     range:
@@ -184,6 +177,13 @@ variants:
     range:
       start: 0x30040000
       end: 0x30044000
+    cores:
+    - cm33_core0
+  - !Ram
+    name: USB_RAM
+    range:
+      start: 0x40100000
+      end: 0x40104000
     cores:
     - cm33_core0
   - !Generic
@@ -204,34 +204,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    name: SRAMX
-    range:
-      start: 0x4000000
-      end: 0x4008000
-    cores:
-    - cm33_core0
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - cm33_core0
-  - !Ram
-    name: SRAM4
-    range:
-      start: 0x20040000
-      end: 0x20044000
-    cores:
-    - cm33_core0
-  - !Ram
-    name: USB_RAM
-    range:
-      start: 0x40100000
-      end: 0x40104000
-    cores:
-    - cm33_core0
   - !Nvm
     name: PROGRAM_FLASH
     range:
@@ -246,6 +218,13 @@ variants:
     range:
       start: 0x3000000
       end: 0x3020000
+    cores:
+    - cm33_core0
+  - !Ram
+    name: SRAMX
+    range:
+      start: 0x4000000
+      end: 0x4008000
     cores:
     - cm33_core0
   - !Nvm
@@ -269,6 +248,20 @@ variants:
       end: 0x14008000
     cores:
     - cm33_core0
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - cm33_core0
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x20040000
+      end: 0x20044000
+    cores:
+    - cm33_core0
   - !Generic
     name: SRAM_alias
     range:
@@ -281,6 +274,13 @@ variants:
     range:
       start: 0x30040000
       end: 0x30044000
+    cores:
+    - cm33_core0
+  - !Ram
+    name: USB_RAM
+    range:
+      start: 0x40100000
+      end: 0x40104000
     cores:
     - cm33_core0
   - !Generic

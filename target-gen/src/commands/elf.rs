@@ -144,9 +144,18 @@ pub fn cmd_elf(
 fn compact(family: &ChipFamily) -> ChipFamily {
     let mut out = family.clone();
 
+    sort_memory_regions(&mut out);
     compact_flash_algos(&mut out);
 
     out
+}
+
+fn sort_memory_regions(out: &mut ChipFamily) {
+    for variant in &mut out.variants {
+        variant
+            .memory_map
+            .sort_by_key(|region| region.address_range().start);
+    }
 }
 
 fn compact_flash_algos(out: &mut ChipFamily) {
@@ -301,7 +310,7 @@ mod test {
             access: Some(MemoryAccess::default()),
         }));
         chip.memory_map.push(MemoryRegion::Ram(RamRegion {
-            range: 0x20000000..0x20004000,
+            range: 0x20004000..0x20008000,
             cores: vec!["main".to_owned()],
             name: Some(String::from("CCMRAM")),
             access: Some(MemoryAccess {

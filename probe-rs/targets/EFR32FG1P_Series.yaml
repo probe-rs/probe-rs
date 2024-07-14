@@ -11,12 +11,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -25,6 +19,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
   flash_algorithms:
   - geckop2
 - name: EFR32FG1P131F128
@@ -35,12 +35,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20007c00
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -49,6 +43,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20007c00
+    cores:
+    - main
   flash_algorithms:
   - geckop2
 - name: EFR32FG1P131F256
@@ -59,12 +59,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20007c00
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -73,6 +67,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20007c00
+    cores:
+    - main
   flash_algorithms:
   - geckop2
 - name: EFR32FG1P132F64
@@ -83,12 +83,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -97,6 +91,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
   flash_algorithms:
   - geckop2
 - name: EFR32FG1P132F128
@@ -107,12 +107,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20007c00
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -121,6 +115,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20007c00
+    cores:
+    - main
   flash_algorithms:
   - geckop2
 - name: EFR32FG1P132F256
@@ -131,12 +131,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20007c00
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -145,6 +139,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20007c00
+    cores:
+    - main
   flash_algorithms:
   - geckop2
 - name: EFR32FG1P133F64
@@ -155,12 +155,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -169,6 +163,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
   flash_algorithms:
   - geckop2
 - name: EFR32FG1P133F128
@@ -179,12 +179,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20007c00
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -193,6 +187,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20007c00
+    cores:
+    - main
   flash_algorithms:
   - geckop2
 - name: EFR32FG1P133F256
@@ -203,12 +203,6 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
-  - !Ram
-    range:
-      start: 0x20000000
-      end: 0x20007c00
-    cores:
-    - main
   - !Nvm
     range:
       start: 0x0
@@ -217,6 +211,12 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20007c00
+    cores:
+    - main
   flash_algorithms:
   - geckop2
 flash_algorithms:

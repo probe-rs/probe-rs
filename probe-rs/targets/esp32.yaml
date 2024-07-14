@@ -19,14 +19,6 @@ variants:
     access:
       boot: true
   - !Nvm
-    name: External instruction bus
-    range:
-      start: 0x400c2000
-      end: 0x40c00000
-    cores:
-    - main
-    is_alias: true
-  - !Nvm
     name: External data bus
     range:
       start: 0x3f400000
@@ -55,6 +47,14 @@ variants:
       end: 0x400a0000
     cores:
     - main
+  - !Nvm
+    name: External instruction bus
+    range:
+      start: 0x400c2000
+      end: 0x40c00000
+    cores:
+    - main
+    is_alias: true
   flash_algorithms:
   - esp32-flashloader
   default_binary_format: idf
