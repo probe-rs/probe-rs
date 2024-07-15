@@ -1,5 +1,5 @@
 use crate::cmd::run::{print_stacktrace, OutputStream, ReturnReason, RunLoop, RunMode};
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use libtest_mimic::{Arguments, Failed, FormatSetting, Trial};
 use probe_rs::{BreakpointCause, Core, HaltReason, SemihostingCommand, Session};
 use serde::Deserialize;
@@ -128,39 +128,39 @@ impl TestRunMode {
         // When the target first invokes SYS_GET_CMDLINE (0x15), we answer "list"
         // Then, we wait until the target invokes SEMIHOSTING_USER_LIST (0x100) with the json containing all tests
         let halt_handler = |halt_reason: HaltReason, core: &mut Core| {
-            match halt_reason {
-                HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd)) => match cmd {
-                    SemihostingCommand::GetCommandLine(request) if !cmdline_requested => {
-                        tracing::debug!("target asked for cmdline. send 'list'");
-                        cmdline_requested = true;
-                        request.write_command_line_to_target(core, "list")?;
-                        Ok(None) // Continue running
+            let HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd)) = halt_reason else {
+                anyhow::bail!("CPU halted unexpectedly.");
+            };
+
+            match cmd {
+                SemihostingCommand::GetCommandLine(request) if !cmdline_requested => {
+                    tracing::debug!("target asked for cmdline. send 'list'");
+                    cmdline_requested = true;
+                    request.write_command_line_to_target(core, "list")?;
+                    Ok(None) // Continue running
+                }
+                SemihostingCommand::Unknown(details)
+                    if details.operation == Self::SEMIHOSTING_USER_LIST && cmdline_requested =>
+                {
+                    let buf = details.get_buffer(core)?;
+                    let buf = buf.read(core)?;
+                    let list = serde_json::from_slice::<Tests>(&buf[..])?;
+
+                    // Signal status=success back to the target
+                    details.write_status(core, 0)?;
+
+                    tracing::debug!("got list of tests from target: {list:?}");
+                    if list.version != 1 {
+                        anyhow::bail!("Unsupported test list format version: {}", list.version);
                     }
-                    SemihostingCommand::Unknown(details)
-                        if details.operation == Self::SEMIHOSTING_USER_LIST
-                            && cmdline_requested =>
-                    {
-                        let buf = details.get_buffer(core)?;
-                        let buf = buf.read(core)?;
-                        let list: Tests = serde_json::from_slice(&buf[..])?;
-                        details.write_status(core, 0)?; // Signal status=success back to the target
-                        tracing::debug!("got list of tests from target: {:?}", list);
-                        if list.version != 1 {
-                            Err(anyhow!(
-                                "Unsupported test list format version: {}",
-                                list.version
-                            ))
-                        } else {
-                            Ok(Some(list))
-                        }
-                    }
-                    other => Err(anyhow!(
-                        "Unexpected semihosting command {:?} cmdline_requested: {:?}",
-                        other,
-                        cmdline_requested
-                    )),
-                },
-                _ => Err(anyhow!("CPU halted unexpectedly.")),
+
+                    Ok(Some(list))
+                }
+                other => anyhow::bail!(
+                    "Unexpected semihosting command {:?} cmdline_requested: {:?}",
+                    other,
+                    cmdline_requested
+                ),
             }
         };
 
@@ -172,21 +172,18 @@ impl TestRunMode {
             Some(Duration::from_secs(5)),
             halt_handler,
         )? {
-            ReturnReason::User => Err(anyhow!(
+            ReturnReason::User => anyhow::bail!(
                 "The user pressed ctrl+c before the target responded with the test list."
-            )),
+            ),
             ReturnReason::Predicate(tests) => Ok(tests),
-            ReturnReason::Timeout => Err(anyhow!(
-                "The target did not respond with test list until timeout."
-            )),
+            ReturnReason::Timeout => {
+                anyhow::bail!("The target did not respond with test list until timeout.")
+            }
         }
     }
 
     /// Runs a single test on the target
-    fn run_test(
-        test: Test,
-        session_and_runloop: &mut SessionAndRunLoop,
-    ) -> std::result::Result<(), Failed> {
+    fn run_test(test: Test, session_and_runloop: &mut SessionAndRunLoop) -> Result<(), Failed> {
         let core = &mut session_and_runloop.session.core(0)?;
         tracing::info!("Running test {}", test.name);
         core.reset_and_halt(Duration::from_millis(100))?;
@@ -198,35 +195,35 @@ impl TestRunMode {
         // When the target first invokes SYS_GET_CMDLINE (0x15), we answer "run <test_name>
         // Then we wait until the target invokes SYS_EXIT (0x18) or SYS_EXIT_EXTENDED(0x20) with the exit code
         let halt_handler = |halt_reason: HaltReason, core: &mut Core| {
-            match halt_reason {
-                HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd)) => match cmd {
-                    SemihostingCommand::GetCommandLine(request) if !cmdline_requested => {
-                        let cmdline = format!("run {}", test.name);
-                        tracing::debug!("target asked for cmdline. send '{}'", cmdline.as_str());
-                        cmdline_requested = true;
-                        request.write_command_line_to_target(core, cmdline.as_str())?;
-                        Ok(None) // Continue running
-                    }
-                    SemihostingCommand::ExitSuccess if cmdline_requested => {
-                        Ok(Some(TestOutcome::Pass))
-                    }
-
-                    SemihostingCommand::ExitError(_) if cmdline_requested => {
-                        Ok(Some(TestOutcome::Panic))
-                    }
-
-                    other => {
-                        // Invalid sequence of semihosting calls => Abort testing altogether
-                        Err(anyhow!(
-                            "Unexpected semihosting command {:?} cmdline_requested: {:?}",
-                            other,
-                            cmdline_requested
-                        ))
-                    }
-                },
+            let cmd = match halt_reason {
+                HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd)) => cmd,
                 e => {
                     // Exception occurred (e.g. hardfault) => Abort testing altogether
-                    Err(anyhow!("The CPU halted unexpectedly: {:?}. Test should signal failure via a panic handler that calls `semihosting::proces::abort()` instead", e))
+                    anyhow::bail!("The CPU halted unexpectedly: {:?}. Test should signal failure via a panic handler that calls `semihosting::proces::abort()` instead", e)
+                }
+            };
+
+            match cmd {
+                SemihostingCommand::GetCommandLine(request) if !cmdline_requested => {
+                    let cmdline = format!("run {}", test.name);
+                    tracing::debug!("target asked for cmdline. send '{cmdline}'");
+                    cmdline_requested = true;
+                    request.write_command_line_to_target(core, &cmdline)?;
+                    Ok(None) // Continue running
+                }
+                SemihostingCommand::ExitSuccess if cmdline_requested => Ok(Some(TestOutcome::Pass)),
+
+                SemihostingCommand::ExitError(_) if cmdline_requested => {
+                    Ok(Some(TestOutcome::Panic))
+                }
+
+                other => {
+                    // Invalid sequence of semihosting calls => Abort testing altogether
+                    anyhow::bail!(
+                        "Unexpected semihosting command {:?} cmdline_requested: {:?}",
+                        other,
+                        cmdline_requested
+                    );
                 }
             }
         };
@@ -249,20 +246,21 @@ impl TestRunMode {
             }
             Ok(ReturnReason::Predicate(outcome)) => {
                 if outcome == test.expected_outcome {
-                    Ok(())
-                } else {
-                    if outcome == TestOutcome::Panic {
-                        print_stacktrace(
-                            core,
-                            &session_and_runloop.run_loop.path,
-                            &mut std::io::stderr(),
-                        )?;
-                    }
-                    Err(Failed::from(format!(
-                        "Test should {:?} but it did {:?}",
-                        test.expected_outcome, outcome
-                    )))
+                    return Ok(());
                 }
+
+                if outcome == TestOutcome::Panic {
+                    print_stacktrace(
+                        core,
+                        &session_and_runloop.run_loop.path,
+                        &mut std::io::stderr(),
+                    )?;
+                }
+
+                Err(Failed::from(format!(
+                    "Test should {:?} but it did {:?}",
+                    test.expected_outcome, outcome
+                )))
             }
             Err(e) => {
                 // Probe-rs error: We do not mark the test as failed and instead exit the process
@@ -297,7 +295,7 @@ struct Test {
     pub timeout: Option<u32>,
 }
 
-fn outcome_from_should_panic<'de, D>(deserializer: D) -> std::result::Result<TestOutcome, D::Error>
+fn outcome_from_should_panic<'de, D>(deserializer: D) -> Result<TestOutcome, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
@@ -318,10 +316,10 @@ impl RunMode for TestRunMode {
 
         let tests = Self::create_tests(session_and_runloop)?;
         if libtest_mimic::run(&self.libtest_args, tests).has_failed() {
-            Err(anyhow!("Some tests failed"))
-        } else {
-            Ok(())
+            anyhow::bail!("Some tests failed");
         }
+
+        Ok(())
     }
 }
 

@@ -27,28 +27,32 @@ impl RunMode for NormalRunMode {
     fn run(&self, mut session: Session, run_loop: RunLoop) -> anyhow::Result<()> {
         let mut core = session.core(run_loop.core_id)?;
 
-        let halt_handler = |halt_reason: HaltReason, _core: &mut Core| match halt_reason {
-            HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd)) => {
-                match cmd {
-                    SemihostingCommand::ExitSuccess => {
-                        Ok(Some(())) // Exit the run loop
-                    }
-                    SemihostingCommand::ExitError(details) => {
-                        Err(anyhow!("Semihosting indicates exit with {}", details))
-                    }
-                    SemihostingCommand::Unknown(details) => {
-                        tracing::warn!("Target wanted to run semihosting operation {:#x} with parameter {:#x},\
-                             but probe-rs does not support this operation yet. Continuing...", details.operation, details.parameter);
-                        Ok(None) // Continue running
-                    }
-                    SemihostingCommand::GetCommandLine(_) => {
-                        tracing::warn!("Target wanted to run semihosting operation SYS_GET_CMDLINE, but probe-rs does not support this operation yet. Continuing...");
-                        Ok(None) // Continue running
-                    }
+        let halt_handler = |halt_reason: HaltReason, _core: &mut Core| {
+            let HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd)) = halt_reason else {
+                anyhow::bail!("CPU halted unexpectedly.");
+            };
+
+            match cmd {
+                SemihostingCommand::ExitSuccess => Ok(Some(())), // Exit the run loop
+                SemihostingCommand::ExitError(details) => {
+                    Err(anyhow!("Semihosting indicated exit with {details}"))
+                }
+                SemihostingCommand::Unknown(details) => {
+                    tracing::warn!(
+                        "Target wanted to run semihosting operation {:#x} with parameter {:#x},\
+                             but probe-rs does not support this operation yet. Continuing...",
+                        details.operation,
+                        details.parameter
+                    );
+                    Ok(None) // Continue running
+                }
+                SemihostingCommand::GetCommandLine(_) => {
+                    tracing::warn!("Target wanted to run semihosting operation SYS_GET_CMDLINE, but probe-rs does not support this operation yet. Continuing...");
+                    Ok(None) // Continue running
                 }
             }
-            _ => Err(anyhow!("CPU halted unexpectedly.")),
         };
+
         run_loop.run_until(
             &mut core,
             self.run_options.catch_hardfault,

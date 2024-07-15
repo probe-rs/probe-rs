@@ -147,32 +147,10 @@ trait RunMode {
     fn run(&self, session: Session, run_loop: RunLoop) -> Result<()>;
 }
 
-fn detect_run_mode(cmd: &Cmd) -> Result<Box<dyn RunMode>, anyhow::Error> {
-    let elf_contains_test = {
-        let mut file = match File::open(&cmd.shared_options.path) {
-            Ok(file) => file,
-            Err(e) => return Err(FileDownloadError::IO(e)).context("Failed to open binary file."),
-        };
-        let mut buffer = Vec::new();
-        file.read_to_end(&mut buffer)?;
-        match goblin::elf::Elf::parse(buffer.as_slice()) {
-            Ok(elf) if elf.syms.is_empty() => {
-                tracing::debug!("No Symbols in ELF");
-                false
-            }
-            Ok(elf) => elf
-                .syms
-                .iter()
-                .any(|sym| elf.strtab.get_at(sym.st_name) == Some("EMBEDDED_TEST_VERSION")),
-            Err(_) => {
-                tracing::debug!("Failed to parse ELF file");
-                false
-            }
-        }
-    };
-
-    if elf_contains_test {
-        // We tolerate the run options, even in test mode so that you can set `probe-rs run --catch-hardfault` as cargo runner (used for both unit tests and normal binaries)
+fn detect_run_mode(cmd: &Cmd) -> anyhow::Result<Box<dyn RunMode>> {
+    if elf_contains_test(&cmd.shared_options.path)? {
+        // We tolerate the run options, even in test mode so that you can set
+        // `probe-rs run --catch-hardfault` as cargo runner (used for both unit tests and normal binaries)
         tracing::info!("Detected embedded-test in ELF file. Running as test");
         Ok(TestRunMode::new(&cmd.test_options))
     } else {
@@ -180,12 +158,38 @@ fn detect_run_mode(cmd: &Cmd) -> Result<Box<dyn RunMode>, anyhow::Error> {
             || cmd.test_options.exact
             || cmd.test_options.format.is_some()
             || !cmd.test_options.filter.is_empty();
+
         if test_args_specified {
-            return Err(anyhow!("probe-rs was invoked with arguments exclusive to test mode, but the binary does not contain embedded-test"));
+            anyhow::bail!("probe-rs was invoked with arguments exclusive to test mode, but the binary does not contain embedded-test");
         }
+
         tracing::debug!("No embedded-test in ELF file. Running as normal");
         Ok(NormalRunMode::new(cmd.run_options.clone()))
     }
+}
+
+fn elf_contains_test(path: &Path) -> anyhow::Result<bool> {
+    let mut file = File::open(path).map_err(FileDownloadError::IO)?;
+
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer)?;
+
+    let contains = match goblin::elf::Elf::parse(buffer.as_slice()) {
+        Ok(elf) if elf.syms.is_empty() => {
+            tracing::debug!("No Symbols in ELF");
+            false
+        }
+        Ok(elf) => elf
+            .syms
+            .iter()
+            .any(|sym| elf.strtab.get_at(sym.st_name) == Some("EMBEDDED_TEST_VERSION")),
+        Err(_) => {
+            tracing::debug!("Failed to parse ELF file");
+            false
+        }
+    };
+
+    Ok(contains)
 }
 
 struct RunLoop {
@@ -431,36 +435,37 @@ fn print_stacktrace<S: Write + ?Sized>(
         }
         writeln!(output_stream)?;
 
-        if let Some(location) = &frame.source_location {
-            if location.directory.is_some() || location.file.is_some() {
-                write!(output_stream, "       ")?;
+        let Some(location) = &frame.source_location else {
+            continue;
+        };
 
-                if let Some(dir) = &location.directory {
-                    write!(output_stream, "{}", dir.to_path().display())?;
+        if location.directory.is_none() && location.file.is_none() {
+            continue;
+        }
+
+        write!(output_stream, "       ")?;
+
+        if let Some(dir) = &location.directory {
+            write!(output_stream, "{}", dir.to_path().display())?;
+        }
+
+        if let Some(file) = &location.file {
+            write!(output_stream, "/{file}")?;
+
+            if let Some(line) = location.line {
+                write!(output_stream, ":{line}")?;
+
+                if let Some(col) = location.column {
+                    let col = match col {
+                        probe_rs::debug::ColumnType::LeftEdge => 1,
+                        probe_rs::debug::ColumnType::Column(c) => c,
+                    };
+                    write!(output_stream, ":{col}")?;
                 }
-
-                if let Some(file) = &location.file {
-                    write!(output_stream, "/{file}")?;
-
-                    if let Some(line) = location.line {
-                        write!(output_stream, ":{line}")?;
-
-                        if let Some(col) = location.column {
-                            match col {
-                                probe_rs::debug::ColumnType::LeftEdge => {
-                                    write!(output_stream, ":1")?
-                                }
-                                probe_rs::debug::ColumnType::Column(c) => {
-                                    write!(output_stream, ":{c}")?
-                                }
-                            }
-                        }
-                    }
-                }
-
-                writeln!(output_stream)?;
             }
         }
+
+        writeln!(output_stream)?;
     }
     Ok(())
 }
