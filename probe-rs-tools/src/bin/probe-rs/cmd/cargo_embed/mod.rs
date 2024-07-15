@@ -226,7 +226,9 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
         Err(e) => return Err(e.into()),
     };
 
-    let ram_flash = if config.flashing.enabled {
+    let core_id = rtt::get_target_core_id(&mut session, &path);
+
+    if config.flashing.enabled {
         let download_options = BinaryDownloadOptions {
             disable_progressbars: opt.disable_progressbars,
             disable_double_buffering: config.flashing.disable_double_buffering,
@@ -247,18 +249,11 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
 
         if flash_info.entry_point_in_ram {
             session.ram_flash_start(flash_info.entry_point.unwrap())?;
+            session.core(core_id)?.run()?;
         }
+    }
 
-        flash_info.entry_point_in_ram
-    } else {
-        false
-    };
-
-    let core_id = rtt::get_target_core_id(&mut session, &path);
-
-    if ram_flash {
-        session.core(core_id)?.run()?;
-    } else if config.reset.enabled {
+    if config.reset.enabled {
         let mut core = session.core(core_id)?;
         let halt_timeout = Duration::from_millis(500);
         if config.reset.halt_afterwards {

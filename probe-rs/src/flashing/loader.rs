@@ -634,7 +634,7 @@ impl FlashLoader {
             let mut some = false;
             for (address, data) in self.builder.data_in_range(&region.range) {
                 some = true;
-                tracing::info!(
+                tracing::debug!(
                     "     -- writing: {:#010X}..{:#010X} ({} bytes)",
                     address,
                     address + data.len() as u64,
