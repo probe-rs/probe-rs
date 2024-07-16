@@ -80,7 +80,7 @@ gdbstub = { version = "0.7", optional = true }
 anyhow = { workspace = true, optional = true }
 
 # debug
-gimli = { version = "0.30", default-features = false, features = [
+gimli = { version = "0.31", default-features = false, features = [
     "endian-reader",
     "read",
     "std",
@@ -106,7 +106,7 @@ clap = { version = "4", features = ["derive"] }
 itm = { version = "0.9.0-rc.1", default-features = false }
 pretty_assertions = "1"
 test-case = "3"
-termtree = "0.4"
+termtree = "0.5"
 insta = { version = "1.38", default-features = false, features = ["yaml"] }
 
 [[package.metadata.release.pre-release-replacements]]

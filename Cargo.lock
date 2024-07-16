@@ -23,13 +23,13 @@ dependencies = [
 
 [[package]]
 name = "addr2line"
-version = "0.23.0"
+version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b9d03130b08257bc8110b0df827d8b137fdf67a95e2459eaace2e13fecf1d72"
+checksum = "e60698898f23be659cb86289e5805b1e059a5fe1cd95c9a1d4def50369e74b31"
 dependencies = [
  "cpp_demangle",
  "fallible-iterator",
- "gimli 0.30.0",
+ "gimli 0.31.0",
  "memmap2",
  "object 0.36.1",
  "rustc-demangle",
@@ -458,9 +458,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.5.8"
+version = "4.5.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "84b3edb18336f4df585bc9aa31dd99c036dfa5dc5e9a2939a722a188f3a8970d"
+checksum = "64acc1846d54c1fe936a78dc189c34e28d3f5afc348403f28ecf53660b9b8462"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -468,9 +468,9 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.5.8"
+version = "4.5.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c1c09dd5ada6c6c78075d6fd0da3f90d8080651e2d6cc8eb2f1aaa4034ced708"
+checksum = "6fb8393d67ba2e7bfaf28a23458e4e2b543cc73a99595511eb207fdb8aede942"
 dependencies = [
  "anstream",
  "anstyle",
@@ -480,9 +480,9 @@ dependencies = [
 
 [[package]]
 name = "clap_complete"
-version = "4.5.7"
+version = "4.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d598e88f6874d4b888ed40c71efbcbf4076f1dfbae128a08a8c9e45f710605d"
+checksum = "5b4be9c4c4b1f30b78d8a750e0822b6a6102d97e62061c583a6c1dea2dfb33ae"
 dependencies = [
  "clap",
 ]
@@ -1254,9 +1254,9 @@ dependencies = [
 
 [[package]]
 name = "gimli"
-version = "0.30.0"
+version = "0.31.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e2e1d97fbe9722ba9bbd0c97051c2956e726562b61f86a25a4360398a40edfc9"
+checksum = "32085ea23f3234fc7846555e85283ba4de91e21016dc0455a16286d87a292d64"
 dependencies = [
  "fallible-iterator",
  "stable_deref_trait",
@@ -2259,7 +2259,7 @@ dependencies = [
  "fastrand",
  "futures-lite",
  "gdbstub",
- "gimli 0.30.0",
+ "gimli 0.31.0",
  "hexdump",
  "hidapi",
  "ihex",
@@ -2315,7 +2315,7 @@ dependencies = [
 name = "probe-rs-tools"
 version = "0.24.0"
 dependencies = [
- "addr2line 0.23.0",
+ "addr2line 0.24.0",
  "ansi-parser",
  "anyhow",
  "base64",
@@ -3003,9 +3003,9 @@ dependencies = [
 
 [[package]]
 name = "serde_with"
-version = "3.8.3"
+version = "3.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e73139bc5ec2d45e6c5fd85be5a46949c1c39a4c18e56915f5eb4c12f975e377"
+checksum = "69cecfa94848272156ea67b2b1a53f20fc7bc638c4a46d2f8abde08f05f4b857"
 dependencies = [
  "base64",
  "chrono",
@@ -3351,9 +3351,9 @@ dependencies = [
 
 [[package]]
 name = "termtree"
-version = "0.4.1"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3369f5ac52d5eb6ab48c6b4ffdc8efbcad6b89c765749064ba298f2c68a16a76"
+checksum = "804a949d00f0fe6d3935127238b04ef4f56131c7cab670584194f17f01fca6b6"
 
 [[package]]
 name = "test-case"
@@ -3401,18 +3401,18 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "1.0.61"
+version = "1.0.62"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c546c80d6be4bc6a00c0f01730c08df82eaa7a7a61f11d656526506112cc1709"
+checksum = "f2675633b1499176c2dff06b0856a27976a8f9d436737b4cf4f312d4d91d8bbb"
 dependencies = [
  "thiserror-impl",
 ]
 
 [[package]]
 name = "thiserror-impl"
-version = "1.0.61"
+version = "1.0.62"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "46c3384250002a6d5af4d114f2845d37b57521033f30d5c3f46c4d70e1197533"
+checksum = "d20468752b09f49e909e55a5d338caa8bedf615594e9d80bc4c565d30faf798c"
 dependencies = [
  "proc-macro2",
  "quote",
