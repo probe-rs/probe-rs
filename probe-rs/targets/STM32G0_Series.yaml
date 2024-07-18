@@ -3,7 +3,7 @@ manufacturer:
   id: 0x20
   cc: 0x0
 generated_from_pack: true
-pack_file_release: 1.4.0
+pack_file_release: 1.5.0
 variants:
 - name: STM32G030C6Tx
   cores:
@@ -21,6 +21,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -50,6 +51,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -79,6 +81,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -108,6 +111,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -137,6 +141,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -166,6 +171,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -195,6 +201,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -224,6 +231,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -253,6 +261,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -282,6 +291,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -311,6 +321,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -340,6 +351,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -369,6 +381,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -398,6 +411,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -427,6 +441,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -456,6 +471,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -485,6 +501,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -514,6 +531,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -543,6 +561,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -572,6 +591,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -601,6 +621,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -630,6 +651,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -659,6 +681,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -688,6 +711,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -717,6 +741,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -746,6 +771,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -775,6 +801,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -804,6 +831,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -833,6 +861,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -862,6 +891,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -891,6 +921,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -920,6 +951,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -949,6 +981,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -978,6 +1011,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -1007,6 +1041,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -1036,6 +1071,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -1065,6 +1101,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -1094,6 +1131,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -1123,6 +1161,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -1152,6 +1191,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -1181,6 +1221,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -1210,6 +1251,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -1239,6 +1281,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -1268,6 +1311,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -1297,6 +1341,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -1326,6 +1371,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -1355,6 +1401,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -1384,6 +1431,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -1413,6 +1461,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -1442,6 +1491,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -1471,6 +1521,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -1500,6 +1551,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -1529,6 +1581,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -1558,6 +1611,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -1587,6 +1641,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -1616,6 +1671,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -1645,6 +1701,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -1674,6 +1731,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -1703,6 +1761,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -1732,6 +1791,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -1761,6 +1821,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -1790,6 +1851,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -1819,6 +1881,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -1848,6 +1911,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -1877,6 +1941,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -1906,6 +1971,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -1935,6 +2001,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -1964,6 +2031,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -1993,6 +2061,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -2022,6 +2091,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -2051,6 +2121,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -2080,6 +2151,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -2109,6 +2181,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -2138,6 +2211,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -2167,6 +2241,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -2196,6 +2271,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -2225,6 +2301,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -2254,6 +2331,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -2283,6 +2361,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -2312,6 +2391,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -2341,6 +2421,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -2370,6 +2451,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -2399,6 +2481,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -2428,6 +2511,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -2457,6 +2541,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -2486,6 +2571,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -2515,6 +2601,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -2544,6 +2631,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -2573,6 +2661,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -2602,6 +2691,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -2631,6 +2721,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -2660,6 +2751,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -2689,6 +2781,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -2718,6 +2811,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -2747,6 +2841,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -2776,6 +2871,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -2805,6 +2901,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -2834,6 +2931,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -2863,6 +2961,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -2892,6 +2991,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -2921,6 +3021,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -2950,6 +3051,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -2979,6 +3081,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -3008,6 +3111,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -3037,6 +3141,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -3066,6 +3171,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -3095,6 +3201,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -3124,6 +3231,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -3153,6 +3261,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -3182,6 +3291,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -3211,6 +3321,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -3240,6 +3351,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -3269,6 +3381,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -3298,6 +3411,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -3327,6 +3441,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -3356,6 +3471,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -3385,6 +3501,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -3414,6 +3531,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -3443,6 +3561,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -3472,6 +3591,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -3501,6 +3621,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -3530,6 +3651,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -3559,6 +3681,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -3588,6 +3711,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -3617,6 +3741,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -3646,6 +3771,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -3675,6 +3801,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -3704,6 +3831,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -3733,6 +3861,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -3762,6 +3891,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -3791,6 +3921,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -3820,6 +3951,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -3849,6 +3981,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -3878,6 +4011,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -3907,6 +4041,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -3936,6 +4071,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -3965,6 +4101,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -3994,6 +4131,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -4023,6 +4161,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -4052,6 +4191,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -4081,6 +4221,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -4110,6 +4251,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -4139,6 +4281,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -4168,6 +4311,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -4197,6 +4341,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -4226,6 +4371,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -4255,6 +4401,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -4284,6 +4431,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -4313,6 +4461,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -4342,6 +4491,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -4371,6 +4521,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -4400,6 +4551,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -4429,6 +4581,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -4458,6 +4611,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -4487,6 +4641,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -4516,6 +4671,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -4545,6 +4701,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -4574,6 +4731,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -4603,6 +4761,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -4632,6 +4791,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -4661,6 +4821,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -4690,6 +4851,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -4719,6 +4881,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -4748,6 +4911,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -4777,6 +4941,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -4806,6 +4971,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -4835,6 +5001,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -4864,6 +5031,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -4893,6 +5061,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -4922,6 +5091,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -4951,6 +5121,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -4980,6 +5151,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -5009,6 +5181,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -5038,6 +5211,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -5067,6 +5241,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -5096,6 +5271,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -5125,6 +5301,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -5154,6 +5331,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -5183,6 +5361,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -5212,6 +5391,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -5241,6 +5421,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -5270,6 +5451,7 @@ variants:
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
     name: SRAM
@@ -5288,6 +5470,7 @@ flash_algorithms:
   description: STM32G0Bx_512
   default: true
   instructions: crZqSmpJimBqSopgAOAAvwppkgOSD/rRZ0pKRFBgZ0gAjAAEgAmQYEAI0GBkSABoAwVkSBsNGBgf0AooHdAQKBvQASAQYAhqgALADxBhCGrAAwjUXUhcSgJgUhACYAYiQmBbSoJgCGoAAwTUWkhZSUFgfyEBYAAgcEcAIOLnTkhIREBoAWhKSEkcBNABaAEiEgSRQwFgQWkBItIHEUNBYb/zT48AIHBHASBwR0BIS0oCYcETQWFBaQEjGwQZQ0Fhv/NPjwDgAL8BaYkDiQ/60QFpEUIC0AJhASBwRwAgcEcwtTVLASRLRBpo5AQBKgzRGWkBKQLQmWihQgbR3WhZaE0ZhUIB2AEhAOAAIQEqAdCaaAbgGmkBKgLQmmiiQgDR2mguS1IeEEAhSsAKE2HAAEkDgBwIQ1BhUGkBIQkECENQYb/zT48A4AC/EGmAA4AP+tEQaRhAAdATYQEgML0wtckdE0vJCB1NyQAdYQEkXGEU4BRoBGBUaERgv/NPjwDgAL8caaQDpA/60RxpLEIC0B1hASAwvQgwCDkIMgAp6NFYaUAIQABYYQAgML0jAWdFACACQKuJ780EAAAAwHX/HwBYAUCq+///qqoAAAAwAED/DwAA/wEAAAAsAED6wwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+  load_address: 0x20000020
   pc_init: 0x1
   pc_uninit: 0x7f
   pc_program_page: 0x15f
@@ -5308,6 +5491,7 @@ flash_algorithms:
 - name: stm32g0xx_otp
   description: STM32G0xx Flash OTP
   instructions: v/NPj3BHG0gZSYFgGkmBYBpJAWEAIHBHASAWScAHSGEAIHBHASBwRwAgcEfwtckdEEzJCBFNyQAlYQEmACcT4GZhE2gDYFNoQ2C/80+PI2nbA/zUZ2EjaStCAtAlYQEg8L0IMAg5CDIAKenRACDwvSMBZ0UAIAJAq4nvzfrDAAAAAAAA
+  load_address: 0x20000020
   pc_init: 0x7
   pc_uninit: 0x19
   pc_program_page: 0x2d
@@ -5327,6 +5511,7 @@ flash_algorithms:
 - name: stm32g0x0_sb_opt
   description: STM32G0x0 SB Flash Options
   instructions: v/NPj3BHLUgrSYFgLEmBYCxJwWAsScFgLEkBYQAgcEcBISZIyQdBYUEEQWEAIHBHASBwRyFIJUoCYSVJAWJ/IcFiAWMBIUkEQWG/80+PAWnJA/zUACFBYQFpEUIE0AFpEUMBYQEgcEcAIHBHACBwRzC1lGgTaFFoEEgUSgJhFU0rQANiFEsZQMFiHEAEYwEhSQRBYb/zT48BackD/NQBaRFCBNABaRFDAWEBIDC9ACAwvUAYcEcAACMBZ0UAIAJAq4nvzTsqGQh/bl1M+sMAAKr+/////38/fwB/AAAAAAA=
+  load_address: 0x20000020
   pc_init: 0x7
   pc_uninit: 0x21
   pc_program_page: 0x71
@@ -5347,6 +5532,7 @@ flash_algorithms:
 - name: stm32g0x0_db_opt
   description: STM32G0x0 DB Flash Options
   instructions: v/NPj3BHM0gxSYFgMkmBYDJJwWAyScFgMkkBYQAgcEcBISxIyQdBYUEEQWEAIHBHASBwRydIK0oCYStJAWJ/IcFiAWMjS0Az2WAZYQEhSQRBYb/zT48BackD/NQAIUFhAWkRQgTQAWkRQwFhASBwRwAgcEcAIHBH8LUVaFRok2jRaBRIEmkXTwdhGE41QAViF00sQMRiK0ADYw5LKUBAM9lgKkAaYQEhSQRBYb/zT48BackD/NQBaTlCBNABaTlDAWEBIPC9ACDwvUAYcEcAACMBZ0UAIAJAq4nvzTsqGQh/bl1M+sMAAKr+/////38/fwB/AAAAAAA=
+  load_address: 0x20000020
   pc_init: 0x7
   pc_uninit: 0x21
   pc_program_page: 0x79
@@ -5367,6 +5553,7 @@ flash_algorithms:
 - name: stm32g0x1_sb_opt
   description: STM32G0x1 SB Flash Options
   instructions: v/NPj3BHPkg8SYFgPUmBYD1JwWA9ScFgPUkBYQAgcEcBITdIyQdBYUEEQWEAIHBHASBwRzJINksDYTZJAWL/IcFiAWM0SUFiACKCYkFjgmMrSYAxCmABIUkEQWG/80+PAWnJA/zUQmEBaRlCBNABaRlDAWEBIHBHACBwRwAgcEfwtZeJloq8RheLFWi+RlRok2gRaRpI0mkdTwdhH089QAViH00sQMRiK0ADY2dG+wXbDUNiG0sZQIFi8QXJDUFjd0b5BckNgWMXSQpADEmAMQpgmQtBYb/zT48BackD/NQCaQtJCkIE0AJpCkMCYQEg8L0AIPC9QBhwRwAAIwFnRQAgAkCrie/NOyoZCH9uXUz6wwAAqv7///8BAAD//38/fwB/AP8BAID/APEPAAAAAA==
+  load_address: 0x20000020
   pc_init: 0x7
   pc_uninit: 0x21
   pc_program_page: 0x81
@@ -5387,6 +5574,7 @@ flash_algorithms:
 - name: stm32g0x1_db_opt
   description: STM32G0x1 DB Flash Options
   instructions: v/NPj3BHVUhTSYFgVEmBYFRJwWBUScFgVEkBYQAgcEcBIU5IyQdBYUEEQWEAIHBHASBwRzC1SUhMTQVhTEkBYv8kxGIEY8sNQ2IAIoJiQ2OCY0JJgDEKYEBJQDHMYAxhS2CKYEthimEBIUkEQWG/80+PAWnJA/zUQmEBaSlCBNABaSlDAWEBIDC9ACAwvQAgcEfwtYawF2hWaJBoBZCQiQSQEGmERpCKA5AQiwKQEI3VaRRqU2oBkBCO0WqGRpKOAJImSClKAmEqShdAB2IqShZAxmIFnhZABmMEnvYF9g1GYiZPZkY+QIZiA572BfYNRmMCnvYF9g2GYyFONUAXToA2NWAVTRRAQDXsYBNAK2EBmtIF0g1qYDlAqWBxRskFyQ1pYQCa0QXJDalhuQtBYb/zT48BackD/NQBaQtKEUIF0AFpEUMBYQEgBrDwvQAg++dAGHBHAAAjAWdFACACQKuJ7807KhkIf25dTPrDAACq/v////9/P38AfwD/AQCA/wDxDwAAAAA=
+  load_address: 0x20000020
   pc_init: 0x7
   pc_uninit: 0x21
   pc_program_page: 0x93
