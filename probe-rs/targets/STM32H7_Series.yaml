@@ -13,8 +13,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -24,7 +31,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -75,8 +82,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -86,7 +100,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -137,8 +151,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -148,7 +169,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -199,8 +220,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -210,7 +238,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -261,8 +289,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -272,7 +307,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -323,8 +358,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -334,7 +376,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -385,8 +427,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -396,7 +445,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -447,8 +496,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -458,7 +514,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -509,8 +565,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -520,7 +583,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -571,8 +634,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -582,7 +652,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -633,8 +703,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -644,7 +721,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -695,8 +772,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -706,7 +790,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -757,8 +841,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -768,7 +859,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -819,8 +910,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -830,7 +928,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -881,8 +979,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -892,7 +997,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -943,8 +1048,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -954,7 +1066,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -1005,8 +1117,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -1016,7 +1135,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -1067,8 +1186,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -1078,7 +1204,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -1129,8 +1255,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -1140,7 +1273,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -1191,8 +1324,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -1202,7 +1342,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -1253,8 +1393,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -1264,7 +1411,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -1315,8 +1462,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -1326,7 +1480,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -1377,8 +1531,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -1388,7 +1549,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -1439,8 +1600,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -1450,7 +1618,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -1501,8 +1669,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -1512,7 +1687,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -1563,8 +1738,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -1574,7 +1756,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -1625,8 +1807,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -1636,7 +1825,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -1687,8 +1876,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -1698,7 +1894,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -1749,8 +1945,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -1760,7 +1963,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -1811,8 +2014,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -1822,7 +2032,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -1873,8 +2083,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -1884,7 +2101,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -1935,8 +2152,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -1946,7 +2170,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -1997,8 +2221,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -2008,7 +2239,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -2059,8 +2290,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -2070,7 +2308,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -2121,8 +2359,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -2132,7 +2377,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -2183,8 +2428,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -2194,7 +2446,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -2245,8 +2497,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -2256,7 +2515,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -2307,8 +2566,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -2318,7 +2584,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -2369,8 +2635,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -2380,7 +2653,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -2431,8 +2704,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -2442,7 +2722,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -2493,8 +2773,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -2504,7 +2791,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -2555,8 +2842,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -2566,7 +2860,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -2617,8 +2911,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -2628,7 +2929,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8180000
@@ -2638,7 +2939,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -2659,7 +2960,7 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D2S2
+    name: RAM2_D2
     range:
       start: 0x30020000
       end: 0x30024000
@@ -2696,8 +2997,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -2707,7 +3015,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
@@ -2717,7 +3025,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -2738,7 +3046,7 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D2S2
+    name: RAM2_D2
     range:
       start: 0x30020000
       end: 0x30024000
@@ -2775,8 +3083,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -2786,7 +3101,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8180000
@@ -2796,7 +3111,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -2817,7 +3132,7 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D2S2
+    name: RAM2_D2
     range:
       start: 0x30020000
       end: 0x30024000
@@ -2854,8 +3169,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -2865,7 +3187,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
@@ -2875,7 +3197,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -2896,7 +3218,7 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D2S2
+    name: RAM2_D2
     range:
       start: 0x30020000
       end: 0x30024000
@@ -2933,8 +3255,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -2944,7 +3273,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8180000
@@ -2954,7 +3283,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -2975,7 +3304,7 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D2S2
+    name: RAM2_D2
     range:
       start: 0x30020000
       end: 0x30024000
@@ -3012,8 +3341,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -3023,7 +3359,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8180000
@@ -3033,7 +3369,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -3054,7 +3390,7 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D2S2
+    name: RAM2_D2
     range:
       start: 0x30020000
       end: 0x30024000
@@ -3091,8 +3427,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -3102,7 +3445,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
@@ -3112,7 +3455,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -3133,7 +3476,7 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D2S2
+    name: RAM2_D2
     range:
       start: 0x30020000
       end: 0x30024000
@@ -3170,8 +3513,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -3181,7 +3531,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
@@ -3191,7 +3541,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -3212,7 +3562,7 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D2S2
+    name: RAM2_D2
     range:
       start: 0x30020000
       end: 0x30024000
@@ -3249,8 +3599,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -3260,7 +3617,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8180000
@@ -3270,7 +3627,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -3291,7 +3648,7 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D2S2
+    name: RAM2_D2
     range:
       start: 0x30020000
       end: 0x30024000
@@ -3328,8 +3685,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -3339,7 +3703,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8180000
@@ -3349,7 +3713,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -3370,7 +3734,7 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D2S2
+    name: RAM2_D2
     range:
       start: 0x30020000
       end: 0x30024000
@@ -3407,8 +3771,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -3418,7 +3789,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
@@ -3428,7 +3799,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -3449,7 +3820,7 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D2S2
+    name: RAM2_D2
     range:
       start: 0x30020000
       end: 0x30024000
@@ -3486,8 +3857,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -3497,7 +3875,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
@@ -3507,7 +3885,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -3528,7 +3906,7 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D2S2
+    name: RAM2_D2
     range:
       start: 0x30020000
       end: 0x30024000
@@ -3565,8 +3943,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -3576,7 +3961,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8180000
@@ -3586,7 +3971,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -3607,7 +3992,7 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D2S2
+    name: RAM2_D2
     range:
       start: 0x30020000
       end: 0x30024000
@@ -3644,8 +4029,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -3655,7 +4047,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
@@ -3665,7 +4057,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -3686,7 +4078,7 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D2S2
+    name: RAM2_D2
     range:
       start: 0x30020000
       end: 0x30024000
@@ -3723,8 +4115,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -3734,7 +4133,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8180000
@@ -3744,7 +4143,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -3765,7 +4164,7 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D2S2
+    name: RAM2_D2
     range:
       start: 0x30020000
       end: 0x30024000
@@ -3802,8 +4201,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -3813,7 +4219,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
@@ -3823,7 +4229,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -3844,7 +4250,7 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D2S2
+    name: RAM2_D2
     range:
       start: 0x30020000
       end: 0x30024000
@@ -3881,8 +4287,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -3892,7 +4305,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8180000
@@ -3902,7 +4315,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -3953,8 +4366,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -3964,7 +4384,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
@@ -3974,7 +4394,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -4025,8 +4445,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -4036,7 +4463,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8180000
@@ -4046,7 +4473,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -4097,8 +4524,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -4108,7 +4542,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
@@ -4118,7 +4552,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -4169,8 +4603,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -4180,7 +4621,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8180000
@@ -4190,7 +4631,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -4241,8 +4682,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -4252,7 +4700,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8180000
@@ -4262,7 +4710,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -4313,8 +4761,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -4324,7 +4779,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
@@ -4334,7 +4789,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -4385,8 +4840,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -4396,7 +4858,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
@@ -4406,7 +4868,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -4457,8 +4919,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -4468,7 +4937,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8180000
@@ -4478,7 +4947,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -4529,8 +4998,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -4540,7 +5016,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8180000
@@ -4550,7 +5026,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -4601,8 +5077,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -4612,7 +5095,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
@@ -4622,7 +5105,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -4673,8 +5156,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -4684,7 +5174,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
@@ -4694,7 +5184,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -4745,8 +5235,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -4756,7 +5253,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8180000
@@ -4766,7 +5263,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -4817,8 +5314,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -4828,7 +5332,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
@@ -4838,7 +5342,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -4889,8 +5393,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -4900,7 +5411,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8180000
@@ -4910,7 +5421,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -4961,8 +5472,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -4972,7 +5490,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
@@ -4982,7 +5500,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -5038,22 +5556,32 @@ variants:
       ap: 3
       psel: 0x0
   memory_map:
-  - !Nvm
-    name: FLASH_Bank1
+  - !Ram
+    name: ITCM
     range:
-      start: 0x8000000
-      end: 0x8080000
+      start: 0x0
+      end: 0x10000
     cores:
     - cm7
+    - cm4
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - cm7
+    - cm4
     access:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
-      end: 0x8180000
+      end: 0x8200000
     cores:
+    - cm7
     - cm4
     access:
       write: false
@@ -5064,18 +5592,24 @@ variants:
       start: 0x10000000
       end: 0x10048000
     cores:
+    - cm7
     - cm4
-    access:
-      execute: false
   - !Ram
-    name: DTCMRAM
+    name: RAM_D3
+    range:
+      start: 0x18000000
+      end: 0x18010000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - cm7
-    access:
-      execute: false
+    - cm4
   - !Ram
     name: RAM_D1
     range:
@@ -5083,17 +5617,7 @@ variants:
       end: 0x24080000
     cores:
     - cm7
-    access:
-      execute: false
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - cm7
-    access:
-      execute: false
+    - cm4
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -5123,22 +5647,32 @@ variants:
       ap: 3
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - cm7
+    - cm4
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - cm7
+    - cm4
     access:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
     cores:
+    - cm7
     - cm4
     access:
       write: false
@@ -5149,18 +5683,24 @@ variants:
       start: 0x10000000
       end: 0x10048000
     cores:
+    - cm7
     - cm4
-    access:
-      execute: false
   - !Ram
-    name: DTCMRAM
+    name: RAM_D3
+    range:
+      start: 0x18000000
+      end: 0x18010000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - cm7
-    access:
-      execute: false
+    - cm4
   - !Ram
     name: RAM_D1
     range:
@@ -5168,17 +5708,7 @@ variants:
       end: 0x24080000
     cores:
     - cm7
-    access:
-      execute: false
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - cm7
-    access:
-      execute: false
+    - cm4
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -5208,22 +5738,32 @@ variants:
       ap: 3
       psel: 0x0
   memory_map:
-  - !Nvm
-    name: FLASH_Bank1
+  - !Ram
+    name: ITCM
     range:
-      start: 0x8000000
-      end: 0x8080000
+      start: 0x0
+      end: 0x10000
     cores:
     - cm7
+    - cm4
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - cm7
+    - cm4
     access:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
-      end: 0x8180000
+      end: 0x8200000
     cores:
+    - cm7
     - cm4
     access:
       write: false
@@ -5234,18 +5774,24 @@ variants:
       start: 0x10000000
       end: 0x10048000
     cores:
+    - cm7
     - cm4
-    access:
-      execute: false
   - !Ram
-    name: DTCMRAM
+    name: RAM_D3
+    range:
+      start: 0x18000000
+      end: 0x18010000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - cm7
-    access:
-      execute: false
+    - cm4
   - !Ram
     name: RAM_D1
     range:
@@ -5253,17 +5799,7 @@ variants:
       end: 0x24080000
     cores:
     - cm7
-    access:
-      execute: false
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - cm7
-    access:
-      execute: false
+    - cm4
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -5293,22 +5829,32 @@ variants:
       ap: 3
       psel: 0x0
   memory_map:
-  - !Nvm
-    name: FLASH_Bank1
+  - !Ram
+    name: ITCM
     range:
-      start: 0x8000000
-      end: 0x8080000
+      start: 0x0
+      end: 0x10000
     cores:
     - cm7
+    - cm4
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - cm7
+    - cm4
     access:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
-      end: 0x8180000
+      end: 0x8200000
     cores:
+    - cm7
     - cm4
     access:
       write: false
@@ -5319,18 +5865,24 @@ variants:
       start: 0x10000000
       end: 0x10048000
     cores:
+    - cm7
     - cm4
-    access:
-      execute: false
   - !Ram
-    name: DTCMRAM
+    name: RAM_D3
+    range:
+      start: 0x18000000
+      end: 0x18010000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - cm7
-    access:
-      execute: false
+    - cm4
   - !Ram
     name: RAM_D1
     range:
@@ -5338,17 +5890,7 @@ variants:
       end: 0x24080000
     cores:
     - cm7
-    access:
-      execute: false
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - cm7
-    access:
-      execute: false
+    - cm4
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -5378,22 +5920,32 @@ variants:
       ap: 3
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - cm7
+    - cm4
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - cm7
+    - cm4
     access:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
     cores:
+    - cm7
     - cm4
     access:
       write: false
@@ -5404,18 +5956,24 @@ variants:
       start: 0x10000000
       end: 0x10048000
     cores:
+    - cm7
     - cm4
-    access:
-      execute: false
   - !Ram
-    name: DTCMRAM
+    name: RAM_D3
+    range:
+      start: 0x18000000
+      end: 0x18010000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - cm7
-    access:
-      execute: false
+    - cm4
   - !Ram
     name: RAM_D1
     range:
@@ -5423,17 +5981,7 @@ variants:
       end: 0x24080000
     cores:
     - cm7
-    access:
-      execute: false
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - cm7
-    access:
-      execute: false
+    - cm4
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -5463,22 +6011,32 @@ variants:
       ap: 3
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - cm7
+    - cm4
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - cm7
+    - cm4
     access:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
     cores:
+    - cm7
     - cm4
     access:
       write: false
@@ -5489,18 +6047,24 @@ variants:
       start: 0x10000000
       end: 0x10048000
     cores:
+    - cm7
     - cm4
-    access:
-      execute: false
   - !Ram
-    name: DTCMRAM
+    name: RAM_D3
+    range:
+      start: 0x18000000
+      end: 0x18010000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - cm7
-    access:
-      execute: false
+    - cm4
   - !Ram
     name: RAM_D1
     range:
@@ -5508,17 +6072,7 @@ variants:
       end: 0x24080000
     cores:
     - cm7
-    access:
-      execute: false
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - cm7
-    access:
-      execute: false
+    - cm4
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -5548,22 +6102,32 @@ variants:
       ap: 3
       psel: 0x0
   memory_map:
-  - !Nvm
-    name: FLASH_Bank1
+  - !Ram
+    name: ITCM
     range:
-      start: 0x8000000
-      end: 0x8080000
+      start: 0x0
+      end: 0x10000
     cores:
     - cm7
+    - cm4
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - cm7
+    - cm4
     access:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
-      end: 0x8180000
+      end: 0x8200000
     cores:
+    - cm7
     - cm4
     access:
       write: false
@@ -5574,18 +6138,24 @@ variants:
       start: 0x10000000
       end: 0x10048000
     cores:
+    - cm7
     - cm4
-    access:
-      execute: false
   - !Ram
-    name: DTCMRAM
+    name: RAM_D3
+    range:
+      start: 0x18000000
+      end: 0x18010000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - cm7
-    access:
-      execute: false
+    - cm4
   - !Ram
     name: RAM_D1
     range:
@@ -5593,17 +6163,7 @@ variants:
       end: 0x24080000
     cores:
     - cm7
-    access:
-      execute: false
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - cm7
-    access:
-      execute: false
+    - cm4
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -5633,22 +6193,32 @@ variants:
       ap: 3
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - cm7
+    - cm4
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - cm7
+    - cm4
     access:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
     cores:
+    - cm7
     - cm4
     access:
       write: false
@@ -5659,18 +6229,24 @@ variants:
       start: 0x10000000
       end: 0x10048000
     cores:
+    - cm7
     - cm4
-    access:
-      execute: false
   - !Ram
-    name: DTCMRAM
+    name: RAM_D3
+    range:
+      start: 0x18000000
+      end: 0x18010000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - cm7
-    access:
-      execute: false
+    - cm4
   - !Ram
     name: RAM_D1
     range:
@@ -5678,17 +6254,7 @@ variants:
       end: 0x24080000
     cores:
     - cm7
-    access:
-      execute: false
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - cm7
-    access:
-      execute: false
+    - cm4
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -5718,22 +6284,32 @@ variants:
       ap: 3
       psel: 0x0
   memory_map:
-  - !Nvm
-    name: FLASH_Bank1
+  - !Ram
+    name: ITCM
     range:
-      start: 0x8000000
-      end: 0x8080000
+      start: 0x0
+      end: 0x10000
     cores:
     - cm7
+    - cm4
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - cm7
+    - cm4
     access:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
-      end: 0x8180000
+      end: 0x8200000
     cores:
+    - cm7
     - cm4
     access:
       write: false
@@ -5744,18 +6320,24 @@ variants:
       start: 0x10000000
       end: 0x10048000
     cores:
+    - cm7
     - cm4
-    access:
-      execute: false
   - !Ram
-    name: DTCMRAM
+    name: RAM_D3
+    range:
+      start: 0x18000000
+      end: 0x18010000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - cm7
-    access:
-      execute: false
+    - cm4
   - !Ram
     name: RAM_D1
     range:
@@ -5763,17 +6345,7 @@ variants:
       end: 0x24080000
     cores:
     - cm7
-    access:
-      execute: false
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - cm7
-    access:
-      execute: false
+    - cm4
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -5803,22 +6375,32 @@ variants:
       ap: 3
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - cm7
+    - cm4
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - cm7
+    - cm4
     access:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
     cores:
+    - cm7
     - cm4
     access:
       write: false
@@ -5829,18 +6411,24 @@ variants:
       start: 0x10000000
       end: 0x10048000
     cores:
+    - cm7
     - cm4
-    access:
-      execute: false
   - !Ram
-    name: DTCMRAM
+    name: RAM_D3
+    range:
+      start: 0x18000000
+      end: 0x18010000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - cm7
-    access:
-      execute: false
+    - cm4
   - !Ram
     name: RAM_D1
     range:
@@ -5848,17 +6436,7 @@ variants:
       end: 0x24080000
     cores:
     - cm7
-    access:
-      execute: false
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - cm7
-    access:
-      execute: false
+    - cm4
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -5888,22 +6466,32 @@ variants:
       ap: 3
       psel: 0x0
   memory_map:
-  - !Nvm
-    name: FLASH_Bank1
+  - !Ram
+    name: ITCM
     range:
-      start: 0x8000000
-      end: 0x8080000
+      start: 0x0
+      end: 0x10000
     cores:
     - cm7
+    - cm4
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - cm7
+    - cm4
     access:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
-      end: 0x8180000
+      end: 0x8200000
     cores:
+    - cm7
     - cm4
     access:
       write: false
@@ -5914,18 +6502,24 @@ variants:
       start: 0x10000000
       end: 0x10048000
     cores:
+    - cm7
     - cm4
-    access:
-      execute: false
   - !Ram
-    name: DTCMRAM
+    name: RAM_D3
+    range:
+      start: 0x18000000
+      end: 0x18010000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - cm7
-    access:
-      execute: false
+    - cm4
   - !Ram
     name: RAM_D1
     range:
@@ -5933,17 +6527,7 @@ variants:
       end: 0x24080000
     cores:
     - cm7
-    access:
-      execute: false
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - cm7
-    access:
-      execute: false
+    - cm4
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -5973,22 +6557,32 @@ variants:
       ap: 3
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - cm7
+    - cm4
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - cm7
+    - cm4
     access:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
     cores:
+    - cm7
     - cm4
     access:
       write: false
@@ -5999,18 +6593,24 @@ variants:
       start: 0x10000000
       end: 0x10048000
     cores:
+    - cm7
     - cm4
-    access:
-      execute: false
   - !Ram
-    name: DTCMRAM
+    name: RAM_D3
+    range:
+      start: 0x18000000
+      end: 0x18010000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - cm7
-    access:
-      execute: false
+    - cm4
   - !Ram
     name: RAM_D1
     range:
@@ -6018,17 +6618,7 @@ variants:
       end: 0x24080000
     cores:
     - cm7
-    access:
-      execute: false
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - cm7
-    access:
-      execute: false
+    - cm4
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -6058,22 +6648,32 @@ variants:
       ap: 3
       psel: 0x0
   memory_map:
-  - !Nvm
-    name: FLASH_Bank1
+  - !Ram
+    name: ITCM
     range:
-      start: 0x8000000
-      end: 0x8080000
+      start: 0x0
+      end: 0x10000
     cores:
     - cm7
+    - cm4
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - cm7
+    - cm4
     access:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
-      end: 0x8180000
+      end: 0x8200000
     cores:
+    - cm7
     - cm4
     access:
       write: false
@@ -6084,18 +6684,24 @@ variants:
       start: 0x10000000
       end: 0x10048000
     cores:
+    - cm7
     - cm4
-    access:
-      execute: false
   - !Ram
-    name: DTCMRAM
+    name: RAM_D3
+    range:
+      start: 0x18000000
+      end: 0x18010000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - cm7
-    access:
-      execute: false
+    - cm4
   - !Ram
     name: RAM_D1
     range:
@@ -6103,17 +6709,7 @@ variants:
       end: 0x24080000
     cores:
     - cm7
-    access:
-      execute: false
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - cm7
-    access:
-      execute: false
+    - cm4
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -6143,22 +6739,32 @@ variants:
       ap: 3
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - cm7
+    - cm4
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - cm7
+    - cm4
     access:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
     cores:
+    - cm7
     - cm4
     access:
       write: false
@@ -6169,18 +6775,24 @@ variants:
       start: 0x10000000
       end: 0x10048000
     cores:
+    - cm7
     - cm4
-    access:
-      execute: false
   - !Ram
-    name: DTCMRAM
+    name: RAM_D3
+    range:
+      start: 0x18000000
+      end: 0x18010000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - cm7
-    access:
-      execute: false
+    - cm4
   - !Ram
     name: RAM_D1
     range:
@@ -6188,17 +6800,7 @@ variants:
       end: 0x24080000
     cores:
     - cm7
-    access:
-      execute: false
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - cm7
-    access:
-      execute: false
+    - cm4
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -6228,22 +6830,32 @@ variants:
       ap: 3
       psel: 0x0
   memory_map:
-  - !Nvm
-    name: FLASH_Bank1
+  - !Ram
+    name: ITCM
     range:
-      start: 0x8000000
-      end: 0x8080000
+      start: 0x0
+      end: 0x10000
     cores:
     - cm7
+    - cm4
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - cm7
+    - cm4
     access:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
-      end: 0x8180000
+      end: 0x8200000
     cores:
+    - cm7
     - cm4
     access:
       write: false
@@ -6254,18 +6866,24 @@ variants:
       start: 0x10000000
       end: 0x10048000
     cores:
+    - cm7
     - cm4
-    access:
-      execute: false
   - !Ram
-    name: DTCMRAM
+    name: RAM_D3
+    range:
+      start: 0x18000000
+      end: 0x18010000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - cm7
-    access:
-      execute: false
+    - cm4
   - !Ram
     name: RAM_D1
     range:
@@ -6273,17 +6891,7 @@ variants:
       end: 0x24080000
     cores:
     - cm7
-    access:
-      execute: false
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - cm7
-    access:
-      execute: false
+    - cm4
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -6313,22 +6921,32 @@ variants:
       ap: 3
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - cm7
+    - cm4
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - cm7
+    - cm4
     access:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
     cores:
+    - cm7
     - cm4
     access:
       write: false
@@ -6339,18 +6957,24 @@ variants:
       start: 0x10000000
       end: 0x10048000
     cores:
+    - cm7
     - cm4
-    access:
-      execute: false
   - !Ram
-    name: DTCMRAM
+    name: RAM_D3
+    range:
+      start: 0x18000000
+      end: 0x18010000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - cm7
-    access:
-      execute: false
+    - cm4
   - !Ram
     name: RAM_D1
     range:
@@ -6358,17 +6982,7 @@ variants:
       end: 0x24080000
     cores:
     - cm7
-    access:
-      execute: false
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - cm7
-    access:
-      execute: false
+    - cm4
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -6398,22 +7012,32 @@ variants:
       ap: 3
       psel: 0x0
   memory_map:
-  - !Nvm
-    name: FLASH_Bank1
+  - !Ram
+    name: ITCM
     range:
-      start: 0x8000000
-      end: 0x8080000
+      start: 0x0
+      end: 0x10000
     cores:
     - cm7
+    - cm4
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - cm7
+    - cm4
     access:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
-      end: 0x8180000
+      end: 0x8200000
     cores:
+    - cm7
     - cm4
     access:
       write: false
@@ -6424,18 +7048,24 @@ variants:
       start: 0x10000000
       end: 0x10048000
     cores:
+    - cm7
     - cm4
-    access:
-      execute: false
   - !Ram
-    name: DTCMRAM
+    name: RAM_D3
+    range:
+      start: 0x18000000
+      end: 0x18010000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - cm7
-    access:
-      execute: false
+    - cm4
   - !Ram
     name: RAM_D1
     range:
@@ -6443,17 +7073,7 @@ variants:
       end: 0x24080000
     cores:
     - cm7
-    access:
-      execute: false
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - cm7
-    access:
-      execute: false
+    - cm4
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -6483,22 +7103,32 @@ variants:
       ap: 3
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - cm7
+    - cm4
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - cm7
+    - cm4
     access:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
     cores:
+    - cm7
     - cm4
     access:
       write: false
@@ -6509,18 +7139,24 @@ variants:
       start: 0x10000000
       end: 0x10048000
     cores:
+    - cm7
     - cm4
-    access:
-      execute: false
   - !Ram
-    name: DTCMRAM
+    name: RAM_D3
+    range:
+      start: 0x18000000
+      end: 0x18010000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - cm7
-    access:
-      execute: false
+    - cm4
   - !Ram
     name: RAM_D1
     range:
@@ -6528,17 +7164,7 @@ variants:
       end: 0x24080000
     cores:
     - cm7
-    access:
-      execute: false
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - cm7
-    access:
-      execute: false
+    - cm4
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -6568,22 +7194,32 @@ variants:
       ap: 3
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - cm7
+    - cm4
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - cm7
+    - cm4
     access:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
     cores:
+    - cm7
     - cm4
     access:
       write: false
@@ -6594,18 +7230,24 @@ variants:
       start: 0x10000000
       end: 0x10048000
     cores:
+    - cm7
     - cm4
-    access:
-      execute: false
   - !Ram
-    name: DTCMRAM
+    name: RAM_D3
+    range:
+      start: 0x18000000
+      end: 0x18010000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - cm7
-    access:
-      execute: false
+    - cm4
   - !Ram
     name: RAM_D1
     range:
@@ -6613,17 +7255,7 @@ variants:
       end: 0x24080000
     cores:
     - cm7
-    access:
-      execute: false
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - cm7
-    access:
-      execute: false
+    - cm4
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -6648,8 +7280,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -6659,7 +7298,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -6710,8 +7349,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -6721,7 +7367,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -6772,8 +7418,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -6783,7 +7436,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -6834,8 +7487,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -6845,7 +7505,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -6896,8 +7556,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -6907,7 +7574,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -6958,8 +7625,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -6969,7 +7643,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
@@ -6979,7 +7653,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -7030,8 +7704,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -7041,7 +7722,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
@@ -7051,7 +7732,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -7102,8 +7783,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -7113,7 +7801,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
@@ -7123,7 +7811,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -7174,8 +7862,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -7185,7 +7880,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
@@ -7195,7 +7890,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -7246,8 +7941,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -7257,7 +7959,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
@@ -7267,7 +7969,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -7318,8 +8020,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -7329,7 +8038,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
@@ -7339,7 +8048,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -7390,8 +8099,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -7401,7 +8117,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
@@ -7411,7 +8127,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -7462,8 +8178,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -7473,7 +8196,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
@@ -7483,7 +8206,7 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -7539,22 +8262,32 @@ variants:
       ap: 3
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - cm7
+    - cm4
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - cm7
+    - cm4
     access:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
     cores:
+    - cm7
     - cm4
     access:
       write: false
@@ -7563,29 +8296,26 @@ variants:
     name: RAM_D2
     range:
       start: 0x10000000
-      end: 0x10030000
-    cores:
-    - cm4
-    access:
-      execute: false
-  - !Ram
-    name: RAM_D2S3
-    range:
-      start: 0x10040000
       end: 0x10048000
     cores:
+    - cm7
     - cm4
-    access:
-      execute: false
   - !Ram
-    name: DTCMRAM
+    name: RAM_D3
+    range:
+      start: 0x18000000
+      end: 0x18010000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - cm7
-    access:
-      execute: false
+    - cm4
   - !Ram
     name: RAM_D1
     range:
@@ -7593,17 +8323,7 @@ variants:
       end: 0x24080000
     cores:
     - cm7
-    access:
-      execute: false
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - cm7
-    access:
-      execute: false
+    - cm4
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -7633,22 +8353,32 @@ variants:
       ap: 3
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - cm7
+    - cm4
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - cm7
+    - cm4
     access:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
     cores:
+    - cm7
     - cm4
     access:
       write: false
@@ -7657,29 +8387,26 @@ variants:
     name: RAM_D2
     range:
       start: 0x10000000
-      end: 0x10030000
-    cores:
-    - cm4
-    access:
-      execute: false
-  - !Ram
-    name: RAM_D2S3
-    range:
-      start: 0x10040000
       end: 0x10048000
     cores:
+    - cm7
     - cm4
-    access:
-      execute: false
   - !Ram
-    name: DTCMRAM
+    name: RAM_D3
+    range:
+      start: 0x18000000
+      end: 0x18010000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - cm7
-    access:
-      execute: false
+    - cm4
   - !Ram
     name: RAM_D1
     range:
@@ -7687,17 +8414,7 @@ variants:
       end: 0x24080000
     cores:
     - cm7
-    access:
-      execute: false
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - cm7
-    access:
-      execute: false
+    - cm4
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -7727,22 +8444,32 @@ variants:
       ap: 3
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - cm7
+    - cm4
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - cm7
+    - cm4
     access:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
     cores:
+    - cm7
     - cm4
     access:
       write: false
@@ -7751,29 +8478,26 @@ variants:
     name: RAM_D2
     range:
       start: 0x10000000
-      end: 0x10030000
-    cores:
-    - cm4
-    access:
-      execute: false
-  - !Ram
-    name: RAM_D2S3
-    range:
-      start: 0x10040000
       end: 0x10048000
     cores:
+    - cm7
     - cm4
-    access:
-      execute: false
   - !Ram
-    name: DTCMRAM
+    name: RAM_D3
+    range:
+      start: 0x18000000
+      end: 0x18010000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - cm7
-    access:
-      execute: false
+    - cm4
   - !Ram
     name: RAM_D1
     range:
@@ -7781,17 +8505,7 @@ variants:
       end: 0x24080000
     cores:
     - cm7
-    access:
-      execute: false
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - cm7
-    access:
-      execute: false
+    - cm4
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -7821,22 +8535,32 @@ variants:
       ap: 3
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - cm7
+    - cm4
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - cm7
+    - cm4
     access:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
     cores:
+    - cm7
     - cm4
     access:
       write: false
@@ -7845,29 +8569,26 @@ variants:
     name: RAM_D2
     range:
       start: 0x10000000
-      end: 0x10030000
-    cores:
-    - cm4
-    access:
-      execute: false
-  - !Ram
-    name: RAM_D2S3
-    range:
-      start: 0x10040000
       end: 0x10048000
     cores:
+    - cm7
     - cm4
-    access:
-      execute: false
   - !Ram
-    name: DTCMRAM
+    name: RAM_D3
+    range:
+      start: 0x18000000
+      end: 0x18010000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - cm7
-    access:
-      execute: false
+    - cm4
   - !Ram
     name: RAM_D1
     range:
@@ -7875,17 +8596,7 @@ variants:
       end: 0x24080000
     cores:
     - cm7
-    access:
-      execute: false
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - cm7
-    access:
-      execute: false
+    - cm4
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -7915,22 +8626,32 @@ variants:
       ap: 3
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - cm7
+    - cm4
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - cm7
+    - cm4
     access:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
     cores:
+    - cm7
     - cm4
     access:
       write: false
@@ -7939,29 +8660,26 @@ variants:
     name: RAM_D2
     range:
       start: 0x10000000
-      end: 0x10030000
-    cores:
-    - cm4
-    access:
-      execute: false
-  - !Ram
-    name: RAM_D2S3
-    range:
-      start: 0x10040000
       end: 0x10048000
     cores:
+    - cm7
     - cm4
-    access:
-      execute: false
   - !Ram
-    name: DTCMRAM
+    name: RAM_D3
+    range:
+      start: 0x18000000
+      end: 0x18010000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - cm7
-    access:
-      execute: false
+    - cm4
   - !Ram
     name: RAM_D1
     range:
@@ -7969,17 +8687,7 @@ variants:
       end: 0x24080000
     cores:
     - cm7
-    access:
-      execute: false
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - cm7
-    access:
-      execute: false
+    - cm4
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -8009,22 +8717,32 @@ variants:
       ap: 3
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - cm7
+    - cm4
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - cm7
+    - cm4
     access:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
     cores:
+    - cm7
     - cm4
     access:
       write: false
@@ -8033,29 +8751,26 @@ variants:
     name: RAM_D2
     range:
       start: 0x10000000
-      end: 0x10030000
-    cores:
-    - cm4
-    access:
-      execute: false
-  - !Ram
-    name: RAM_D2S3
-    range:
-      start: 0x10040000
       end: 0x10048000
     cores:
+    - cm7
     - cm4
-    access:
-      execute: false
   - !Ram
-    name: DTCMRAM
+    name: RAM_D3
+    range:
+      start: 0x18000000
+      end: 0x18010000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - cm7
-    access:
-      execute: false
+    - cm4
   - !Ram
     name: RAM_D1
     range:
@@ -8063,17 +8778,7 @@ variants:
       end: 0x24080000
     cores:
     - cm7
-    access:
-      execute: false
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - cm7
-    access:
-      execute: false
+    - cm4
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -8103,22 +8808,32 @@ variants:
       ap: 3
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - cm7
+    - cm4
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - cm7
+    - cm4
     access:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
     cores:
+    - cm7
     - cm4
     access:
       write: false
@@ -8127,29 +8842,26 @@ variants:
     name: RAM_D2
     range:
       start: 0x10000000
-      end: 0x10030000
-    cores:
-    - cm4
-    access:
-      execute: false
-  - !Ram
-    name: RAM_D2S3
-    range:
-      start: 0x10040000
       end: 0x10048000
     cores:
+    - cm7
     - cm4
-    access:
-      execute: false
   - !Ram
-    name: DTCMRAM
+    name: RAM_D3
+    range:
+      start: 0x18000000
+      end: 0x18010000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - cm7
-    access:
-      execute: false
+    - cm4
   - !Ram
     name: RAM_D1
     range:
@@ -8157,17 +8869,7 @@ variants:
       end: 0x24080000
     cores:
     - cm7
-    access:
-      execute: false
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - cm7
-    access:
-      execute: false
+    - cm4
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -8197,22 +8899,32 @@ variants:
       ap: 3
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - cm7
+    - cm4
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - cm7
+    - cm4
     access:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
     cores:
+    - cm7
     - cm4
     access:
       write: false
@@ -8221,29 +8933,26 @@ variants:
     name: RAM_D2
     range:
       start: 0x10000000
-      end: 0x10030000
-    cores:
-    - cm4
-    access:
-      execute: false
-  - !Ram
-    name: RAM_D2S3
-    range:
-      start: 0x10040000
       end: 0x10048000
     cores:
+    - cm7
     - cm4
-    access:
-      execute: false
   - !Ram
-    name: DTCMRAM
+    name: RAM_D3
+    range:
+      start: 0x18000000
+      end: 0x18010000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - cm7
-    access:
-      execute: false
+    - cm4
   - !Ram
     name: RAM_D1
     range:
@@ -8251,17 +8960,7 @@ variants:
       end: 0x24080000
     cores:
     - cm7
-    access:
-      execute: false
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - cm7
-    access:
-      execute: false
+    - cm4
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -8291,22 +8990,32 @@ variants:
       ap: 3
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - cm7
+    - cm4
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - cm7
+    - cm4
     access:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
     cores:
+    - cm7
     - cm4
     access:
       write: false
@@ -8315,29 +9024,26 @@ variants:
     name: RAM_D2
     range:
       start: 0x10000000
-      end: 0x10030000
-    cores:
-    - cm4
-    access:
-      execute: false
-  - !Ram
-    name: RAM_D2S3
-    range:
-      start: 0x10040000
       end: 0x10048000
     cores:
+    - cm7
     - cm4
-    access:
-      execute: false
   - !Ram
-    name: DTCMRAM
+    name: RAM_D3
+    range:
+      start: 0x18000000
+      end: 0x18010000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - cm7
-    access:
-      execute: false
+    - cm4
   - !Ram
     name: RAM_D1
     range:
@@ -8345,17 +9051,7 @@ variants:
       end: 0x24080000
     cores:
     - cm7
-    access:
-      execute: false
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - cm7
-    access:
-      execute: false
+    - cm4
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -8385,22 +9081,32 @@ variants:
       ap: 3
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - cm7
+    - cm4
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
     cores:
     - cm7
+    - cm4
     access:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
     cores:
+    - cm7
     - cm4
     access:
       write: false
@@ -8409,29 +9115,26 @@ variants:
     name: RAM_D2
     range:
       start: 0x10000000
-      end: 0x10030000
-    cores:
-    - cm4
-    access:
-      execute: false
-  - !Ram
-    name: RAM_D2S3
-    range:
-      start: 0x10040000
       end: 0x10048000
     cores:
+    - cm7
     - cm4
-    access:
-      execute: false
   - !Ram
-    name: DTCMRAM
+    name: RAM_D3
+    range:
+      start: 0x18000000
+      end: 0x18010000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - cm7
-    access:
-      execute: false
+    - cm4
   - !Ram
     name: RAM_D1
     range:
@@ -8439,17 +9142,7 @@ variants:
       end: 0x24080000
     cores:
     - cm7
-    access:
-      execute: false
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - cm7
-    access:
-      execute: false
+    - cm4
   flash_algorithms:
   - stm32h7x_2048
   - stm32h7b3i_eval_fmc-nor
@@ -8618,8 +9311,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -8629,7 +9329,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8180000
@@ -8639,31 +9339,17 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: SRAM
     range:
       start: 0x24000000
       end: 0x24100000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38008000
     cores:
     - main
   flash_algorithms:
@@ -8762,8 +9448,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -8773,7 +9466,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8180000
@@ -8783,31 +9476,17 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: SRAM
     range:
       start: 0x24000000
       end: 0x24100000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38008000
     cores:
     - main
   flash_algorithms:
@@ -8906,8 +9585,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -8917,7 +9603,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
@@ -8927,31 +9613,17 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: SRAM
     range:
       start: 0x24000000
       end: 0x24100000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38008000
     cores:
     - main
   flash_algorithms:
@@ -9050,8 +9722,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -9061,7 +9740,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
@@ -9071,31 +9750,17 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: SRAM
     range:
       start: 0x24000000
       end: 0x24100000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38008000
     cores:
     - main
   flash_algorithms:
@@ -9338,8 +10003,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -9349,7 +10021,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8180000
@@ -9359,31 +10031,17 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: SRAM
     range:
       start: 0x24000000
       end: 0x24100000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38008000
     cores:
     - main
   flash_algorithms:
@@ -9410,8 +10068,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -9421,7 +10086,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
@@ -9431,31 +10096,17 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: SRAM
     range:
       start: 0x24000000
       end: 0x24100000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38008000
     cores:
     - main
   flash_algorithms:
@@ -9554,8 +10205,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -9565,7 +10223,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8180000
@@ -9575,31 +10233,17 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: SRAM
     range:
       start: 0x24000000
       end: 0x24100000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38008000
     cores:
     - main
   flash_algorithms:
@@ -9626,8 +10270,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -9637,7 +10288,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
@@ -9647,31 +10298,17 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: SRAM
     range:
       start: 0x24000000
       end: 0x24100000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38008000
     cores:
     - main
   flash_algorithms:
@@ -9698,8 +10335,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -9709,7 +10353,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8180000
@@ -9719,31 +10363,17 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: SRAM
     range:
       start: 0x24000000
       end: 0x24100000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38008000
     cores:
     - main
   flash_algorithms:
@@ -9842,8 +10472,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -9853,7 +10490,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8180000
@@ -9863,31 +10500,17 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: SRAM
     range:
       start: 0x24000000
       end: 0x24100000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38008000
     cores:
     - main
   flash_algorithms:
@@ -9986,8 +10609,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -9997,7 +10627,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
@@ -10007,31 +10637,17 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: SRAM
     range:
       start: 0x24000000
       end: 0x24100000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38008000
     cores:
     - main
   flash_algorithms:
@@ -10130,8 +10746,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -10141,7 +10764,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
@@ -10151,31 +10774,17 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: SRAM
     range:
       start: 0x24000000
       end: 0x24100000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38008000
     cores:
     - main
   flash_algorithms:
@@ -10274,8 +10883,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -10285,7 +10901,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8180000
@@ -10295,31 +10911,17 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: SRAM
     range:
       start: 0x24000000
       end: 0x24100000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38008000
     cores:
     - main
   flash_algorithms:
@@ -10418,8 +11020,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -10429,7 +11038,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
@@ -10439,31 +11048,17 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: SRAM
     range:
       start: 0x24000000
       end: 0x24100000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38008000
     cores:
     - main
   flash_algorithms:
@@ -10562,8 +11157,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -10573,31 +11175,17 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: SRAM
     range:
       start: 0x24000000
       end: 0x24100000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38008000
     cores:
     - main
   flash_algorithms:
@@ -10686,8 +11274,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -10697,31 +11292,17 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: SRAM
     range:
       start: 0x24000000
       end: 0x24100000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38008000
     cores:
     - main
   flash_algorithms:
@@ -10748,8 +11329,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -10759,31 +11347,17 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: SRAM
     range:
       start: 0x24000000
       end: 0x24100000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38008000
     cores:
     - main
   flash_algorithms:
@@ -10810,8 +11384,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -10821,31 +11402,17 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: SRAM
     range:
       start: 0x24000000
       end: 0x24100000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38008000
     cores:
     - main
   flash_algorithms:
@@ -10872,8 +11439,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -10883,31 +11457,17 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: SRAM
     range:
       start: 0x24000000
       end: 0x24100000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38008000
     cores:
     - main
   flash_algorithms:
@@ -11006,8 +11566,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -11017,7 +11584,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
@@ -11027,31 +11594,17 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: SRAM
     range:
       start: 0x24000000
       end: 0x24100000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38008000
     cores:
     - main
   flash_algorithms:
@@ -11150,8 +11703,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -11161,7 +11721,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
@@ -11171,31 +11731,17 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: SRAM
     range:
       start: 0x24000000
       end: 0x24100000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38008000
     cores:
     - main
   flash_algorithms:
@@ -11366,8 +11912,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -11377,7 +11930,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
@@ -11387,31 +11940,17 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: SRAM
     range:
       start: 0x24000000
       end: 0x24100000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38008000
     cores:
     - main
   flash_algorithms:
@@ -11510,8 +12049,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -11521,7 +12067,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
@@ -11531,31 +12077,17 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: SRAM
     range:
       start: 0x24000000
       end: 0x24100000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38008000
     cores:
     - main
   flash_algorithms:
@@ -11582,8 +12114,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -11593,7 +12132,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
@@ -11603,31 +12142,17 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: SRAM
     range:
       start: 0x24000000
       end: 0x24100000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38008000
     cores:
     - main
   flash_algorithms:
@@ -11726,8 +12251,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -11737,7 +12269,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
@@ -11747,31 +12279,17 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: SRAM
     range:
       start: 0x24000000
       end: 0x24100000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38008000
     cores:
     - main
   flash_algorithms:
@@ -11870,8 +12388,15 @@ variants:
       ap: 0
       psel: 0x0
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
   - !Nvm
-    name: FLASH_Bank1
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -11881,7 +12406,7 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: FLASH_Bank2
+    name: BANK_2
     range:
       start: 0x8100000
       end: 0x8200000
@@ -11891,31 +12416,17 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: DTCMRAM
+    name: DTCM
     range:
       start: 0x20000000
       end: 0x20020000
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: SRAM
     range:
       start: 0x24000000
       end: 0x24100000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38008000
     cores:
     - main
   flash_algorithms:
