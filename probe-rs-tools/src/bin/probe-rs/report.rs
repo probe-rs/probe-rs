@@ -1,9 +1,4 @@
-use std::{
-    env::ArgsOs,
-    fs,
-    io::Write,
-    path::{Path, PathBuf},
-};
+use std::{env::ArgsOs, fs, io::Write, path::Path};
 
 use anyhow::{Context, Error, Result};
 use probe_rs_mi::meta::Meta;
@@ -13,21 +8,21 @@ use zip::write::FileOptions;
 use crate::util::meta::current_meta;
 
 #[derive(Serialize)]
-pub struct Report {
+pub struct Report<'a> {
     pub meta: Meta,
     pub command: Vec<String>,
-    pub elf: Option<PathBuf>,
-    pub log: Option<PathBuf>,
+    pub elf: Option<&'a Path>,
+    pub log: Option<&'a Path>,
     #[serde(serialize_with = "serialize_anyhow")]
     pub error: anyhow::Error,
 }
 
-impl Report {
+impl<'a> Report<'a> {
     pub fn new(
         command: ArgsOs,
         error: anyhow::Error,
-        elf: Option<PathBuf>,
-        log: Option<PathBuf>,
+        elf: Option<&'a Path>,
+        log: Option<&'a Path>,
     ) -> Result<Self> {
         Ok(Self {
             meta: current_meta()?,
@@ -41,18 +36,19 @@ impl Report {
     pub fn zip(&self, path: &Path) -> Result<()> {
         let file = fs::File::create(path)
             .with_context(|| format!("{} could not be opened", path.display()))?;
+
         let mut archive = zip::ZipWriter::new(file);
         let options = FileOptions::<()>::default();
 
         archive.start_file("meta.json", options)?;
-        serde_json::to_writer_pretty(&mut archive, &self)?;
+        serde_json::to_writer_pretty(&mut archive, self)?;
 
-        if let Some(elf) = &self.elf {
+        if let Some(elf) = self.elf {
             archive.start_file("elf.elf", options)?;
             archive.write_all(&fs::read(elf)?)?;
         }
 
-        if let Some(log) = &self.log {
+        if let Some(log) = self.log {
             archive.start_file("log.txt", options)?;
             archive.write_all(&fs::read(log)?)?;
         }

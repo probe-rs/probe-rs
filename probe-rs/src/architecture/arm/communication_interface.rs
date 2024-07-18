@@ -814,7 +814,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
         &mut self,
         ap: &FullyQualifiedApAddress,
         address: u8,
-    ) -> std::result::Result<u32, ArmError> {
+    ) -> Result<u32, ArmError> {
         self.select_ap_and_ap_bank(ap, address)?;
 
         let result = self

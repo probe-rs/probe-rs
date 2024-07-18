@@ -3,7 +3,6 @@ mod report;
 mod util;
 
 use std::cmp::Reverse;
-use std::ffi::OsStr;
 use std::fs;
 use std::path::Path;
 use std::str::FromStr;
@@ -204,15 +203,12 @@ fn prune_logs(directory: &Path) -> Result<(), anyhow::Error> {
     // suffix.
     let mut log_files = fs::read_dir(directory)?
         .filter_map(|entry| {
-            if let Ok(entry) = entry {
-                let path = entry.path();
-                if path.extension() == Some(OsStr::new("log")) {
-                    let metadata = fs::metadata(&path).ok()?;
-                    let last_modified = metadata.created().ok()?;
-                    Some((path, last_modified))
-                } else {
-                    None
-                }
+            let entry = entry.ok()?;
+            let path = entry.path();
+            if path.extension().map_or(false, |e| e == "log") {
+                let metadata = fs::metadata(&path).ok()?;
+                let last_modified = metadata.created().ok()?;
+                Some((path, last_modified))
             } else {
                 None
             }
@@ -296,14 +292,15 @@ fn main() -> Result<()> {
     } else {
         None
     };
+    let log_path = log_path.as_deref();
 
     // the DAP server has special logging requirements. Run it before initializing logging,
     // so it can do its own special init.
     if let Subcommand::DapServer(cmd) = matches.subcommand {
-        return cmd::dap_server::run(cmd, &lister, utc_offset, log_path.as_deref());
+        return cmd::dap_server::run(cmd, &lister, utc_offset, log_path);
     }
 
-    let _logger_guard = setup_logging(log_path.as_deref(), None);
+    let _logger_guard = setup_logging(log_path, None);
 
     let mut elf = None;
     let result = match matches.subcommand {
@@ -334,47 +331,51 @@ fn main() -> Result<()> {
         Subcommand::Mi(cmd) => cmd.run(),
     };
 
-    compile_report(result, matches.report, elf, log_path.clone())
+    compile_report(result, matches.report, elf, log_path)
 }
 
 fn compile_report(
     result: Result<()>,
     path: Option<PathBuf>,
     elf: Option<PathBuf>,
-    log_path: Option<PathBuf>,
+    log_path: Option<&Path>,
 ) -> Result<()> {
-    if let Err(error) = result {
-        if let Some(path) = path {
-            let command = std::env::args_os();
-            let report = Report::new(command, error, elf, log_path)?;
+    let Err(error) = result else {
+        return Ok(());
+    };
 
-            report.zip(&path)?;
-            eprintln!(
-                "{}",
-                format!(
-                    "The compiled report has been written to {}.",
-                    path.display()
-                )
-                .blue()
-            );
-            eprintln!("{}", "Please upload it with your issue on Github.".blue());
-            eprintln!(
-                "{}",
-                "You can create an issue by following this URL:".blue()
-            );
-            let base = "https://github.com/probe-rs/probe-rs/issues/new";
-            let meta = format!("```json\n{}\n```", serde_json::to_string_pretty(&report)?);
-            let body = urlencoding::encode(&meta);
-            let error = format!("{:#}", report.error);
-            let title = urlencoding::encode(&error);
-            eprintln!("{base}?labels=bug&title={title}&body={body}");
-            Ok(())
-        } else {
-            Err(error)
-        }
-    } else {
-        Ok(())
-    }
+    let Some(path) = path else {
+        return Err(error);
+    };
+
+    let command = std::env::args_os();
+    let report = Report::new(command, error, elf.as_deref(), log_path)?;
+
+    report.zip(&path)?;
+
+    eprintln!(
+        "{}",
+        format!(
+            "The compiled report has been written to {}.",
+            path.display()
+        )
+        .blue()
+    );
+    eprintln!("{}", "Please upload it with your issue on Github.".blue());
+    eprintln!(
+        "{}",
+        "You can create an issue by following this URL:".blue()
+    );
+
+    let base = "https://github.com/probe-rs/probe-rs/issues/new";
+    let meta = format!("```json\n{}\n```", serde_json::to_string_pretty(&report)?);
+    let body = urlencoding::encode(&meta);
+    let error = format!("{:#}", report.error);
+    let title = urlencoding::encode(&error);
+
+    eprintln!("{base}?labels=bug&title={title}&body={body}");
+
+    Ok(())
 }
 
 #[cfg(test)]
