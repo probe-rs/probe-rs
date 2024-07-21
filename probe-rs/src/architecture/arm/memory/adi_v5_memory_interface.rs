@@ -52,7 +52,8 @@ pub trait ArmProbe: SwdSequence {
 
     /// Read a block of 8bit words at `address`. May use 32 bit memory access,
     /// so should only be used if reading memory locations that don't have side
-    /// effects. Generally faster than [`MemoryInterface::read_8`].
+    /// effects. Generally faster than
+    /// [`MemoryInterface::read_8()`][crate::MemoryInterface::read_8()].
     fn read(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError> {
         let len = data.len();
         if address % 4 == 0 && len % 4 == 0 {
@@ -106,7 +107,8 @@ pub trait ArmProbe: SwdSequence {
 
     /// Write a block of 8bit words to `address`. May use 32 bit memory access,
     /// so it should only be used if writing memory locations that don't have side
-    /// effects. Generally faster than [`MemoryInterface::write_8`].
+    /// effects. Generally faster than
+    /// [`MemoryInterface::write_8()`][crate::MemoryInterface::write_8()].
     fn write(&mut self, mut address: u64, mut data: &[u8]) -> Result<(), ArmError> {
         let len = data.len();
         // Number of unaligned bytes at the start
@@ -163,7 +165,7 @@ pub trait ArmProbe: SwdSequence {
 
     fn supports_8bit_transfers(&self) -> Result<bool, ArmError>;
 
-    /// Returns the underlying [`ApAddress`].
+    /// Returns the underlying [`MemoryAp`].
     fn ap(&mut self) -> MemoryAp;
 
     fn get_arm_communication_interface(
@@ -837,7 +839,7 @@ where
         Ok(())
     }
 
-    /// Returns the underlying [`ApAddress`].
+    /// Returns the underlying [`MemoryAp`].
     fn ap(&mut self) -> MemoryAp {
         self.memory_ap.clone()
     }

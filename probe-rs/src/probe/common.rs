@@ -105,7 +105,7 @@ fn starts_to_lengths(starts: &[usize], total: usize) -> Vec<usize> {
 /// Because we don't know how many TAPs there are, we scan until we find
 /// a 32-bit IDCODE of all 1s, which comes after the last TAP in the chain.
 ///
-/// Returns Vec<Option<IdCode>>, with None for TAPs in BYPASS.
+/// Returns `Vec<Option<IdCode>>`, with None for TAPs in BYPASS.
 pub(crate) fn extract_idcodes(
     mut dr: &BitSlice<u8>,
 ) -> Result<Vec<Option<IdCode>>, ScanChainError> {
@@ -164,9 +164,9 @@ pub(crate) fn common_sequence<'a, S: BitStore>(
 /// they must be provided, and are then checked.
 ///
 /// This implementation is a port of the algorithm from:
-/// https://github.com/GlasgowEmbedded/glasgow/blob/30dc11b2/software/glasgow/applet/interface/jtag_probe/__init__.py#L712
+/// <https://github.com/GlasgowEmbedded/glasgow/blob/30dc11b2/software/glasgow/applet/interface/jtag_probe/__init__.py#L712>
 ///
-/// Returns Vec<usize>, with an entry for each TAP.
+/// Returns `Vec<usize>`, with an entry for each TAP.
 pub(crate) fn extract_ir_lengths(
     ir: &BitSlice<u8>,
     n_taps: usize,

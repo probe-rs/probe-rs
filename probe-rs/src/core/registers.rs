@@ -445,7 +445,7 @@ impl TryInto<u128> for RegisterValue {
 }
 
 /// Extension trait to support converting errors
-/// from TryInto calls into [probe_rs::Error]
+/// from TryInto calls into [Error]
 pub trait RegisterValueResultExt<T> {
     /// Convert [Result<T,E>] into `Result<T, probe_rs::Error>`
     fn into_crate_error(self) -> Result<T, Error>;

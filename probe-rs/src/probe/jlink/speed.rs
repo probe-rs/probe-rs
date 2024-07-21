@@ -33,7 +33,7 @@ impl SpeedInfo {
 /// Target communication speed setting.
 ///
 /// This determines the clock frequency of the target communication. Supported speeds for the
-/// currently selected target interface can be fetched via [`JLink::read_speeds`].
+/// currently selected target interface can be fetched via [`JLink::read_interface_speeds()`].
 #[derive(Debug, Copy, Clone)]
 pub struct SpeedConfig {
     raw: u16,
@@ -71,7 +71,7 @@ impl fmt::Display for SpeedConfig {
 impl JLink {
     /// Reads the probe's communication speed information about the currently selected interface.
     ///
-    /// Supported speeds may differ between [`Interface`]s, so the right interface needs to be
+    /// Supported speeds may differ between interfaces, so the right interface needs to be
     /// selected for the returned value to make sense.
     ///
     /// This requires the probe to support [`Capability::SpeedInfo`].

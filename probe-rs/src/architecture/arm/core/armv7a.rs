@@ -275,7 +275,7 @@ impl<'probe> Armv7a<'probe> {
         self.prepare_for_clobber(0)
     }
 
-    /// Save r<n> if needed before it gets clobbered by instruction execution
+    /// Save `r<n>` if needed before it gets clobbered by instruction execution
     fn prepare_for_clobber(&mut self, reg: usize) -> Result<(), Error> {
         if self.state.register_cache[reg].is_none() {
             // cache reg since we're going to clobber it

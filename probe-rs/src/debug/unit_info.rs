@@ -213,7 +213,8 @@ impl UnitInfo {
             while let Ok(Some(attr)) = variable_attributes.next() {
                 match attr.name() {
                     gimli::DW_AT_location | gimli::DW_AT_data_member_location => {
-                        // The child_variable.location is calculated with attribute gimli::DW_AT_type, to ensure it gets done before DW_AT_type is processed
+                        // The child_variable.location is calculated with attribute gimli::DW_AT_type, to ensure it
+                        // gets done before DW_AT_type is processed
                     }
                     gimli::DW_AT_name => {
                         // This was done before we started looping through attributes, so we can ignore it.
@@ -238,10 +239,13 @@ impl UnitInfo {
                         // TODO: Implement [documented RUST extensions to DWARF standard](https://rustc-dev-guide.rust-lang.org/debugging-support-in-rustc.html?highlight=dwarf#dwarf-and-rustc)
                     }
                     gimli::DW_AT_type => {
-                        // The rules to calculate the type of a child variable are complex, and depend on a number of other attributes.
-                        // Depending on the presence and value of these attributes, the [Variable::memory_location] may need to be calculated differently.
+                        // The rules to calculate the type of a child variable are complex, and depend on a number of
+                        // other attributes.
+                        // Depending on the presence and value of these attributes, the [Variable::memory_location] may
+                        // need to be calculated differently.
                         // - The `DW_AT_type` of the parent (e.g. is it a pointer, or a struct, or an array, etc.).
-                        // - The `DW_AT_address_class of the child (we need to know if it is present, and if it has a value of 0 - unspecified)
+                        // - The `DW_AT_address_class of the child (we need to know if it is present, and if it has a
+                        //   value of 0 - unspecified)
                         // - The `DW_AT_data_member_location` of the child.
                         // - The `DW_AT_location` of the child.
                         // - The `DW_AT_byte_size` of the child.
@@ -289,7 +293,8 @@ impl UnitInfo {
                         child_variable.set_value(variable_value)
                     }
                     gimli::DW_AT_alignment => {
-                        // TODO: Figure out when (if at all) we need to do anything with DW_AT_alignment for the purposes of decoding data values.
+                        // TODO: Figure out when (if at all) we need to do anything with DW_AT_alignment for the
+                        // purposes of decoding data values.
                     }
                     gimli::DW_AT_artificial => {
                         // These are references for entries like discriminant values of `VariantParts`.
@@ -547,21 +552,31 @@ impl UnitInfo {
                     }
                 }
                 gimli::DW_TAG_variant_part => {
-                    // We need to recurse through the children, to find the DW_TAG_variant with discriminant matching the DW_TAG_variant,
-                    // and ONLY add it's children to the parent variable.
-                    // The structure looks like this (there are other nodes in the structure that we use and discard before we get here):
+                    // We need to recurse through the children, to find the DW_TAG_variant with discriminant matching
+                    // the DW_TAG_variant, and ONLY add it's children to the parent variable.
+                    // The structure looks like this (there are other nodes in the structure that we use and discard
+                    // before we get here):
                     // Level 1: --> An actual variable that has a variant value
-                    //      Level 2: --> this DW_TAG_variant_part node (some child nodes are used to calc the active Variant discriminant)
-                    //          Level 3: --> Some DW_TAG_variant's that have discriminant values to be matched against the discriminant
-                    //              Level 4: --> The actual variables, with matching discriminant, which will be added to `parent_variable`
-                    // TODO: Handle Level 3 nodes that belong to a DW_AT_discr_list, instead of having a discreet DW_AT_discr_value
+                    //      Level 2: --> this DW_TAG_variant_part node (some child nodes are used to calc the active
+                    //                   Variant discriminant)
+                    //          Level 3: --> Some DW_TAG_variant's that have discriminant values to be matched against
+                    //                       the discriminant
+                    //              Level 4: --> The actual variables, with matching discriminant, which will be added
+                    //                           to `parent_variable`
+                    // TODO: Handle Level 3 nodes that belong to a DW_AT_discr_list, instead of having a discreet
+                    // DW_AT_discr_value
                     let mut child_variable =
                         cache.create_variable(parent_variable.variable_key, Some(self))?;
                     // To determine the discriminant, we use the following rules:
-                    // - If there is no DW_AT_discr, then there will be a single DW_TAG_variant, and this will be the matching value. In the code here, we assign a default value of u64::MAX to both, so that they will be matched as belonging together (https://dwarfstd.org/ShowIssue.php?issue=180517.2)
-                    // - TODO: The [DWARF] standard, 5.7.10, allows for a case where there is no DW_AT_discr attribute, but a DW_AT_type to represent the tag. I have not seen that generated from RUST yet.
-                    // - If there is a DW_AT_discr that has a value, then this is a reference to the member entry for the discriminant. This value will be resolved to match against the appropriate DW_TAG_variant.
-                    // - TODO: The [DWARF] standard, 5.7.10, allows for a DW_AT_discr_list, but I have not seen that generated from RUST yet.
+                    // - If there is no DW_AT_discr, then there will be a single DW_TAG_variant, and this will be the
+                    //   matching value. In the code here, we assign a default value of u64::MAX to both, so that they
+                    //   will be matched as belonging together (https://dwarfstd.org/ShowIssue.php?issue=180517.2)
+                    // - TODO: The [DWARF] standard, 5.7.10, allows for a case where there is no DW_AT_discr attribute,
+                    //   but a DW_AT_type to represent the tag. I have not seen that generated from RUST yet.
+                    // - If there is a DW_AT_discr that has a value, then this is a reference to the member entry for
+                    //   the discriminant. This value will be resolved to match against the appropriate DW_TAG_variant.
+                    // - TODO: The [DWARF] standard, 5.7.10, allows for a DW_AT_discr_list, but I have not seen that
+                    //   generated from RUST yet.
                     parent_variable.role = VariantRole::VariantPart(u64::MAX);
                     self.process_tree_node_attributes(
                         debug_info,
@@ -572,7 +587,8 @@ impl UnitInfo {
                         cache,
                         frame_info,
                     )?;
-                    // At this point we have everything we need (It has updated the parent's `role`) from the child_variable, so elimnate it before we continue ...
+                    // At this point we have everything we need (It has updated the parent's `role`) from the
+                    // child_variable, so elimnate it before we continue ...
                     cache.remove_cache_entry(child_variable.variable_key)?;
                     self.process_tree(
                         debug_info,
@@ -584,7 +600,8 @@ impl UnitInfo {
                     )?;
                 }
 
-                // Variant is a child of a structure, and one of them should have a discriminant value to match the DW_TAG_variant_part
+                // Variant is a child of a structure, and one of them should have a discriminant value to match the
+                // DW_TAG_variant_part
                 gimli::DW_TAG_variant => {
                     // We only need to do this if we have not already found our variant,
                     if !cache.has_children(parent_variable) {
@@ -653,7 +670,8 @@ impl UnitInfo {
                     };
                     let program_counter = program_counter.try_into()?;
 
-                    // Determine the low and high ranges for which this DIE and children are in scope. These can be specified discreetly, or in ranges.
+                    // Determine the low and high ranges for which this DIE and children are in scope. These can be
+                    // specified discreetly, or in ranges.
                     let mut in_scope = false;
                     if let Ok(Some(low_pc_attr)) = child_node.entry().attr(gimli::DW_AT_low_pc) {
                         let low_pc = match low_pc_attr.value() {
@@ -714,7 +732,8 @@ impl UnitInfo {
                     }
                     if in_scope {
                         // This is IN scope.
-                        // Recursively process each child, but pass the parent_variable, so that we don't create intermediate nodes for scope identifiers.
+                        // Recursively process each child, but pass the parent_variable, so that we don't create
+                        // intermediate nodes for scope identifiers.
                         self.process_tree(
                             debug_info,
                             child_node,
@@ -724,14 +743,18 @@ impl UnitInfo {
                             frame_info,
                         )?;
                     } else {
-                        // This lexical block is NOT in scope, but other children of this parent may well be in scope, so do NOT invalidate the parent_variable.
+                        // This lexical block is NOT in scope, but other children of this parent may well be in scope,
+                        // so do NOT invalidate the parent_variable.
                     }
                 }
                 gimli::DW_TAG_template_type_parameter => {
                     // The parent node for Rust generic type parameter
-                    // These show up as a child of structures they belong to and points to the type that matches the template.
-                    // They are followed by a sibling of `DW_TAG_member` with name '__0' that has all the attributes needed to resolve the value.
-                    // TODO: If there are multiple types supported, then I suspect there will be additional `DW_TAG_member` siblings. We will need to match those correctly.
+                    // These show up as a child of structures they belong to and points to the type that matches the
+                    // template.
+                    // They are followed by a sibling of `DW_TAG_member` with name '__0' that has all the attributes
+                    // needed to resolve the value.
+                    // TODO: If there are multiple types supported, then I suspect there will be additional
+                    // `DW_TAG_member` siblings. We will need to match those correctly.
                 }
 
                 // Inlined subroutines are handled at the StackFame level
@@ -747,7 +770,8 @@ impl UnitInfo {
                 | gimli::DW_TAG_typedef
                 | gimli::DW_TAG_const_type
                 | gimli::DW_TAG_volatile_type => {
-                    // These will be processed elsewhere, or not at all, until we discover a use case that needs to be implemented.
+                    // These will be processed elsewhere, or not at all, until we discover a use case that needs to be
+                    // implemented.
                 }
                 unimplemented => {
                     tracing::debug!(
@@ -868,7 +892,8 @@ impl UnitInfo {
         }
     }
 
-    /// Compute the discriminant value of a DW_TAG_variant variable. If it is not explicitly captured in the DWARF, then it is the default value.
+    /// Compute the discriminant value of a DW_TAG_variant variable. If it is not explicitly captured in the DWARF,
+    /// then it is the default value.
     pub(crate) fn extract_variant_discriminant(
         &self,
         node: &gimli::EntriesTreeNode<GimliReader>,
@@ -890,7 +915,8 @@ impl UnitInfo {
                 VariantRole::Variant(variant)
             }
             Ok(None) => {
-                // In the case where the variable is a DW_TAG_variant, but has NO DW_AT_discr_value, then this is the "default" to be used.
+                // In the case where the variable is a DW_TAG_variant, but has NO DW_AT_discr_value, then this is the
+                // "default" to be used.
                 VariantRole::Variant(u64::MAX)
             }
             Err(_error) => {
@@ -906,7 +932,11 @@ impl UnitInfo {
 
     /// Compute the type (base to complex) of a variable. Only base types have values.
     /// Complex types are references to node trees, that require traversal in similar ways to other DIE's like functions.
-    /// This means both [`get_function_variables()`] and [`extract_type()`] will call the recursive [`process_tree()`] method to build an integrated `tree` of variables with types and values.
+    /// This means [`extract_type()`][e] will call the recursive [`process_tree()`][p] method to build an integrated
+    /// `tree` of variables with types and values.
+    ///
+    /// [e]: Self::extract_type()
+    /// [p]: Self::process_tree()
     #[allow(clippy::too_many_arguments)]
     fn extract_type(
         &self,

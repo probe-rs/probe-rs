@@ -366,7 +366,7 @@ impl fmt::Debug for JLink {
 
 impl JLink {
     /// Returns the supported J-Link capabilities.
-    pub fn capabilites(&self) -> Capabilities {
+    pub fn capabilities(&self) -> Capabilities {
         self.caps
     }
 

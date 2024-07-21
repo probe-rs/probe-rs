@@ -47,7 +47,7 @@ pub struct XtensaCoreState {
 }
 
 impl XtensaCoreState {
-    /// Creates a new [`XtensaState`].
+    /// Creates a new [`XtensaCoreState`].
     pub(crate) fn new() -> Self {
         Self {
             breakpoints_enabled: false,
