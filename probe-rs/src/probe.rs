@@ -968,6 +968,11 @@ pub trait JTAGAccess: DebugProbe {
         len: u32,
     ) -> Result<Vec<u8>, DebugProbeError>;
 
+    /// Shift a value into the DR JTAG register
+    ///
+    /// The data shifted out of the DR register will be returned.
+    fn write_dr(&mut self, data: &[u8], len: u32) -> Result<Vec<u8>, DebugProbeError>;
+
     /// Executes a sequence of JTAG commands.
     fn write_register_batch(
         &mut self,
@@ -981,6 +986,17 @@ pub trait JTAGAccess: DebugProbe {
                 JtagCommand::WriteRegister(write) => {
                     match self
                         .write_register(write.address, &write.data, write.len)
+                        .map_err(crate::Error::Probe)
+                        .and_then(|response| (write.transform)(write, response))
+                    {
+                        Ok(res) => results.push(idx, res),
+                        Err(e) => return Err(BatchExecutionError::new(e, results)),
+                    }
+                }
+
+                JtagCommand::ShiftDr(write) => {
+                    match self
+                        .write_dr(&write.data, write.len)
                         .map_err(crate::Error::Probe)
                         .and_then(|response| (write.transform)(write, response))
                     {
@@ -1011,16 +1027,37 @@ pub struct JtagWriteCommand {
     pub transform: fn(&JtagWriteCommand, Vec<u8>) -> Result<CommandResult, crate::Error>,
 }
 
+/// A low-level JTAG register write command.
+#[derive(Debug, Clone)]
+pub struct ShiftDrCommand {
+    /// The data to be written to DR.
+    pub data: Vec<u8>,
+
+    /// The number of bits in `data`
+    pub len: u32,
+
+    /// A function to transform the raw response into a [`CommandResult`]
+    pub transform: fn(&ShiftDrCommand, Vec<u8>) -> Result<CommandResult, crate::Error>,
+}
+
 /// A low-level JTAG command.
 #[derive(Debug, Clone)]
 pub enum JtagCommand {
     /// Write a register.
     WriteRegister(JtagWriteCommand),
+    /// Shift a value into the DR register.
+    ShiftDr(ShiftDrCommand),
 }
 
 impl From<JtagWriteCommand> for JtagCommand {
     fn from(cmd: JtagWriteCommand) -> Self {
         JtagCommand::WriteRegister(cmd)
+    }
+}
+
+impl From<ShiftDrCommand> for JtagCommand {
+    fn from(cmd: ShiftDrCommand) -> Self {
+        JtagCommand::ShiftDr(cmd)
     }
 }
 

@@ -506,6 +506,10 @@ impl JTAGAccess for WchLink {
             _ => unreachable!("unknown register address 0x{:08x}", address),
         }
     }
+
+    fn write_dr(&mut self, _data: &[u8], _len: u32) -> Result<Vec<u8>, DebugProbeError> {
+        unimplemented!()
+    }
 }
 
 fn get_wlink_info(device: &DeviceInfo) -> Option<DebugProbeInfo> {

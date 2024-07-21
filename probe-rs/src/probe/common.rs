@@ -738,6 +738,19 @@ impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
         Ok(result)
     }
 
+    fn write_dr(&mut self, data: &[u8], len: u32) -> Result<Vec<u8>, DebugProbeError> {
+        shift_dr(self, data, len as usize, true)?;
+
+        let mut response = self.read_captured_bits()?;
+
+        // Implementations don't need to align to keep the code simple
+        response.force_align();
+        let result = response.into_vec();
+
+        tracing::trace!("recieve_write_dr result: {:?}", result);
+        Ok(result)
+    }
+
     #[tracing::instrument(skip(self, writes))]
     fn write_register_batch(
         &mut self,
@@ -758,6 +771,15 @@ impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
                         idx.should_capture(),
                     )
                     .map_err(|e| BatchExecutionError::new(e.into(), DeferredResultSet::new()))?;
+
+                    bits.push((idx, command, op));
+                }
+
+                JtagCommand::ShiftDr(write) => {
+                    let op = shift_dr(self, &write.data, write.len as usize, idx.should_capture())
+                        .map_err(|e| {
+                            BatchExecutionError::new(e.into(), DeferredResultSet::new())
+                        })?;
 
                     bits.push((idx, command, op));
                 }
@@ -788,6 +810,10 @@ impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
                             Err(e) => return Err(BatchExecutionError::new(e, responses)),
                         }
                     }
+                    JtagCommand::ShiftDr(command) => match (command.transform)(command, response) {
+                        Ok(response) => responses.push(idx, response),
+                        Err(e) => return Err(BatchExecutionError::new(e, responses)),
+                    },
                 }
             }
 

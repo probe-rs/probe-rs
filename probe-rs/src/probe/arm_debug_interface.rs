@@ -1419,6 +1419,10 @@ mod test {
 
             Ok(ret.to_le_bytes()[..5].to_vec())
         }
+
+        fn write_dr(&mut self, _data: &[u8], _len: u32) -> Result<Vec<u8>, DebugProbeError> {
+            unimplemented!()
+        }
     }
 
     impl RawProtocolIo for MockJaylink {
