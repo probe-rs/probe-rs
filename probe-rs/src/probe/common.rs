@@ -760,30 +760,25 @@ impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
         let t1 = std::time::Instant::now();
         tracing::debug!("Preparing {} writes...", writes.len());
         for (idx, command) in writes.iter() {
-            match command {
-                JtagCommand::WriteRegister(write) => {
-                    // If an error happens during prep, return no results as chip will be in an inconsistent state
-                    let op = prepare_write_register(
-                        self,
-                        write.address,
-                        &write.data,
-                        write.len,
-                        idx.should_capture(),
-                    )
-                    .map_err(|e| BatchExecutionError::new(e.into(), DeferredResultSet::new()))?;
-
-                    bits.push((idx, command, op));
-                }
+            let result = match command {
+                JtagCommand::WriteRegister(write) => prepare_write_register(
+                    self,
+                    write.address,
+                    &write.data,
+                    write.len,
+                    idx.should_capture(),
+                ),
 
                 JtagCommand::ShiftDr(write) => {
-                    let op = shift_dr(self, &write.data, write.len as usize, idx.should_capture())
-                        .map_err(|e| {
-                            BatchExecutionError::new(e.into(), DeferredResultSet::new())
-                        })?;
-
-                    bits.push((idx, command, op));
+                    shift_dr(self, &write.data, write.len as usize, idx.should_capture())
                 }
-            }
+            };
+
+            // If an error happens during prep, return no results as chip will be in an inconsistent state
+            let op =
+                result.map_err(|e| BatchExecutionError::new(e.into(), DeferredResultSet::new()))?;
+
+            bits.push((idx, command, op));
         }
 
         tracing::debug!("Sending to chip...");
@@ -803,17 +798,14 @@ impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
                 reg_bits.force_align();
                 let response = reg_bits.into_vec();
 
-                match command {
-                    JtagCommand::WriteRegister(command) => {
-                        match (command.transform)(command, response) {
-                            Ok(response) => responses.push(idx, response),
-                            Err(e) => return Err(BatchExecutionError::new(e, responses)),
-                        }
-                    }
-                    JtagCommand::ShiftDr(command) => match (command.transform)(command, response) {
-                        Ok(response) => responses.push(idx, response),
-                        Err(e) => return Err(BatchExecutionError::new(e, responses)),
-                    },
+                let result = match command {
+                    JtagCommand::WriteRegister(command) => (command.transform)(command, response),
+                    JtagCommand::ShiftDr(command) => (command.transform)(command, response),
+                };
+
+                match result {
+                    Ok(response) => responses.push(idx, response),
+                    Err(e) => return Err(BatchExecutionError::new(e, responses)),
                 }
             }
 
