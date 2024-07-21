@@ -4,7 +4,7 @@ use crate::{
     architecture::arm::{
         ap::MemoryAp,
         communication_interface::Initialized,
-        memory::adi_v5_memory_interface::ArmProbe,
+        memory::adi_v5_memory_interface::ArmMemoryInterface,
         sequences::{ArmDebugSequence, ArmDebugSequenceError},
         ArmCommunicationInterface, ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress,
     },
@@ -16,7 +16,7 @@ pub trait Nrf: Sync + Send + Debug {
     /// Returns the ahb_ap and ctrl_ap of every core
     fn core_aps(
         &self,
-        interface: &mut dyn ArmProbe,
+        interface: &mut dyn ArmMemoryInterface,
     ) -> Vec<(FullyQualifiedApAddress, FullyQualifiedApAddress)>;
 
     /// Returns true when the core is unlocked and false when it is locked.
@@ -60,7 +60,7 @@ fn unlock_core(
 }
 
 /// Sets the network core to active running.
-fn set_network_core_running(interface: &mut dyn ArmProbe) -> Result<(), ArmError> {
+fn set_network_core_running(interface: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
     // Determine if the RESET peripheral is mapped to secure or non-secure address space.
     let periph_config_address = APPLICATION_SPU_PERIPH_PERM + 0x4 * APPLICATION_RESET_PERIPH_ID;
     let periph_config = interface.read_word_32(periph_config_address)?;

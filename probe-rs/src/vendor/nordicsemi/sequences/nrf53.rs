@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use super::nrf::Nrf;
 use crate::architecture::arm::ap::{AccessPort, CSW};
-use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
+use crate::architecture::arm::memory::adi_v5_memory_interface::ArmMemoryInterface;
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::architecture::arm::ArmError;
 use crate::architecture::arm::{
@@ -26,7 +26,7 @@ impl Nrf5340 {
 impl Nrf for Nrf5340 {
     fn core_aps(
         &self,
-        memory: &mut dyn ArmProbe,
+        memory: &mut dyn ArmMemoryInterface,
     ) -> Vec<(FullyQualifiedApAddress, FullyQualifiedApAddress)> {
         let memory_ap = memory.ap();
         let ap_address = memory_ap.ap_address();

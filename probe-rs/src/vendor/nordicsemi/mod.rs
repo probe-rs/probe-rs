@@ -9,8 +9,8 @@ use probe_rs_target::{
 
 use crate::{
     architecture::arm::{
-        ap::MemoryAp, memory::adi_v5_memory_interface::ArmProbe, ArmChipInfo, ArmProbeInterface,
-        FullyQualifiedApAddress,
+        ap::MemoryAp, memory::adi_v5_memory_interface::ArmMemoryInterface, ArmChipInfo,
+        ArmProbeInterface, FullyQualifiedApAddress,
     },
     config::{registry, DebugSequence},
     vendor::{
@@ -82,7 +82,7 @@ impl Vendor for NordicSemi {
 
 fn ficr_info_detect(
     register_values: &mut HashMap<u32, u32>,
-    memory_interface: &mut dyn ArmProbe,
+    memory_interface: &mut dyn ArmMemoryInterface,
     spec: &NordicFicrDetection,
 ) -> Option<String> {
     // Read the PART register, if not already read
@@ -104,7 +104,7 @@ fn ficr_info_detect(
 
 fn configid_detect(
     register_values: &mut HashMap<u32, u32>,
-    memory_interface: &mut dyn ArmProbe,
+    memory_interface: &mut dyn ArmMemoryInterface,
     spec: &NordicConfigIdDetection,
 ) -> Option<String> {
     // Read the CONFIGID register, if not already read
@@ -122,7 +122,7 @@ fn configid_detect(
 
 fn read_register_cached(
     register_values: &mut HashMap<u32, u32>,
-    memory_interface: &mut dyn ArmProbe,
+    memory_interface: &mut dyn ArmMemoryInterface,
     address: u32,
 ) -> Option<u32> {
     match register_values.entry(address) {

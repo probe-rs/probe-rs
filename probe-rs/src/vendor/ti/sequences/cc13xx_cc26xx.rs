@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use crate::architecture::arm::armv7m::{Demcr, Dhcsr};
 use crate::architecture::arm::communication_interface::DapProbe;
-use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
+use crate::architecture::arm::memory::adi_v5_memory_interface::ArmMemoryInterface;
 use crate::architecture::arm::sequences::{ArmDebugSequence, ArmDebugSequenceError};
 use crate::architecture::arm::{ArmError, DpAddress};
 use crate::probe::{DebugProbeError, WireProtocol};
@@ -316,7 +316,7 @@ impl CC13xxCC26xx {
 ///
 /// The below code writes to the following bit
 /// `AON_PMCTL.RESETCTL.SYSRESET=1`d or its equivalent based on family
-fn reset_chip(chip: &str, probe: &mut dyn ArmProbe) {
+fn reset_chip(chip: &str, probe: &mut dyn ArmMemoryInterface) {
     // The CC family of device have a pattern where the 6th character of the device name dictates the family
     // Use this to determine the correct address to write to
     match chip.chars().nth(5).unwrap() {
@@ -344,7 +344,7 @@ fn reset_chip(chip: &str, probe: &mut dyn ArmProbe) {
 impl ArmDebugSequence for CC13xxCC26xx {
     fn reset_system(
         &self,
-        probe: &mut dyn ArmProbe,
+        probe: &mut dyn ArmMemoryInterface,
         core_type: probe_rs_target::CoreType,
         debug_base: Option<u64>,
     ) -> Result<(), ArmError> {

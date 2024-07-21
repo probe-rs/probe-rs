@@ -206,7 +206,7 @@ impl CortexAState {
 /// the status has changed, and will replace `current_status` with
 /// `new_status`.
 pub fn update_core_status<
-    P: super::memory::adi_v5_memory_interface::ArmProbe + ?Sized,
+    P: super::memory::adi_v5_memory_interface::ArmMemoryInterface + ?Sized,
     T: core::ops::DerefMut<Target = P>,
 >(
     probe: &mut T,

@@ -5,7 +5,7 @@ use std::sync::Arc;
 use crate::{
     architecture::arm::{
         core::armv7m::{Demcr, Dhcsr},
-        memory::adi_v5_memory_interface::ArmProbe,
+        memory::adi_v5_memory_interface::ArmMemoryInterface,
         sequences::ArmDebugSequence,
         ArmError,
     },
@@ -28,7 +28,7 @@ impl EFM32xG2 {
 impl ArmDebugSequence for EFM32xG2 {
     fn reset_catch_set(
         &self,
-        core: &mut dyn ArmProbe,
+        core: &mut dyn ArmMemoryInterface,
         _core_type: probe_rs_target::CoreType,
         _debug_base: Option<u64>,
     ) -> Result<(), ArmError> {
@@ -54,7 +54,7 @@ impl ArmDebugSequence for EFM32xG2 {
 
     fn reset_catch_clear(
         &self,
-        core: &mut dyn ArmProbe,
+        core: &mut dyn ArmMemoryInterface,
         _core_type: probe_rs_target::CoreType,
         _debug_base: Option<u64>,
     ) -> Result<(), ArmError> {

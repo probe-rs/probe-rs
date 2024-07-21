@@ -8,7 +8,7 @@ use super::{
         BASEPTR1, DPIDR, DPIDR1,
     },
     memory::{
-        adi_v5_memory_interface::{ADIMemoryInterface, ArmProbe},
+        adi_v5_memory_interface::{ADIMemoryInterface, ArmMemoryInterface},
         Component,
     },
     sequences::{ArmDebugSequence, DefaultArmSequence},
@@ -79,7 +79,7 @@ pub trait ArmProbeInterface: DapAccess + SwdSequence + SwoAccess + Send {
     fn memory_interface(
         &mut self,
         access_port: &MemoryAp,
-    ) -> Result<Box<dyn ArmProbe + '_>, ArmError>;
+    ) -> Result<Box<dyn ArmMemoryInterface + '_>, ArmError>;
 
     /// Returns information about a specific access port.
     fn ap_information(&mut self, access_port: &GenericAp) -> Result<&ApInformation, ArmError>;
@@ -391,7 +391,7 @@ impl ArmProbeInterface for ArmCommunicationInterface<Initialized> {
     fn memory_interface(
         &mut self,
         access_port: &MemoryAp,
-    ) -> Result<Box<dyn ArmProbe + '_>, ArmError> {
+    ) -> Result<Box<dyn ArmMemoryInterface + '_>, ArmError> {
         ArmCommunicationInterface::memory_interface(self, access_port)
     }
 
@@ -548,7 +548,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
     pub fn memory_interface(
         &'interface mut self,
         access_port: &MemoryAp,
-    ) -> Result<Box<dyn ArmProbe + 'interface>, ArmError> {
+    ) -> Result<Box<dyn ArmMemoryInterface + 'interface>, ArmError> {
         let info = self
             .ap_information(access_port)?
             .ok_or_else(|| ArmError::ApDoesNotExist(access_port.ap_address().clone()))?;

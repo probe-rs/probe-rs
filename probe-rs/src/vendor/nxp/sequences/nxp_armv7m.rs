@@ -17,7 +17,7 @@ use crate::{
             armv7m::{Aircr, Dhcsr},
             registers::cortex_m::PC,
         },
-        memory::adi_v5_memory_interface::ArmProbe,
+        memory::adi_v5_memory_interface::ArmMemoryInterface,
         sequences::{ArmDebugSequence, ArmDebugSequenceError},
         ArmError,
     },
@@ -64,7 +64,10 @@ impl MIMXRT10xx {
     ///
     /// If the user changed the FlexRAM configuration in software, this will undo
     /// that configuration, preferring the system's POR FlexRAM state.
-    fn use_boot_fuses_for_flexram(&self, probe: &mut dyn ArmProbe) -> Result<(), ArmError> {
+    fn use_boot_fuses_for_flexram(
+        &self,
+        probe: &mut dyn ArmMemoryInterface,
+    ) -> Result<(), ArmError> {
         const IOMUXC_GPR_GPR16: u64 = 0x400A_C040;
         const FLEXRAM_BANK_CFG_SEL_MASK: u32 = 1 << 2;
         let mut gpr16 = probe.read_word_32(IOMUXC_GPR_GPR16)?;
@@ -78,7 +81,7 @@ impl MIMXRT10xx {
 impl ArmDebugSequence for MIMXRT10xx {
     fn reset_system(
         &self,
-        interface: &mut dyn ArmProbe,
+        interface: &mut dyn ArmMemoryInterface,
         core_type: crate::CoreType,
         _: Option<u64>,
     ) -> Result<(), ArmError> {
@@ -164,7 +167,7 @@ impl MIMXRT11xx {
 
     /// To ensure we affect a system reset, clear the mask that would prevent
     /// a response to the CM7's SYSRESETREQ.
-    fn clear_src_srmr_mask(&self, probe: &mut dyn ArmProbe) -> Result<(), ArmError> {
+    fn clear_src_srmr_mask(&self, probe: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
         let mut srmr = probe.read_word_32(Self::SRC_SRMR)?;
         tracing::debug!("SRC_SRMR: {srmr:#010X}. Clearing the M7REQ_RESET_MODE mask...");
         srmr &= !(0b11 << 12);
@@ -174,7 +177,7 @@ impl MIMXRT11xx {
     }
 
     /// Halt or unhalt the core.
-    fn halt(&self, probe: &mut dyn ArmProbe, halt: bool) -> Result<(), ArmError> {
+    fn halt(&self, probe: &mut dyn ArmMemoryInterface, halt: bool) -> Result<(), ArmError> {
         let mut dhcsr = Dhcsr(probe.read_word_32(Dhcsr::get_mmio_address())?);
         dhcsr.set_c_halt(halt);
         dhcsr.set_c_debugen(true);
@@ -198,7 +201,11 @@ impl MIMXRT11xx {
     }
 
     /// Poll the AP's status until it can accept transfers.
-    fn wait_for_enable(&self, probe: &mut dyn ArmProbe, timeout: Duration) -> Result<(), ArmError> {
+    fn wait_for_enable(
+        &self,
+        probe: &mut dyn ArmMemoryInterface,
+        timeout: Duration,
+    ) -> Result<(), ArmError> {
         let ap = probe.ap();
         let interface = probe.get_arm_communication_interface()?;
 
@@ -227,7 +234,7 @@ impl MIMXRT11xx {
     /// Assumes that the core is halted.
     fn read_core_reg(
         &self,
-        probe: &mut dyn ArmProbe,
+        probe: &mut dyn ArmMemoryInterface,
         reg: crate::core::registers::CoreRegister,
     ) -> Result<u32, ArmError> {
         crate::architecture::arm::core::cortex_m::read_core_reg(probe, reg.into())
@@ -236,7 +243,7 @@ impl MIMXRT11xx {
     /// Assumes that the core is halted.
     fn write_core_reg(
         &self,
-        probe: &mut dyn ArmProbe,
+        probe: &mut dyn ArmMemoryInterface,
         reg: crate::core::registers::CoreRegister,
         value: u32,
     ) -> Result<(), ArmError> {
@@ -250,7 +257,7 @@ impl MIMXRT11xx {
     /// Assumes that the core is halted.
     fn check_pc(
         &self,
-        probe: &mut dyn ArmProbe,
+        probe: &mut dyn ArmMemoryInterface,
         expected: u32,
     ) -> Result<(), ArmDebugSequenceError> {
         let pc = self
@@ -274,7 +281,7 @@ impl MIMXRT11xx {
     /// We might not find that reset handler. In that case, return `None`.
     fn find_flexspi_image_reset_handler(
         &self,
-        probe: &mut dyn ArmProbe,
+        probe: &mut dyn ArmMemoryInterface,
     ) -> Result<Option<u32>, ArmError> {
         /// Assumed by today's in-tree target definition.
         const FLEXSPI1: u64 = 0x30000000;
@@ -336,7 +343,10 @@ impl MIMXRT11xx {
     }
 
     /// See documentation for [`MIMXRT10xx::use_boot_fuses_for_flexram`].
-    fn use_boot_fuses_for_flexram(&self, probe: &mut dyn ArmProbe) -> Result<(), ArmError> {
+    fn use_boot_fuses_for_flexram(
+        &self,
+        probe: &mut dyn ArmMemoryInterface,
+    ) -> Result<(), ArmError> {
         const IOMUXC_GPR_GPR16: u64 = 0x400E_4040;
         const FLEXRAM_BANK_CFG_SEL_MASK: u32 = 1 << 2;
         let mut gpr16 = probe.read_word_32(IOMUXC_GPR_GPR16)?;
@@ -350,7 +360,7 @@ impl MIMXRT11xx {
 impl ArmDebugSequence for MIMXRT11xx {
     fn reset_catch_set(
         &self,
-        _: &mut dyn ArmProbe,
+        _: &mut dyn ArmMemoryInterface,
         _: probe_rs_target::CoreType,
         _: Option<u64>,
     ) -> Result<(), ArmError> {
@@ -359,7 +369,7 @@ impl ArmDebugSequence for MIMXRT11xx {
     }
     fn reset_catch_clear(
         &self,
-        _: &mut dyn ArmProbe,
+        _: &mut dyn ArmMemoryInterface,
         _: probe_rs_target::CoreType,
         _: Option<u64>,
     ) -> Result<(), ArmError> {
@@ -369,7 +379,7 @@ impl ArmDebugSequence for MIMXRT11xx {
 
     fn reset_system(
         &self,
-        probe: &mut dyn ArmProbe,
+        probe: &mut dyn ArmMemoryInterface,
         core_type: probe_rs_target::CoreType,
         debug_base: Option<u64>,
     ) -> Result<(), ArmError> {
@@ -487,7 +497,7 @@ struct DebugCache {
 
 impl DebugCache {
     /// Produce a debug cache from the target.
-    fn from_target(probe: &mut dyn ArmProbe) -> Result<Self, ArmError> {
+    fn from_target(probe: &mut dyn ArmMemoryInterface) -> Result<Self, ArmError> {
         let fp_ctrl = FpCtrl(probe.read_word_32(FpCtrl::get_mmio_address())?);
 
         Ok(Self {
@@ -503,7 +513,7 @@ impl DebugCache {
     }
 
     /// Put this cached debug state back into the target.
-    fn restore(mut self, probe: &mut dyn ArmProbe) -> Result<(), ArmError> {
+    fn restore(mut self, probe: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
         self.fp_ctrl.set_key(true);
         probe.write_word_32(FpCtrl::get_mmio_address(), self.fp_ctrl.into())?;
 

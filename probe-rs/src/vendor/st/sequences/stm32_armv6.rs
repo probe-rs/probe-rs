@@ -7,8 +7,8 @@ use std::sync::Arc;
 use probe_rs_target::CoreType;
 
 use crate::architecture::arm::{
-    ap::MemoryAp, memory::adi_v5_memory_interface::ArmProbe, sequences::ArmDebugSequence, ArmError,
-    ArmProbeInterface,
+    ap::MemoryAp, memory::adi_v5_memory_interface::ArmMemoryInterface, sequences::ArmDebugSequence,
+    ArmError, ArmProbeInterface,
 };
 
 /// Supported families for custom sequences on ARMv6 STM32 devices.
@@ -38,7 +38,7 @@ impl Stm32Armv6 {
 }
 
 mod rcc {
-    use crate::architecture::arm::{memory::adi_v5_memory_interface::ArmProbe, ArmError};
+    use crate::architecture::arm::{memory::adi_v5_memory_interface::ArmMemoryInterface, ArmError};
     use bitfield::bitfield;
 
     /// The base address of the RCC peripheral
@@ -54,13 +54,16 @@ mod rcc {
             impl $name {
                 const ADDRESS: u64 = $offset;
                 /// Read the enable register from memory.
-                pub fn read(memory: &mut dyn ArmProbe) -> Result<Self, ArmError> {
+                pub fn read(memory: &mut dyn ArmMemoryInterface) -> Result<Self, ArmError> {
                     let contents = memory.read_word_32(RCC + Self::ADDRESS)?;
                     Ok(Self(contents))
                 }
 
                 /// Write the enable register to memory.
-                pub fn write(&mut self, memory: &mut dyn ArmProbe) -> Result<(), ArmError> {
+                pub fn write(
+                    &mut self,
+                    memory: &mut dyn ArmMemoryInterface,
+                ) -> Result<(), ArmError> {
                     memory.write_word_32(RCC + Self::ADDRESS, self.0)
                 }
             }
@@ -75,7 +78,7 @@ mod rcc {
 }
 
 mod dbgmcu {
-    use crate::architecture::arm::{memory::adi_v5_memory_interface::ArmProbe, ArmError};
+    use crate::architecture::arm::{memory::adi_v5_memory_interface::ArmMemoryInterface, ArmError};
     use bitfield::bitfield;
 
     /// The base address of the DBGMCU component
@@ -96,13 +99,13 @@ mod dbgmcu {
         const ADDRESS: u64 = 0x04;
 
         /// Read the control register from memory.
-        pub fn read(memory: &mut dyn ArmProbe) -> Result<Self, ArmError> {
+        pub fn read(memory: &mut dyn ArmMemoryInterface) -> Result<Self, ArmError> {
             let contents = memory.read_word_32(DBGMCU + Self::ADDRESS)?;
             Ok(Self(contents))
         }
 
         /// Write the control register to memory.
-        pub fn write(&mut self, memory: &mut dyn ArmProbe) -> Result<(), ArmError> {
+        pub fn write(&mut self, memory: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
             memory.write_word_32(DBGMCU + Self::ADDRESS, self.0)
         }
     }
@@ -145,7 +148,7 @@ impl ArmDebugSequence for Stm32Armv6 {
 
     fn debug_core_stop(
         &self,
-        memory: &mut dyn ArmProbe,
+        memory: &mut dyn ArmMemoryInterface,
         _core_type: CoreType,
     ) -> Result<(), ArmError> {
         match self.family {

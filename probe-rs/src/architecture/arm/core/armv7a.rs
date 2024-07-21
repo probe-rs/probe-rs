@@ -16,7 +16,7 @@ use super::{
 };
 use crate::{
     architecture::arm::{
-        core::armv7a_debug_regs::*, memory::adi_v5_memory_interface::ArmProbe,
+        core::armv7a_debug_regs::*, memory::adi_v5_memory_interface::ArmMemoryInterface,
         sequences::ArmDebugSequence, ArmError,
     },
     core::{CoreRegisters, MemoryMappedRegister, RegisterId, RegisterValue},
@@ -49,7 +49,7 @@ pub enum Armv7aError {
 
 /// Interface for interacting with an ARMv7-A core
 pub struct Armv7a<'probe> {
-    memory: Box<dyn ArmProbe + 'probe>,
+    memory: Box<dyn ArmMemoryInterface + 'probe>,
 
     state: &'probe mut CortexAState,
 
@@ -64,7 +64,7 @@ pub struct Armv7a<'probe> {
 
 impl<'probe> Armv7a<'probe> {
     pub(crate) fn new(
-        mut memory: Box<dyn ArmProbe + 'probe>,
+        mut memory: Box<dyn ArmMemoryInterface + 'probe>,
         state: &'probe mut CortexAState,
         base_address: u64,
         sequence: Arc<dyn ArmDebugSequence>,
@@ -1042,7 +1042,7 @@ mod test {
         }
     }
 
-    impl ArmProbe for MockProbe {
+    impl ArmMemoryInterface for MockProbe {
         fn update_core_status(&mut self, _: CoreStatus) {}
 
         fn read_8(&mut self, _address: u64, _data: &mut [u8]) -> Result<(), ArmError> {

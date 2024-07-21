@@ -8,7 +8,7 @@ use crate::architecture::arm::{
     ap::MemoryAp,
     component::{TraceFunnel, TraceSink},
     memory::{
-        adi_v5_memory_interface::ArmProbe, romtable::RomTableError, CoresightComponent,
+        adi_v5_memory_interface::ArmMemoryInterface, romtable::RomTableError, CoresightComponent,
         PeripheralType,
     },
     sequences::ArmDebugSequence,
@@ -48,7 +48,7 @@ impl Stm32h7 {
     /// Configure all debug components on the chip.
     pub fn enable_debug_components(
         &self,
-        memory: &mut dyn ArmProbe,
+        memory: &mut dyn ArmMemoryInterface,
         enable: bool,
     ) -> Result<(), ArmError> {
         if enable {
@@ -79,7 +79,7 @@ impl Stm32h7 {
 }
 
 mod dbgmcu {
-    use crate::architecture::arm::{memory::adi_v5_memory_interface::ArmProbe, ArmError};
+    use crate::architecture::arm::{memory::adi_v5_memory_interface::ArmMemoryInterface, ArmError};
     use bitfield::bitfield;
 
     /// The base address of the DBGMCU component
@@ -105,13 +105,16 @@ mod dbgmcu {
         const ADDRESS: u64 = 0x04;
 
         /// Read the control register from memory.
-        pub fn read(memory: &mut (impl ArmProbe + ?Sized)) -> Result<Self, ArmError> {
+        pub fn read(memory: &mut (impl ArmMemoryInterface + ?Sized)) -> Result<Self, ArmError> {
             let contents = memory.read_word_32(DBGMCU + Self::ADDRESS)?;
             Ok(Self(contents))
         }
 
         /// Write the control register to memory.
-        pub fn write(&mut self, memory: &mut (impl ArmProbe + ?Sized)) -> Result<(), ArmError> {
+        pub fn write(
+            &mut self,
+            memory: &mut (impl ArmMemoryInterface + ?Sized),
+        ) -> Result<(), ArmError> {
             memory.write_word_32(DBGMCU + Self::ADDRESS, self.0)
         }
     }
@@ -163,7 +166,7 @@ impl ArmDebugSequence for Stm32h7 {
 
     fn debug_core_stop(
         &self,
-        memory: &mut dyn ArmProbe,
+        memory: &mut dyn ArmMemoryInterface,
         _core_type: CoreType,
     ) -> Result<(), ArmError> {
         // Power down the debug components through AP2, which is the default AP debug port.

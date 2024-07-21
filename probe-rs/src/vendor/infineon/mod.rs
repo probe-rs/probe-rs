@@ -5,7 +5,7 @@ use probe_rs_target::{chip_detection::ChipDetectionMethod, Chip};
 
 use crate::{
     architecture::arm::{
-        ap::MemoryAp, memory::adi_v5_memory_interface::ArmProbe, ArmChipInfo, ArmError,
+        ap::MemoryAp, memory::adi_v5_memory_interface::ArmMemoryInterface, ArmChipInfo, ArmError,
         ArmProbeInterface, FullyQualifiedApAddress,
     },
     config::{registry, DebugSequence},
@@ -98,7 +98,7 @@ fn try_detect_xmc4xxx(
     Ok(None)
 }
 
-fn read_xmc4xxx_scu_idchip(memory: &mut dyn ArmProbe) -> Result<Option<u32>, ArmError> {
+fn read_xmc4xxx_scu_idchip(memory: &mut dyn ArmMemoryInterface) -> Result<Option<u32>, ArmError> {
     // The SCU peripheral has a peripheral/module ID register:
     bitfield::bitfield! {
         /// SCU->ID register.
@@ -130,7 +130,7 @@ fn read_xmc4xxx_scu_idchip(memory: &mut dyn ArmProbe) -> Result<Option<u32>, Arm
     memory.read_word_32(ScuChipId::ADDRESS as u64).map(Some)
 }
 
-fn probe_xmc4xxx_flash_size(start_addr: u32, memory: &mut dyn ArmProbe) -> u32 {
+fn probe_xmc4xxx_flash_size(start_addr: u32, memory: &mut dyn ArmMemoryInterface) -> u32 {
     let mut last_successful_size = 0;
     // TODO: if we need to be more general, implement a binary search here.
     for size in [

@@ -9,7 +9,7 @@ use super::{
 };
 use crate::{
     architecture::arm::{
-        core::registers::cortex_m::XPSR, memory::adi_v5_memory_interface::ArmProbe,
+        core::registers::cortex_m::XPSR, memory::adi_v5_memory_interface::ArmMemoryInterface,
         sequences::ArmDebugSequence, ArmError,
     },
     core::{
@@ -587,7 +587,7 @@ impl FpRev2CompX {
 
 /// The state of a core that can be used to persist core state across calls to multiple different cores.
 pub struct Armv7m<'probe> {
-    memory: Box<dyn ArmProbe + 'probe>,
+    memory: Box<dyn ArmMemoryInterface + 'probe>,
 
     state: &'probe mut CortexMState,
 
@@ -596,7 +596,7 @@ pub struct Armv7m<'probe> {
 
 impl<'probe> Armv7m<'probe> {
     pub(crate) fn new(
-        mut memory: Box<dyn ArmProbe + 'probe>,
+        mut memory: Box<dyn ArmMemoryInterface + 'probe>,
         state: &'probe mut CortexMState,
         sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Self, Error> {

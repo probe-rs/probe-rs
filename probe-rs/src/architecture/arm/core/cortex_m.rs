@@ -1,7 +1,7 @@
 //! Common functions and data types for Cortex-M core variants
 
 use crate::{
-    architecture::arm::{memory::adi_v5_memory_interface::ArmProbe, ArmError},
+    architecture::arm::{memory::adi_v5_memory_interface::ArmMemoryInterface, ArmError},
     core::RegisterId,
     memory_mapped_bitfield_register,
     semihosting::decode_semihosting_syscall,
@@ -151,7 +151,10 @@ impl IdPfr1 {
     }
 }
 
-pub(crate) fn read_core_reg(memory: &mut dyn ArmProbe, addr: RegisterId) -> Result<u32, ArmError> {
+pub(crate) fn read_core_reg(
+    memory: &mut dyn ArmMemoryInterface,
+    addr: RegisterId,
+) -> Result<u32, ArmError> {
     // Write the DCRSR value to select the register we want to read.
     let mut dcrsr_val = Dcrsr(0);
     dcrsr_val.set_regwnr(false); // Perform a read.
@@ -167,7 +170,7 @@ pub(crate) fn read_core_reg(memory: &mut dyn ArmProbe, addr: RegisterId) -> Resu
 }
 
 pub(crate) fn write_core_reg(
-    memory: &mut dyn ArmProbe,
+    memory: &mut dyn ArmMemoryInterface,
     addr: RegisterId,
     value: u32,
 ) -> Result<(), ArmError> {
@@ -231,7 +234,7 @@ pub(crate) fn check_for_semihosting(
 }
 
 fn wait_for_core_register_transfer(
-    memory: &mut dyn ArmProbe,
+    memory: &mut dyn ArmMemoryInterface,
     timeout: Duration,
 ) -> Result<(), ArmError> {
     // now we have to poll the dhcsr register, until the dhcsr.s_regrdy bit is set
