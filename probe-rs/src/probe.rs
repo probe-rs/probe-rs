@@ -977,13 +977,17 @@ pub trait JTAGAccess: DebugProbe {
         let mut results = DeferredResultSet::new();
 
         for (idx, write) in writes.iter() {
-            match self
-                .write_register(write.address, &write.data, write.len)
-                .map_err(crate::Error::Probe)
-                .and_then(|response| (write.transform)(write, response))
-            {
-                Ok(res) => results.push(idx, res),
-                Err(e) => return Err(BatchExecutionError::new(e, results)),
+            match write {
+                JtagCommand::WriteRegister(write) => {
+                    match self
+                        .write_register(write.address, &write.data, write.len)
+                        .map_err(crate::Error::Probe)
+                        .and_then(|response| (write.transform)(write, response))
+                    {
+                        Ok(res) => results.push(idx, res),
+                        Err(e) => return Err(BatchExecutionError::new(e, results)),
+                    }
+                }
             }
         }
 
@@ -1005,6 +1009,19 @@ pub struct JtagWriteCommand {
 
     /// A function to transform the raw response into a [`CommandResult`]
     pub transform: fn(&JtagWriteCommand, Vec<u8>) -> Result<CommandResult, crate::Error>,
+}
+
+/// A low-level JTAG command.
+#[derive(Debug, Clone)]
+pub enum JtagCommand {
+    /// Write a register.
+    WriteRegister(JtagWriteCommand),
+}
+
+impl From<JtagWriteCommand> for JtagCommand {
+    fn from(cmd: JtagWriteCommand) -> Self {
+        JtagCommand::WriteRegister(cmd)
+    }
 }
 
 /// Represents a Jtag Tap within the chain.
@@ -1129,7 +1146,7 @@ impl CommandResult {
 /// can be used to skip capturing or processing certain parts of the response.
 #[derive(Default, Debug)]
 pub struct JtagCommandQueue {
-    commands: Vec<(DeferredResultIndex, JtagWriteCommand)>,
+    commands: Vec<(DeferredResultIndex, JtagCommand)>,
 }
 
 impl JtagCommandQueue {
@@ -1141,9 +1158,9 @@ impl JtagCommandQueue {
     /// Schedules a command for later execution.
     ///
     /// Returns a token value that can be used to retrieve the result of the command.
-    pub fn schedule(&mut self, command: JtagWriteCommand) -> DeferredResultIndex {
+    pub fn schedule(&mut self, command: impl Into<JtagCommand>) -> DeferredResultIndex {
         let index = DeferredResultIndex::new();
-        self.commands.push((index.clone(), command));
+        self.commands.push((index.clone(), command.into()));
         index
     }
 
@@ -1157,7 +1174,7 @@ impl JtagCommandQueue {
         self.commands.is_empty()
     }
 
-    pub(crate) fn iter(&self) -> impl Iterator<Item = &(DeferredResultIndex, JtagWriteCommand)> {
+    pub(crate) fn iter(&self) -> impl Iterator<Item = &(DeferredResultIndex, JtagCommand)> {
         self.commands.iter()
     }
 

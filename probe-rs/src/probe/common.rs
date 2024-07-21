@@ -8,7 +8,7 @@ use probe_rs_target::ScanChainElement;
 
 use crate::probe::{
     BatchExecutionError, ChainParams, DebugProbe, DebugProbeError, DeferredResultSet, JTAGAccess,
-    JtagChainItem, JtagCommandQueue,
+    JtagChainItem, JtagCommand, JtagCommandQueue,
 };
 
 pub(crate) fn bits_to_byte(bits: impl IntoIterator<Item = bool>) -> u32 {
@@ -746,18 +746,22 @@ impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
         let mut bits = Vec::with_capacity(writes.len());
         let t1 = std::time::Instant::now();
         tracing::debug!("Preparing {} writes...", writes.len());
-        for (idx, write) in writes.iter() {
-            // If an error happens during prep, return no results as chip will be in an inconsistent state
-            let op = prepare_write_register(
-                self,
-                write.address,
-                &write.data,
-                write.len,
-                idx.should_capture(),
-            )
-            .map_err(|e| BatchExecutionError::new(e.into(), DeferredResultSet::new()))?;
+        for (idx, command) in writes.iter() {
+            match command {
+                JtagCommand::WriteRegister(write) => {
+                    // If an error happens during prep, return no results as chip will be in an inconsistent state
+                    let op = prepare_write_register(
+                        self,
+                        write.address,
+                        &write.data,
+                        write.len,
+                        idx.should_capture(),
+                    )
+                    .map_err(|e| BatchExecutionError::new(e.into(), DeferredResultSet::new()))?;
 
-            bits.push((idx, write, op));
+                    bits.push((idx, command, op));
+                }
+            }
         }
 
         tracing::debug!("Sending to chip...");
@@ -776,9 +780,14 @@ impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
                 let mut reg_bits = bitstream[..bits].to_bitvec();
                 reg_bits.force_align();
                 let response = reg_bits.into_vec();
-                match (command.transform)(command, response) {
-                    Ok(response) => responses.push(idx, response),
-                    Err(e) => return Err(BatchExecutionError::new(e, responses)),
+
+                match command {
+                    JtagCommand::WriteRegister(command) => {
+                        match (command.transform)(command, response) {
+                            Ok(response) => responses.push(idx, response),
+                            Err(e) => return Err(BatchExecutionError::new(e, responses)),
+                        }
+                    }
                 }
             }
 
