@@ -30,6 +30,7 @@ impl ApClass {
 }
 
 /// The type of AP defined in the [`ARM Debug Interface v5.2`](https://developer.arm.com/documentation/ihi0031/f/?lang=en) specification.
+/// You can find the details in the table C1-2 on page C1-146.
 /// The different types correspond to the different access/memory buses of ARM cores.
 #[allow(non_camel_case_types)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -39,17 +40,17 @@ pub enum ApType {
     JtagComAp = 0x0,
     /// A AMBA based AHB3 AP (see E1.5).
     AmbaAhb3 = 0x1,
-    /// A AMBA based AHB2 and AHB3 AP (see E1.8).
-    AmbaAhb2Ahb3 = 0x2,
+    /// A AMBA based APB2 and APB3 AP (see E1.8).
+    AmbaApb2Apb3 = 0x2,
     /// A AMBA based AXI3 and AXI4 AP (see E1.2).
     AmbaAxi3Axi4 = 0x4,
     /// A AMBA based AHB5 AP (see E1.6).
     AmbaAhb5 = 0x5,
-    /// A AMBA based AHB4 AP (see E1.3).
-    AmbaAhb4 = 0x6,
+    /// A AMBA based APB4 and APB5 AP (see E1.9).
+    AmbaApb4Apb5 = 0x6,
     /// A AMBA based AXI5 AP (see E1.4).
     AmbaAxi5 = 0x7,
-    /// A AMBA based protected AHB5 AP (see E1.7).
+    /// A AMBA based AHB5 AP with enhanced HPROT (see E1.7).
     AmbaAhb5Hprot = 0x8,
 }
 
@@ -59,10 +60,10 @@ impl ApType {
         match value {
             0x0 => Some(ApType::JtagComAp),
             0x1 => Some(ApType::AmbaAhb3),
-            0x2 => Some(ApType::AmbaAhb2Ahb3),
+            0x2 => Some(ApType::AmbaApb2Apb3),
             0x4 => Some(ApType::AmbaAxi3Axi4),
             0x5 => Some(ApType::AmbaAhb5),
-            0x6 => Some(ApType::AmbaAhb4),
+            0x6 => Some(ApType::AmbaApb4Apb5),
             0x7 => Some(ApType::AmbaAxi5),
             0x8 => Some(ApType::AmbaAhb5Hprot),
             _ => None,
