@@ -2,10 +2,9 @@ use std::{fmt::Debug, time::Duration};
 
 use crate::{
     architecture::xtensa::arch::instruction::{Instruction, InstructionEncoding},
-    probe::DebugProbeError,
     probe::{
-        CommandResult, DeferredResultIndex, DeferredResultSet, JTAGAccess, JtagCommandQueue,
-        JtagWriteCommand,
+        CommandResult, DebugProbeError, DeferredResultIndex, DeferredResultSet, JTAGAccess,
+        JtagCommandQueue, JtagWriteCommand, ShiftDrCommand,
     },
     Error as ProbeRsError,
 };
@@ -341,8 +340,7 @@ impl<'probe> Xdm<'probe> {
         // We save the nar reader because we want to capture the previous status.
         self.state.status_idxs.push(nar);
 
-        self.state.queue.schedule(JtagWriteCommand {
-            address: TapInstruction::Ndr.code(),
+        self.state.queue.schedule(ShiftDrCommand {
             data: ndr.to_le_bytes().to_vec(),
             len: TapInstruction::Ndr.bits(),
             transform,
@@ -608,10 +606,10 @@ impl<'probe> Xdm<'probe> {
     }
 }
 
-type TransformFn = fn(&JtagWriteCommand, Vec<u8>) -> Result<CommandResult, ProbeRsError>;
+type TransformFn = fn(&ShiftDrCommand, Vec<u8>) -> Result<CommandResult, ProbeRsError>;
 
 fn transform_u32(
-    _command: &JtagWriteCommand,
+    _command: &ShiftDrCommand,
     capture: Vec<u8>,
 ) -> Result<CommandResult, ProbeRsError> {
     Ok(CommandResult::U32(
@@ -620,14 +618,14 @@ fn transform_u32(
 }
 
 fn transform_noop(
-    _command: &JtagWriteCommand,
+    _command: &ShiftDrCommand,
     _capture: Vec<u8>,
 ) -> Result<CommandResult, ProbeRsError> {
     Ok(CommandResult::None)
 }
 
 fn transform_instruction_status(
-    _command: &JtagWriteCommand,
+    _command: &ShiftDrCommand,
     capture: Vec<u8>,
 ) -> Result<CommandResult, ProbeRsError> {
     let status = DebugStatus(TapInstruction::Ndr.capture_to_u32(&capture));
