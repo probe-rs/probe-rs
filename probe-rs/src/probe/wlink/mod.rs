@@ -508,7 +508,9 @@ impl JTAGAccess for WchLink {
     }
 
     fn write_dr(&mut self, _data: &[u8], _len: u32) -> Result<Vec<u8>, DebugProbeError> {
-        unimplemented!()
+        Err(DebugProbeError::NotImplemented {
+            function_name: "write_dr",
+        })
     }
 }
 
