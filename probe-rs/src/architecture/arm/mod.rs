@@ -156,7 +156,7 @@ pub enum ArmError {
     #[error("The operation requires the following extension(s): {0:?}.")]
     ExtensionRequired(&'static [&'static str]),
 
-    /// An error occured while calculating the address of a register.
+    /// An error occurred while calculating the address of a register.
     #[error("Error calculating register address.")]
     RegisterAddressOutOfBounds(#[from] RegisterAddressOutOfBounds),
 
@@ -164,7 +164,7 @@ pub enum ArmError {
     #[error("Not implemented: {0}")]
     NotImplemented(&'static str),
 
-    /// Another ARM error occured
+    /// Another ARM error occurred
     #[error("{0}")]
     Other(String),
 }

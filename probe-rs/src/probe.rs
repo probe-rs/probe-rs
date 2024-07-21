@@ -178,10 +178,10 @@ pub enum DebugProbeError {
         command_name: &'static str,
     },
 
-    /// An error occured handling the JTAG scan chain.
+    /// An error occurred handling the JTAG scan chain.
     JtagScanChain(#[from] ScanChainError),
 
-    /// Some other error occured
+    /// Some other error occurred
     #[display("{0}")]
     Other(String),
 
