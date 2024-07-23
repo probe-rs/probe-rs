@@ -1,12 +1,11 @@
-use super::super::{ApAccess, Register};
-use super::{AddressIncrement, ApRegister, DataSize, CSW, DRW, TAR};
-use crate::architecture::arm::communication_interface::FlushableArmAccess;
 use crate::architecture::arm::{
-    ap::AccessPort,
-    dp::{DpAccess, DpRegister},
-    ArmError, DpAddress,
+    ap::{
+        memory_ap::{amba_ahb3::CSW, registers::CFG, AddressIncrement, DataSize, DRW, TAR},
+        ApClass, ApType, Register, IDR,
+    },
+    communication_interface::FlushableArmAccess,
+    ArmError, DapAccess, DpAddress,
 };
-use crate::probe::DebugProbeError;
 use std::collections::HashMap;
 
 #[derive(Debug)]
@@ -28,6 +27,19 @@ impl MockMemoryAp {
     /// canary pattern to ensure writes do not clobber adjacent memory.
     pub fn with_pattern_and_size(size: usize) -> Self {
         let mut store = HashMap::new();
+        store.insert(
+            IDR::ADDRESS,
+            IDR {
+                REVISION: 0,
+                DESIGNER: jep106::JEP106Code::new(4, 0x3b),
+                CLASS: ApClass::MemAp,
+                _RES0: 0,
+                VARIANT: 0,
+                TYPE: ApType::AmbaAhb3,
+            }
+            .into(),
+        );
+        store.insert(CFG::ADDRESS, 0);
         store.insert(CSW::ADDRESS, 0);
         store.insert(TAR::ADDRESS, 0);
         store.insert(DRW::ADDRESS, 0);
@@ -42,119 +54,112 @@ impl FlushableArmAccess for MockMemoryAp {
     fn flush(&mut self) -> Result<(), ArmError> {
         Ok(())
     }
-
-    fn get_arm_communication_interface(
-        &mut self,
-    ) -> Result<
-        &mut crate::architecture::arm::ArmCommunicationInterface<
-            crate::architecture::arm::communication_interface::Initialized,
-        >,
-        DebugProbeError,
-    > {
-        Err(DebugProbeError::NotImplemented {
-            function_name: "get_arm_communication_interface",
-        })
-    }
 }
 
-impl ApAccess for MockMemoryAp {
-    /// Mocks the read_register method of a AP.
-    ///
-    /// Returns an Error if any bad instructions or values are chosen.
-    fn read_ap_register<PORT, R>(&mut self, _port: &PORT) -> Result<R, ArmError>
-    where
-        PORT: AccessPort,
-        R: ApRegister<PORT>,
-    {
+impl DapAccess for MockMemoryAp {
+    fn read_raw_dp_register(&mut self, _dp: DpAddress, _addr: u8) -> Result<u32, ArmError> {
+        // Ignore for Tests
+        Ok(0)
+    }
+
+    fn write_raw_dp_register(
+        &mut self,
+        _dp: DpAddress,
+        _addr: u8,
+        _value: u32,
+    ) -> Result<(), ArmError> {
+        Ok(())
+    }
+
+    fn read_raw_ap_register(
+        &mut self,
+        _ap: &crate::architecture::arm::FullyQualifiedApAddress,
+        addr: u8,
+    ) -> Result<u32, ArmError> {
         let csw = self.store[&CSW::ADDRESS];
         let address = self.store[&TAR::ADDRESS];
 
-        match R::ADDRESS {
-            DRW::ADDRESS => {
-                let drw = self.store[&DRW::ADDRESS];
-                let bit_offset = (address % 4) * 8;
-                let offset = address as usize;
-                let csw = CSW::try_from(csw).unwrap();
+        tracing::debug!("Reading: addr {:x} store: {:x?}", addr, self.store);
 
-                let (new_drw, offset) = match csw.SIZE {
-                    DataSize::U32 => {
-                        let bytes: [u8; 4] = self
-                            .memory
-                            .get(offset..offset + 4)
-                            .map(|v| v.try_into().unwrap())
-                            .unwrap_or([0u8; 4]);
+        if addr == DRW::ADDRESS {
+            let drw = self.store[&DRW::ADDRESS];
+            let bit_offset = (address % 4) * 8;
+            let offset = address as usize;
+            let csw = CSW::try_from(csw).unwrap();
 
-                        (u32::from_le_bytes(bytes), 4)
-                    }
-                    DataSize::U16 => {
-                        let bytes = self
-                            .memory
-                            .get(offset..offset + 2)
-                            .map(|v| v.try_into().unwrap())
-                            .unwrap_or([0u8; 2]);
-                        let value = u16::from_le_bytes(bytes);
-                        (
-                            drw & !(0xffff << bit_offset) | (u32::from(value) << bit_offset),
-                            2,
-                        )
-                    }
-                    DataSize::U8 => {
-                        let value = *self.memory.get(offset).unwrap_or(&0u8);
-                        (
-                            drw & !(0xff << bit_offset) | (u32::from(value) << bit_offset),
-                            1,
-                        )
-                    }
-                    _ => panic!("MockMemoryAp: unknown width"),
-                };
+            let (new_drw, offset) = match csw.Size {
+                DataSize::U32 => {
+                    let bytes: [u8; 4] = self
+                        .memory
+                        .get(offset..offset + 4)
+                        .map(|v| v.try_into().unwrap())
+                        .unwrap_or([0u8; 4]);
 
-                self.store.insert(DRW::ADDRESS, new_drw);
-
-                match csw.AddrInc {
-                    AddressIncrement::Single => {
-                        self.store.insert(TAR::ADDRESS, address + offset);
-                    }
-                    AddressIncrement::Off => (),
-                    AddressIncrement::Packed => {
-                        unimplemented!();
-                    }
+                    (u32::from_le_bytes(bytes), 4)
                 }
+                DataSize::U16 => {
+                    let bytes = self
+                        .memory
+                        .get(offset..offset + 2)
+                        .map(|v| v.try_into().unwrap())
+                        .unwrap_or([0u8; 2]);
+                    let value = u16::from_le_bytes(bytes);
+                    (
+                        drw & !(0xffff << bit_offset) | (u32::from(value) << bit_offset),
+                        2,
+                    )
+                }
+                DataSize::U8 => {
+                    let value = *self.memory.get(offset).unwrap_or(&0u8);
+                    (
+                        drw & !(0xff << bit_offset) | (u32::from(value) << bit_offset),
+                        1,
+                    )
+                }
+                _ => panic!("MockMemoryAp: unknown width"),
+            };
 
-                Ok(R::try_from(new_drw).unwrap())
+            self.store.insert(DRW::ADDRESS, new_drw);
+
+            match csw.AddrInc {
+                AddressIncrement::Single => {
+                    self.store.insert(TAR::ADDRESS, address + offset);
+                }
+                AddressIncrement::Off => (),
+                AddressIncrement::Packed => {
+                    unimplemented!();
+                }
             }
-            CSW::ADDRESS => Ok(R::try_from(self.store[&R::ADDRESS]).unwrap()),
-            TAR::ADDRESS => Ok(R::try_from(self.store[&R::ADDRESS]).unwrap()),
-            _ => panic!("MockMemoryAp: unknown register"),
+            tracing::debug!("Reading: new store: {:x?}", self.store);
+
+            Ok(new_drw)
+        } else {
+            Ok(self
+                .store
+                .get(&addr)
+                .cloned()
+                .expect("MockMemoryAp: unknown register"))
         }
     }
 
-    /// Mocks the write_register method of a AP.
-    ///
-    /// Returns an Error if any bad instructions or values are chosen.
-    fn write_ap_register<PORT, R>(&mut self, _port: &PORT, register: R) -> Result<(), ArmError>
-    where
-        PORT: AccessPort,
-        R: ApRegister<PORT>,
-    {
-        tracing::debug!("Mock: Write to register {:x?}", &register);
+    fn write_raw_ap_register(
+        &mut self,
+        _ap: &crate::architecture::arm::FullyQualifiedApAddress,
+        addr: u8,
+        value: u32,
+    ) -> Result<(), ArmError> {
+        tracing::debug!("Mock: Write {:x} to register {:x?}", value, &addr);
 
-        let value: u32 = register.into();
-        self.store.insert(R::ADDRESS, value);
+        self.store.insert(addr, value);
         let csw = self.store[&CSW::ADDRESS];
         let address = self.store[&TAR::ADDRESS];
 
-        match R::ADDRESS {
+        match addr {
             DRW::ADDRESS => {
                 let csw = CSW::try_from(csw).unwrap();
+                tracing::debug!("csw: {:x?}", csw);
 
-                let access_width = match csw.SIZE {
-                    DataSize::U256 => 32,
-                    DataSize::U128 => 16,
-                    DataSize::U64 => 8,
-                    DataSize::U32 => 4,
-                    DataSize::U16 => 2,
-                    DataSize::U8 => 1,
-                };
+                let access_width = csw.Size.to_byte_count() as u32;
 
                 if (address + access_width) as usize > self.memory.len() {
                     // Ignore out-of-bounds write
@@ -162,7 +167,7 @@ impl ApAccess for MockMemoryAp {
                 }
 
                 let bit_offset = (address % 4) * 8;
-                match csw.SIZE {
+                match csw.Size {
                     DataSize::U32 => {
                         self.memory[address as usize..address as usize + 4]
                             .copy_from_slice(&value.to_le_bytes());
@@ -201,55 +206,5 @@ impl ApAccess for MockMemoryAp {
             }
             _ => panic!("MockMemoryAp: unknown register"),
         }
-    }
-
-    fn write_ap_register_repeated<PORT, R>(
-        &mut self,
-        port: &PORT,
-        _register: R,
-        values: &[u32],
-    ) -> Result<(), ArmError>
-    where
-        PORT: AccessPort,
-        R: ApRegister<PORT>,
-    {
-        for value in values {
-            self.write_ap_register(port, R::try_from(*value).unwrap())?
-        }
-
-        Ok(())
-    }
-
-    fn read_ap_register_repeated<PORT, R>(
-        &mut self,
-        port: &PORT,
-        _register: R,
-        values: &mut [u32],
-    ) -> Result<(), ArmError>
-    where
-        PORT: AccessPort,
-        R: ApRegister<PORT>,
-    {
-        for value in values {
-            let register_value: R = self.read_ap_register(port)?;
-            *value = register_value.into()
-        }
-
-        Ok(())
-    }
-}
-
-impl DpAccess for MockMemoryAp {
-    fn read_dp_register<R: DpRegister>(&mut self, _dp: DpAddress) -> Result<R, ArmError> {
-        // Ignore for Tests
-        Ok(0.try_into().unwrap())
-    }
-
-    fn write_dp_register<R: DpRegister>(
-        &mut self,
-        _dp: DpAddress,
-        _register: R,
-    ) -> Result<(), ArmError> {
-        Ok(())
     }
 }

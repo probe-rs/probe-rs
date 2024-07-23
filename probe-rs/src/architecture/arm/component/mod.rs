@@ -8,13 +8,14 @@ mod tmc;
 mod tpiu;
 mod trace_funnel;
 
-use super::memory::romtable::{CoresightComponent, PeripheralType, RomTableError};
-use super::memory::Component;
-use super::ArmError;
-use super::{ApInformation, DpAddress, FullyQualifiedApAddress, MemoryApInformation};
-use crate::architecture::arm::core::armv6m::Demcr;
-use crate::architecture::arm::{ArmProbeInterface, SwoConfig, SwoMode};
-use crate::{Core, Error, MemoryInterface, MemoryMappedRegister};
+use crate::{
+    architecture::arm::{
+        core::armv6m::Demcr,
+        memory::romtable::{CoresightComponent, PeripheralType, RomTableError},
+        ArmError, ArmProbeInterface, DpAddress, SwoConfig, SwoMode,
+    },
+    Core, Error, MemoryInterface, MemoryMappedRegister,
+};
 
 pub use self::itm::Itm;
 pub use dwt::Dwt;
@@ -23,6 +24,8 @@ pub use swo::Swo;
 pub use tmc::TraceMemoryController;
 pub use tpiu::Tpiu;
 pub use trace_funnel::TraceFunnel;
+
+use super::memory::Component;
 
 /// Specifies the data sink (destination) for trace data.
 #[derive(Debug, Copy, Clone)]
@@ -108,32 +111,21 @@ pub fn get_arm_components(
 ) -> Result<Vec<CoresightComponent>, ArmError> {
     let mut components = Vec::new();
 
-    for ap_index in 0..(interface.num_access_ports(dp)? as u8) {
-        let ap_information = interface
-            .ap_information(&FullyQualifiedApAddress::v1_with_dp(dp, ap_index))?
-            .clone();
-
-        let component = match ap_information {
-            ApInformation::MemoryAp(MemoryApInformation {
-                debug_base_address: 0,
-                ..
-            }) => Err(Error::Other("AP has a base address of 0".to_string())),
-            ApInformation::MemoryAp(MemoryApInformation {
-                address,
-                debug_base_address,
-                ..
-            }) => {
-                let mut memory = interface.memory_interface(&address)?;
-                let component = Component::try_parse(&mut *memory, debug_base_address)?;
-                Ok(CoresightComponent::new(component, address))
+    for ap_index in interface.access_ports(dp)? {
+        let component = if let Ok(mut memory) = interface.memory_interface(&ap_index) {
+            match memory.base_address()? {
+                0 => Err(Error::Other("AP has a base address of 0".to_string())),
+                debug_base_address => {
+                    let component = Component::try_parse(&mut *memory, debug_base_address)?;
+                    Ok(CoresightComponent::new(component, ap_index.clone()))
+                }
             }
-            ApInformation::Other { address, .. } => {
-                // Return an error, only possible to get Component from MemoryAP
-                Err(Error::Other(format!(
-                    "AP {:#x?} is not a MemoryAP, unable to get ARM component.",
-                    address
-                )))
-            }
+        } else {
+            // Return an error, only possible to get Component from MemoryAP
+            Err(Error::Other(format!(
+                "AP {:#x?} is not a MemoryAP, unable to get ARM component.",
+                ap_index.clone()
+            )))
         };
 
         match component {
@@ -141,7 +133,7 @@ pub fn get_arm_components(
                 components.push(component);
             }
             Err(e) => {
-                tracing::info!("Not counting AP {} because of: {}", ap_index, e);
+                tracing::info!("Not counting AP {} because of: {}", ap_index.ap_v1()?, e);
             }
         }
     }

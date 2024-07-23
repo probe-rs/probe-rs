@@ -11,7 +11,7 @@ use std::{
 
 use crate::{
     architecture::arm::{
-        ap::{AccessPort, AccessPortError, ApAccess, CSW},
+        ap::{memory_ap::MemoryApType, AccessPortError, AccessPortType},
         armv7m::{FpCtrl, FpRev2CompX},
         core::{
             armv7m::{Aircr, Dhcsr},
@@ -206,15 +206,14 @@ impl MIMXRT11xx {
         probe: &mut dyn ArmMemoryInterface,
         timeout: Duration,
     ) -> Result<(), ArmError> {
-        let ap = probe.ap();
-        let interface = probe.get_arm_communication_interface()?;
-
         let start = Instant::now();
         let mut errors = 0usize;
         let mut disables = 0usize;
+
+        let (interface, memory_ap) = probe.try_as_parts()?;
         loop {
-            match interface.read_ap_register(&ap) {
-                Ok(CSW { DeviceEn, .. }) if DeviceEn != 0 => {
+            match memory_ap.generic_status(interface) {
+                Ok(csw) if csw.DeviceEn => {
                     tracing::debug!("Device enabled after {}ms with {errors} errors and {disables} invalid statuses", start.elapsed().as_millis());
                     return Ok(());
                 }

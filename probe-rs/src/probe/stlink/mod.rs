@@ -4,31 +4,36 @@ mod constants;
 mod tools;
 mod usb_interface;
 
-use self::usb_interface::{StLinkUsb, StLinkUsbDevice};
-use super::{DebugProbe, DebugProbeError, ProbeCreationError, WireProtocol};
-use crate::architecture::arm::memory::ArmMemoryInterface;
-use crate::architecture::arm::{valid_32bit_arm_address, ArmError};
-use crate::MemoryInterface;
 use crate::{
     architecture::arm::{
-        ap::{valid_access_ports, AccessPort, ApAccess, ApClass, MemoryAp, IDR},
+        ap::{
+            memory_ap::{MemoryAp, MemoryApType},
+            valid_access_ports, AccessPortType,
+        },
         communication_interface::{
             ArmProbeInterface, Initialized, SwdSequence, UninitializedArmProbe,
         },
-        memory::Component,
+        memory::{ArmMemoryInterface, Component},
         sequences::ArmDebugSequence,
-        ApInformation, ArmChipInfo, DapAccess, DpAddress, FullyQualifiedApAddress, Pins, SwoAccess,
-        SwoConfig, SwoMode,
+        valid_32bit_arm_address, ArmChipInfo, ArmError, DapAccess, DpAddress,
+        FullyQualifiedApAddress, Pins, SwoAccess, SwoConfig, SwoMode,
     },
-    probe::{DebugProbeInfo, DebugProbeSelector, Probe, ProbeFactory},
-    Error as ProbeRsError,
+    probe::{
+        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeCreationError,
+        ProbeFactory, WireProtocol,
+    },
+    Error as ProbeRsError, MemoryInterface,
 };
-use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
+
 use probe_rs_target::ScanChainElement;
 use scroll::{Pread, Pwrite, BE, LE};
+
+use std::collections::BTreeSet;
 use std::thread;
 use std::{cmp::Ordering, sync::Arc, time::Duration};
-use usb_interface::TIMEOUT;
+
+use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
+use usb_interface::{StLinkUsb, StLinkUsbDevice, TIMEOUT};
 
 /// Maximum length of 32 bit reads in bytes.
 ///
@@ -1393,7 +1398,7 @@ struct StlinkArmDebug {
 
     /// Information about the APs of the target.
     /// APs are identified by a number, starting from zero.
-    pub ap_information: Vec<ApInformation>,
+    pub access_ports: BTreeSet<FullyQualifiedApAddress>,
 }
 
 impl StlinkArmDebug {
@@ -1404,26 +1409,15 @@ impl StlinkArmDebug {
 
         let mut interface = Self {
             probe,
-            ap_information: Vec::new(),
+            access_ports: BTreeSet::new(),
         };
 
-        for ap in valid_access_ports(&mut interface, DpAddress::Default) {
-            let ap_state = match ApInformation::read_from_target(&mut interface, &ap) {
-                Ok(state) => state,
-                Err(e) => {
-                    return Err((
-                        Box::new(UninitializedStLink {
-                            probe: interface.probe,
-                        }),
-                        e,
-                    ))
-                }
-            };
-
-            tracing::debug!("AP {:#x?}: {:?}", ap.ap_address(), ap_state);
-
-            interface.ap_information.push(ap_state);
-        }
+        interface.access_ports = valid_access_ports(&mut interface, DpAddress::Default)
+            .into_iter()
+            .collect();
+        interface.access_ports.iter().for_each(|addr| {
+            tracing::debug!("AP {:#x?}", addr);
+        });
 
         Ok(interface)
     }
@@ -1495,29 +1489,13 @@ impl ArmProbeInterface for StlinkArmDebug {
         &mut self,
         access_port: &FullyQualifiedApAddress,
     ) -> Result<Box<dyn ArmMemoryInterface + '_>, ArmError> {
-        let mem_ap = MemoryAp::new(access_port.clone());
+        let mem_ap = MemoryAp::new(self, access_port)?;
         let interface = StLinkMemoryInterface {
             probe: self,
             current_ap: mem_ap,
         };
 
         Ok(Box::new(interface) as _)
-    }
-
-    #[tracing::instrument(skip(self))]
-    fn ap_information(
-        &mut self,
-        access_port: &FullyQualifiedApAddress,
-    ) -> Result<&crate::architecture::arm::communication_interface::ApInformation, ArmError> {
-        let addr = access_port;
-        if addr.dp() != DpAddress::Default {
-            return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
-        }
-
-        match self.ap_information.get(addr.ap_v1()? as usize) {
-            Some(res) => Ok(res),
-            None => Err(ArmError::ApDoesNotExist(addr.clone())),
-        }
     }
 
     fn read_chip_info_from_rom_table(
@@ -1528,18 +1506,10 @@ impl ArmProbeInterface for StlinkArmDebug {
             return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
         }
 
-        for access_port in valid_access_ports(self, dp) {
-            let idr: IDR = self.read_ap_register(&access_port)?;
-            tracing::debug!("{:#x?}", idr);
-
-            if idr.CLASS == ApClass::MemAp {
-                let access_port: MemoryAp = access_port.into();
-
-                let baseaddr = access_port.base_address(self)?;
-
-                let mut memory = self.memory_interface(access_port.ap_address())?;
-
-                let component = Component::try_parse(&mut *memory, baseaddr)?;
+        for ap in self.access_ports.clone() {
+            if let Ok(mut memory) = self.memory_interface(&ap) {
+                let base_address = memory.base_address()?;
+                let component = Component::try_parse(&mut *memory, base_address)?;
 
                 if let Component::Class1RomTable(component_id, _) = component {
                     if let Some(jep106) = component_id.peripheral_id().jep106() {
@@ -1555,12 +1525,15 @@ impl ArmProbeInterface for StlinkArmDebug {
         Ok(None)
     }
 
-    fn num_access_ports(&mut self, dp: DpAddress) -> Result<usize, ArmError> {
+    fn access_ports(
+        &mut self,
+        dp: DpAddress,
+    ) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError> {
         if dp != DpAddress::Default {
             return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
         }
 
-        Ok(self.ap_information.len())
+        Ok(self.access_ports.clone())
     }
 
     fn close(self: Box<Self>) -> Probe {
@@ -1898,6 +1871,14 @@ impl MemoryInterface<ArmError> for StLinkMemoryInterface<'_> {
 }
 
 impl ArmMemoryInterface for StLinkMemoryInterface<'_> {
+    fn base_address(&mut self) -> Result<u64, ArmError> {
+        self.current_ap.base_address(self.probe)
+    }
+
+    fn ap(&mut self) -> &mut MemoryAp {
+        &mut self.current_ap
+    }
+
     fn get_arm_communication_interface(
         &mut self,
     ) -> Result<
@@ -1909,8 +1890,18 @@ impl ArmMemoryInterface for StLinkMemoryInterface<'_> {
         })
     }
 
-    fn ap(&mut self) -> MemoryAp {
-        self.current_ap.clone()
+    fn try_as_parts(
+        &mut self,
+    ) -> Result<
+        (
+            &mut crate::architecture::arm::ArmCommunicationInterface<Initialized>,
+            &mut MemoryAp,
+        ),
+        DebugProbeError,
+    > {
+        Err(DebugProbeError::InterfaceNotAvailable {
+            interface_name: "ARM",
+        })
     }
 }
 

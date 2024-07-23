@@ -1,19 +1,24 @@
 #![allow(missing_docs)] // Don't require docs for test code
-use std::{cell::RefCell, collections::VecDeque, fmt::Debug, sync::Arc};
+use std::{
+    cell::RefCell,
+    collections::{BTreeSet, VecDeque},
+    fmt::Debug,
+    sync::Arc,
+};
 
 use probe_rs_target::ScanChainElement;
 
 use crate::{
     architecture::arm::{
-        ap::{memory_ap::mock::MockMemoryAp, MemoryAp},
+        ap::memory_ap::{mock::MockMemoryAp, MemoryAp},
         armv8m::Dhcsr,
         communication_interface::{
             ArmDebugState, Initialized, SwdSequence, Uninitialized, UninitializedArmProbe,
         },
         memory::{adi_v5_memory_interface::ADIMemoryInterface, ArmMemoryInterface},
         sequences::ArmDebugSequence,
-        ArmError, ArmProbeInterface, DapAccess, DpAddress, FullyQualifiedApAddress,
-        MemoryApInformation, PortType, RawDapAccess, SwoAccess,
+        ArmError, ArmProbeInterface, DapAccess, DpAddress, FullyQualifiedApAddress, PortType,
+        RawDapAccess, SwoAccess,
     },
     probe::{DebugProbe, DebugProbeError, Probe, WireProtocol},
     Error, MemoryInterface, MemoryMappedRegister,
@@ -175,7 +180,11 @@ impl MemoryInterface<ArmError> for &mut MockCore {
 }
 
 impl ArmMemoryInterface for &mut MockCore {
-    fn ap(&mut self) -> MemoryAp {
+    fn base_address(&mut self) -> Result<u64, ArmError> {
+        todo!()
+    }
+
+    fn ap(&mut self) -> &mut MemoryAp {
         todo!()
     }
 
@@ -183,6 +192,18 @@ impl ArmMemoryInterface for &mut MockCore {
         &mut self,
     ) -> Result<
         &mut crate::architecture::arm::ArmCommunicationInterface<Initialized>,
+        DebugProbeError,
+    > {
+        todo!()
+    }
+
+    fn try_as_parts(
+        &mut self,
+    ) -> Result<
+        (
+            &mut crate::architecture::arm::ArmCommunicationInterface<Initialized>,
+            &mut MemoryAp,
+        ),
         DebugProbeError,
     > {
         todo!()
@@ -482,25 +503,22 @@ impl UninitializedArmProbe for FakeArmInterface<Uninitialized> {
     }
 }
 
+impl crate::architecture::arm::communication_interface::FlushableArmAccess
+    for FakeArmInterface<Initialized>
+{
+    fn flush(&mut self) -> Result<(), ArmError> {
+        todo!()
+    }
+}
+
 impl ArmProbeInterface for FakeArmInterface<Initialized> {
     fn memory_interface(
         &mut self,
         access_port_address: &FullyQualifiedApAddress,
     ) -> Result<Box<dyn ArmMemoryInterface + '_>, ArmError> {
-        let ap_information = MemoryApInformation {
-            address: access_port_address.clone(),
-            supports_only_32bit_data_size: false,
-            debug_base_address: 0xf000_0000,
-            supports_hnonsec: false,
-            has_large_data_extension: false,
-            has_large_address_extension: false,
-            device_enabled: true,
-        };
-
         match self.probe.memory_ap {
-            MockedAp::MemoryAp(ref mut memory_ap) => {
-                let memory = ADIMemoryInterface::new(memory_ap, ap_information)
-                    .map_err(|e| ArmError::from_access_port(e, access_port_address))?;
+            MockedAp::MemoryAp(ref mut _memory_ap) => {
+                let memory = ADIMemoryInterface::new(self, access_port_address)?;
 
                 Ok(Box::new(memory) as _)
             }
@@ -508,15 +526,11 @@ impl ArmProbeInterface for FakeArmInterface<Initialized> {
         }
     }
 
-    fn ap_information(
+    fn access_ports(
         &mut self,
-        _access_port: &FullyQualifiedApAddress,
-    ) -> Result<&crate::architecture::arm::ApInformation, ArmError> {
-        todo!()
-    }
-
-    fn num_access_ports(&mut self, _dp: DpAddress) -> Result<usize, ArmError> {
-        Ok(1)
+        dp: DpAddress,
+    ) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError> {
+        Ok(BTreeSet::from([FullyQualifiedApAddress::v1_with_dp(dp, 1)]))
     }
 
     fn read_chip_info_from_rom_table(

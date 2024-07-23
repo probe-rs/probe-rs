@@ -2,7 +2,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::architecture::arm::ap::AccessPort;
+use crate::architecture::arm::ap::AccessPortType;
 use crate::architecture::arm::armv7m::{Demcr, Dhcsr};
 use crate::architecture::arm::communication_interface::DapProbe;
 use crate::architecture::arm::memory::ArmMemoryInterface;

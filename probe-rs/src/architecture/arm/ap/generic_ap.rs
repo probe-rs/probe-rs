@@ -1,9 +1,6 @@
 //! Generic access port
 
-use super::{AccessPort, ApRegister, Register};
-use crate::architecture::arm::{
-    communication_interface::RegisterParseError, FullyQualifiedApAddress,
-};
+use crate::architecture::arm::communication_interface::RegisterParseError;
 
 /// Describes the class of an access port defined in the [`ARM Debug Interface v5.2`](https://developer.arm.com/documentation/ihi0031/f/?lang=en) specification.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -71,14 +68,7 @@ impl ApType {
     }
 }
 
-define_ap!(
-    /// A generic access port which implements just the register every access port has to implement
-    /// to be compliant with the ADI 5.2 specification.
-    GenericAp
-);
-
 define_ap_register!(
-    type: GenericAp,
     /// Identification Register
     ///
     /// The identification register is used to identify

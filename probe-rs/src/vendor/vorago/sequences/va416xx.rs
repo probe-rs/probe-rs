@@ -5,7 +5,7 @@ use probe_rs_target::CoreType;
 
 use crate::{
     architecture::arm::{
-        ap::AccessPort,
+        ap::AccessPortType,
         armv7m::Demcr,
         memory::ArmMemoryInterface,
         sequences::{cortex_m_core_start, ArmDebugSequence},
@@ -79,7 +79,7 @@ impl ArmDebugSequence for Va416xx {
         interface.flush().ok();
 
         // Re-initializing the core(s) is on us.
-        let ap = interface.ap();
+        let ap = interface.ap().ap_address().clone();
 
         let arm_interface = interface.get_arm_communication_interface()?;
         const NUM_RETRIES: u32 = 10;
@@ -96,7 +96,7 @@ impl ArmDebugSequence for Va416xx {
         }
 
         assert!(debug_base.is_none());
-        self.debug_core_start(arm_interface, ap.ap_address(), core_type, None, None)?;
+        self.debug_core_start(arm_interface, &ap, core_type, None, None)?;
 
         if demcr.vc_corereset() {
             // TODO! Find a way to call the armv7m::halt function instead

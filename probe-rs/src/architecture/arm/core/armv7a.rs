@@ -995,7 +995,8 @@ impl<'probe> MemoryInterface for Armv7a<'probe> {
 mod test {
     use crate::{
         architecture::arm::{
-            ap::MemoryAp, communication_interface::SwdSequence, sequences::DefaultArmSequence,
+            ap::memory_ap::MemoryAp, communication_interface::SwdSequence,
+            sequences::DefaultArmSequence,
         },
         probe::DebugProbeError,
     };
@@ -1169,7 +1170,25 @@ mod test {
             })
         }
 
-        fn ap(&mut self) -> MemoryAp {
+        fn try_as_parts(
+            &mut self,
+        ) -> Result<
+            (
+                &mut crate::architecture::arm::ArmCommunicationInterface<
+                    crate::architecture::arm::communication_interface::Initialized,
+                >,
+                &mut MemoryAp,
+            ),
+            DebugProbeError,
+        > {
+            todo!()
+        }
+
+        fn ap(&mut self) -> &mut MemoryAp {
+            todo!()
+        }
+
+        fn base_address(&mut self) -> Result<u64, ArmError> {
             todo!()
         }
     }

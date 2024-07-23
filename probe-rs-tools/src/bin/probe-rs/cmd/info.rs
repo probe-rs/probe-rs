@@ -5,6 +5,7 @@ use jep106::JEP106Code;
 use probe_rs::{
     architecture::{
         arm::{
+            ap::ApClass,
             armv6m::Demcr,
             component::Scs,
             dp::{DebugPortId, DebugPortVersion, MinDpSupport, DLPIDR, DPIDR, TARGETID},
@@ -13,8 +14,7 @@ use probe_rs::{
                 Component, ComponentId, CoresightComponent, PeripheralType,
             },
             sequences::DefaultArmSequence,
-            ApInformation, ArmProbeInterface, DpAddress, FullyQualifiedApAddress,
-            MemoryApInformation, Register,
+            ArmProbeInterface, DpAddress, FullyQualifiedApAddress, Register,
         },
         riscv::communication_interface::RiscvCommunicationInterface,
         xtensa::communication_interface::{
@@ -291,34 +291,26 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result
 
     let mut tree = Tree::new(dp_node);
 
-    let num_access_ports = interface.num_access_ports(dp)?;
+    let access_ports = interface.access_ports(dp)?;
+    println!("ARM Chip with debug port {:x?}:", dp);
+    if access_ports.is_empty() {
+        println!("No access ports found on this chip.");
+    } else {
+        for ap_address in access_ports {
+            use probe_rs::architecture::arm::ap::IDR;
+            let idr: IDR = interface
+                .read_raw_ap_register(&ap_address, IDR::ADDRESS)?
+                .try_into()?;
 
-    for ap_index in 0..num_access_ports {
-        let address = FullyQualifiedApAddress::v1_with_dp(dp, ap_index as u8);
-
-        let ap_information = interface.ap_information(&address)?;
-
-        match ap_information {
-            ApInformation::MemoryAp(MemoryApInformation {
-                debug_base_address,
-                device_enabled,
-                ..
-            }) => {
-                let mut ap_nodes = Tree::new(format!("{} MemoryAP", address.ap_v1()?));
-
-                if *device_enabled {
-                    match handle_memory_ap(&address, *debug_base_address, interface) {
-                        Ok(component_tree) => ap_nodes.push(component_tree),
-                        Err(e) => ap_nodes.push(format!("Error during access: {e}")),
-                    };
-                } else {
-                    ap_nodes.push("Access disabled".to_string());
-                }
-
+            if idr.CLASS == ApClass::MemAp {
+                let mut ap_nodes =
+                    Tree::new(format!("{} MemoryAP ({:?})", ap_address.ap_v1()?, idr.TYPE));
+                match handle_memory_ap(interface, &ap_address) {
+                    Ok(component_tree) => ap_nodes.push(component_tree),
+                    Err(e) => ap_nodes.push(format!("Error during access: {e}")),
+                };
                 tree.push(ap_nodes);
-            }
-
-            ApInformation::Other { address, idr } => {
+            } else {
                 let jep = idr.DESIGNER;
 
                 let ap_type = if idr.DESIGNER == JEP_ARM {
@@ -329,7 +321,7 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result
 
                 tree.push(format!(
                     "{} Unknown AP (Designer: {}, Class: {:?}, Type: {}, Variant: {:#x}, Revision: {:#x})",
-                    address.ap_v1()?,
+                    ap_address.ap_v1()?,
                     jep.get().unwrap_or("<unknown>"),
                     idr.CLASS,
                     ap_type,
@@ -338,13 +330,8 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result
                 ));
             }
         }
-    }
 
-    println!("ARM Chip with debug port {:x?}:", dp);
-    println!("{tree}");
-
-    if num_access_ports == 0 {
-        println!("No access ports found on this chip.");
+        println!("{tree}");
     }
     println!();
 
@@ -352,12 +339,12 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result
 }
 
 fn handle_memory_ap(
-    access_port: &FullyQualifiedApAddress,
-    base_address: u64,
     interface: &mut dyn ArmProbeInterface,
+    access_port: &FullyQualifiedApAddress,
 ) -> Result<Tree<String>, anyhow::Error> {
     let component = {
         let mut memory = interface.memory_interface(access_port)?;
+        let base_address = memory.base_address()?;
         let mut demcr = Demcr(memory.read_word_32(Demcr::get_mmio_address())?);
         demcr.set_dwtena(true);
         memory.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
