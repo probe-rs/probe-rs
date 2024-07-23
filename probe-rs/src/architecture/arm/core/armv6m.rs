@@ -2,9 +2,7 @@
 
 use super::{registers::cortex_m::*, CortexMState, Dfsr};
 use crate::{
-    architecture::arm::{
-        memory::adi_v5_memory_interface::ArmMemoryInterface, sequences::ArmDebugSequence, ArmError,
-    },
+    architecture::arm::{memory::ArmMemoryInterface, sequences::ArmDebugSequence, ArmError},
     core::{CoreRegisters, RegisterId, RegisterValue, VectorCatchCondition},
     error::Error,
     memory::valid_32bit_address,

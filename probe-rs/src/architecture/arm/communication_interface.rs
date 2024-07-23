@@ -7,10 +7,7 @@ use super::{
         Abort, Ctrl, DebugPortError, DebugPortId, DebugPortVersion, DpAccess, Select, BASEPTR0,
         BASEPTR1, DPIDR, DPIDR1,
     },
-    memory::{
-        adi_v5_memory_interface::{ADIMemoryInterface, ArmMemoryInterface},
-        Component,
-    },
+    memory::{adi_v5_memory_interface::ADIMemoryInterface, ArmMemoryInterface, Component},
     sequences::{ArmDebugSequence, DefaultArmSequence},
     ArmError, DapAccess, DpAddress, FullyQualifiedApAddress, PortType, RawDapAccess, SwoAccess,
     SwoConfig,

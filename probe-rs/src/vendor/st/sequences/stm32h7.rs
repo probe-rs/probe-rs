@@ -7,10 +7,7 @@ use probe_rs_target::CoreType;
 use crate::architecture::arm::{
     ap::MemoryAp,
     component::{TraceFunnel, TraceSink},
-    memory::{
-        adi_v5_memory_interface::ArmMemoryInterface, romtable::RomTableError, CoresightComponent,
-        PeripheralType,
-    },
+    memory::{romtable::RomTableError, ArmMemoryInterface, CoresightComponent, PeripheralType},
     sequences::ArmDebugSequence,
     ArmError, ArmProbeInterface, FullyQualifiedApAddress,
 };
@@ -79,7 +76,7 @@ impl Stm32h7 {
 }
 
 mod dbgmcu {
-    use crate::architecture::arm::{memory::adi_v5_memory_interface::ArmMemoryInterface, ArmError};
+    use crate::architecture::arm::{memory::ArmMemoryInterface, ArmError};
     use bitfield::bitfield;
 
     /// The base address of the DBGMCU component

@@ -9,8 +9,8 @@ use probe_rs_target::{
 
 use crate::{
     architecture::arm::{
-        ap::MemoryAp, memory::adi_v5_memory_interface::ArmMemoryInterface, ArmChipInfo,
-        ArmProbeInterface, FullyQualifiedApAddress,
+        ap::MemoryAp, memory::ArmMemoryInterface, ArmChipInfo, ArmProbeInterface,
+        FullyQualifiedApAddress,
     },
     config::{registry, DebugSequence},
     vendor::{

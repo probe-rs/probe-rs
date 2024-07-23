@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use crate::architecture::arm::armv7m::{Demcr, Dhcsr};
 use crate::architecture::arm::communication_interface::DapProbe;
-use crate::architecture::arm::memory::adi_v5_memory_interface::ArmMemoryInterface;
+use crate::architecture::arm::memory::ArmMemoryInterface;
 use crate::architecture::arm::sequences::{ArmDebugSequence, ArmDebugSequenceError};
 use crate::architecture::arm::{ArmError, DpAddress};
 use crate::probe::{DebugProbeError, WireProtocol};

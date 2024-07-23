@@ -1,9 +1,11 @@
 //! CoreSight ROM table parsing and handling.
 
-use super::adi_v5_memory_interface::ArmMemoryInterface;
-use super::AccessPortError;
-use crate::architecture::arm::ArmError;
-use crate::architecture::arm::{ap::MemoryAp, communication_interface::ArmProbeInterface};
+use crate::architecture::arm::{
+    ap::{AccessPortError, MemoryAp},
+    communication_interface::ArmProbeInterface,
+    memory::ArmMemoryInterface,
+    ArmError,
+};
 
 /// An error to report any errors that are romtable discovery specific.
 #[derive(thiserror::Error, Debug, docsplay::Display)]

@@ -7,7 +7,7 @@ mod usb_interface;
 use self::usb_interface::{StLinkUsb, StLinkUsbDevice};
 use super::{DebugProbe, DebugProbeError, ProbeCreationError, WireProtocol};
 use crate::architecture::arm::ap::GenericAp;
-use crate::architecture::arm::memory::adi_v5_memory_interface::ArmMemoryInterface;
+use crate::architecture::arm::memory::ArmMemoryInterface;
 use crate::architecture::arm::{valid_32bit_arm_address, ArmError};
 use crate::MemoryInterface;
 use crate::{

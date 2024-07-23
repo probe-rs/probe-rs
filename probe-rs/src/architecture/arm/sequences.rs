@@ -27,8 +27,8 @@ use super::{
     core::cortex_m::Dhcsr,
     dp::{Abort, Ctrl, DebugPortError, DpAccess, Select, DPIDR},
     memory::{
-        adi_v5_memory_interface::ArmMemoryInterface,
         romtable::{CoresightComponent, PeripheralType},
+        ArmMemoryInterface,
     },
     ArmCommunicationInterface, ArmError, DpAddress, Pins, PortType, Register,
 };

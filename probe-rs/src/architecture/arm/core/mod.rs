@@ -8,7 +8,7 @@ use crate::{
     SemihostingCommand,
 };
 
-use super::memory::adi_v5_memory_interface::ArmMemoryInterface;
+use super::memory::ArmMemoryInterface;
 
 pub mod armv6m;
 pub mod armv7a;
