@@ -20,7 +20,7 @@ use crate::{
 };
 
 use super::{
-    ap::{AccessPortError, MemoryAp},
+    ap::AccessPortError,
     armv6m::Demcr,
     communication_interface::{DapProbe, Initialized},
     component::{TraceFunnel, TraceSink},
@@ -30,7 +30,8 @@ use super::{
         romtable::{CoresightComponent, PeripheralType},
         ArmMemoryInterface,
     },
-    ArmCommunicationInterface, ArmError, DpAddress, Pins, PortType, Register,
+    ArmCommunicationInterface, ArmError, DpAddress, FullyQualifiedApAddress, Pins, PortType,
+    Register,
 };
 
 /// An error occurred when executing an ARM debug sequence
@@ -643,12 +644,12 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     fn debug_core_start(
         &self,
         interface: &mut dyn ArmProbeInterface,
-        core_ap: MemoryAp,
+        core_ap: &FullyQualifiedApAddress,
         core_type: CoreType,
         debug_base: Option<u64>,
         cti_base: Option<u64>,
     ) -> Result<(), ArmError> {
-        let mut core = interface.memory_interface(&core_ap)?;
+        let mut core = interface.memory_interface(core_ap)?;
 
         // Dispatch based on core type (Cortex-A vs M)
         match core_type {
@@ -770,7 +771,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     fn debug_device_unlock(
         &self,
         _interface: &mut dyn ArmProbeInterface,
-        _default_ap: &MemoryAp,
+        _default_ap: &FullyQualifiedApAddress,
         _permissions: &crate::Permissions,
     ) -> Result<(), ArmError> {
         tracing::debug!("debug_device_unlock - empty by default");

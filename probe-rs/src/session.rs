@@ -1,27 +1,25 @@
-use crate::architecture::arm::ap::AccessPort;
-use crate::architecture::arm::component::get_arm_components;
-use crate::architecture::arm::sequences::{ArmDebugSequence, DefaultArmSequence};
-use crate::architecture::arm::{ArmError, DpAddress};
-use crate::architecture::riscv::communication_interface::{RiscvDebugInterfaceState, RiscvError};
-use crate::architecture::xtensa::communication_interface::{
-    XtensaCommunicationInterface, XtensaDebugInterfaceState, XtensaError,
-};
-use crate::config::{CoreExt, RegistryError, Target, TargetSelector};
-use crate::core::{Architecture, CombinedCoreState};
-use crate::probe::fake_probe::FakeProbe;
-use crate::probe::ProbeCreationError;
 use crate::{
     architecture::{
         arm::{
-            communication_interface::ArmProbeInterface, component::TraceSink,
-            memory::CoresightComponent, SwoReader,
+            communication_interface::ArmProbeInterface,
+            component::{get_arm_components, TraceSink},
+            memory::CoresightComponent,
+            sequences::{ArmDebugSequence, DefaultArmSequence},
+            ArmError, DpAddress, SwoReader,
         },
-        riscv::communication_interface::RiscvCommunicationInterface,
+        riscv::communication_interface::{
+            RiscvCommunicationInterface, RiscvDebugInterfaceState, RiscvError,
+        },
+        xtensa::communication_interface::{
+            XtensaCommunicationInterface, XtensaDebugInterfaceState, XtensaError,
+        },
     },
-    config::DebugSequence,
-};
-use crate::{
-    probe::{list::Lister, AttachMethod, DebugProbeError, Probe},
+    config::{CoreExt, DebugSequence, RegistryError, Target, TargetSelector},
+    core::{Architecture, CombinedCoreState},
+    probe::{
+        fake_probe::FakeProbe, list::Lister, AttachMethod, DebugProbeError, Probe,
+        ProbeCreationError,
+    },
     Core, CoreType, Error,
 };
 use std::ops::DerefMut;
@@ -181,7 +179,7 @@ impl Session {
             ))
         })?;
 
-        let default_dp = default_memory_ap.ap_address().dp();
+        let default_dp = default_memory_ap.dp();
 
         let sequence_handle = match &target.debug_sequence {
             DebugSequence::Arm(sequence) => sequence.clone(),

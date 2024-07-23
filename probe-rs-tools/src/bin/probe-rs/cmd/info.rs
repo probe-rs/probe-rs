@@ -5,7 +5,6 @@ use jep106::JEP106Code;
 use probe_rs::{
     architecture::{
         arm::{
-            ap::{GenericAp, MemoryAp},
             armv6m::Demcr,
             component::Scs,
             dp::{DebugPortId, DebugPortVersion, MinDpSupport, DLPIDR, DPIDR, TARGETID},
@@ -295,22 +294,20 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result
     let num_access_ports = interface.num_access_ports(dp)?;
 
     for ap_index in 0..num_access_ports {
-        let ap = FullyQualifiedApAddress::v1_with_dp(dp, ap_index as u8);
-        let access_port = GenericAp::new(ap);
+        let address = FullyQualifiedApAddress::v1_with_dp(dp, ap_index as u8);
 
-        let ap_information = interface.ap_information(&access_port)?;
+        let ap_information = interface.ap_information(&address)?;
 
         match ap_information {
             ApInformation::MemoryAp(MemoryApInformation {
                 debug_base_address,
-                address,
                 device_enabled,
                 ..
             }) => {
                 let mut ap_nodes = Tree::new(format!("{} MemoryAP", address.ap_v1()?));
 
                 if *device_enabled {
-                    match handle_memory_ap(&access_port.into(), *debug_base_address, interface) {
+                    match handle_memory_ap(&address, *debug_base_address, interface) {
                         Ok(component_tree) => ap_nodes.push(component_tree),
                         Err(e) => ap_nodes.push(format!("Error during access: {e}")),
                     };
@@ -355,7 +352,7 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result
 }
 
 fn handle_memory_ap(
-    access_port: &MemoryAp,
+    access_port: &FullyQualifiedApAddress,
     base_address: u64,
     interface: &mut dyn ArmProbeInterface,
 ) -> Result<Tree<String>, anyhow::Error> {
@@ -374,7 +371,7 @@ fn handle_memory_ap(
 fn coresight_component_tree(
     interface: &mut dyn ArmProbeInterface,
     component: Component,
-    access_port: &MemoryAp,
+    access_port: &FullyQualifiedApAddress,
 ) -> Result<Tree<String>> {
     let tree = match &component {
         Component::GenericVerificationComponent(_) => Tree::new("Generic".to_string()),
@@ -455,7 +452,7 @@ fn process_vendor_rom_tables(
     interface: &mut dyn ArmProbeInterface,
     id: &ComponentId,
     _table: &RomTable,
-    access_port: &MemoryAp,
+    access_port: &FullyQualifiedApAddress,
     tree: &mut Tree<String>,
 ) -> Result<()> {
     let peripheral_id = id.peripheral_id();
@@ -485,7 +482,7 @@ fn process_component_entry(
     interface: &mut dyn ArmProbeInterface,
     peripheral_id: &PeripheralID,
     component: &Component,
-    access_port: &MemoryAp,
+    access_port: &FullyQualifiedApAddress,
 ) -> Result<()> {
     let Some(part) = peripheral_id.determine_part() else {
         return Ok(());

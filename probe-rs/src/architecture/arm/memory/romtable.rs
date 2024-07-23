@@ -1,10 +1,10 @@
 //! CoreSight ROM table parsing and handling.
 
 use crate::architecture::arm::{
-    ap::{AccessPortError, MemoryAp},
+    ap::{AccessPort, AccessPortError},
     communication_interface::ArmProbeInterface,
     memory::ArmMemoryInterface,
-    ArmError,
+    ArmError, FullyQualifiedApAddress,
 };
 
 /// An error to report any errors that are romtable discovery specific.
@@ -151,7 +151,7 @@ impl RomTable {
                     format: raw_entry.format,
                     power_domain_id: raw_entry.power_domain_id,
                     power_domain_valid: raw_entry.power_domain_valid,
-                    component: CoresightComponent::new(component, memory.ap()),
+                    component: CoresightComponent::new(component, memory.ap().ap_address().clone()),
                 });
             }
         }
@@ -498,13 +498,16 @@ pub struct CoresightComponent {
     /// The component variant that is accessible.
     pub component: Component,
     /// The probe access point where the component can be accessed from
-    pub ap: MemoryAp,
+    pub ap_address: FullyQualifiedApAddress,
 }
 
 impl CoresightComponent {
     /// Construct a coresight component found on the provided access point.
-    pub fn new(component: Component, ap: MemoryAp) -> Self {
-        Self { component, ap }
+    pub fn new(component: Component, ap: FullyQualifiedApAddress) -> Self {
+        Self {
+            component,
+            ap_address: ap,
+        }
     }
 
     /// Reads a register of the component pointed to by this romtable entry.
@@ -513,7 +516,7 @@ impl CoresightComponent {
         interface: &mut dyn ArmProbeInterface,
         offset: u32,
     ) -> Result<u32, ArmError> {
-        let mut memory = interface.memory_interface(&self.ap)?;
+        let mut memory = interface.memory_interface(&self.ap_address)?;
         let value = memory.read_word_32(self.component.id().component_address + offset as u64)?;
         Ok(value)
     }
@@ -525,7 +528,7 @@ impl CoresightComponent {
         offset: u32,
         value: u32,
     ) -> Result<(), ArmError> {
-        let mut memory = interface.memory_interface(&self.ap)?;
+        let mut memory = interface.memory_interface(&self.ap_address)?;
         memory.write_word_32(self.component.id().component_address + offset as u64, value)?;
         Ok(())
     }

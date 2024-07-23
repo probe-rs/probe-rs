@@ -5,7 +5,7 @@ use probe_rs_target::ScanChainElement;
 
 use crate::{
     architecture::arm::{
-        ap::{memory_ap::mock::MockMemoryAp, AccessPort, MemoryAp},
+        ap::{memory_ap::mock::MockMemoryAp, MemoryAp},
         armv8m::Dhcsr,
         communication_interface::{
             ArmDebugState, Initialized, SwdSequence, Uninitialized, UninitializedArmProbe,
@@ -485,10 +485,10 @@ impl UninitializedArmProbe for FakeArmInterface<Uninitialized> {
 impl ArmProbeInterface for FakeArmInterface<Initialized> {
     fn memory_interface(
         &mut self,
-        access_port: &MemoryAp,
+        access_port_address: &FullyQualifiedApAddress,
     ) -> Result<Box<dyn ArmMemoryInterface + '_>, ArmError> {
         let ap_information = MemoryApInformation {
-            address: access_port.ap_address().clone(),
+            address: access_port_address.clone(),
             supports_only_32bit_data_size: false,
             debug_base_address: 0xf000_0000,
             supports_hnonsec: false,
@@ -500,7 +500,7 @@ impl ArmProbeInterface for FakeArmInterface<Initialized> {
         match self.probe.memory_ap {
             MockedAp::MemoryAp(ref mut memory_ap) => {
                 let memory = ADIMemoryInterface::new(memory_ap, ap_information)
-                    .map_err(|e| ArmError::from_access_port(e, access_port))?;
+                    .map_err(|e| ArmError::from_access_port(e, access_port_address))?;
 
                 Ok(Box::new(memory) as _)
             }
@@ -510,7 +510,7 @@ impl ArmProbeInterface for FakeArmInterface<Initialized> {
 
     fn ap_information(
         &mut self,
-        _access_port: &crate::architecture::arm::ap::GenericAp,
+        _access_port: &FullyQualifiedApAddress,
     ) -> Result<&crate::architecture::arm::ApInformation, ArmError> {
         todo!()
     }

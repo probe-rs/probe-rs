@@ -3,7 +3,6 @@
 use std::sync::Arc;
 
 use crate::architecture::arm::{
-    ap::MemoryAp,
     component::TraceSink,
     memory::CoresightComponent,
     sequences::{ArmDebugSequence, ArmDebugSequenceError},
@@ -87,7 +86,7 @@ impl ArmDebugSequence for Nrf52 {
     fn debug_device_unlock(
         &self,
         iface: &mut dyn ArmProbeInterface,
-        _default_ap: &MemoryAp,
+        _default_ap: &FullyQualifiedApAddress,
         permissions: &crate::Permissions,
     ) -> Result<(), ArmError> {
         let ctrl_ap = &FullyQualifiedApAddress::v1_with_default_dp(1);
@@ -152,7 +151,7 @@ impl ArmDebugSequence for Nrf52 {
             }
         };
 
-        let mut memory = interface.memory_interface(&components[0].ap)?;
+        let mut memory = interface.memory_interface(&components[0].ap_address)?;
         let mut config = clock::TraceConfig::read(&mut *memory)?;
         config.set_traceportspeed(portspeed);
         if matches!(sink, TraceSink::Tpiu(_)) {

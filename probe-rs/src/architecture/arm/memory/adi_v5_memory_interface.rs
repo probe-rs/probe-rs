@@ -2,6 +2,7 @@ use super::super::ap::{
     AccessPortError, AddressIncrement, ApAccess, ApRegister, DataSize, MemoryAp, CSW, DRW, TAR,
     TAR2,
 };
+use crate::architecture::arm::ap::AccessPort;
 use crate::architecture::arm::communication_interface::{FlushableArmAccess, SwdSequence};
 use crate::architecture::arm::{
     communication_interface::Initialized, dp::DpAccess, memory::ArmMemoryInterface,
@@ -135,7 +136,7 @@ where
         self.interface
             .read_ap_register(&self.memory_ap)
             .map_err(AccessPortError::register_read_error::<R, _>)
-            .map_err(|error| ArmError::from_access_port(error, &self.memory_ap))
+            .map_err(|error| ArmError::from_access_port(error, self.memory_ap.ap_address()))
     }
 
     /// Read multiple 32 bit values from the DRW register on the given AP.
@@ -152,7 +153,7 @@ where
             self.interface
                 .read_ap_register_repeated(&self.memory_ap, DRW { data: 0 }, values)
                 .map_err(AccessPortError::register_read_error::<DRW, _>)
-                .map_err(|err| ArmError::from_access_port(err, &self.memory_ap))
+                .map_err(|err| ArmError::from_access_port(err, self.memory_ap.ap_address()))
         }
     }
 
@@ -165,7 +166,7 @@ where
         self.interface
             .write_ap_register(&self.memory_ap, register)
             .map_err(AccessPortError::register_write_error::<R, _>)
-            .map_err(|e| ArmError::from_access_port(e, &self.memory_ap))
+            .map_err(|e| ArmError::from_access_port(e, self.memory_ap.ap_address()))
     }
 
     /// Write multiple 32 bit values to the DRW register on the given AP.
@@ -180,7 +181,7 @@ where
             self.interface
                 .write_ap_register_repeated(&self.memory_ap, DRW { data: 0 }, values)
                 .map_err(AccessPortError::register_write_error::<DRW, _>)
-                .map_err(|e| ArmError::from_access_port(e, &self.memory_ap))
+                .map_err(|e| ArmError::from_access_port(e, self.memory_ap.ap_address()))
         }
     }
 }

@@ -6,7 +6,6 @@ mod usb_interface;
 
 use self::usb_interface::{StLinkUsb, StLinkUsbDevice};
 use super::{DebugProbe, DebugProbeError, ProbeCreationError, WireProtocol};
-use crate::architecture::arm::ap::GenericAp;
 use crate::architecture::arm::memory::ArmMemoryInterface;
 use crate::architecture::arm::{valid_32bit_arm_address, ArmError};
 use crate::MemoryInterface;
@@ -1494,11 +1493,12 @@ impl DapAccess for StlinkArmDebug {
 impl ArmProbeInterface for StlinkArmDebug {
     fn memory_interface(
         &mut self,
-        access_port: &MemoryAp,
+        access_port: &FullyQualifiedApAddress,
     ) -> Result<Box<dyn ArmMemoryInterface + '_>, ArmError> {
+        let mem_ap = MemoryAp::new(access_port.clone());
         let interface = StLinkMemoryInterface {
             probe: self,
-            current_ap: access_port.clone(),
+            current_ap: mem_ap,
         };
 
         Ok(Box::new(interface) as _)
@@ -1507,9 +1507,9 @@ impl ArmProbeInterface for StlinkArmDebug {
     #[tracing::instrument(skip(self))]
     fn ap_information(
         &mut self,
-        access_port: &GenericAp,
+        access_port: &FullyQualifiedApAddress,
     ) -> Result<&crate::architecture::arm::communication_interface::ApInformation, ArmError> {
-        let addr = access_port.ap_address();
+        let addr = access_port;
         if addr.dp() != DpAddress::Default {
             return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
         }
@@ -1537,7 +1537,7 @@ impl ArmProbeInterface for StlinkArmDebug {
 
                 let baseaddr = access_port.base_address(self)?;
 
-                let mut memory = self.memory_interface(&access_port)?;
+                let mut memory = self.memory_interface(access_port.ap_address())?;
 
                 let component = Component::try_parse(&mut *memory, baseaddr)?;
 

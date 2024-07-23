@@ -5,7 +5,6 @@ use std::sync::Arc;
 use probe_rs_target::CoreType;
 
 use crate::architecture::arm::{
-    ap::MemoryAp,
     component::{TraceFunnel, TraceSink},
     memory::{romtable::RomTableError, ArmMemoryInterface, CoresightComponent, PeripheralType},
     sequences::ArmDebugSequence,
@@ -149,13 +148,13 @@ impl ArmDebugSequence for Stm32h7 {
     fn debug_device_unlock(
         &self,
         interface: &mut dyn ArmProbeInterface,
-        _default_ap: &MemoryAp,
+        _default_ap: &FullyQualifiedApAddress,
         _permissions: &crate::Permissions,
     ) -> Result<(), ArmError> {
         // Power up the debug components through AP2, which is the default AP debug port.
-        let ap = MemoryAp::new(FullyQualifiedApAddress::v1_with_default_dp(2));
+        let ap = &FullyQualifiedApAddress::v1_with_default_dp(2);
 
-        let mut memory = interface.memory_interface(&ap)?;
+        let mut memory = interface.memory_interface(ap)?;
         self.enable_debug_components(&mut *memory, true)?;
 
         Ok(())

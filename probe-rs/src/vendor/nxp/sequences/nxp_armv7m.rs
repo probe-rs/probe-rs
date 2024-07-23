@@ -11,7 +11,7 @@ use std::{
 
 use crate::{
     architecture::arm::{
-        ap::{AccessPortError, ApAccess, CSW},
+        ap::{AccessPort, AccessPortError, ApAccess, CSW},
         armv7m::{FpCtrl, FpRev2CompX},
         core::{
             armv7m::{Aircr, Dhcsr},
@@ -425,12 +425,12 @@ impl ArmDebugSequence for MIMXRT11xx {
         //
         // The ARM communication interface knows how to re-initialize the debug port.
         // Re-initializing the core(s) is on us.
-        let ap = probe.ap();
+        let ap = probe.ap().ap_address().clone();
         let interface = probe.get_arm_communication_interface()?;
         interface.reinitialize()?;
 
         assert!(debug_base.is_none());
-        self.debug_core_start(interface, ap, core_type, None, None)?;
+        self.debug_core_start(interface, &ap, core_type, None, None)?;
 
         // Are we back?
         self.wait_for_enable(probe, Duration::from_millis(300))?;

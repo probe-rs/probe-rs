@@ -3,7 +3,6 @@ use crate::flashing::FlashLoader;
 use crate::{
     architecture::{
         arm::{
-            ap::MemoryAp,
             sequences::{ArmDebugSequence, DefaultArmSequence},
             DpAddress, FullyQualifiedApAddress,
         },
@@ -236,20 +235,20 @@ pub enum DebugSequence {
 pub(crate) trait CoreExt {
     // Retrieve the Coresight MemoryAP which should be used to
     // access the core, if available.
-    fn memory_ap(&self) -> Option<MemoryAp>;
+    fn memory_ap(&self) -> Option<FullyQualifiedApAddress>;
 }
 
 impl CoreExt for Core {
-    fn memory_ap(&self) -> Option<MemoryAp> {
+    fn memory_ap(&self) -> Option<FullyQualifiedApAddress> {
         match &self.core_access_options {
             probe_rs_target::CoreAccessOptions::Arm(options) => {
-                Some(MemoryAp::new(FullyQualifiedApAddress::v1_with_dp(
+                Some(FullyQualifiedApAddress::v1_with_dp(
                     match options.psel {
                         0 => DpAddress::Default,
                         x => DpAddress::Multidrop(x),
                     },
                     options.ap,
-                )))
+                ))
             }
             probe_rs_target::CoreAccessOptions::Riscv(_) => None,
             probe_rs_target::CoreAccessOptions::Xtensa(_) => None,

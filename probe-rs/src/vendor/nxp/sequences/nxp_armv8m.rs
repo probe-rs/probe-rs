@@ -8,7 +8,7 @@ use std::{
 
 use crate::{
     architecture::arm::{
-        ap::{AccessPort, ApAccess, GenericAp, MemoryAp, CSW, IDR},
+        ap::{AccessPort, ApAccess, GenericAp, CSW, IDR},
         communication_interface::{FlushableArmAccess, Initialized},
         core::armv8m::{Aircr, Demcr, Dhcsr},
         dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
@@ -433,8 +433,8 @@ impl MIMXRT5xxS {
         // Give bootloader time to do what it needs to do
         thread::sleep(Duration::from_millis(100));
 
-        let ap: MemoryAp = probe.ap();
-        let dp = ap.ap_address().dp();
+        let ap = probe.ap().ap_address().clone();
+        let dp = ap.dp();
         let start = Instant::now();
         while !self.csw_debug_ready(probe.get_arm_communication_interface()?, &ap)?
             && start.elapsed() < Duration::from_millis(300)
@@ -533,9 +533,9 @@ impl MIMXRT5xxS {
     fn csw_debug_ready(
         &self,
         interface: &mut ArmCommunicationInterface<Initialized>,
-        ap: &MemoryAp,
+        ap: &FullyQualifiedApAddress,
     ) -> Result<bool, ArmError> {
-        let csw = interface.read_raw_ap_register(ap.ap_address(), 0x00)?;
+        let csw = interface.read_raw_ap_register(ap, 0x00)?;
 
         Ok(csw & 0x40 != 0)
     }
@@ -550,7 +550,7 @@ impl MIMXRT5xxS {
         &self,
         interface: &mut ArmCommunicationInterface<Initialized>,
         dp: DpAddress,
-        mem_ap: &MemoryAp,
+        mem_ap: &FullyQualifiedApAddress,
     ) -> Result<bool, ArmError> {
         // Check AHB-AP CSW DbgStatus to decide if need enable DebugMailbox
         if self.csw_debug_ready(interface, mem_ap)? {
@@ -631,8 +631,7 @@ impl ArmDebugSequence for MIMXRT5xxS {
             interface.write_raw_dp_register(dp, SW_DP_ABORT, 0x0000001E)?;
 
             let ap = FullyQualifiedApAddress::v1_with_dp(dp, 0);
-            let mem_ap = MemoryAp::new(ap);
-            self.enable_debug_mailbox(interface, dp, &mem_ap)?;
+            self.enable_debug_mailbox(interface, dp, &ap)?;
         }
 
         tracing::trace!("MIMXRT5xxS debug port start was successful");

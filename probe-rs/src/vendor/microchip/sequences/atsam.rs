@@ -1,16 +1,12 @@
 //! Sequences for ATSAM D1x/D2x/DAx/D5x/E5x target families
 
 use crate::{
-    architecture::{
-        self,
-        arm::{
-            ap::MemoryAp,
-            armv7m::Dhcsr,
-            communication_interface::{DapProbe, SwdSequence},
-            memory::ArmMemoryInterface,
-            sequences::{ArmDebugSequence, ArmDebugSequenceError, DebugEraseSequence},
-            ArmError, ArmProbeInterface, FullyQualifiedApAddress, Pins,
-        },
+    architecture::arm::{
+        armv7m::Dhcsr,
+        communication_interface::{DapProbe, SwdSequence},
+        memory::ArmMemoryInterface,
+        sequences::{ArmDebugSequence, ArmDebugSequenceError, DebugEraseSequence},
+        ArmError, ArmProbeInterface, FullyQualifiedApAddress, Pins,
     },
     probe::DebugProbeError,
     session::MissingPermissions,
@@ -465,12 +461,12 @@ impl ArmDebugSequence for AtSAM {
     fn debug_core_start(
         &self,
         interface: &mut dyn ArmProbeInterface,
-        core_ap: MemoryAp,
+        core_ap: &FullyQualifiedApAddress,
         _core_type: CoreType,
         _debug_base: Option<u64>,
         _cti_base: Option<u64>,
     ) -> Result<(), ArmError> {
-        let mut core = interface.memory_interface(&core_ap)?;
+        let mut core = interface.memory_interface(core_ap)?;
 
         self.release_reset_extension(&mut *core)
     }
@@ -518,7 +514,7 @@ impl ArmDebugSequence for AtSAM {
     fn debug_device_unlock(
         &self,
         interface: &mut dyn ArmProbeInterface,
-        default_ap: &architecture::arm::ap::MemoryAp,
+        default_ap: &FullyQualifiedApAddress,
         permissions: &Permissions,
     ) -> Result<(), ArmError> {
         // First check if the device is locked
@@ -540,7 +536,7 @@ impl ArmDebugSequence for AtSAM {
 
 impl DebugEraseSequence for AtSAM {
     fn erase_all(&self, interface: &mut dyn ArmProbeInterface) -> Result<(), ArmError> {
-        let mem_ap = &MemoryAp::new(FullyQualifiedApAddress::v1_with_default_dp(0));
+        let mem_ap = &FullyQualifiedApAddress::v1_with_default_dp(0);
 
         let mut memory = interface.memory_interface(mem_ap)?;
 

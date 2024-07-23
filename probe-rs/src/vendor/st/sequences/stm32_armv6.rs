@@ -7,8 +7,8 @@ use std::sync::Arc;
 use probe_rs_target::CoreType;
 
 use crate::architecture::arm::{
-    ap::MemoryAp, memory::ArmMemoryInterface, sequences::ArmDebugSequence, ArmError,
-    ArmProbeInterface,
+    memory::ArmMemoryInterface, sequences::ArmDebugSequence, ArmError, ArmProbeInterface,
+    FullyQualifiedApAddress,
 };
 
 /// Supported families for custom sequences on ARMv6 STM32 devices.
@@ -115,7 +115,7 @@ impl ArmDebugSequence for Stm32Armv6 {
     fn debug_device_unlock(
         &self,
         interface: &mut dyn ArmProbeInterface,
-        default_ap: &MemoryAp,
+        default_ap: &FullyQualifiedApAddress,
         _permissions: &crate::Permissions,
     ) -> Result<(), ArmError> {
         let mut memory = interface.memory_interface(default_ap)?;

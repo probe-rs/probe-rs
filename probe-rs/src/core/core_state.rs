@@ -1,7 +1,6 @@
 use crate::{
     architecture::{
         arm::{
-            ap::MemoryAp,
             core::{CortexAState, CortexMState},
             ArmProbeInterface, DpAddress, FullyQualifiedApAddress,
         },
@@ -125,7 +124,7 @@ impl CombinedCoreState {
             // Enable debug mode
             sequence.debug_core_start(
                 interface,
-                self.arm_memory_ap(),
+                &self.arm_memory_ap(),
                 self.core_type(),
                 options.debug_base,
                 options.cti_base,
@@ -233,7 +232,7 @@ impl CombinedCoreState {
     /// ## Panic
     ///
     /// This function will panic if the core is not an ARM core and doesn't have a memory AP
-    pub(crate) fn arm_memory_ap(&self) -> MemoryAp {
+    pub(crate) fn arm_memory_ap(&self) -> FullyQualifiedApAddress {
         self.core_state.memory_ap()
     }
 }
@@ -253,7 +252,7 @@ impl CoreState {
         }
     }
 
-    pub(crate) fn memory_ap(&self) -> MemoryAp {
+    pub(crate) fn memory_ap(&self) -> FullyQualifiedApAddress {
         let ResolvedCoreOptions::Arm { options, .. } = &self.core_access_options else {
             unreachable!(
                 "The stored core state is not compatible with the ARM architecture. \
@@ -266,9 +265,7 @@ impl CoreState {
             x => DpAddress::Multidrop(x),
         };
 
-        let ap = FullyQualifiedApAddress::v1_with_dp(dp, options.ap);
-
-        MemoryAp::new(ap)
+        FullyQualifiedApAddress::v1_with_dp(dp, options.ap)
     }
 }
 
