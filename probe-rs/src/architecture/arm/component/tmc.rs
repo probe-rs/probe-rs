@@ -7,7 +7,8 @@ use crate::{
     architecture::arm::{
         component::DebugComponentInterface, memory::CoresightComponent, ArmError, ArmProbeInterface,
     },
-    memory_mapped_bitfield_register, Error,
+    core::memory_mapped_registers::memory_mapped_bitfield_register,
+    Error,
 };
 
 const REGISTER_OFFSET_RSZ: u32 = 0x04;

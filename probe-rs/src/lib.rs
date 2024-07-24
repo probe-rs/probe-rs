@@ -103,6 +103,8 @@ pub use crate::semihosting::{
 };
 pub use crate::session::{Permissions, Session};
 
+pub(crate) use core::memory_mapped_registers::memory_mapped_bitfield_register;
+
 #[cfg(feature = "debug")]
 pub use crate::core::dump::{CoreDump, CoreDumpError};
 

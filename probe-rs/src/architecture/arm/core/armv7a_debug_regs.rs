@@ -1,6 +1,9 @@
 //! Debug register definitions
 
-use crate::{core::BreakpointCause, memory_mapped_bitfield_register, HaltReason};
+use crate::{
+    core::{memory_mapped_registers::memory_mapped_bitfield_register, BreakpointCause},
+    HaltReason,
+};
 
 memory_mapped_bitfield_register! {
     /// DBGDSCR - Debug Status and Control Registers

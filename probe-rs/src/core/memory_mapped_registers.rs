@@ -36,7 +36,6 @@ pub trait MemoryMappedRegister<T>: Clone + From<T> + Into<T> + Sized + std::fmt:
     }
 }
 
-#[macro_export]
 /// Create a [`MemoryMappedRegister`] type, with the required method implementations for:
 /// - Trait implementations required by [`MemoryMappedRegister`]
 /// - Includes a `bitfield!` mapping for bitfield access to optionally defined fields.
@@ -70,7 +69,7 @@ pub trait MemoryMappedRegister<T>: Clone + From<T> + Into<T> + Sized + std::fmt:
 /// - A `const NAME: &'static str = "abstractcs";`.
 macro_rules! memory_mapped_bitfield_register {
     ($(#[$outer:meta])* $visibility:vis struct $struct_name:ident($reg_type:ty); $addr:expr, $reg_name:expr, impl From; $($rest:tt)*) => {
-        $crate::memory_mapped_bitfield_register!{
+        $crate::core::memory_mapped_registers::memory_mapped_bitfield_register!{
             $(#[$outer])* $visibility struct $struct_name($reg_type); $addr, $reg_name, $($rest)*
         }
 
@@ -105,3 +104,5 @@ macro_rules! memory_mapped_bitfield_register {
         }
     };
 }
+
+pub(crate) use memory_mapped_bitfield_register;

@@ -9,7 +9,6 @@
 /// - fields: A list of fields of the register type.
 /// - from: a closure to transform from an `u32` to the typed register.
 /// - to: A closure to transform from they typed register to an `u32`.
-#[macro_export]
 macro_rules! define_ap_register {
     (
         type: $port_type:ident,
@@ -55,7 +54,6 @@ macro_rules! define_ap_register {
 }
 
 /// Defines a new typed access port.
-#[macro_export]
 macro_rules! define_ap {
     (
         $(#[$outer:meta])*

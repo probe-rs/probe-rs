@@ -1,8 +1,4 @@
 //! Types and functions for interacting with debug ports.
-
-#[macro_use]
-mod register_generation;
-
 use super::{
     communication_interface::RegisterParseError, ArmError, DapAccess, DapError, DpAddress, Register,
 };

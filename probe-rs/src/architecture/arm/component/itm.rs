@@ -85,7 +85,7 @@ impl<'a> Itm<'a> {
 }
 
 mod register {
-    use crate::memory_mapped_bitfield_register;
+    use crate::core::memory_mapped_registers::memory_mapped_bitfield_register;
 
     memory_mapped_bitfield_register! {
         pub struct ITM_TER(u32);
