@@ -16,7 +16,7 @@ use crate::{
     error::Error,
     memory::valid_32bit_address,
     Architecture, BreakpointCause, CoreInformation, CoreInterface, CoreRegister, CoreStatus,
-    CoreType, HaltReason, InstructionSet, MemoryInterface, MemoryMappedRegister,
+    CoreType, HaltReason, InstructionSet, MemoryMappedRegister,
 };
 use bitfield::bitfield;
 use std::{
@@ -540,91 +540,12 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
     }
 }
 
-impl<'probe> MemoryInterface for Armv8m<'probe> {
-    fn supports_native_64bit_access(&mut self) -> bool {
-        self.memory.supports_native_64bit_access()
+impl super::CoreMemoryInterface for Armv8m<'_> {
+    fn memory(&self) -> &dyn ArmMemoryInterface {
+        &*self.memory
     }
-
-    fn read_word_64(&mut self, address: u64) -> Result<u64, Error> {
-        self.memory.read_word_64(address).map_err(Error::from)
-    }
-
-    fn read_word_32(&mut self, address: u64) -> Result<u32, Error> {
-        self.memory.read_word_32(address).map_err(Error::from)
-    }
-
-    fn read_word_16(&mut self, address: u64) -> Result<u16, Error> {
-        self.memory.read_word_16(address).map_err(Error::from)
-    }
-
-    fn read_word_8(&mut self, address: u64) -> Result<u8, Error> {
-        self.memory.read_word_8(address).map_err(Error::from)
-    }
-
-    fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), Error> {
-        self.memory.read_64(address, data).map_err(Error::from)
-    }
-
-    fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
-        self.memory.read_32(address, data).map_err(Error::from)
-    }
-
-    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), Error> {
-        self.memory.read_16(address, data).map_err(Error::from)
-    }
-
-    fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
-        self.memory.read_8(address, data).map_err(Error::from)
-    }
-
-    fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), Error> {
-        self.memory
-            .write_word_64(address, data)
-            .map_err(Error::from)
-    }
-
-    fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
-        self.memory
-            .write_word_32(address, data)
-            .map_err(Error::from)
-    }
-
-    fn write_word_16(&mut self, address: u64, data: u16) -> Result<(), Error> {
-        self.memory
-            .write_word_16(address, data)
-            .map_err(Error::from)
-    }
-
-    fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
-        self.memory.write_word_8(address, data).map_err(Error::from)
-    }
-
-    fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), Error> {
-        self.memory.write_64(address, data).map_err(Error::from)
-    }
-
-    fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
-        self.memory.write_32(address, data).map_err(Error::from)
-    }
-
-    fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), Error> {
-        self.memory.write_16(address, data).map_err(Error::from)
-    }
-
-    fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
-        self.memory.write_8(address, data).map_err(Error::from)
-    }
-
-    fn write(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
-        self.memory.write(address, data).map_err(Error::from)
-    }
-
-    fn supports_8bit_transfers(&self) -> Result<bool, Error> {
-        self.memory.supports_8bit_transfers().map_err(Error::from)
-    }
-
-    fn flush(&mut self) -> Result<(), Error> {
-        self.memory.flush().map_err(Error::from)
+    fn memory_mut(&mut self) -> &mut dyn ArmMemoryInterface {
+        &mut *self.memory
     }
 }
 

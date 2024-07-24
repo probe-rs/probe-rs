@@ -16,7 +16,7 @@ use crate::{
         MemoryApInformation, PortType, RawDapAccess, SwoAccess,
     },
     probe::{DebugProbe, DebugProbeError, Probe, WireProtocol},
-    Error, MemoryMappedRegister,
+    Error, MemoryInterface, MemoryMappedRegister,
 };
 
 /// This is a mock probe which can be used for mocking things in tests or for dry runs.
@@ -74,7 +74,7 @@ impl SwdSequence for &mut MockCore {
     }
 }
 
-impl ArmMemoryInterface for &mut MockCore {
+impl MemoryInterface<ArmError> for &mut MockCore {
     fn read_8(&mut self, _address: u64, _data: &mut [u8]) -> Result<(), ArmError> {
         todo!()
     }
@@ -172,7 +172,9 @@ impl ArmMemoryInterface for &mut MockCore {
     fn supports_8bit_transfers(&self) -> Result<bool, ArmError> {
         todo!()
     }
+}
 
+impl ArmMemoryInterface for &mut MockCore {
     fn ap(&mut self) -> MemoryAp {
         todo!()
     }

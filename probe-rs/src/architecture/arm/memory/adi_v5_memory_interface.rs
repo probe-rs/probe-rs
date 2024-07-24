@@ -7,164 +7,10 @@ use crate::architecture::arm::{
     communication_interface::Initialized, dp::DpAccess, MemoryApInformation,
 };
 use crate::architecture::arm::{ArmCommunicationInterface, ArmError};
+use crate::MemoryInterface;
 use crate::{probe::DebugProbeError, CoreStatus};
 
-pub trait ArmMemoryInterface: SwdSequence {
-    fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError>;
-
-    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), ArmError>;
-
-    fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError>;
-
-    fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), ArmError>;
-
-    /// Reads a 64 bit word from `address`.
-    fn read_word_64(&mut self, address: u64) -> Result<u64, ArmError> {
-        let mut buff = [0];
-        self.read_64(address, &mut buff)?;
-
-        Ok(buff[0])
-    }
-
-    /// Reads a 32 bit word from `address`.
-    fn read_word_32(&mut self, address: u64) -> Result<u32, ArmError> {
-        let mut buff = [0];
-        self.read_32(address, &mut buff)?;
-
-        Ok(buff[0])
-    }
-
-    /// Reads a 16 bit word from `address`.
-    fn read_word_16(&mut self, address: u64) -> Result<u16, ArmError> {
-        let mut buff = [0];
-        self.read_16(address, &mut buff)?;
-
-        Ok(buff[0])
-    }
-
-    /// Reads an 8 bit word from `address`.
-    fn read_word_8(&mut self, address: u64) -> Result<u8, ArmError> {
-        let mut buff = [0];
-        self.read_8(address, &mut buff)?;
-
-        Ok(buff[0])
-    }
-
-    /// Read a block of 8bit words at `address`. May use 32 bit memory access,
-    /// so should only be used if reading memory locations that don't have side
-    /// effects. Generally faster than
-    /// [`MemoryInterface::read_8()`][crate::MemoryInterface::read_8()].
-    fn read(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError> {
-        let len = data.len();
-        if address % 4 == 0 && len % 4 == 0 {
-            let mut buffer = vec![0u32; len / 4];
-            self.read_32(address, &mut buffer)?;
-            for (bytes, value) in data.chunks_exact_mut(4).zip(buffer.iter()) {
-                bytes.copy_from_slice(&u32::to_le_bytes(*value));
-            }
-        } else {
-            let start_extra_count = (address % 4) as usize;
-            let mut buffer = vec![0u32; (start_extra_count + len + 3) / 4];
-            let read_address = address - start_extra_count as u64;
-            self.read_32(read_address, &mut buffer)?;
-            for (bytes, value) in data
-                .chunks_exact_mut(4)
-                .zip(buffer[start_extra_count..start_extra_count + len].iter())
-            {
-                bytes.copy_from_slice(&u32::to_le_bytes(*value));
-            }
-        }
-        Ok(())
-    }
-
-    fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), ArmError>;
-
-    fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), ArmError>;
-
-    fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), ArmError>;
-
-    fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), ArmError>;
-
-    /// Writes a 64 bit word to `address`.
-    fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), ArmError> {
-        self.write_64(address, &[data])
-    }
-
-    /// Writes a 32 bit word to `address`.
-    fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), ArmError> {
-        self.write_32(address, &[data])
-    }
-
-    /// Writes a 16 bit word to `address`.
-    fn write_word_16(&mut self, address: u64, data: u16) -> Result<(), ArmError> {
-        self.write_16(address, &[data])
-    }
-
-    /// Writes a 8 bit word to `address`.
-    fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), ArmError> {
-        self.write_8(address, &[data])
-    }
-
-    /// Write a block of 8bit words to `address`. May use 32 bit memory access,
-    /// so it should only be used if writing memory locations that don't have side
-    /// effects. Generally faster than
-    /// [`MemoryInterface::write_8()`][crate::MemoryInterface::write_8()].
-    fn write(&mut self, mut address: u64, mut data: &[u8]) -> Result<(), ArmError> {
-        let len = data.len();
-        // Number of unaligned bytes at the start
-        let start_extra_count = ((4 - (address % 4) as usize) % 4).min(len);
-        // Extra bytes to be written at the end
-        let end_extra_count = (len - start_extra_count) % 4;
-        // Number of bytes between start and end (i.e. number of bytes transmitted as 32 bit words)
-        let inbetween_count = len - start_extra_count - end_extra_count;
-
-        assert!(start_extra_count < 4);
-        assert!(end_extra_count < 4);
-        assert!(inbetween_count % 4 == 0);
-
-        // If we do not have 32 bit aligned access we first check that we can do 8 bit aligned access on this platform.
-        // If we cannot we throw an error.
-        // If we can we write the first n < 4 bytes up until the word aligned address that comes next.
-        if address % 4 != 0 || len % 4 != 0 {
-            // If we do not support 8 bit transfers we have to bail because we can only do 32 bit word aligned transers.
-            if !self.supports_8bit_transfers()? {
-                return Err(ArmError::alignment_error(address, 4));
-            }
-
-            // We first do an 8 bit write of the first < 4 bytes up until the 4 byte aligned boundary.
-            self.write_8(address, &data[..start_extra_count])?;
-
-            address += start_extra_count as u64;
-            data = &data[start_extra_count..];
-        }
-
-        // Make sure we don't try to do an empty but potentially unaligned write
-        if inbetween_count > 0 {
-            // We do a 32 bit write of the remaining bytes that are 4 byte aligned.
-            let mut buffer = vec![0u32; inbetween_count / 4];
-            for (bytes, value) in data.chunks_exact(4).zip(buffer.iter_mut()) {
-                *value = u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
-            }
-            self.write_32(address, &buffer)?;
-
-            address += inbetween_count as u64;
-            data = &data[inbetween_count..];
-        }
-
-        // We write the remaining bytes that we did not write yet which is always n < 4.
-        if end_extra_count > 0 {
-            self.write_8(address, &data[..end_extra_count])?;
-        }
-
-        Ok(())
-    }
-
-    fn flush(&mut self) -> Result<(), ArmError>;
-
-    fn supports_native_64bit_access(&mut self) -> bool;
-
-    fn supports_8bit_transfers(&self) -> Result<bool, ArmError>;
-
+pub trait ArmMemoryInterface: SwdSequence + MemoryInterface<ArmError> {
     /// Returns the underlying [`MemoryAp`].
     fn ap(&mut self) -> MemoryAp;
 
@@ -356,13 +202,41 @@ where
                 .map_err(|e| ArmError::from_access_port(e, &self.memory_ap))
         }
     }
+}
+impl<AP> SwdSequence for ADIMemoryInterface<'_, AP>
+where
+    AP: FlushableArmAccess + ApAccess + DpAccess,
+{
+    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
+        self.get_arm_communication_interface()?
+            .swj_sequence(bit_len, bits)
+    }
+
+    fn swj_pins(
+        &mut self,
+        pin_out: u32,
+        pin_select: u32,
+        pin_wait: u32,
+    ) -> Result<u32, DebugProbeError> {
+        self.get_arm_communication_interface()?
+            .swj_pins(pin_out, pin_select, pin_wait)
+    }
+}
+
+impl<AP> MemoryInterface<ArmError> for ADIMemoryInterface<'_, AP>
+where
+    AP: FlushableArmAccess + ApAccess + DpAccess,
+{
+    fn supports_native_64bit_access(&mut self) -> bool {
+        self.ap_information.has_large_data_extension
+    }
 
     /// Read a block of 64 bit words at `address`.
     ///
     /// The number of words read is `data.len()`.
     /// The address where the read should be performed at has to be a multiple of 8.
     /// Returns `ArmError::MemoryNotAligned` if this does not hold true.
-    pub fn read_64(&mut self, mut address: u64, mut data: &mut [u64]) -> Result<(), ArmError> {
+    fn read_64(&mut self, mut address: u64, mut data: &mut [u64]) -> Result<(), ArmError> {
         if data.is_empty() {
             return Ok(());
         }
@@ -415,7 +289,7 @@ where
     /// The number of words read is `data.len()`.
     /// The address where the read should be performed at has to be a multiple of 4.
     /// Returns `ArmError::MemoryNotAligned` if this does not hold true.
-    pub fn read_32(&mut self, mut address: u64, mut data: &mut [u32]) -> Result<(), ArmError> {
+    fn read_32(&mut self, mut address: u64, mut data: &mut [u32]) -> Result<(), ArmError> {
         if data.is_empty() {
             return Ok(());
         }
@@ -455,7 +329,7 @@ where
     /// The number of words read is `data.len()`.
     /// The address where the read should be performed at has to be a multiple of 2.
     /// Returns `ArmError::MemoryNotAligned` if this does not hold true.
-    pub fn read_16(&mut self, mut address: u64, mut data: &mut [u16]) -> Result<(), ArmError> {
+    fn read_16(&mut self, mut address: u64, mut data: &mut [u16]) -> Result<(), ArmError> {
         if self.ap_information.supports_only_32bit_data_size {
             return Err(ArmError::UnsupportedTransferWidth(8));
         }
@@ -508,7 +382,7 @@ where
     /// Read a block of 8 bit words at `address`.
     ///
     /// The number of words read is `data.len()`.
-    pub fn read_8(&mut self, mut address: u64, mut data: &mut [u8]) -> Result<(), ArmError> {
+    fn read_8(&mut self, mut address: u64, mut data: &mut [u8]) -> Result<(), ArmError> {
         if self.ap_information.supports_only_32bit_data_size {
             return Err(ArmError::UnsupportedTransferWidth(8));
         }
@@ -554,12 +428,35 @@ where
         Ok(())
     }
 
+    fn read(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError> {
+        let len = data.len();
+        if address % 4 == 0 && len % 4 == 0 {
+            let mut buffer = vec![0u32; len / 4];
+            self.read_32(address, &mut buffer)?;
+            for (bytes, value) in data.chunks_exact_mut(4).zip(buffer.iter()) {
+                bytes.copy_from_slice(&u32::to_le_bytes(*value));
+            }
+        } else {
+            let start_extra_count = (address % 4) as usize;
+            let mut buffer = vec![0u32; (start_extra_count + len + 3) / 4];
+            let read_address = address - start_extra_count as u64;
+            self.read_32(read_address, &mut buffer)?;
+            for (bytes, value) in data
+                .chunks_exact_mut(4)
+                .zip(buffer[start_extra_count..start_extra_count + len].iter())
+            {
+                bytes.copy_from_slice(&u32::to_le_bytes(*value));
+            }
+        }
+        Ok(())
+    }
+
     /// Write a block of 64 bit words at `address`.
     ///
     /// The number of words written is `data.len()`.
     /// The address where the write should be performed at has to be a multiple of 8.
     /// Returns `ArmError::MemoryNotAligned` if this does not hold true.
-    pub fn write_64(&mut self, mut address: u64, mut data: &[u64]) -> Result<(), ArmError> {
+    fn write_64(&mut self, mut address: u64, mut data: &[u64]) -> Result<(), ArmError> {
         if (address % 8) != 0 {
             return Err(ArmError::alignment_error(address, 8));
         }
@@ -617,7 +514,7 @@ where
     /// The number of words written is `data.len()`.
     /// The address where the write should be performed at has to be a multiple of 4.
     /// Returns `ArmError::MemoryNotAligned` if this does not hold true.
-    pub fn write_32(&mut self, mut address: u64, mut data: &[u32]) -> Result<(), ArmError> {
+    fn write_32(&mut self, mut address: u64, mut data: &[u32]) -> Result<(), ArmError> {
         if (address % 4) != 0 {
             return Err(ArmError::alignment_error(address, 4));
         }
@@ -663,7 +560,7 @@ where
     /// The number of words written is `data.len()`.
     /// The address where the write should be performed at has to be a multiple of 2.
     /// Returns `ArmError::MemoryNotAligned` if this does not hold true.
-    pub fn write_16(&mut self, mut address: u64, mut data: &[u16]) -> Result<(), ArmError> {
+    fn write_16(&mut self, mut address: u64, mut data: &[u16]) -> Result<(), ArmError> {
         if self.ap_information.supports_only_32bit_data_size {
             return Err(ArmError::UnsupportedTransferWidth(8));
         }
@@ -718,7 +615,7 @@ where
     /// Write a block of 8 bit words at `address`.
     ///
     /// The number of words written is `data.len()`.
-    pub fn write_8(&mut self, mut address: u64, mut data: &[u8]) -> Result<(), ArmError> {
+    fn write_8(&mut self, mut address: u64, mut data: &[u8]) -> Result<(), ArmError> {
         if self.ap_information.supports_only_32bit_data_size {
             return Err(ArmError::UnsupportedTransferWidth(8));
         }
@@ -767,67 +664,6 @@ where
 
         Ok(())
     }
-}
-
-impl<AP> SwdSequence for ADIMemoryInterface<'_, AP>
-where
-    AP: FlushableArmAccess + ApAccess + DpAccess,
-{
-    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
-        self.get_arm_communication_interface()?
-            .swj_sequence(bit_len, bits)
-    }
-
-    fn swj_pins(
-        &mut self,
-        pin_out: u32,
-        pin_select: u32,
-        pin_wait: u32,
-    ) -> Result<u32, DebugProbeError> {
-        self.get_arm_communication_interface()?
-            .swj_pins(pin_out, pin_select, pin_wait)
-    }
-}
-
-impl<AP> ArmMemoryInterface for ADIMemoryInterface<'_, AP>
-where
-    AP: FlushableArmAccess + ApAccess + DpAccess,
-{
-    fn supports_native_64bit_access(&mut self) -> bool {
-        self.ap_information.has_large_data_extension
-    }
-
-    fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError> {
-        self.read_8(address, data)
-    }
-
-    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), ArmError> {
-        self.read_16(address, data)
-    }
-
-    fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError> {
-        self.read_32(address, data)
-    }
-
-    fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), ArmError> {
-        self.read_64(address, data)
-    }
-
-    fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), ArmError> {
-        self.write_8(address, data)
-    }
-
-    fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), ArmError> {
-        self.write_16(address, data)
-    }
-
-    fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), ArmError> {
-        self.write_32(address, data)
-    }
-
-    fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), ArmError> {
-        self.write_64(address, data)
-    }
 
     fn supports_8bit_transfers(&self) -> Result<bool, ArmError> {
         Ok(!self.ap_information.supports_only_32bit_data_size)
@@ -838,7 +674,12 @@ where
 
         Ok(())
     }
+}
 
+impl<AP> ArmMemoryInterface for ADIMemoryInterface<'_, AP>
+where
+    AP: FlushableArmAccess + ApAccess + DpAccess,
+{
     /// Returns the underlying [`MemoryAp`].
     fn ap(&mut self) -> MemoryAp {
         self.memory_ap.clone()
@@ -854,13 +695,13 @@ where
 #[cfg(test)]
 mod tests {
     use scroll::Pread;
+    use test_log::test;
 
+    use crate::architecture::arm::ap::memory_ap::{mock::MockMemoryAp, MemoryAp};
     use crate::architecture::arm::{ap::AccessPort, FullyQualifiedApAddress, MemoryApInformation};
+    use crate::memory::MemoryInterface;
 
-    use super::super::super::ap::memory_ap::mock::MockMemoryAp;
-    use super::super::super::ap::memory_ap::MemoryAp;
     use super::ADIMemoryInterface;
-    use super::ArmMemoryInterface;
 
     const DUMMY_AP: MemoryAp = MemoryAp::new(FullyQualifiedApAddress::v1_with_default_dp(0));
 
@@ -1059,7 +900,7 @@ mod tests {
         }
     }
 
-    #[test_log::test]
+    #[test]
     fn read_8() {
         let mut mock = MockMemoryAp::with_pattern_and_size(256);
         mock.memory[..DATA8.len()].copy_from_slice(DATA8);
