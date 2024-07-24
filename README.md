@@ -63,14 +63,17 @@ The probe-rs website includes [VSCode configuration instructions](https://probe.
 ### Halting the attached chip
 
 ```rust
-use probe_rs::{Permissions, Probe};
+use probe_rs::probe::{list::Lister, Probe};
+use probe_rs::Permissions;
 
 fn main() -> Result<(), probe_rs::Error> {
     // Get a list of all available debug probes.
-    let probes = Probe::list_all();
+    let lister = Lister::new();
+
+    let probes = lister.list_all();
 
     // Use the first probe found.
-    let probe = probes[0].open()?;
+    let mut probe = probes[0].open()?;
 
     // Attach to a chip.
     let mut session = probe.attach("nRF52840_xxAA", Permissions::default())?;
@@ -79,7 +82,7 @@ fn main() -> Result<(), probe_rs::Error> {
     let mut core = session.core(0)?;
 
     // Halt the attached core.
-    core.halt(std::time::Duration::from_millis(300))?;
+    core.halt(std::time::Duration::from_millis(10))?;
 
     Ok(())
 }
