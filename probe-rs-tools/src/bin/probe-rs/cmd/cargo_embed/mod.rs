@@ -226,6 +226,8 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
         Err(e) => return Err(e.into()),
     };
 
+    let core_id = rtt::get_target_core_id(&mut session, &path);
+
     if config.flashing.enabled {
         let download_options = BinaryDownloadOptions {
             disable_progressbars: opt.disable_progressbars,
@@ -236,7 +238,7 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
         };
         let format_options = FormatOptions::default();
         let loader = build_loader(&mut session, &path, format_options, image_instr_set)?;
-        run_flash_download(
+        let flash_info = run_flash_download(
             &mut session,
             &path,
             &download_options,
@@ -244,9 +246,13 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
             loader,
             config.flashing.do_chip_erase,
         )?;
+
+        if flash_info.entry_point_in_ram {
+            session.ram_flash_start(flash_info.entry_point.unwrap())?;
+            session.core(core_id)?.run()?;
+        }
     }
 
-    let core_id = rtt::get_target_core_id(&mut session, &path);
     if config.reset.enabled {
         let mut core = session.core(core_id)?;
         let halt_timeout = Duration::from_millis(500);
