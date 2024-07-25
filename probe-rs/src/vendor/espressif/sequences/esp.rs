@@ -7,7 +7,6 @@ use crate::{
         instruction::{into_binary, Instruction},
         CpuRegister, Register,
     },
-    config::DebugSequence,
     MemoryInterface, Session,
 };
 
@@ -115,14 +114,10 @@ fn attach_flash_xtensa(
     load_addr: u32,
     attach_fn: u32,
 ) -> Result<(), crate::Error> {
-    // TODO: we shouldn't need to touch sequences here.
-    let DebugSequence::Xtensa(sequence) = session.target().debug_sequence.clone() else {
-        unreachable!()
-    };
-    let interface = &mut session.get_xtensa_interface(0)?;
-
     // We're very intrusive here but the flashing process should reset the MCU again anyway
-    sequence.reset_system_and_halt(interface, Duration::from_millis(500))?;
+    session.reset_and_halt_system(Duration::from_millis(500))?;
+
+    let interface = &mut session.get_xtensa_interface(0)?;
 
     let instructions = into_binary([
         Instruction::CallX8(CpuRegister::A4),

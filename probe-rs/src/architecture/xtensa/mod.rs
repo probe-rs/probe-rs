@@ -7,7 +7,9 @@ use probe_rs_target::{Architecture, CoreType, InstructionSet};
 use crate::{
     architecture::xtensa::{
         arch::{instruction::Instruction, Register, SpecialRegister},
-        communication_interface::{DebugCause, IBreakEn, XtensaCommunicationInterface},
+        communication_interface::{
+            DebugCause, IBreakEn, ProgramStatus, XtensaCommunicationInterface,
+        },
         registers::{FP, PC, RA, SP, XTENSA_CORE_REGSISTERS},
         sequences::XtensaDebugSequence,
     },
@@ -70,7 +72,7 @@ impl XtensaCoreState {
 pub struct Xtensa<'probe> {
     interface: XtensaCommunicationInterface<'probe>,
     state: &'probe mut XtensaCoreState,
-    sequence: Arc<dyn XtensaDebugSequence>,
+    _sequence: Arc<dyn XtensaDebugSequence>,
 }
 
 impl<'probe> Xtensa<'probe> {
@@ -86,7 +88,7 @@ impl<'probe> Xtensa<'probe> {
         Self {
             interface,
             state,
-            sequence,
+            _sequence: sequence,
         }
     }
 
@@ -301,17 +303,24 @@ impl<'probe> CoreInterface for Xtensa<'probe> {
     }
 
     fn reset(&mut self) -> Result<(), Error> {
-        self.state.semihosting_command = None;
-        self.sequence
-            .reset_system_and_halt(&mut self.interface, Duration::from_millis(500))?;
+        self.reset_and_halt(Duration::from_millis(100))?;
 
         self.run()
     }
 
     fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
         self.state.semihosting_command = None;
-        self.sequence
-            .reset_system_and_halt(&mut self.interface, timeout)?;
+        self.interface.reset_and_halt(timeout)?;
+
+        // TODO: this is only necessary to run code, so this might not be the best place
+        // Make sure the CPU is in a known state and is able to run code we download.
+        self.interface.write_register({
+            let mut ps = ProgramStatus(0);
+            ps.set_intlevel(0);
+            ps.set_user_mode(true);
+            ps.set_woe(true);
+            ps
+        })?;
 
         self.core_info()
     }

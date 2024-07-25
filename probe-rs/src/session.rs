@@ -771,6 +771,23 @@ impl Session {
             })
         })
     }
+
+    /// Resets the target device.
+    pub fn reset_and_halt_system(&mut self, timeout: Duration) -> Result<(), Error> {
+        match self.architecture() {
+            Architecture::Riscv | Architecture::Arm => { 0..self.cores.len() }.try_for_each(|n| {
+                self.core(n)
+                    .and_then(|mut core| core.reset_and_halt(timeout))
+                    .map(|_| ())
+            }),
+            Architecture::Xtensa => {
+                let DebugSequence::Xtensa(sequence) = self.target.debug_sequence.clone() else {
+                    unreachable!();
+                };
+                sequence.reset_and_halt_system(self, timeout)
+            }
+        }
+    }
 }
 
 // This test ensures that [Session] is fully [Send] + [Sync].

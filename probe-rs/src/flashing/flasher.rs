@@ -97,16 +97,16 @@ impl<'session> Flasher<'session> {
         tracing::debug!("Initializing the flash algorithm.");
         let algo = &self.flash_algorithm;
 
+        tracing::debug!("Reset and halt target");
+        self.session
+            .reset_and_halt_system(Duration::from_millis(500))
+            .map_err(FlashError::Core)?;
+
         // Attach to memory and core.
         let mut core = self
             .session
             .core(self.core_index)
             .map_err(FlashError::Core)?;
-
-        // TODO: we probably want a full system reset here to make sure peripherals don't interfere.
-        tracing::debug!("Reset and halt core {}", self.core_index);
-        core.reset_and_halt(Duration::from_millis(500))
-            .map_err(FlashError::ResetAndHalt)?;
 
         // TODO: Possible special preparation of the target such as enabling faster clocks for the flash e.g.
 

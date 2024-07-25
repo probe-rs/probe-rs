@@ -1,0 +1,1 @@
+Added `Session::reset_and_halt_system` for systems that can't be properly reset by the core interface.
