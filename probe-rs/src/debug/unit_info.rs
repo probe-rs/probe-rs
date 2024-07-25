@@ -1508,10 +1508,11 @@ impl UnitInfo {
     }
 
     /// - Find the location using either DW_AT_location, DW_AT_data_member_location, or DW_AT_frame_base attribute.
+    ///
     /// Return values are implemented as follows:
-    /// - Result<_, DebugError>: This happens when we encounter an error we did not expect, and will propagate upwards until the debugger request is failed. NOT GRACEFUL, and should be avoided.
-    /// - Result<ExpressionResult::Value(),_>:  The value is statically stored in the binary, and can be returned, and has no relevant memory location.
-    /// - Result<ExpressionResult::Location(),_>:  One of the variants of VariableLocation, and needs to be interpreted for handling the 'expected' errors we encounter during evaluation.
+    /// - `Result<_, DebugError>`: This happens when we encounter an error we did not expect, and will propagate upwards until the debugger request is failed. **NOT GRACEFUL**, and should be avoided.
+    /// - `Result<ExpressionResult::Value(),_>`: The value is statically stored in the binary, and can be returned, and has no relevant memory location.
+    /// - `Result<ExpressionResult::Location(),_>`: One of the variants of VariableLocation, and needs to be interpreted for handling the 'expected' errors we encounter during evaluation.
     pub(crate) fn extract_location(
         &self,
         debug_info: &DebugInfo,

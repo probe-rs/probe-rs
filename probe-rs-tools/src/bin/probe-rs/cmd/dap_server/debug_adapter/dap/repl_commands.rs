@@ -18,13 +18,15 @@ use std::{fmt::Display, ops::Range, path::Path, str::FromStr, time::Duration};
 /// The handler is a function that takes a reference to the target core, and a reference to the response body.
 /// The response body is used to populate the response to the client.
 /// The handler returns a Result<[`Response`], [`DebuggerError`]>.
+///
 /// We use the [`Response`] type here, so that we can have a consistent interface for processing the result as follows:
 /// - The `command`, `success`, and `message` fields are the most commonly used fields for all the REPL commands.
 /// - The `body` field is used if we need to pass back other DAP body types, e.g. [`BreakpointEventBody`].
 /// - The remainder of the fields are unused/ignored.
-/// The majority of the REPL command results will be populated into the response body.
 ///
-/// TODO: Make this less confusing by having a different struct for this.
+/// The majority of the REPL command results will be populated into the response body.
+//
+// TODO: Make this less confusing by having a different struct for this.
 pub(crate) type ReplHandler = fn(
     target_core: &mut CoreHandle,
     command_arguments: &str,

@@ -121,7 +121,7 @@ pub enum VariableNodeType {
     /// Use the `header_offset` and `entries_offset` as direct references for recursing the variable
     /// children.
     /// - Rule: All top level variables in a [StackFrame] are automatically deferred, i.e
-    /// [VariableName::LocalScopeRoot], [VariableName::RegistersRoot].
+    ///   [VariableName::LocalScopeRoot], [VariableName::RegistersRoot].
     DirectLookup(DebugInfoOffset, UnitOffset),
     /// Look up information from all compilation units. This is used to resolve static variables, so
     /// when [`VariableName::StaticScopeRoot`] is used.
@@ -132,7 +132,7 @@ pub enum VariableNodeType {
     ///         variable_node_type to indicate that no further recursion is possible/required. This
     ///         can be because the variable is a 'base' data type, or because there was some kind of
     ///         error in processing the current node, so we don't want to incur cascading errors.
-    /// TODO: Find code instances where we use magic values (e.g. u32::MAX) and replace with DoNotRecurse logic if appropriate.
+    // TODO: Find code instances where we use magic values (e.g. u32::MAX) and replace with DoNotRecurse logic if appropriate.
     DoNotRecurse,
     /// Unless otherwise specified, always recurse the children of every node until we get to the
     /// base data type.

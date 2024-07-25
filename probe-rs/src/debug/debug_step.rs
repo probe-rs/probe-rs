@@ -154,6 +154,7 @@ impl SteppingMode {
     /// - To determine valid halt points for breakpoints and stepping, we only use instructions that qualify as:
     ///   - The beginning of a statement that is neither inside the prologue, nor inside the epilogue.
     /// - Based on this, we will attempt to return the "most appropriate" address for the [`SteppingMode`], given the available information in the instruction sequence.
+    ///
     /// All data is calculated using the [`gimli::read::CompleteLineProgram`] as well as, function call data from the debug info frame section.
     ///
     /// NOTE about errors returned: Sometimes the target program_counter is at a location where the debug_info program row data does not contain valid statements

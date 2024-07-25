@@ -54,19 +54,19 @@ impl VerifiedBreakpoint {
     /// - The correct program instructions, may be in any of the compilation units of the current program.
     /// - The debug information may not contain data for the "specific source" location requested:
     ///   - DWARFv5 standard, section 6.2, allows omissions based on certain conditions. In this case,
-    ///    we need to find the closest "relevant" source location that has valid debug information.
+    ///     we need to find the closest "relevant" source location that has valid debug information.
     ///   - The requested location may not be a valid source location, e.g. when the
-    ///    debug information has been optimized away. In this case we will return an appropriate error.
+    ///     debug information has been optimized away. In this case we will return an appropriate error.
     /// #### The logic used to find the "most relevant" source location is as follows:
     /// 1. Filter  [`UnitInfo`] , by using [`LineProgramHeader`] to match units that include the requested path.
     /// 2. For each matching compilation unit, get the [`LineProgram`] and [`Vec<LineSequence>`].
     /// 3. Filter the [`Vec<LineSequence>`] entries to only include sequences that match the requested path.
     /// 3. Convert remaining [`LineSequence`], to [`InstructionSequence`].
     /// 4. Return the first [`InstructionSequence`] that contains the requested source location.
-    ///   4a. This may be an exact match on file/line/column, or,
-    ///   4b. Failing an exact match, a match on file/line only.
-    ///   4c. Failing that, a match on file only, where the line number is the "next" available instruction,
-    ///       on the next available line of the specified file.
+    ///    4a. This may be an exact match on file/line/column, or,
+    ///    4b. Failing an exact match, a match on file/line only.
+    ///    4c. Failing that, a match on file only, where the line number is the "next" available instruction,
+    ///        on the next available line of the specified file.
     pub(crate) fn for_source_location(
         debug_info: &DebugInfo,
         path: &TypedPathBuf,

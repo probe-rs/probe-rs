@@ -19,10 +19,10 @@ pub const _ITM_PID: [u8; 8] = [0x1, 0xB0, 0x3b, 0x0, 0x4, 0x0, 0x0, 0x0];
 /// - Software trace. Software can write directly to ITM stimulus registers to generate packets.
 /// - Hardware trace. The DWT generates these packets, and the ITM outputs them.
 /// - Time stamping. Timestamps are generated relative to packets.
-/// The ITM contains a 21-bit counter to generate the timestamp.
-/// The Cortex-M4 clock or the bitclock rate of the Serial Wire Viewer (SWV) output clocks the counter.
+///   The ITM contains a 21-bit counter to generate the timestamp.
+///   The Cortex-M4 clock or the bitclock rate of the Serial Wire Viewer (SWV) output clocks the counter.
 /// - Global system timestamping. Timestamps can optionally be generated using a system-wide 48-bit count value.
-/// The same count value can be used to insert timestamps in the ETM trace stream, allowing coarse-grain correlation.
+///   The same count value can be used to insert timestamps in the ETM trace stream, allowing coarse-grain correlation.
 pub struct Itm<'a> {
     component: &'a CoresightComponent,
     interface: &'a mut dyn ArmProbeInterface,
