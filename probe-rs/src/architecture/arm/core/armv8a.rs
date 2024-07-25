@@ -17,7 +17,7 @@ use crate::{
         memory_mapped_registers::MemoryMappedRegister, CoreRegisters, RegisterId, RegisterValue,
     },
     error::Error,
-    memory::valid_32bit_address,
+    memory::{valid_32bit_address, MemoryNotAlignedError},
     Architecture, CoreInformation, CoreInterface, CoreRegister, CoreStatus, CoreType,
     InstructionSet, MemoryInterface,
 };
@@ -849,10 +849,11 @@ impl<'probe> Armv8a<'probe> {
             return Ok(());
         }
         if data.len() % 4 != 0 || address % 4 != 0 {
-            return Err(Error::MemoryNotAligned {
+            return Err(MemoryNotAlignedError {
                 address,
                 alignment: 4,
-            });
+            }
+            .into());
         }
 
         // Save x0
@@ -961,10 +962,11 @@ impl<'probe> Armv8a<'probe> {
             return Ok(());
         }
         if data.len() % 4 != 0 || address % 4 != 0 {
-            return Err(Error::MemoryNotAligned {
+            return Err(MemoryNotAlignedError {
                 address,
                 alignment: 4,
-            });
+            }
+            .into());
         }
 
         // Save x0
@@ -1730,10 +1732,7 @@ mod test {
             });
         }
     }
-
-    impl ArmMemoryInterface for MockProbe {
-        fn update_core_status(&mut self, _: CoreStatus) {}
-
+    impl MemoryInterface<ArmError> for MockProbe {
         fn read_8(&mut self, _address: u64, _data: &mut [u8]) -> Result<(), ArmError> {
             todo!()
         }
@@ -1811,9 +1810,29 @@ mod test {
             Ok(())
         }
 
+        fn read_64(&mut self, _address: u64, _data: &mut [u64]) -> Result<(), ArmError> {
+            todo!()
+        }
+
+        fn write_64(&mut self, _address: u64, _data: &[u64]) -> Result<(), ArmError> {
+            todo!()
+        }
+
         fn flush(&mut self) -> Result<(), ArmError> {
             todo!()
         }
+
+        fn supports_8bit_transfers(&self) -> Result<bool, ArmError> {
+            Ok(false)
+        }
+
+        fn supports_native_64bit_access(&mut self) -> bool {
+            false
+        }
+    }
+
+    impl ArmMemoryInterface for MockProbe {
+        fn update_core_status(&mut self, _: CoreStatus) {}
 
         fn ap(&mut self) -> MemoryAp {
             todo!()
@@ -1830,22 +1849,6 @@ mod test {
             Err(DebugProbeError::NotImplemented {
                 function_name: "get_arm_communication_interface",
             })
-        }
-
-        fn read_64(&mut self, _address: u64, _data: &mut [u64]) -> Result<(), ArmError> {
-            todo!()
-        }
-
-        fn write_64(&mut self, _address: u64, _data: &[u64]) -> Result<(), ArmError> {
-            todo!()
-        }
-
-        fn supports_8bit_transfers(&self) -> Result<bool, ArmError> {
-            Ok(false)
-        }
-
-        fn supports_native_64bit_access(&mut self) -> bool {
-            false
         }
     }
 

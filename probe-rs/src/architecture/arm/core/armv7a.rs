@@ -767,11 +767,11 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
         }
     }
 
-    fn fpu_support(&mut self) -> Result<bool, crate::error::Error> {
+    fn fpu_support(&mut self) -> Result<bool, Error> {
         Ok(self.state.fp_reg_count != 0)
     }
 
-    fn floating_point_register_count(&mut self) -> Result<usize, crate::error::Error> {
+    fn floating_point_register_count(&mut self) -> Result<usize, Error> {
         Ok(self.state.fp_reg_count)
     }
 
@@ -818,7 +818,7 @@ impl<'probe> MemoryInterface for Armv7a<'probe> {
         false
     }
 
-    fn read_word_64(&mut self, address: u64) -> Result<u64, crate::error::Error> {
+    fn read_word_64(&mut self, address: u64) -> Result<u64, Error> {
         let mut ret: u64 = self.read_word_32(address)? as u64;
         ret |= (self.read_word_32(address + 4)? as u64) << 32;
 
@@ -865,7 +865,7 @@ impl<'probe> MemoryInterface for Armv7a<'probe> {
         Ok(data.to_le_bytes()[byte_offset as usize])
     }
 
-    fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), crate::error::Error> {
+    fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), Error> {
         for (i, word) in data.iter_mut().enumerate() {
             *word = self.read_word_64(address + ((i as u64) * 8))?;
         }
@@ -897,7 +897,7 @@ impl<'probe> MemoryInterface for Armv7a<'probe> {
         Ok(())
     }
 
-    fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), crate::error::Error> {
+    fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), Error> {
         let data_low = data as u32;
         let data_high = (data >> 32) as u32;
 
@@ -949,7 +949,7 @@ impl<'probe> MemoryInterface for Armv7a<'probe> {
         self.write_word_32(word_start, word)
     }
 
-    fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), crate::error::Error> {
+    fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), Error> {
         for (i, word) in data.iter().enumerate() {
             self.write_word_64(address + ((i as u64) * 8), *word)?;
         }
@@ -1042,9 +1042,7 @@ mod test {
         }
     }
 
-    impl ArmMemoryInterface for MockProbe {
-        fn update_core_status(&mut self, _: CoreStatus) {}
-
+    impl MemoryInterface<ArmError> for MockProbe {
         fn read_8(&mut self, _address: u64, _data: &mut [u8]) -> Result<(), ArmError> {
             todo!()
         }
@@ -1138,9 +1136,25 @@ mod test {
             todo!()
         }
 
+        fn read_64(&mut self, _address: u64, _data: &mut [u64]) -> Result<(), ArmError> {
+            todo!()
+        }
+
+        fn write_64(&mut self, _address: u64, _data: &[u64]) -> Result<(), ArmError> {
+            todo!()
+        }
+
         fn supports_8bit_transfers(&self) -> Result<bool, ArmError> {
             Ok(false)
         }
+
+        fn supports_native_64bit_access(&mut self) -> bool {
+            false
+        }
+    }
+
+    impl ArmMemoryInterface for MockProbe {
+        fn update_core_status(&mut self, _: CoreStatus) {}
 
         fn get_arm_communication_interface(
             &mut self,
@@ -1155,20 +1169,8 @@ mod test {
             })
         }
 
-        fn read_64(&mut self, _address: u64, _data: &mut [u64]) -> Result<(), ArmError> {
-            todo!()
-        }
-
-        fn write_64(&mut self, _address: u64, _data: &[u64]) -> Result<(), ArmError> {
-            todo!()
-        }
-
         fn ap(&mut self) -> MemoryAp {
             todo!()
-        }
-
-        fn supports_native_64bit_access(&mut self) -> bool {
-            false
         }
     }
 

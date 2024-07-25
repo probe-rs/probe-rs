@@ -3,6 +3,7 @@ use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::architecture::xtensa::communication_interface::XtensaError;
 use crate::config::RegistryError;
 use crate::core::memory_mapped_registers::RegisterAddressOutOfBounds;
+use crate::memory::{InvalidDataLengthError, MemoryNotAlignedError};
 use crate::probe::DebugProbeError;
 
 /// The overarching error type which contains all possible errors as variants.
@@ -47,13 +48,12 @@ pub enum Error {
     /// A timeout occurred.
     // TODO: Errors below should be core specific
     Timeout,
-    /// Memory access to address {address:#X?} was not aligned to {alignment} bytes.
-    MemoryNotAligned {
-        /// The address of the register.
-        address: u64,
-        /// The required alignment in bytes (address increments).
-        alignment: usize,
-    },
+    /// Memory access to address {0.address:#X?} was not aligned to {0.alignment} bytes.
+    #[error(transparent)]
+    MemoryNotAligned(#[from] MemoryNotAlignedError),
+    /// The data buffer had an invalid length.
+    #[error(transparent)]
+    InvalidDataLength(#[from] InvalidDataLengthError),
     /// Failed to write CPU register {register}.
     WriteRegister {
         /// The name of the register that was tried to be written.
@@ -74,9 +74,8 @@ impl From<ArmError> for Error {
     fn from(value: ArmError) -> Self {
         match value {
             ArmError::Timeout => Error::Timeout,
-            ArmError::MemoryNotAligned { address, alignment } => {
-                Error::MemoryNotAligned { address, alignment }
-            }
+            ArmError::MemoryNotAligned(e) => Error::MemoryNotAligned(e),
+            ArmError::InvalidDataLength(e) => Error::InvalidDataLength(e),
             other => Error::Arm(other),
         }
     }

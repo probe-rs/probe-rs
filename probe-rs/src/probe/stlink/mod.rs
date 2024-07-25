@@ -9,6 +9,7 @@ use super::{DebugProbe, DebugProbeError, ProbeCreationError, WireProtocol};
 use crate::architecture::arm::ap::GenericAp;
 use crate::architecture::arm::memory::adi_v5_memory_interface::ArmMemoryInterface;
 use crate::architecture::arm::{valid_32bit_arm_address, ArmError};
+use crate::MemoryInterface;
 use crate::{
     architecture::arm::{
         ap::{valid_access_ports, AccessPort, ApAccess, ApClass, MemoryAp, IDR},
@@ -1625,7 +1626,7 @@ impl SwdSequence for StLinkMemoryInterface<'_> {
     }
 }
 
-impl ArmMemoryInterface for StLinkMemoryInterface<'_> {
+impl MemoryInterface<ArmError> for StLinkMemoryInterface<'_> {
     fn supports_native_64bit_access(&mut self) -> bool {
         false
     }
@@ -1894,7 +1895,9 @@ impl ArmMemoryInterface for StLinkMemoryInterface<'_> {
     fn supports_8bit_transfers(&self) -> Result<bool, ArmError> {
         Ok(true)
     }
+}
 
+impl ArmMemoryInterface for StLinkMemoryInterface<'_> {
     fn get_arm_communication_interface(
         &mut self,
     ) -> Result<

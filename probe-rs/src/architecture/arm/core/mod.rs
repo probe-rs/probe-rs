@@ -4,8 +4,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     core::{BreakpointCause, RegisterValue},
-    memory_mapped_bitfield_register, CoreStatus, HaltReason, SemihostingCommand,
+    memory_mapped_bitfield_register, CoreStatus, Error, HaltReason, MemoryInterface,
+    SemihostingCommand,
 };
+
+use super::memory::adi_v5_memory_interface::ArmMemoryInterface;
 
 pub mod armv6m;
 pub mod armv7a;
@@ -205,10 +208,7 @@ impl CortexAState {
 /// It will reflect the core status to the probe/memory interface if
 /// the status has changed, and will replace `current_status` with
 /// `new_status`.
-pub fn update_core_status<
-    P: super::memory::adi_v5_memory_interface::ArmMemoryInterface + ?Sized,
-    T: core::ops::DerefMut<Target = P>,
->(
+pub fn update_core_status<P: ArmMemoryInterface + ?Sized, T: core::ops::DerefMut<Target = P>>(
     probe: &mut T,
     current_status: &mut CoreStatus,
     new_status: CoreStatus,
@@ -217,4 +217,116 @@ pub fn update_core_status<
         probe.deref_mut().update_core_status(new_status);
     }
     *current_status = new_status;
+}
+
+trait CoreMemoryInterface {
+    fn memory(&self) -> &dyn ArmMemoryInterface;
+    fn memory_mut(&mut self) -> &mut dyn ArmMemoryInterface;
+}
+
+impl<T> MemoryInterface<Error> for T
+where
+    T: CoreMemoryInterface,
+{
+    fn supports_native_64bit_access(&mut self) -> bool {
+        self.memory_mut().supports_native_64bit_access()
+    }
+
+    fn read_word_64(&mut self, address: u64) -> Result<u64, Error> {
+        self.memory_mut().read_word_64(address).map_err(Error::from)
+    }
+
+    fn read_word_32(&mut self, address: u64) -> Result<u32, Error> {
+        self.memory_mut().read_word_32(address).map_err(Error::from)
+    }
+
+    fn read_word_16(&mut self, address: u64) -> Result<u16, Error> {
+        self.memory_mut().read_word_16(address).map_err(Error::from)
+    }
+
+    fn read_word_8(&mut self, address: u64) -> Result<u8, Error> {
+        self.memory_mut().read_word_8(address).map_err(Error::from)
+    }
+
+    fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), Error> {
+        self.memory_mut()
+            .read_64(address, data)
+            .map_err(Error::from)
+    }
+
+    fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
+        self.memory_mut()
+            .read_32(address, data)
+            .map_err(Error::from)
+    }
+
+    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), Error> {
+        self.memory_mut()
+            .read_16(address, data)
+            .map_err(Error::from)
+    }
+
+    fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
+        self.memory_mut().read_8(address, data).map_err(Error::from)
+    }
+
+    fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), Error> {
+        self.memory_mut()
+            .write_word_64(address, data)
+            .map_err(Error::from)
+    }
+
+    fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
+        self.memory_mut()
+            .write_word_32(address, data)
+            .map_err(Error::from)
+    }
+
+    fn write_word_16(&mut self, address: u64, data: u16) -> Result<(), Error> {
+        self.memory_mut()
+            .write_word_16(address, data)
+            .map_err(Error::from)
+    }
+
+    fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
+        self.memory_mut()
+            .write_word_8(address, data)
+            .map_err(Error::from)
+    }
+
+    fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), Error> {
+        self.memory_mut()
+            .write_64(address, data)
+            .map_err(Error::from)
+    }
+
+    fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
+        self.memory_mut()
+            .write_32(address, data)
+            .map_err(Error::from)
+    }
+
+    fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), Error> {
+        self.memory_mut()
+            .write_16(address, data)
+            .map_err(Error::from)
+    }
+
+    fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
+        self.memory_mut()
+            .write_8(address, data)
+            .map_err(Error::from)
+    }
+
+    fn write(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
+        self.memory_mut().write(address, data).map_err(Error::from)
+    }
+
+    fn supports_8bit_transfers(&self) -> Result<bool, Error> {
+        self.memory().supports_8bit_transfers().map_err(Error::from)
+    }
+
+    fn flush(&mut self) -> Result<(), Error> {
+        self.memory_mut().flush().map_err(Error::from)
+    }
 }
