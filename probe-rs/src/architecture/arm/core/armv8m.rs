@@ -9,7 +9,7 @@ use super::{
 };
 use crate::{
     architecture::arm::{
-        core::registers::cortex_m::XPSR, memory::adi_v5_memory_interface::ArmProbe,
+        core::registers::cortex_m::XPSR, memory::adi_v5_memory_interface::ArmMemoryInterface,
         sequences::ArmDebugSequence, ArmError,
     },
     core::{CoreRegisters, RegisterId, RegisterValue, VectorCatchCondition},
@@ -27,7 +27,7 @@ use std::{
 
 /// The state of a core that can be used to persist core state across calls to multiple different cores.
 pub struct Armv8m<'probe> {
-    memory: Box<dyn ArmProbe + 'probe>,
+    memory: Box<dyn ArmMemoryInterface + 'probe>,
 
     state: &'probe mut CortexMState,
 
@@ -36,7 +36,7 @@ pub struct Armv8m<'probe> {
 
 impl<'probe> Armv8m<'probe> {
     pub(crate) fn new(
-        mut memory: Box<dyn ArmProbe + 'probe>,
+        mut memory: Box<dyn ArmMemoryInterface + 'probe>,
         state: &'probe mut CortexMState,
         sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Self, Error> {

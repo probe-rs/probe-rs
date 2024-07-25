@@ -10,7 +10,7 @@ use super::{
 };
 use crate::{
     architecture::arm::{
-        core::armv8a_debug_regs::*, memory::adi_v5_memory_interface::ArmProbe,
+        core::armv8a_debug_regs::*, memory::adi_v5_memory_interface::ArmMemoryInterface,
         sequences::ArmDebugSequence, ArmError,
     },
     core::{
@@ -49,7 +49,7 @@ fn prep_instr_for_itr_32(instruction: u32) -> u32 {
 
 /// Interface for interacting with an ARMv8-A core
 pub struct Armv8a<'probe> {
-    memory: Box<dyn ArmProbe + 'probe>,
+    memory: Box<dyn ArmMemoryInterface + 'probe>,
 
     state: &'probe mut CortexAState,
 
@@ -64,7 +64,7 @@ pub struct Armv8a<'probe> {
 
 impl<'probe> Armv8a<'probe> {
     pub(crate) fn new(
-        mut memory: Box<dyn ArmProbe + 'probe>,
+        mut memory: Box<dyn ArmMemoryInterface + 'probe>,
         state: &'probe mut CortexAState,
         base_address: u64,
         cti_address: u64,
@@ -1731,7 +1731,7 @@ mod test {
         }
     }
 
-    impl ArmProbe for MockProbe {
+    impl ArmMemoryInterface for MockProbe {
         fn update_core_status(&mut self, _: CoreStatus) {}
 
         fn read_8(&mut self, _address: u64, _data: &mut [u8]) -> Result<(), ArmError> {

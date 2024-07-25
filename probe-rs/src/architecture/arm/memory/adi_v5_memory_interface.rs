@@ -9,7 +9,7 @@ use crate::architecture::arm::{
 use crate::architecture::arm::{ArmCommunicationInterface, ArmError};
 use crate::{probe::DebugProbeError, CoreStatus};
 
-pub trait ArmProbe: SwdSequence {
+pub trait ArmMemoryInterface: SwdSequence {
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError>;
 
     fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), ArmError>;
@@ -789,7 +789,7 @@ where
     }
 }
 
-impl<AP> ArmProbe for ADIMemoryInterface<'_, AP>
+impl<AP> ArmMemoryInterface for ADIMemoryInterface<'_, AP>
 where
     AP: FlushableArmAccess + ApAccess + DpAccess,
 {
@@ -860,7 +860,7 @@ mod tests {
     use super::super::super::ap::memory_ap::mock::MockMemoryAp;
     use super::super::super::ap::memory_ap::MemoryAp;
     use super::ADIMemoryInterface;
-    use super::ArmProbe;
+    use super::ArmMemoryInterface;
 
     const DUMMY_AP: MemoryAp = MemoryAp::new(FullyQualifiedApAddress::v1_with_default_dp(0));
 

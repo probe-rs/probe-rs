@@ -12,7 +12,7 @@ use crate::{
         communication_interface::{FlushableArmAccess, Initialized},
         core::armv8m::{Aircr, Demcr, Dhcsr},
         dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
-        memory::adi_v5_memory_interface::ArmProbe,
+        memory::adi_v5_memory_interface::ArmMemoryInterface,
         sequences::ArmDebugSequence,
         ArmCommunicationInterface, ArmError, DapAccess, DpAddress, FullyQualifiedApAddress, Pins,
     },
@@ -115,7 +115,7 @@ impl ArmDebugSequence for LPC55Sxx {
 
     fn reset_catch_set(
         &self,
-        interface: &mut dyn ArmProbe,
+        interface: &mut dyn ArmMemoryInterface,
         _core_type: crate::CoreType,
         _debug_base: Option<u64>,
     ) -> Result<(), ArmError> {
@@ -196,7 +196,7 @@ impl ArmDebugSequence for LPC55Sxx {
 
     fn reset_catch_clear(
         &self,
-        interface: &mut dyn ArmProbe,
+        interface: &mut dyn ArmMemoryInterface,
         _core_type: crate::CoreType,
         _debug_base: Option<u64>,
     ) -> Result<(), ArmError> {
@@ -212,7 +212,7 @@ impl ArmDebugSequence for LPC55Sxx {
 
     fn reset_system(
         &self,
-        interface: &mut dyn ArmProbe,
+        interface: &mut dyn ArmMemoryInterface,
         _core_type: crate::CoreType,
         _debug_base: Option<u64>,
     ) -> Result<(), ArmError> {
@@ -254,7 +254,7 @@ impl ArmDebugSequence for LPC55Sxx {
     }
 }
 
-fn wait_for_stop_after_reset(memory: &mut dyn ArmProbe) -> Result<(), ArmError> {
+fn wait_for_stop_after_reset(memory: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
     tracing::info!("Wait for stop after reset");
 
     thread::sleep(Duration::from_millis(10));
@@ -417,7 +417,10 @@ impl MIMXRT5xxS {
 
     /// A port of the "WaitForStopAfterReset" sequence from the CMSIS Pack for
     /// this chip.
-    fn wait_for_stop_after_reset(&self, probe: &mut dyn ArmProbe) -> Result<(), ArmError> {
+    fn wait_for_stop_after_reset(
+        &self,
+        probe: &mut dyn ArmMemoryInterface,
+    ) -> Result<(), ArmError> {
         tracing::trace!("waiting for MIMXRT5xxS halt after reset");
 
         // Note: despite the name of this sequence in the CMSIS Pack, the
@@ -485,7 +488,7 @@ impl MIMXRT5xxS {
         Ok(())
     }
 
-    fn reset_flash(&self, interface: &mut dyn ArmProbe) -> Result<(), ArmError> {
+    fn reset_flash(&self, interface: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
         if self.family == MIMXRTFamily::MIMXRT5 {
             tracing::trace!("MIMXRT595S-EVK FlexSPI flash reset (pulse PIO4_5)");
 
@@ -639,7 +642,7 @@ impl ArmDebugSequence for MIMXRT5xxS {
 
     fn reset_system(
         &self,
-        probe: &mut dyn ArmProbe,
+        probe: &mut dyn ArmMemoryInterface,
         core_type: probe_rs_target::CoreType,
         _debug_base: Option<u64>,
     ) -> Result<(), ArmError> {
@@ -687,7 +690,7 @@ impl ArmDebugSequence for MIMXRT5xxS {
         self.wait_for_stop_after_reset(probe)
     }
 
-    fn reset_hardware_deassert(&self, memory: &mut dyn ArmProbe) -> Result<(), ArmError> {
+    fn reset_hardware_deassert(&self, memory: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
         tracing::trace!("MIMXRT5xxS reset hardware deassert");
         let n_reset = Pins(0x80).0 as u32;
 

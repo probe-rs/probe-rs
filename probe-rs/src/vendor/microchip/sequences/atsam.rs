@@ -7,7 +7,7 @@ use crate::{
             ap::MemoryAp,
             armv7m::Dhcsr,
             communication_interface::{DapProbe, SwdSequence},
-            memory::adi_v5_memory_interface::ArmProbe,
+            memory::adi_v5_memory_interface::ArmMemoryInterface,
             sequences::{ArmDebugSequence, ArmDebugSequenceError, DebugEraseSequence},
             ArmError, ArmProbeInterface, FullyQualifiedApAddress, Pins,
         },
@@ -281,7 +281,7 @@ impl AtSAM {
     /// to signal that a re-connect is needed for the DSU to start operating in unlocked mode.
     pub fn erase_all(
         &self,
-        memory: &mut dyn ArmProbe,
+        memory: &mut dyn ArmMemoryInterface,
         permissions: &Permissions,
     ) -> Result<(), ArmError> {
         let dsu_status_a = DsuStatusA::from(memory.read_word_8(DsuStatusA::ADDRESS)?);
@@ -380,7 +380,10 @@ impl AtSAM {
     ///
     /// # Errors
     /// Subject to probe communication errors
-    pub fn release_reset_extension(&self, memory: &mut dyn ArmProbe) -> Result<(), ArmError> {
+    pub fn release_reset_extension(
+        &self,
+        memory: &mut dyn ArmMemoryInterface,
+    ) -> Result<(), ArmError> {
         // Enable debug mode if it is not already enabled
         let mut dhcsr = Dhcsr(0);
         dhcsr.enable_write();
@@ -487,7 +490,7 @@ impl ArmDebugSequence for AtSAM {
     ///
     /// Instead of de-asserting `nReset` here (this was already done during the CPU Reset Extension process),
     /// the device is released from Reset Extension.
-    fn reset_hardware_deassert(&self, memory: &mut dyn ArmProbe) -> Result<(), ArmError> {
+    fn reset_hardware_deassert(&self, memory: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
         let mut pins = Pins(0);
         pins.set_nreset(true);
 

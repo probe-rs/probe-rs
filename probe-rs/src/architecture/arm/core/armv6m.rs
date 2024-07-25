@@ -3,7 +3,7 @@
 use super::{registers::cortex_m::*, CortexMState, Dfsr};
 use crate::{
     architecture::arm::{
-        memory::adi_v5_memory_interface::ArmProbe, sequences::ArmDebugSequence, ArmError,
+        memory::adi_v5_memory_interface::ArmMemoryInterface, sequences::ArmDebugSequence, ArmError,
     },
     core::{CoreRegisters, RegisterId, RegisterValue, VectorCatchCondition},
     error::Error,
@@ -406,7 +406,7 @@ impl MemoryMappedRegister<u32> for Demcr {
 
 /// The state of a core that can be used to persist core state across calls to multiple different cores.
 pub(crate) struct Armv6m<'probe> {
-    memory: Box<dyn ArmProbe + 'probe>,
+    memory: Box<dyn ArmMemoryInterface + 'probe>,
 
     state: &'probe mut CortexMState,
 
@@ -415,7 +415,7 @@ pub(crate) struct Armv6m<'probe> {
 
 impl<'probe> Armv6m<'probe> {
     pub(crate) fn new(
-        mut memory: Box<dyn ArmProbe + 'probe>,
+        mut memory: Box<dyn ArmMemoryInterface + 'probe>,
         state: &'probe mut CortexMState,
         sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Self, ArmError> {

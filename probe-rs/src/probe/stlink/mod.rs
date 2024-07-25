@@ -7,7 +7,7 @@ mod usb_interface;
 use self::usb_interface::{StLinkUsb, StLinkUsbDevice};
 use super::{DebugProbe, DebugProbeError, ProbeCreationError, WireProtocol};
 use crate::architecture::arm::ap::GenericAp;
-use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
+use crate::architecture::arm::memory::adi_v5_memory_interface::ArmMemoryInterface;
 use crate::architecture::arm::{valid_32bit_arm_address, ArmError};
 use crate::{
     architecture::arm::{
@@ -1494,7 +1494,7 @@ impl ArmProbeInterface for StlinkArmDebug {
     fn memory_interface(
         &mut self,
         access_port: &MemoryAp,
-    ) -> Result<Box<dyn ArmProbe + '_>, ArmError> {
+    ) -> Result<Box<dyn ArmMemoryInterface + '_>, ArmError> {
         let interface = StLinkMemoryInterface {
             probe: self,
             current_ap: access_port.clone(),
@@ -1625,7 +1625,7 @@ impl SwdSequence for StLinkMemoryInterface<'_> {
     }
 }
 
-impl ArmProbe for StLinkMemoryInterface<'_> {
+impl ArmMemoryInterface for StLinkMemoryInterface<'_> {
     fn supports_native_64bit_access(&mut self) -> bool {
         false
     }

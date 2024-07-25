@@ -7,7 +7,7 @@ use crate::{
     architecture::arm::{
         ap::MemoryAp,
         armv7m::Demcr,
-        memory::adi_v5_memory_interface::ArmProbe,
+        memory::adi_v5_memory_interface::ArmMemoryInterface,
         sequences::{cortex_m_core_start, ArmDebugSequence},
         ArmError, ArmProbeInterface,
     },
@@ -57,7 +57,7 @@ impl ArmDebugSequence for Va416xx {
     /// and re-initializes the debug connection after a reset.
     fn reset_system(
         &self,
-        interface: &mut dyn ArmProbe,
+        interface: &mut dyn ArmMemoryInterface,
         core_type: CoreType,
         debug_base: Option<u64>,
     ) -> Result<(), ArmError> {
