@@ -1,0 +1,1 @@
+Added `probe_rs::flashing::platform` to allow implementing additional software platforms

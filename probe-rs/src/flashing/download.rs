@@ -5,17 +5,16 @@ use object::{
 use probe_rs_target::{InstructionSet, MemoryRange};
 use serde::{Deserialize, Serialize};
 
-use std::{
-    fs::File,
-    path::{Path, PathBuf},
-    str::FromStr,
-};
+use std::{fmt, fs::File, path::Path, str::FromStr};
 
 use super::*;
-use crate::session::Session;
+use crate::{
+    flashing::platform::{Platform, PlatformLoader},
+    session::Session,
+};
 
 /// Extended options for flashing a binary file.
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Default)]
 pub struct BinOptions {
     /// The address in memory where the binary will be put at.
     pub base_address: Option<u64>,
@@ -23,48 +22,55 @@ pub struct BinOptions {
     pub skip: u32,
 }
 
-/// Extended options for flashing a ESP-IDF format file.
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Default)]
-pub struct IdfOptions {
-    /// The bootloader
-    pub bootloader: Option<PathBuf>,
-    /// The partition table
-    pub partition_table: Option<PathBuf>,
-}
-
 /// A finite list of all the available binary formats probe-rs understands.
 #[derive(Debug, Default, Serialize, Deserialize, PartialEq, Eq, Clone)]
-pub enum Format {
+pub enum FormatKind {
     /// Marks a file in binary format. This means that the file contains the contents of the flash 1:1.
     /// [BinOptions] can be used to define the location in flash where the file contents should be put at.
     /// Additionally using the same config struct, you can skip the first N bytes of the binary file to have them not put into the flash.
-    Bin(BinOptions),
+    Bin,
     /// Marks a file in [Intel HEX](https://en.wikipedia.org/wiki/Intel_HEX) format.
     Hex,
     /// Marks a file in the [ELF](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format) format.
     #[default]
     Elf,
-    /// Marks a file in the [ESP-IDF bootloader](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/app_image_format.html#app-image-structures) format.
-    /// Use [IdfOptions] to configure flashing.
-    Idf(IdfOptions),
     /// Marks a file in the [UF2](https://github.com/microsoft/uf2) format.
     Uf2,
 }
 
-impl FromStr for Format {
+impl FormatKind {
+    /// Creates a new Format from an optional string.
+    ///
+    /// If the string is `None`, the default format is returned.
+    pub fn from_optional(s: Option<&str>) -> Result<Self, String> {
+        match s {
+            Some(format) => Self::from_str(format),
+            None => Ok(Self::default()),
+        }
+    }
+}
+
+impl FromStr for FormatKind {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match &s.to_lowercase()[..] {
-            "bin" | "binary" => Ok(Format::Bin(BinOptions {
-                base_address: None,
-                skip: 0,
-            })),
-            "idf" | "esp-idf" => Ok(Format::Idf(Default::default())),
-            "hex" | "ihex" | "intelhex" => Ok(Format::Hex),
-            "elf" => Ok(Format::Elf),
-            "uf2" => Ok(Format::Uf2),
+            "bin" | "binary" => Ok(Self::Bin),
+            "hex" | "ihex" | "intelhex" => Ok(Self::Hex),
+            "elf" => Ok(Self::Elf),
+            "uf2" => Ok(Self::Uf2),
             _ => Err(format!("Format '{s}' is unknown.")),
+        }
+    }
+}
+
+impl fmt::Display for FormatKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FormatKind::Bin => f.write_str("bin"),
+            FormatKind::Hex => f.write_str("hex"),
+            FormatKind::Elf => f.write_str("elf"),
+            FormatKind::Uf2 => f.write_str("uf2"),
         }
     }
 }
@@ -95,6 +101,14 @@ pub enum FileDownloadError {
 
     /// Failed to format as esp-idf binary
     Idf(#[from] espflash::error::Error),
+
+    /// The {platform} platform does not support the {format} format.
+    IncompatibleFormat {
+        /// The platform that does not support the format.
+        platform: String,
+        /// The format that is not supported.
+        format: FormatKind,
+    },
 
     /// Target {0} does not support the esp-idf format
     IdfUnsupported(String),
@@ -176,12 +190,12 @@ impl DownloadOptions {
 /// This will ensure that memory boundaries are honored and does unlocking, erasing and programming of the flash for you.
 ///
 /// If you are looking for more options, have a look at [download_file_with_options].
-pub fn download_file<P: AsRef<Path>>(
+pub fn download_file(
     session: &mut Session,
-    path: P,
-    format: Format,
+    path: impl AsRef<Path>,
+    format: impl Into<Format>,
 ) -> Result<(), FileDownloadError> {
-    download_file_with_options(session, path, format, DownloadOptions::default())
+    download_file_with_options(session, path, None, format, DownloadOptions::default())
 }
 
 /// Downloads a file of given `format` at `path` to the flash of the target given in `session`.
@@ -189,17 +203,26 @@ pub fn download_file<P: AsRef<Path>>(
 /// This will ensure that memory boundaries are honored and does unlocking, erasing and programming of the flash for you.
 ///
 /// If you are looking for a simple version without many options, have a look at [download_file].
-pub fn download_file_with_options<P: AsRef<Path>>(
+pub fn download_file_with_options(
     session: &mut Session,
-    path: P,
-    format: Format,
+    path: impl AsRef<Path>,
+    platform: Option<PlatformLoader>,
+    format: impl Into<Format>,
     options: DownloadOptions,
 ) -> Result<(), FileDownloadError> {
     let mut file = File::open(path.as_ref()).map_err(FileDownloadError::IO)?;
 
     let mut loader = session.target().flash_loader();
 
-    loader.load_image(session, &mut file, format, None)?;
+    let platform = match platform {
+        Some(platform) => platform,
+        None => Platform::from_optional(session.target().default_platform.as_deref())
+            .map(|result| result.expect("Unknown platform. This should not have passed tests."))
+            .unwrap_or_default()
+            .default_loader(),
+    };
+
+    loader.load_image(session, &mut file, format.into(), platform, None)?;
 
     loader
         .commit(session, options)
@@ -213,8 +236,8 @@ pub(super) struct ExtractedFlashData<'data> {
     pub(super) data: &'data [u8],
 }
 
-impl std::fmt::Debug for ExtractedFlashData<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Debug for ExtractedFlashData<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut helper = f.debug_struct("ExtractedFlashData");
 
         helper
@@ -333,59 +356,35 @@ pub(super) fn extract_from_elf(
 mod tests {
     use std::str::FromStr;
 
-    use super::{BinOptions, Format};
+    use super::FormatKind;
 
     #[test]
     fn parse_format() {
-        assert_eq!(Format::from_str("hex"), Ok(Format::Hex));
-        assert_eq!(Format::from_str("Hex"), Ok(Format::Hex));
-        assert_eq!(Format::from_str("Ihex"), Ok(Format::Hex));
-        assert_eq!(Format::from_str("IHex"), Ok(Format::Hex));
-        assert_eq!(Format::from_str("iHex"), Ok(Format::Hex));
-        assert_eq!(Format::from_str("IntelHex"), Ok(Format::Hex));
-        assert_eq!(Format::from_str("intelhex"), Ok(Format::Hex));
-        assert_eq!(Format::from_str("intelHex"), Ok(Format::Hex));
-        assert_eq!(Format::from_str("Intelhex"), Ok(Format::Hex));
+        assert_eq!(FormatKind::from_str("hex"), Ok(FormatKind::Hex));
+        assert_eq!(FormatKind::from_str("Hex"), Ok(FormatKind::Hex));
+        assert_eq!(FormatKind::from_str("Ihex"), Ok(FormatKind::Hex));
+        assert_eq!(FormatKind::from_str("IHex"), Ok(FormatKind::Hex));
+        assert_eq!(FormatKind::from_str("iHex"), Ok(FormatKind::Hex));
+        assert_eq!(FormatKind::from_str("IntelHex"), Ok(FormatKind::Hex));
+        assert_eq!(FormatKind::from_str("intelhex"), Ok(FormatKind::Hex));
+        assert_eq!(FormatKind::from_str("intelHex"), Ok(FormatKind::Hex));
+        assert_eq!(FormatKind::from_str("Intelhex"), Ok(FormatKind::Hex));
+        assert_eq!(FormatKind::from_str("bin"), Ok(FormatKind::Bin));
+        assert_eq!(FormatKind::from_str("Bin"), Ok(FormatKind::Bin));
+        assert_eq!(FormatKind::from_str("binary"), Ok(FormatKind::Bin));
+        assert_eq!(FormatKind::from_str("Binary"), Ok(FormatKind::Bin));
+        assert_eq!(FormatKind::from_str("Elf"), Ok(FormatKind::Elf));
+        assert_eq!(FormatKind::from_str("elf"), Ok(FormatKind::Elf));
         assert_eq!(
-            Format::from_str("bin"),
-            Ok(Format::Bin(BinOptions {
-                base_address: None,
-                skip: 0
-            }))
-        );
-        assert_eq!(
-            Format::from_str("Bin"),
-            Ok(Format::Bin(BinOptions {
-                base_address: None,
-                skip: 0
-            }))
-        );
-        assert_eq!(
-            Format::from_str("binary"),
-            Ok(Format::Bin(BinOptions {
-                base_address: None,
-                skip: 0
-            }))
-        );
-        assert_eq!(
-            Format::from_str("Binary"),
-            Ok(Format::Bin(BinOptions {
-                base_address: None,
-                skip: 0
-            }))
-        );
-        assert_eq!(Format::from_str("Elf"), Ok(Format::Elf));
-        assert_eq!(Format::from_str("elf"), Ok(Format::Elf));
-        assert_eq!(
-            Format::from_str("elfbin"),
+            FormatKind::from_str("elfbin"),
             Err("Format 'elfbin' is unknown.".to_string())
         );
         assert_eq!(
-            Format::from_str(""),
+            FormatKind::from_str(""),
             Err("Format '' is unknown.".to_string())
         );
         assert_eq!(
-            Format::from_str("asdasdf"),
+            FormatKind::from_str("asdasdf"),
             Err("Format 'asdasdf' is unknown.".to_string())
         );
     }

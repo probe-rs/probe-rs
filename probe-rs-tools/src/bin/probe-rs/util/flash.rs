@@ -1,4 +1,4 @@
-use crate::FormatOptions;
+use crate::FirmwareOptions;
 
 use super::common_options::{BinaryDownloadOptions, LoadedProbeOptions, OperationError};
 use super::logging;
@@ -160,7 +160,7 @@ pub fn run_flash_download(
 pub fn build_loader(
     session: &mut Session,
     path: impl AsRef<Path>,
-    format_options: FormatOptions,
+    format_options: FirmwareOptions,
     image_instruction_set: Option<InstructionSet>,
 ) -> anyhow::Result<FlashLoader> {
     // Create the flash loader
@@ -172,8 +172,9 @@ pub fn build_loader(
         Err(e) => return Err(FileDownloadError::IO(e)).context("Failed to open binary file."),
     };
 
-    let format = format_options.into_format(session.target())?;
-    loader.load_image(session, &mut file, format, image_instruction_set)?;
+    let platform = format_options.platform(session.target());
+    let format = format_options.into_format();
+    loader.load_image(session, &mut file, format, platform, image_instruction_set)?;
 
     Ok(loader)
 }

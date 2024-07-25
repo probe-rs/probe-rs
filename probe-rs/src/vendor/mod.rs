@@ -15,6 +15,7 @@ use crate::{
         },
     },
     config::{registry, ChipInfo, DebugSequence},
+    flashing::platform::Platform,
     probe::{DebugProbeError, Probe},
     Error, Target,
 };
@@ -59,6 +60,11 @@ pub trait Vendor: Send + Sync + std::fmt::Display {
         _idcode: u32,
     ) -> Result<Option<String>, Error> {
         Ok(None)
+    }
+
+    /// Tries to parse a platform from its name.
+    fn try_parse_platform(&self, _format: &str) -> Option<Platform> {
+        None
     }
 }
 
@@ -295,4 +301,16 @@ pub(crate) fn auto_determine_target(mut probe: Probe) -> Result<(Probe, Option<T
     probe.detach()?;
 
     Ok((probe, found_target))
+}
+
+/// Tries to parse a platform from its name.
+pub fn try_parse_platform(platform_name: &str) -> Option<Platform> {
+    let vendors = vendors();
+    for vendor in vendors.iter() {
+        if let Some(platform) = vendor.try_parse_platform(platform_name) {
+            return Some(platform);
+        }
+    }
+
+    None
 }

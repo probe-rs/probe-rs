@@ -12,12 +12,13 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use colored::Colorize;
 use itertools::Itertools;
-use probe_rs::flashing::{BinOptions, Format, IdfOptions};
+use probe_rs::flashing::platform::{Platform, RawLoader};
+use probe_rs::flashing::{platform::PlatformLoader, BinOptions, Format, FormatKind};
+use probe_rs::vendor::espressif::platform::{IdfOptions, IdfPlatformLoader};
 use probe_rs::{probe::list::Lister, Target};
 use report::Report;
+use serde::Deserialize;
 use serde::Serialize;
-use serde::{de::Error, Deserialize, Deserializer};
-use serde_json::Value;
 use time::{OffsetDateTime, UtcOffset};
 
 use crate::util::logging::setup_logging;
@@ -105,70 +106,112 @@ pub(crate) struct CoreOptions {
     core: usize,
 }
 
-/// A helper function to deserialize a default [`Format`] from a string.
-fn format_from_str<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Option<Format>, D::Error> {
-    match Value::deserialize(deserializer)? {
-        Value::String(s) => match Format::from_str(s.as_str()) {
-            Ok(format) => Ok(Some(format)),
-            Err(e) => Err(D::Error::custom(e)),
-        },
-        _ => Ok(None),
+#[derive(clap::Parser, Clone, Serialize, Deserialize, Debug, Default)]
+#[serde(default)]
+pub struct BinaryCliOptions {
+    /// The address in memory where the binary will be put at. This is only considered when `bin` is selected as the format.
+    #[clap(long, value_parser = parse_u64, help_heading = "DOWNLOAD CONFIGURATION")]
+    base_address: Option<u64>,
+    /// The number of bytes to skip at the start of the binary file. This is only considered when `bin` is selected as the format.
+    #[clap(long, value_parser = parse_u32, default_value = "0", help_heading = "DOWNLOAD CONFIGURATION")]
+    skip: u32,
+}
+
+#[derive(clap::Parser, Clone, Serialize, Deserialize, Debug, Default)]
+#[serde(default)]
+pub struct IdfCliOptions {
+    /// The idf bootloader path
+    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION")]
+    idf_bootloader: Option<PathBuf>,
+    /// The idf partition table path
+    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION")]
+    idf_partition_table: Option<PathBuf>,
+}
+
+// TODO: This type needs to be automatically generated or replaced with runtime code using the
+//       Platform struct.
+#[derive(clap::ValueEnum, Clone, Copy, Serialize, Deserialize, Debug, Default)]
+pub enum PlatformKind {
+    #[default]
+    Raw,
+    #[clap(alias = "esp-idf")]
+    Idf,
+}
+
+impl PlatformKind {
+    fn loader(self, options: &FirmwareOptions) -> PlatformLoader {
+        // TODO: this needs to be automatic
+
+        match self {
+            PlatformKind::Raw => PlatformLoader::from(RawLoader),
+            PlatformKind::Idf => PlatformLoader::from(IdfPlatformLoader(IdfOptions {
+                bootloader: options.idf_options.idf_bootloader.clone(),
+                partition_table: options.idf_options.idf_partition_table.clone(),
+            })),
+        }
     }
 }
 
 #[derive(clap::Parser, Clone, Serialize, Deserialize, Debug, Default)]
 #[serde(default)]
-pub struct FormatOptions {
-    /// If a format is provided, use it.
-    /// If a target has a preferred format, we use that.
-    /// Finally, if neither of the above cases are true, we default to ELF.
+pub struct FirmwareOptions {
+    /// If a format is provided, use it. Otherwise, we default to ELF.
     #[clap(
         value_enum,
         ignore_case = true,
         long,
         help_heading = "DOWNLOAD CONFIGURATION"
     )]
-    // TODO: remove this alias in the next release after 0.24 and release of https://github.com/probe-rs/vscode/pull/86
-    #[serde(deserialize_with = "format_from_str", alias = "format")]
-    binary_format: Option<Format>,
-    /// The address in memory where the binary will be put at. This is only considered when `bin` is selected as the format.
-    #[clap(long, value_parser = parse_u64, help_heading = "DOWNLOAD CONFIGURATION")]
-    pub base_address: Option<u64>,
-    /// The number of bytes to skip at the start of the binary file. This is only considered when `bin` is selected as the format.
-    #[clap(long, value_parser = parse_u32, default_value = "0", help_heading = "DOWNLOAD CONFIGURATION")]
-    pub skip: u32,
-    /// The idf bootloader path
-    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION")]
-    pub idf_bootloader: Option<PathBuf>,
-    /// The idf partition table path
-    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION")]
-    pub idf_partition_table: Option<PathBuf>,
+    binary_format: Option<FormatKind>,
+
+    /// The platform of the target system. When omitted, the platform is determined by the target
+    /// chip.
+    #[clap(
+        value_enum,
+        ignore_case = true,
+        long,
+        help_heading = "DOWNLOAD CONFIGURATION"
+    )]
+    platform_kind: Option<PlatformKind>,
+
+    #[clap(flatten)]
+    bin_options: BinaryCliOptions,
+
+    #[clap(flatten)]
+    idf_options: IdfCliOptions,
 }
 
-impl FormatOptions {
-    /// If a format is provided, use it.
-    /// If a target has a preferred format, we use that.
-    /// Finally, if neither of the above cases are true, we default to [`Format::default()`].
-    pub fn into_format(self, target: &Target) -> anyhow::Result<Format> {
-        let format = self
-            .binary_format
-            .unwrap_or_else(|| match target.default_format {
-                probe_rs_target::BinaryFormat::Idf => Format::Idf(Default::default()),
-                probe_rs_target::BinaryFormat::Raw => Default::default(),
-            });
-        Ok(match format {
-            Format::Bin(_) => Format::Bin(BinOptions {
-                base_address: self.base_address,
-                skip: self.skip,
+impl FirmwareOptions {
+    /// If a format is provided, use it. Otherwise, we default to ELF.
+    pub fn into_format(self) -> Format {
+        // TODO: platform-preferred format?
+        let kind = self.binary_format.unwrap_or_default();
+
+        match kind {
+            FormatKind::Bin => Format::Bin(BinOptions {
+                base_address: self.bin_options.base_address,
+                skip: self.bin_options.skip,
             }),
-            Format::Hex => Format::Hex,
-            Format::Elf => Format::Elf,
-            Format::Idf(_) => Format::Idf(IdfOptions {
-                bootloader: self.idf_bootloader,
-                partition_table: self.idf_partition_table,
-            }),
-            Format::Uf2 => Format::Uf2,
-        })
+            FormatKind::Hex => Format::Hex,
+            FormatKind::Elf => Format::Elf,
+            FormatKind::Uf2 => Format::Uf2,
+        }
+    }
+
+    pub fn platform(&self, target: &Target) -> PlatformLoader {
+        self.platform_kind
+            .map(|kind| kind.loader(self))
+            .unwrap_or_else(|| {
+                let platform = match Platform::from_optional(target.default_platform.as_deref()) {
+                    Some(Ok(result)) => result,
+                    Some(Err(error)) => {
+                        unreachable!("Unknown platform. This should not have passed tests. {error}")
+                    }
+                    None => Platform::default(),
+                };
+
+                platform.default_loader()
+            })
     }
 }
 
@@ -264,7 +307,7 @@ fn main() -> Result<()> {
     if let Some(format_arg_pos) = args.iter().position(|arg| arg == "--format") {
         if let Some(format_arg) = args.get(format_arg_pos + 1) {
             if let Some(format_arg) = format_arg.to_str() {
-                if Format::from_str(format_arg).is_ok() {
+                if FormatKind::from_str(format_arg).is_ok() {
                     anyhow::bail!("--format has been renamed to --binary-format. Please use --binary-format {0} instead of --format {0}", format_arg);
                 }
             }

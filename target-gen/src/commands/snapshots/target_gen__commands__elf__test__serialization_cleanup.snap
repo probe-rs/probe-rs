@@ -35,4 +35,3 @@ variants:
     - main
     access:
       execute: false
-  default_binary_format: raw

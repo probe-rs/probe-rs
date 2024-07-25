@@ -170,7 +170,7 @@ where
             flash_algorithms: flash_algorithm_names,
             rtt_scan_ranges: None,
             jtag: None, // TODO, parse scan chain from sdf
-            default_binary_format: None,
+            default_platform: None,
         });
     }
 

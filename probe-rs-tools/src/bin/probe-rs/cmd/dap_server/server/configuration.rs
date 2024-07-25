@@ -1,6 +1,6 @@
 use crate::util::common_options::ProbeOptions;
 use crate::util::rtt;
-use crate::{cmd::dap_server::DebuggerError, FormatOptions};
+use crate::{cmd::dap_server::DebuggerError, FirmwareOptions};
 use anyhow::{anyhow, Result};
 use probe_rs::probe::{DebugProbeSelector, WireProtocol};
 use serde::{Deserialize, Serialize};
@@ -216,7 +216,7 @@ pub struct FlashingConfig {
 
     /// [`FormatOptions`] to control the flashing operation, depending on the type of binary ( [`probe_rs::flashing::Format`] ) to be flashed.
     #[serde(default)]
-    pub(crate) format_options: FormatOptions,
+    pub(crate) format_options: FirmwareOptions,
 }
 
 /// Configuration options for all core level configuration.
