@@ -36,11 +36,11 @@ pub struct CoreData {
     /// Track the last_known_status of the core.
     /// The debug client needs to be notified when the core changes state, and this can happen in one of two ways:
     /// 1. By polling the core status periodically (in [`crate::cmd::dap_server::server::debugger::Debugger::process_next_request()`]).
-    ///   For instance, when the client sets the core running, and the core halts because of a breakpoint, we need to notify the client.
+    ///    For instance, when the client sets the core running, and the core halts because of a breakpoint, we need to notify the client.
     /// 2. Some requests, like [`DebugAdapter::next()`], has an implicit action of setting the core running, before it waits for it to halt at the next statement.
-    ///   To ensure the [`CoreHandle::poll_core()`] behaves correctly, it will set the `last_known_status` to [`CoreStatus::Running`],
-    ///   and execute the request normally, with the expectation that the core will be halted, and that 1. above will detect this new status.
-    ///   These 'implicit' updates of `last_known_status` will not(and should not) result in a notification to the client.
+    ///    To ensure the [`CoreHandle::poll_core()`] behaves correctly, it will set the `last_known_status` to [`CoreStatus::Running`],
+    ///    and execute the request normally, with the expectation that the core will be halted, and that 1. above will detect this new status.
+    ///    These 'implicit' updates of `last_known_status` will not(and should not) result in a notification to the client.
     pub last_known_status: CoreStatus,
     pub target_name: String,
     pub debug_info: DebugInfo,

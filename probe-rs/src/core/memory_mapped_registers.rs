@@ -40,7 +40,7 @@ pub trait MemoryMappedRegister<T>: Clone + From<T> + Into<T> + Sized + std::fmt:
 /// Create a [`MemoryMappedRegister`] type, with the required method implementations for:
 /// - Trait implementations required by [`MemoryMappedRegister`]
 /// - Includes a `bitfield!` mapping for bitfield access to optionally defined fields.
-/// When no bitfields are defined, the default `.0` field must be used.
+///   When no bitfields are defined, the default `.0` field must be used.
 ///
 /// # Example
 /// ```

@@ -502,9 +502,9 @@ impl DebugInfo {
     ///
     /// The unwind loop will continue until we meet one of the following conditions:
     /// - We can no longer unwind a valid PC value to be used for the next frame.
-    /// - We encounter a LR register value of 0x0 or 0xFFFFFFFF(Arm 'Reset' value for that register).
+    /// - We encounter a LR register value of 0x0 or 0xFFFFFFFF (Arm 'Reset' value for that register).
     /// - We can not intelligently calculate a valid LR register value from the other registers,
-    ///   or the gimli::RegisterRule result is a value of 0x0.
+    ///   or the `gimli::RegisterRule` result is a value of 0x0.
     ///   Note: [DWARF](https://dwarfstd.org) 6.4.4 - CIE defines the return register address
     ///   used in the `gimli::RegisterRule` tables for unwind operations.
     ///   Theoretically, if we encounter a function that has `Undefined` `gimli::RegisterRule` for
@@ -515,9 +515,10 @@ impl DebugInfo {
     ///   Example 1: local functions in main.rs will have LR rule as `Undefined`.
     ///   Example 2: main()-> ! that is called from a trampoline will have a valid LR rule.
     /// - Similarly, certain error conditions encountered in `StackFrameIterator` will also break out of the unwind loop.
+    ///
     /// Note: In addition to populating the `StackFrame`s, this function will also
-    ///   populate the `DebugInfo::VariableCache` with `Variable`s for available Registers
-    ///   as well as static and function variables.
+    /// populate the `DebugInfo::VariableCache` with `Variable`s for available Registers
+    /// as well as static and function variables.
     /// TODO: Separate logic for stackframe creation and cache population
     pub fn unwind(
         &self,

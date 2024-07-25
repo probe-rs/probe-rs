@@ -21,6 +21,7 @@ pub(crate) struct FunctionDie<'abbrev, 'unit> {
     /// The optional specification DIE for the function, if it has one.
     /// - For regular functions, this applies to the `function_die`.
     /// - For inlined functions, this applies to the `abstract_die`.
+    ///
     /// The specification DIE will contain separately declared attributes,
     /// e.g. for the function name.
     /// See DWARF spec, 2.13.2.
