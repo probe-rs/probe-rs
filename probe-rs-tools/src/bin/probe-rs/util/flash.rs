@@ -4,7 +4,6 @@ use super::common_options::{BinaryDownloadOptions, LoadedProbeOptions, Operation
 use super::logging;
 
 use std::cell::RefCell;
-use std::fs::File;
 use std::time::Duration;
 use std::{path::Path, time::Instant};
 
@@ -16,8 +15,6 @@ use probe_rs::{
     flashing::{DownloadOptions, FileDownloadError, FlashLoader, FlashProgress, ProgressEvent},
     Session,
 };
-
-use anyhow::Context;
 
 /// Performs the flash download with the given loader. Ensure that the loader has the data to load already stored.
 /// This function also manages the update and display of progress bars.
@@ -162,20 +159,10 @@ pub fn build_loader(
     path: impl AsRef<Path>,
     format_options: FormatOptions,
     image_instruction_set: Option<InstructionSet>,
-) -> anyhow::Result<FlashLoader> {
-    // Create the flash loader
-    let mut loader = session.target().flash_loader();
+) -> Result<FlashLoader, FileDownloadError> {
+    let format = format_options.into_format(session.target());
 
-    // Add data from the BIN.
-    let mut file = match File::open(path) {
-        Ok(file) => file,
-        Err(e) => return Err(FileDownloadError::IO(e)).context("Failed to open binary file."),
-    };
-
-    let format = format_options.into_format(session.target())?;
-    loader.load_image(session, &mut file, format, image_instruction_set)?;
-
-    Ok(loader)
+    probe_rs::flashing::build_loader(session, path, format, image_instruction_set)
 }
 
 struct ProgressBars {
