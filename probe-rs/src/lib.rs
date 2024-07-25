@@ -108,3 +108,7 @@ pub use crate::core::dump::{CoreDump, CoreDumpError};
 
 #[cfg(feature = "debug")]
 pub use crate::debug::exception_handling::exception_handler_for_core;
+
+#[doc = include_str!("../../README.md")]
+#[cfg(doctest)]
+pub struct ReadmeDoctests;

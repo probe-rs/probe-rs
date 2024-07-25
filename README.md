@@ -62,7 +62,7 @@ The probe-rs website includes [VSCode configuration instructions](https://probe.
 
 ### Halting the attached chip
 
-```rust
+```rust,no_run
 use probe_rs::probe::{list::Lister, Probe};
 use probe_rs::Permissions;
 
@@ -90,7 +90,7 @@ fn main() -> Result<(), probe_rs::Error> {
 
 ### Reading from RAM
 
-```rust
+```rust,no_run
 use probe_rs::{MemoryInterface, Permissions, Session};
 
 fn main() -> Result<(), probe_rs::Error> {
