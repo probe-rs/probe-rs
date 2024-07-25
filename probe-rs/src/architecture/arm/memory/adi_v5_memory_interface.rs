@@ -1057,7 +1057,7 @@ mod tests {
         }
     }
 
-    #[test]
+    #[test_log::test]
     fn read_8() {
         let mut mock = MockMemoryAp::with_pattern_and_size(256);
         mock.memory[..DATA8.len()].copy_from_slice(DATA8);

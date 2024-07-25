@@ -101,7 +101,7 @@ mod tests {
             v.into_iter().collapse_bytes().collect()
         }
 
-        assert_eq!(collapse([]), []);
+        assert_eq!(collapse([]), [] as [u8; 0]);
         assert_eq!(collapse([true]), [0x01]);
         assert_eq!(collapse([false, true]), [0x02]);
         assert_eq!(collapse([true, false]), [0x01]);
