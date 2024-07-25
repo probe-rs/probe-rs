@@ -1,4 +1,5 @@
-//! This module contains the implementation of the [`crate::core::ExceptionInterface`] for the various ARM core variants.
+//! This module (and its children) contains the implementation of the [`ExceptionInterface`] for the various ARM core
+//! variants.
 
 use probe_rs_target::CoreType;
 
@@ -7,7 +8,8 @@ use crate::MemoryInterface;
 use super::{DebugError, DebugInfo, DebugRegisters, StackFrame};
 
 pub(crate) mod armv6m;
-/// Where applicable, this defines shared logic for implementing exception handling across the various ARMv6-m and ARMv7-m [`crate::CoreType`]'s.
+/// Where applicable, this defines shared logic for implementing exception handling across the various ARMv6-m and
+/// ARMv7-m [`crate::CoreType`]'s.
 pub(crate) mod armv6m_armv7m_shared;
 // NOTE: There is also a [`CoreType::Armv7em`] variant, but it is not currently used/implemented in probe-rs.
 pub(crate) mod armv7m;
@@ -72,7 +74,7 @@ impl ExceptionInterface for UnimplementedExceptionHandler {
 
 /// A struct containing key information about an exception.
 /// The exception details are architecture specific, and the abstraction is handled in the
-/// architecture specific implementations of [`crate::core::ExceptionInterface`].
+/// architecture specific implementations of [`ExceptionInterface`].
 #[derive(PartialEq)]
 pub struct ExceptionInfo {
     /// The exception number.

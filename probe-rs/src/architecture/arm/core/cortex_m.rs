@@ -39,7 +39,7 @@ impl Dhcsr {
     /// C1.6.3 Debug Halting Control and Status Register, DHCSR:
     /// Debug key:
     /// Software must write 0xA05F to this field to enable write accesses to bits
-    /// [15:0], otherwise the processor ignores the write access.
+    /// `[15:0]`, otherwise the processor ignores the write access.
     pub fn enable_write(&mut self) {
         self.0 &= !(0xffff << 16);
         self.0 |= 0xa05f << 16;

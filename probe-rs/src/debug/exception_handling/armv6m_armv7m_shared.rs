@@ -21,7 +21,7 @@ use super::{ExceptionInfo, ExceptionInterface};
 /// - The ProgramCounter value depends on the exception type, and for some exceptions, it will
 ///   be the address of the instruction that caused the exception, while for other exceptions
 ///   it will be the address of the next instruction after the instruction that caused the exception.
-///   See: https://developer.arm.com/documentation/ddi0403/d/System-Level-Architecture/System-Level-Programmers--Model/ARMv7-M-exception-model/Exception-entry-behavior?lang=en
+///   See: <https://developer.arm.com/documentation/ddi0403/d/System-Level-Architecture/System-Level-Programmers--Model/ARMv7-M-exception-model/Exception-entry-behavior?lang=en>
 pub(crate) static EXCEPTION_STACK_REGISTERS: &[RegisterRole] = &[
     RegisterRole::Core("R0"),
     RegisterRole::Core("R1"),
@@ -168,7 +168,7 @@ pub(crate) fn exception_details(
         };
         // Now we can update the stack pointer also, but
         // first we have to determine the size of the exception data on the stack.
-        // See https://developer.arm.com/documentation/ddi0403/d/System-Level-Architecture/System-Level-Programmers--Model/ARMv7-M-exception-model/Exception-entry-behavior?lang=en
+        // See <https://developer.arm.com/documentation/ddi0403/d/System-Level-Architecture/System-Level-Programmers--Model/ARMv7-M-exception-model/Exception-entry-behavior?lang=en>
         let frame_size = if ExcReturn(frame_return_address).use_standard_stackframe() {
             // This is a standard exception frame.
             0x20usize

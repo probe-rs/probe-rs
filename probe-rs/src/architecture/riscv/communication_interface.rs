@@ -744,7 +744,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
     /// Schedules a DM register read, flushes the queue and returns the untyped result.
     ///
-    /// Use the [`read_dm_register`] function if possible.
+    /// Use the [`Self::read_dm_register()`] function if possible.
     fn read_dm_register_untyped(&mut self, address: u64) -> Result<u32, RiscvError> {
         let read_idx = self.schedule_read_dm_register_untyped(address)?;
         let register_value = self.dtm.read_deferred_result(read_idx)?.into_u32();
@@ -770,7 +770,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
     /// Write to a DM register
     ///
-    /// Use the [`write_dm_register`] function if possible.
+    /// Use the [`Self::write_dm_register()`] function if possible.
     fn write_dm_register_untyped(&mut self, address: u64, value: u32) -> Result<(), RiscvError> {
         self.dtm.write_with_timeout(address, value, RISCV_TIMEOUT)?;
 
@@ -1521,7 +1521,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
     /// Write to a DM register
     ///
-    /// Use the [`schedule_write_dm_register`] function if possible.
+    /// Use the [`Self::schedule_write_dm_register()`] function if possible.
     fn schedule_write_dm_register_untyped(
         &mut self,
         address: u64,
@@ -1544,7 +1544,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
     /// Read from a DM register
     ///
-    /// Use the [`schedule_read_dm_register`] function if possible.
+    /// Use the [`Self::schedule_read_dm_register()`] function if possible.
     fn schedule_read_dm_register_untyped(
         &mut self,
         address: u64,

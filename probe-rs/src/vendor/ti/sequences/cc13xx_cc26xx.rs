@@ -17,7 +17,7 @@ pub struct CC13xxCC26xx {
     name: String,
 }
 
-// IR register values, see https://www.ti.com/lit/ug/swcu185f/swcu185f.pdf table 6-7
+// IR register values, see <https://www.ti.com/lit/ug/swcu185f/swcu185f.pdf> table 6-7
 const IR_ROUTER: u64 = 0x02;
 const IR_CONNECT: u64 = 0x07;
 const IR_BYPASS: u64 = 0x3F;
@@ -33,7 +33,7 @@ enum JtagState {
 
 // Set the bottom n bits of a u64 to 1
 // This is lifted directly from:
-// https://users.rust-lang.org/t/how-to-make-an-integer-with-n-bits-set-without-overflow/63078/6
+// <https://users.rust-lang.org/t/how-to-make-an-integer-with-n-bits-set-without-overflow/63078/6>
 fn set_n_bits(x: u32) -> u64 {
     u64::checked_shl(1, x).unwrap_or(0).wrapping_sub(1)
 }
@@ -47,7 +47,7 @@ impl CC13xxCC26xx {
     /// This function implements a Zero Bit Scan(ZBS)
     ///
     /// The ZBS defined in section 6.2.2.1 of this document:
-    /// https://www.ti.com/lit/ug/swcu185f/swcu185f.pdf
+    /// <https://www.ti.com/lit/ug/swcu185f/swcu185f.pdf>
     ///
     /// This function assumes that the JTAG state machine is in the Run-Test/Idle state
     ///
@@ -187,7 +187,7 @@ impl CC13xxCC26xx {
     /// and connect a given data register to the TDO.
     ///
     /// This is a direct port from the openocd implementation:
-    /// https://github.com/openocd-org/openocd/blob/master/tcl/target/icepick.cfg#L56-L70
+    /// <https://github.com/openocd-org/openocd/blob/master/tcl/target/icepick.cfg#L56-L70>
     ///
     /// * `interface` - Reference to interface to interact with CmsisDap
     /// * `rw`        - 0 for read, 1 for write
@@ -226,7 +226,7 @@ impl CC13xxCC26xx {
     /// also power and enable the debug interface for use with probe-rs
     ///
     /// This is a direct port of the openocd implementation:
-    /// https://github.com/openocd-org/openocd/blob/master/tcl/target/icepick.cfg#L81-L124
+    /// <https://github.com/openocd-org/openocd/blob/master/tcl/target/icepick.cfg#L81-L124>
     /// A few things were removed to fit the cc13xx_cc26xx family.
     fn enable_icepick(
         &self,
@@ -268,18 +268,18 @@ impl CC13xxCC26xx {
 
         // cJTAG: Open Command Window
         // This is described in section 6.2.2.1 of this document:
-        // https://www.ti.com/lit/ug/swcu185f/swcu185f.pdf
+        // <https://www.ti.com/lit/ug/swcu185f/swcu185f.pdf>
         // Also refer to the openocd implementation:
-        // https://github.com/openocd-org/openocd/blob/master/tcl/target/ti-cjtag.cfg#L6-L35
+        // <https://github.com/openocd-org/openocd/blob/master/tcl/target/ti-cjtag.cfg#L6-L35>
         self.zero_bit_scan(interface)?;
         self.zero_bit_scan(interface)?;
         self.shift_dr(interface, 1, 0x01, jtag_state, JtagState::RunTestIdle)?;
 
         // cJTAG: Switch to 4 pin
         // This is described in section 6.2.2.2 of this document:
-        // https://www.ti.com/lit/ug/swcu185f/swcu185f.pdf
+        // <https://www.ti.com/lit/ug/swcu185f/swcu185f.pdf>
         // Also refer to the openocd implementation:
-        // https://github.com/openocd-org/openocd/blob/master/tcl/target/ti-cjtag.cfg#L6-L35
+        // <https://github.com/openocd-org/openocd/blob/master/tcl/target/ti-cjtag.cfg#L6-L35>
         self.shift_dr(
             interface,
             2,
@@ -301,8 +301,8 @@ impl CC13xxCC26xx {
         // Connect CPU DAP to top level TAP
         // This is done by interacting with the top level TAP which is called ICEPICK
         // Some resouces on the ICEPICK, note that the cc13xx_cc26xx family implements ICEPICK-C
-        // https://www.ti.com/lit/ug/swcu185f/swcu185f.pdf, Section 6.3
-        // https://software-dl.ti.com/ccs/esd/documents/xdsdebugprobes/emu_icepick.html
+        // <https://www.ti.com/lit/ug/swcu185f/swcu185f.pdf>, Section 6.3
+        // <https://software-dl.ti.com/ccs/esd/documents/xdsdebugprobes/emu_icepick.html>
         self.enable_icepick(interface, jtag_state)?;
 
         Ok(())
