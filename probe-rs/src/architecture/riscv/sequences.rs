@@ -1,10 +1,11 @@
 //! Debug sequences to operate special requirements RISC-V targets.
 
-use crate::architecture::riscv::communication_interface::RiscvError;
+use crate::architecture::riscv::communication_interface::{
+    RiscvCommunicationInterface, RiscvError,
+};
 use crate::architecture::riscv::Dmcontrol;
 use crate::Session;
 
-use super::communication_interface::RiscvCommunicationInterface;
 use std::fmt::Debug;
 use std::sync::Arc;
 use std::time::Duration;
@@ -14,7 +15,7 @@ use std::time::Duration;
 /// Should be implemented on a custom handle for chips that require special sequence code.
 pub trait RiscvDebugSequence: Send + Sync + Debug {
     /// Executed when the probe establishes a connection to the target.
-    fn on_connect(&self, _interface: &mut RiscvCommunicationInterface) -> Result<(), crate::Error> {
+    fn on_connect(&self, _session: &mut Session) -> Result<(), crate::Error> {
         Ok(())
     }
 

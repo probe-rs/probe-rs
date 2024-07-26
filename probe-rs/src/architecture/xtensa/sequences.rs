@@ -1,6 +1,5 @@
 use std::{fmt::Debug, sync::Arc, time::Duration};
 
-use crate::architecture::xtensa::communication_interface::XtensaCommunicationInterface;
 use crate::{Error, Session};
 
 /// A interface to operate debug sequences for Xtensa targets.
@@ -8,10 +7,7 @@ use crate::{Error, Session};
 /// Should be implemented on a custom handle for chips that require special sequence code.
 pub trait XtensaDebugSequence: Send + Sync + Debug {
     /// Executed when the probe establishes a connection to the target.
-    fn on_connect(
-        &self,
-        _interface: &mut XtensaCommunicationInterface,
-    ) -> Result<(), crate::Error> {
+    fn on_connect(&self, _session: &mut Session) -> Result<(), crate::Error> {
         Ok(())
     }
 
@@ -27,7 +23,11 @@ pub trait XtensaDebugSequence: Send + Sync + Debug {
                 .core(n)
                 .and_then(|mut core| core.reset_and_halt(timeout))
                 .map(|_| ())
-        })
+        })?;
+
+        self.on_connect(session)?;
+
+        Ok(())
     }
 }
 
