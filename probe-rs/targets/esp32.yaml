@@ -9,6 +9,10 @@ variants:
     type: xtensa
     core_access_options: !Xtensa
       jtag_tap: 0
+  - name: app
+    type: xtensa
+    core_access_options: !Xtensa
+      jtag_tap: 1
   memory_map:
   - !Nvm
     range:
@@ -16,6 +20,7 @@ variants:
       end: 0x1000000
     cores:
     - main
+    - app
     access:
       boot: true
   - !Nvm
@@ -25,6 +30,7 @@ variants:
       end: 0x3fc00000
     cores:
     - main
+    - app
     is_alias: true
   - !Ram
     name: SRAM2, Data bus
@@ -33,6 +39,7 @@ variants:
       end: 0x3ffe0000
     cores:
     - main
+    - app
   - !Ram
     name: SRAM1, Data bus
     range:
@@ -40,6 +47,7 @@ variants:
       end: 0x40000000
     cores:
     - main
+    - app
   - !Ram
     name: SRAM0, Instruction bus, non-cache
     range:
@@ -47,6 +55,7 @@ variants:
       end: 0x400a0000
     cores:
     - main
+    - app
   - !Nvm
     name: External instruction bus
     range:
@@ -54,6 +63,7 @@ variants:
       end: 0x40c00000
     cores:
     - main
+    - app
     is_alias: true
   flash_algorithms:
   - esp32-flashloader
@@ -84,5 +94,6 @@ flash_algorithms:
       address: 0x0
   cores:
   - main
+  - app
   stack_overflow_check: false
   transfer_encoding: miniz
