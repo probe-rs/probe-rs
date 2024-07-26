@@ -1277,25 +1277,18 @@ impl<D: StLinkUsb> SwoAccess for StLink<D> {
 }
 
 /// ST-Link specific errors.
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, docsplay::Display)]
 pub enum StlinkError {
     /// Invalid voltage values returned by probe.
-    #[error("Invalid voltage values returned by probe.")]
     VoltageDivisionByZero,
 
     /// Probe is in an unknown mode.
-    #[error("Probe is in an unknown mode.")]
     UnknownMode,
 
-    /// Banks not allowed on DP register.
-    #[error(
-        "Current version of the STLink firmware does not support accessing banked DP registers. \
-         Upgrading the firmware to the newest version might fix this."
-    )]
+    /// Current version of the STLink firmware does not support accessing banked DP registers.
     BanksNotAllowedOnDPRegister,
 
-    /// Not enough bytes were written.
-    #[error("Not enough bytes written.")]
+    /// Not enough bytes were written. Expected {should} but only {is} were written.
     NotEnoughBytesWritten {
         /// The number of bytes actually written
         is: usize,
@@ -1304,32 +1297,25 @@ pub enum StlinkError {
     },
 
     /// USB endpoint not found.
-    #[error("Usb endpoint not found.")]
     EndpointNotFound,
 
-    /// Command failed.
-    #[error("Command failed with status {0:?}")]
+    /// Command failed with status {0:?}.
     CommandFailed(Status),
 
     /// The probe does not support JTAG.
-    #[error("JTAG not supported on Probe")]
     JTAGNotSupportedOnProbe,
 
     /// The probe does not support SWO with Manchester encoding.
-    #[error("Manchester-coded SWO mode not supported")]
     ManchesterSwoNotSupported,
 
     /// The probe does not support multidrop SWD.
-    #[error("Multidrop SWD not supported")]
     MultidropNotSupported,
 
     /// Attempted unaligned access.
-    #[error("Unaligned")]
     UnalignedAddress,
 
     /// USB error.
-    #[error("USB")]
-    Usb(Box<dyn std::error::Error + Sync + Send>),
+    Usb(#[source] Box<dyn std::error::Error + Sync + Send>),
 }
 
 impl From<nusb::Error> for StlinkError {
