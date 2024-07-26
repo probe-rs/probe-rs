@@ -16,17 +16,6 @@ pub struct ScanChainElement {
     pub ir_len: Option<u8>,
 }
 
-/// A finite list of all possible binary formats a target might support.
-#[derive(Debug, Default, Serialize, Deserialize, PartialEq, Eq, Clone)]
-#[serde(rename_all = "lowercase")]
-pub enum BinaryFormat {
-    /// Program sections are bit-for-bit copied to flash.
-    #[default]
-    Raw,
-    /// Program sections are copied to flash, with the relevant headers and metadata for the [ESP-IDF bootloader](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/app_image_format.html#app-image-structures).
-    Idf,
-}
-
 /// Configuration for JTAG probes.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Jtag {
@@ -89,7 +78,9 @@ pub struct Chip {
     #[serde(default)]
     pub jtag: Option<Jtag>,
     /// The default binary format for this chip
-    pub default_binary_format: Option<BinaryFormat>,
+    // TODO: rename to default_platform
+    #[serde(default)]
+    pub default_binary_format: Option<String>,
 }
 
 impl Chip {
@@ -111,7 +102,7 @@ impl Chip {
             flash_algorithms: vec![],
             rtt_scan_ranges: None,
             jtag: None,
-            default_binary_format: Some(BinaryFormat::Raw),
+            default_binary_format: None,
         }
     }
 }

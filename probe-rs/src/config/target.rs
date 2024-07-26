@@ -12,7 +12,7 @@ use crate::{
     },
     rtt::ScanRegion,
 };
-use probe_rs_target::{Architecture, BinaryFormat, Chip, ChipFamily, Jtag};
+use probe_rs_target::{Architecture, Chip, ChipFamily, Jtag};
 use std::sync::Arc;
 
 /// This describes a complete target with a fixed chip model and variant.
@@ -42,7 +42,7 @@ pub struct Target {
     /// the number devices in the scan chain and their ir lengths.
     pub jtag: Option<Jtag>,
     /// The default executable format for the target.
-    pub default_format: BinaryFormat,
+    pub default_format: Option<String>,
 }
 
 impl std::fmt::Debug for Target {
@@ -109,7 +109,7 @@ impl Target {
             debug_sequence,
             rtt_scan_regions,
             jtag: chip.jtag.clone(),
-            default_format: chip.default_binary_format.clone().unwrap_or_default(),
+            default_format: chip.default_binary_format.clone(),
         }
     }
 
