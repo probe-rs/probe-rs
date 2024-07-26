@@ -12,7 +12,7 @@ use crate::{
         communication_interface::{FlushableArmAccess, Initialized},
         core::armv8m::{Aircr, Demcr, Dhcsr},
         dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
-        memory::adi_v5_memory_interface::ArmMemoryInterface,
+        memory::ArmMemoryInterface,
         sequences::ArmDebugSequence,
         ArmCommunicationInterface, ArmError, DapAccess, DpAddress, FullyQualifiedApAddress, Pins,
     },

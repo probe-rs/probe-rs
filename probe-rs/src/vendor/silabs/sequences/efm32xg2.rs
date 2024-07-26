@@ -5,7 +5,7 @@ use std::sync::Arc;
 use crate::{
     architecture::arm::{
         core::armv7m::{Demcr, Dhcsr},
-        memory::adi_v5_memory_interface::ArmMemoryInterface,
+        memory::ArmMemoryInterface,
         sequences::ArmDebugSequence,
         ArmError,
     },

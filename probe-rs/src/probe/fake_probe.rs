@@ -10,7 +10,7 @@ use crate::{
         communication_interface::{
             ArmDebugState, Initialized, SwdSequence, Uninitialized, UninitializedArmProbe,
         },
-        memory::adi_v5_memory_interface::{ADIMemoryInterface, ArmMemoryInterface},
+        memory::{adi_v5_memory_interface::ADIMemoryInterface, ArmMemoryInterface},
         sequences::ArmDebugSequence,
         ArmError, ArmProbeInterface, DapAccess, DpAddress, FullyQualifiedApAddress,
         MemoryApInformation, PortType, RawDapAccess, SwoAccess,

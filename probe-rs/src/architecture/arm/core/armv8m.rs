@@ -9,8 +9,8 @@ use super::{
 };
 use crate::{
     architecture::arm::{
-        core::registers::cortex_m::XPSR, memory::adi_v5_memory_interface::ArmMemoryInterface,
-        sequences::ArmDebugSequence, ArmError,
+        core::registers::cortex_m::XPSR, memory::ArmMemoryInterface, sequences::ArmDebugSequence,
+        ArmError,
     },
     core::{CoreRegisters, RegisterId, RegisterValue, VectorCatchCondition},
     error::Error,

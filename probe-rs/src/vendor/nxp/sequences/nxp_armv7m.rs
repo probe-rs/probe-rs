@@ -17,7 +17,7 @@ use crate::{
             armv7m::{Aircr, Dhcsr},
             registers::cortex_m::PC,
         },
-        memory::adi_v5_memory_interface::ArmMemoryInterface,
+        memory::ArmMemoryInterface,
         sequences::{ArmDebugSequence, ArmDebugSequenceError},
         ArmError,
     },

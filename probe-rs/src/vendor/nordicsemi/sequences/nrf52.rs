@@ -49,7 +49,7 @@ impl Nrf52 {
 }
 
 mod clock {
-    use crate::architecture::arm::{memory::adi_v5_memory_interface::ArmMemoryInterface, ArmError};
+    use crate::architecture::arm::{memory::ArmMemoryInterface, ArmError};
     use bitfield::bitfield;
 
     /// The base address of the DBGMCU component

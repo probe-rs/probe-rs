@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use super::nrf::Nrf;
 use crate::architecture::arm::ap::AccessPort;
-use crate::architecture::arm::memory::adi_v5_memory_interface::ArmMemoryInterface;
+use crate::architecture::arm::memory::ArmMemoryInterface;
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::architecture::arm::ArmError;
 use crate::architecture::arm::{

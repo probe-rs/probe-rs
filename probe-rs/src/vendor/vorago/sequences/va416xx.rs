@@ -7,7 +7,7 @@ use crate::{
     architecture::arm::{
         ap::MemoryAp,
         armv7m::Demcr,
-        memory::adi_v5_memory_interface::ArmMemoryInterface,
+        memory::ArmMemoryInterface,
         sequences::{cortex_m_core_start, ArmDebugSequence},
         ArmError, ArmProbeInterface,
     },

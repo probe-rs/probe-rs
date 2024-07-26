@@ -4,31 +4,12 @@ use super::super::ap::{
 };
 use crate::architecture::arm::communication_interface::{FlushableArmAccess, SwdSequence};
 use crate::architecture::arm::{
-    communication_interface::Initialized, dp::DpAccess, MemoryApInformation,
+    communication_interface::Initialized, dp::DpAccess, memory::ArmMemoryInterface,
+    MemoryApInformation,
 };
 use crate::architecture::arm::{ArmCommunicationInterface, ArmError};
+use crate::probe::DebugProbeError;
 use crate::MemoryInterface;
-use crate::{probe::DebugProbeError, CoreStatus};
-
-pub trait ArmMemoryInterface: SwdSequence + MemoryInterface<ArmError> {
-    /// Returns the underlying [`MemoryAp`].
-    fn ap(&mut self) -> MemoryAp;
-
-    fn get_arm_communication_interface(
-        &mut self,
-    ) -> Result<&mut ArmCommunicationInterface<Initialized>, DebugProbeError>;
-
-    /// Inform the probe of the [`CoreStatus`] of the chip/core attached to
-    /// the probe.
-    //
-    // NOTE: this function should be infallible as it is usually only
-    // a visual indication.
-    fn update_core_status(&mut self, state: CoreStatus) {
-        self.get_arm_communication_interface()
-            .map(|iface| iface.core_status_notification(state))
-            .ok();
-    }
-}
 
 /// Calculate the maximum number of bytes we can write starting at address
 /// before we run into the 10-bit TAR autoincrement limit.
