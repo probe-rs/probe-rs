@@ -53,8 +53,6 @@ impl ESP32 {
         core.write_word_32(RTC_WDTCONFIG0, 0x0)?;
         core.write_word_32(RTC_WRITE_PROT, 0x0)?; // write protection on
 
-        tracing::warn!("Be careful not to reset your ESP32 while connected to the debugger! Depending on the specific device, this may render it temporarily inoperable or permanently damage it.");
-
         Ok(())
     }
 }
@@ -63,7 +61,11 @@ impl XtensaDebugSequence for ESP32 {
     fn on_connect(&self, session: &mut Session) -> Result<(), crate::Error> {
         let mut core = session.core(0).unwrap();
 
-        self.disable_wdt(&mut core)
+        self.disable_wdt(&mut core)?;
+
+        tracing::warn!("Be careful not to reset your ESP32 while connected to the debugger! Depending on the specific device, this may render it temporarily inoperable or permanently damage it.");
+
+        Ok(())
     }
 
     fn detect_flash_size(&self, session: &mut Session) -> Result<Option<usize>, crate::Error> {
