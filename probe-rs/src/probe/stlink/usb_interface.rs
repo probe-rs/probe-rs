@@ -7,7 +7,7 @@ use crate::probe::{stlink::StlinkError, usb_util::InterfaceExt};
 use std::collections::HashMap;
 
 use super::tools::{is_stlink_device, read_serial_number};
-use crate::probe::{DebugProbeError, DebugProbeSelector, ProbeCreationError};
+use crate::probe::{DebugProbeSelector, ProbeCreationError};
 
 /// The USB Command packet size.
 const CMD_LEN: usize = 16;
@@ -80,14 +80,10 @@ pub trait StLinkUsb: std::fmt::Debug {
 
     /// Reset the USB device. This can be used to recover when the
     /// STLink does not respond to USB requests.
-    fn reset(&mut self) -> Result<(), DebugProbeError>;
+    fn reset(&mut self) -> Result<(), StlinkError>;
 
     /// Reads SWO data from the probe.
-    fn read_swo(
-        &mut self,
-        read_data: &mut [u8],
-        timeout: Duration,
-    ) -> Result<usize, DebugProbeError>;
+    fn read_swo(&mut self, read_data: &mut [u8], timeout: Duration) -> Result<usize, StlinkError>;
 }
 
 // Copy of `Selector::matches` except it uses the stlink-specific read_serial_number
@@ -247,11 +243,7 @@ impl StLinkUsb for StLinkUsbDevice {
         Ok(())
     }
 
-    fn read_swo(
-        &mut self,
-        read_data: &mut [u8],
-        timeout: Duration,
-    ) -> Result<usize, DebugProbeError> {
+    fn read_swo(&mut self, read_data: &mut [u8], timeout: Duration) -> Result<usize, StlinkError> {
         tracing::trace!(
             "Reading {:?} SWO bytes to STLink, timeout: {:?}",
             read_data.len(),
@@ -265,14 +257,14 @@ impl StLinkUsb for StLinkUsbDevice {
         } else {
             self.interface
                 .read_bulk(ep_swo, read_data, timeout)
-                .map_err(DebugProbeError::Usb)
+                .map_err(StlinkError::Usb)
         }
     }
 
     /// Reset the USB device. This can be used to recover when the
     /// STLink does not respond to USB requests.
-    fn reset(&mut self) -> Result<(), DebugProbeError> {
+    fn reset(&mut self) -> Result<(), StlinkError> {
         tracing::debug!("Resetting USB device of STLink");
-        self.device_handle.reset().map_err(DebugProbeError::Usb)
+        self.device_handle.reset().map_err(StlinkError::Usb)
     }
 }

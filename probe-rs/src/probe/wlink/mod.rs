@@ -225,7 +225,7 @@ impl WchLink {
         self.v_minor = probe_info.minor_version;
 
         if self.v_major != 0x02 && self.v_minor < 0x07 {
-            return Err(DebugProbeError::ProbeFirmwareOutdated);
+            return Err(WchLinkError::UnsupportedFirmwareVersion.into());
         }
 
         self.variant = probe_info.variant;
@@ -568,10 +568,7 @@ pub(crate) enum WchLinkError {
 
 impl From<WchLinkError> for DebugProbeError {
     fn from(e: WchLinkError) -> Self {
-        match e {
-            WchLinkError::UnsupportedFirmwareVersion => DebugProbeError::ProbeFirmwareOutdated,
-            _ => DebugProbeError::ProbeSpecific(Box::new(e)),
-        }
+        DebugProbeError::ProbeSpecific(Box::new(e))
     }
 }
 

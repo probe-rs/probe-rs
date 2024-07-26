@@ -22,7 +22,6 @@ use crate::architecture::riscv::communication_interface::{RiscvError, RiscvInter
 use crate::architecture::xtensa::communication_interface::{
     XtensaCommunicationInterface, XtensaDebugInterfaceState, XtensaError,
 };
-use crate::config::RegistryError;
 use crate::config::TargetSelector;
 use crate::probe::common::IdCode;
 use crate::{Error, Permissions, Session};
@@ -106,14 +105,6 @@ pub enum DebugProbeError {
     /// USB Communication Error
     Usb(#[source] std::io::Error),
 
-    /// The firmware on the probe is outdated, and not supported by probe-rs.
-    ///
-    /// This error is especially prominent with ST-Links.
-    /// You can use their official updater utility to update your probe firmware.
-    // TODO: Shouldn't this be probe-specific?
-    #[ignore_extra_doc_attributes]
-    ProbeFirmwareOutdated,
-
     /// An error which is specific to the debug probe in use occurred.
     ProbeSpecific(#[source] Box<dyn std::error::Error + Send + Sync>),
 
@@ -134,9 +125,6 @@ pub enum DebugProbeError {
         /// The name of the unsupported interface.
         interface_name: &'static str,
     },
-
-    /// An error occurred while working with the registry.
-    Registry(#[from] RegistryError),
 
     /// The probe does not support he requested speed setting ({0} kHz).
     UnsupportedSpeed(u32),
