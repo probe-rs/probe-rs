@@ -14,56 +14,73 @@ use std::time::Duration;
 
 const USB_TIMEOUT: Duration = Duration::from_millis(1000);
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, thiserror::Error, docsplay::Display)]
 pub enum CmsisDapError {
-    #[error("Error handling CMSIS-DAP command {command_id:?}")]
+    /// Error handling CMSIS-DAP command {command_id:?}.
     Send {
         command_id: CommandId,
         source: SendError,
     },
-    #[error("CMSIS-DAP responded with an error")]
+
+    /// CMSIS-DAP responded with an error.
     ErrorResponse,
-    #[error("Too much data provided for SWJ Sequence command")]
+
+    /// Too much data provided for SWJ Sequence command.
     TooMuchData,
-    #[error("Requested SWO baud rate could not be configured")]
+
+    /// Requested SWO baud rate could not be configured.
     SwoBaudrateNotConfigured,
-    #[error("Probe reported an error while streaming SWO")]
+
+    /// Probe reported an error while streaming SWO.
     SwoTraceStreamError,
-    #[error("Requested SWO mode is not available on this probe")]
+
+    /// Requested SWO mode is not available on this probe.
     SwoModeNotAvailable,
-    #[error("USB Error reading SWO data.")]
+
+    /// USB Error reading SWO data.
     SwoReadError(#[source] std::io::Error),
-    #[error("Could not determine a suitable packet size for this probe")]
+
+    /// Could not determine a suitable packet size for this probe.
     NoPacketSize,
-    #[error("Invalid IDCODE detected")]
+
+    /// Invalid IDCODE detected.
     InvalidIdCode,
-    #[error("Error scanning IR lengths")]
+
+    /// Error scanning IR lengths.
     InvalidIR,
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, thiserror::Error, docsplay::Display)]
 pub enum SendError {
-    #[error("Error in the USB HID access")]
+    /// Error in the USB HID access.
     HidApi(#[from] hidapi::HidError),
-    #[error("Error in the USB access")]
+
+    /// Error in the USB access.
     UsbError(std::io::Error),
-    #[error("Not enough data in response from probe")]
+
+    /// Not enough data in response from probe.
     NotEnoughData,
-    #[error("Status can only be 0x00 or 0xFF")]
+
+    /// Status can only be 0x00 or 0xFF
     InvalidResponseStatus,
-    #[error("Connecting to target failed, received: {0:x}")]
+
+    /// Connecting to target failed, received: {0:x}
     ConnectResponseError(u8),
-    #[error("Command ID in response (:#02x) does not match sent command ID")]
+
+    /// Command ID in response (:#02x) does not match sent command ID
     CommandIdMismatch(u8),
+
     /// String in response is not valid UTF-8.
     ///
     /// Strings are required to be UTF-8 encoded by the
     /// CMSIS-DAP specification.
-    #[error("String in response is not valid UTF-8.")]
+    #[ignore_extra_doc_attributes]
     InvalidString(#[from] Utf8Error),
-    #[error("Unexpected answer to command")]
+
+    /// Unexpected answer to command.
     UnexpectedAnswer,
-    #[error("Timeout in USB communication.")]
+
+    /// Timeout in USB communication.
     Timeout,
 }
 
