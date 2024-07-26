@@ -53,8 +53,8 @@ pub enum WireProtocol {
 impl fmt::Display for WireProtocol {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            WireProtocol::Swd => write!(f, "SWD"),
-            WireProtocol::Jtag => write!(f, "JTAG"),
+            WireProtocol::Swd => f.write_str("SWD"),
+            WireProtocol::Jtag => f.write_str("JTAG"),
         }
     }
 }
