@@ -16,8 +16,8 @@ use crate::{
         communication_interface::RiscvInterfaceBuilder, dtm::jtag_dtm::JtagDtmBuilder,
     },
     probe::{
-        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
-        ProbeFactory, WireProtocol,
+        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeError, ProbeFactory,
+        WireProtocol,
     },
 };
 
@@ -438,9 +438,7 @@ impl JTAGAccess for WchLink {
                     self.dmi_op_write(0x10, 0x00000001)?;
                     // dmcontrol.dmactive is checked later
                 } else if val & DTMCS_DMIHARDRESET_MASK != 0 {
-                    return Err(DebugProbeError::ProbeSpecific(Box::new(
-                        WchLinkError::UnsupportedOperation,
-                    )));
+                    return Err(WchLinkError::UnsupportedOperation.into());
                 }
 
                 Ok(0x71_u32.to_le_bytes().to_vec())
@@ -566,14 +564,4 @@ pub(crate) enum WchLinkError {
     UnsupportedOperation,
 }
 
-impl From<WchLinkError> for DebugProbeError {
-    fn from(e: WchLinkError) -> Self {
-        DebugProbeError::ProbeSpecific(Box::new(e))
-    }
-}
-
-impl From<WchLinkError> for ProbeCreationError {
-    fn from(e: WchLinkError) -> Self {
-        ProbeCreationError::ProbeSpecific(Box::new(e))
-    }
-}
+impl ProbeError for WchLinkError {}

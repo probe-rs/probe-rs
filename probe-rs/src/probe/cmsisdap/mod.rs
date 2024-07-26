@@ -829,7 +829,7 @@ impl DebugProbe for CmsisDap {
         }
 
         let response = commands::send_command(&mut self.device, DisconnectRequest {})
-            .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
+            .map_err(DebugProbeError::from)?;
 
         // Tell probe we are disconnected so it can turn off its LED.
         let _: Result<HostStatusResponse, _> =
@@ -1119,16 +1119,10 @@ impl SwoAccess for CmsisDap {
         // Check requested mode is available in probe capabilities
         match config.mode() {
             SwoMode::Uart if !caps.swo_uart_implemented => {
-                return Err(DebugProbeError::ProbeSpecific(
-                    CmsisDapError::SwoModeNotAvailable.into(),
-                )
-                .into())
+                return Err(ArmError::Probe(CmsisDapError::SwoModeNotAvailable.into()));
             }
             SwoMode::Manchester if !caps.swo_manchester_implemented => {
-                return Err(DebugProbeError::ProbeSpecific(
-                    CmsisDapError::SwoModeNotAvailable.into(),
-                )
-                .into())
+                return Err(ArmError::Probe(CmsisDapError::SwoModeNotAvailable.into()));
             }
             _ => (),
         }

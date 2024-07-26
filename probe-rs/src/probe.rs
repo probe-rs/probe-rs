@@ -99,6 +99,66 @@ impl fmt::Display for BatchCommand {
     }
 }
 
+/// Marker trait for all probe errors.
+pub trait ProbeError: std::error::Error + Send + Sync + AnyShim {}
+
+impl std::error::Error for Box<dyn ProbeError> {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        self.as_ref().source()
+    }
+}
+
+/// Implementation detail to allow downcasting of probe errors.
+#[doc(hidden)]
+pub trait AnyShim: std::any::Any {
+    fn as_any(&self) -> &dyn std::any::Any;
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
+}
+
+impl<T> AnyShim for T
+where
+    T: ProbeError,
+{
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+}
+
+/// A probe-specific error.
+#[derive(Debug, thiserror::Error)]
+#[error(transparent)]
+pub struct BoxedProbeError(#[from] Box<dyn ProbeError>);
+
+impl BoxedProbeError {
+    /// Returns true if the underlying error is of type `T`.
+    pub fn is<T: ProbeError>(&self) -> bool {
+        self.0.as_ref().as_any().is::<T>()
+    }
+
+    /// Attempts to downcast the error to a specific error type.
+    pub fn downcast_ref<T: ProbeError>(&self) -> Option<&T> {
+        self.0.as_ref().as_any().downcast_ref()
+    }
+
+    /// Attempts to downcast the error to a specific error type.
+    pub fn downcast_mut<T: ProbeError>(&mut self) -> Option<&mut T> {
+        self.0.as_mut().as_any_mut().downcast_mut()
+    }
+}
+
+impl<T> From<T> for BoxedProbeError
+where
+    T: ProbeError,
+{
+    fn from(e: T) -> Self {
+        BoxedProbeError(Box::new(e))
+    }
+}
+
 /// This error occurs whenever the debug probe logic encounters an error while operating the relevant debug probe.
 #[derive(thiserror::Error, Debug, docsplay::Display)]
 pub enum DebugProbeError {
@@ -106,7 +166,7 @@ pub enum DebugProbeError {
     Usb(#[source] std::io::Error),
 
     /// An error which is specific to the debug probe in use occurred.
-    ProbeSpecific(#[source] Box<dyn std::error::Error + Send + Sync>),
+    ProbeSpecific(#[source] BoxedProbeError),
 
     /// The debug probe could not be created.
     ProbeCouldNotBeCreated(#[from] ProbeCreationError),
@@ -177,6 +237,12 @@ pub enum DebugProbeError {
     Timeout,
 }
 
+impl<T: ProbeError> From<T> for DebugProbeError {
+    fn from(e: T) -> Self {
+        Self::ProbeSpecific(BoxedProbeError::from(e))
+    }
+}
+
 /// An error during probe creation occurred.
 /// This is almost always a sign of a bad USB setup.
 /// Check UDEV rules if you are on Linux and try installing Zadig
@@ -186,17 +252,28 @@ pub enum ProbeCreationError {
     /// The selected debug probe was not found.
     /// This can be due to permissions.
     NotFound,
+
     /// The selected USB device could not be opened.
     CouldNotOpen,
+
     /// An HID API occurred.
     HidApi(#[from] hidapi::HidError),
+
     /// A USB error occurred.
     Usb(#[source] std::io::Error),
+
     /// An error specific with the selected probe occurred.
-    ProbeSpecific(#[source] Box<dyn std::error::Error + Send + Sync>),
+    ProbeSpecific(#[source] BoxedProbeError),
+
     /// Something else happened.
     #[display("{0}")]
     Other(&'static str),
+}
+
+impl<T: ProbeError> From<T> for ProbeCreationError {
+    fn from(e: T) -> Self {
+        Self::ProbeSpecific(BoxedProbeError::from(e))
+    }
 }
 
 /// The Probe struct is a generic wrapper over the different

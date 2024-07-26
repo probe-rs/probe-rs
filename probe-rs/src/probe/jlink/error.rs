@@ -1,4 +1,4 @@
-use crate::probe::DebugProbeError;
+use crate::probe::ProbeError;
 
 use super::{capabilities::Capability, interface::Interface};
 
@@ -39,8 +39,4 @@ pub enum JlinkError {
     Other(String),
 }
 
-impl From<JlinkError> for DebugProbeError {
-    fn from(e: JlinkError) -> Self {
-        DebugProbeError::ProbeSpecific(Box::new(e))
-    }
-}
+impl ProbeError for JlinkError {}

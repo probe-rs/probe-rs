@@ -19,7 +19,7 @@ use crate::{
         FullyQualifiedApAddress, Pins, SwoAccess, SwoConfig, SwoMode,
     },
     probe::{
-        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeCreationError,
+        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeError,
         ProbeFactory, WireProtocol,
     },
     Error as ProbeRsError, MemoryInterface,
@@ -1252,10 +1252,9 @@ impl<D: StLinkUsb> SwoAccess for StLink<D> {
                 self.start_trace_reception(config)?;
                 Ok(())
             }
-            SwoMode::Manchester => Err(DebugProbeError::ProbeSpecific(
+            SwoMode::Manchester => Err(ArmError::Probe(
                 StlinkError::ManchesterSwoNotSupported.into(),
-            )
-            .into()),
+            )),
         }
     }
 
@@ -1316,17 +1315,7 @@ pub enum StlinkError {
     Usb(#[from] std::io::Error),
 }
 
-impl From<StlinkError> for DebugProbeError {
-    fn from(e: StlinkError) -> Self {
-        DebugProbeError::ProbeSpecific(Box::new(e))
-    }
-}
-
-impl From<StlinkError> for ProbeCreationError {
-    fn from(e: StlinkError) -> Self {
-        ProbeCreationError::ProbeSpecific(Box::new(e))
-    }
-}
+impl ProbeError for StlinkError {}
 
 #[derive(Debug)]
 struct UninitializedStLink {

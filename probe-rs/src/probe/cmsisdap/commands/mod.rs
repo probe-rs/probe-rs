@@ -7,7 +7,7 @@ pub mod transfer;
 
 use crate::probe::cmsisdap::commands::general::info::PacketSizeCommand;
 use crate::probe::usb_util::InterfaceExt;
-use crate::probe::DebugProbeError;
+use crate::probe::ProbeError;
 use std::io::ErrorKind;
 use std::str::Utf8Error;
 use std::time::Duration;
@@ -50,6 +50,8 @@ pub enum CmsisDapError {
     InvalidIR,
 }
 
+impl ProbeError for CmsisDapError {}
+
 #[derive(Debug, thiserror::Error, docsplay::Display)]
 pub enum SendError {
     /// Error in the USB HID access.
@@ -82,12 +84,6 @@ pub enum SendError {
 
     /// Timeout in USB communication.
     Timeout,
-}
-
-impl From<CmsisDapError> for DebugProbeError {
-    fn from(error: CmsisDapError) -> Self {
-        DebugProbeError::ProbeSpecific(Box::new(error))
-    }
 }
 
 pub enum CmsisDapDevice {
@@ -290,6 +286,7 @@ impl Status {
 /// The command ID is always sent as the first byte for every command,
 /// and also is the first byte of every response.
 #[derive(Debug)]
+#[allow(unused)]
 pub enum CommandId {
     Info = 0x00,
     HostStatus = 0x01,
