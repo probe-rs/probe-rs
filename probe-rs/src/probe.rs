@@ -786,7 +786,7 @@ impl DebugProbeInfo {
     ///
     /// The exact contents of the string are unstable, this is intended for human consumption only.
     pub fn probe_type(&self) -> String {
-        format!("{}", self.probe_factory)
+        self.probe_factory.to_string()
     }
 }
 
