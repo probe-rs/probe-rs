@@ -13,7 +13,7 @@ use super::{
 pub use romtable::{Component, ComponentId, CoresightComponent, PeripheralType};
 
 /// An ArmMemoryInterface (ArmProbeInterface + MemoryAp)
-pub trait ArmMemoryInterface: SwdSequence + MemoryInterface<ArmError> {
+pub trait ArmMemoryInterface: SwdSequence + ArmMemoryInterfaceShim {
     /// The underlying MemoryAp.
     fn ap(&mut self) -> MemoryAp;
 
@@ -31,5 +31,31 @@ pub trait ArmMemoryInterface: SwdSequence + MemoryInterface<ArmError> {
         self.get_arm_communication_interface()
             .map(|iface| iface.core_status_notification(state))
             .ok();
+    }
+}
+
+/// Implementation detail to allow trait upcasting-like behaviour.
+//
+// TODO: replace with trait upcasting once stable
+pub trait ArmMemoryInterfaceShim: MemoryInterface<ArmError> {
+    /// Returns a reference to the underlying `MemoryInterface`.
+    // TODO: replace with trait upcasting once stable
+    fn as_memory_interface(&self) -> &dyn MemoryInterface<ArmError>;
+
+    /// Returns a mutable reference to the underlying `MemoryInterface`.
+    // TODO: replace with trait upcasting once stable
+    fn as_memory_interface_mut(&mut self) -> &mut dyn MemoryInterface<ArmError>;
+}
+
+impl<T> ArmMemoryInterfaceShim for T
+where
+    T: ArmMemoryInterface,
+{
+    fn as_memory_interface(&self) -> &dyn MemoryInterface<ArmError> {
+        self
+    }
+
+    fn as_memory_interface_mut(&mut self) -> &mut dyn MemoryInterface<ArmError> {
+        self
     }
 }
