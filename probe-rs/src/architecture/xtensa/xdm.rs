@@ -214,11 +214,12 @@ impl<'probe> Xdm<'probe> {
 
         // read the device_id
         let device_id = self.read_nexus_register::<OcdId>()?.0;
+        tracing::debug!("Read OCDID: {:#010X}", device_id);
 
         if device_id == 0 || device_id == !0 {
             return Err(DebugProbeError::TargetNotFound.into());
         }
-        tracing::info!("Found Xtensa device with OCDID: 0x{:08X}", device_id);
+        tracing::info!("Found Xtensa device with OCDID: {:#010X}", device_id);
 
         let status = self.status()?;
         tracing::debug!("{:?}", status);
