@@ -1087,7 +1087,6 @@ impl ChainParams {
 
         let mut found = false;
         for (index, tap) in chain.iter().enumerate() {
-            tracing::info!("{:?}", tap);
             if index == selected {
                 params.irlen = tap.irlen;
                 found = true;

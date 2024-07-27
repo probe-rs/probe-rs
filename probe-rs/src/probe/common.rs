@@ -439,7 +439,7 @@ pub(crate) trait RawJtagIo {
         self.shift_bits(tms, tdi, iter::repeat(false))?;
         let response = self.read_captured_bits()?;
 
-        tracing::debug!("Response to reset: {}", response);
+        tracing::debug!("Response to reset: {response}");
 
         Ok(())
     }
@@ -454,8 +454,9 @@ pub(crate) trait RawJtagIo {
 
         let max_ir_address = (1 << params.irlen) - 1;
 
-        tracing::debug!("Setting chain params: {:?}", params);
-        tracing::debug!("Setting max_ir_address to {}", max_ir_address);
+        tracing::debug!("Selecting JTAG TAP: {target}");
+        tracing::debug!("Setting chain params: {params:?}");
+        tracing::debug!("Setting max_ir_address to {max_ir_address}");
 
         let state = self.state_mut();
         state.max_ir_address = max_ir_address;
