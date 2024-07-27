@@ -228,6 +228,9 @@ impl<'probe> CoreInterface for Xtensa<'probe> {
 
     fn run(&mut self) -> Result<(), Error> {
         self.skip_breakpoint_instruction()?;
+        if self.state.pc_written {
+            self.interface.clear_register_cache();
+        }
         Ok(self.interface.resume()?)
     }
 

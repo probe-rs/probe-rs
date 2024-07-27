@@ -682,10 +682,15 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
     }
 
     pub(crate) fn reset_and_halt(&mut self, timeout: Duration) -> Result<(), XtensaError> {
+        self.clear_register_cache();
         self.xdm.reset_and_halt()?;
         self.wait_for_core_halted(timeout)?;
 
         Ok(())
+    }
+
+    pub(crate) fn clear_register_cache(&mut self) {
+        self.state.saved_registers.clear();
     }
 }
 
