@@ -692,6 +692,10 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
     pub(crate) fn clear_register_cache(&mut self) {
         self.state.saved_registers.clear();
     }
+
+    pub(crate) fn is_stalled(&mut self) -> Result<bool, XtensaError> {
+        self.xdm.status().map(|status| status.run_stall_sample())
+    }
 }
 
 /// DataType

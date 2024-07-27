@@ -1,4 +1,7 @@
-use std::{fmt::Debug, time::Duration};
+use std::{
+    fmt::Debug,
+    time::{Duration, Instant},
+};
 
 use crate::{
     architecture::xtensa::arch::instruction::{Instruction, InstructionEncoding},
@@ -185,8 +188,8 @@ impl<'probe> Xdm<'probe> {
         // Wakeup and enable the JTAG
         self.pwr_write(PowerDevice::PowerControl, pwr_control.0)?;
 
-        tracing::trace!("Waiting for power domain to turn on");
-        let now = std::time::Instant::now();
+        tracing::debug!("Waiting for power domain to turn on");
+        let now = Instant::now();
         loop {
             let bits = self.pwr_write(PowerDevice::PowerStat, 0)?;
             if PowerStatus(bits).debug_domain_on() {
@@ -203,15 +206,6 @@ impl<'probe> Xdm<'probe> {
         pwr_control.set_jtag_debug_use(true);
         self.pwr_write(PowerDevice::PowerControl, pwr_control.0)?;
 
-        // enable the debug module
-        self.write_nexus_register(DebugControlSet({
-            let mut reg = DebugControlBits(0);
-            reg.set_enable_ocd(true);
-            reg.set_break_in_en(true);
-            reg.set_break_out_en(true);
-            reg
-        }))?;
-
         // read the device_id
         let device_id = self.read_nexus_register::<OcdId>()?.0;
         tracing::debug!("Read OCDID: {:#010X}", device_id);
@@ -220,6 +214,21 @@ impl<'probe> Xdm<'probe> {
             return Err(DebugProbeError::TargetNotFound.into());
         }
         tracing::info!("Found Xtensa device with OCDID: {:#010X}", device_id);
+
+        // enable the debug module
+        self.write_nexus_register(DebugControlSet({
+            let mut reg = DebugControlBits(0);
+            reg.set_enable_ocd(true);
+            reg.set_break_in_en(true);
+            reg.set_break_out_en(true);
+            reg
+        }))?;
+        self.write_nexus_register(DebugControlClear({
+            let mut reg = DebugControlBits(0);
+            reg.set_run_stall_in_en(true);
+            reg.set_debug_mode_out_en(true);
+            reg
+        }))?;
 
         let status = self.status()?;
         tracing::debug!("{:?}", status);
@@ -233,6 +242,7 @@ impl<'probe> Xdm<'probe> {
             status.set_exec_done(true);
             status.set_exec_overrun(true);
             status.set_debug_pend_break(true);
+            status.set_debug_int_break(true);
             status.set_debug_pend_host(true);
 
             status
