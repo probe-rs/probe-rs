@@ -21,8 +21,13 @@ pub trait XtensaDebugSequence: Send + Sync + Debug {
         session.list_cores().into_iter().try_for_each(|(n, _)| {
             session
                 .core(n)
-                .and_then(|mut core| core.reset_and_halt(timeout))
-                .map(|_| ())
+                .and_then(|mut core| core.reset_and_halt(timeout))?;
+
+            // TODO: return a reconnect request?
+            let mut iface = session.get_xtensa_interface(n)?;
+            iface.enter_debug_mode()?;
+
+            Ok::<_, Error>(())
         })?;
 
         self.on_connect(session)?;
