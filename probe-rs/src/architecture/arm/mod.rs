@@ -12,7 +12,7 @@ mod traits;
 
 pub use self::core::{armv6m, armv7a, armv7m, armv8a, armv8m, Dump};
 use self::{
-    ap::{AccessPort, AccessPortError},
+    ap::AccessPortError,
     communication_interface::RegisterParseError,
     dp::DebugPortError,
     memory::romtable::RomTableError,
@@ -140,9 +140,9 @@ pub enum ArmError {
 
 impl ArmError {
     /// Constructs [`ArmError::MemoryNotAligned`] from the address and the required alignment.
-    pub fn from_access_port(err: AccessPortError, ap: &impl AccessPort) -> Self {
+    pub fn from_access_port(err: AccessPortError, ap_address: &FullyQualifiedApAddress) -> Self {
         ArmError::AccessPort {
-            address: ap.ap_address().clone(),
+            address: ap_address.clone(),
             source: err,
         }
     }

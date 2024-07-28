@@ -5,11 +5,11 @@ use probe_rs_target::CoreType;
 
 use crate::{
     architecture::arm::{
-        ap::MemoryAp,
+        ap::AccessPort,
         armv7m::Demcr,
         memory::ArmMemoryInterface,
         sequences::{cortex_m_core_start, ArmDebugSequence},
-        ArmError, ArmProbeInterface,
+        ArmError, ArmProbeInterface, FullyQualifiedApAddress,
     },
     MemoryMappedRegister,
 };
@@ -33,12 +33,12 @@ impl ArmDebugSequence for Va416xx {
     fn debug_core_start(
         &self,
         interface: &mut dyn ArmProbeInterface,
-        core_ap: MemoryAp,
+        core_ap: &FullyQualifiedApAddress,
         _core_type: CoreType,
         _debug_base: Option<u64>,
         _cti_base: Option<u64>,
     ) -> Result<(), ArmError> {
-        let mut core = interface.memory_interface(&core_ap)?;
+        let mut core = interface.memory_interface(core_ap)?;
         cortex_m_core_start(&mut *core)?;
         // Disable ROM protection
         core.write_32(0x4001_0010, &[0x000_0001])?;
@@ -96,7 +96,7 @@ impl ArmDebugSequence for Va416xx {
         }
 
         assert!(debug_base.is_none());
-        self.debug_core_start(arm_interface, ap, core_type, None, None)?;
+        self.debug_core_start(arm_interface, ap.ap_address(), core_type, None, None)?;
 
         if demcr.vc_corereset() {
             // TODO! Find a way to call the armv7m::halt function instead

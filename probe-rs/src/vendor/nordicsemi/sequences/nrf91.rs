@@ -3,12 +3,9 @@
 use std::sync::Arc;
 
 use super::nrf::Nrf;
-use crate::architecture::arm::ap::AccessPort;
-use crate::architecture::arm::memory::ArmMemoryInterface;
-use crate::architecture::arm::sequences::ArmDebugSequence;
-use crate::architecture::arm::ArmError;
 use crate::architecture::arm::{
-    communication_interface::Initialized, ArmCommunicationInterface, DapAccess,
+    ap::AccessPort, communication_interface::Initialized, memory::ArmMemoryInterface,
+    sequences::ArmDebugSequence, ArmCommunicationInterface, ArmError, DapAccess,
     FullyQualifiedApAddress,
 };
 
@@ -28,8 +25,7 @@ impl Nrf for Nrf9160 {
         &self,
         memory: &mut dyn ArmMemoryInterface,
     ) -> Vec<(FullyQualifiedApAddress, FullyQualifiedApAddress)> {
-        let memory_ap = memory.ap();
-        let ap_address = memory_ap.ap_address();
+        let dp = memory.ap().ap_address().dp();
 
         let core_aps = [(0, 4)];
 
@@ -37,8 +33,8 @@ impl Nrf for Nrf9160 {
             .into_iter()
             .map(|(core_ahb_ap, core_ctrl_ap)| {
                 (
-                    FullyQualifiedApAddress::v1_with_dp(ap_address.dp(), core_ahb_ap),
-                    FullyQualifiedApAddress::v1_with_dp(ap_address.dp(), core_ctrl_ap),
+                    FullyQualifiedApAddress::v1_with_dp(dp, core_ahb_ap),
+                    FullyQualifiedApAddress::v1_with_dp(dp, core_ctrl_ap),
                 )
             })
             .collect()

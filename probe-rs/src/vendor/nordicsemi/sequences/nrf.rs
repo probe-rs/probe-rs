@@ -2,7 +2,6 @@
 
 use crate::{
     architecture::arm::{
-        ap::MemoryAp,
         communication_interface::Initialized,
         memory::ArmMemoryInterface,
         sequences::{ArmDebugSequence, ArmDebugSequenceError},
@@ -82,7 +81,7 @@ impl<T: Nrf> ArmDebugSequence for T {
     fn debug_device_unlock(
         &self,
         interface: &mut dyn ArmProbeInterface,
-        default_ap: &MemoryAp,
+        default_ap: &FullyQualifiedApAddress,
         permissions: &crate::Permissions,
     ) -> Result<(), ArmError> {
         let mut interface = interface.memory_interface(default_ap)?;

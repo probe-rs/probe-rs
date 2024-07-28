@@ -8,7 +8,6 @@ mod tmc;
 mod tpiu;
 mod trace_funnel;
 
-use super::ap::{GenericAp, MemoryAp};
 use super::memory::romtable::{CoresightComponent, PeripheralType, RomTableError};
 use super::memory::Component;
 use super::ArmError;
@@ -111,9 +110,7 @@ pub fn get_arm_components(
 
     for ap_index in 0..(interface.num_access_ports(dp)? as u8) {
         let ap_information = interface
-            .ap_information(&GenericAp::new(FullyQualifiedApAddress::v1_with_dp(
-                dp, ap_index,
-            )))?
+            .ap_information(&FullyQualifiedApAddress::v1_with_dp(dp, ap_index))?
             .clone();
 
         let component = match ap_information {
@@ -126,10 +123,9 @@ pub fn get_arm_components(
                 debug_base_address,
                 ..
             }) => {
-                let ap = MemoryAp::new(address);
-                let mut memory = interface.memory_interface(&ap)?;
+                let mut memory = interface.memory_interface(&address)?;
                 let component = Component::try_parse(&mut *memory, debug_base_address)?;
-                Ok(CoresightComponent::new(component, ap))
+                Ok(CoresightComponent::new(component, address))
             }
             ApInformation::Other { address, .. } => {
                 // Return an error, only possible to get Component from MemoryAP

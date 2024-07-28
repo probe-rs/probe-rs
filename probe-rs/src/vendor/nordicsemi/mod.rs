@@ -9,8 +9,7 @@ use probe_rs_target::{
 
 use crate::{
     architecture::arm::{
-        ap::MemoryAp, memory::ArmMemoryInterface, ArmChipInfo, ArmProbeInterface,
-        FullyQualifiedApAddress,
+        memory::ArmMemoryInterface, ArmChipInfo, ArmProbeInterface, FullyQualifiedApAddress,
     },
     config::{registry, DebugSequence},
     vendor::{
@@ -51,8 +50,8 @@ impl Vendor for NordicSemi {
         }
 
         // FIXME: This is a bit shaky but good enough for now.
-        let access_port = MemoryAp::new(FullyQualifiedApAddress::v1_with_default_dp(0));
-        let mut memory_interface = probe.memory_interface(&access_port)?;
+        let access_port = &FullyQualifiedApAddress::v1_with_default_dp(0);
+        let mut memory_interface = probe.memory_interface(access_port)?;
 
         // Cache to avoid reading the same register multiple times
         let mut register_values: HashMap<u32, u32> = HashMap::new();

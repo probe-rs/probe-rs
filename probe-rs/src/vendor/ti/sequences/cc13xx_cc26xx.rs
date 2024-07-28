@@ -2,6 +2,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use crate::architecture::arm::ap::AccessPort;
 use crate::architecture::arm::armv7m::{Demcr, Dhcsr};
 use crate::architecture::arm::communication_interface::DapProbe;
 use crate::architecture::arm::memory::ArmMemoryInterface;
@@ -361,12 +362,12 @@ impl ArmDebugSequence for CC13xxCC26xx {
         std::thread::sleep(Duration::from_millis(1));
 
         // Re-initializing the core(s) is on us.
-        let ap = probe.ap();
+        let ap = probe.ap().ap_address().clone();
         let interface = probe.get_arm_communication_interface()?;
         interface.reinitialize()?;
 
         assert!(debug_base.is_none());
-        self.debug_core_start(interface, ap, core_type, None, None)?;
+        self.debug_core_start(interface, &ap, core_type, None, None)?;
 
         if demcr.vc_corereset() {
             // TODO! Find a way to call the armv7m::halt function instead

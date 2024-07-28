@@ -5,7 +5,7 @@ use probe_rs_target::{chip_detection::ChipDetectionMethod, Chip};
 
 use crate::{
     architecture::arm::{
-        ap::MemoryAp, memory::ArmMemoryInterface, ArmChipInfo, ArmError, ArmProbeInterface,
+        memory::ArmMemoryInterface, ArmChipInfo, ArmError, ArmProbeInterface,
         FullyQualifiedApAddress,
     },
     config::{registry, DebugSequence},
@@ -59,7 +59,7 @@ fn try_detect_xmc4xxx(
     }
 
     // FIXME: This is a bit shaky but good enough for now.
-    let access_port = &MemoryAp::new(FullyQualifiedApAddress::v1_with_default_dp(0));
+    let access_port = &FullyQualifiedApAddress::v1_with_default_dp(0);
     let mut memory_interface = interface.memory_interface(access_port)?;
 
     // First, read the SCU peripheral ID register to verify that this is an XMC4000.

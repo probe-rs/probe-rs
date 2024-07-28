@@ -9,11 +9,10 @@ use std::sync::Arc;
 use probe_rs_target::CoreType;
 
 use crate::architecture::arm::{
-    ap::MemoryAp,
     component::TraceSink,
     memory::{ArmMemoryInterface, CoresightComponent},
     sequences::ArmDebugSequence,
-    ArmError, ArmProbeInterface,
+    ArmError, ArmProbeInterface, FullyQualifiedApAddress,
 };
 
 /// Marker structure for ARMv8 STM32 devices.
@@ -68,7 +67,7 @@ impl ArmDebugSequence for Stm32Armv8 {
     fn debug_device_unlock(
         &self,
         interface: &mut dyn ArmProbeInterface,
-        default_ap: &MemoryAp,
+        default_ap: &FullyQualifiedApAddress,
         _permissions: &crate::Permissions,
     ) -> Result<(), ArmError> {
         let mut memory = interface.memory_interface(default_ap)?;
@@ -99,7 +98,7 @@ impl ArmDebugSequence for Stm32Armv8 {
         components: &[CoresightComponent],
         sink: &TraceSink,
     ) -> Result<(), ArmError> {
-        let mut memory = interface.memory_interface(&components[0].ap)?;
+        let mut memory = interface.memory_interface(&components[0].ap_address)?;
         let mut cr = dbgmcu::Control::read(&mut *memory)?;
 
         if matches!(sink, TraceSink::Tpiu(_) | TraceSink::Swo(_)) {
