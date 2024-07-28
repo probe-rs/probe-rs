@@ -1380,50 +1380,31 @@ impl UnitInfo {
 
                     let name_result = extract_name(debug_info, attributes_entry);
 
-                    let mut variable_attributes = attributes_entry.attrs();
+                    let Some(attr_value) = attributes_entry.attr_value(gimli::DW_AT_const_value)?
+                    else {
+                        // Ignore enumerators without a value.
+                        continue;
+                    };
+                    let variable_value = if let Some(const_value) = attr_value.udata_value() {
+                        VariableValue::Valid(const_value.to_string())
+                    } else if let Some(const_value) = attr_value.sdata_value() {
+                        VariableValue::Valid(const_value.to_string())
+                    } else {
+                        VariableValue::Error(format!(
+                            "Unimplemented: Attribute Value for DW_AT_const_value: {:?}",
+                            attr_value
+                        ))
+                    };
 
-                    // Now loop through all the unit attributes to extract the remainder of the `Variable` definition.
-                    while let Ok(Some(attr)) = variable_attributes.next() {
-                        match attr.name() {
-                            gimli::DW_AT_name => {
-                                // This was done before we started looping through attributes, so we can ignore it.
-                            }
-                            gimli::DW_AT_const_value => {
-                                let attr_value = attr.value();
-                                let variable_value = if let Some(const_value) =
-                                    attr_value.udata_value()
-                                {
-                                    VariableValue::Valid(const_value.to_string())
-                                } else if let Some(const_value) = attr_value.sdata_value() {
-                                    VariableValue::Valid(const_value.to_string())
-                                } else {
-                                    VariableValue::Error(format!(
-                                                "Unimplemented: Attribute Value for DW_AT_const_value: {:?}",
-                                                attr_value
-                                            ))
-                                };
+                    let enumerator_name = if let Ok(Some(ref name)) = name_result {
+                        name.to_string()
+                    } else {
+                        tracing::warn!("Enumerator has no name");
 
-                                let enumerator_name = if let Ok(Some(ref name)) = name_result {
-                                    name.to_string()
-                                } else {
-                                    tracing::warn!("Enumerator has no name");
+                        format!("<unknown enumerator {}", enumerator_values.len())
+                    };
 
-                                    format!("<unknown enumerator {}", enumerator_values.len())
-                                };
-
-                                enumerator_values
-                                    .push((VariableName::Named(enumerator_name), variable_value))
-                            }
-                            other_attribute => {
-                                tracing::debug!(
-                                            "Unhandled: Enumerator Attribute {:.100} : {:.100}, with children = {}",
-                                            format!("{:?}", other_attribute.static_string()),
-                                            format!("{:?}", attributes_entry.attr_value(other_attribute)),
-                                            attributes_entry.has_children()
-                                        );
-                            }
-                        }
-                    }
+                    enumerator_values.push((VariableName::Named(enumerator_name), variable_value))
                 }
                 // Function implemented on the enum type, ignored here.
                 gimli::DW_TAG_subprogram => (),
