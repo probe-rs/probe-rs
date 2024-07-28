@@ -502,10 +502,7 @@ impl UnitInfo {
                     }
                 }
 
-                gimli::DW_TAG_formal_parameter
-                | gimli::DW_TAG_variable
-                | gimli::DW_TAG_member
-                | gimli::DW_TAG_enumerator => {
+                gimli::DW_TAG_formal_parameter | gimli::DW_TAG_variable | gimli::DW_TAG_member => {
                     // This branch handles:
                     //  - Parameters to functions.
                     //  - Typical top-level variables.
@@ -1103,15 +1100,9 @@ impl UnitInfo {
 
                 let mut tree = self.unit.entries_tree(Some(node.offset()))?;
 
-                // Recursively process a child types.
-                self.process_tree(
-                    debug_info,
-                    tree.root()?,
-                    child_variable,
-                    memory,
-                    cache,
-                    frame_info,
-                )?;
+                // Recursively process the enumerator members.
+                let enumerator_values = self.process_enumerator(debug_info, tree.root()?)?;
+
                 if parent_variable.is_valid() && child_variable.is_valid() {
                     let value = if let VariableLocation::Address(address) =
                         child_variable.memory_location
@@ -1121,14 +1112,11 @@ impl UnitInfo {
                         memory.read(address, std::slice::from_mut(&mut buff))?;
                         let this_enum_const_value = buff.to_string();
 
-                        let mut enumerator_values = cache.get_children(child_variable.variable_key);
-
-                        let is_this_value = |enumerator_variable: &&Variable| {
-                            enumerator_variable.to_string(cache) == this_enum_const_value
-                        };
-
-                        let enumumerator_value = match enumerator_values.find(is_this_value) {
-                            Some(this_enum) => this_enum.name.clone(),
+                        let enumumerator_value = match enumerator_values
+                            .iter()
+                            .find(|(_name, value)| value.to_string() == this_enum_const_value)
+                        {
+                            Some((name, _value)) => name.clone(),
                             None => {
                                 VariableName::Named("<Error: Unresolved enum value>".to_string())
                             }
@@ -1144,9 +1132,6 @@ impl UnitInfo {
                     };
 
                     child_variable.set_value(value);
-
-                    // We don't need to keep these children.
-                    cache.remove_cache_entry_children(child_variable.variable_key)?;
                 }
             }
             gimli::DW_TAG_array_type => {
@@ -1353,6 +1338,81 @@ impl UnitInfo {
         cache.update_variable(child_variable)?;
 
         Ok(())
+    }
+
+    /// Extract the different variants of an enumeration
+    ///
+    /// This is used for C-style enums, where the enum is an integer type,
+    /// and all the different variants are different integer values.
+    fn process_enumerator(
+        &self,
+        debug_info: &DebugInfo,
+        parent_node: gimli::EntriesTreeNode<GimliReader>,
+    ) -> Result<Vec<(VariableName, VariableValue)>, DebugError> {
+        let mut enumerator_values = Vec::new();
+
+        let mut child_nodes = parent_node.children();
+        while let Some(child_node) = child_nodes.next()? {
+            match child_node.entry().tag() {
+                gimli::DW_TAG_enumerator => {
+                    let attributes_entry = child_node.entry();
+
+                    let name_result = extract_name(debug_info, attributes_entry);
+
+                    let mut variable_attributes = attributes_entry.attrs();
+
+                    // Now loop through all the unit attributes to extract the remainder of the `Variable` definition.
+                    while let Ok(Some(attr)) = variable_attributes.next() {
+                        match attr.name() {
+                            gimli::DW_AT_name => {
+                                // This was done before we started looping through attributes, so we can ignore it.
+                            }
+                            gimli::DW_AT_const_value => {
+                                let attr_value = attr.value();
+                                let variable_value = if let Some(const_value) =
+                                    attr_value.udata_value()
+                                {
+                                    VariableValue::Valid(const_value.to_string())
+                                } else if let Some(const_value) = attr_value.sdata_value() {
+                                    VariableValue::Valid(const_value.to_string())
+                                } else {
+                                    VariableValue::Error(format!(
+                                                "Unimplemented: Attribute Value for DW_AT_const_value: {:?}",
+                                                attr_value
+                                            ))
+                                };
+
+                                let enumerator_name = if let Ok(Some(ref name)) = name_result {
+                                    name.to_string()
+                                } else {
+                                    tracing::warn!("Enumerator has no name");
+
+                                    format!("<unknown enumerator {}", enumerator_values.len())
+                                };
+
+                                enumerator_values
+                                    .push((VariableName::Named(enumerator_name), variable_value))
+                            }
+                            other_attribute => {
+                                tracing::debug!(
+                                            "Unhandled: Enumerator Attribute {:.100} : {:.100}, with children = {}",
+                                            format!("{:?}", other_attribute.static_string()),
+                                            format!("{:?}", attributes_entry.attr_value(other_attribute)),
+                                            attributes_entry.has_children()
+                                        );
+                            }
+                        }
+                    }
+                }
+                // Function implemented on the enum type, ignored here.
+                gimli::DW_TAG_subprogram => (),
+                other => {
+                    tracing::debug!("Ignoring tag {other} under DW_TAG_enumeration_type");
+                }
+            }
+        }
+
+        Ok(enumerator_values)
     }
 
     /// Create child variable entries to represent array members and their values.
