@@ -11,6 +11,14 @@ name: Run smoke test
 env:
   CARGO_INCREMENTAL: 0
 
+# Cancel any currently running workflows from the same PR, branch, or
+# tag when a new workflow is triggered.
+#
+# https://stackoverflow.com/a/66336834
+concurrency:
+  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
