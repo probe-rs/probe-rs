@@ -203,15 +203,6 @@ impl<'probe> Xdm<'probe> {
         pwr_control.set_jtag_debug_use(true);
         self.pwr_write(PowerDevice::PowerControl, pwr_control.0)?;
 
-        // enable the debug module
-        self.write_nexus_register(DebugControlSet({
-            let mut reg = DebugControlBits(0);
-            reg.set_enable_ocd(true);
-            reg.set_break_in_en(true);
-            reg.set_break_out_en(true);
-            reg
-        }))?;
-
         // read the device_id
         let device_id = self.read_nexus_register::<OcdId>()?.0;
         tracing::debug!("Read OCDID: {:#010X}", device_id);
@@ -220,6 +211,21 @@ impl<'probe> Xdm<'probe> {
             return Err(DebugProbeError::TargetNotFound.into());
         }
         tracing::info!("Found Xtensa device with OCDID: {:#010X}", device_id);
+
+        // enable the debug module
+        self.write_nexus_register(DebugControlSet({
+            let mut reg = DebugControlBits(0);
+            reg.set_enable_ocd(true);
+            reg.set_break_in_en(true);
+            reg.set_break_out_en(true);
+            reg
+        }))?;
+        self.write_nexus_register(DebugControlClear({
+            let mut reg = DebugControlBits(0);
+            reg.set_run_stall_in_en(true);
+            reg.set_debug_mode_out_en(true);
+            reg
+        }))?;
 
         let status = self.status()?;
         tracing::debug!("{:?}", status);
