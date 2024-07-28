@@ -205,9 +205,11 @@ impl DebugInfo {
         None
     }
 
-    /// We do not actually resolve the children of `[VariableName::StaticScope]` automatically, and only create the necessary header in the `VariableCache`.
+    /// We do not actually resolve the children of `[VariableName::StaticScope]` automatically,
+    /// and only create the necessary header in the `VariableCache`.
     /// This allows us to resolve the `[VariableName::StaticScope]` on demand/lazily, when a user requests it from the debug client.
-    /// This saves a lot of overhead when a user only wants to see the `[VariableName::LocalScope]` or `[VariableName::Registers]` while stepping through code (the most common use cases)
+    /// This saves a lot of overhead when a user only wants to see the `[VariableName::LocalScope]` or `
+    /// [VariableName::Registers]` while stepping through code (the most common use cases)
     pub fn create_static_scope_cache(&self) -> VariableCache {
         VariableCache::new_static_cache()
     }

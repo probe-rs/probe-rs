@@ -586,43 +586,45 @@ impl Variable {
             // The `value` for this `Variable` is non empty because either
             // - It is base data type for which a value was determined based on the core runtime
             // - We encountered an error somewhere, so report it to the user
-            format!("{}", self.value)
-        } else if matches!(
+            return format!("{}", self.value);
+        }
+
+        if matches!(
             self.name,
             VariableName::AnonymousNamespace | VariableName::Namespace(_)
         ) {
             // Namespaces do not have values
-            String::new()
-        } else {
-            // We need to construct a 'human readable' value using `fmt::Display` to represent the
-            // values of complex types and pointers.
-            if variable_cache.has_children(self) {
-                self.formatted_variable_value(variable_cache, 0, false)
-                    .unwrap_or_default()
-            } else if self.type_name == VariableType::Unknown || !self.memory_location.valid() {
-                if self.variable_node_type.is_deferred() {
-                    // When we will do a lazy-load of variable children, and they have not yet been
-                    // requested by the user, just display the type_name as the value
-                    self.type_name
-                        .display_name(language::from_dwarf(self.language).as_ref())
-                } else {
-                    // This condition should only be true for intermediate nodes
-                    // from DWARF. These should not show up in the final
-                    // `VariableCache`. If a user sees this error, then there is
-                    // a logic problem in the stack unwind
-                    "Error: This is a bug! Attempted to evaluate a Variable with no type or no memory location".to_string()
-                }
-            } else if matches!(self.type_name, VariableType::Struct(ref name) if name == "None") {
-                "None".to_string()
-            } else if matches!(self.type_name, VariableType::Array { count: 0, .. }) {
-                self.formatted_variable_value(variable_cache, 0, false)
-                    .unwrap_or_default()
+            return String::new();
+        }
+
+        // We need to construct a 'human readable' value using `fmt::Display` to represent the
+        // values of complex types and pointers.
+        if variable_cache.has_children(self) {
+            self.formatted_variable_value(variable_cache, 0, false)
+                .unwrap_or_default()
+        } else if self.type_name == VariableType::Unknown || !self.memory_location.valid() {
+            if self.variable_node_type.is_deferred() {
+                // When we will do a lazy-load of variable children, and they have not yet been
+                // requested by the user, just display the type_name as the value
+                self.type_name
+                    .display_name(language::from_dwarf(self.language).as_ref())
             } else {
-                format!(
-                    "Unimplemented: Get value of type {:?} of ({:?} bytes) at location {}",
-                    self.type_name, self.byte_size, self.memory_location
-                )
+                // This condition should only be true for intermediate nodes
+                // from DWARF. These should not show up in the final
+                // `VariableCache`. If a user sees this error, then there is
+                // a logic problem in the stack unwind
+                "Error: This is a bug! Attempted to evaluate a Variable with no type or no memory location".to_string()
             }
+        } else if matches!(self.type_name, VariableType::Struct(ref name) if name == "None") {
+            "None".to_string()
+        } else if matches!(self.type_name, VariableType::Array { count: 0, .. }) {
+            self.formatted_variable_value(variable_cache, 0, false)
+                .unwrap_or_default()
+        } else {
+            format!(
+                "Unimplemented: Get value of type {:?} of ({:?} bytes) at location {}",
+                self.type_name, self.byte_size, self.memory_location
+            )
         }
     }
 

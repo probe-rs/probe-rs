@@ -502,10 +502,7 @@ impl UnitInfo {
                     }
                 }
 
-                gimli::DW_TAG_formal_parameter
-                | gimli::DW_TAG_variable
-                | gimli::DW_TAG_member
-                | gimli::DW_TAG_enumerator => {
+                gimli::DW_TAG_formal_parameter | gimli::DW_TAG_variable | gimli::DW_TAG_member => {
                     // This branch handles:
                     //  - Parameters to functions.
                     //  - Typical top-level variables.
@@ -1090,64 +1087,15 @@ impl UnitInfo {
                 }
             }
             gimli::DW_TAG_enumeration_type => {
-                child_variable.type_name =
-                    VariableType::Enum(type_name.unwrap_or_else(|| "<unnamed enum>".to_string()));
-                self.process_memory_location(
+                self.extract_enumeration_type(
+                    child_variable,
+                    type_name,
                     debug_info,
                     node,
                     parent_variable,
-                    child_variable,
                     memory,
                     frame_info,
                 )?;
-
-                let mut tree = self.unit.entries_tree(Some(node.offset()))?;
-
-                // Recursively process a child types.
-                self.process_tree(
-                    debug_info,
-                    tree.root()?,
-                    child_variable,
-                    memory,
-                    cache,
-                    frame_info,
-                )?;
-                if parent_variable.is_valid() && child_variable.is_valid() {
-                    let value = if let VariableLocation::Address(address) =
-                        child_variable.memory_location
-                    {
-                        // NOTE: hard-coding value of variable.byte_size to 1 ... replace with code if necessary.
-                        let mut buff = 0u8;
-                        memory.read(address, std::slice::from_mut(&mut buff))?;
-                        let this_enum_const_value = buff.to_string();
-
-                        let mut enumerator_values = cache.get_children(child_variable.variable_key);
-
-                        let is_this_value = |enumerator_variable: &&Variable| {
-                            enumerator_variable.to_string(cache) == this_enum_const_value
-                        };
-
-                        let enumumerator_value = match enumerator_values.find(is_this_value) {
-                            Some(this_enum) => this_enum.name.clone(),
-                            None => {
-                                VariableName::Named("<Error: Unresolved enum value>".to_string())
-                            }
-                        };
-
-                        self.language
-                            .format_enum_value(&child_variable.type_name, &enumumerator_value)
-                    } else {
-                        VariableValue::Error(format!(
-                            "Unsupported variable location {:?}",
-                            child_variable.memory_location
-                        ))
-                    };
-
-                    child_variable.set_value(value);
-
-                    // We don't need to keep these children.
-                    cache.remove_cache_entry_children(child_variable.variable_key)?;
-                }
             }
             gimli::DW_TAG_array_type => {
                 // This node is a pointer to the type of data stored in the array, with a direct child that contains the range information.
@@ -1353,6 +1301,120 @@ impl UnitInfo {
         cache.update_variable(child_variable)?;
 
         Ok(())
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn extract_enumeration_type(
+        &self,
+        child_variable: &mut Variable,
+        type_name: Option<String>,
+        debug_info: &DebugInfo,
+        node: &DebuggingInformationEntry<GimliReader>,
+        parent_variable: &Variable,
+        memory: &mut dyn MemoryInterface,
+        frame_info: StackFrameInfo,
+    ) -> Result<(), DebugError> {
+        child_variable.type_name =
+            VariableType::Enum(type_name.unwrap_or_else(|| "<unnamed enum>".to_string()));
+
+        self.process_memory_location(
+            debug_info,
+            node,
+            parent_variable,
+            child_variable,
+            memory,
+            frame_info,
+        )?;
+
+        let mut tree = self.unit.entries_tree(Some(node.offset()))?;
+        let enumerator_values = self.process_enumerator(debug_info, tree.root()?)?;
+
+        if !(parent_variable.is_valid() && child_variable.is_valid()) {
+            return Ok(());
+        }
+
+        let value = if let VariableLocation::Address(address) = child_variable.memory_location {
+            // NOTE: hard-coding value of variable.byte_size to 1 ... replace with code if necessary.
+            let mut buff = 0u8;
+            memory.read(address, std::slice::from_mut(&mut buff))?;
+            let this_enum_const_value = buff.to_string();
+
+            let enumumerator_value = match enumerator_values
+                .iter()
+                .find(|(_name, value)| value.to_string() == this_enum_const_value)
+            {
+                Some((name, _value)) => name,
+                None => &VariableName::Named("<Error: Unresolved enum value>".to_string()),
+            };
+
+            self.language
+                .format_enum_value(&child_variable.type_name, enumumerator_value)
+        } else {
+            VariableValue::Error(format!(
+                "Unsupported variable location {:?}",
+                child_variable.memory_location
+            ))
+        };
+
+        child_variable.set_value(value);
+
+        Ok(())
+    }
+
+    /// Extract the different variants of an enumeration
+    ///
+    /// This is used for C-style enums, where the enum is an integer type,
+    /// and all the different variants are different integer values.
+    fn process_enumerator(
+        &self,
+        debug_info: &DebugInfo,
+        parent_node: gimli::EntriesTreeNode<GimliReader>,
+    ) -> Result<Vec<(VariableName, VariableValue)>, DebugError> {
+        let mut enumerator_values = Vec::new();
+
+        let mut child_nodes = parent_node.children();
+        while let Some(child_node) = child_nodes.next()? {
+            match child_node.entry().tag() {
+                gimli::DW_TAG_enumerator => {
+                    let attributes_entry = child_node.entry();
+
+                    let name_result = extract_name(debug_info, attributes_entry);
+
+                    let Some(attr_value) = attributes_entry.attr_value(gimli::DW_AT_const_value)?
+                    else {
+                        // Ignore enumerators without a value.
+                        continue;
+                    };
+                    let variable_value = if let Some(const_value) = attr_value.udata_value() {
+                        VariableValue::Valid(const_value.to_string())
+                    } else if let Some(const_value) = attr_value.sdata_value() {
+                        VariableValue::Valid(const_value.to_string())
+                    } else {
+                        VariableValue::Error(format!(
+                            "Unimplemented: Attribute Value for DW_AT_const_value: {:?}",
+                            attr_value
+                        ))
+                    };
+
+                    let enumerator_name = if let Ok(Some(ref name)) = name_result {
+                        name.to_string()
+                    } else {
+                        tracing::warn!("Enumerator has no name");
+
+                        format!("<unknown enumerator {}", enumerator_values.len())
+                    };
+
+                    enumerator_values.push((VariableName::Named(enumerator_name), variable_value))
+                }
+                // Function implemented on the enum type, ignored here.
+                gimli::DW_TAG_subprogram => (),
+                other => {
+                    tracing::debug!("Ignoring tag {other} under DW_TAG_enumeration_type");
+                }
+            }
+        }
+
+        Ok(enumerator_values)
     }
 
     /// Create child variable entries to represent array members and their values.
