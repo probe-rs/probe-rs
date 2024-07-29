@@ -164,6 +164,16 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         Ok(())
     }
 
+    pub(crate) fn leave_debug_mode(&mut self) -> Result<(), XtensaError> {
+        self.restore_registers()?;
+        self.resume()?;
+        self.xdm.leave_ocd_mode()?;
+
+        tracing::debug!("Left OCD mode");
+
+        Ok(())
+    }
+
     /// Returns the number of hardware breakpoints the target supports.
     ///
     /// On the Xtensa architecture this is the `NIBREAK` configuration parameter.

@@ -243,7 +243,7 @@ fn try_detect_xtensa_chip(probe: &mut Probe) -> Result<Option<Target>, Error> {
                 Err(error) => tracing::debug!("Error during Xtensa chip detection: {error}"),
             }
 
-            // TODO: disable debug module
+            interface.leave_debug_mode()?;
         }
 
         Err(DebugProbeError::InterfaceNotAvailable { .. }) => {

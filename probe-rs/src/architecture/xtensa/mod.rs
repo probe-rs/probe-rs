@@ -407,10 +407,7 @@ impl<'probe> CoreInterface for Xtensa<'probe> {
     }
 
     fn debug_core_stop(&mut self) -> Result<(), Error> {
-        self.interface.restore_registers()?;
-        self.interface.resume()?;
-        self.interface.xdm.leave_ocd_mode()?;
-        tracing::info!("Left OCD mode");
+        self.interface.leave_debug_mode()?;
         Ok(())
     }
 }

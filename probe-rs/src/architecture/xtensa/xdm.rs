@@ -256,6 +256,8 @@ impl<'probe> Xdm<'probe> {
         tracing::debug!("Read OCDID: {:#010X}", device_id);
 
         if device_id == 0 || device_id == u32::MAX {
+            // Disable the debug module if we can't work with it.
+            self.pwr_write(PowerDevice::PowerControl, 0)?;
             return Err(XtensaError::CoreDisabled);
         }
         tracing::info!("Found Xtensa device with OCDID: {:#010X}", device_id);
