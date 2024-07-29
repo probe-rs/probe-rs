@@ -5,6 +5,7 @@ use crate::{
     },
     config::DebugSequence,
     error::Error,
+    memory::CoreMemoryInterface,
     CoreType, InstructionSet, MemoryInterface, Target,
 };
 pub use probe_rs_target::{Architecture, CoreAccessOptions};
@@ -33,7 +34,7 @@ pub struct CoreInformation {
 }
 
 /// A generic interface to control a MCU core.
-pub trait CoreInterface: MemoryInterface {
+pub trait CoreInterface: MemoryInterface + CoreMemoryInterfaceShim {
     /// Wait until the core is halted. If the core does not halt on its own,
     /// a [`DebugProbeError::Timeout`](crate::probe::DebugProbeError::Timeout) error will be returned.
     fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error>;
@@ -178,89 +179,29 @@ pub trait CoreInterface: MemoryInterface {
     }
 }
 
-impl<'probe> MemoryInterface for Core<'probe> {
-    fn supports_native_64bit_access(&mut self) -> bool {
-        self.inner.supports_native_64bit_access()
+/// Implementation detail to allow trait upcasting-like behaviour.
+//
+// TODO: replace with trait upcasting once stable
+pub trait CoreMemoryInterfaceShim: MemoryInterface {
+    /// Returns a reference to the underlying `MemoryInterface`.
+    // TODO: replace with trait upcasting once stable
+    fn as_memory_interface(&self) -> &dyn MemoryInterface;
+
+    /// Returns a mutable reference to the underlying `MemoryInterface`.
+    // TODO: replace with trait upcasting once stable
+    fn as_memory_interface_mut(&mut self) -> &mut dyn MemoryInterface;
+}
+
+impl<T> CoreMemoryInterfaceShim for T
+where
+    T: CoreInterface,
+{
+    fn as_memory_interface(&self) -> &dyn MemoryInterface {
+        self
     }
 
-    fn read_word_64(&mut self, address: u64) -> Result<u64, Error> {
-        self.inner.read_word_64(address)
-    }
-
-    fn read_word_32(&mut self, address: u64) -> Result<u32, Error> {
-        self.inner.read_word_32(address)
-    }
-
-    fn read_word_16(&mut self, address: u64) -> Result<u16, Error> {
-        self.inner.read_word_16(address)
-    }
-
-    fn read_word_8(&mut self, address: u64) -> Result<u8, Error> {
-        self.inner.read_word_8(address)
-    }
-
-    fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), Error> {
-        self.inner.read_64(address, data)
-    }
-
-    fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
-        self.inner.read_32(address, data)
-    }
-
-    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), Error> {
-        self.inner.read_16(address, data)
-    }
-
-    fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
-        self.inner.read_8(address, data)
-    }
-
-    fn read(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
-        self.inner.read(address, data)
-    }
-
-    fn write_word_64(&mut self, addr: u64, data: u64) -> Result<(), Error> {
-        self.inner.write_word_64(addr, data)
-    }
-
-    fn write_word_32(&mut self, addr: u64, data: u32) -> Result<(), Error> {
-        self.inner.write_word_32(addr, data)
-    }
-
-    fn write_word_16(&mut self, addr: u64, data: u16) -> Result<(), Error> {
-        self.inner.write_word_16(addr, data)
-    }
-
-    fn write_word_8(&mut self, addr: u64, data: u8) -> Result<(), Error> {
-        self.inner.write_word_8(addr, data)
-    }
-
-    fn write_64(&mut self, addr: u64, data: &[u64]) -> Result<(), Error> {
-        self.inner.write_64(addr, data)
-    }
-
-    fn write_32(&mut self, addr: u64, data: &[u32]) -> Result<(), Error> {
-        self.inner.write_32(addr, data)
-    }
-
-    fn write_16(&mut self, addr: u64, data: &[u16]) -> Result<(), Error> {
-        self.inner.write_16(addr, data)
-    }
-
-    fn write_8(&mut self, addr: u64, data: &[u8]) -> Result<(), Error> {
-        self.inner.write_8(addr, data)
-    }
-
-    fn write(&mut self, addr: u64, data: &[u8]) -> Result<(), Error> {
-        self.inner.write(addr, data)
-    }
-
-    fn supports_8bit_transfers(&self) -> Result<bool, Error> {
-        self.inner.supports_8bit_transfers()
-    }
-
-    fn flush(&mut self) -> Result<(), Error> {
-        self.inner.flush()
+    fn as_memory_interface_mut(&mut self) -> &mut dyn MemoryInterface {
+        self
     }
 }
 
@@ -276,6 +217,18 @@ pub struct Core<'probe> {
     memory_regions: &'probe [MemoryRegion],
 
     inner: Box<dyn CoreInterface + 'probe>,
+}
+
+impl<'probe> CoreMemoryInterface for Core<'probe> {
+    type ErrorType = Error;
+
+    fn memory(&self) -> &dyn MemoryInterface<Self::ErrorType> {
+        self.inner.as_memory_interface()
+    }
+
+    fn memory_mut(&mut self) -> &mut dyn MemoryInterface<Self::ErrorType> {
+        self.inner.as_memory_interface_mut()
+    }
 }
 
 impl<'probe> Core<'probe> {
