@@ -1446,7 +1446,9 @@ impl UnitInfo {
     ) -> Result<(), DebugError> {
         let Some((current_range, remaining_ranges)) = subranges.split_first() else {
             array_variable.set_value(VariableValue::Error(
-                "Error processing range for array, unexpected empty range".to_string(),
+                "Error processing range for array, unexpected empty range. \
+                    This is a known issue, see https://github.com/probe-rs/probe-rs/issues/2687"
+                    .to_string(),
             ));
             return Ok(());
         };
