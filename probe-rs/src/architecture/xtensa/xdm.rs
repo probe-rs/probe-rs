@@ -240,6 +240,7 @@ impl<'probe> Xdm<'probe> {
             status.set_exec_overrun(true);
             status.set_debug_pend_break(true);
             status.set_debug_pend_host(true);
+            status.set_debug_int_break(true);
 
             status
         })?;
