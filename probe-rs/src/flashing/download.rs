@@ -12,7 +12,7 @@ use std::{
 };
 
 use crate::{
-    flashing::{FlashError, FlashProgress},
+    flashing::{FlashError, FlashLoader, FlashProgress},
     session::Session,
 };
 
