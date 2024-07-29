@@ -91,7 +91,7 @@ mod register {
         pub struct ITM_TER(u32);
         0xE00,"ITM_TER",
         impl From;
-        impl tpiu_continuous_formatting;
+
         pub stim31, set_stim31: 31;
         pub stim30, set_stim30: 30;
         pub stim29, set_stim29: 29;
