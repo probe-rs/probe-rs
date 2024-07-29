@@ -17,7 +17,9 @@ pub enum Error {
     Riscv(#[source] RiscvError),
     /// An Xtensa specific error occurred.
     Xtensa(#[source] XtensaError),
-    /// Core {0} does not exist
+    /// Core {0} is not enabled.
+    CoreDisabled(usize),
+    /// Core {0} does not exist.
     CoreNotFound(usize),
     /// Unable to load specification for chip
     ChipNotFound(#[from] RegistryError),

@@ -6,8 +6,8 @@ use std::{
 use crate::{
     architecture::xtensa::arch::instruction::{Instruction, InstructionEncoding},
     probe::{
-        CommandResult, DebugProbeError, DeferredResultIndex, DeferredResultSet, JTAGAccess,
-        JtagCommandQueue, JtagWriteCommand, ShiftDrCommand,
+        CommandResult, DeferredResultIndex, DeferredResultSet, JTAGAccess, JtagCommandQueue,
+        JtagWriteCommand, ShiftDrCommand,
     },
     Error as ProbeRsError,
 };
@@ -210,17 +210,10 @@ impl<'probe> Xdm<'probe> {
         let idcode = self.read_idcode()?;
         tracing::debug!("Read IDCODE: {:#010X}", idcode);
 
+        self.check_enabled()?;
+
         let was_reset = self.core_was_reset()?;
         tracing::debug!("Core was reset: {}", was_reset);
-
-        // read the device_id
-        let device_id = self.read_nexus_register::<OcdId>()?.0;
-        tracing::debug!("Read OCDID: {:#010X}", device_id);
-
-        if device_id == 0 || device_id == !0 {
-            return Err(DebugProbeError::TargetNotFound.into());
-        }
-        tracing::info!("Found Xtensa device with OCDID: {:#010X}", device_id);
 
         // enable the debug module
         self.write_nexus_register(DebugControlSet({
@@ -255,6 +248,17 @@ impl<'probe> Xdm<'probe> {
             status
         })?;
 
+        Ok(())
+    }
+
+    fn check_enabled(&mut self) -> Result<(), XtensaError> {
+        let device_id = self.read_nexus_register::<OcdId>()?.0;
+        tracing::debug!("Read OCDID: {:#010X}", device_id);
+
+        if device_id == 0 || device_id == u32::MAX {
+            return Err(XtensaError::CoreDisabled);
+        }
+        tracing::info!("Found Xtensa device with OCDID: {:#010X}", device_id);
         Ok(())
     }
 

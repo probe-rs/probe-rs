@@ -31,6 +31,9 @@ pub(crate) mod sequences;
 #[derive(Debug)]
 /// Xtensa core state.
 pub struct XtensaCoreState {
+    /// Whether the core is enabled.
+    enabled: bool,
+
     /// Whether hardware breakpoints are enabled.
     breakpoints_enabled: bool,
 
@@ -51,6 +54,7 @@ impl XtensaCoreState {
     /// Creates a new [`XtensaCoreState`].
     pub(crate) fn new() -> Self {
         Self {
+            enabled: false,
             breakpoints_enabled: false,
             breakpoint_set: [false; 2],
             pc_written: false,
@@ -80,10 +84,15 @@ impl<'probe> Xtensa<'probe> {
 
     /// Create a new Xtensa interface for a particular core.
     pub fn new(
-        interface: XtensaCommunicationInterface<'probe>,
+        mut interface: XtensaCommunicationInterface<'probe>,
         state: &'probe mut XtensaCoreState,
         sequence: Arc<dyn XtensaDebugSequence>,
     ) -> Result<Self, Error> {
+        if !state.enabled {
+            interface.enter_debug_mode()?;
+            state.enabled = true;
+        }
+
         Ok(Self {
             interface,
             state,

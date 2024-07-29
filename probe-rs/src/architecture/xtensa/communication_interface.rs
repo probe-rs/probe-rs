@@ -19,13 +19,16 @@ use super::xdm::{Error as XdmError, Xdm};
 /// Possible Xtensa errors
 #[derive(thiserror::Error, Debug, docsplay::Display)]
 pub enum XtensaError {
-    /// An error originating from the DebugProbe occurred
+    /// An error originating from the DebugProbe occurred.
     DebugProbe(#[from] DebugProbeError),
 
-    /// Xtensa debug module error
+    /// Xtensa debug module error.
     XdmError(#[from] XdmError),
 
-    /// The operation has timed out
+    /// The core is not enabled.
+    CoreDisabled,
+
+    /// The operation has timed out.
     // TODO: maybe we could be a bit more specific
     Timeout,
 
