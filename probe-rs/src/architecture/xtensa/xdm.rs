@@ -203,6 +203,9 @@ impl<'probe> Xdm<'probe> {
         pwr_control.set_jtag_debug_use(true);
         self.pwr_write(PowerDevice::PowerControl, pwr_control.0)?;
 
+        let idcode = self.read_idcode()?;
+        tracing::debug!("Read IDCODE: {:#010X}", idcode);
+
         // read the device_id
         let device_id = self.read_nexus_register::<OcdId>()?.0;
         tracing::debug!("Read OCDID: {:#010X}", device_id);
