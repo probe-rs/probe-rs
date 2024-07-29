@@ -165,8 +165,10 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
     }
 
     pub(crate) fn leave_debug_mode(&mut self) -> Result<(), XtensaError> {
-        self.restore_registers()?;
-        self.resume()?;
+        if self.xdm.status()?.stopped() {
+            self.restore_registers()?;
+            self.resume()?;
+        }
         self.xdm.leave_ocd_mode()?;
 
         tracing::debug!("Left OCD mode");
