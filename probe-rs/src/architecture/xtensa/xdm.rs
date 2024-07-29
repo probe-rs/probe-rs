@@ -210,6 +210,9 @@ impl<'probe> Xdm<'probe> {
         let idcode = self.read_idcode()?;
         tracing::debug!("Read IDCODE: {:#010X}", idcode);
 
+        let was_reset = self.core_was_reset()?;
+        tracing::debug!("Core was reset: {}", was_reset);
+
         // read the device_id
         let device_id = self.read_nexus_register::<OcdId>()?.0;
         tracing::debug!("Read OCDID: {:#010X}", device_id);
@@ -265,6 +268,14 @@ impl<'probe> Xdm<'probe> {
         })?;
 
         Ok(())
+    }
+
+    /// Read and clear the `core_was_reset` flag.
+    pub(super) fn core_was_reset(&mut self) -> Result<bool, XtensaError> {
+        let mut clear_value = PowerStatus(0);
+        clear_value.set_core_was_reset(true);
+        let bits = self.pwr_write(PowerDevice::PowerStat, clear_value.0)?;
+        Ok(PowerStatus(bits).core_was_reset())
     }
 
     pub(super) fn execute(&mut self) -> Result<(), XtensaError> {
