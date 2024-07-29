@@ -796,6 +796,7 @@ impl UnitInfo {
     ///                   DW_AT_type    (0x00000024 "unsigned int")
     ///                   DW_AT_upper_bound (0x44)
     /// ```
+    /// Note that there might be multiple ranges, so this function returns a vector of ranges.
     fn extract_array_range(
         &self,
         array_parent_node: UnitOffset,
@@ -1098,71 +1099,15 @@ impl UnitInfo {
                 )?;
             }
             gimli::DW_TAG_array_type => {
-                // This node is a pointer to the type of data stored in the array, with a direct child that contains the range information.
-                // To resolve the value of an array type, we need the following:
-                // 1. The memory location of the array.
-                //   - The attribute for the first member of the array, is stored on the parent(array) node.
-                //   - The memory location for each subsequent member is then calculated based on the DW_AT_byte_size of the child node.
-                // 2. The byte size of the array.
-                //   - The byte size of the array is the product of the number of elements and the byte size of the child node.
-                //   - This has to be calculated from the deepest level (the DWARF only encodes it there) of multi-dimensional arrays, upwards.
-
-                // First: extract sub range
-                match self.extract_array_range(node.offset()) {
-                    Ok(subranges) => {
-                        match node.attr_value(gimli::DW_AT_type) {
-                            Ok(Some(gimli::AttributeValue::UnitRef(unit_ref))) => {
-                                // The memory location of array members build on top of the memory location of the child_variable.
-                                self.process_memory_location(
-                                    debug_info,
-                                    node,
-                                    parent_variable,
-                                    child_variable,
-                                    memory,
-                                    frame_info,
-                                )?;
-
-                                // Now we can explode the array members.
-                                if let Ok(array_member_type_node) = self.unit.entry(unit_ref) {
-                                    // - Next, process this DW_TAG_array_type's DW_AT_type full tree.
-                                    // - We have to do this repeatedly, for every array member in the range.
-                                    // - We have to do this recursively because some compilers encode nested arrays as multiple subranges on the same node.
-                                    self.expand_array_members(
-                                        debug_info,
-                                        &array_member_type_node,
-                                        cache,
-                                        child_variable,
-                                        memory,
-                                        &subranges,
-                                        0,
-                                        frame_info,
-                                    )?;
-                                };
-                            }
-                            Ok(Some(other_attribute_value)) => {
-                                child_variable.set_value(VariableValue::Error(
-                                    format!(
-                                        "Unimplemented: Attribute Value for DW_AT_type {other_attribute_value:?}"
-                                    ),
-                                ));
-                            }
-                            Ok(None) => {
-                                child_variable.set_value(self.language.process_tag_with_no_type(
-                                    child_variable,
-                                    gimli::DW_TAG_array_type,
-                                ));
-                            }
-                            Err(error) => {
-                                child_variable.set_value(VariableValue::Error(format!(
-                                    "Error: Failed to decode pointer reference: {error:?}"
-                                )));
-                            }
-                        }
-                    }
-                    Err(error) => child_variable.set_value(VariableValue::Error(format!(
-                        "Error: Failed to extract array range: {error:?}"
-                    ))),
-                }
+                self.extract_array_type(
+                    node,
+                    debug_info,
+                    parent_variable,
+                    child_variable,
+                    memory,
+                    frame_info,
+                    cache,
+                )?;
             }
             gimli::DW_TAG_union_type => {
                 child_variable.type_name =
@@ -1304,6 +1249,76 @@ impl UnitInfo {
     }
 
     #[allow(clippy::too_many_arguments)]
+    fn extract_array_type(
+        &self,
+        node: &DebuggingInformationEntry<GimliReader>,
+        debug_info: &DebugInfo,
+        parent_variable: &Variable,
+        child_variable: &mut Variable,
+        memory: &mut dyn MemoryInterface,
+        frame_info: StackFrameInfo,
+        cache: &mut VariableCache,
+    ) -> Result<(), DebugError> {
+        let subranges = match self.extract_array_range(node.offset()) {
+            Ok(subranges) => subranges,
+            Err(error) => {
+                child_variable.set_value(VariableValue::Error(format!(
+                    "Error: Failed to extract array range: {error:?}"
+                )));
+                return Ok(());
+            }
+        };
+
+        match node.attr_value(gimli::DW_AT_type) {
+            Ok(Some(gimli::AttributeValue::UnitRef(unit_ref))) => {
+                // The memory location of array members build on top of the memory location of the child_variable.
+                self.process_memory_location(
+                    debug_info,
+                    node,
+                    parent_variable,
+                    child_variable,
+                    memory,
+                    frame_info,
+                )?;
+
+                // Now we can explode the array members.
+                if let Ok(array_member_type_node) = self.unit.entry(unit_ref) {
+                    // - Next, process this DW_TAG_array_type's DW_AT_type full tree.
+                    // - We have to do this repeatedly, for every array member in the range.
+                    // - We have to do this recursively because some compilers encode nested arrays as multiple subranges on the same node.
+                    self.expand_array_members(
+                        debug_info,
+                        &array_member_type_node,
+                        cache,
+                        child_variable,
+                        memory,
+                        &subranges,
+                        frame_info,
+                    )?;
+                };
+            }
+            Ok(Some(other_attribute_value)) => {
+                child_variable.set_value(VariableValue::Error(format!(
+                    "Unimplemented: Attribute Value for DW_AT_type {other_attribute_value:?}"
+                )));
+            }
+            Ok(None) => {
+                child_variable.set_value(
+                    self.language
+                        .process_tag_with_no_type(child_variable, gimli::DW_TAG_array_type),
+                );
+            }
+            Err(error) => {
+                child_variable.set_value(VariableValue::Error(format!(
+                    "Error: Failed to decode pointer reference: {error:?}"
+                )));
+            }
+        }
+
+        Ok(())
+    }
+
+    #[allow(clippy::too_many_arguments)]
     fn extract_enumeration_type(
         &self,
         child_variable: &mut Variable,
@@ -1427,14 +1442,23 @@ impl UnitInfo {
         array_variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
         subranges: &[Range<u64>],
-        level: usize,
         frame_info: StackFrameInfo<'_>,
     ) -> Result<(), DebugError> {
-        let subrange = subranges[level].clone();
-        let item_count = subrange.clone().count();
+        let Some((current_range, remaining_ranges)) = subranges.split_first() else {
+            array_variable.set_value(VariableValue::Error(
+                "Error processing range for array, unexpected empty range. \
+                    This is a known issue, see https://github.com/probe-rs/probe-rs/issues/2687"
+                    .to_string(),
+            ));
+            return Ok(());
+        };
 
         // We need to process at least one element to get the array's type right.
-        let explode_range = if item_count == 0 { 0..1 } else { subrange };
+        let explode_range = if current_range.is_empty() {
+            0..1
+        } else {
+            current_range.clone()
+        };
 
         for member_index in explode_range.clone() {
             let mut array_member_variable =
@@ -1459,7 +1483,7 @@ impl UnitInfo {
                 frame_info,
             )?;
 
-            if level < subranges.len() - 1 {
+            if !remaining_ranges.is_empty() {
                 // Recursively process the nested array and place
                 // its items under the current variable.
                 self.expand_array_members(
@@ -1468,8 +1492,7 @@ impl UnitInfo {
                     cache,
                     &mut array_member_variable,
                     memory,
-                    subranges,
-                    level + 1,
+                    remaining_ranges,
                     frame_info,
                 )?;
             } else {
@@ -1485,6 +1508,8 @@ impl UnitInfo {
             }
 
             if member_index == explode_range.start {
+                let item_count = current_range.clone().count();
+
                 array_variable.type_name = VariableType::Array {
                     count: item_count,
                     item_type_name: Box::new(array_member_variable.type_name.clone()),
@@ -1500,7 +1525,7 @@ impl UnitInfo {
 
         // We want to remove the child entry if the array is empty. It was needed to process the
         // array type, but it doesn't actually exist.
-        if item_count == 0 {
+        if current_range.is_empty() {
             cache.remove_cache_entry_children(array_variable.variable_key)?;
         }
 
