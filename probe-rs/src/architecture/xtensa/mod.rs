@@ -83,12 +83,12 @@ impl<'probe> Xtensa<'probe> {
         interface: XtensaCommunicationInterface<'probe>,
         state: &'probe mut XtensaCoreState,
         sequence: Arc<dyn XtensaDebugSequence>,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, Error> {
+        Ok(Self {
             interface,
             state,
             sequence,
-        }
+        })
     }
 
     fn core_info(&mut self) -> Result<CoreInformation, Error> {

@@ -223,7 +223,7 @@ impl CombinedCoreState {
             self.id,
             name,
             memory_regions,
-            crate::architecture::xtensa::Xtensa::new(interface, s, debug_sequence),
+            crate::architecture::xtensa::Xtensa::new(interface, s, debug_sequence)?,
         ))
     }
 
