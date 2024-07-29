@@ -387,11 +387,7 @@ impl Session {
 
         // Connect to the cores
         match session.target.debug_sequence.clone() {
-            DebugSequence::Xtensa(sequence) => {
-                for core_id in 0..session.cores.len() {
-                    sequence.on_connect(&mut session.get_xtensa_interface(core_id)?)?;
-                }
-            }
+            DebugSequence::Xtensa(sequence) => sequence.on_connect(&mut session)?,
 
             DebugSequence::Riscv(sequence) => {
                 for core_id in 0..session.cores.len() {
