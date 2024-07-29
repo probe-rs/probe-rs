@@ -1,4 +1,7 @@
-use std::{fmt::Debug, time::Duration};
+use std::{
+    fmt::Debug,
+    time::{Duration, Instant},
+};
 
 use crate::{
     architecture::xtensa::arch::instruction::{Instruction, InstructionEncoding},
@@ -186,9 +189,10 @@ impl<'probe> Xdm<'probe> {
         self.pwr_write(PowerDevice::PowerControl, pwr_control.0)?;
 
         tracing::trace!("Waiting for power domain to turn on");
-        let now = std::time::Instant::now();
+        let now = Instant::now();
         loop {
             let bits = self.pwr_write(PowerDevice::PowerStat, 0)?;
+            tracing::debug!("PowerStatus: {:?}", PowerStatus(bits));
             if PowerStatus(bits).debug_domain_on() {
                 break;
             }
@@ -681,6 +685,7 @@ bitfield::bitfield! {
 bitfield::bitfield! {
     #[derive(Copy, Clone)]
     pub struct PowerStatus(u8);
+    impl Debug;
 
     pub core_domain_on,    _: 0;
     pub mem_domain_on,     _: 1;
