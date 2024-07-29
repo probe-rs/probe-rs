@@ -27,8 +27,6 @@ variants:
       end: 0x20004000
     cores:
     - main
-    access:
-      execute: false
   - !Ram
     name: IRAM2
     range:
@@ -36,8 +34,6 @@ variants:
       end: 0x20044000
     cores:
     - main
-    access:
-      execute: false
   flash_algorithms:
   - aducm302x
 - name: ADuCM3029
@@ -66,7 +62,7 @@ variants:
     cores:
     - main
     access:
-      execute: false
+      execute: true
   - !Ram
     name: IRAM2
     range:
