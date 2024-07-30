@@ -428,7 +428,7 @@ impl FlashLoader {
 
         let mut algos: HashMap<(String, usize), Vec<NvmRegion>> = HashMap::new();
 
-        let progress = options.progress.unwrap_or(FlashProgress::new(|_| {}));
+        let progress = options.progress.unwrap_or_else(FlashProgress::empty);
 
         // Commit NVM first
 
