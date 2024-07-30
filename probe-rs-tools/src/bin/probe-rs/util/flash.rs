@@ -72,7 +72,7 @@ pub fn run_flash_download(
                     for phase_layout in phases {
                         if restore_unwritten {
                             let fill_size =
-                                flash_layout.fills().iter().map(|s| s.size()).sum::<u64>();
+                                phase_layout.fills().iter().map(|s| s.size()).sum::<u64>();
                             progress_bars
                                 .fill
                                 .add(multi_progress.add(ProgressBar::new(fill_size)));
@@ -80,7 +80,7 @@ pub fn run_flash_download(
 
                         if !chip_erase {
                             let sector_size =
-                                flash_layout.sectors().iter().map(|s| s.size()).sum::<u64>();
+                                phase_layout.sectors().iter().map(|s| s.size()).sum::<u64>();
                             progress_bars
                                 .erase
                                 .add(multi_progress.add(ProgressBar::new(sector_size)));
@@ -171,7 +171,7 @@ struct ProgressBars {
     program: ProgressBarGroup,
 }
 
-struct ProgressBarGroup {
+pub struct ProgressBarGroup {
     message: String,
     bars: Vec<ProgressBar>,
     selected: usize,
@@ -179,7 +179,7 @@ struct ProgressBarGroup {
 }
 
 impl ProgressBarGroup {
-    fn new(message: &str) -> Self {
+    pub fn new(message: &str) -> Self {
         Self {
             message: message.to_string(),
             bars: vec![],
@@ -188,7 +188,7 @@ impl ProgressBarGroup {
         }
     }
 
-    fn add(&mut self, bar: ProgressBar) {
+    pub fn add(&mut self, bar: ProgressBar) {
         let msg_template = "{msg:.green.bold} {spinner} [{elapsed_precise}] [{wide_bar}] {bytes:>8}/{total_bytes:>8} @ {bytes_per_sec:>10} (eta {eta:3})";
         let style = ProgressStyle::default_bar()
             .tick_chars("⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈✔")
@@ -208,13 +208,13 @@ impl ProgressBarGroup {
         self.bars.push(bar);
     }
 
-    fn set_length(&mut self, length: u64) {
+    pub fn set_length(&mut self, length: u64) {
         if let Some(bar) = self.bars.get(self.selected) {
             bar.set_length(length);
         }
     }
 
-    fn inc(&mut self, size: u64) {
+    pub fn inc(&mut self, size: u64) {
         if let Some(bar) = self.bars.get(self.selected) {
             let style = bar.style().progress_chars("##-");
             bar.set_style(style);
@@ -222,25 +222,25 @@ impl ProgressBarGroup {
         }
     }
 
-    fn abandon(&mut self) {
+    pub fn abandon(&mut self) {
         if let Some(bar) = self.bars.get(self.selected) {
             bar.abandon();
         }
         self.next();
     }
 
-    fn finish(&mut self) {
+    pub fn finish(&mut self) {
         if let Some(bar) = self.bars.get(self.selected) {
             bar.finish();
         }
         self.next();
     }
 
-    fn next(&mut self) {
+    pub fn next(&mut self) {
         self.selected += 1;
     }
 
-    fn append_phase(&mut self) {
+    pub fn append_phase(&mut self) {
         self.append_phase = true;
     }
 }
