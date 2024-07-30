@@ -1,7 +1,7 @@
 use probe_rs_target::RawFlashAlgorithm;
 use tracing::Level;
 
-use super::{FlashAlgorithm, FlashBuilder, FlashError, FlashFill, FlashPage, FlashProgress};
+use super::{FlashAlgorithm, FlashBuilder, FlashError, FlashPage, FlashProgress};
 use crate::config::NvmRegion;
 use crate::error::Error;
 use crate::flashing::encoder::FlashEncoder;
@@ -280,18 +280,10 @@ impl<'session> Flasher<'session> {
         self.progress.started_filling();
 
         if restore_unwritten_bytes {
-            for fill in flash_layout.fills.iter() {
-                let t = Instant::now();
-                let page = &mut flash_layout.pages[fill.page_index()];
-                let result = self.fill_page(page, fill);
-
-                // If we encounter an error, catch it, gracefully report the failure and return the error.
-                if result.is_err() {
-                    self.progress.failed_filling();
-                    return result;
-                } else {
-                    self.progress.page_filled(fill.size(), t.elapsed());
-                }
+            let result = self.fill_unwritten(&mut flash_layout);
+            if result.is_err() {
+                self.progress.failed_filling();
+                return result;
             }
         }
 
@@ -320,19 +312,27 @@ impl<'session> Flasher<'session> {
         Ok(())
     }
 
-    /// Fills all the bytes of `page`.
+    /// Fills all the unwritten bytes in `layout`.
     ///
-    /// If `restore_unwritten_bytes` is `true`, all bytes of the page,
+    /// If `restore_unwritten_bytes` is `true`, all bytes of the layout's page,
     /// that are not to be written during flashing will be read from the flash first
     /// and written again once the page is programmed.
-    pub(super) fn fill_page(
-        &mut self,
-        page: &mut FlashPage,
-        fill: &FlashFill,
-    ) -> Result<(), FlashError> {
-        let page_offset = (fill.address() - page.address()) as usize;
-        let page_slice = &mut page.data_mut()[page_offset..][..fill.size() as usize];
-        self.run_verify(|active| active.read_flash(fill.address(), page_slice))
+    pub(super) fn fill_unwritten(&mut self, layout: &mut FlashLayout) -> Result<(), FlashError> {
+        self.run_verify(|active| {
+            for fill in layout.fills.iter() {
+                let t = Instant::now();
+                let page = &mut layout.pages[fill.page_index()];
+
+                let page_offset = (fill.address() - page.address()) as usize;
+                let page_slice = &mut page.data_mut()[page_offset..][..fill.size() as usize];
+
+                active.read_flash(fill.address(), page_slice)?;
+
+                active.progress.page_filled(fill.size(), t.elapsed());
+            }
+
+            Ok(())
+        })
     }
 
     /// Verifies all the to-be-written bytes of `layout`.
