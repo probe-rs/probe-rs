@@ -1,0 +1,98 @@
+name: ADuCM302x Series
+generated_from_pack: true
+pack_file_release: 3.2.1
+variants:
+- name: ADuCM3027
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x20040000
+      end: 0x20044000
+    cores:
+    - main
+  flash_algorithms:
+  - aducm302x
+- name: ADuCM3029
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+    access:
+      execute: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x20040000
+      end: 0x20044000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - aducm302x
+flash_algorithms:
+- name: aducm302x
+  description: ADuCM302x 256kB Flash
+  default: true
+  instructions: MLUDRgxGACB1TSiAQB51TShgT/DgJcX4hAEAIChhQB5xTShgT/TgIChgcEkBIAhwTPYUMG5NxfgMAShG0PgQAUDwAgDF+BABKEbQ+AADIPRAcGhNKGAAIGRNVD1oYChGQGxlTU1EKGADIGBNVD1oZAAgML0BRmBISEQAaFtKVDpQZAAgEGJwRwi1ACBBHldKVDoRYFlJEWIHIZFgAL9TSVQ5CWgAkQCZAfAEAQAp9tAAmQHwMAEBsQEgACFLSlQ6EWIIvQi1AUYAIEIeR0tUOxpgGkaRYUlKGmIGIppgAL9CSlQ6EmgAkgCaAvAEAgAq9tAAmgLwMAICsQEgACI7S1Q7GmIIvf61BEYLRgAmJUYRRjpINU9UPzhiWOBP8P8wMk9UPzhgCCsE0whoOGFIaHhhMeBP8P88zfgAwM34BMBoRggrGtLf6APwGRYTEA0KBwSPeYdxAL9PeUdxAL8PeQdxAL/PeMdwAL+PeIdwAL9PeEdwAL8PeAdwAOAAvwC/3/howKzxVAwAn8z4EHABn8z4FHAIIwC/FEhUOMVgBCAST1Q/uGA4RgBoAPAwAAixASYO4AC/DUhUOABoApACmADwBAAAKPbQCDsIMQg1ACuk0QC/ACAFT1Q/OGIwRv69CCwAQIDhAOAo7QDgVIABQADABEAAwwRABAAAAGV1bGcAAAAAAAAAAA==
+  pc_init: 0x1
+  pc_uninit: 0x75
+  pc_program_page: 0x107
+  pc_erase_sector: 0xc5
+  pc_erase_all: 0x89
+  data_section_offset: 0x200
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x40000
+    page_size: 0x800
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x800
+      address: 0x0
