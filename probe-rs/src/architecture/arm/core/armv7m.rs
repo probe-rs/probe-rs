@@ -17,8 +17,8 @@ use crate::{
         MemoryMappedRegister, RegisterId, RegisterValue, VectorCatchCondition,
     },
     error::Error,
-    memory::valid_32bit_address,
-    BreakpointCause, CoreRegister, CoreType, InstructionSet,
+    memory::{valid_32bit_address, CoreMemoryInterface},
+    BreakpointCause, CoreRegister, CoreType, InstructionSet, MemoryInterface,
 };
 use bitfield::bitfield;
 use std::{
@@ -1134,12 +1134,14 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
     }
 }
 
-impl super::CoreMemoryInterface for Armv7m<'_> {
-    fn memory(&self) -> &dyn ArmMemoryInterface {
-        &*self.memory
+impl CoreMemoryInterface for Armv7m<'_> {
+    type ErrorType = ArmError;
+
+    fn memory(&self) -> &dyn MemoryInterface<Self::ErrorType> {
+        self.memory.as_memory_interface()
     }
-    fn memory_mut(&mut self) -> &mut dyn ArmMemoryInterface {
-        &mut *self.memory
+    fn memory_mut(&mut self) -> &mut dyn MemoryInterface<Self::ErrorType> {
+        self.memory.as_memory_interface_mut()
     }
 }
 

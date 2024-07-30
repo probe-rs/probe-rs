@@ -139,7 +139,7 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
                     }
                 }
             },
-            Ordering::Equal => {
+            Ordering::Equal | Ordering::Greater => {
                 let (available, _) = self.get_communication_frequencies(self.protocol)?;
 
                 let actual_speed_khz = available
@@ -157,7 +157,6 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
 
                 Ok(actual_speed_khz)
             }
-            Ordering::Greater => unimplemented!(),
         }
     }
 
@@ -442,7 +441,7 @@ impl<D: StLinkUsb> StLink<D> {
     /// If this is not supported, some DP registers cannot be accessed.
     fn supports_dp_bank_selection(&self) -> bool {
         (self.hw_version == 2 && self.jtag_version >= Self::MIN_JTAG_VERSION_DP_BANK_SEL)
-            || self.hw_version == 3
+            || self.hw_version >= 3
     }
 
     /// Commands the ST-Link to enter idle mode.
@@ -505,7 +504,8 @@ impl<D: StLinkUsb> StLink<D> {
             //  2: JTAG/SWD version
             //  3: MSC/VCP version
             //  4: Bridge version
-            //  5-7: reserved
+            //  5: Power version
+            //  6-7: reserved
             //  8-9: ST_VID
             //  10-11: STLINK_PID
             let mut buf = [0; 12];
@@ -550,7 +550,7 @@ impl<D: StLinkUsb> StLink<D> {
         let version = self.get_version()?;
         tracing::debug!("STLink version: {:?}", version);
 
-        if self.hw_version == 3 {
+        if self.hw_version >= 3 {
             let (_, current) = self.get_communication_frequencies(WireProtocol::Swd)?;
             self.swd_speed_khz = current;
 
@@ -607,7 +607,7 @@ impl<D: StLinkUsb> StLink<D> {
         protocol: WireProtocol,
         frequency_khz: u32,
     ) -> Result<(), DebugProbeError> {
-        if self.hw_version != 3 {
+        if self.hw_version < 3 {
             return Err(DebugProbeError::CommandNotSupportedByProbe {
                 command_name: "set_communication_frequency",
             });
@@ -632,7 +632,7 @@ impl<D: StLinkUsb> StLink<D> {
         &mut self,
         protocol: WireProtocol,
     ) -> Result<(Vec<u32>, u32), DebugProbeError> {
-        if self.hw_version != 3 {
+        if self.hw_version < 3 {
             return Err(DebugProbeError::CommandNotSupportedByProbe {
                 command_name: "get_communication_frequencies",
             });

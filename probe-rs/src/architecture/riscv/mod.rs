@@ -5,7 +5,7 @@ use crate::{
     core::{
         Architecture, BreakpointCause, CoreInformation, CoreRegisters, RegisterId, RegisterValue,
     },
-    memory::valid_32bit_address,
+    memory::{valid_32bit_address, CoreMemoryInterface},
     memory_mapped_bitfield_register,
     probe::DebugProbeError,
     semihosting::decode_semihosting_syscall,
@@ -628,85 +628,14 @@ impl<'state> CoreInterface for Riscv32<'state> {
     }
 }
 
-impl MemoryInterface for Riscv32<'_> {
-    fn supports_native_64bit_access(&mut self) -> bool {
-        self.interface.supports_native_64bit_access()
-    }
+impl CoreMemoryInterface for Riscv32<'_> {
+    type ErrorType = Error;
 
-    fn read_word_64(&mut self, address: u64) -> Result<u64, crate::error::Error> {
-        self.interface.read_word_64(address)
+    fn memory(&self) -> &dyn MemoryInterface<Self::ErrorType> {
+        &self.interface
     }
-
-    fn read_word_32(&mut self, address: u64) -> Result<u32, Error> {
-        self.interface.read_word_32(address)
-    }
-
-    fn read_word_16(&mut self, address: u64) -> Result<u16, Error> {
-        self.interface.read_word_16(address)
-    }
-
-    fn read_word_8(&mut self, address: u64) -> Result<u8, Error> {
-        self.interface.read_word_8(address)
-    }
-
-    fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), Error> {
-        self.interface.read_64(address, data)
-    }
-
-    fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
-        self.interface.read_32(address, data)
-    }
-
-    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), Error> {
-        self.interface.read_16(address, data)
-    }
-
-    fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
-        self.interface.read_8(address, data)
-    }
-
-    fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), Error> {
-        self.interface.write_word_64(address, data)
-    }
-
-    fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
-        self.interface.write_word_32(address, data)
-    }
-
-    fn write_word_16(&mut self, address: u64, data: u16) -> Result<(), Error> {
-        self.interface.write_word_16(address, data)
-    }
-
-    fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
-        self.interface.write_word_8(address, data)
-    }
-
-    fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), Error> {
-        self.interface.write_64(address, data)
-    }
-
-    fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
-        self.interface.write_32(address, data)
-    }
-
-    fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), Error> {
-        self.interface.write_16(address, data)
-    }
-
-    fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
-        self.interface.write_8(address, data)
-    }
-
-    fn write(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
-        self.interface.write(address, data)
-    }
-
-    fn supports_8bit_transfers(&self) -> Result<bool, Error> {
-        self.interface.supports_8bit_transfers()
-    }
-
-    fn flush(&mut self) -> Result<(), Error> {
-        self.interface.flush()
+    fn memory_mut(&mut self) -> &mut dyn MemoryInterface<Self::ErrorType> {
+        &mut self.interface
     }
 }
 
