@@ -387,6 +387,36 @@ impl FlashLoader {
         format.load(self, session, file)
     }
 
+    /// Verifies data on the device.
+    pub fn verify(&self, session: &mut Session) -> Result<(), FlashError> {
+        let algos = self.prepare_plan(session)?;
+
+        let progress = FlashProgress::new(|_| {});
+
+        // Iterate all flash algorithms we need to use and do the flashing.
+        for ((algo_name, core), regions) in algos {
+            tracing::debug!("Flashing ranges for algo: {}", algo_name);
+
+            // This can't fail, algo_name comes from the target.
+            let algo = session.target().flash_algorithm_by_name(&algo_name);
+            let algo = algo.unwrap().clone();
+
+            let mut flasher = Flasher::new(session, core, &algo, progress.clone())?;
+
+            for region in regions.iter() {
+                let flash_layout = flasher.flash_layout(region, &self.builder, false)?;
+
+                if !flasher.verify(&flash_layout, true)? {
+                    return Err(FlashError::Verify);
+                }
+            }
+        }
+
+        self.verify_ram(session)?;
+
+        Ok(())
+    }
+
     /// Writes all the stored data chunks to flash.
     ///
     /// Requires a session with an attached target that has a known flash algorithm.
