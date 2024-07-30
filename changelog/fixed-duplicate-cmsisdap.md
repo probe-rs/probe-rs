@@ -1,0 +1,1 @@
+Fixed listing some CMSIS-DAP probes twice.
