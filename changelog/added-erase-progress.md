@@ -1,0 +1,1 @@
+Added progress bars to `probe-rs erase`.

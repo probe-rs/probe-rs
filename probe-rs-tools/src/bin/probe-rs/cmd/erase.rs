@@ -24,32 +24,29 @@ impl Cmd {
         let progress_bars = RefCell::new(ProgressBarGroup::new("Erasing"));
 
         let progress = FlashProgress::new(move |event| {
-            let mut progress_bars = progress_bars.borrow_mut();
+            let mut progress_bar = progress_bars.borrow_mut();
 
             match event {
-                ProgressEvent::Initialized {
-                    chip_erase, phases, ..
-                } => {
+                ProgressEvent::Initialized { phases, .. } => {
                     // Build progress bars.
-                    if chip_erase {
-                        progress_bars.add(multi_progress.add(ProgressBar::new(0)));
+                    if phases.len() > 1 {
+                        progress_bar.append_phase();
                     }
 
-                    if !chip_erase {
-                        if phases.len() > 1 {
-                            progress_bars.append_phase();
-                        }
-
-                        for phase_layout in phases {
-                            let sector_size =
-                                phase_layout.sectors().iter().map(|s| s.size()).sum::<u64>();
-                            progress_bars.add(multi_progress.add(ProgressBar::new(sector_size)));
-                        }
+                    for phase_layout in phases {
+                        let sector_size =
+                            phase_layout.sectors().iter().map(|s| s.size()).sum::<u64>();
+                        progress_bar.add(multi_progress.add(ProgressBar::new(sector_size)));
                     }
                 }
-                ProgressEvent::SectorErased { size, .. } => progress_bars.inc(size),
-                ProgressEvent::FailedErasing => progress_bars.abandon(),
-                ProgressEvent::FinishedErasing => progress_bars.finish(),
+                ProgressEvent::StartedErasing => {}
+                ProgressEvent::SectorErased { size, .. } => progress_bar.inc(size),
+                ProgressEvent::FailedErasing => progress_bar.abandon(),
+                ProgressEvent::FinishedErasing => {
+                    let len = progress_bar.len();
+                    progress_bar.inc(len);
+                    progress_bar.finish();
+                }
                 _ => {}
             }
         });

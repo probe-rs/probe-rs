@@ -222,6 +222,13 @@ impl ProgressBarGroup {
         }
     }
 
+    pub fn len(&mut self) -> u64 {
+        self.bars
+            .get(self.selected)
+            .and_then(|bar| bar.length())
+            .unwrap_or(0)
+    }
+
     pub fn abandon(&mut self) {
         if let Some(bar) = self.bars.get(self.selected) {
             bar.abandon();

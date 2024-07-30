@@ -100,7 +100,7 @@ impl FlashFill {
 /// The built layout of the data in flash.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct FlashLayout {
-    sectors: Vec<FlashSector>,
+    pub(crate) sectors: Vec<FlashSector>,
     pub(crate) pages: Vec<FlashPage>,
     pub(crate) fills: Vec<FlashFill>,
     data_blocks: Vec<FlashDataBlockSpan>,
