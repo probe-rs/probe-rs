@@ -393,139 +393,33 @@ impl FlashLoader {
     pub fn commit(
         &self,
         session: &mut Session,
-        options: DownloadOptions,
+        mut options: DownloadOptions,
     ) -> Result<(), FlashError> {
         tracing::debug!("Committing FlashLoader!");
 
-        tracing::debug!("Contents of builder:");
-        for (&address, data) in &self.builder.data {
-            tracing::debug!(
-                "    data: {:#010X}..{:#010X} ({} bytes)",
-                address,
-                address + data.len() as u64,
-                data.len()
-            );
-        }
-
-        tracing::debug!("Flash algorithms:");
-        for algorithm in &session.target().flash_algorithms {
-            let Range { start, end } = algorithm.flash_properties.address_range;
-
-            tracing::debug!(
-                "    algo {}: {:#010X}..{:#010X} ({} bytes)",
-                algorithm.name,
-                start,
-                end,
-                end - start
-            );
-        }
-
-        // Iterate over all memory regions, and program their data.
-
-        if self.memory_map != session.target().memory_map {
-            tracing::warn!("Memory map of flash loader does not match memory map of target!");
-        }
-
-        let mut algos: HashMap<(String, usize), Vec<NvmRegion>> = HashMap::new();
-
-        let progress = options.progress.unwrap_or_else(FlashProgress::empty);
-
-        // Commit NVM first
-
-        // Iterate all NvmRegions and group them by flash algorithm.
-        // This avoids loading the same algorithm twice if it's used for two regions.
-        //
-        // This also ensures correct operation when chip erase is used. We assume doing a chip erase
-        // using a given algorithm erases all regions controlled by it. Therefore, we must do
-        // chip erase once per algorithm, not once per region. Otherwise subsequent chip erases will
-        // erase previous regions' flashed contents.
-        tracing::debug!("Regions:");
-        for region in self
-            .memory_map
-            .iter()
-            .filter_map(MemoryRegion::as_nvm_region)
-        {
-            if region.is_alias {
-                tracing::debug!("Skipping alias memory region {:#010X?}", region.range);
-                continue;
-            }
-            tracing::debug!(
-                "    region: {:#010X?} ({} bytes)",
-                region.range,
-                region.range.end - region.range.start
-            );
-
-            // If we have no data in this region, ignore it.
-            // This avoids uselessly initializing and deinitializing its flash algorithm.
-            if !self.builder.has_data_in_range(&region.range) {
-                tracing::debug!("     -- empty, ignoring!");
-                continue;
-            }
-
-            let target = session.target();
-            let algo = Self::get_flash_algorithm_for_region(region, target)?;
-            let core_name = region
-                .cores
-                .first()
-                .ok_or_else(|| FlashError::NoNvmCoreAccess(region.clone()))?
-                .clone();
-
-            let core = target
-                .cores
-                .iter()
-                .position(|c| c.name == core_name)
-                .unwrap();
-
-            let entry = algos.entry((algo.name.clone(), core)).or_default();
-            entry.push(region.clone());
-
-            tracing::debug!("     -- using algorithm: {}", algo.name);
-        }
+        let algos = self.prepare_plan(session)?;
 
         if options.dry_run {
             tracing::info!("Skipping programming, dry run!");
 
-            progress.failed_filling();
-            progress.failed_erasing();
-            progress.failed_programming();
+            if let Some(progress) = options.progress {
+                progress.failed_filling();
+                progress.failed_erasing();
+                progress.failed_programming();
+            }
 
             return Ok(());
         }
 
+        let progress = options
+            .progress
+            .clone()
+            .unwrap_or_else(FlashProgress::empty);
+
+        self.initialize(&algos, session, &progress, &mut options)?;
+
         let mut do_chip_erase = options.do_chip_erase;
         let mut did_chip_erase = false;
-
-        // No longer needs to be mutable.
-        let algos = algos;
-
-        let mut phases = vec![];
-
-        // Iterate all flash algorithms to initialize a few things.
-        for ((algo_name, core), regions) in algos.iter() {
-            // This can't fail, algo_name comes from the target.
-            let algo = session.target().flash_algorithm_by_name(algo_name);
-            let algo = algo.unwrap().clone();
-
-            let flasher = Flasher::new(session, *core, &algo, progress.clone())?;
-            // If the first flash algo doesn't support erase all, disable chip erase.
-            // TODO: we could sort by support but it's unlikely to make a difference.
-            if do_chip_erase && !flasher.is_chip_erase_supported() {
-                do_chip_erase = false;
-                tracing::warn!("Chip erase was the selected method to erase the sectors but this chip does not support chip erases (yet).");
-                tracing::warn!("A manual sector erase will be performed.");
-            }
-
-            let mut phase_layout = FlashLayout::default();
-            for region in regions {
-                let layout =
-                    flasher.flash_layout(region, &self.builder, options.keep_unwritten_bytes)?;
-
-                phase_layout.merge_from(layout);
-            }
-            phases.push(phase_layout);
-        }
-
-        progress.initialized(do_chip_erase, options.keep_unwritten_bytes, phases);
 
         if options.preverify && do_chip_erase {
             // This is the simpler solution. We could pre-verify everything up front but it's
@@ -620,6 +514,7 @@ impl FlashLoader {
                         .ok_or_else(|| FlashError::NoRamCoreAccess(region.clone()))?,
                 )
                 .unwrap();
+
             // Attach to memory and core.
             let mut core = session.core(region_core_index).map_err(FlashError::Core)?;
 
@@ -650,36 +545,171 @@ impl FlashLoader {
         }
 
         if options.verify {
-            tracing::debug!("Verifying RAM!");
-            for (&address, data) in &self.builder.data {
-                tracing::debug!(
-                    "    data: {:#010X}..{:#010X} ({} bytes)",
-                    address,
-                    address + data.len() as u64,
-                    data.len()
-                );
+            self.verify_ram(session)?;
+        }
 
-                let associated_region = session
-                    .target()
-                    .get_memory_region_by_address(address)
-                    .unwrap();
+        Ok(())
+    }
 
-                // We verified NVM regions before, in flasher.program().
-                if !associated_region.is_ram() {
-                    continue;
-                }
+    fn prepare_plan(
+        &self,
+        session: &mut Session,
+    ) -> Result<HashMap<(String, usize), Vec<NvmRegion>>, FlashError> {
+        tracing::debug!("Contents of builder:");
+        for (&address, data) in &self.builder.data {
+            tracing::debug!(
+                "    data: {:#010X}..{:#010X} ({} bytes)",
+                address,
+                address + data.len() as u64,
+                data.len()
+            );
+        }
 
-                let core_name = associated_region.cores().first().unwrap();
-                let core_index = session.target().core_index_by_name(core_name).unwrap();
-                let mut core = session.core(core_index).map_err(FlashError::Core)?;
+        tracing::debug!("Flash algorithms:");
+        for algorithm in &session.target().flash_algorithms {
+            let Range { start, end } = algorithm.flash_properties.address_range;
 
-                let mut written_data = vec![0; data.len()];
-                core.read(address, &mut written_data)
-                    .map_err(FlashError::Core)?;
+            tracing::debug!(
+                "    algo {}: {:#010X}..{:#010X} ({} bytes)",
+                algorithm.name,
+                start,
+                end,
+                end - start
+            );
+        }
 
-                if data != &written_data {
-                    return Err(FlashError::Verify);
-                }
+        // Iterate over all memory regions, and program their data.
+
+        if self.memory_map != session.target().memory_map {
+            tracing::warn!("Memory map of flash loader does not match memory map of target!");
+        }
+
+        let mut algos: HashMap<(String, usize), Vec<NvmRegion>> = HashMap::new();
+
+        // Commit NVM first
+
+        // Iterate all NvmRegions and group them by flash algorithm.
+        // This avoids loading the same algorithm twice if it's used for two regions.
+        //
+        // This also ensures correct operation when chip erase is used. We assume doing a chip erase
+        // using a given algorithm erases all regions controlled by it. Therefore, we must do
+        // chip erase once per algorithm, not once per region. Otherwise subsequent chip erases will
+        // erase previous regions' flashed contents.
+        tracing::debug!("Regions:");
+        for region in self
+            .memory_map
+            .iter()
+            .filter_map(MemoryRegion::as_nvm_region)
+        {
+            if region.is_alias {
+                tracing::debug!("Skipping alias memory region {:#010X?}", region.range);
+                continue;
+            }
+            tracing::debug!(
+                "    region: {:#010X?} ({} bytes)",
+                region.range,
+                region.range.end - region.range.start
+            );
+
+            // If we have no data in this region, ignore it.
+            // This avoids uselessly initializing and deinitializing its flash algorithm.
+            if !self.builder.has_data_in_range(&region.range) {
+                tracing::debug!("     -- empty, ignoring!");
+                continue;
+            }
+
+            let target = session.target();
+            let algo = Self::get_flash_algorithm_for_region(region, target)?;
+            let core_name = region
+                .cores
+                .first()
+                .ok_or_else(|| FlashError::NoNvmCoreAccess(region.clone()))?
+                .clone();
+
+            let core = target
+                .cores
+                .iter()
+                .position(|c| c.name == core_name)
+                .unwrap();
+
+            let entry = algos.entry((algo.name.clone(), core)).or_default();
+            entry.push(region.clone());
+
+            tracing::debug!("     -- using algorithm: {}", algo.name);
+        }
+
+        Ok(algos)
+    }
+
+    fn initialize(
+        &self,
+        algos: &HashMap<(String, usize), Vec<NvmRegion>>,
+        session: &mut Session,
+        progress: &FlashProgress,
+        options: &mut DownloadOptions,
+    ) -> Result<(), FlashError> {
+        let mut phases = vec![];
+
+        // Iterate all flash algorithms to initialize a few things.
+        for ((algo_name, core), regions) in algos.iter() {
+            // This can't fail, algo_name comes from the target.
+            let algo = session.target().flash_algorithm_by_name(algo_name);
+            let algo = algo.unwrap().clone();
+
+            let flasher = Flasher::new(session, *core, &algo, progress.clone())?;
+            // If the first flash algo doesn't support erase all, disable chip erase.
+            // TODO: we could sort by support but it's unlikely to make a difference.
+            if options.do_chip_erase && !flasher.is_chip_erase_supported() {
+                options.do_chip_erase = false;
+                tracing::warn!("Chip erase was the selected method to erase the sectors but this chip does not support chip erases (yet).");
+                tracing::warn!("A manual sector erase will be performed.");
+            }
+
+            let mut phase_layout = FlashLayout::default();
+            for region in regions {
+                let layout =
+                    flasher.flash_layout(region, &self.builder, options.keep_unwritten_bytes)?;
+
+                phase_layout.merge_from(layout);
+            }
+            phases.push(phase_layout);
+        }
+
+        progress.initialized(options.do_chip_erase, options.keep_unwritten_bytes, phases);
+
+        Ok(())
+    }
+
+    fn verify_ram(&self, session: &mut Session) -> Result<(), FlashError> {
+        tracing::debug!("Verifying RAM!");
+        for (&address, data) in &self.builder.data {
+            tracing::debug!(
+                "    data: {:#010X}..{:#010X} ({} bytes)",
+                address,
+                address + data.len() as u64,
+                data.len()
+            );
+
+            let associated_region = session
+                .target()
+                .get_memory_region_by_address(address)
+                .unwrap();
+
+            // We verified NVM regions before, in flasher.program().
+            if !associated_region.is_ram() {
+                continue;
+            }
+
+            let core_name = associated_region.cores().first().unwrap();
+            let core_index = session.target().core_index_by_name(core_name).unwrap();
+            let mut core = session.core(core_index).map_err(FlashError::Core)?;
+
+            let mut written_data = vec![0; data.len()];
+            core.read(address, &mut written_data)
+                .map_err(FlashError::Core)?;
+
+            if data != &written_data {
+                return Err(FlashError::Verify);
             }
         }
 
