@@ -276,19 +276,9 @@ impl<'session> Flasher<'session> {
             restore_unwritten_bytes
         );
 
-        // Read all fill areas from the flash.
-        self.progress.started_filling();
-
         if restore_unwritten_bytes {
-            let result = self.fill_unwritten(&mut flash_layout);
-            if result.is_err() {
-                self.progress.failed_filling();
-                return result;
-            }
+            self.fill_unwritten(&mut flash_layout)?;
         }
-
-        // We successfully finished filling.
-        self.progress.finished_filling();
 
         let flash_encoder = FlashEncoder::new(self.flash_algorithm.transfer_encoding, flash_layout);
 
@@ -318,7 +308,9 @@ impl<'session> Flasher<'session> {
     /// that are not to be written during flashing will be read from the flash first
     /// and written again once the page is programmed.
     pub(super) fn fill_unwritten(&mut self, layout: &mut FlashLayout) -> Result<(), FlashError> {
-        self.run_verify(|active| {
+        self.progress.started_filling();
+
+        let result = self.run_verify(|active| {
             for fill in layout.fills.iter() {
                 let t = Instant::now();
                 let page = &mut layout.pages[fill.page_index()];
@@ -332,7 +324,14 @@ impl<'session> Flasher<'session> {
             }
 
             Ok(())
-        })
+        });
+
+        match result.is_ok() {
+            true => self.progress.finished_filling(),
+            false => self.progress.failed_filling(),
+        }
+
+        result
     }
 
     /// Verifies all the to-be-written bytes of `layout`.
