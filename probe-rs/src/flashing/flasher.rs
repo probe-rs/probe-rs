@@ -52,6 +52,7 @@ pub(super) struct Flasher<'session> {
     session: &'session mut Session,
     core_index: usize,
     flash_algorithm: FlashAlgorithm,
+    loaded: bool,
     progress: FlashProgress,
 }
 
@@ -73,16 +74,21 @@ impl<'session> Flasher<'session> {
             target,
         )?;
 
-        let mut this = Self {
+        Ok(Self {
             session,
             core_index,
             flash_algorithm,
             progress,
-        };
+            loaded: false,
+        })
+    }
 
-        this.load()?;
+    fn ensure_loaded(&mut self) -> Result<(), FlashError> {
+        if !self.loaded {
+            self.load()?;
+        }
 
-        Ok(this)
+        Ok(())
     }
 
     pub(super) fn flash_algorithm(&self) -> &FlashAlgorithm {
@@ -156,6 +162,8 @@ impl<'session> Flasher<'session> {
         &mut self,
         clock: Option<u32>,
     ) -> Result<ActiveFlasher<'_, O>, FlashError> {
+        self.ensure_loaded()?;
+
         // Attach to memory and core.
         let mut core = self
             .session
