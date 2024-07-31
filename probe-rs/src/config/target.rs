@@ -11,7 +11,9 @@ use crate::{
     },
     rtt::ScanRegion,
 };
-use probe_rs_target::{Architecture, Chip, ChipFamily, Jtag};
+use probe_rs_target::{
+    Architecture, Chip, ChipFamily, Jtag, MemoryAccess, MemoryRange as _, NvmRegion,
+};
 use std::sync::Arc;
 
 /// This describes a complete target with a fixed chip model and variant.
@@ -63,6 +65,7 @@ impl Target {
     ///
     /// The given chip must be a member of the given family.
     pub(super) fn new(family: &ChipFamily, chip: &Chip) -> Target {
+        let mut memory_map = chip.memory_map.clone();
         let mut flash_algorithms = Vec::new();
         for algo_name in chip.flash_algorithms.iter() {
             let mut algo = family
@@ -78,6 +81,29 @@ impl Target {
                     .iter()
                     .any(|chip_core| &chip_core.name == algo_core)
             });
+
+            // If the flash algorithm addresses a range that is not covered by any memory region,
+            // we add a new memory region for it. This is usually the case for option bytes and
+            // some OTP memory regions in certain CMSIS packs.
+            let algo_range = &algo.flash_properties.address_range;
+            if !memory_map
+                .iter()
+                .any(|region| region.address_range().intersects_range(algo_range))
+            {
+                // Conjure up a memory region for the flash algorithm.
+                memory_map.push(MemoryRegion::Nvm(NvmRegion {
+                    name: None,
+                    range: algo_range.clone(),
+                    cores: algo.cores.clone(),
+                    is_alias: false,
+                    access: Some(MemoryAccess {
+                        read: false,
+                        write: false,
+                        execute: false,
+                        boot: false,
+                    }),
+                }));
+            }
 
             flash_algorithms.push(algo);
         }
@@ -104,7 +130,7 @@ impl Target {
             cores: chip.cores.clone(),
             flash_algorithms,
             source: family.source.clone(),
-            memory_map: chip.memory_map.clone(),
+            memory_map,
             debug_sequence,
             rtt_scan_regions,
             jtag: chip.jtag.clone(),
