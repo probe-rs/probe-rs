@@ -60,6 +60,9 @@ pub struct RawFlashAlgorithm {
     /// Address of the `EraseAll()` entry point. Optional.
     #[serde(serialize_with = "hex_option")]
     pub pc_erase_all: Option<u64>,
+    /// Address of the `Verify()` entry point. Optional.
+    #[serde(serialize_with = "hex_option")]
+    pub pc_verify: Option<u64>,
     /// Address of the (non-standard) `ReadFlash()` entry point. Optional.
     #[serde(serialize_with = "hex_option")]
     pub pc_read: Option<u64>,
