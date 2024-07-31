@@ -9,13 +9,85 @@ use capstone::{
     arch::arm::ArchMode as armArchMode, arch::arm64::ArchMode as aarch64ArchMode,
     arch::riscv::ArchMode as riscvArchMode, prelude::*, Endian,
 };
+use once_cell::sync::Lazy;
 use probe_rs::{
     debug::{ColumnType, ObjectRef, SourceLocation},
     CoreType, InstructionSet, MemoryInterface,
 };
 use std::{fmt::Write, time::Duration};
+use typed_path::TypedPathBuf;
 
 use super::dap_types::{Breakpoint, InstructionBreakpoint, MemoryAddress};
+
+// Source file mapping for rustlib, e.g. Some(("/rustc/<hash>", "<sysroot>/lib/rustlib/src/rust"))
+// This can be None if rustc is not found or gives bad output
+static RUSTLIB_SOURCE_MAP: Lazy<Option<(TypedPathBuf, TypedPathBuf)>> = Lazy::new(|| {
+    let rustc = rustc_binary();
+
+    // Call rustc --version --verbose to get hash
+    let cmd = std::process::Command::new(&rustc)
+        .args(["--version", "--verbose"])
+        .output()
+        .ok()?;
+    let stdout = String::from_utf8(cmd.stdout).ok()?;
+    let hash = stdout
+        .lines()
+        .find_map(|line| line.strip_prefix("commit-hash:"))?
+        .trim();
+
+    // Call rustc --print sysroot to get the sysroot
+    let cmd = std::process::Command::new(&rustc)
+        .args(["--print", "sysroot"])
+        .output()
+        .ok()?;
+    let stdout = String::from_utf8(cmd.stdout).ok()?;
+    let sysroot = TypedPathBuf::from(stdout.trim());
+
+    // from is always a Unix path, to is a native path
+    let from_path = TypedPathBuf::from_unix(format!("/rustc/{hash}/"));
+    let to_path = sysroot.join("lib").join("rustlib").join("src").join("rust");
+
+    Some((from_path, to_path))
+});
+
+// Find the rustc binary using the same procedure as rust-analyzer
+// https://github.com/rust-lang/rust-analyzer/blob/1b283db47f8de1412c851c92bb4ce4ef039ff8ff/editors/code/src/toolchain.ts#L158
+fn rustc_binary() -> std::ffi::OsString {
+    let rustc = std::ffi::OsStr::new("rustc");
+    let extension = std::ffi::OsStr::new(if cfg!(windows) { "exe" } else { "" });
+    let rustc_exe = std::path::Path::new(rustc).with_extension(extension);
+
+    // Find rustc using RUSTC environment variable
+    if let Some(path) = std::env::var_os("RUSTC") {
+        return path;
+    }
+
+    // Find rustc on PATH
+    if std::env::var_os("PATH")
+        .and_then(|paths| {
+            std::env::split_paths(&paths).find(|path| path.join(&rustc_exe).is_file())
+        })
+        .is_some()
+    {
+        return std::ffi::OsString::from(rustc);
+    }
+
+    // Find rustc in CARGO_HOME or ~/.cargo
+    let cargo_home = if let Some(cargo_home) = std::env::var_os("CARGO_HOME") {
+        Some(std::path::PathBuf::from(cargo_home))
+    } else {
+        directories::UserDirs::new().map(|dir| dir.home_dir().join(".cargo"))
+    };
+    if let Some(cargo_home) = cargo_home {
+        let path = cargo_home.join("bin").join(&rustc_exe);
+        if path.is_file() {
+            return path.into_os_string();
+        }
+    }
+
+    // Just return "rustc" as a last resort
+    rustc.to_os_string()
+}
 
 pub(crate) fn disassemble_target_memory(
     target_core: &mut CoreHandle,
@@ -273,22 +345,28 @@ pub(crate) fn get_capstone(target_core: &mut CoreHandle) -> Result<Capstone, Deb
 pub(crate) fn get_dap_source(source_location: &SourceLocation) -> Option<Source> {
     // Attempt to construct the path for the source code
     let directory = source_location.directory.as_ref()?;
+    let mut file_path = directory.clone();
 
-    // Try to convert the path to the native Path of the current OS,
-    // and then check if the source file exists
-    if let Ok(mut native_path) = std::path::PathBuf::try_from(directory.clone()) {
-        if native_path.is_relative() {
-            if let Ok(current_dir) = std::env::current_dir() {
-                native_path = current_dir.join(native_path);
+    if let Some(file_name) = source_location.file.as_ref() {
+        file_path = file_path.join(file_name);
+    }
+
+    // Try to convert the path to the native Path of the current OS
+    let native_path = std::path::PathBuf::try_from(file_path.clone())
+        .map(|mut path| {
+            if path.is_relative() {
+                if let Ok(current_dir) = std::env::current_dir() {
+                    path = current_dir.join(path);
+                }
             }
-        }
+            path
+        })
+        .ok();
 
-        if let Some(file_name) = source_location.file.as_ref() {
-            native_path = native_path.join(file_name);
-        }
-
+    // Check if the source file exists
+    if let Some(native_path) = native_path.as_ref() {
         if native_path.exists() {
-            Some(Source {
+            return Some(Source {
                 name: source_location.file.clone(),
                 path: Some(native_path.to_string_lossy().to_string()),
                 source_reference: None,
@@ -297,37 +375,45 @@ pub(crate) fn get_dap_source(source_location: &SourceLocation) -> Option<Source>
                 sources: None,
                 adapter_data: None,
                 checksums: None,
-            })
-        } else {
-            Some(Source {
-                name: source_location
-                    .file
-                    .clone()
-                    .map(|file_name| format!("<unavailable>: {file_name}")),
-                path: Some(native_path.to_string_lossy().to_string()),
-                source_reference: None,
-                presentation_hint: Some("deemphasize".to_string()),
-                origin: None,
-                sources: None,
-                adapter_data: None,
-                checksums: None,
-            })
+            });
         }
-    } else {
-        Some(Source {
-            name: source_location
-                .file
-                .clone()
-                .map(|file_name| format!("<unavailable>: {file_name}")),
-            path: Some(directory.to_string_lossy().to_string()),
-            source_reference: None,
-            presentation_hint: Some("deemphasize".to_string()),
-            origin: None,
-            sources: None,
-            adapter_data: None,
-            checksums: None,
-        })
     }
+
+    // Precompiled rustlib paths start with /rustc/<hash>/ which needs to be
+    // mapped to <sysroot>/lib/rustlib/src/rust/
+    if let Some((old_prefix, new_prefix)) = RUSTLIB_SOURCE_MAP.as_ref() {
+        if let Ok(path) = file_path.strip_prefix(old_prefix) {
+            if let Ok(rustlib_path) = std::path::PathBuf::try_from(new_prefix.join(path)) {
+                if rustlib_path.exists() {
+                    return Some(Source {
+                        name: source_location.file.clone(),
+                        path: Some(rustlib_path.to_string_lossy().to_string()),
+                        source_reference: None,
+                        presentation_hint: None,
+                        origin: None,
+                        sources: None,
+                        adapter_data: None,
+                        checksums: None,
+                    });
+                }
+            }
+        }
+    }
+
+    // If no matching file was found
+    Some(Source {
+        name: source_location
+            .file
+            .clone()
+            .map(|file_name| format!("<unavailable>: {file_name}")),
+        path: Some(file_path.to_string_lossy().to_string()),
+        source_reference: None,
+        presentation_hint: Some("deemphasize".to_string()),
+        origin: None,
+        sources: None,
+        adapter_data: None,
+        checksums: None,
+    })
 }
 
 /// Provides halt functionality that is re-used elsewhere, in context of multiple DAP Requests
@@ -439,8 +525,8 @@ pub(crate) fn set_instruction_breakpoint(
                             ColumnType::LeftEdge => 0_i64,
                             ColumnType::Column(c) => c as i64,
                         });
-                        breakpoint_response.message = Some(format!("Instruction breakpoint set @:{memory_reference:#010x}. File: {}: Line: {}, Column: {}", 
-                        &source_location.file.unwrap_or_else(|| "<unknown source file>".to_string()), 
+                        breakpoint_response.message = Some(format!("Instruction breakpoint set @:{memory_reference:#010x}. File: {}: Line: {}, Column: {}",
+                        &source_location.file.unwrap_or_else(|| "<unknown source file>".to_string()),
                         breakpoint_response.line.unwrap_or(0),
                         breakpoint_response.column.unwrap_or(0)));
                     }
