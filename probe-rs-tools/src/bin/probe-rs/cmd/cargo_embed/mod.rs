@@ -233,6 +233,7 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
             disable_double_buffering: config.flashing.disable_double_buffering,
             restore_unwritten: config.flashing.restore_unwritten_bytes,
             flash_layout_output_path: None,
+            preverify: config.flashing.preverify,
             verify: config.flashing.verify,
         };
         let format_options = FormatOptions::default();

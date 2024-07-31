@@ -50,6 +50,7 @@ pub struct Flashing {
     pub flash_layout_output_path: Option<String>,
     pub do_chip_erase: bool,
     pub disable_double_buffering: bool,
+    pub preverify: bool,
     pub verify: bool,
 }
 

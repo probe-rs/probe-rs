@@ -49,7 +49,7 @@ impl Operation for Verify {
 ///
 /// Once constructed it can be used to program date to the flash.
 pub(super) struct Flasher<'session> {
-    session: &'session mut Session,
+    pub(super) session: &'session mut Session,
     core_index: usize,
     flash_algorithm: FlashAlgorithm,
     loaded: bool,
@@ -264,6 +264,7 @@ impl<'session> Flasher<'session> {
         restore_unwritten_bytes: bool,
         enable_double_buffering: bool,
         skip_erasing: bool,
+        verify: bool,
     ) -> Result<(), FlashError> {
         tracing::debug!("Starting program procedure.");
         // Convert the list of flash operations into flash sectors and pages.
@@ -312,10 +313,14 @@ impl<'session> Flasher<'session> {
             self.program_simple(&flash_encoder)?;
         };
 
+        if verify && !self.verify(flash_encoder.flash_layout(), !restore_unwritten_bytes)? {
+            return Err(FlashError::Verify);
+        }
+
         Ok(())
     }
 
-    /// Fills all the bytes of `current_page`.
+    /// Fills all the bytes of `page`.
     ///
     /// If `restore_unwritten_bytes` is `true`, all bytes of the page,
     /// that are not to be written during flashing will be read from the flash first
@@ -328,6 +333,47 @@ impl<'session> Flasher<'session> {
         let page_offset = (fill.address() - page.address()) as usize;
         let page_slice = &mut page.data_mut()[page_offset..][..fill.size() as usize];
         self.run_verify(|active| active.read_flash(fill.address(), page_slice))
+    }
+
+    /// Verifies all the to-be-written bytes of `layout`.
+    pub(super) fn verify(
+        &mut self,
+        layout: &FlashLayout,
+        ignore_filled: bool,
+    ) -> Result<bool, FlashError> {
+        self.run_verify(|active| {
+            for (idx, page) in layout.pages.iter().enumerate() {
+                let address = page.address();
+                let data = page.data();
+
+                let mut read_back = vec![0; data.len()];
+                active.read_flash(address, &mut read_back)?;
+
+                if ignore_filled {
+                    // "Unfill" fill regions. These don't get flashed, so their contents are
+                    // allowed to differ. We mask these bytes with default flash content here,
+                    // just for the verification process.
+                    for fill in layout.fills() {
+                        if fill.page_index() != idx {
+                            continue;
+                        }
+
+                        let fill_offset = (fill.address() - address) as usize;
+                        let fill_size = fill.size() as usize;
+
+                        let default_bytes = &data[fill_offset..][..fill_size];
+                        read_back[fill_offset..][..fill_size].copy_from_slice(default_bytes);
+                    }
+                }
+
+                if data != read_back.as_slice() {
+                    tracing::debug!("Verification failed for page at address {:#010x}", address);
+                    return Ok(false);
+                }
+            }
+
+            Ok(true)
+        })
     }
 
     /// Programs the pages given in `flash_layout` into the flash.

@@ -527,6 +527,15 @@ impl FlashLoader {
 
         progress.initialized(do_chip_erase, options.keep_unwritten_bytes, phases);
 
+        if options.preverify && do_chip_erase {
+            // This is the simpler solution. We could pre-verify everything up front but it's
+            // complex and downloading flash algorithms multiple times may slow the process down.
+            tracing::warn!("Pre-verify requested but chip erase is enabled.");
+            tracing::warn!(
+                "This will erase the entire flash and make pre-verification impossible."
+            );
+        }
+
         // Iterate all flash algorithms we need to use and do the flashing.
         for ((algo_name, core), regions) in algos {
             tracing::debug!("Flashing ranges for algo: {}", algo_name);
@@ -542,6 +551,25 @@ impl FlashLoader {
                 flasher.run_erase_all()?;
                 do_chip_erase = false;
                 did_chip_erase = true;
+            }
+
+            if options.preverify && !did_chip_erase {
+                tracing::info!("Pre-verifying!");
+
+                let mut contents_match = true;
+                for region in regions.iter() {
+                    let flash_layout = flasher.flash_layout(region, &self.builder, false)?;
+
+                    if !flasher.verify(&flash_layout, true)? {
+                        contents_match = false;
+                        break;
+                    }
+                }
+
+                if contents_match {
+                    tracing::info!("Contents match, skipping flashing.");
+                    continue;
+                }
             }
 
             let mut do_use_double_buffering = flasher.double_buffering_supported();
@@ -564,11 +592,12 @@ impl FlashLoader {
                     options.keep_unwritten_bytes,
                     do_use_double_buffering,
                     options.skip_erase || did_chip_erase,
+                    options.verify,
                 )?;
             }
         }
 
-        tracing::debug!("committing RAM!");
+        tracing::debug!("Committing RAM!");
 
         // Commit RAM last, because NVM flashing overwrites RAM
         for region in self
@@ -621,7 +650,7 @@ impl FlashLoader {
         }
 
         if options.verify {
-            tracing::debug!("Verifying!");
+            tracing::debug!("Verifying RAM!");
             for (&address, data) in &self.builder.data {
                 tracing::debug!(
                     "    data: {:#010X}..{:#010X} ({} bytes)",
@@ -634,6 +663,12 @@ impl FlashLoader {
                     .target()
                     .get_memory_region_by_address(address)
                     .unwrap();
+
+                // We verified NVM regions before, in flasher.program().
+                if !associated_region.is_ram() {
+                    continue;
+                }
+
                 let core_name = associated_region.cores().first().unwrap();
                 let core_index = session.target().core_index_by_name(core_name).unwrap();
                 let mut core = session.core(core_index).map_err(FlashError::Core)?;

@@ -1,0 +1,1 @@
+Added `--preverify` to skip flashing regions that are up to date.

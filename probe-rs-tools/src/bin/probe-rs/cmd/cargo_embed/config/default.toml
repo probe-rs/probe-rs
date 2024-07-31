@@ -22,6 +22,8 @@ restore_unwritten_bytes = false
 do_chip_erase = false
 # Whether to disable double buffering
 disable_double_buffering = false
+# Whether to verify flash contents before downloading
+preverify = false
 # Whether to verify flash contents after downloading
 verify = false
 
