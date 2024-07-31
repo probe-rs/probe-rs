@@ -60,6 +60,9 @@ pub struct RawFlashAlgorithm {
     /// Address of the `EraseAll()` entry point. Optional.
     #[serde(serialize_with = "hex_option")]
     pub pc_erase_all: Option<u64>,
+    /// Address of the (non-standard) `ReadFlash()` entry point. Optional.
+    #[serde(serialize_with = "hex_option")]
+    pub pc_read: Option<u64>,
     /// The offset from the start of RAM to the data section.
     #[serde(serialize_with = "hex_u_int")]
     pub data_section_offset: u64,
