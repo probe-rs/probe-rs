@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use super::nrf::Nrf;
 use crate::architecture::arm::{
-    ap::AccessPort, communication_interface::Initialized, memory::ArmMemoryInterface,
+    ap::AccessPortType, communication_interface::Initialized, memory::ArmMemoryInterface,
     sequences::ArmDebugSequence, ArmCommunicationInterface, ArmError, DapAccess,
     FullyQualifiedApAddress,
 };

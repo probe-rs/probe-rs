@@ -8,7 +8,7 @@ use std::{
 
 use crate::{
     architecture::arm::{
-        ap::{AccessPort, ApAccess, GenericAp, CSW, IDR},
+        ap::{memory_ap::MemoryApType, AccessPortType, ApAccess, GenericAp, IDR},
         communication_interface::{FlushableArmAccess, Initialized},
         core::armv8m::{Aircr, Demcr, Dhcsr},
         dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
@@ -259,15 +259,9 @@ fn wait_for_stop_after_reset(memory: &mut dyn ArmMemoryInterface) -> Result<(), 
 
     thread::sleep(Duration::from_millis(10));
 
-    let dp = memory.ap().ap_address().dp();
-    let ap = memory.ap();
-    let interface = memory.get_arm_communication_interface()?;
-
-    let ap0_csw: CSW = interface.read_ap_register(&ap)?;
-
-    let ap0_disabled = ap0_csw.DeviceEn == 0;
-
-    if ap0_disabled {
+    let (interface, memory_ap) = memory.try_as_parts()?;
+    if memory_ap.generic_status(interface)?.DeviceEn {
+        let dp = memory_ap.ap_address().dp();
         enable_debug_mailbox(interface, dp)?;
     }
 

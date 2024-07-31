@@ -34,7 +34,7 @@ bitfield::bitfield! {
 }
 
 /// Debug port address.
-#[derive(Debug, Eq, PartialEq, Clone, Copy, Hash, Default)]
+#[derive(Debug, Eq, PartialEq, PartialOrd, Ord, Clone, Copy, Hash, Default)]
 pub enum DpAddress {
     /// Access the single DP on the bus, assuming there is only one.
     /// Will cause corruption if multiple are present.
@@ -46,7 +46,7 @@ pub enum DpAddress {
 }
 
 /// Access port v2 address
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 pub enum ApV2Address {
     /// Last node of an APv2 address
     Leaf(u32),
@@ -64,7 +64,7 @@ impl std::fmt::Display for ApV2Address {
 }
 
 /// Access port address
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 pub enum ApAddress {
     /// Access port v1 address
     V1(u8),
@@ -82,7 +82,7 @@ impl std::fmt::Display for ApAddress {
 }
 
 /// Access port address.
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 pub struct FullyQualifiedApAddress {
     /// The address of the debug port this access port belongs to.
     dp: DpAddress,

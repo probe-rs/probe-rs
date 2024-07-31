@@ -12,7 +12,6 @@
 #[macro_export]
 macro_rules! define_ap_register {
     (
-        type: $port_type:ident,
         $(#[$outer:meta])*
         name: $name:ident,
         address: $address:expr,
@@ -29,7 +28,7 @@ macro_rules! define_ap_register {
             $($(#[$inner])*pub $field: $type,)*
         }
 
-        impl Register for $name {
+        impl $crate::architecture::arm::communication_interface::Register for $name {
             // ADDRESS is always the lower 4 bits of the register address.
             const ADDRESS: u8 = $address;
             const NAME: &'static str = stringify!($name);
@@ -47,9 +46,6 @@ macro_rules! define_ap_register {
             fn from($to_param: $name) -> u32 {
                 $to
             }
-        }
-
-        impl ApRegister<$port_type> for $name {
         }
     }
 }
@@ -74,7 +70,7 @@ macro_rules! define_ap {
             }
         }
 
-        impl AccessPort for $name {
+        impl AccessPortType for $name {
             fn ap_address(&self) -> &FullyQualifiedApAddress {
                 &self.address
             }
