@@ -19,13 +19,16 @@ use super::xdm::{Error as XdmError, Xdm};
 /// Possible Xtensa errors
 #[derive(thiserror::Error, Debug, docsplay::Display)]
 pub enum XtensaError {
-    /// An error originating from the DebugProbe occurred
+    /// An error originating from the DebugProbe occurred.
     DebugProbe(#[from] DebugProbeError),
 
-    /// Xtensa debug module error
+    /// Xtensa debug module error.
     XdmError(#[from] XdmError),
 
-    /// The operation has timed out
+    /// The core is not enabled.
+    CoreDisabled,
+
+    /// The operation has timed out.
     // TODO: maybe we could be a bit more specific
     Timeout,
 
@@ -157,6 +160,18 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         self.xdm.enter_debug_mode()?;
 
         self.state.is_halted = self.xdm.status()?.stopped();
+
+        Ok(())
+    }
+
+    pub(crate) fn leave_debug_mode(&mut self) -> Result<(), XtensaError> {
+        if self.xdm.status()?.stopped() {
+            self.restore_registers()?;
+            self.resume()?;
+        }
+        self.xdm.leave_ocd_mode()?;
+
+        tracing::debug!("Left OCD mode");
 
         Ok(())
     }
@@ -682,10 +697,15 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
     }
 
     pub(crate) fn reset_and_halt(&mut self, timeout: Duration) -> Result<(), XtensaError> {
+        self.clear_register_cache();
         self.xdm.reset_and_halt()?;
         self.wait_for_core_halted(timeout)?;
 
         Ok(())
+    }
+
+    pub(crate) fn clear_register_cache(&mut self) {
+        self.state.saved_registers.clear();
     }
 }
 

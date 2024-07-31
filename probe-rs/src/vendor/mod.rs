@@ -172,6 +172,8 @@ fn try_detect_arm_chip(mut probe: Probe) -> Result<(Probe, Option<Target>), Erro
 fn try_detect_riscv_chip(probe: &mut Probe) -> Result<Option<Target>, Error> {
     let mut found_target = None;
 
+    probe.select_jtag_tap(0)?;
+
     match probe.try_get_riscv_interface_builder() {
         Ok(factory) => {
             let mut state = factory.create_state();
@@ -218,6 +220,8 @@ fn try_detect_riscv_chip(probe: &mut Probe) -> Result<Option<Target>, Error> {
 fn try_detect_xtensa_chip(probe: &mut Probe) -> Result<Option<Target>, Error> {
     let mut found_target = None;
 
+    probe.select_jtag_tap(0)?;
+
     let mut state = XtensaDebugInterfaceState::default();
     match probe.try_get_xtensa_interface(&mut state) {
         Ok(mut interface) => {
@@ -243,7 +247,7 @@ fn try_detect_xtensa_chip(probe: &mut Probe) -> Result<Option<Target>, Error> {
                 Err(error) => tracing::debug!("Error during Xtensa chip detection: {error}"),
             }
 
-            // TODO: disable debug module
+            interface.leave_debug_mode()?;
         }
 
         Err(DebugProbeError::InterfaceNotAvailable { .. }) => {

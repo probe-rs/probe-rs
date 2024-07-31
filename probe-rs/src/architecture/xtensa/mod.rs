@@ -31,6 +31,9 @@ pub(crate) mod sequences;
 #[derive(Debug)]
 /// Xtensa core state.
 pub struct XtensaCoreState {
+    /// Whether the core is enabled.
+    enabled: bool,
+
     /// Whether hardware breakpoints are enabled.
     breakpoints_enabled: bool,
 
@@ -51,6 +54,7 @@ impl XtensaCoreState {
     /// Creates a new [`XtensaCoreState`].
     pub(crate) fn new() -> Self {
         Self {
+            enabled: false,
             breakpoints_enabled: false,
             breakpoint_set: [false; 2],
             pc_written: false,
@@ -80,15 +84,20 @@ impl<'probe> Xtensa<'probe> {
 
     /// Create a new Xtensa interface for a particular core.
     pub fn new(
-        interface: XtensaCommunicationInterface<'probe>,
+        mut interface: XtensaCommunicationInterface<'probe>,
         state: &'probe mut XtensaCoreState,
         sequence: Arc<dyn XtensaDebugSequence>,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, Error> {
+        if !state.enabled {
+            interface.enter_debug_mode()?;
+            state.enabled = true;
+        }
+
+        Ok(Self {
             interface,
             state,
             sequence,
-        }
+        })
     }
 
     fn core_info(&mut self) -> Result<CoreInformation, Error> {
@@ -228,6 +237,9 @@ impl<'probe> CoreInterface for Xtensa<'probe> {
 
     fn run(&mut self) -> Result<(), Error> {
         self.skip_breakpoint_instruction()?;
+        if self.state.pc_written {
+            self.interface.clear_register_cache();
+        }
         Ok(self.interface.resume()?)
     }
 
@@ -395,10 +407,7 @@ impl<'probe> CoreInterface for Xtensa<'probe> {
     }
 
     fn debug_core_stop(&mut self) -> Result<(), Error> {
-        self.interface.restore_registers()?;
-        self.interface.resume()?;
-        self.interface.xdm.leave_ocd_mode()?;
-        tracing::info!("Left OCD mode");
+        self.interface.leave_debug_mode()?;
         Ok(())
     }
 }

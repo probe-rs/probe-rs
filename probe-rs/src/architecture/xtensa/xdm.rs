@@ -1,10 +1,13 @@
-use std::{fmt::Debug, time::Duration};
+use std::{
+    fmt::Debug,
+    time::{Duration, Instant},
+};
 
 use crate::{
     architecture::xtensa::arch::instruction::{Instruction, InstructionEncoding},
     probe::{
-        CommandResult, DebugProbeError, DeferredResultIndex, DeferredResultSet, JTAGAccess,
-        JtagCommandQueue, JtagWriteCommand, ShiftDrCommand,
+        CommandResult, DeferredResultIndex, DeferredResultSet, JTAGAccess, JtagCommandQueue,
+        JtagWriteCommand, ShiftDrCommand,
     },
     Error as ProbeRsError,
 };
@@ -186,9 +189,10 @@ impl<'probe> Xdm<'probe> {
         self.pwr_write(PowerDevice::PowerControl, pwr_control.0)?;
 
         tracing::trace!("Waiting for power domain to turn on");
-        let now = std::time::Instant::now();
+        let now = Instant::now();
         loop {
             let bits = self.pwr_write(PowerDevice::PowerStat, 0)?;
+            tracing::debug!("PowerStatus: {:?}", PowerStatus(bits));
             if PowerStatus(bits).debug_domain_on() {
                 break;
             }
@@ -203,20 +207,28 @@ impl<'probe> Xdm<'probe> {
         pwr_control.set_jtag_debug_use(true);
         self.pwr_write(PowerDevice::PowerControl, pwr_control.0)?;
 
+        let idcode = self.read_idcode()?;
+        tracing::debug!("Read IDCODE: {:#010X}", idcode);
+
+        self.check_enabled()?;
+
+        let was_reset = self.core_was_reset()?;
+        tracing::debug!("Core was reset: {}", was_reset);
+
         // enable the debug module
         self.write_nexus_register(DebugControlSet({
             let mut reg = DebugControlBits(0);
             reg.set_enable_ocd(true);
+            reg.set_break_in_en(true);
+            reg.set_break_out_en(true);
             reg
         }))?;
-
-        // read the device_id
-        let device_id = self.read_nexus_register::<OcdId>()?.0;
-
-        if device_id == 0 || device_id == !0 {
-            return Err(DebugProbeError::TargetNotFound.into());
-        }
-        tracing::info!("Found Xtensa device with OCDID: 0x{:08X}", device_id);
+        self.write_nexus_register(DebugControlClear({
+            let mut reg = DebugControlBits(0);
+            reg.set_run_stall_in_en(true);
+            reg.set_debug_mode_out_en(true);
+            reg
+        }))?;
 
         let status = self.status()?;
         tracing::debug!("{:?}", status);
@@ -231,10 +243,24 @@ impl<'probe> Xdm<'probe> {
             status.set_exec_overrun(true);
             status.set_debug_pend_break(true);
             status.set_debug_pend_host(true);
+            status.set_debug_int_break(true);
 
             status
         })?;
 
+        Ok(())
+    }
+
+    fn check_enabled(&mut self) -> Result<(), XtensaError> {
+        let device_id = self.read_nexus_register::<OcdId>()?.0;
+        tracing::debug!("Read OCDID: {:#010X}", device_id);
+
+        if device_id == 0 || device_id == u32::MAX {
+            // Disable the debug module if we can't work with it.
+            self.pwr_write(PowerDevice::PowerControl, 0)?;
+            return Err(XtensaError::CoreDisabled);
+        }
+        tracing::info!("Found Xtensa device with OCDID: {:#010X}", device_id);
         Ok(())
     }
 
@@ -248,6 +274,14 @@ impl<'probe> Xdm<'probe> {
         })?;
 
         Ok(())
+    }
+
+    /// Read and clear the `core_was_reset` flag.
+    pub(super) fn core_was_reset(&mut self) -> Result<bool, XtensaError> {
+        let mut clear_value = PowerStatus(0);
+        clear_value.set_core_was_reset(true);
+        let bits = self.pwr_write(PowerDevice::PowerStat, clear_value.0)?;
+        Ok(PowerStatus(bits).core_was_reset())
     }
 
     pub(super) fn execute(&mut self) -> Result<(), XtensaError> {
@@ -446,6 +480,8 @@ impl<'probe> Xdm<'probe> {
 
             control.set_enable_ocd(true);
             control.set_debug_interrupt(true);
+            control.set_break_in_en(true);
+            control.set_break_out_en(true);
 
             control
         }));
@@ -488,6 +524,8 @@ impl<'probe> Xdm<'probe> {
             let mut control = DebugControlBits(0);
 
             control.set_enable_ocd(true);
+            control.set_break_in_en(true);
+            control.set_break_out_en(true);
 
             control
         }))?;
@@ -664,6 +702,7 @@ bitfield::bitfield! {
 bitfield::bitfield! {
     #[derive(Copy, Clone)]
     pub struct PowerStatus(u8);
+    impl Debug;
 
     pub core_domain_on,    _: 0;
     pub mem_domain_on,     _: 1;

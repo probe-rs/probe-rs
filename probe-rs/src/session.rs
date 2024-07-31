@@ -108,6 +108,7 @@ impl ArchitectureInterface {
             ArchitectureInterface::Arm(interface) => combined_state.attach_arm(target, interface),
             ArchitectureInterface::Jtag(probe, ifaces) => {
                 let idx = combined_state.interface_idx();
+                probe.select_jtag_tap(idx)?;
                 match &mut ifaces[idx] {
                     JtagInterface::Riscv(state) => {
                         let factory = probe.try_get_riscv_interface_builder()?;
@@ -351,15 +352,7 @@ impl Session {
 
                     JtagInterface::Riscv(state)
                 }
-                Architecture::Xtensa => {
-                    let mut state = XtensaDebugInterfaceState::default();
-                    {
-                        let mut interface = probe.try_get_xtensa_interface(&mut state)?;
-                        interface.enter_debug_mode()?;
-                    }
-
-                    JtagInterface::Xtensa(state)
-                }
+                Architecture::Xtensa => JtagInterface::Xtensa(XtensaDebugInterfaceState::default()),
                 _ => {
                     return Err(Error::Probe(DebugProbeError::Other(format!(
                         "Unsupported core architecture {core_arch:?}",
@@ -379,18 +372,18 @@ impl Session {
 
         // Wait for the cores to be halted.
         for core_id in 0..session.cores.len() {
-            let mut core = session.core(core_id)?;
-
-            core.halt(Duration::from_millis(100))?;
+            match session.core(core_id) {
+                Ok(mut core) => {
+                    core.halt(Duration::from_millis(100))?;
+                }
+                Err(Error::CoreDisabled(_)) => {}
+                Err(error) => return Err(error),
+            }
         }
 
         // Connect to the cores
         match session.target.debug_sequence.clone() {
-            DebugSequence::Xtensa(sequence) => {
-                for core_id in 0..session.cores.len() {
-                    sequence.on_connect(&mut session.get_xtensa_interface(core_id)?)?;
-                }
-            }
+            DebugSequence::Xtensa(sequence) => sequence.on_connect(&mut session)?,
 
             DebugSequence::Riscv(sequence) => {
                 for core_id in 0..session.cores.len() {
@@ -440,7 +433,10 @@ impl Session {
     ) -> Result<R, Error> {
         let mut resume_state = vec![];
         for (core, _) in self.list_cores() {
-            let mut c = self.core(core)?;
+            let mut c = match self.core(core) {
+                Err(Error::CoreDisabled(_)) => continue,
+                other => other?,
+            };
             let status = c.status()?;
             tracing::info!("Core status: {:?}", status);
             if !status.is_halted() {
@@ -481,7 +477,7 @@ impl Session {
     /// It is strongly advised to never store the [Core] handle for any significant duration! Free it as fast as possible such that other stakeholders can have access to the [Core] too.
     ///
     /// The idea behind this is: You need the smallest common denominator which you can share between threads. Since you sometimes need the [Core], sometimes the [Probe] or sometimes the [Target], the [Session] is the only common ground and the only handle you should actively store in your code.
-    ///
+    //
     // By design, this is called frequently in a session, therefore we limit tracing level to "trace" to avoid spamming the logs.
     #[tracing::instrument(level = "trace", skip(self), name = "attach_to_core")]
     pub fn core(&mut self, core_index: usize) -> Result<Core<'_>, Error> {
@@ -490,7 +486,16 @@ impl Session {
             .get_mut(core_index)
             .ok_or(Error::CoreNotFound(core_index))?;
 
-        self.interfaces.attach(&self.target, combined_state)
+        match self.interfaces.attach(&self.target, combined_state) {
+            Err(Error::Xtensa(XtensaError::CoreDisabled)) => {
+                // If the core is disabled, we can't attach to it.
+                // We can't do anything about it, so we just translate
+                // and return the error.
+                // We'll retry at the next call.
+                Err(Error::CoreDisabled(core_index))
+            }
+            other => other,
+        }
     }
 
     /// Read available trace data from the specified data sink.
@@ -552,6 +557,7 @@ impl Session {
     ) -> Result<RiscvCommunicationInterface, Error> {
         let tap_idx = self.interface_idx(core_id)?;
         if let ArchitectureInterface::Jtag(probe, ifaces) = &mut self.interfaces {
+            probe.select_jtag_tap(tap_idx)?;
             if let JtagInterface::Riscv(state) = &mut ifaces[tap_idx] {
                 let factory = probe.try_get_riscv_interface_builder()?;
                 return Ok(factory.attach(state)?);
@@ -567,6 +573,7 @@ impl Session {
     ) -> Result<XtensaCommunicationInterface, Error> {
         let tap_idx = self.interface_idx(core_id)?;
         if let ArchitectureInterface::Jtag(probe, ifaces) = &mut self.interfaces {
+            probe.select_jtag_tap(tap_idx)?;
             if let JtagInterface::Xtensa(state) = &mut ifaces[tap_idx] {
                 return Ok(probe.try_get_xtensa_interface(state)?);
             }
@@ -762,10 +769,10 @@ impl Session {
     /// Clears all hardware breakpoints on all cores
     pub fn clear_all_hw_breakpoints(&mut self) -> Result<(), Error> {
         self.halted_access(|session| {
-            { 0..session.cores.len() }.try_for_each(|n| {
-                session
-                    .core(n)
-                    .and_then(|mut core| core.clear_all_hw_breakpoints())
+            { 0..session.cores.len() }.try_for_each(|core| match session.core(core) {
+                Ok(mut core) => core.clear_all_hw_breakpoints(),
+                Err(Error::CoreDisabled(_)) => Ok(()),
+                Err(err) => Err(err),
             })
         })
     }
@@ -786,9 +793,11 @@ impl Drop for Session {
         }
 
         // Call any necessary deconfiguration/shutdown hooks.
-        if let Err(err) = { 0..self.cores.len() }
-            .try_for_each(|i| self.core(i).and_then(|mut core| core.debug_core_stop()))
-        {
+        if let Err(err) = { 0..self.cores.len() }.try_for_each(|core| match self.core(core) {
+            Ok(mut core) => core.debug_core_stop(),
+            Err(Error::CoreDisabled(_)) => Ok(()),
+            Err(err) => Err(err),
+        }) {
             tracing::warn!("Failed to deconfigure device during shutdown: {:?}", err);
         }
     }

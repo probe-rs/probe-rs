@@ -10,10 +10,7 @@ use crate::Session;
 /// Should be implemented on a custom handle for chips that require special sequence code.
 pub trait XtensaDebugSequence: Send + Sync + Debug {
     /// Executed when the probe establishes a connection to the target.
-    fn on_connect(
-        &self,
-        _interface: &mut XtensaCommunicationInterface,
-    ) -> Result<(), crate::Error> {
+    fn on_connect(&self, _session: &mut Session) -> Result<(), crate::Error> {
         Ok(())
     }
 
