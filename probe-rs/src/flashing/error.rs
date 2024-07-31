@@ -27,6 +27,12 @@ pub enum FlashError {
         /// The source error of this error.
         source: Box<dyn std::error::Error + 'static + Send + Sync>,
     },
+    /// Failed to read data from flash.
+    #[error("Failed to read data from flash.")]
+    FlashReadFailed {
+        /// The source error of this error.
+        source: Box<dyn std::error::Error + 'static + Send + Sync>,
+    },
     /// Erasing the given flash sector failed.
     #[error("Failed to erase flash sector at address {sector_address:#010x}.")]
     EraseFailed {

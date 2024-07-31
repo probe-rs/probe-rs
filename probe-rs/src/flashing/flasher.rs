@@ -327,12 +327,7 @@ impl<'session> Flasher<'session> {
     ) -> Result<(), FlashError> {
         let page_offset = (fill.address() - page.address()) as usize;
         let page_slice = &mut page.data_mut()[page_offset..][..fill.size() as usize];
-        self.run_verify(|active| {
-            active
-                .core
-                .read(fill.address(), page_slice)
-                .map_err(FlashError::Core)
-        })
+        self.run_verify(|active| active.read_flash(fill.address(), page_slice))
     }
 
     /// Programs the pages given in `flash_layout` into the flash.
@@ -745,6 +740,53 @@ impl<O: Operation> ActiveFlasher<'_, O> {
         }
 
         Ok(())
+    }
+
+    pub(super) fn read_flash(&mut self, address: u64, data: &mut [u8]) -> Result<(), FlashError> {
+        if let Some(read_flash) = self.flash_algorithm.pc_read {
+            let page_size = self.flash_algorithm.flash_properties.page_size;
+            let buffer_address = self.flash_algorithm.page_buffers[0];
+
+            let mut read_address = address;
+            for slice in data.chunks_mut(page_size as usize) {
+                // Call ReadFlash to load from flash to RAM. The function has a similar signature
+                // to the program_page function.
+                let result = self
+                    .call_function_and_wait(
+                        &Registers {
+                            pc: into_reg(read_flash)?,
+                            r0: Some(into_reg(read_address)?),
+                            r1: Some(into_reg(slice.len() as u64)?),
+                            r2: Some(into_reg(buffer_address)?),
+                            r3: None,
+                        },
+                        false,
+                        Duration::from_secs(30),
+                    )
+                    .map_err(|error| FlashError::FlashReadFailed {
+                        source: Box::new(error),
+                    })?;
+
+                if result != 0 {
+                    return Err(FlashError::FlashReadFailed {
+                        source: Box::new(FlashError::RoutineCallFailed {
+                            name: "read_flash",
+                            error_code: result,
+                        }),
+                    });
+                };
+
+                // Now read the data from RAM.
+                self.core
+                    .read(buffer_address, slice)
+                    .map_err(FlashError::Core)?;
+                read_address += slice.len() as u64;
+            }
+
+            Ok(())
+        } else {
+            self.core.read(address, data).map_err(FlashError::Core)
+        }
     }
 }
 
