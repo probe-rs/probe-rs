@@ -89,6 +89,7 @@ pub fn extract_flash_algo(
             "EraseChip" => algo.pc_erase_all = Some(sym.st_value - code_section_offset as u64),
             "EraseSector" => algo.pc_erase_sector = sym.st_value - code_section_offset as u64,
             "ProgramPage" => algo.pc_program_page = sym.st_value - code_section_offset as u64,
+            "Verify" => algo.pc_verify = Some(sym.st_value - code_section_offset as u64),
             "ReadFlash" => algo.pc_read = Some(sym.st_value - code_section_offset as u64),
             "_SEGGER_RTT" => {
                 algo.rtt_location = Some(sym.st_value);
