@@ -835,10 +835,6 @@ impl<D: StLinkUsb> StLink<D> {
             return Err(StlinkError::BanksNotAllowedOnDPRegister.into());
         }
 
-        if port != DP_PORT {
-            self.select_ap(port as u8)?;
-        }
-
         let port = port.to_le_bytes();
 
         let cmd = &[
@@ -860,10 +856,6 @@ impl<D: StLinkUsb> StLink<D> {
         if port == DP_PORT && addr & 0xf0 != 0 && !self.supports_dp_bank_selection() {
             tracing::warn!("Trying to access DP register at address {addr:#x}, which is not supported on ST-Links.");
             return Err(StlinkError::BanksNotAllowedOnDPRegister.into());
-        }
-
-        if port != DP_PORT {
-            self.select_ap(port as u8)?;
         }
 
         let port = port.to_le_bytes();
@@ -1312,7 +1304,6 @@ impl StlinkArmDebug {
         probe: Box<StLink<StLinkUsbDevice>>,
     ) -> Result<Self, (Box<UninitializedStLink>, ArmError)> {
         // Determine the number and type of available APs.
-
         let mut interface = Self {
             probe,
             access_ports: BTreeSet::new(),
@@ -1327,14 +1318,35 @@ impl StlinkArmDebug {
 
         Ok(interface)
     }
+
+    fn select_dp(&mut self, dp: DpAddress) -> Result<(), ArmError> {
+        if dp != DpAddress::Default {
+            return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
+        }
+
+        Ok(())
+    }
+
+    fn select_dp_and_dp_bank(&mut self, dp: DpAddress, _address: u8) -> Result<(), ArmError> {
+        self.select_dp(dp)
+    }
+
+    fn select_ap_and_ap_bank(
+        &mut self,
+        ap: &FullyQualifiedApAddress,
+        _address: u8,
+    ) -> Result<(), ArmError> {
+        self.select_dp(ap.dp())?;
+        self.probe.select_ap(ap.ap_v1()?)?;
+
+        Ok(())
+    }
 }
 
 impl DapAccess for StlinkArmDebug {
     #[tracing::instrument(skip(self), fields(value))]
     fn read_raw_dp_register(&mut self, dp: DpAddress, address: u8) -> Result<u32, ArmError> {
-        if dp != DpAddress::Default {
-            return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
-        }
+        self.select_dp_and_dp_bank(dp, address)?;
         let result = self.probe.read_register(DP_PORT, address)?;
 
         tracing::Span::current().record("value", result);
@@ -1351,9 +1363,7 @@ impl DapAccess for StlinkArmDebug {
         address: u8,
         value: u32,
     ) -> Result<(), ArmError> {
-        if dp != DpAddress::Default {
-            return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
-        }
+        self.select_dp_and_dp_bank(dp, address)?;
 
         self.probe.write_register(DP_PORT, address, value)?;
         Ok(())
@@ -1364,9 +1374,7 @@ impl DapAccess for StlinkArmDebug {
         ap: &FullyQualifiedApAddress,
         address: u8,
     ) -> Result<u32, ArmError> {
-        if ap.dp() != DpAddress::Default {
-            return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
-        }
+        self.select_ap_and_ap_bank(ap, address)?;
 
         let value = self.probe.read_register(ap.ap_v1()? as u16, address)?;
 
@@ -1379,9 +1387,7 @@ impl DapAccess for StlinkArmDebug {
         address: u8,
         value: u32,
     ) -> Result<(), ArmError> {
-        if ap.dp() != DpAddress::Default {
-            return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
-        }
+        self.select_ap_and_ap_bank(ap, address)?;
 
         self.probe
             .write_register(ap.ap_v1()? as u16, address, value)?;
@@ -1408,9 +1414,7 @@ impl ArmProbeInterface for StlinkArmDebug {
         &mut self,
         dp: DpAddress,
     ) -> Result<Option<crate::architecture::arm::ArmChipInfo>, ArmError> {
-        if dp != DpAddress::Default {
-            return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
-        }
+        self.select_dp(dp)?;
 
         for ap in self.access_ports.clone() {
             if let Ok(mut memory) = self.memory_interface(&ap) {
@@ -1435,9 +1439,7 @@ impl ArmProbeInterface for StlinkArmDebug {
         &mut self,
         dp: DpAddress,
     ) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError> {
-        if dp != DpAddress::Default {
-            return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
-        }
+        self.select_dp(dp)?;
 
         Ok(self.access_ports.clone())
     }
