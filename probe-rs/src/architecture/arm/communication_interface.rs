@@ -209,6 +209,16 @@ impl DpState {
             access_ports: BTreeSet::new(),
         }
     }
+
+    fn select_reg(&self) -> Select {
+        let mut select = Select(0);
+
+        select.set_ap_sel(self.current_apsel);
+        select.set_ap_bank_sel(self.current_apbanksel);
+        select.set_dp_bank_sel(self.current_dpbanksel);
+
+        select
+    }
 }
 
 /// An implementation of the communication protocol between probe and target.
@@ -531,16 +541,10 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
         }
 
         if bank != dp_state.current_dpbanksel {
+            tracing::debug!("Changing DP_BANK_SEL to {bank}");
             dp_state.current_dpbanksel = bank;
 
-            let mut select = Select(0);
-
-            tracing::debug!("Changing DP_BANK_SEL to {}", dp_state.current_dpbanksel);
-
-            select.set_ap_sel(dp_state.current_apsel);
-            select.set_ap_bank_sel(dp_state.current_apbanksel);
-            select.set_dp_bank_sel(dp_state.current_dpbanksel);
-
+            let select = dp_state.select_reg();
             self.write_dp_register(dp, select)?;
         }
 
@@ -570,18 +574,13 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
         }
 
         if cache_changed {
-            let mut select = Select(0);
-
             tracing::debug!(
                 "Changing AP to {}, AP_BANK_SEL to {}",
                 dp_state.current_apsel,
                 dp_state.current_apbanksel
             );
 
-            select.set_ap_sel(dp_state.current_apsel);
-            select.set_ap_bank_sel(dp_state.current_apbanksel);
-            select.set_dp_bank_sel(dp_state.current_dpbanksel);
-
+            let select = dp_state.select_reg();
             self.write_dp_register(ap.dp(), select)?;
         }
 
