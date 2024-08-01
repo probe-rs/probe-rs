@@ -830,11 +830,6 @@ impl<D: StLinkUsb> StLink<D> {
 
     /// Reads the DAP register on the specified port and address.
     fn read_register(&mut self, port: u16, addr: u8) -> Result<u32, DebugProbeError> {
-        if port == DP_PORT && addr & 0xf0 != 0 && !self.supports_dp_bank_selection() {
-            tracing::warn!("Trying to access DP register at address {addr:#x}, which is not supported on ST-Links.");
-            return Err(StlinkError::BanksNotAllowedOnDPRegister.into());
-        }
-
         let port = port.to_le_bytes();
 
         let cmd = &[
@@ -853,11 +848,6 @@ impl<D: StLinkUsb> StLink<D> {
 
     /// Writes a value to the DAP register on the specified port and address.
     fn write_register(&mut self, port: u16, addr: u8, value: u32) -> Result<(), DebugProbeError> {
-        if port == DP_PORT && addr & 0xf0 != 0 && !self.supports_dp_bank_selection() {
-            tracing::warn!("Trying to access DP register at address {addr:#x}, which is not supported on ST-Links.");
-            return Err(StlinkError::BanksNotAllowedOnDPRegister.into());
-        }
-
         let port = port.to_le_bytes();
         let bytes = value.to_le_bytes();
 
@@ -1327,8 +1317,15 @@ impl StlinkArmDebug {
         Ok(())
     }
 
-    fn select_dp_and_dp_bank(&mut self, dp: DpAddress, _address: u8) -> Result<(), ArmError> {
-        self.select_dp(dp)
+    fn select_dp_and_dp_bank(&mut self, dp: DpAddress, address: u8) -> Result<(), ArmError> {
+        self.select_dp(dp)?;
+
+        if address & 0xf0 != 0 && !self.probe.supports_dp_bank_selection() {
+            tracing::warn!("Trying to access DP register at address {address:#x}, which is not supported on ST-Links.");
+            return Err(DebugProbeError::from(StlinkError::BanksNotAllowedOnDPRegister).into());
+        }
+
+        Ok(())
     }
 
     fn select_ap_and_ap_bank(
