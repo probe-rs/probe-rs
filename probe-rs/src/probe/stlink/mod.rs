@@ -919,23 +919,9 @@ impl<D: StLinkUsb> StLink<D> {
             return Err(DebugProbeError::from(StlinkError::UnalignedAddress));
         }
 
-        let data_length = data.len().to_le_bytes();
-
-        let addbytes = address.to_le_bytes();
-
         retry_on_wait(|| {
             self.device.write(
-                &[
-                    commands::JTAG_COMMAND,
-                    commands::JTAG_READMEM_32BIT,
-                    addbytes[0],
-                    addbytes[1],
-                    addbytes[2],
-                    addbytes[3],
-                    data_length[0],
-                    data_length[1],
-                    apsel,
-                ],
+                &memory_command(commands::JTAG_READMEM_32BIT, address, data.len(), apsel),
                 &[],
                 data,
                 TIMEOUT,
@@ -969,22 +955,9 @@ impl<D: StLinkUsb> StLink<D> {
             return Err(DebugProbeError::from(StlinkError::UnalignedAddress));
         }
 
-        let data_length = data.len().to_le_bytes();
-        let addbytes = address.to_le_bytes();
-
         retry_on_wait(|| {
             self.device.write(
-                &[
-                    commands::JTAG_COMMAND,
-                    commands::JTAG_READMEM_16BIT,
-                    addbytes[0],
-                    addbytes[1],
-                    addbytes[2],
-                    addbytes[3],
-                    data_length[0],
-                    data_length[1],
-                    apsel,
-                ],
+                &memory_command(commands::JTAG_READMEM_16BIT, address, data.len(), apsel),
                 &[],
                 data,
                 TIMEOUT,
@@ -1032,22 +1005,9 @@ impl<D: StLinkUsb> StLink<D> {
 
         tracing::trace!("Read mem 8 bit, address={:08x}, length={}", address, length);
 
-        let addbytes = address.to_le_bytes();
-        let lenbytes = length.to_le_bytes();
-
         retry_on_wait(|| {
             self.device.write(
-                &[
-                    commands::JTAG_COMMAND,
-                    commands::JTAG_READMEM_8BIT,
-                    addbytes[0],
-                    addbytes[1],
-                    addbytes[2],
-                    addbytes[3],
-                    lenbytes[0],
-                    lenbytes[1],
-                    apsel,
-                ],
+                &memory_command(commands::JTAG_READMEM_8BIT, address, length as usize, apsel),
                 &[],
                 &mut receive_buffer,
                 TIMEOUT,
@@ -1089,21 +1049,9 @@ impl<D: StLinkUsb> StLink<D> {
             return Err(DebugProbeError::from(StlinkError::UnalignedAddress));
         }
 
-        let addbytes = address.to_le_bytes();
-        let lenbytes = length.to_le_bytes();
         retry_on_wait(|| {
             self.device.write(
-                &[
-                    commands::JTAG_COMMAND,
-                    commands::JTAG_WRITEMEM_32BIT,
-                    addbytes[0],
-                    addbytes[1],
-                    addbytes[2],
-                    addbytes[3],
-                    lenbytes[0],
-                    lenbytes[1],
-                    apsel,
-                ],
+                &memory_command(commands::JTAG_WRITEMEM_32BIT, address, data.len(), apsel),
                 data,
                 &mut [],
                 TIMEOUT,
@@ -1124,7 +1072,6 @@ impl<D: StLinkUsb> StLink<D> {
         self.select_ap(apsel)?;
 
         tracing::trace!("write_mem_16bit");
-        let length = data.len();
 
         // TODO what is the maximum supported length?
 
@@ -1137,21 +1084,9 @@ impl<D: StLinkUsb> StLink<D> {
             return Err(DebugProbeError::from(StlinkError::UnalignedAddress));
         }
 
-        let addbytes = address.to_le_bytes();
-        let lenbytes = length.to_le_bytes();
         retry_on_wait(|| {
             self.device.write(
-                &[
-                    commands::JTAG_COMMAND,
-                    commands::JTAG_WRITEMEM_16BIT,
-                    addbytes[0],
-                    addbytes[1],
-                    addbytes[2],
-                    addbytes[3],
-                    lenbytes[0],
-                    lenbytes[1],
-                    apsel,
-                ],
+                &memory_command(commands::JTAG_WRITEMEM_16BIT, address, data.len(), apsel),
                 data,
                 &mut [],
                 TIMEOUT,
@@ -1186,21 +1121,9 @@ impl<D: StLinkUsb> StLink<D> {
             );
         }
 
-        let addbytes = address.to_le_bytes();
-        let lenbytes = byte_length.to_le_bytes();
         retry_on_wait(|| {
             self.device.write(
-                &[
-                    commands::JTAG_COMMAND,
-                    commands::JTAG_WRITEMEM_8BIT,
-                    addbytes[0],
-                    addbytes[1],
-                    addbytes[2],
-                    addbytes[3],
-                    lenbytes[0],
-                    lenbytes[1],
-                    apsel,
-                ],
+                &memory_command(commands::JTAG_WRITEMEM_8BIT, address, data.len(), apsel),
                 data,
                 &mut [],
                 TIMEOUT,
@@ -1249,6 +1172,22 @@ impl<D: StLinkUsb> StLink<D> {
 
         Ok(())
     }
+}
+
+const fn memory_command(command: u8, address: u32, len: usize, apsel: u8) -> [u8; 9] {
+    let addbytes = address.to_le_bytes();
+    let data_length = len.to_le_bytes();
+    [
+        commands::JTAG_COMMAND,
+        command,
+        addbytes[0],
+        addbytes[1],
+        addbytes[2],
+        addbytes[3],
+        data_length[0],
+        data_length[1],
+        apsel,
+    ]
 }
 
 impl<D: StLinkUsb> SwoAccess for StLink<D> {
