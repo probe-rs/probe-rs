@@ -78,7 +78,7 @@ impl JLink {
     pub(super) fn read_interface_speeds(&self) -> Result<SpeedInfo> {
         self.require_capability(Capability::SpeedInfo)?;
 
-        self.write_cmd(&[Command::GetSpeeds as u8])?;
+        self.write_cmd_byte(Command::GetSpeeds)?;
 
         let buf = self.read_n::<6>()?;
 
@@ -106,7 +106,7 @@ impl JLink {
         }
 
         let [low, high] = speed.raw.to_le_bytes();
-        self.write_cmd(&[Command::SetSpeed as u8, low, high])?;
+        self.write_cmd(Command::SetSpeed, &[Command::SetSpeed as u8, low, high])?;
 
         Ok(())
     }
