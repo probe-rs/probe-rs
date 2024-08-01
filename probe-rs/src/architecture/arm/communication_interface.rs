@@ -359,7 +359,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
             state: Initialized::new(sequence, dp, use_overrun_detect),
         };
 
-        if let Err(err) = initializing.do_select_dp(dp) {
+        if let Err(err) = initializing.select_dp(dp) {
             return Err((initializing.probe.take().unwrap(), err));
         }
 
@@ -425,14 +425,17 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
     }
 
     fn select_dp(&mut self, dp: DpAddress) -> Result<&mut DpState, ArmError> {
-        if self.state.current_dp != dp {
-            self.do_select_dp(dp)?;
-        }
-
         // If we don't have a state for this DP, this means that
         // we haven't run the necessary init sequence yet.
-        #[allow(clippy::map_entry)] // reason = "false positive"
-        if !self.state.dps.contains_key(&dp) {
+        if self.state.dps.contains_key(&dp) {
+            if self.state.current_dp != dp {
+                self.do_select_dp(dp)?;
+            }
+        } else {
+            // We've never seen this DP, set it up.
+            let sequence = self.state.sequence.clone();
+            sequence.debug_port_setup(&mut *self.probe_mut(), dp)?;
+
             // Insert a dummy value to prevent endless recursion.
             self.state.dps.insert(dp, DpState::new());
 
