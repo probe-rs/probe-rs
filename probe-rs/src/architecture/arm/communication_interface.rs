@@ -349,23 +349,17 @@ impl UninitializedArmProbe for ArmCommunicationInterface<Uninitialized> {
 impl<'interface> ArmCommunicationInterface<Initialized> {
     /// Set up and start the debug port with brand-new state.
     fn try_setup(
-        mut probe: Box<dyn DapProbe>,
+        probe: Box<dyn DapProbe>,
         sequence: Arc<dyn ArmDebugSequence>,
         dp: DpAddress,
         use_overrun_detect: bool,
     ) -> Result<Self, (Box<dyn DapProbe>, ArmError)> {
-        if let Err(err) = tracing::debug_span!("debug_port_setup")
-            .in_scope(|| sequence.debug_port_setup(&mut *probe, dp))
-        {
-            return Err((probe, err));
-        }
-
         let mut initializing = Self {
             probe: Some(probe),
             state: Initialized::new(sequence, dp, use_overrun_detect),
         };
 
-        if let Err(err) = initializing.select_dp(dp) {
+        if let Err(err) = initializing.do_select_dp(dp) {
             return Err((initializing.probe.take().unwrap(), err));
         }
 
