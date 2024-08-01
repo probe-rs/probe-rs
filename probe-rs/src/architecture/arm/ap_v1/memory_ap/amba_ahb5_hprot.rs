@@ -1,5 +1,5 @@
 use crate::architecture::arm::{
-    ap::{AccessPortType, ApAccess, ApRegAccess},
+    ap_v1::{AccessPortType, ApAccess, ApRegAccess},
     communication_interface::RegisterParseError,
     ArmError, DapAccess, FullyQualifiedApAddress, Register,
 };

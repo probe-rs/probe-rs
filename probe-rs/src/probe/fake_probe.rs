@@ -10,7 +10,7 @@ use probe_rs_target::ScanChainElement;
 
 use crate::{
     architecture::arm::{
-        ap::memory_ap::{mock::MockMemoryAp, MemoryAp},
+        ap_v1::memory_ap::{mock::MockMemoryAp, MemoryAp},
         armv8m::Dhcsr,
         communication_interface::{
             ArmDebugState, Initialized, SwdSequence, Uninitialized, UninitializedArmProbe,

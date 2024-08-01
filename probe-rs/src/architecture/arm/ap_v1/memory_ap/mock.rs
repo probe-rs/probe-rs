@@ -1,5 +1,5 @@
 use crate::architecture::arm::{
-    ap::{
+    ap_v1::{
         memory_ap::{amba_ahb3::CSW, registers::CFG, AddressIncrement, DataSize, DRW, TAR},
         ApClass, ApType, Register, IDR,
     },

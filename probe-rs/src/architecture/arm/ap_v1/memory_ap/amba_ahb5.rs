@@ -1,5 +1,5 @@
 use crate::architecture::arm::{
-    ap::{AccessPortType, ApAccess, ApRegAccess},
+    ap_v1::{AccessPortType, ApAccess, ApRegAccess},
     communication_interface::RegisterParseError,
     ArmError, DapAccess, FullyQualifiedApAddress, Register,
 };
@@ -11,14 +11,14 @@ use super::{AddressIncrement, DataSize};
 /// The memory AP can be used to access a memory-mapped
 /// set of debug resources of the attached system.
 #[derive(Debug)]
-pub struct AmbaAxi5 {
+pub struct AmbaAhb5 {
     address: FullyQualifiedApAddress,
     csw: CSW,
     cfg: super::registers::CFG,
 }
 
-impl AmbaAxi5 {
-    /// Creates a new AmbaAhb5Hprot with `address` as base address.
+impl AmbaAhb5 {
+    /// Creates a new AmbaAhb5 with `address` as base address.
     pub fn new<P: DapAccess>(
         probe: &mut P,
         address: FullyQualifiedApAddress,
@@ -31,7 +31,9 @@ impl AmbaAxi5 {
         let me = Self { address, csw, cfg };
         let csw = CSW {
             DbgSwEnable: true,
+            MasterType: true,
             Privileged: true,
+            Data: true,
             AddrInc: AddressIncrement::Single,
             ..me.csw
         };
@@ -40,7 +42,7 @@ impl AmbaAxi5 {
     }
 }
 
-impl super::MemoryApType for AmbaAxi5 {
+impl super::MemoryApType for AmbaAhb5 {
     type CSW = CSW;
 
     fn status<P: ApAccess + ?Sized>(&mut self, probe: &mut P) -> Result<CSW, ArmError> {
@@ -88,15 +90,15 @@ impl super::MemoryApType for AmbaAxi5 {
     }
 }
 
-impl AccessPortType for AmbaAxi5 {
+impl AccessPortType for AmbaAhb5 {
     fn ap_address(&self) -> &FullyQualifiedApAddress {
         &self.address
     }
 }
 
-impl ApRegAccess<CSW> for AmbaAxi5 {}
+impl ApRegAccess<CSW> for AmbaAhb5 {}
 
-crate::attached_regs_to_mem_ap!(memory_ap_regs => AmbaAxi5);
+crate::attached_regs_to_mem_ap!(memory_ap_regs => AmbaAhb5);
 
 define_ap_register!(
     /// Control and Status Word register
@@ -108,28 +110,43 @@ define_ap_register!(
     fields: [
         /// Is debug software access enabled.
         DbgSwEnable: bool,          // [31]
-        Instruction: bool,          // [30]
-        /// Is the transaction request non-secure
+        /// HNONSEC
         ///
-        /// - If 1 a non-secure transfer is initiated.
-        /// - If 0 and SPIDEN is 1 then a secure transfer is initiated.
-        /// - If 0 and SPIDEN is 0 then no transaction is initiated.
-        NonSecure: bool,            // [29]
-        /// Is this transaction privileged
-        Privileged: bool,           // [28]
-        /// Drives `AxCACHE[3:0]` where x is R for reads and W for writes.
-        /// Amba AXI4 requires asymmetrical usage of `ARCACHE` and `AWCACHE`.
-        CACHE: u8,                  // [27:24]
+        /// Not formally defined.
+        /// If implemented should be 1 at reset.
+        /// If not implemented, should be 1 and writing 0 leads to unpredictable AHB-AP behavior.
+        HNONSEC: bool,              // [30]
+        /// Defines which Requester ID is used on `HMASTER[3:0]` signals.
+        ///
+        /// Support of this function is implementation defined.
+        MasterType: bool,           // [29]
+        /// `HPROT[6:3]`.
+        ///
+        /// - bit 3 controls bits `HPROT`’s bit 3, 4 and 6
+        /// - `HPROT[5]` is tied to 0
+        CombinedHPROT346: bool,     // [27]
+        /// `HPROT[2]`
+        Bufferable: bool,           // [26]
+        /// `HPROT[1]`
+        Privileged: bool,           // [25]
+        /// `HPROT[0]`
+        Data: bool,                 // [24]
         /// Secure Debug Enabled.
         ///
-        /// This bit reflects the state of the CoreSight authentication signal.
+        /// This field has one of the following values:
+        /// - `0b0` Secure access is disabled.
+        /// - `0b1` Secure access is enabled.
+        /// This field is optional, and read-only. If not implemented, the bit is RES0.
+        /// If CSW.DeviceEn is 0b0, SPIDEN is ignored and the effective value of SPIDEN is 0b1.
+        /// For more information, see `Enabling access to the connected debug device or memory system`
+        /// on page C2-154.
+        ///
+        /// Note:
+        /// In ADIv5 and older versions of the architecture, the CSW.SPIDEN field is in the same bit
+        /// position as CSW.SDeviceEn, and has the same meaning. From ADIv6, the name SDeviceEn is
+        /// used to avoid confusion between this field and the SPIDEN signal on the authentication
+        /// interface.
         SPIDEN: bool,               // [23]
-        /// Memory Tagging Control.
-        /// When tagging is enabled, system read and write accesses via DRW, BDx and DARx use T0TR
-        /// for transferring tag information.
-        MTE: bool,                  // [15]
-        /// Drives the AxDOMAIN signals.
-        Type: u8,                   // [14:13]
         /// A transfer is in progress.
         /// Can be used to poll whether an aborted transaction has completed.
         /// Read only.
@@ -146,27 +163,27 @@ define_ap_register!(
     ],
     from: value => Ok(CSW {
         DbgSwEnable: ((value >> 31) & 0x01) != 0,
-        Instruction: ((value >> 30) & 0x01) != 0,
-        NonSecure:  ((value >> 29) & 0x01) != 0,
-        Privileged: ((value >> 28) & 0x01) != 0,
-        CACHE:      ((value >> 24) & 0xF) as u8,
+        HNONSEC:    ((value >> 30) & 0x01) != 0,
+        MasterType: ((value >> 29) & 0x01) != 0,
+        CombinedHPROT346: ((value >> 27) & 0x01) != 0,
+        Bufferable: ((value >> 26) & 0x01) != 0,
+        Privileged: ((value >> 25) & 0x01) != 0,
+        Data:       ((value >> 24) & 0x01) != 0,
         SPIDEN:     ((value >> 23) & 0x01) != 0,
-        MTE:        ((value >> 15) & 0x01) != 0,
-        Type:       ((value >> 13) & 0x03) as u8,
         TrInProg:   ((value >> 7) & 0x01) != 0,
         DeviceEn:   ((value >> 6) & 0x01) != 0,
         AddrInc: AddressIncrement::from_u8(((value >> 4) & 0x03) as u8).ok_or_else(|| RegisterParseError::new("CSW", value))?,
         Size: DataSize::try_from((value & 0x07) as u8).map_err(|_| RegisterParseError::new("CSW", value))?,
-        _reserved_bits: value & 0x007F_FF08,
+        _reserved_bits: value & 0x107F_FF08,
     }),
     to: value => (u32::from(value.DbgSwEnable) << 31)
-    | (u32::from(value.Instruction  ) << 30)
-    | (u32::from(value.NonSecure    ) << 29)
-    | (u32::from(value.Privileged   ) << 28)
-    | (u32::from(value.CACHE        ) << 24)
+    | (u32::from(value.HNONSEC      ) << 30)
+    | (u32::from(value.MasterType   ) << 29)
+    | (u32::from(value.CombinedHPROT346) << 27)
+    | (u32::from(value.Bufferable   ) << 26)
+    | (u32::from(value.Privileged   ) << 25)
+    | (u32::from(value.Data         ) << 24)
     | (u32::from(value.SPIDEN       ) << 23)
-    | (u32::from(value.MTE          ) << 15)
-    | (u32::from(value.Type         ) << 13)
     | (u32::from(value.TrInProg     ) <<  7)
     | (u32::from(value.DeviceEn     ) <<  6)
     | (u32::from(value.AddrInc as u8) <<  4)
