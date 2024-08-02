@@ -200,27 +200,21 @@ impl ProbeFactory for JLinkFactory {
         this.fill_interfaces()?;
 
         this.supported_protocols = if this.caps.contains(Capability::SelectIf) {
-            let protocols: Vec<_> = this
-                .interfaces
+            this.interfaces
                 .into_iter()
-                .map(WireProtocol::try_from)
-                .collect();
-
-            protocols
-                .iter()
-                .filter(|p| p.is_err())
-                .for_each(|protocol| {
-                    if let Err(JlinkError::UnknownInterface(interface)) = protocol {
+                .filter_map(|p| match WireProtocol::try_from(p) {
+                    Ok(protocol) => Some(protocol),
+                    Err(JlinkError::UnknownInterface(interface)) => {
+                        // We ignore unknown protocols.
                         tracing::debug!(
                             "J-Link returned interface {:?}, which is not supported by probe-rs.",
                             interface
                         );
+                        None
                     }
-                });
-
-            // We ignore unknown protocols, the chance that this happens is pretty low,
-            // and we can just work with the ones we know and support.
-            protocols.into_iter().filter_map(Result::ok).collect()
+                    Err(_) => None,
+                })
+                .collect::<Vec<_>>()
         } else {
             // The J-Link cannot report which interfaces it supports, and cannot
             // switch interfaces. We assume it just supports JTAG.
@@ -872,6 +866,8 @@ impl JLink {
 
         let table_size = num * entry_size;
         let size = REG_HEADER_SIZE + table_size + info_size;
+
+        tracing::debug!("Registration response size: {size}");
 
         if size > REG_MAX_SIZE {
             return Err(JlinkError::Other(format!(
