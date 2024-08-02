@@ -457,34 +457,34 @@ impl JLink {
     }
 
     fn read(&self, buf: &mut [u8]) -> Result<(), JlinkError> {
-        let mut total = 0;
+        let needs_workaround = buf.len() % self.max_read_ep_packet == 0;
+        let len = buf.len();
 
-        if buf.len() % self.max_read_ep_packet == 0 {
+        let mut tmp_buffer;
+        let dst = if needs_workaround {
             // For some unknown reason, reading 256 bytes of config data leaves the interface in
             // an unusable state. Force-reading one more byte works around this issue.
-            let mut buffer = vec![0; buf.len() + 1];
-            while total < buf.len() {
-                let n =
-                    self.handle
-                        .read_bulk(self.read_ep, &mut buffer[total..], TIMEOUT_DEFAULT)?;
-
-                total += n;
-
-                if n == 0 {
-                    break;
-                }
-            }
-            buf.copy_from_slice(&buffer[..buf.len()]);
+            tmp_buffer = vec![0; len + 1];
+            &mut tmp_buffer
         } else {
-            while total < buf.len() {
-                let n = self
-                    .handle
-                    .read_bulk(self.read_ep, &mut buf[total..], TIMEOUT_DEFAULT)?;
-                total += n;
-            }
+            tmp_buffer = vec![];
+            &mut buf[..]
+        };
+
+        let mut total = 0;
+        while total < len {
+            let n = self
+                .handle
+                .read_bulk(self.read_ep, &mut dst[total..], TIMEOUT_DEFAULT)?;
+
+            total += n;
         }
 
-        trace!("read {} bytes: {:x?}", buf.len(), buf);
+        if needs_workaround {
+            buf.copy_from_slice(&tmp_buffer[..len]);
+        }
+
+        tracing::trace!("read {total} bytes: {buf:x?}");
 
         Ok(())
     }
