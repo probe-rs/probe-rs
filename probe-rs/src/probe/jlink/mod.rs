@@ -3,6 +3,7 @@
 mod bits;
 pub mod capabilities;
 mod config;
+mod connection;
 mod error;
 mod interface;
 mod speed;
@@ -33,6 +34,7 @@ use crate::architecture::xtensa::communication_interface::{
 use crate::probe::common::{JtagDriverState, RawJtagIo};
 use crate::probe::jlink::bits::IteratorExt;
 use crate::probe::jlink::config::JlinkConfig;
+use crate::probe::jlink::connection::JlinkConnection;
 use crate::probe::usb_util::InterfaceExt;
 use crate::probe::JTAGAccess;
 use crate::{
@@ -176,6 +178,7 @@ impl ProbeFactory for JLinkFactory {
 
             supported_protocols: vec![],  // dummy value
             protocol: WireProtocol::Jtag, // dummy value
+            connection_handle: 0,
 
             swo_config: None,
             speed_khz: 0, // default is unknown
@@ -261,6 +264,7 @@ impl ProbeFactory for JLinkFactory {
         };
 
         this.config = this.read_device_config()?;
+        this.connection_handle = this.register_connection()?;
 
         Ok(Box::new(this))
     }
@@ -270,10 +274,17 @@ impl ProbeFactory for JLinkFactory {
     }
 }
 
+impl Drop for JLink {
+    fn drop(&mut self) {
+        self.unregister_connection().ok();
+    }
+}
+
 #[repr(u8)]
 #[allow(dead_code)]
 enum Command {
     Version = 0x01,
+    Register = 0x09,
     GetSpeeds = 0xC0,
     GetMaxMemBlock = 0xD4,
     GetCaps = 0xE8,
@@ -339,6 +350,8 @@ pub struct JLink {
 
     /// Device configuration, fetched once when the device is opened.
     config: JlinkConfig,
+
+    connection_handle: u16,
 
     swo_config: Option<SwoConfig>,
 
@@ -810,6 +823,70 @@ impl JLink {
     pub fn set_kickstart_power(&mut self, enable: bool) -> Result<(), JlinkError> {
         self.require_capability(Capability::SetKsPower)?;
         self.write_cmd(&[Command::SetKsPower as u8, if enable { 1 } else { 0 }])
+    }
+
+    fn register_connection(&mut self) -> Result<u16, JlinkError> {
+        if !self.caps.contains(Capability::Register) {
+            return Ok(0);
+        }
+
+        // Undocumented, taken from OpenOCD/libjaylink
+        let mut buf = vec![Command::Register as u8, 0x64];
+        buf.extend(JlinkConnection::usb(0).into_bytes());
+        self.write_cmd(&buf)?;
+
+        let handle = self.read_registration_response()?;
+
+        if handle == 0 {
+            return Err(JlinkError::Other("Invalid registration handle".to_string()));
+        }
+
+        Ok(handle)
+    }
+
+    fn unregister_connection(&mut self) -> Result<(), JlinkError> {
+        if !self.caps.contains(Capability::Register) {
+            return Ok(());
+        }
+
+        let mut buf = vec![Command::Register as u8, 0x65];
+        buf.extend(JlinkConnection::usb(self.connection_handle).into_bytes());
+        self.write_cmd(&buf)?;
+        self.read_registration_response()?;
+
+        Ok(())
+    }
+
+    fn read_registration_response(&mut self) -> Result<u16, JlinkError> {
+        const REG_HEADER_SIZE: usize = 8;
+        const REG_MIN_SIZE: usize = 76;
+        const REG_MAX_SIZE: usize = 512;
+
+        let mut response = [0; REG_MAX_SIZE];
+        self.read(&mut response[..REG_MIN_SIZE])?;
+
+        let handle = u16::from_le_bytes([response[0], response[1]]);
+        let num = u16::from_le_bytes([response[2], response[3]]) as usize;
+        let entry_size = u16::from_le_bytes([response[4], response[5]]) as usize;
+        let info_size = u16::from_le_bytes([response[6], response[7]]) as usize;
+
+        let table_size = num * entry_size;
+        let size = REG_HEADER_SIZE + table_size + info_size;
+
+        if size > REG_MAX_SIZE {
+            return Err(JlinkError::Other(format!(
+                "Maximum registration size exceeded: {size} bytes",
+            )));
+        }
+
+        if size > REG_MIN_SIZE {
+            // Read the rest of the response.
+            self.read(&mut response[REG_MIN_SIZE..size])?;
+        }
+
+        // TODO: we should process the response, and return the list of connections.
+
+        Ok(handle)
     }
 }
 
