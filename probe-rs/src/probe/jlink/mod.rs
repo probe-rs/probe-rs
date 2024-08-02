@@ -120,7 +120,7 @@ impl ProbeFactory for JLinkFactory {
                 // We detect the proprietary J-Link interface using the vendor-specific class codes
                 // and the endpoint properties
                 if descr.class() == 0xff && descr.subclass() == 0xff && descr.protocol() == 0xff {
-                    if let Some((intf, _, _)) = jlink_intf {
+                    if let Some((intf, _, _, _)) = jlink_intf {
                         Err(JlinkError::Other(format!(
                             "found multiple matching USB interfaces ({} and {})",
                             intf,
@@ -147,18 +147,23 @@ impl ProbeFactory for JLinkFactory {
                     }
 
                     let (read_ep, write_ep) = if endpoints[0].direction() == Direction::In {
-                        (endpoints[0].address(), endpoints[1].address())
+                        (&endpoints[0], &endpoints[1])
                     } else {
-                        (endpoints[1].address(), endpoints[0].address())
+                        (&endpoints[1], &endpoints[0])
                     };
 
-                    jlink_intf = Some((descr.interface_number(), read_ep, write_ep));
+                    jlink_intf = Some((
+                        descr.interface_number(),
+                        read_ep.address(),
+                        write_ep.address(),
+                        read_ep.max_packet_size(),
+                    ));
                     debug!("J-Link interface is #{}", descr.interface_number());
                 }
             }
         }
 
-        let Some((intf, read_ep, write_ep)) = jlink_intf else {
+        let Some((intf, read_ep, write_ep, max_read_ep_packet)) = jlink_intf else {
             Err(JlinkError::Other(
                 "device is not a J-Link device".to_string(),
             ))?
@@ -171,6 +176,7 @@ impl ProbeFactory for JLinkFactory {
         let mut this = JLink {
             read_ep,
             write_ep,
+            max_read_ep_packet,
             caps: Capabilities::from_raw_legacy(0), // dummy value
             interface: Interface::Spi,              // dummy value, must not be JTAG
             interfaces: Interfaces::from_bits_warn(0), // dummy value
@@ -331,6 +337,7 @@ pub struct JLink {
 
     read_ep: u8,
     write_ep: u8,
+    max_read_ep_packet: usize,
 
     /// The capabilities reported by the device. They're fetched once, when the device is opened.
     caps: Capabilities,
@@ -452,11 +459,29 @@ impl JLink {
     fn read(&self, buf: &mut [u8]) -> Result<(), JlinkError> {
         let mut total = 0;
 
-        while total < buf.len() {
-            let n = self
-                .handle
-                .read_bulk(self.read_ep, &mut buf[total..], TIMEOUT_DEFAULT)?;
-            total += n;
+        if buf.len() % self.max_read_ep_packet == 0 {
+            // For some unknown reason, reading 256 bytes of config data leaves the interface in
+            // an unusable state. Force-reading one more byte works around this issue.
+            let mut buffer = vec![0; buf.len() + 1];
+            while total < buf.len() {
+                let n =
+                    self.handle
+                        .read_bulk(self.read_ep, &mut buffer[total..], TIMEOUT_DEFAULT)?;
+
+                total += n;
+
+                if n == 0 {
+                    break;
+                }
+            }
+            buf.copy_from_slice(&buffer[..buf.len()]);
+        } else {
+            while total < buf.len() {
+                let n = self
+                    .handle
+                    .read_bulk(self.read_ep, &mut buf[total..], TIMEOUT_DEFAULT)?;
+                total += n;
+            }
         }
 
         trace!("read {} bytes: {:x?}", buf.len(), buf);
