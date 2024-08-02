@@ -19,7 +19,6 @@ use itertools::Itertools;
 use nusb::transfer::{Direction, EndpointType};
 use nusb::DeviceInfo;
 use probe_rs_target::ScanChainElement;
-use tracing::{debug, trace, warn};
 
 use self::bits::BitIter;
 use self::capabilities::{Capabilities, Capability};
@@ -103,19 +102,19 @@ impl ProbeFactory for JLinkFactory {
         let configs: Vec<_> = handle.configurations().collect();
 
         if configs.len() != 1 {
-            warn!("device has {} configurations, expected 1", configs.len());
+            tracing::warn!("device has {} configurations, expected 1", configs.len());
         }
 
         let conf = &configs[0];
-        debug!("scanning {} interfaces", conf.interfaces().count());
-        trace!("active configuration descriptor: {:#x?}", conf);
+        tracing::debug!("scanning {} interfaces", conf.interfaces().count());
+        tracing::trace!("active configuration descriptor: {:#x?}", conf);
 
         let mut jlink_intf = None;
         for intf in conf.interfaces() {
-            trace!("interface #{} descriptors:", intf.interface_number());
+            tracing::trace!("interface #{} descriptors:", intf.interface_number());
 
             for descr in intf.alt_settings() {
-                trace!("{:#x?}", descr);
+                tracing::trace!("{:#x?}", descr);
 
                 // We detect the proprietary J-Link interface using the vendor-specific class codes
                 // and the endpoint properties
@@ -129,9 +128,9 @@ impl ProbeFactory for JLinkFactory {
                     }
 
                     let endpoints: Vec<_> = descr.endpoints().collect();
-                    trace!("endpoint descriptors: {:#x?}", endpoints);
+                    tracing::trace!("endpoint descriptors: {:#x?}", endpoints);
                     if endpoints.len() != 2 {
-                        warn!("vendor-specific interface with {} endpoints, expected 2 (skipping interface)", endpoints.len());
+                        tracing::warn!("vendor-specific interface with {} endpoints, expected 2 (skipping interface)", endpoints.len());
                         continue;
                     }
 
@@ -139,7 +138,7 @@ impl ProbeFactory for JLinkFactory {
                         .iter()
                         .all(|ep| ep.transfer_type() == EndpointType::Bulk)
                     {
-                        warn!(
+                        tracing::warn!(
                             "encountered non-bulk endpoints, skipping interface: {:#x?}",
                             endpoints
                         );
@@ -158,7 +157,7 @@ impl ProbeFactory for JLinkFactory {
                         write_ep.address(),
                         read_ep.max_packet_size(),
                     ));
-                    debug!("J-Link interface is #{}", descr.interface_number());
+                    tracing::debug!("J-Link interface is #{}", descr.interface_number());
                 }
             }
         }
@@ -399,7 +398,7 @@ impl JLink {
 
         let caps = self.read_u32().map(Capabilities::from_raw_legacy)?;
 
-        debug!("legacy caps: {:?}", caps);
+        tracing::debug!("legacy caps: {:?}", caps);
 
         // If the `GET_CAPS_EX` capability is set, use the extended capability command to fetch
         // all the capabilities.
@@ -413,10 +412,10 @@ impl JLink {
                     caps, real_caps
                 )));
             }
-            debug!("extended caps: {:?}", real_caps);
+            tracing::debug!("extended caps: {:?}", real_caps);
             self.caps = real_caps;
         } else {
-            debug!("extended caps not supported");
+            tracing::debug!("extended caps not supported");
             self.caps = caps;
         }
 
@@ -440,7 +439,7 @@ impl JLink {
     }
 
     fn write_cmd(&self, cmd: &[u8]) -> Result<(), JlinkError> {
-        trace!("write {} bytes: {:x?}", cmd.len(), cmd);
+        tracing::trace!("write {} bytes: {:x?}", cmd.len(), cmd);
 
         let n = self
             .handle
@@ -727,7 +726,7 @@ impl JLink {
 
         // Round bit count up to multple of 8 to get the number of response bytes.
         let num_resp_bytes = tms_bit_count.div_ceil(8);
-        trace!(
+        tracing::trace!(
             "{} TMS/TDI bits sent; reading {} response bytes",
             tms_bit_count,
             num_resp_bytes
@@ -1288,7 +1287,7 @@ impl SwoAccess for JLink {
     }
 }
 
-#[tracing::instrument(skip_all)]
+#[tracing::instrument]
 fn list_jlink_devices() -> Vec<DebugProbeInfo> {
     let Ok(devices) = nusb::list_devices() else {
         return vec![];
