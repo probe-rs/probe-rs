@@ -2,6 +2,7 @@
 
 mod bits;
 pub mod capabilities;
+mod config;
 mod error;
 mod interface;
 mod speed;
@@ -31,6 +32,7 @@ use crate::architecture::xtensa::communication_interface::{
 };
 use crate::probe::common::{JtagDriverState, RawJtagIo};
 use crate::probe::jlink::bits::IteratorExt;
+use crate::probe::jlink::config::JlinkConfig;
 use crate::probe::usb_util::InterfaceExt;
 use crate::probe::JTAGAccess;
 use crate::{
@@ -188,6 +190,8 @@ impl ProbeFactory for JLinkFactory {
 
             max_mem_block_size: 0, // dummy value
             jtag_chunk_size: 0,    // dummy value
+
+            config: JlinkConfig::default(),
         };
         this.fill_capabilities()?;
         this.fill_interfaces()?;
@@ -255,6 +259,8 @@ impl ProbeFactory for JLinkFactory {
             // Assume the lowest value is a safe default
             _ => 504,
         };
+
+        this.config = this.read_device_config()?;
 
         Ok(Box::new(this))
     }
@@ -330,6 +336,9 @@ pub struct JLink {
     /// The currently selected target interface. This is stored here to avoid unnecessary roundtrips
     /// when performing target I/O operations.
     interface: Interface,
+
+    /// Device configuration, fetched once when the device is opened.
+    config: JlinkConfig,
 
     swo_config: Option<SwoConfig>,
 
@@ -500,6 +509,28 @@ impl JLink {
         self.write_cmd(&[Command::GetMaxMemBlock as u8])?;
 
         self.read_u32()
+    }
+
+    fn read_device_config(&self) -> Result<JlinkConfig, JlinkError> {
+        if self.caps.contains(Capability::ReadConfig) {
+            self.write_cmd(&[Command::ReadConfig as u8])?;
+            let bytes = self.read_n::<256>()?;
+
+            let config = match JlinkConfig::parse(bytes) {
+                Ok(config) => {
+                    tracing::debug!("J-Link config: {:?}", config);
+                    config
+                }
+                Err(error) => {
+                    tracing::warn!("Failed to parse J-Link config: {error}");
+                    JlinkConfig::default()
+                }
+            };
+
+            Ok(config)
+        } else {
+            Ok(JlinkConfig::default())
+        }
     }
 
     /// Reads the firmware version string from the device.
