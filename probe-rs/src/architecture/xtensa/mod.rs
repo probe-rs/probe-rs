@@ -259,9 +259,7 @@ impl<'probe> CoreInterface for Xtensa<'probe> {
     }
 
     fn reset(&mut self) -> Result<(), Error> {
-        self.state.semihosting_command = None;
-        self.sequence
-            .reset_system_and_halt(&mut self.interface, Duration::from_millis(500))?;
+        self.reset_and_halt(Duration::from_millis(500))?;
 
         self.run()
     }
@@ -270,6 +268,9 @@ impl<'probe> CoreInterface for Xtensa<'probe> {
         self.state.semihosting_command = None;
         self.sequence
             .reset_system_and_halt(&mut self.interface, timeout)?;
+
+        // TODO: this may return that the core has gone away, which is fine but currently unexpected
+        self.on_attach()?;
 
         self.core_info()
     }
