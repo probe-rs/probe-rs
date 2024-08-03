@@ -84,20 +84,35 @@ impl<'probe> Xtensa<'probe> {
 
     /// Create a new Xtensa interface for a particular core.
     pub fn new(
-        mut interface: XtensaCommunicationInterface<'probe>,
+        interface: XtensaCommunicationInterface<'probe>,
         state: &'probe mut XtensaCoreState,
         sequence: Arc<dyn XtensaDebugSequence>,
     ) -> Result<Self, Error> {
-        if !state.enabled {
-            interface.enter_debug_mode()?;
-            state.enabled = true;
-        }
-
-        Ok(Self {
+        let mut this = Self {
             interface,
             state,
             sequence,
-        })
+        };
+
+        this.on_attach()?;
+
+        Ok(this)
+    }
+
+    fn on_attach(&mut self) -> Result<(), Error> {
+        // If the core was reset, force a reconnection.
+        if self.interface.xdm.core_was_reset()? {
+            tracing::debug!("Core was reset");
+            *self.state = XtensaCoreState::new();
+        }
+
+        // (Re)enter debug mode if necessary. This also checks if the core is enabled.
+        if !self.state.enabled {
+            self.interface.enter_debug_mode()?;
+            self.state.enabled = true;
+        }
+
+        Ok(())
     }
 
     fn core_info(&mut self) -> Result<CoreInformation, Error> {

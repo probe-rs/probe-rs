@@ -212,9 +212,6 @@ impl<'probe> Xdm<'probe> {
 
         self.check_enabled()?;
 
-        let was_reset = self.core_was_reset()?;
-        tracing::debug!("Core was reset: {}", was_reset);
-
         // enable the debug module
         self.write_nexus_register(DebugControlSet({
             let mut reg = DebugControlBits(0);
