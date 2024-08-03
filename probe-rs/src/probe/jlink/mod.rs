@@ -9,7 +9,6 @@ pub mod swo;
 
 use std::fmt;
 use std::iter;
-use std::mem::take;
 use std::time::{Duration, Instant};
 
 use bitvec::prelude::*;
@@ -658,8 +657,8 @@ impl JLink {
         // buf[2..=3] is the bit count
         let bit_count = u16::try_from(tms_bit_count).expect("too much data to transfer");
         buf[2..=3].copy_from_slice(&bit_count.to_le_bytes());
-        buf.extend(take(&mut self.jtag_tms_bits).into_iter().collapse_bytes());
-        buf.extend(take(&mut self.jtag_tdi_bits).into_iter().collapse_bytes());
+        buf.extend(self.jtag_tms_bits.drain(..).collapse_bytes());
+        buf.extend(self.jtag_tdi_bits.drain(..).collapse_bytes());
 
         self.write_cmd(&buf)?;
 
@@ -691,7 +690,7 @@ impl JLink {
 
         let response = BitIter::new(&buf[..num_resp_bytes], tms_bit_count);
 
-        for (bit, capture) in response.zip(std::mem::take(&mut self.jtag_capture_tdo)) {
+        for (bit, capture) in response.zip(self.jtag_capture_tdo.drain(..)) {
             if capture {
                 self.jtag_response.push(bit);
             }
