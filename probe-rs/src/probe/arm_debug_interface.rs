@@ -618,12 +618,10 @@ fn write_dp_register<P: DebugProbe + RawProtocolIo + JTAGAccess, R: DpRegister>(
     transfer.idle_cycles_after = probe.swd_settings().idle_cycles_before_write_verify
         + probe.swd_settings().num_idle_cycles_between_writes;
 
-    let mut transfers = [transfer];
-
     // Do it
-    perform_raw_transfers(probe, &mut transfers)?;
+    perform_raw_transfers(probe, std::slice::from_mut(&mut transfer))?;
 
-    if let TransferStatus::Failed(e) = transfers[0].status {
+    if let TransferStatus::Failed(e) = transfer.status {
         Err(e)?
     }
 
