@@ -14,6 +14,7 @@ use std::{cmp, fmt};
 
 use bitvec::prelude::*;
 
+use itertools::Itertools;
 use nusb::transfer::{Direction, EndpointType};
 use nusb::DeviceInfo;
 use probe_rs_target::ScanChainElement;
@@ -1055,30 +1056,22 @@ impl RawProtocolIo for JLink {
 
         self.probe_statistics.report_io();
 
-        let dir = dir.into_iter();
-        let swdio = swdio.into_iter();
-
-        let mut dir_bit_count = 0;
-        let dir: Vec<_> = dir.inspect(|_| dir_bit_count += 1).collect();
-        let mut swdio_bit_count = 0;
-        let swdio: Vec<_> = swdio.inspect(|_| swdio_bit_count += 1).collect();
-
         let command_overhead = 4;
 
         let max_bits = ((self.max_mem_block_size - command_overhead) / 2 * 8) as usize;
 
-        let dir_chunks = dir.chunks(max_bits);
-        let swdio_chunks = swdio.chunks(max_bits);
+        let dir_chunks = dir.into_iter().chunks(max_bits);
+        let swdio_chunks = swdio.into_iter().chunks(max_bits);
 
-        let chunks = dir_chunks.zip(swdio_chunks);
+        #[allow(clippy::useless_conversion)]
+        let chunks = dir_chunks.into_iter().zip(swdio_chunks.into_iter());
 
         let mut output = Vec::new();
 
         for (dir, swdio) in chunks {
-            let mut resp =
-                self.perform_swdio_transfer(dir.iter().copied(), swdio.iter().copied())?;
+            let resp = self.perform_swdio_transfer(dir, swdio)?;
 
-            output.append(&mut resp);
+            output.extend_from_slice(&resp);
         }
 
         Ok(output)
