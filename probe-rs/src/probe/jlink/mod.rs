@@ -2,7 +2,6 @@
 
 mod bits;
 pub mod capabilities;
-mod config;
 mod connection;
 mod error;
 mod interface;
@@ -32,7 +31,6 @@ use crate::architecture::xtensa::communication_interface::{
 };
 use crate::probe::common::{JtagDriverState, RawJtagIo};
 use crate::probe::jlink::bits::IteratorExt;
-use crate::probe::jlink::config::JlinkConfig;
 use crate::probe::jlink::connection::JlinkConnection;
 use crate::probe::usb_util::InterfaceExt;
 use crate::probe::JTAGAccess;
@@ -119,7 +117,7 @@ impl ProbeFactory for JLinkFactory {
                 // We detect the proprietary J-Link interface using the vendor-specific class codes
                 // and the endpoint properties
                 if descr.class() == 0xff && descr.subclass() == 0xff && descr.protocol() == 0xff {
-                    if let Some((intf, _, _, _)) = jlink_intf {
+                    if let Some((intf, _, _)) = jlink_intf {
                         Err(JlinkError::Other(format!(
                             "found multiple matching USB interfaces ({} and {})",
                             intf,
@@ -155,14 +153,13 @@ impl ProbeFactory for JLinkFactory {
                         descr.interface_number(),
                         read_ep.address(),
                         write_ep.address(),
-                        read_ep.max_packet_size(),
                     ));
                     tracing::debug!("J-Link interface is #{}", descr.interface_number());
                 }
             }
         }
 
-        let Some((intf, read_ep, write_ep, max_read_ep_packet)) = jlink_intf else {
+        let Some((intf, read_ep, write_ep)) = jlink_intf else {
             Err(JlinkError::Other(
                 "device is not a J-Link device".to_string(),
             ))?
@@ -175,7 +172,6 @@ impl ProbeFactory for JLinkFactory {
         let mut this = JLink {
             read_ep,
             write_ep,
-            max_read_ep_packet,
             caps: Capabilities::from_raw_legacy(0), // dummy value
             interface: Interface::Spi,              // dummy value, must not be JTAG
             interfaces: Interfaces::from_bits_warn(0), // dummy value
@@ -198,8 +194,6 @@ impl ProbeFactory for JLinkFactory {
 
             max_mem_block_size: 0, // dummy value
             jtag_chunk_size: 0,    // dummy value
-
-            config: JlinkConfig::default(),
         };
         this.fill_capabilities()?;
         this.fill_interfaces()?;
@@ -262,7 +256,6 @@ impl ProbeFactory for JLinkFactory {
             _ => 504,
         };
 
-        this.config = this.read_device_config()?;
         this.connection_handle = this.register_connection()?;
 
         Ok(Box::new(this))
@@ -336,7 +329,6 @@ pub struct JLink {
 
     read_ep: u8,
     write_ep: u8,
-    max_read_ep_packet: usize,
 
     /// The capabilities reported by the device. They're fetched once, when the device is opened.
     caps: Capabilities,
@@ -347,9 +339,6 @@ pub struct JLink {
     /// The currently selected target interface. This is stored here to avoid unnecessary roundtrips
     /// when performing target I/O operations.
     interface: Interface,
-
-    /// Device configuration, fetched once when the device is opened.
-    config: JlinkConfig,
 
     connection_handle: u16,
 
@@ -456,31 +445,13 @@ impl JLink {
     }
 
     fn read(&self, buf: &mut [u8]) -> Result<(), JlinkError> {
-        let needs_workaround = buf.len() % self.max_read_ep_packet == 0;
-        let len = buf.len();
-
-        let mut tmp_buffer;
-        let dst = if needs_workaround {
-            // For some unknown reason, reading 256 bytes of config data leaves the interface in
-            // an unusable state. Force-reading one more byte works around this issue.
-            tmp_buffer = vec![0; len + 1];
-            &mut tmp_buffer
-        } else {
-            tmp_buffer = vec![];
-            &mut buf[..]
-        };
-
         let mut total = 0;
-        while total < len {
+        while total < buf.len() {
             let n = self
                 .handle
-                .read_bulk(self.read_ep, &mut dst[total..], TIMEOUT_DEFAULT)?;
+                .read_bulk(self.read_ep, &mut buf[total..], TIMEOUT_DEFAULT)?;
 
             total += n;
-        }
-
-        if needs_workaround {
-            buf.copy_from_slice(&tmp_buffer[..len]);
         }
 
         tracing::trace!("read {total} bytes: {buf:x?}");
@@ -540,28 +511,6 @@ impl JLink {
         self.write_cmd(&[Command::GetMaxMemBlock as u8])?;
 
         self.read_u32()
-    }
-
-    fn read_device_config(&self) -> Result<JlinkConfig, JlinkError> {
-        if self.caps.contains(Capability::ReadConfig) {
-            self.write_cmd(&[Command::ReadConfig as u8])?;
-            let bytes = self.read_n::<256>()?;
-
-            let config = match JlinkConfig::parse(bytes) {
-                Ok(config) => {
-                    tracing::debug!("J-Link config: {:?}", config);
-                    config
-                }
-                Err(error) => {
-                    tracing::warn!("Failed to parse J-Link config: {error}");
-                    JlinkConfig::default()
-                }
-            };
-
-            Ok(config)
-        } else {
-            Ok(JlinkConfig::default())
-        }
     }
 
     /// Reads the firmware version string from the device.
