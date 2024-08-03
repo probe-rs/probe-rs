@@ -1,0 +1,1 @@
+Added support for GigaDevice GD32C1x3 series
