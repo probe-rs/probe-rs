@@ -751,15 +751,9 @@ impl JLink {
 
             let num_bits = dir_bit_count as u16;
             buf[2..=3].copy_from_slice(&num_bits.to_le_bytes());
-            let num_bytes = usize::from((num_bits + 7) >> 3);
+            let num_bytes = usize::from(num_bits.div_ceil(8));
 
             tracing::debug!("Buffer length for j-link transfer: {}", buf.len());
-
-            tracing::debug!(
-                "Transferring {} bytes, max is {}",
-                buf.len(),
-                self.max_mem_block_size
-            );
 
             self.write_cmd(&buf)?;
 
@@ -774,7 +768,7 @@ impl JLink {
                 .into());
             }
 
-            output.extend(BitIter::new(&buf[..num_bytes], dir_bit_count));
+            output.extend(BitIter::new(&buf[..num_bytes], num_bits as usize));
         }
 
         Ok(output)
