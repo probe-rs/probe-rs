@@ -102,7 +102,7 @@ impl<'probe> Xtensa<'probe> {
     fn on_attach(&mut self) -> Result<(), Error> {
         // If the core was reset, force a reconnection.
         if self.interface.xdm.core_was_reset()? {
-            tracing::debug!("Core was reset");
+            tracing::info!("Core was reset");
             *self.state = XtensaCoreState::new();
         }
 

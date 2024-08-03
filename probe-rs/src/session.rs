@@ -378,7 +378,7 @@ impl Session {
                         core.halt(Duration::from_millis(100))?;
                     }
                 }
-                Err(Error::CoreDisabled(_)) => {}
+                Err(Error::CoreDisabled(i)) => tracing::debug!("Core {i} is disabled"),
                 Err(error) => return Err(error),
             }
         }
@@ -440,7 +440,7 @@ impl Session {
                 other => other?,
             };
             let status = c.status()?;
-            tracing::info!("Core status: {:?}", status);
+            tracing::info!("Core {core} status: {:?}", status);
             if !status.is_halted() {
                 tracing::info!("Halting core...");
                 resume_state.push(core);
