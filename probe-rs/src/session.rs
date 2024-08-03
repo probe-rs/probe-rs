@@ -374,7 +374,9 @@ impl Session {
         for core_id in 0..session.cores.len() {
             match session.core(core_id) {
                 Ok(mut core) => {
-                    core.halt(Duration::from_millis(100))?;
+                    if !core.core_halted()? {
+                        core.halt(Duration::from_millis(100))?;
+                    }
                 }
                 Err(Error::CoreDisabled(_)) => {}
                 Err(error) => return Err(error),
@@ -383,7 +385,7 @@ impl Session {
 
         // Connect to the cores
         match session.target.debug_sequence.clone() {
-            DebugSequence::Xtensa(sequence) => sequence.on_connect(&mut session)?,
+            DebugSequence::Xtensa(_) => {}
 
             DebugSequence::Riscv(sequence) => {
                 for core_id in 0..session.cores.len() {

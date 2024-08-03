@@ -5,7 +5,12 @@ use std::sync::Arc;
 use probe_rs_target::Chip;
 
 use super::esp::EspFlashSizeDetector;
-use crate::{architecture::xtensa::sequences::XtensaDebugSequence, MemoryInterface, Session};
+use crate::{
+    architecture::xtensa::{
+        communication_interface::XtensaCommunicationInterface, sequences::XtensaDebugSequence,
+    },
+    MemoryInterface, Session,
+};
 
 /// The debug sequence implementation for the ESP32-S2.
 #[derive(Debug)]
@@ -28,9 +33,7 @@ impl ESP32S2 {
 }
 
 impl XtensaDebugSequence for ESP32S2 {
-    fn on_connect(&self, session: &mut Session) -> Result<(), crate::Error> {
-        let mut core = session.core(0)?;
-
+    fn on_connect(&self, core: &mut XtensaCommunicationInterface) -> Result<(), crate::Error> {
         tracing::info!("Disabling ESP32-S2 watchdogs...");
 
         // tg0 wdg

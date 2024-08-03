@@ -108,8 +108,22 @@ impl<'probe> Xtensa<'probe> {
 
         // (Re)enter debug mode if necessary. This also checks if the core is enabled.
         if !self.state.enabled {
-            self.interface.enter_debug_mode()?;
             self.state.enabled = true;
+
+            // Enable debug module.
+            self.interface.enter_debug_mode()?;
+
+            // Run the connection sequence while halted.
+            let was_halted = self.core_halted()?;
+            if !was_halted {
+                self.halt(Duration::from_millis(500))?;
+            }
+
+            self.sequence.on_connect(&mut self.interface)?;
+
+            if !was_halted {
+                self.run()?;
+            }
         }
 
         Ok(())
