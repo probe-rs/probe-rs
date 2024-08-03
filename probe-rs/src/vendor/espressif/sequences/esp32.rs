@@ -21,6 +21,7 @@ pub struct ESP32 {
 impl ESP32 {
     /// Creates a new debug sequence handle for the ESP32.
     pub fn create(_chip: &Chip) -> Arc<dyn XtensaDebugSequence> {
+        tracing::warn!("Be careful not to reset your ESP32 while connected to the debugger! Depending on the specific device, this may render it temporarily inoperable or permanently damage it.");
         Arc::new(Self {
             inner: EspFlashSizeDetector {
                 stack_pointer: 0x3FFE_0000,
@@ -59,8 +60,6 @@ impl XtensaDebugSequence for ESP32 {
         core.write_word_32(RTC_WRITE_PROT, 0x50D83AA1)?; // write protection off
         core.write_word_32(RTC_WDTCONFIG0, 0x0)?;
         core.write_word_32(RTC_WRITE_PROT, 0x0)?; // write protection on
-
-        tracing::warn!("Be careful not to reset your ESP32 while connected to the debugger! Depending on the specific device, this may render it temporarily inoperable or permanently damage it.");
 
         Ok(())
     }
