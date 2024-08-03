@@ -1057,9 +1057,6 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
 
         match transfer.status {
             TransferStatus::Ok => Ok(transfer.value),
-            TransferStatus::Pending => {
-                panic!("Unexpected transfer state after reading register. This is a bug!");
-            }
             TransferStatus::Failed(DapError::FaultResponse) => {
                 tracing::debug!("DAP FAULT");
 
@@ -1096,6 +1093,9 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
             // The other errors mean that something went wrong with the protocol itself.
             // There's no guaranteed correct way to recover, so don't.
             TransferStatus::Failed(e) => Err(e.into()),
+            other => panic!(
+                "Unexpected transfer state after reading register: {other:?}. This is a bug!"
+            ),
         }
     }
 
@@ -1121,10 +1121,9 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                     );
                     return Err(err.into());
                 }
-                TransferStatus::Pending => {
-                    // This should not happen...
-                    panic!("Error performing transfers. This is a bug, please report it.")
-                }
+                other => panic!(
+                    "Unexpected transfer state after reading registers: {other:?}. This is a bug!"
+                ),
             }
         }
 
@@ -1143,9 +1142,6 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
 
         match transfer.status {
             TransferStatus::Ok => Ok(()),
-            TransferStatus::Pending => {
-                panic!("Unexpected transfer state after writing register. This is a bug!");
-            }
             TransferStatus::Failed(DapError::FaultResponse) => {
                 tracing::warn!("DAP FAULT");
                 // A fault happened during operation.
@@ -1176,6 +1172,9 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
             // The other errors mean that something went wrong with the protocol itself.
             // There's no guaranteed correct way to recover, so don't.
             TransferStatus::Failed(e) => Err(e.into()),
+            other => panic!(
+                "Unexpected transfer state after writing register: {other:?}. This is a bug!"
+            ),
         }
     }
 
@@ -1205,10 +1204,9 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
 
                     return Err(err.into());
                 }
-                TransferStatus::Pending => {
-                    // This should not happen...
-                    panic!("Error performing transfers. This is a bug, please report it.")
-                }
+                other => panic!(
+                    "Unexpected transfer state after writing registers: {other:?}. This is a bug!"
+                ),
             }
         }
 
