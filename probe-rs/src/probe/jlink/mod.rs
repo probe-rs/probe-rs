@@ -179,7 +179,7 @@ impl ProbeFactory for JLinkFactory {
 
             supported_protocols: vec![],  // dummy value
             protocol: WireProtocol::Jtag, // dummy value
-            connection_handle: 0,
+            connection_handle: None,
 
             swo_config: None,
             speed_khz: 0, // default is unknown
@@ -255,8 +255,11 @@ impl ProbeFactory for JLinkFactory {
             // Assume the lowest value is a safe default
             _ => 504,
         };
-
-        this.connection_handle = this.register_connection()?;
+        this.connection_handle = match selector.product_id {
+            // 0x1051: J-Link OB-K22-SiFive: reports "hardware fault or protocol violation"
+            0x1051 => None,
+            _ => Some(this.register_connection()?),
+        };
 
         Ok(Box::new(this))
     }
@@ -340,7 +343,7 @@ pub struct JLink {
     /// when performing target I/O operations.
     interface: Interface,
 
-    connection_handle: u16,
+    connection_handle: Option<u16>,
 
     swo_config: Option<SwoConfig>,
 
@@ -816,10 +819,12 @@ impl JLink {
             return Ok(());
         }
 
-        let mut buf = vec![Command::Register as u8, 0x65];
-        buf.extend(JlinkConnection::usb(self.connection_handle).into_bytes());
-        self.write_cmd(&buf)?;
-        self.read_registration_response()?;
+        if let Some(handle) = self.connection_handle.take() {
+            let mut buf = vec![Command::Register as u8, 0x65];
+            buf.extend(JlinkConnection::usb(handle).into_bytes());
+            self.write_cmd(&buf)?;
+            self.read_registration_response()?;
+        }
 
         Ok(())
     }
