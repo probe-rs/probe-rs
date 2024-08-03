@@ -1,7 +1,7 @@
 use std::{fmt::Debug, sync::Arc, time::Duration};
 
 use crate::architecture::xtensa::communication_interface::{
-    ProgramStatus, XtensaCommunicationInterface, XtensaError,
+    ProgramStatus, XtensaCommunicationInterface,
 };
 use crate::Session;
 
@@ -27,7 +27,7 @@ pub trait XtensaDebugSequence: Send + Sync + Debug {
         &self,
         interface: &mut XtensaCommunicationInterface,
         timeout: Duration,
-    ) -> Result<(), XtensaError> {
+    ) -> Result<(), crate::Error> {
         interface.reset_and_halt(timeout)?;
 
         // TODO: this is only necessary to run code, so this might not be the best place

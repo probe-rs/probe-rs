@@ -984,3 +984,8 @@ u32_register!(ICount, SpecialRegister::ICount);
 #[derive(Copy, Clone, Debug)]
 pub struct ICountLevel(pub u32);
 u32_register!(ICountLevel, SpecialRegister::ICountLevel);
+
+/// The Program Counter register.
+#[derive(Copy, Clone, Debug)]
+pub struct ProgramCounter(pub u32);
+u32_register!(ProgramCounter, Register::CurrentPc);
