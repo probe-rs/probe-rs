@@ -22,7 +22,7 @@ use crate::{
 };
 
 pub(crate) mod arch;
-mod xdm;
+pub(crate) mod xdm;
 
 pub mod communication_interface;
 pub(crate) mod registers;

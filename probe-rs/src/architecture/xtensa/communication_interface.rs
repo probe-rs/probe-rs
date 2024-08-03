@@ -128,7 +128,7 @@ pub struct XtensaDebugInterfaceState {
 // here but one layer up.
 pub struct XtensaCommunicationInterface<'probe> {
     /// The Xtensa debug module
-    pub(super) xdm: Xdm<'probe>,
+    pub(crate) xdm: Xdm<'probe>,
     state: &'probe mut XtensaInterfaceState,
 }
 

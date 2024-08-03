@@ -274,14 +274,20 @@ impl<'probe> Xdm<'probe> {
     }
 
     /// Read and clear the `core_was_reset` flag.
-    pub(super) fn core_was_reset(&mut self) -> Result<bool, XtensaError> {
+    pub(crate) fn core_was_reset(&mut self) -> Result<bool, XtensaError> {
         let mut clear_value = PowerStatus(0);
         clear_value.set_core_was_reset(true);
         let bits = self.pwr_write(PowerDevice::PowerStat, clear_value.0)?;
         Ok(PowerStatus(bits).core_was_reset())
     }
 
-    pub(super) fn execute(&mut self) -> Result<(), XtensaError> {
+    /// Read and clear the `core_was_reset` flag.
+    pub(crate) fn read_power_status(&mut self) -> Result<PowerStatus, XtensaError> {
+        let bits = self.pwr_write(PowerDevice::PowerStat, 0)?;
+        Ok(PowerStatus(bits))
+    }
+
+    pub(crate) fn execute(&mut self) -> Result<(), XtensaError> {
         let mut queue = std::mem::take(&mut self.state.queue);
 
         tracing::debug!("Executing {} commands", queue.len());
@@ -443,12 +449,15 @@ impl<'probe> Xdm<'probe> {
         Ok(reg)
     }
 
-    fn schedule_write_nexus_register<R: NexusRegister>(&mut self, register: R) {
+    pub(crate) fn schedule_write_nexus_register<R: NexusRegister>(&mut self, register: R) {
         tracing::debug!("Writing {}: {:08x}", R::NAME, register.bits());
         self.schedule_dbg_write(R::ADDRESS, register.bits());
     }
 
-    fn write_nexus_register<R: NexusRegister>(&mut self, register: R) -> Result<(), XtensaError> {
+    pub(crate) fn write_nexus_register<R: NexusRegister>(
+        &mut self,
+        register: R,
+    ) -> Result<(), XtensaError> {
         self.schedule_write_nexus_register(register);
         self.execute()
     }
@@ -753,7 +762,7 @@ bitfield::bitfield! {
 }
 
 /// An abstraction over all registers that can be accessed via the NAR/NDR instruction pair.
-trait NexusRegister: Sized + Copy + Debug {
+pub(crate) trait NexusRegister: Sized + Copy + Debug {
     /// NAR register address
     const ADDRESS: u8;
     const NAME: &'static str;
@@ -815,7 +824,7 @@ bitfield::bitfield! {
 
 #[derive(Copy, Clone, Debug)]
 /// Bits written as 1 are set to 1 in hardware.
-struct DebugControlSet(DebugControlBits);
+pub struct DebugControlSet(pub(crate) DebugControlBits);
 
 impl NexusRegister for DebugControlSet {
     const ADDRESS: u8 = NARADR_DCRSET;
@@ -832,7 +841,7 @@ impl NexusRegister for DebugControlSet {
 
 #[derive(Copy, Clone, Debug)]
 /// Bits written as 1 are set to 0 in hardware.
-struct DebugControlClear(DebugControlBits);
+pub struct DebugControlClear(pub(crate) DebugControlBits);
 
 impl NexusRegister for DebugControlClear {
     const ADDRESS: u8 = NARADR_DCRCLR;
