@@ -216,7 +216,7 @@ pub struct RiscvCommunicationInterfaceState {
     /// Pointer to the configuration string
     confstrptr: Option<u128>,
 
-    /// Width of the hartsel register
+    /// Width of the `hartsel` register
     hartsellen: u8,
 
     /// Number of harts
