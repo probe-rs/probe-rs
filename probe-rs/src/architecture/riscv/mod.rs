@@ -105,15 +105,7 @@ impl<'state> Riscv32<'state> {
         );
 
         let command = if TRAP_INSTRUCTIONS == actual_instructions {
-            let a0: u32 = self
-                .read_core_reg(self.registers().get_argument_register(0).unwrap().id())?
-                .try_into()?;
-            let a1: u32 = self
-                .read_core_reg(self.registers().get_argument_register(1).unwrap().id())?
-                .try_into()?;
-
-            tracing::info!("Semihosting found pc={pc:#x} a0={a0:#x} a1={a1:#x}");
-            Some(decode_semihosting_syscall(self, a0, a1)?)
+            Some(decode_semihosting_syscall(self)?)
         } else {
             None
         };

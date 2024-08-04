@@ -149,9 +149,16 @@ impl Buffer {
 /// Only supports SYS_EXIT, SYS_EXIT_EXTENDED and SYS_GET_CMDLINE at the moment
 pub fn decode_semihosting_syscall(
     core: &mut dyn CoreInterface,
-    operation: u32,
-    parameter: u32,
 ) -> Result<SemihostingCommand, Error> {
+    let operation: u32 = core
+        .read_core_reg(core.registers().get_argument_register(0).unwrap().id())?
+        .try_into()?;
+    let parameter: u32 = core
+        .read_core_reg(core.registers().get_argument_register(1).unwrap().id())?
+        .try_into()?;
+
+    tracing::debug!("Semihosting found r0={operation:#x} r1={parameter:#x}");
+
     // This is defined by the ARM Semihosting Specification:
     // <https://github.com/ARM-software/abi-aa/blob/main/semihosting/semihosting.rst#semihosting-operations>
 

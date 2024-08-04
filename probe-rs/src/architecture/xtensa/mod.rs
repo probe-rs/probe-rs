@@ -199,14 +199,10 @@ impl<'probe> Xtensa<'probe> {
             0,
         ]);
 
-        tracing::debug!("Semihosting check pc={pc:#x} instruction={actual_instruction:#010x}, expected={SEMI_BREAK:#010x}");
+        tracing::debug!("Semihosting check pc={pc:#x} instruction={actual_instruction:#010x}");
 
         let command = if actual_instruction == SEMI_BREAK {
-            let a2: u32 = self.read_core_reg(RegisterId::from(2))?.try_into()?;
-            let a3: u32 = self.read_core_reg(RegisterId::from(3))?.try_into()?;
-
-            tracing::debug!("Semihosting found pc={pc:#x} a2={a2:#x} a3={a3:#x}");
-            Some(decode_semihosting_syscall(self, a2, a3)?)
+            Some(decode_semihosting_syscall(self)?)
         } else {
             None
         };
