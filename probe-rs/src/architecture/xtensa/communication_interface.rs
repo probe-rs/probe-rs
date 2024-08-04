@@ -183,12 +183,6 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         self.state.hw_breakpoint_num
     }
 
-    /// Halts the core.
-    pub fn halt(&mut self) -> Result<(), XtensaError> {
-        tracing::debug!("Halting core");
-        self.xdm.halt()
-    }
-
     /// Returns whether the core is halted.
     pub fn core_halted(&mut self) -> Result<bool, XtensaError> {
         if !self.state.is_halted {
@@ -214,6 +208,32 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         }
 
         Ok(())
+    }
+
+    /// Halts the core.
+    pub(crate) fn halt(&mut self, timeout: Duration) -> Result<(), XtensaError> {
+        self.xdm.schedule_halt();
+        self.wait_for_core_halted(timeout)?;
+        Ok(())
+    }
+
+    /// Executes a closure while ensuring the core is halted.
+    pub fn halted_access<R>(
+        &mut self,
+        op: impl FnOnce(&mut Self) -> Result<R, XtensaError>,
+    ) -> Result<R, XtensaError> {
+        let was_halted = self.core_halted()?;
+        if !was_halted {
+            self.halt(Duration::from_millis(100))?;
+        }
+
+        let result = op(self)?;
+
+        if !was_halted {
+            self.resume()?;
+        }
+
+        Ok(result)
     }
 
     /// Steps the core by one instruction.
@@ -507,87 +527,79 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
             return Ok(());
         }
 
-        let was_halted = self.core_halted()?;
-        if !was_halted {
-            self.xdm.schedule_halt();
-            self.wait_for_core_halted(Duration::from_millis(100))?;
-        }
+        self.halted_access(move |this| {
+            // Write aligned address to the scratch register
+            let key = this.save_register(CpuRegister::A3)?;
+            this.schedule_write_cpu_register(CpuRegister::A3, address as u32 & !0x3)?;
 
-        // Write aligned address to the scratch register
-        let key = self.save_register(CpuRegister::A3)?;
-        self.schedule_write_cpu_register(CpuRegister::A3, address as u32 & !0x3)?;
+            // Read from address in the scratch register
+            this.xdm
+                .schedule_execute_instruction(Instruction::Lddr32P(CpuRegister::A3));
 
-        // Read from address in the scratch register
-        self.xdm
-            .schedule_execute_instruction(Instruction::Lddr32P(CpuRegister::A3));
+            let mut to_read = dst.len();
 
-        let mut to_read = dst.len();
+            // Let's assume we can just do 32b reads, so let's do some pre-massaging on unaligned reads
+            let first_read = if address % 4 != 0 {
+                let offset = address as usize % 4;
 
-        // Let's assume we can just do 32b reads, so let's do some pre-massaging on unaligned reads
-        let first_read = if address % 4 != 0 {
-            let offset = address as usize % 4;
+                // Avoid executing another read if we only have to read a single word
+                let first_read = if offset + to_read <= 4 {
+                    this.xdm.schedule_read_ddr()
+                } else {
+                    this.xdm.schedule_read_ddr_and_execute()
+                };
 
-            // Avoid executing another read if we only have to read a single word
-            let first_read = if offset + to_read <= 4 {
-                self.xdm.schedule_read_ddr()
+                let bytes_to_copy = (4 - offset).min(to_read);
+
+                to_read -= bytes_to_copy;
+
+                Some((first_read, offset, bytes_to_copy))
             } else {
-                self.xdm.schedule_read_ddr_and_execute()
+                None
             };
 
-            let bytes_to_copy = (4 - offset).min(to_read);
+            let mut aligned_reads = vec![];
+            if to_read > 0 {
+                let words = if to_read % 4 == 0 {
+                    to_read / 4
+                } else {
+                    to_read / 4 + 1
+                };
 
-            to_read -= bytes_to_copy;
-
-            Some((first_read, offset, bytes_to_copy))
-        } else {
-            None
-        };
-
-        let mut aligned_reads = vec![];
-        if to_read > 0 {
-            let words = if to_read % 4 == 0 {
-                to_read / 4
-            } else {
-                to_read / 4 + 1
+                for _ in 0..words - 1 {
+                    aligned_reads.push(this.xdm.schedule_read_ddr_and_execute());
+                }
+                aligned_reads.push(this.xdm.schedule_read_ddr());
             };
 
-            for _ in 0..words - 1 {
-                aligned_reads.push(self.xdm.schedule_read_ddr_and_execute());
+            if let Some((read, offset, bytes_to_copy)) = first_read {
+                let word = this
+                    .xdm
+                    .read_deferred_result(read)?
+                    .into_u32()
+                    .to_le_bytes();
+
+                dst[..bytes_to_copy].copy_from_slice(&word[offset..][..bytes_to_copy]);
+                dst = &mut dst[bytes_to_copy..];
             }
-            aligned_reads.push(self.xdm.schedule_read_ddr());
-        };
 
-        if let Some((read, offset, bytes_to_copy)) = first_read {
-            let word = self
-                .xdm
-                .read_deferred_result(read)?
-                .into_u32()
-                .to_le_bytes();
+            for read in aligned_reads {
+                let word = this
+                    .xdm
+                    .read_deferred_result(read)?
+                    .into_u32()
+                    .to_le_bytes();
 
-            dst[..bytes_to_copy].copy_from_slice(&word[offset..][..bytes_to_copy]);
-            dst = &mut dst[bytes_to_copy..];
-        }
+                let bytes = dst.len().min(4);
 
-        for read in aligned_reads {
-            let word = self
-                .xdm
-                .read_deferred_result(read)?
-                .into_u32()
-                .to_le_bytes();
+                dst[..bytes].copy_from_slice(&word[..bytes]);
+                dst = &mut dst[bytes..];
+            }
 
-            let bytes = dst.len().min(4);
+            this.restore_register(key)?;
 
-            dst[..bytes].copy_from_slice(&word[..bytes]);
-            dst = &mut dst[bytes..];
-        }
-
-        self.restore_register(key)?;
-
-        if !was_halted {
-            self.resume()?;
-        }
-
-        Ok(())
+            Ok(())
+        })
     }
 
     fn write_memory_unaligned8(&mut self, address: u32, data: &[u8]) -> Result<(), XtensaError> {
@@ -635,65 +647,57 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
             return Ok(());
         }
 
-        let was_halted = self.core_halted()?;
-        if !was_halted {
-            self.xdm.schedule_halt();
-            self.wait_for_core_halted(Duration::from_millis(100))?;
-        }
+        self.halted_access(move |this| {
+            let key = this.save_register(CpuRegister::A3)?;
 
-        let key = self.save_register(CpuRegister::A3)?;
+            let address = address as u32;
 
-        let address = address as u32;
+            let mut addr = address;
+            let mut buffer = data;
 
-        let mut addr = address;
-        let mut buffer = data;
+            // We store the unaligned head of the data separately
+            if addr % 4 != 0 {
+                let unaligned_bytes = (4 - (addr % 4) as usize).min(buffer.len());
 
-        // We store the unaligned head of the data separately
-        if addr % 4 != 0 {
-            let unaligned_bytes = (4 - (addr % 4) as usize).min(buffer.len());
+                this.write_memory_unaligned8(addr, &buffer[..unaligned_bytes])?;
 
-            self.write_memory_unaligned8(addr, &buffer[..unaligned_bytes])?;
-
-            buffer = &buffer[unaligned_bytes..];
-            addr += unaligned_bytes as u32;
-        }
-
-        if buffer.len() > 4 {
-            // Prepare store instruction
-            self.schedule_write_register_untyped(CpuRegister::A3, addr)?;
-
-            self.xdm
-                .schedule_write_instruction(Instruction::Sddr32P(CpuRegister::A3));
-
-            while buffer.len() > 4 {
-                let mut word = [0; 4];
-                word[..].copy_from_slice(&buffer[..4]);
-                let word = u32::from_le_bytes(word);
-
-                // Write data to DDR and store
-                self.xdm.schedule_write_ddr_and_execute(word);
-
-                buffer = &buffer[4..];
-                addr += 4;
+                buffer = &buffer[unaligned_bytes..];
+                addr += unaligned_bytes as u32;
             }
-        }
 
-        // We store the narrow tail of the data separately
-        if !buffer.is_empty() {
-            self.write_memory_unaligned8(addr, buffer)?;
-        }
+            if buffer.len() > 4 {
+                // Prepare store instruction
+                this.schedule_write_register_untyped(CpuRegister::A3, addr)?;
 
-        self.restore_register(key)?;
+                this.xdm
+                    .schedule_write_instruction(Instruction::Sddr32P(CpuRegister::A3));
 
-        self.xdm.execute()?;
+                while buffer.len() > 4 {
+                    let mut word = [0; 4];
+                    word[..].copy_from_slice(&buffer[..4]);
+                    let word = u32::from_le_bytes(word);
 
-        if !was_halted {
-            self.resume()?;
-        }
+                    // Write data to DDR and store
+                    this.xdm.schedule_write_ddr_and_execute(word);
 
-        // TODO: implement cache flushing on CPUs that need it.
+                    buffer = &buffer[4..];
+                    addr += 4;
+                }
+            }
 
-        Ok(())
+            // We store the narrow tail of the data separately
+            if !buffer.is_empty() {
+                this.write_memory_unaligned8(addr, buffer)?;
+            }
+
+            this.restore_register(key)?;
+
+            this.xdm.execute()?;
+
+            // TODO: implement cache flushing on CPUs that need it.
+
+            Ok(())
+        })
     }
 
     pub(crate) fn reset_and_halt(&mut self, timeout: Duration) -> Result<(), XtensaError> {
