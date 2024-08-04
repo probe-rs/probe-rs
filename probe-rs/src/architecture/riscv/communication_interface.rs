@@ -955,7 +955,8 @@ impl<'state> RiscvCommunicationInterface<'state> {
         self.schedule_write_dm_register(sbcs)?;
         self.schedule_write_dm_register(Sbaddress0(address))?;
 
-        let data_idx = self.schedule_read_large_dtm_register::<V, Sbdata>()?;
+        let mut results = vec![];
+        self.schedule_read_large_dtm_register::<V, Sbdata>(&mut results)?;
 
         // Check that the read was succesful
         let sbcs = self.read_dm_register::<Sbcs>()?;
@@ -963,9 +964,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         if sbcs.sberror() != 0 {
             Err(RiscvError::SystemBusAccess)
         } else {
-            let data = V::from_register_value(self.dtm.read_deferred_result(data_idx)?.into_u32());
-
-            Ok(data)
+            V::read_scheduled_result(self, &mut results)
         }
     }
 
@@ -994,20 +993,18 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
         let mut read_results = Vec::with_capacity(data_len);
         for _ in data[..data_len - 1].iter() {
-            let idx = self.schedule_read_large_dtm_register::<V, Sbdata>()?;
-            read_results.push(idx);
+            self.schedule_read_large_dtm_register::<V, Sbdata>(&mut read_results)?;
         }
 
         self.schedule_write_dm_register(Sbcs(0))?;
 
         // Read last value
-        read_results.push(self.schedule_read_large_dtm_register::<V, Sbdata>()?);
+        self.schedule_read_large_dtm_register::<V, Sbdata>(&mut read_results)?;
 
         let sbcs = self.read_dm_register::<Sbcs>()?;
 
-        for (out_index, idx) in read_results.into_iter().enumerate() {
-            data[out_index] =
-                V::from_register_value(self.dtm.read_deferred_result(idx)?.into_u32());
+        for out in data.iter_mut() {
+            *out = V::read_scheduled_result(self, &mut read_results)?;
         }
 
         // Check that the read was succesful
@@ -1130,9 +1127,9 @@ impl<'state> RiscvCommunicationInterface<'state> {
             data[data.len() - 1] = V::from_register_value(last_value);
 
             for (out_idx, value_idx) in result_idxs {
-                let value = Data0::from(core.dtm.read_deferred_result(value_idx)?.into_u32());
+                let value = core.dtm.read_deferred_result(value_idx)?.into_u32();
 
-                data[out_idx] = V::from_register_value(value.0);
+                data[out_idx] = V::from_register_value(value);
             }
 
             let status: Abstractcs = core.read_dm_register()?;
@@ -1674,12 +1671,15 @@ impl<'state> RiscvCommunicationInterface<'state> {
         self.dtm.schedule_read(address)
     }
 
-    fn schedule_read_large_dtm_register<V, R>(&mut self) -> Result<DeferredResultIndex, RiscvError>
+    fn schedule_read_large_dtm_register<V, R>(
+        &mut self,
+        results: &mut Vec<DeferredResultIndex>,
+    ) -> Result<(), RiscvError>
     where
         V: RiscvValue,
         R: LargeRegister,
     {
-        V::schedule_read_from_register::<R>(self)
+        V::schedule_read_from_register::<R>(self, results)
     }
 
     fn schedule_write_large_dtm_register<V, R>(
@@ -1876,9 +1876,15 @@ pub(crate) trait RiscvValue: std::fmt::Debug + Copy + Sized {
 
     fn schedule_read_from_register<R>(
         interface: &mut RiscvCommunicationInterface,
-    ) -> Result<DeferredResultIndex, RiscvError>
+        results: &mut Vec<DeferredResultIndex>,
+    ) -> Result<(), RiscvError>
     where
         R: LargeRegister;
+
+    fn read_scheduled_result(
+        interface: &mut RiscvCommunicationInterface,
+        results: &mut Vec<DeferredResultIndex>,
+    ) -> Result<Self, RiscvError>;
 
     fn schedule_write_to_register<R>(
         interface: &mut RiscvCommunicationInterface,
@@ -1893,11 +1899,22 @@ impl RiscvValue for u8 {
 
     fn schedule_read_from_register<R>(
         interface: &mut RiscvCommunicationInterface,
-    ) -> Result<DeferredResultIndex, RiscvError>
+        results: &mut Vec<DeferredResultIndex>,
+    ) -> Result<(), RiscvError>
     where
         R: LargeRegister,
     {
-        interface.schedule_read_dm_register_untyped(R::R0_ADDRESS as u64)
+        results.push(interface.schedule_read_dm_register_untyped(R::R0_ADDRESS as u64)?);
+        Ok(())
+    }
+
+    fn read_scheduled_result(
+        interface: &mut RiscvCommunicationInterface,
+        results: &mut Vec<DeferredResultIndex>,
+    ) -> Result<Self, RiscvError> {
+        let result = interface.dtm.read_deferred_result(results.remove(0))?;
+
+        Ok(result.into_u32() as u8)
     }
 
     fn schedule_write_to_register<R>(
@@ -1916,11 +1933,22 @@ impl RiscvValue for u16 {
 
     fn schedule_read_from_register<R>(
         interface: &mut RiscvCommunicationInterface,
-    ) -> Result<DeferredResultIndex, RiscvError>
+        results: &mut Vec<DeferredResultIndex>,
+    ) -> Result<(), RiscvError>
     where
         R: LargeRegister,
     {
-        interface.schedule_read_dm_register_untyped(R::R0_ADDRESS as u64)
+        results.push(interface.schedule_read_dm_register_untyped(R::R0_ADDRESS as u64)?);
+        Ok(())
+    }
+
+    fn read_scheduled_result(
+        interface: &mut RiscvCommunicationInterface,
+        results: &mut Vec<DeferredResultIndex>,
+    ) -> Result<Self, RiscvError> {
+        let result = interface.dtm.read_deferred_result(results.remove(0))?;
+
+        Ok(result.into_u32() as u16)
     }
 
     fn schedule_write_to_register<R>(
@@ -1939,12 +1967,24 @@ impl RiscvValue for u32 {
 
     fn schedule_read_from_register<R>(
         interface: &mut RiscvCommunicationInterface,
-    ) -> Result<DeferredResultIndex, RiscvError>
+        results: &mut Vec<DeferredResultIndex>,
+    ) -> Result<(), RiscvError>
     where
         R: LargeRegister,
     {
-        interface.schedule_read_dm_register_untyped(R::R0_ADDRESS as u64)
+        results.push(interface.schedule_read_dm_register_untyped(R::R0_ADDRESS as u64)?);
+        Ok(())
     }
+
+    fn read_scheduled_result(
+        interface: &mut RiscvCommunicationInterface,
+        results: &mut Vec<DeferredResultIndex>,
+    ) -> Result<Self, RiscvError> {
+        let result = interface.dtm.read_deferred_result(results.remove(0))?;
+
+        Ok(result.into_u32())
+    }
+
     fn schedule_write_to_register<R>(
         interface: &mut RiscvCommunicationInterface,
         value: Self,
@@ -1961,13 +2001,24 @@ impl RiscvValue for u64 {
 
     fn schedule_read_from_register<R>(
         interface: &mut RiscvCommunicationInterface,
-    ) -> Result<DeferredResultIndex, RiscvError>
+        results: &mut Vec<DeferredResultIndex>,
+    ) -> Result<(), RiscvError>
     where
         R: LargeRegister,
     {
-        // FIXME: don't drop upper bytes, somehow gather the results
-        interface.schedule_read_dm_register_untyped(R::R1_ADDRESS as u64)?;
-        interface.schedule_read_dm_register_untyped(R::R0_ADDRESS as u64)
+        results.push(interface.schedule_read_dm_register_untyped(R::R1_ADDRESS as u64)?);
+        results.push(interface.schedule_read_dm_register_untyped(R::R0_ADDRESS as u64)?);
+        Ok(())
+    }
+
+    fn read_scheduled_result(
+        interface: &mut RiscvCommunicationInterface,
+        results: &mut Vec<DeferredResultIndex>,
+    ) -> Result<Self, RiscvError> {
+        let r1 = interface.dtm.read_deferred_result(results.remove(0))?;
+        let r0 = interface.dtm.read_deferred_result(results.remove(0))?;
+
+        Ok(((r1.into_u32() as u64) << 32) | (r0.into_u32() as u64))
     }
 
     fn schedule_write_to_register<R>(
@@ -1993,15 +2044,31 @@ impl RiscvValue for u128 {
 
     fn schedule_read_from_register<R>(
         interface: &mut RiscvCommunicationInterface,
-    ) -> Result<DeferredResultIndex, RiscvError>
+        results: &mut Vec<DeferredResultIndex>,
+    ) -> Result<(), RiscvError>
     where
         R: LargeRegister,
     {
-        // FIXME: don't drop upper bytes, somehow gather the results
-        interface.schedule_read_dm_register_untyped(R::R3_ADDRESS as u64)?;
-        interface.schedule_read_dm_register_untyped(R::R2_ADDRESS as u64)?;
-        interface.schedule_read_dm_register_untyped(R::R1_ADDRESS as u64)?;
-        interface.schedule_read_dm_register_untyped(R::R0_ADDRESS as u64)
+        results.push(interface.schedule_read_dm_register_untyped(R::R3_ADDRESS as u64)?);
+        results.push(interface.schedule_read_dm_register_untyped(R::R2_ADDRESS as u64)?);
+        results.push(interface.schedule_read_dm_register_untyped(R::R1_ADDRESS as u64)?);
+        results.push(interface.schedule_read_dm_register_untyped(R::R0_ADDRESS as u64)?);
+        Ok(())
+    }
+
+    fn read_scheduled_result(
+        interface: &mut RiscvCommunicationInterface,
+        results: &mut Vec<DeferredResultIndex>,
+    ) -> Result<Self, RiscvError> {
+        let r3 = interface.dtm.read_deferred_result(results.remove(0))?;
+        let r2 = interface.dtm.read_deferred_result(results.remove(0))?;
+        let r1 = interface.dtm.read_deferred_result(results.remove(0))?;
+        let r0 = interface.dtm.read_deferred_result(results.remove(0))?;
+
+        Ok(((r3.into_u32() as u128) << 96)
+            | ((r2.into_u32() as u128) << 64)
+            | ((r1.into_u32() as u128) << 32)
+            | (r0.into_u32() as u128))
     }
 
     fn schedule_write_to_register<R>(
