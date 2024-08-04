@@ -1965,6 +1965,7 @@ impl RiscvValue for u64 {
     where
         R: LargeRegister,
     {
+        // FIXME: don't drop upper bytes, somehow gather the results
         interface.schedule_read_dm_register_untyped(R::R1_ADDRESS as u64)?;
         interface.schedule_read_dm_register_untyped(R::R0_ADDRESS as u64)
     }
@@ -1996,6 +1997,7 @@ impl RiscvValue for u128 {
     where
         R: LargeRegister,
     {
+        // FIXME: don't drop upper bytes, somehow gather the results
         interface.schedule_read_dm_register_untyped(R::R3_ADDRESS as u64)?;
         interface.schedule_read_dm_register_untyped(R::R2_ADDRESS as u64)?;
         interface.schedule_read_dm_register_untyped(R::R1_ADDRESS as u64)?;
