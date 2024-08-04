@@ -1797,7 +1797,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         self.write_dm_register(dmcontrol)?;
 
         // Reenable halt on breakpoint because this gets disabled if we reset the core
-        self.debug_on_sw_breakpoint(true)?; // TODO: only restore if enabled before?
+        self.debug_on_sw_breakpoint(true)?;
 
         Ok(())
     }
