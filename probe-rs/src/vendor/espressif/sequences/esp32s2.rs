@@ -7,9 +7,8 @@ use probe_rs_target::Chip;
 use super::esp::EspFlashSizeDetector;
 use crate::{
     architecture::xtensa::{
-        communication_interface::XtensaCommunicationInterface,
-        sequences::XtensaDebugSequence,
-        xdm::{DebugControlBits, DebugControlClear, DebugControlSet, DebugStatus},
+        communication_interface::XtensaCommunicationInterface, sequences::XtensaDebugSequence,
+        xdm::DebugControlBits,
     },
     MemoryInterface, Session,
 };
@@ -151,31 +150,14 @@ impl XtensaDebugSequence for ESP32S2 {
 
         self.stall(core)?;
 
-        core.xdm.schedule_write_nexus_register(DebugControlSet({
+        core.xdm.debug_control({
             let mut control = DebugControlBits(0);
 
             control.set_enable_ocd(true);
             control.set_run_stall_in_en(true);
 
             control
-        }));
-        core.xdm.schedule_write_nexus_register(DebugControlClear({
-            let mut control = DebugControlBits(0);
-
-            control.set_debug_mode_out_en(true);
-            control.set_break_in_en(true);
-            control.set_break_out_en(true);
-
-            control
-        }));
-        core.xdm.schedule_write_nexus_register({
-            let mut status = DebugStatus(0);
-
-            status.set_debug_pend_break(true);
-            status.set_debug_int_break(true);
-
-            status
-        });
+        })?;
 
         // Reset CPU
         let options = core.read_word_32(Self::OPTIONS0)?;

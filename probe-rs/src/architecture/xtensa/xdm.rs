@@ -213,19 +213,13 @@ impl<'probe> Xdm<'probe> {
         self.check_enabled()?;
 
         // enable the debug module
-        self.write_nexus_register(DebugControlSet({
+        self.debug_control({
             let mut reg = DebugControlBits(0);
             reg.set_enable_ocd(true);
             reg.set_break_in_en(true);
             reg.set_break_out_en(true);
             reg
-        }))?;
-        self.write_nexus_register(DebugControlClear({
-            let mut reg = DebugControlBits(0);
-            reg.set_run_stall_in_en(true);
-            reg.set_debug_mode_out_en(true);
-            reg
-        }))?;
+        })?;
 
         let status = self.status()?;
         tracing::debug!("{:?}", status);
@@ -244,6 +238,32 @@ impl<'probe> Xdm<'probe> {
 
             status
         })?;
+
+        Ok(())
+    }
+
+    pub(crate) fn debug_control(&mut self, bits: DebugControlBits) -> Result<(), XtensaError> {
+        self.schedule_write_nexus_register(DebugControlSet(bits));
+        self.schedule_write_nexus_register(DebugControlClear({
+            let mut reg = DebugControlBits(0);
+
+            reg.set_break_in_en(!bits.break_in_en());
+            reg.set_break_out_en(!bits.break_out_en());
+            reg.set_debug_sw_active(!bits.debug_sw_active());
+            reg.set_run_stall_in_en(!bits.run_stall_in_en());
+            reg.set_debug_mode_out_en(!bits.debug_mode_out_en());
+
+            reg
+        }));
+        // Clear pending interrupts that would re-enter us into the Stopped state.
+        self.schedule_write_nexus_register({
+            let mut status = DebugStatus(0);
+
+            status.set_debug_pend_break(true);
+            status.set_debug_int_break(true);
+
+            status
+        });
 
         Ok(())
     }
@@ -273,12 +293,29 @@ impl<'probe> Xdm<'probe> {
         Ok(())
     }
 
+    fn power_status(&mut self, clear: PowerStatus) -> Result<PowerStatus, XtensaError> {
+        let bits = self.pwr_write(PowerDevice::PowerStat, clear.0)?;
+        Ok(PowerStatus(bits))
+    }
+
     /// Read and clear the `core_was_reset` flag.
     pub(crate) fn core_was_reset(&mut self) -> Result<bool, XtensaError> {
-        let mut clear_value = PowerStatus(0);
-        clear_value.set_core_was_reset(true);
-        let bits = self.pwr_write(PowerDevice::PowerStat, clear_value.0)?;
-        Ok(PowerStatus(bits).core_was_reset())
+        self.power_status({
+            let mut clear_value = PowerStatus(0);
+            clear_value.set_core_was_reset(true);
+            clear_value
+        })
+        .map(|bits| bits.core_was_reset())
+    }
+
+    /// Read and clear the `debug_was_reset` flag.
+    pub(crate) fn debug_was_reset(&mut self) -> Result<bool, XtensaError> {
+        self.power_status({
+            let mut clear_value = PowerStatus(0);
+            clear_value.set_debug_was_reset(true);
+            clear_value
+        })
+        .map(|bits| bits.debug_was_reset())
     }
 
     /// Read and clear the `core_was_reset` flag.
