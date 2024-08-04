@@ -80,7 +80,6 @@ impl fmt::Debug for JtagInterface {
 }
 
 // TODO: this is somewhat messy because I omitted separating the Probe out of the ARM interface.
-#[allow(clippy::large_enum_variant)]
 enum ArchitectureInterface {
     Arm(Box<dyn ArmProbeInterface + 'static>),
     Jtag(Probe, Vec<JtagInterface>),
