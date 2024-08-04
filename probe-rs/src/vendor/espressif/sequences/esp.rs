@@ -127,9 +127,9 @@ fn attach_flash_xtensa(
     core.write_8(load_addr as u64, &instructions)?;
 
     // Set up processor state
-    core.write_core_reg(core.registers().pc().unwrap(), load_addr)?;
-    core.write_core_reg(crate::RegisterId(0x0001), stack_pointer)?;
-    core.write_core_reg(crate::RegisterId(0x0004), attach_fn)?;
+    core.write_core_reg(core.program_counter(), load_addr)?;
+    core.write_core_reg(core.stack_pointer(), stack_pointer)?;
+    core.write_core_reg(CpuRegister::A4, attach_fn)?;
 
     // Let it run
     core.run()?;

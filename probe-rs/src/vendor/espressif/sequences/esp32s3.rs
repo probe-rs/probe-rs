@@ -91,6 +91,7 @@ impl XtensaDebugSequence for ESP32S3 {
 
         // A program that does the system reset and then loops,
         // because system reset seems to disable JTAG.
+        // Taken from https://github.com/espressif/openocd-esp32/tree/de4a2ae782c33a603e134f3376ecad4e3a8a545d/contrib/loaders/reset/espressif/esp32s3
         // TODO: rework this into some readable code
         let instructions = [
             0x06, 0x23, 0x00, 0x00, 0x06, 0x18, 0x00, 0x00, 0x38, 0x80, 0x00, 0x60, 0xc0, 0x80,
