@@ -162,11 +162,10 @@ impl<'probe> Xtensa<'probe> {
 
             if pc_increment > 0 {
                 // Step through the breakpoint
-                let mut pc = self.read_core_reg(self.program_counter().id)?;
-
-                pc.increment_address(pc_increment)?;
-
-                self.write_core_reg(self.program_counter().into(), pc)?;
+                let pc = self.program_counter().id;
+                let mut pc_value = self.read_core_reg(pc)?;
+                pc_value.increment_address(pc_increment)?;
+                self.write_core_reg(pc, pc_value)?;
             }
         }
 
@@ -176,10 +175,10 @@ impl<'probe> Xtensa<'probe> {
     /// Check if the current breakpoint is a semihosting call
     // OpenOCD implementation: https://github.com/espressif/openocd-esp32/blob/93dd01511fd13d4a9fb322cd9b600c337becef9e/src/target/espressif/esp_xtensa_semihosting.c#L42-L103
     fn check_for_semihosting(&mut self) -> Result<Option<SemihostingCommand>, Error> {
-        let pc: u32 = self.read_core_reg(self.program_counter().id)?.try_into()?;
+        let pc: u64 = self.read_core_reg(self.program_counter().id)?.try_into()?;
 
         let mut actual_instructions = [0u8; 3];
-        self.read_8((pc) as u64, &mut actual_instructions)?;
+        self.read_8(pc, &mut actual_instructions)?;
 
         tracing::debug!(
             "Semihosting check pc={pc:#x} instructions={0:#08x} {1:#08x} {2:#08x}",
@@ -256,19 +255,17 @@ impl<'probe> CoreInterface for Xtensa<'probe> {
     fn status(&mut self) -> Result<CoreStatus, Error> {
         let status = if self.core_halted()? {
             let debug_cause = self.interface.read_register::<DebugCause>()?;
-            let reason =
-                if debug_cause.halt_reason() == HaltReason::Breakpoint(BreakpointCause::Software) {
-                    // The chip initiated this halt, therefore we need to update pc_written state
-                    self.state.pc_written = false;
-                    // Check if the breakpoint is a semihosting call
-                    if let Some(cmd) = self.check_for_semihosting()? {
-                        HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd))
-                    } else {
-                        debug_cause.halt_reason()
-                    }
-                } else {
-                    debug_cause.halt_reason()
-                };
+
+            let mut reason = debug_cause.halt_reason();
+            if reason == HaltReason::Breakpoint(BreakpointCause::Software) {
+                // The chip initiated this halt, therefore we need to update pc_written state
+                self.state.pc_written = false;
+                // Check if the breakpoint is a semihosting call
+                if let Some(cmd) = self.check_for_semihosting()? {
+                    reason = HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd));
+                }
+            }
+
             CoreStatus::Halted(reason)
         } else {
             CoreStatus::Running
