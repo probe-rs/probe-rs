@@ -998,8 +998,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
             read_results.push(idx);
         }
 
-        sbcs.set_sbautoincrement(false);
-        self.schedule_write_dm_register(sbcs)?;
+        self.schedule_write_dm_register(Sbcs(0))?;
 
         // Read last value
         read_results.push(self.schedule_read_large_dtm_register::<V, Sbdata>()?);
