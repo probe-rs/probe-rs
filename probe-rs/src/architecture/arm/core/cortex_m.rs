@@ -221,10 +221,7 @@ pub(crate) fn check_for_semihosting(
     );
 
     let command = if TRAP_INSTRUCTION == actual_instruction {
-        let r0: u32 = core.read_core_reg(RegisterId(0))?.try_into()?;
-        let r1: u32 = core.read_core_reg(RegisterId(1))?.try_into()?;
-        tracing::info!("Semihosting found pc={pc:#x} r0={r0:#x} r1={r1:#x}");
-        Some(decode_semihosting_syscall(core, r0, r1)?)
+        Some(decode_semihosting_syscall(core)?)
     } else {
         None
     };
