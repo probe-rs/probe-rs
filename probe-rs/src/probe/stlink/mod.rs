@@ -1412,7 +1412,7 @@ impl StlinkArmDebug {
             access_ports: BTreeSet::new(),
         };
 
-        interface.access_ports = valid_access_ports(&mut interface, DpAddress::Default)
+        interface.access_ports = valid_access_ports(&mut interface, DpAddress::Default, &[])
             .into_iter()
             .collect();
         interface.access_ports.iter().for_each(|addr| {
