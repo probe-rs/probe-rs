@@ -271,8 +271,7 @@ impl<'probe> CoreInterface for Xtensa<'probe> {
     }
 
     fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
-        self.interface.halt()?;
-        self.interface.wait_for_core_halted(timeout)?;
+        self.interface.halt(timeout)?;
 
         self.core_info()
     }
