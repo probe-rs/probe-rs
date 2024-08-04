@@ -506,6 +506,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         let status: Dmstatus = self.read_dm_register()?;
 
         self.state.progbuf_cache.fill(0);
+        self.state.memory_access_info.clear();
         self.state.debug_version = DebugModuleVersion::from(status.version() as u8);
         self.state.is_halted = status.allhalted();
 
