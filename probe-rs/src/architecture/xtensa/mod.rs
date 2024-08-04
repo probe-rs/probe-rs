@@ -101,24 +101,28 @@ impl<'probe> Xtensa<'probe> {
 
     fn on_attach(&mut self) -> Result<(), Error> {
         // If the core was reset, force a reconnection.
-        let core_reset = self.interface.xdm.core_was_reset()?;
-        let debug_reset = self.interface.xdm.debug_was_reset()?;
+        let core_reset;
+        if self.state.enabled {
+            core_reset = self.interface.xdm.core_was_reset()?;
+            let debug_reset = self.interface.xdm.debug_was_reset()?;
 
-        if core_reset {
-            tracing::info!("Core was reset");
-            *self.state = XtensaCoreState::new();
-        }
-        if debug_reset {
-            tracing::info!("Debug was reset");
-            self.state.enabled = false;
+            if core_reset {
+                tracing::debug!("Core was reset");
+                *self.state = XtensaCoreState::new();
+            }
+            if debug_reset {
+                tracing::debug!("Debug was reset");
+                self.state.enabled = false;
+            }
+        } else {
+            core_reset = true;
         }
 
         // (Re)enter debug mode if necessary. This also checks if the core is enabled.
         if !self.state.enabled {
-            self.state.enabled = true;
-
             // Enable debug module.
             self.interface.enter_debug_mode()?;
+            self.state.enabled = true;
 
             if core_reset {
                 // Run the connection sequence while halted.

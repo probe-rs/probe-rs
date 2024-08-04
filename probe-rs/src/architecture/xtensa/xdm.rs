@@ -198,7 +198,7 @@ impl<'probe> Xdm<'probe> {
             }
 
             if now.elapsed() > Duration::from_millis(500) {
-                return Err(XtensaError::Timeout);
+                return Err(XtensaError::CoreDisabled);
             }
         }
 

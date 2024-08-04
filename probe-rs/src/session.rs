@@ -440,9 +440,9 @@ impl Session {
                 other => other?,
             };
             let status = c.status()?;
-            tracing::info!("Core {core} status: {:?}", status);
+            tracing::debug!("Core {core} status: {:?}", status);
             if !status.is_halted() {
-                tracing::info!("Halting core...");
+                tracing::debug!("Halting core...");
                 resume_state.push(core);
                 c.halt(Duration::from_millis(100))?;
             }
@@ -451,7 +451,7 @@ impl Session {
         let r = f(self);
 
         for core in resume_state {
-            tracing::info!("Resuming core...");
+            tracing::debug!("Resuming core...");
             self.core(core)?.run()?;
         }
 
