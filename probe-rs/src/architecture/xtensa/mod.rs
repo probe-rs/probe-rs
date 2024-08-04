@@ -6,7 +6,10 @@ use probe_rs_target::{Architecture, CoreType, InstructionSet};
 
 use crate::{
     architecture::xtensa::{
-        arch::{instruction::Instruction, Register, SpecialRegister},
+        arch::{
+            instruction::{Instruction, InstructionEncoding},
+            Register, SpecialRegister,
+        },
         communication_interface::{DebugCause, IBreakEn, XtensaCommunicationInterface},
         registers::{FP, PC, RA, SP, XTENSA_CORE_REGSISTERS},
         sequences::XtensaDebugSequence,
@@ -175,44 +178,41 @@ impl<'probe> Xtensa<'probe> {
     /// Check if the current breakpoint is a semihosting call
     // OpenOCD implementation: https://github.com/espressif/openocd-esp32/blob/93dd01511fd13d4a9fb322cd9b600c337becef9e/src/target/espressif/esp_xtensa_semihosting.c#L42-L103
     fn check_for_semihosting(&mut self) -> Result<Option<SemihostingCommand>, Error> {
+        const SEMI_BREAK: u32 = const {
+            let InstructionEncoding::Narrow(bytes) = Instruction::Break(1, 14).encode();
+            bytes
+        };
+
+        // We only want to decode the semihosting command once, since answering it might change some of the registers
+        if let Some(command) = self.state.semihosting_command {
+            return Ok(Some(command));
+        }
+
         let pc: u64 = self.read_core_reg(self.program_counter().id)?.try_into()?;
 
-        let mut actual_instructions = [0u8; 3];
-        self.read_8(pc, &mut actual_instructions)?;
+        let mut actual_instruction = [0u8; 3];
+        self.read_8(pc, &mut actual_instruction)?;
+        let actual_instruction = u32::from_le_bytes([
+            actual_instruction[0],
+            actual_instruction[1],
+            actual_instruction[2],
+            0,
+        ]);
 
-        tracing::debug!(
-            "Semihosting check pc={pc:#x} instructions={0:#08x} {1:#08x} {2:#08x}",
-            actual_instructions[0],
-            actual_instructions[1],
-            actual_instructions[2],
-        );
+        tracing::debug!("Semihosting check pc={pc:#x} instruction={actual_instruction:#010x}, expected={SEMI_BREAK:#010x}");
 
-        let expected_instruction = Instruction::Break(1, 14).to_bytes();
+        let command = if actual_instruction == SEMI_BREAK {
+            let a2: u32 = self.read_core_reg(RegisterId::from(2))?.try_into()?;
+            let a3: u32 = self.read_core_reg(RegisterId::from(3))?.try_into()?;
 
-        tracing::debug!(
-            "Expected instructions={0:#08x} {1:#08x} {2:#08x}",
-            expected_instruction[0],
-            expected_instruction[1],
-            expected_instruction[2]
-        );
-
-        if actual_instructions[..3] == expected_instruction.as_slice()[..3] {
-            match self.state.semihosting_command {
-                None => {
-                    // We only want to decode the semihosting command once, since answering it might change some of the registers
-                    let a2: u32 = self.read_core_reg(RegisterId::from(2))?.try_into()?;
-                    let a3: u32 = self.read_core_reg(RegisterId::from(3))?.try_into()?;
-
-                    tracing::info!("Semihosting found pc={pc:#x} a2={a2:#x} a3={a3:#x}");
-                    let cmd = decode_semihosting_syscall(self, a2, a3)?;
-                    self.state.semihosting_command = Some(cmd);
-                    Ok(Some(cmd))
-                }
-                Some(command) => Ok(Some(command)),
-            }
+            tracing::debug!("Semihosting found pc={pc:#x} a2={a2:#x} a3={a3:#x}");
+            Some(decode_semihosting_syscall(self, a2, a3)?)
         } else {
-            Ok(None)
-        }
+            None
+        };
+        self.state.semihosting_command = command;
+
+        Ok(command)
     }
 
     fn on_halted(&mut self) -> Result<(), Error> {
