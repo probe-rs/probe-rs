@@ -689,6 +689,16 @@ impl<'state> RiscvCommunicationInterface<'state> {
         Ok(())
     }
 
+    pub(crate) fn disable_debug_module(&mut self) -> Result<(), RiscvError> {
+        self.debug_on_sw_breakpoint(false)?;
+
+        let mut control = Dmcontrol(0);
+        control.set_dmactive(false);
+        self.write_dm_register(control)?;
+
+        Ok(())
+    }
+
     pub(crate) fn halt(&mut self, timeout: Duration) -> Result<(), RiscvError> {
         // Fast path.
         // Try to do the halt, in a single step.
