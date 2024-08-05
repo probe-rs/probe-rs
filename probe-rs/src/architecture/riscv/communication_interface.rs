@@ -687,7 +687,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         Ok(())
     }
 
-    fn halted_access<R>(
+    pub(crate) fn halted_access<R>(
         &mut self,
         op: impl FnOnce(&mut Self) -> Result<R, RiscvError>,
     ) -> Result<R, RiscvError> {
