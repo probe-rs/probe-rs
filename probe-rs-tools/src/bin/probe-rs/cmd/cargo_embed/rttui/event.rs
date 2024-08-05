@@ -3,7 +3,7 @@ use std::sync::{atomic::AtomicBool, Arc};
 use std::thread;
 use std::time::Duration;
 
-use crossterm::event::{self, Event as CEvent, KeyEvent};
+use ratatui::crossterm::event::{self, Event as CEvent, KeyEvent};
 
 /// A small event handler that wrap `termion` input and tick events. Each event
 /// type is handled in its own thread and returned to a common `Receiver`

@@ -1,12 +1,12 @@
 use anyhow::{anyhow, Context, Result};
-use crossterm::{
-    event::{self, KeyCode, KeyEventKind},
-    execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
-};
 use probe_rs::Core;
 use ratatui::{
     backend::CrosstermBackend,
+    crossterm::{
+        event::{self, KeyCode, KeyEventKind},
+        execute,
+        terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    },
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     widgets::{Block, Borders, List, Paragraph, Tabs},
