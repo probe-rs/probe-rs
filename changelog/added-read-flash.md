@@ -1,0 +1,1 @@
+Added an optional `ReadFlash` flash algorithm function.

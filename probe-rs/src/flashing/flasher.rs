@@ -1,7 +1,7 @@
 use probe_rs_target::RawFlashAlgorithm;
 use tracing::Level;
 
-use super::{FlashAlgorithm, FlashBuilder, FlashError, FlashFill, FlashPage, FlashProgress};
+use super::{FlashAlgorithm, FlashBuilder, FlashError, FlashPage, FlashProgress};
 use crate::config::NvmRegion;
 use crate::error::Error;
 use crate::flashing::encoder::FlashEncoder;
@@ -275,27 +275,9 @@ impl<'session> Flasher<'session> {
             restore_unwritten_bytes
         );
 
-        // Read all fill areas from the flash.
-        self.progress.started_filling();
-
         if restore_unwritten_bytes {
-            for fill in flash_layout.fills.iter() {
-                let t = Instant::now();
-                let page = &mut flash_layout.pages[fill.page_index()];
-                let result = self.fill_page(page, fill);
-
-                // If we encounter an error, catch it, gracefully report the failure and return the error.
-                if result.is_err() {
-                    self.progress.failed_filling();
-                    return result;
-                } else {
-                    self.progress.page_filled(fill.size(), t.elapsed());
-                }
-            }
+            self.fill_unwritten(&mut flash_layout)?;
         }
-
-        // We successfully finished filling.
-        self.progress.finished_filling();
 
         let flash_encoder = FlashEncoder::new(self.flash_algorithm.transfer_encoding, flash_layout);
 
@@ -315,24 +297,36 @@ impl<'session> Flasher<'session> {
         Ok(())
     }
 
-    /// Fills all the bytes of `current_page`.
+    /// Fills all the unwritten bytes in `layout`.
     ///
-    /// If `restore_unwritten_bytes` is `true`, all bytes of the page,
+    /// If `restore_unwritten_bytes` is `true`, all bytes of the layout's page,
     /// that are not to be written during flashing will be read from the flash first
     /// and written again once the page is programmed.
-    pub(super) fn fill_page(
-        &mut self,
-        page: &mut FlashPage,
-        fill: &FlashFill,
-    ) -> Result<(), FlashError> {
-        let page_offset = (fill.address() - page.address()) as usize;
-        let page_slice = &mut page.data_mut()[page_offset..][..fill.size() as usize];
-        self.run_verify(|active| {
-            active
-                .core
-                .read(fill.address(), page_slice)
-                .map_err(FlashError::Core)
-        })
+    pub(super) fn fill_unwritten(&mut self, layout: &mut FlashLayout) -> Result<(), FlashError> {
+        self.progress.started_filling();
+
+        let result = self.run_verify(|active| {
+            for fill in layout.fills.iter() {
+                let t = Instant::now();
+                let page = &mut layout.pages[fill.page_index()];
+
+                let page_offset = (fill.address() - page.address()) as usize;
+                let page_slice = &mut page.data_mut()[page_offset..][..fill.size() as usize];
+
+                active.read_flash(fill.address(), page_slice)?;
+
+                active.progress.page_filled(fill.size(), t.elapsed());
+            }
+
+            Ok(())
+        });
+
+        match result.is_ok() {
+            true => self.progress.finished_filling(),
+            false => self.progress.failed_filling(),
+        }
+
+        result
     }
 
     /// Programs the pages given in `flash_layout` into the flash.
@@ -745,6 +739,53 @@ impl<O: Operation> ActiveFlasher<'_, O> {
         }
 
         Ok(())
+    }
+
+    pub(super) fn read_flash(&mut self, address: u64, data: &mut [u8]) -> Result<(), FlashError> {
+        if let Some(read_flash) = self.flash_algorithm.pc_read {
+            let page_size = self.flash_algorithm.flash_properties.page_size;
+            let buffer_address = self.flash_algorithm.page_buffers[0];
+
+            let mut read_address = address;
+            for slice in data.chunks_mut(page_size as usize) {
+                // Call ReadFlash to load from flash to RAM. The function has a similar signature
+                // to the program_page function.
+                let result = self
+                    .call_function_and_wait(
+                        &Registers {
+                            pc: into_reg(read_flash)?,
+                            r0: Some(into_reg(read_address)?),
+                            r1: Some(into_reg(slice.len() as u64)?),
+                            r2: Some(into_reg(buffer_address)?),
+                            r3: None,
+                        },
+                        false,
+                        Duration::from_secs(30),
+                    )
+                    .map_err(|error| FlashError::FlashReadFailed {
+                        source: Box::new(error),
+                    })?;
+
+                if result != 0 {
+                    return Err(FlashError::FlashReadFailed {
+                        source: Box::new(FlashError::RoutineCallFailed {
+                            name: "read_flash",
+                            error_code: result,
+                        }),
+                    });
+                };
+
+                // Now read the data from RAM.
+                self.core
+                    .read(buffer_address, slice)
+                    .map_err(FlashError::Core)?;
+                read_address += slice.len() as u64;
+            }
+
+            Ok(())
+        } else {
+            self.core.read(address, data).map_err(FlashError::Core)
+        }
     }
 }
 
