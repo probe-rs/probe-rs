@@ -377,8 +377,8 @@ fn perform_swd_transfers<P: RawProtocolIo>(
     let mut result_bits = &result[..];
 
     for (i, transfer) in transfers.iter_mut().enumerate() {
-        // There are two idle bits and eight request bits, the response comes directly after.
-        let response_offset = 2 + 8;
+        // There are eight request bits, the response comes directly after.
+        let response_offset = 8;
         let response = parse_swd_response(&result_bits[response_offset..], transfer.direction);
 
         probe.probe_statistics().report_swd_response(&response);
@@ -806,8 +806,8 @@ enum TransferDirection {
 impl TransferDirection {
     const fn swd_response_length(self) -> usize {
         match self {
-            TransferDirection::Read => 8 + 2 + 3 + 32 + 1 + 2,
-            TransferDirection::Write => 8 + 2 + 3 + 2 + 32 + 1,
+            TransferDirection::Read => 8 + 3 + 32 + 1 + 2,
+            TransferDirection::Write => 8 + 3 + 2 + 32 + 1,
         }
     }
 }
@@ -911,10 +911,6 @@ fn build_swd_transfer(port: PortType, direction: TransferType, address: u8) -> I
     let a3 = (address >> 3) & 0x01 == 1;
 
     let mut sequence = IoSequence::new();
-
-    // First we make sure we have the SDWIO line on idle for at least 2 clock cylces.
-    sequence.add_output(false);
-    sequence.add_output(false);
 
     // Then we assemble the actual request.
 
@@ -1337,28 +1333,27 @@ mod test {
 
             // The write consists of the following parts:
             //
-            // - 2 idle bits
             // - 8 request bits
             // - 1 turnaround bit
             // - 3 acknowledge bits
             // - 2 turnaround bits
             // - x idle cycles
-            let write_length = 2 + 8 + 1 + 3 + 2 + 32 + idle_cycles;
+            let write_length = 8 + 1 + 3 + 2 + 32 + idle_cycles;
 
             let mut response = BitVec::<usize, Lsb0>::repeat(false, write_length);
 
             match acknowledge {
                 DapAcknowledge::Ok => {
                     // Set acknowledege to OK
-                    response.set(10, true);
+                    response.set(8, true);
                 }
                 DapAcknowledge::Wait => {
                     // Set acknowledege to WAIT
-                    response.set(11, true);
+                    response.set(9, true);
                 }
                 DapAcknowledge::Fault => {
                     // Set acknowledege to FAULT
-                    response.set(12, true);
+                    response.set(10, true);
                 }
                 DapAcknowledge::NoAck => {
                     // No acknowledge means that all acknowledge bits
@@ -1427,22 +1422,22 @@ mod test {
             // - 1 turnaround bit
             // - 3 acknowledge bits
             // - 2 turnaround bits
-            let write_length = 2 + 8 + 1 + 3 + 32 + 2;
+            let write_length = 8 + 1 + 3 + 32 + 2;
 
             let mut response = BitVec::<usize, Lsb0>::repeat(false, write_length);
 
             match acknowledge {
                 DapAcknowledge::Ok => {
                     // Set acknowledege to OK
-                    response.set(10, true);
+                    response.set(8, true);
                 }
                 DapAcknowledge::Wait => {
                     // Set acknowledege to WAIT
-                    response.set(11, true);
+                    response.set(9, true);
                 }
                 DapAcknowledge::Fault => {
                     // Set acknowledege to FAULT
-                    response.set(12, true);
+                    response.set(10, true);
                 }
                 DapAcknowledge::NoAck => {
                     // No acknowledge means that all acknowledge bits
@@ -1451,11 +1446,11 @@ mod test {
             }
 
             // Set the read value
-            response.get_mut(13..13 + 32).unwrap().store_le(value);
+            response.get_mut(11..11 + 32).unwrap().store_le(value);
 
             // calculate the parity bit
             let parity_bit = value.count_ones() % 2 == 1;
-            response.set(13 + 32, parity_bit);
+            response.set(11 + 32, parity_bit);
 
             last_transfer.extend(response);
         }
