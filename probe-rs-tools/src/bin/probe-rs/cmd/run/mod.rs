@@ -530,12 +530,25 @@ fn attach_to_rtt(
         rtt_region
     };
 
-    let rtt = match try_attach_to_rtt(core, timeout, scan_region) {
-        Ok(rtt) => rtt,
-        Err(RttError::NoControlBlockLocation) => return Ok(None),
-        Err(err) => return Err(anyhow!("Error attempting to attach to RTT: {err}")),
-    };
-
-    let defmt_state = DefmtState::try_from_bytes(&elf)?;
-    RttActiveTarget::new(core, rtt, defmt_state, rtt_config, timestamp_offset).map(Some)
+    // FIXME: this is a terrible way to do this. While it works (for a particular error), it's not
+    // a general solution and it's also wasting a lot of time on re-parsing ELF and looking for the
+    // control block. We should refactor this to only try a single iteration of the attaching
+    // once per poll call.
+    let start = Instant::now();
+    loop {
+        let defmt_state = DefmtState::try_from_bytes(&elf)?;
+        let rtt = match try_attach_to_rtt(core, timeout, scan_region) {
+            Ok(rtt) => rtt,
+            Err(RttError::NoControlBlockLocation) => return Ok(None),
+            Err(err) => return Err(anyhow!("Error attempting to attach to RTT: {err}")),
+        };
+        match RttActiveTarget::new(core, rtt, defmt_state, rtt_config, timestamp_offset) {
+            Ok(rtta) => return Ok(Some(rtta)),
+            Err(error) => {
+                if start.elapsed() > timeout {
+                    return Err(error);
+                }
+            }
+        }
+    }
 }
