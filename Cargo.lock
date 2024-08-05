@@ -2360,7 +2360,6 @@ dependencies = [
  "clap",
  "clap_complete",
  "colored",
- "crossterm",
  "defmt-decoder",
  "directories",
  "docsplay",
