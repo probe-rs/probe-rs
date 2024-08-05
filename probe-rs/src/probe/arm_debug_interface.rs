@@ -946,22 +946,17 @@ fn build_swd_transfer(port: PortType, direction: TransferType, address: u8) -> I
     // ACK bits.
     sequence.add_input_sequence(3);
 
-    if let TransferType::Write(mut value) = direction {
-        // For writes, we need to add two turnaround bits.
-        // Theoretically the spec says that there is only one turnaround bit required here, where no clock is driven.
-        // This seems to not be the case in actual implementations. So we insert two turnaround bits here!
+    if let TransferType::Write(value) = direction {
+        // For writes, we need to a turnaround bit.
         sequence.add_input();
 
-        // Now we add all the data bits to the sequence and in the same loop we also calculate the parity bit.
-        let mut parity = false;
-        for _ in 0..32 {
-            let bit = value & 1 == 1;
-            sequence.add_output(bit);
-            parity ^= bit;
-            value >>= 1;
+        // Now we add all the data bits to the sequence.
+        for i in 0..32 {
+            sequence.add_output(value & (1 << i) != 0);
         }
 
-        sequence.add_output(parity);
+        // Add the parity of the data bits.
+        sequence.add_output(value.count_ones() % 2 == 1);
     } else {
         // Handle Read
         // Add the data bits to the SWDIO sequence.
@@ -1055,9 +1050,6 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
 
         match transfer.status {
             TransferStatus::Ok => Ok(transfer.value),
-            TransferStatus::Pending => {
-                panic!("Unexpected transfer state after reading register. This is a bug!");
-            }
             TransferStatus::Failed(DapError::FaultResponse) => {
                 tracing::debug!("DAP FAULT");
 
@@ -1094,6 +1086,9 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
             // The other errors mean that something went wrong with the protocol itself.
             // There's no guaranteed correct way to recover, so don't.
             TransferStatus::Failed(e) => Err(e.into()),
+            other => panic!(
+                "Unexpected transfer state after reading register: {other:?}. This is a bug!"
+            ),
         }
     }
 
@@ -1119,10 +1114,9 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                     );
                     return Err(err.into());
                 }
-                TransferStatus::Pending => {
-                    // This should not happen...
-                    panic!("Error performing transfers. This is a bug, please report it.")
-                }
+                other => panic!(
+                    "Unexpected transfer state after reading registers: {other:?}. This is a bug!"
+                ),
             }
         }
 
@@ -1141,9 +1135,6 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
 
         match transfer.status {
             TransferStatus::Ok => Ok(()),
-            TransferStatus::Pending => {
-                panic!("Unexpected transfer state after writing register. This is a bug!");
-            }
             TransferStatus::Failed(DapError::FaultResponse) => {
                 tracing::warn!("DAP FAULT");
                 // A fault happened during operation.
@@ -1174,6 +1165,9 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
             // The other errors mean that something went wrong with the protocol itself.
             // There's no guaranteed correct way to recover, so don't.
             TransferStatus::Failed(e) => Err(e.into()),
+            other => panic!(
+                "Unexpected transfer state after writing register: {other:?}. This is a bug!"
+            ),
         }
     }
 
@@ -1203,10 +1197,9 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
 
                     return Err(err.into());
                 }
-                TransferStatus::Pending => {
-                    // This should not happen...
-                    panic!("Error performing transfers. This is a bug, please report it.")
-                }
+                other => panic!(
+                    "Unexpected transfer state after writing registers: {other:?}. This is a bug!"
+                ),
             }
         }
 
