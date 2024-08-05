@@ -36,6 +36,8 @@ impl ESP32C2 {
 impl RiscvDebugSequence for ESP32C2 {
     fn on_connect(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), crate::Error> {
         tracing::info!("Disabling esp32c2 watchdogs...");
+
+        // FIXME: this is a terrible hack because we should not need to halt to read memory.
         interface.sysbus_requires_halting(true);
 
         // disable super wdt
