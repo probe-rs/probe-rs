@@ -36,6 +36,8 @@ impl ESP32C2 {
 impl RiscvDebugSequence for ESP32C2 {
     fn on_connect(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), crate::Error> {
         tracing::info!("Disabling esp32c2 watchdogs...");
+        interface.sysbus_requires_halting(true);
+
         // disable super wdt
         interface.write_word_32(0x600080A4, 0x8F1D312A)?; // write protection off
         let current = interface.read_word_32(0x600080A0)?;

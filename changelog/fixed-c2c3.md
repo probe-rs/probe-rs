@@ -1,0 +1,1 @@
+Fixed connecting to ESP32-C2 and C3 chips after flashing.
