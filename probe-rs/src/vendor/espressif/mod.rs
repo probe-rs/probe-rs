@@ -58,6 +58,7 @@ fn try_detect_espressif_chip(
             let Ok(read_magic) = probe.read_word_32(MAGIC_VALUE_ADDRESS) else {
                 continue;
             };
+            tracing::debug!("Read magic value: {read_magic:#010x}");
             if let Some(target) = get_target_by_magic(info, read_magic) {
                 return Ok(Some(target));
             }

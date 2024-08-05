@@ -297,15 +297,13 @@ impl FlashAlgorithm {
         let stack_size = raw.stack_size.unwrap_or(Self::FLASH_ALGO_STACK_SIZE) as u64;
         tracing::info!("The flash algorithm will be configured with {stack_size} bytes of stack");
 
-        let data_load_addr = if ram_region == data_ram_region {
-            if let Some(data_load_addr) = raw.data_load_address {
-                data_load_addr
-            } else {
-                // The data is not placed explicitly. We can place it after the code.
-                code_end
-            }
+        let data_load_addr = if let Some(data_load_addr) = raw.data_load_address {
+            data_load_addr
+        } else if ram_region == data_ram_region {
+            // The data is not placed explicitly. We can place it after the code.
+            code_end
         } else {
-            // The data is in a different region. We can place it at the start of the region.
+            // The data is not placed explicitly. We can place it to the start of the memory region.
             data_ram_region.range.start
         };
 
