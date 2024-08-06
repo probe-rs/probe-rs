@@ -21,7 +21,7 @@ exclude = ["tests/"]
 
 [features]
 default = ["builtin-targets", "debug"]
-gdb-server = ["dep:gdbstub", "dep:anyhow"]
+gdb-server = ["dep:gdbstub"]
 
 # Enable all built in targets.
 builtin-targets = ["dep:bincode", "dep:serde_yaml", "dep:probe-rs-target"]
@@ -38,6 +38,7 @@ debug = [
 test = []
 
 [dependencies]
+anyhow.workspace = true
 docsplay.workspace = true
 thiserror.workspace = true
 probe-rs-target.workspace = true
@@ -77,7 +78,6 @@ hexdump = { version = "0.1", optional = true }
 
 # gdb server
 gdbstub = { version = "0.7", optional = true }
-anyhow = { workspace = true, optional = true }
 
 # debug
 gimli = { version = "0.31", default-features = false, features = [
@@ -97,7 +97,6 @@ bincode = { version = "1", optional = true }
 serde_yaml = { version = "0.9", optional = true }
 
 [dev-dependencies]
-anyhow.workspace = true
 pretty_env_logger = "0.5"
 fastrand = "2.1"
 serde_json = "1"

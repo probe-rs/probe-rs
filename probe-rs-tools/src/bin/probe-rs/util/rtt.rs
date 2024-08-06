@@ -1,4 +1,4 @@
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use defmt_decoder::log::format::{Formatter, FormatterConfig, FormatterFormat};
 use defmt_decoder::DecodeError;
 pub use probe_rs::rtt::ChannelMode;
@@ -279,9 +279,9 @@ impl ChannelDataFormat {
                     // If recovery is possible, skip the current frame and continue with new data.
                 }
                 Err(DecodeError::Malformed) => {
-                    return Err(Error::Defmt(anyhow!(
+                    return Err(Error::Other(anyhow!(
                         "Unrecoverable error while decoding Defmt \
-                        data and some data may have been lost: {}",
+                        data. Some data may have been lost: {}",
                         DecodeError::Malformed
                     )));
                 }
@@ -483,11 +483,15 @@ pub struct DefmtState {
 }
 impl DefmtState {
     pub fn try_from_bytes(buffer: &[u8]) -> Result<Option<Self>, Error> {
-        let Some(table) = defmt_decoder::Table::parse(buffer).map_err(Error::Defmt)? else {
+        let Some(table) =
+            defmt_decoder::Table::parse(buffer).with_context(|| "Failed to parse defmt data")?
+        else {
             return Ok(None);
         };
 
-        let locs = table.get_locations(buffer).map_err(Error::Defmt)?;
+        let locs = table
+            .get_locations(buffer)
+            .with_context(|| "Failed to parse defmt data")?;
 
         let locs = if !table.is_empty() && locs.is_empty() {
             tracing::warn!("Insufficient DWARF info; compile your program with `debug = 2` to enable location info.");
