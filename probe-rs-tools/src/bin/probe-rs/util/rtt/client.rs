@@ -32,10 +32,10 @@ impl RttClient {
         };
 
         if let Some(elf) = elf {
-            if let Some(address) = RttActiveTarget::get_rtt_symbol_from_bytes(&elf) {
-                this.scan_region = ScanRegion::Exact(address)
+            if let Some(address) = RttActiveTarget::get_rtt_symbol_from_bytes(elf) {
+                this.scan_region = ScanRegion::Exact(address);
             }
-            this.defmt_data = DefmtState::try_from_bytes(&elf)?;
+            this.defmt_data = DefmtState::try_from_bytes(elf)?;
         }
 
         Ok(this)
