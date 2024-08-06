@@ -797,7 +797,7 @@ impl<O: Operation> ActiveFlasher<'_, O> {
             return Ok(());
         };
 
-        for channel in rtt.up_channels().iter() {
+        for channel in rtt.up_channels().iter_mut() {
             let mut buffer = vec![0; channel.buffer_size()];
             match channel.read(&mut self.core, &mut buffer) {
                 Ok(read) if read > 0 => {
