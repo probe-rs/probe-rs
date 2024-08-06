@@ -293,6 +293,8 @@ impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
             .read_32(self.base_address + 0xFF0, &mut cidr)
             .map_err(RomTableError::memory)?;
 
+        let component = RawComponent::from_u8((cidr[1] >> 4) & 0x0F);
+
         tracing::debug!("CIDR: {:x?}", cidr);
 
         let preambles = [
@@ -302,21 +304,28 @@ impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
             cidr[3] & 0xff,
         ];
 
-        let expected = [0x0D, 0x0, 0x05, 0xB1];
+        const EXPECTED: [u32; 4] = [0x0D, 0x0, 0x05, 0xB1];
 
-        for i in 0..4 {
-            if preambles[i] != expected[i] {
-                tracing::warn!(
+        // Do not print warnings for certain nRF52832 components.
+        const IGNORED_VERIFICATION_COMPONENTS: [u64; 3] = [0xe0001000, 0xe0000000, 0xe0040000];
+
+        if component != Some(RawComponent::GenericVerificationComponent)
+            || !IGNORED_VERIFICATION_COMPONENTS.contains(&self.base_address)
+        {
+            for i in 0..4 {
+                if preambles[i] != EXPECTED[i] {
+                    tracing::warn!(
                     "Component at 0x{:x}: CIDR{} has invalid preamble (expected 0x{:x}, got 0x{:x})",
-                    self.base_address, i, expected[i], preambles[i],
+                    self.base_address, i, EXPECTED[i], preambles[i],
                 );
-                // Technically invalid preambles are a no-go.
-                // We are not sure if we need to abort earlier or if just emitting a warning is okay.
-                // For now this works, so we emit a warning and continue on.
+                    // Technically invalid preambles are a no-go.
+                    // We are not sure if we need to abort earlier or if just emitting a warning is okay.
+                    // For now this works, so we emit a warning and continue on.
+                }
             }
         }
 
-        RawComponent::from_u8((cidr[1] >> 4) & 0x0F).ok_or(RomTableError::CSComponentIdentification)
+        component.ok_or(RomTableError::CSComponentIdentification)
     }
 
     /// Reads the peripheral ID from a component information table.
