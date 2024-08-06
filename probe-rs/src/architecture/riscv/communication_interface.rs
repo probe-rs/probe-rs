@@ -1632,7 +1632,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
         // clear resume request.
         dmcontrol.set_resumereq(false);
-        self.schedule_write_dm_register(dmcontrol)?;
+        self.write_dm_register(dmcontrol)?;
 
         Ok(())
     }
@@ -1645,7 +1645,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         dmcontrol.set_hartreset(true);
         dmcontrol.set_haltreq(true);
 
-        self.schedule_write_dm_register(dmcontrol)?;
+        self.write_dm_register(dmcontrol)?;
 
         // Read back register to verify reset is supported
         let readback: Dmcontrol = self.read_dm_register()?;
@@ -1657,7 +1657,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
             dmcontrol.set_dmactive(true);
             dmcontrol.set_hartreset(false);
 
-            self.schedule_write_dm_register(dmcontrol)?;
+            self.write_dm_register(dmcontrol)?;
         } else {
             // Hartreset is not supported, whole core needs to be reset
             //
@@ -1667,13 +1667,13 @@ impl<'state> RiscvCommunicationInterface<'state> {
             dmcontrol.set_ndmreset(true);
             dmcontrol.set_haltreq(true);
 
-            self.schedule_write_dm_register(dmcontrol)?;
+            self.write_dm_register(dmcontrol)?;
 
             tracing::debug!("Clearing ndmreset bit");
             dmcontrol.set_ndmreset(false);
             dmcontrol.set_haltreq(true);
 
-            self.schedule_write_dm_register(dmcontrol)?;
+            self.write_dm_register(dmcontrol)?;
         }
 
         let start = Instant::now();
@@ -1697,7 +1697,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         dmcontrol.set_hartreset(false);
         dmcontrol.set_ndmreset(false);
 
-        self.schedule_write_dm_register(dmcontrol)?;
+        self.write_dm_register(dmcontrol)?;
 
         // Reenable halt on breakpoint because this gets disabled if we reset the core
         self.debug_on_sw_breakpoint(true)?; // TODO: only restore if enabled before?
