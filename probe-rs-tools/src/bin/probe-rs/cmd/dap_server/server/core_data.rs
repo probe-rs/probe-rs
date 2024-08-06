@@ -444,7 +444,7 @@ fn try_attach_rtt(
     timestamp_offset: UtcOffset,
     defmt_state: Option<&DefmtState>,
 ) -> Result<RttActiveTarget, DebuggerError> {
-    let header_address = RttActiveTarget::get_rtt_symbol_from_bytes(&elf)
+    let header_address = RttActiveTarget::get_rtt_symbol_from_bytes(elf)
         .ok_or_else(|| anyhow!("No RTT control block found in ELF file"))?;
 
     let scan_region = ScanRegion::Exact(header_address);
