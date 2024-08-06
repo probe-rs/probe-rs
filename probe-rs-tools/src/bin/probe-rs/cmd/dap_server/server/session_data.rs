@@ -246,7 +246,7 @@ impl SessionData {
                     }
                 } else if debug_adapter.configuration_is_done() {
                     // We have not yet reached the point in the target application where the RTT buffers are initialized,
-                    // so, provided we have processed the MSDAP request for "configurationDone" , we should check again.
+                    // so, provided we have processed the MSDAP request for "configurationDone", we should check again.
 
                     #[allow(clippy::unwrap_used)]
                     match target_core.attach_to_rtt(

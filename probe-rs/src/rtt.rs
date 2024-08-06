@@ -467,7 +467,7 @@ pub enum Error {
     /// Multiple control blocks found in target memory: {display_list(_0)}.
     MultipleControlBlocksFound(Vec<Rtt>),
 
-    /// The control block has been corrupted. {0}
+    /// The control block has been corrupted: {0}
     ControlBlockCorrupted(String),
 
     /// Attempted an RTT operation against a Core number that is different from the Core number against which RTT was initialized. Expected {0}, found {1}
