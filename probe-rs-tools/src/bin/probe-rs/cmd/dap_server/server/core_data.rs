@@ -185,10 +185,20 @@ impl<'p> CoreHandle<'p> {
     ) -> Result<()> {
         let mut debugger_rtt_channels: Vec<debug_rtt::DebuggerRttChannel> = vec![];
 
+        let elf = std::fs::read(program_binary)
+            .map_err(|error| anyhow!("Error attempting to attach to RTT: {error}"))?;
+
+        let defmt_state = DefmtState::try_from_bytes(&elf)
+            .map_err(|err| anyhow!("Failed to process defmt data: {err}"))?;
+
         // Attach to RTT by using the RTT control block address from the ELF file. Do not scan the memory for the control block.
-        let Ok(target_rtt) =
-            try_attach_rtt(&mut self.core, program_binary, rtt_config, timestamp_offset)
-        else {
+        let Ok(target_rtt) = try_attach_rtt(
+            &mut self.core,
+            &elf,
+            rtt_config,
+            timestamp_offset,
+            defmt_state.as_ref(),
+        ) else {
             tracing::warn!("Failed to initalize RTT. Will try again on the next request... ");
             return Ok(());
         };
@@ -209,6 +219,7 @@ impl<'p> CoreHandle<'p> {
         self.core_data.rtt_connection = Some(debug_rtt::RttConnection {
             target_rtt,
             debugger_rtt_channels,
+            defmt_state,
         });
 
         Ok(())
@@ -428,13 +439,11 @@ impl<'p> CoreHandle<'p> {
 
 fn try_attach_rtt(
     core: &mut Core,
-    elf_file: &Path,
+    elf: &[u8],
     rtt_config: &RttConfig,
     timestamp_offset: UtcOffset,
+    defmt_state: Option<&DefmtState>,
 ) -> Result<RttActiveTarget, DebuggerError> {
-    let elf = std::fs::read(elf_file)
-        .map_err(|error| anyhow!("Error attempting to attach to RTT: {error}"))?;
-
     let header_address = RttActiveTarget::get_rtt_symbol_from_bytes(&elf)
         .ok_or_else(|| anyhow!("No RTT control block found in ELF file"))?;
 
@@ -444,8 +453,6 @@ fn try_attach_rtt(
         .map_err(|error| anyhow!("Error attempting to attach to RTT: {error}"))?;
 
     tracing::info!("RTT initialized.");
-    let defmt_state = DefmtState::try_from_bytes(&elf)
-        .map_err(|err| anyhow!("Failed to process defmt data: {err}"))?;
     let target = RttActiveTarget::new(core, rtt, defmt_state, rtt_config, timestamp_offset)
         .map_err(|err| anyhow!("Failed to attach to RTT: {err}"))?;
 

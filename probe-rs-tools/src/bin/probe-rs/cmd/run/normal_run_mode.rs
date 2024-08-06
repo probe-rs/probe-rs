@@ -24,7 +24,7 @@ impl NormalRunMode {
     }
 }
 impl RunMode for NormalRunMode {
-    fn run(&self, mut session: Session, run_loop: RunLoop) -> anyhow::Result<()> {
+    fn run(&self, mut session: Session, mut run_loop: RunLoop) -> anyhow::Result<()> {
         let mut core = session.core(run_loop.core_id)?;
 
         let halt_handler = |halt_reason: HaltReason, _core: &mut Core| {
