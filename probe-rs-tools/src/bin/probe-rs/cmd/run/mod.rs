@@ -136,6 +136,7 @@ impl Cmd {
                 always_print_stacktrace: self.shared_options.always_print_stacktrace,
                 no_location: self.shared_options.no_location,
                 log_format: self.shared_options.log_format,
+                defmt_state: None,
             },
         )?;
 
@@ -200,6 +201,7 @@ struct RunLoop {
     always_print_stacktrace: bool,
     no_location: bool,
     log_format: Option<String>,
+    defmt_state: Option<DefmtState>,
 }
 
 #[derive(PartialEq, Debug)]
@@ -228,7 +230,7 @@ impl RunLoop {
     ///
     /// The function will also return on timeout with `Ok(ReturnReason::Timeout)` or if the user presses CTRL + C with `Ok(ReturnReason::User)`.
     fn run_until<F, R>(
-        &self,
+        &mut self,
         core: &mut Core,
         catch_hardfault: bool,
         catch_reset: bool,
@@ -271,13 +273,16 @@ impl RunLoop {
             ..Default::default()
         });
 
+        let elf = fs::read(&self.path)?;
+        self.defmt_state = DefmtState::try_from_bytes(&elf)?;
         let mut rtta = attach_to_rtt(
             core,
             Duration::from_secs(1),
             &self.rtt_scan_regions,
-            &self.path,
+            &elf,
             &rtt_config,
             self.timestamp_offset,
+            self.defmt_state.as_ref(),
         )
         .context("Failed to attach to RTT")?;
 
@@ -355,7 +360,7 @@ impl RunLoop {
                 }
             }
 
-            let had_rtt_data = poll_rtt(rtta, core, output_stream)?;
+            let had_rtt_data = poll_rtt(rtta, core, output_stream, self.defmt_state.as_ref())?;
 
             if return_reason.is_none() {
                 if exit.load(Ordering::Relaxed) {
@@ -475,6 +480,7 @@ fn poll_rtt<S: Write + ?Sized>(
     rtta: &mut Option<RttActiveTarget>,
     core: &mut Core<'_>,
     out_stream: &mut S,
+    defmt_state: Option<&DefmtState>,
 ) -> Result<bool, anyhow::Error> {
     let mut had_data = false;
     if let Some(rtta) = rtta {
@@ -501,7 +507,7 @@ fn poll_rtt<S: Write + ?Sized>(
             had_data: false,
         };
 
-        rtta.poll_rtt_fallible(core, &mut out)?;
+        rtta.poll_rtt_fallible(core, &mut out, defmt_state)?;
         had_data = out.had_data;
     }
 
@@ -512,14 +518,14 @@ fn attach_to_rtt(
     core: &mut Core<'_>,
     timeout: Duration,
     rtt_region: &ScanRegion,
-    elf_file: &Path,
+    elf: &[u8],
     rtt_config: &RttConfig,
     timestamp_offset: UtcOffset,
+    defmt_state: Option<&DefmtState>,
 ) -> Result<Option<RttActiveTarget>> {
     // Try to find the RTT control block symbol in the ELF file.
     // If we find it, we can use the exact address to attach to the RTT control block. Otherwise, we
     // fall back to the caller-provided scan regions.
-    let elf = fs::read(elf_file)?;
     let exact_region;
     let scan_region = if let Some(address) = RttActiveTarget::get_rtt_symbol_from_bytes(&elf) {
         exact_region = ScanRegion::Exact(address);
@@ -534,7 +540,6 @@ fn attach_to_rtt(
     // once per poll call.
     let start = Instant::now();
     loop {
-        let defmt_state = DefmtState::try_from_bytes(&elf)?;
         let rtt = match try_attach_to_rtt(core, timeout, scan_region) {
             Ok(rtt) => rtt,
             Err(RttError::NoControlBlockLocation) => return Ok(None),
