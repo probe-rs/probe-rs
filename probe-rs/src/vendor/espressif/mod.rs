@@ -41,10 +41,7 @@ fn get_target_by_magic(info: &EspressifDetection, read_magic: u32) -> Option<Str
     None
 }
 
-fn try_detect_espressif_chip(
-    probe: &mut impl MemoryInterface,
-    idcode: u32,
-) -> Result<Option<String>, Error> {
+fn try_detect_espressif_chip(probe: &mut impl MemoryInterface, idcode: u32) -> Option<String> {
     let families = registry::families_ref();
     for family in families.iter() {
         for info in family
@@ -60,12 +57,12 @@ fn try_detect_espressif_chip(
             };
             tracing::debug!("Read magic value: {read_magic:#010x}");
             if let Some(target) = get_target_by_magic(info, read_magic) {
-                return Ok(Some(target));
+                return Some(target);
             }
         }
     }
 
-    Ok(None)
+    None
 }
 
 /// Espressif
@@ -100,7 +97,9 @@ impl Vendor for Espressif {
         probe: &mut RiscvCommunicationInterface,
         idcode: u32,
     ) -> Result<Option<String>, Error> {
-        try_detect_espressif_chip(probe, idcode)
+        let result = probe.halted_access(|probe| Ok(try_detect_espressif_chip(probe, idcode)))?;
+
+        Ok(result)
     }
 
     fn try_detect_xtensa_chip(
@@ -108,6 +107,6 @@ impl Vendor for Espressif {
         probe: &mut XtensaCommunicationInterface,
         idcode: u32,
     ) -> Result<Option<String>, Error> {
-        try_detect_espressif_chip(probe, idcode)
+        Ok(try_detect_espressif_chip(probe, idcode))
     }
 }

@@ -11,6 +11,7 @@ use probe_rs::probe::list::Lister;
 use probe_rs::rtt::{try_attach_to_rtt_shared, Error, ScanRegion};
 use probe_rs::{probe::DebugProbeSelector, Session};
 use std::ffi::OsString;
+use std::time::Instant;
 use std::{fs, thread};
 use std::{
     fs::File,
@@ -455,15 +456,28 @@ fn attach_to_rtt_shared(
         ScanRegion::Ram
     };
 
-    let rtt = match try_attach_to_rtt_shared(session, core_id, timeout, &scan_region) {
-        Ok(rtt) => rtt,
-        Err(Error::NoControlBlockLocation) => return Ok(None),
-        Err(err) => return Err(anyhow!("Error attempting to attach to RTT: {err}")),
-    };
+    // FIXME: this is a terrible way to do this. While it works (for a particular error), it's not
+    // a general solution and it's also wasting a lot of time on re-parsing ELF and looking for the
+    // control block. We should refactor this to only try a single iteration of the attaching
+    // once per poll call.
+    let start = Instant::now();
+    loop {
+        let defmt_state = DefmtState::try_from_bytes(&elf)?;
+        let rtt = match try_attach_to_rtt_shared(session, core_id, timeout, &scan_region) {
+            Ok(rtt) => rtt,
+            Err(Error::NoControlBlockLocation) => return Ok(None),
+            Err(err) => return Err(anyhow!("Error attempting to attach to RTT: {err}")),
+        };
 
-    let mut session_handle = session.lock();
-    let mut core = session_handle.core(core_id)?;
-
-    let defmt_state = DefmtState::try_from_bytes(&elf)?;
-    RttActiveTarget::new(&mut core, rtt, defmt_state, rtt_config, timestamp_offset).map(Some)
+        let mut session_handle = session.lock();
+        let mut core = session_handle.core(core_id)?;
+        match RttActiveTarget::new(&mut core, rtt, defmt_state, rtt_config, timestamp_offset) {
+            Ok(rtta) => return Ok(Some(rtta)),
+            Err(error) => {
+                if start.elapsed() > timeout {
+                    return Err(error);
+                }
+            }
+        }
+    }
 }

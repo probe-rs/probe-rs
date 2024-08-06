@@ -731,24 +731,72 @@ memory_mapped_bitfield_register! {
     pub struct Dmstatus(u32);
     0x11, "dmstatus",
     impl From;
-    impebreak, _: 22;
-    allhavereset, _: 19;
-    anyhavereset, _: 18;
-    allresumeack, _: 17;
-    anyresumeack, _: 16;
-    allnonexistent, _: 15;
-    anynonexistent, _: 14;
-    allunavail, _: 13;
-    anyunavail, _: 12;
-    allrunning, _: 11;
-    anyrunning, _: 10;
-    allhalted, _: 9;
-    anyhalted, _: 8;
-    authenticated, _: 7;
-    authbusy, _: 6;
-    hasresethaltreq, _: 5;
-    confstrptrvalid, _: 4;
-    version, _: 3, 0;
+
+    /// If 1, then there is an implicit ebreak instruction
+    /// at the non-existent word immediately after the
+    /// Program Buffer. This saves the debugger from
+    /// having to write the ebreak itself, and allows the
+    /// Program Buffer to be one word smaller.
+    /// This must be 1 when progbufsize is 1.
+    pub impebreak, _: 22;
+
+    /// This field is 1 when all currently selected harts
+    /// have been reset and reset has not been acknowledged for any of them.
+    pub allhavereset, _: 19;
+
+    /// This field is 1 when at least one currently selected hart
+    /// has been reset and reset has not been acknowledged for any of them.
+    pub anyhavereset, _: 18;
+
+    /// This field is 1 when all currently selected harts
+    /// have acknowledged their last resume request.
+    pub allresumeack, _: 17;
+
+    /// This field is 1 when any currently selected hart
+    /// has acknowledged its last resume request.
+    pub anyresumeack, _: 16;
+
+    /// This field is 1 when all currently selected harts do
+    /// not exist in this platform.
+    pub allnonexistent, _: 15;
+
+    /// This field is 1 when any currently selected hart
+    /// does not exist in this platform.
+    pub anynonexistent, _: 14;
+
+    /// This field is 1 when all currently selected harts are unavailable.
+    pub allunavail, _: 13;
+
+    /// This field is 1 when any currently selected hart is unavailable.
+    pub anyunavail, _: 12;
+
+    /// This field is 1 when all currently selected harts are running.
+    pub allrunning, _: 11;
+
+    /// This field is 1 when any currently selected hart is running.
+    pub anyrunning, _: 10;
+
+    /// This field is 1 when all currently selected harts are halted.
+    pub allhalted, _: 9;
+
+    /// This field is 1 when any currently selected hart is halted.
+    pub anyhalted, _: 8;
+
+    /// If 0, authentication is required before using the DM.
+    pub authenticated, _: 7;
+
+    /// If 0, the authentication module is ready to process the next read/write to `authdata`.
+    pub authbusy, _: 6;
+
+    /// 1 if this Debug Module supports halt-on-reset functionality controllable by the
+    /// `setresethaltreq` and `clrresethaltreq` bits.
+    pub hasresethaltreq, _: 5;
+
+    /// 1 if `confstrptr0`–`confstrptr3` hold the address of the configuration string.
+    pub confstrptrvalid, _: 4;
+
+    /// Version of the debug module.
+    pub version, _: 3, 0;
 }
 
 bitfield! {

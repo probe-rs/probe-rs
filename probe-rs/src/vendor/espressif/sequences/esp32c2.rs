@@ -8,7 +8,7 @@ use super::esp::EspFlashSizeDetector;
 use crate::{
     architecture::riscv::{
         communication_interface::RiscvCommunicationInterface, sequences::RiscvDebugSequence,
-        Dmcontrol,
+        Dmcontrol, Dmstatus,
     },
     MemoryInterface, Session,
 };
@@ -36,6 +36,10 @@ impl ESP32C2 {
 impl RiscvDebugSequence for ESP32C2 {
     fn on_connect(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), crate::Error> {
         tracing::info!("Disabling esp32c2 watchdogs...");
+
+        // FIXME: this is a terrible hack because we should not need to halt to read memory.
+        interface.sysbus_requires_halting(true);
+
         // disable super wdt
         interface.write_word_32(0x600080A4, 0x8F1D312A)?; // write protection off
         let current = interface.read_word_32(0x600080A0)?;
@@ -76,17 +80,22 @@ impl RiscvDebugSequence for ESP32C2 {
         interface.write_word_32(0x6001_F068, 0)?;
 
         // Wait for the reset to take effect.
-        std::thread::sleep(Duration::from_millis(10));
+        loop {
+            let dmstatus = interface.read_dm_register::<Dmstatus>()?;
+            if dmstatus.allhavereset() && dmstatus.allhalted() {
+                break;
+            }
+        }
 
+        // Clear allhavereset and anyhavereset
         let mut dmcontrol = Dmcontrol(0);
         dmcontrol.set_dmactive(true);
         dmcontrol.set_ackhavereset(true);
         interface.write_dm_register(dmcontrol)?;
 
-        interface.enter_debug_mode()?;
-        self.on_connect(interface)?;
-
         interface.reset_hart_and_halt(timeout)?;
+
+        self.on_connect(interface)?;
 
         Ok(())
     }
