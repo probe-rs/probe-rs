@@ -403,23 +403,23 @@ impl Rtt {
     }
 
     /// Returns a reference to the detected up channels.
-    pub fn up_channels(&mut self) -> &[UpChannel] {
+    pub fn up_channels(&mut self) -> &mut [UpChannel] {
         &mut self.up_channels
     }
 
     /// Returns a reference to the detected down channels.
-    pub fn down_channels(&mut self) -> &[DownChannel] {
+    pub fn down_channels(&mut self) -> &mut [DownChannel] {
         &mut self.down_channels
     }
 
     /// Returns a particular up channel.
-    pub fn up_channel(&self, channel: usize) -> Option<&UpChannel> {
-        self.up_channels.get(channel)
+    pub fn up_channel(&mut self, channel: usize) -> Option<&mut UpChannel> {
+        self.up_channels.get_mut(channel)
     }
 
     /// Returns a particular down channel.
-    pub fn down_channel(&self, channel: usize) -> Option<&DownChannel> {
-        self.down_channels.get(channel)
+    pub fn down_channel(&mut self, channel: usize) -> Option<&mut DownChannel> {
+        self.down_channels.get_mut(channel)
     }
 }
 
@@ -484,6 +484,9 @@ pub enum Error {
 
     /// Some uncategorized error occurred.
     Other(#[from] anyhow::Error),
+
+    /// The read pointer changed unexpectedly.
+    ReadPointerChanged,
 }
 
 fn display_list(list: &[Rtt]) -> String {

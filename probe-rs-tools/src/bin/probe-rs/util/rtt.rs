@@ -412,7 +412,7 @@ impl RttActiveUpChannel {
                 Ok(0) => return None,
                 Ok(count) => return Some(count),
                 Err(error) if loop_count == RETRY_COUNT => {
-                    tracing::error!("\nError reading from RTT: {:?}", anyhow::anyhow!(error));
+                    tracing::error!("Error reading from RTT: {:?}", anyhow::anyhow!(error));
                     return None;
                 }
                 _ => thread::sleep(Duration::from_millis(50)),
