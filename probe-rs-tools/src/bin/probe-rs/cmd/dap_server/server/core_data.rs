@@ -433,7 +433,7 @@ fn try_attach_rtt(
     timestamp_offset: UtcOffset,
 ) -> Result<RttActiveTarget, DebuggerError> {
     let elf = std::fs::read(elf_file)
-        .map_err(|error| anyhow!("Error attempting to attach to RTT: {}", error))?;
+        .map_err(|error| anyhow!("Error attempting to attach to RTT: {error}"))?;
 
     let header_address = RttActiveTarget::get_rtt_symbol_from_bytes(&elf)
         .ok_or_else(|| anyhow!("No RTT control block found in ELF file"))?;
@@ -441,11 +441,13 @@ fn try_attach_rtt(
     let scan_region = ScanRegion::Exact(header_address);
 
     let rtt = Rtt::attach_region(core, &scan_region)
-        .map_err(|error| anyhow!("Error attempting to attach to RTT: {}", error))?;
+        .map_err(|error| anyhow!("Error attempting to attach to RTT: {error}"))?;
 
     tracing::info!("RTT initialized.");
-    let defmt_state = DefmtState::try_from_bytes(&elf)?;
-    let target = RttActiveTarget::new(core, rtt, defmt_state, rtt_config, timestamp_offset)?;
+    let defmt_state = DefmtState::try_from_bytes(&elf)
+        .map_err(|err| anyhow!("Failed to process defmt data: {err}"))?;
+    let target = RttActiveTarget::new(core, rtt, defmt_state, rtt_config, timestamp_offset)
+        .map_err(|err| anyhow!("Failed to attach to RTT: {err}"))?;
 
     Ok(target)
 }

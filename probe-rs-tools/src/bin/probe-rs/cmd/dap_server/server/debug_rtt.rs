@@ -6,7 +6,8 @@ use crate::{
     },
     util::rtt::ChannelDataCallbacks,
 };
-use probe_rs::Core;
+use anyhow::anyhow;
+use probe_rs::{rtt::Error, Core};
 
 /// Manage the active RTT target for a specific SessionData, as well as provide methods to reliably move RTT from target, through the debug_adapter, to the client.
 pub struct RttConnection {
@@ -34,7 +35,9 @@ impl RttConnection {
 
     /// Clean up the RTT connection, restoring the state changes that we made.
     pub fn clean_up(&mut self, target_core: &mut Core) -> Result<(), DebuggerError> {
-        self.target_rtt.clean_up(target_core)?;
+        self.target_rtt
+            .clean_up(target_core)
+            .map_err(|err| DebuggerError::Other(anyhow!(err)))?;
         Ok(())
     }
 }
@@ -68,11 +71,7 @@ impl DebuggerRttChannel {
         }
 
         impl ChannelDataCallbacks for StringCollector {
-            fn on_string_data(
-                &mut self,
-                _channel: usize,
-                data: String,
-            ) -> Result<(), anyhow::Error> {
+            fn on_string_data(&mut self, _channel: usize, data: String) -> Result<(), Error> {
                 self.data = Some(data);
                 Ok(())
             }
@@ -84,7 +83,7 @@ impl DebuggerRttChannel {
             rtt_channel.poll_process_rtt_data(core, rtt_target.defmt_state.as_ref(), &mut out)
         {
             debug_adapter
-                .show_error_message(&DebuggerError::Other(e))
+                .show_error_message(&DebuggerError::Other(anyhow!(e)))
                 .ok();
             return false;
         }
