@@ -407,8 +407,8 @@ impl RttActiveUpChannel {
     /// returns the number of bytes that was read.
     pub fn poll_rtt(&mut self, core: &mut Core) -> Result<Option<usize>, Error> {
         match self.up_channel.read(core, self.rtt_buffer.0.as_mut())? {
-            0 => return Ok(None),
-            count => return Ok(Some(count)),
+            0 => Ok(None),
+            count => Ok(Some(count)),
         }
     }
 
