@@ -44,7 +44,12 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(rtt: RttActiveTarget, config: config::Config, logname: String) -> Result<Self> {
+    pub fn new(
+        rtt: RttActiveTarget,
+        config: config::Config,
+        logname: String,
+        defmt_state: Option<DefmtState>,
+    ) -> Result<Self> {
         let mut tab_config = config.rtt.tabs;
 
         // Create channel states
@@ -154,7 +159,7 @@ impl App {
             events,
             history_path,
             logname,
-            defmt_state: rtt.defmt_state,
+            defmt_state,
             current_height: 0,
 
             up_channels,

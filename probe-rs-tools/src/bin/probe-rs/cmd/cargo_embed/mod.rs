@@ -364,13 +364,17 @@ fn run_rttui_app(
         });
     }
 
+    let elf = fs::read(elf_path)?;
+    let defmt_state = DefmtState::try_from_bytes(&elf)?;
+
     let Some(rtt) = attach_to_rtt_shared(
         session,
         core_id,
         config.rtt.timeout,
-        elf_path,
+        &elf,
         &rtt_config,
         timezone_offset,
+        defmt_state.as_ref(),
     )
     .context("Failed to attach to RTT")?
     else {
@@ -378,7 +382,7 @@ fn run_rttui_app(
         return Ok(());
     };
 
-    if require_defmt && rtt.defmt_state.is_none() {
+    if require_defmt && defmt_state.is_none() {
         tracing::warn!(
             "RTT channels with format = defmt found, but no defmt metadata found in the ELF file."
         );
@@ -412,7 +416,7 @@ fn run_rttui_app(
         / 1_000_000;
 
     let logname = format!("{name}_{chip_name}_{timestamp_millis}");
-    let mut app = rttui::app::App::new(rtt, config, logname)?;
+    let mut app = rttui::app::App::new(rtt, config, logname, defmt_state)?;
     loop {
         app.render();
 
@@ -442,15 +446,15 @@ fn attach_to_rtt_shared(
     session: &FairMutex<Session>,
     core_id: usize,
     timeout: Duration,
-    elf_file: &Path,
+    elf: &[u8],
     rtt_config: &RttConfig,
     timestamp_offset: UtcOffset,
+    defmt_state: Option<&DefmtState>,
 ) -> Result<Option<RttActiveTarget>> {
     // Try to find the RTT control block symbol in the ELF file.
     // If we find it, we can use the exact address to attach to the RTT control block. Otherwise, we
     // fall back to the caller-provided scan regions.
-    let elf = fs::read(elf_file)?;
-    let scan_region = if let Some(address) = RttActiveTarget::get_rtt_symbol_from_bytes(&elf) {
+    let scan_region = if let Some(address) = RttActiveTarget::get_rtt_symbol_from_bytes(elf) {
         ScanRegion::Exact(address)
     } else {
         ScanRegion::Ram
@@ -462,7 +466,6 @@ fn attach_to_rtt_shared(
     // once per poll call.
     let start = Instant::now();
     loop {
-        let defmt_state = DefmtState::try_from_bytes(&elf)?;
         let rtt = match try_attach_to_rtt_shared(session, core_id, timeout, &scan_region) {
             Ok(rtt) => rtt,
             Err(Error::NoControlBlockLocation) => return Ok(None),

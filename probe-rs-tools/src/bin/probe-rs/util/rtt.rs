@@ -484,7 +484,6 @@ impl RttActiveDownChannel {
 pub struct RttActiveTarget {
     pub active_up_channels: Vec<RttActiveUpChannel>,
     pub active_down_channels: Vec<RttActiveDownChannel>,
-    pub defmt_state: Option<DefmtState>,
 }
 
 /// defmt information common to all defmt channels.
@@ -524,7 +523,7 @@ impl RttActiveTarget {
     pub fn new(
         core: &mut Core,
         rtt: probe_rs::rtt::Rtt,
-        defmt_state: Option<DefmtState>,
+        defmt_state: Option<&DefmtState>,
         rtt_config: &RttConfig,
         timestamp_offset: UtcOffset,
     ) -> Result<Self, Error> {
@@ -542,7 +541,7 @@ impl RttActiveTarget {
                 channel,
                 &channel_config,
                 timestamp_offset,
-                defmt_state.as_ref(),
+                defmt_state,
             )?);
         }
 
@@ -555,7 +554,6 @@ impl RttActiveTarget {
         Ok(Self {
             active_up_channels,
             active_down_channels,
-            defmt_state,
         })
     }
 
@@ -591,8 +589,8 @@ impl RttActiveTarget {
         &mut self,
         core: &mut Core,
         collector: &mut impl ChannelDataCallbacks,
+        defmt_state: Option<&DefmtState>,
     ) -> Result<(), Error> {
-        let defmt_state = self.defmt_state.as_ref();
         for channel in self.active_up_channels.iter_mut() {
             channel.poll_process_rtt_data(core, defmt_state, collector)?;
         }
