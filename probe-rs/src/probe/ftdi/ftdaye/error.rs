@@ -1,6 +1,6 @@
 use nusb::descriptors::ActiveConfigurationError;
 
-use crate::probe::{ftdi::ftdaye::ChipType, DebugProbeError};
+use crate::probe::{ftdi::ftdaye::ChipType, ProbeError};
 
 #[derive(Debug, thiserror::Error)]
 pub enum FtdiError {
@@ -24,8 +24,4 @@ pub enum FtdiError {
     Other(String),
 }
 
-impl From<FtdiError> for DebugProbeError {
-    fn from(e: FtdiError) -> Self {
-        DebugProbeError::ProbeSpecific(Box::new(e))
-    }
-}
+impl ProbeError for FtdiError {}

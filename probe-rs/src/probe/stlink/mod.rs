@@ -19,7 +19,7 @@ use crate::{
         FullyQualifiedApAddress, Pins, SwoAccess, SwoConfig, SwoMode,
     },
     probe::{
-        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeCreationError,
+        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeError,
         ProbeFactory, WireProtocol,
     },
     Error as ProbeRsError, MemoryInterface,
@@ -480,7 +480,7 @@ impl<D: StLinkUsb> StLink<D> {
     /// Reads the ST-Links version.
     /// Returns a tuple (hardware version, firmware version).
     /// This method stores the version data on the struct to make later use of it.
-    fn get_version(&mut self) -> Result<(u8, u8), DebugProbeError> {
+    fn get_version(&mut self) -> Result<(u8, u8), StlinkError> {
         const HW_VERSION_SHIFT: u8 = 12;
         const HW_VERSION_MASK: u8 = 0x0F;
         const JTAG_VERSION_SHIFT: u8 = 6;
@@ -524,11 +524,11 @@ impl<D: StLinkUsb> StLink<D> {
 
         // Make sure everything is okay with the firmware we use.
         if self.jtag_version == 0 {
-            Err(StlinkError::JTAGNotSupportedOnProbe.into())
+            Err(StlinkError::JTAGNotSupportedOnProbe)
         } else if (self.hw_version < 3 && self.jtag_version < Self::MIN_JTAG_VERSION)
             || (self.hw_version == 3 && self.jtag_version < Self::MIN_JTAG_VERSION_V3)
         {
-            Err(DebugProbeError::ProbeFirmwareOutdated)
+            Err(StlinkError::ProbeFirmwareOutdated)
         } else {
             Ok((self.hw_version, self.jtag_version))
         }
@@ -536,7 +536,7 @@ impl<D: StLinkUsb> StLink<D> {
 
     /// Opens the ST-Link USB device and tries to identify the ST-Links version and its target voltage.
     /// Internal helper.
-    fn init(&mut self) -> Result<(), DebugProbeError> {
+    fn init(&mut self) -> Result<(), StlinkError> {
         tracing::debug!("Initializing STLink...");
 
         if let Err(e) = self.enter_idle() {
@@ -548,7 +548,7 @@ impl<D: StLinkUsb> StLink<D> {
                     self.enter_idle()?;
                 }
                 // Other error occurred, return it
-                _ => return Err(e.into()),
+                _ => return Err(e),
             }
         }
 
@@ -636,13 +636,7 @@ impl<D: StLinkUsb> StLink<D> {
     fn get_communication_frequencies(
         &mut self,
         protocol: WireProtocol,
-    ) -> Result<(Vec<u32>, u32), DebugProbeError> {
-        if self.hw_version < 3 {
-            return Err(DebugProbeError::CommandNotSupportedByProbe {
-                command_name: "get_communication_frequencies",
-            });
-        }
-
+    ) -> Result<(Vec<u32>, u32), StlinkError> {
         let cmd_proto = match protocol {
             WireProtocol::Swd => 0,
             WireProtocol::Jtag => 1,
@@ -681,7 +675,7 @@ impl<D: StLinkUsb> StLink<D> {
         // Older versions of the ST-Link software don't support this.
         if self.hw_version < 3 && self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
             if ap != 0 {
-                return Err(DebugProbeError::ProbeFirmwareOutdated);
+                return Err(StlinkError::ProbeFirmwareOutdated.into());
             }
         } else if !self.opened_aps.contains(&ap) {
             tracing::debug!("Opening AP {}", ap);
@@ -1258,10 +1252,9 @@ impl<D: StLinkUsb> SwoAccess for StLink<D> {
                 self.start_trace_reception(config)?;
                 Ok(())
             }
-            SwoMode::Manchester => Err(DebugProbeError::ProbeSpecific(
+            SwoMode::Manchester => Err(ArmError::Probe(
                 StlinkError::ManchesterSwoNotSupported.into(),
-            )
-            .into()),
+            )),
         }
     }
 
@@ -1277,25 +1270,18 @@ impl<D: StLinkUsb> SwoAccess for StLink<D> {
 }
 
 /// ST-Link specific errors.
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, docsplay::Display)]
 pub enum StlinkError {
     /// Invalid voltage values returned by probe.
-    #[error("Invalid voltage values returned by probe.")]
     VoltageDivisionByZero,
 
     /// Probe is in an unknown mode.
-    #[error("Probe is in an unknown mode.")]
     UnknownMode,
 
-    /// Banks not allowed on DP register.
-    #[error(
-        "Current version of the STLink firmware does not support accessing banked DP registers. \
-         Upgrading the firmware to the newest version might fix this."
-    )]
+    /// Current version of the STLink firmware does not support accessing banked DP registers.
     BanksNotAllowedOnDPRegister,
 
-    /// Not enough bytes were written.
-    #[error("Not enough bytes written.")]
+    /// Not enough bytes were written. Expected {should} but only {is} were written.
     NotEnoughBytesWritten {
         /// The number of bytes actually written
         is: usize,
@@ -1304,51 +1290,32 @@ pub enum StlinkError {
     },
 
     /// USB endpoint not found.
-    #[error("Usb endpoint not found.")]
     EndpointNotFound,
 
-    /// Command failed.
-    #[error("Command failed with status {0:?}")]
+    /// Command failed with status {0:?}.
     CommandFailed(Status),
 
     /// The probe does not support JTAG.
-    #[error("JTAG not supported on Probe")]
     JTAGNotSupportedOnProbe,
 
     /// The probe does not support SWO with Manchester encoding.
-    #[error("Manchester-coded SWO mode not supported")]
     ManchesterSwoNotSupported,
 
     /// The probe does not support multidrop SWD.
-    #[error("Multidrop SWD not supported")]
     MultidropNotSupported,
 
     /// Attempted unaligned access.
-    #[error("Unaligned")]
     UnalignedAddress,
 
+    /// The firmware on the probe is outdated, and not supported by probe-rs.
+    /// Use the ST-Link updater utility to update your probe firmware.
+    ProbeFirmwareOutdated,
+
     /// USB error.
-    #[error("USB")]
-    Usb(Box<dyn std::error::Error + Sync + Send>),
+    Usb(#[from] std::io::Error),
 }
 
-impl From<nusb::Error> for StlinkError {
-    fn from(e: nusb::Error) -> Self {
-        StlinkError::Usb(Box::new(e))
-    }
-}
-
-impl From<StlinkError> for DebugProbeError {
-    fn from(e: StlinkError) -> Self {
-        DebugProbeError::ProbeSpecific(Box::new(e))
-    }
-}
-
-impl From<StlinkError> for ProbeCreationError {
-    fn from(e: StlinkError) -> Self {
-        ProbeCreationError::ProbeSpecific(Box::new(e))
-    }
-}
+impl ProbeError for StlinkError {}
 
 #[derive(Debug)]
 struct UninitializedStLink {
@@ -2009,7 +1976,7 @@ mod test {
                 _ => Ok(()),
             }
         }
-        fn reset(&mut self) -> Result<(), DebugProbeError> {
+        fn reset(&mut self) -> Result<(), StlinkError> {
             Ok(())
         }
 
@@ -2017,7 +1984,7 @@ mod test {
             &mut self,
             _read_data: &mut [u8],
             _timeout: Duration,
-        ) -> Result<usize, DebugProbeError> {
+        ) -> Result<usize, StlinkError> {
             unimplemented!("Not implemented for MockUSB")
         }
     }
@@ -2040,7 +2007,7 @@ mod test {
         let init_result = probe.init();
 
         match init_result.unwrap_err() {
-            DebugProbeError::ProbeFirmwareOutdated => (),
+            StlinkError::ProbeFirmwareOutdated => (),
             other => panic!("Expected firmware outdated error, got {other}"),
         }
     }

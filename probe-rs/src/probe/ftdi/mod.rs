@@ -178,8 +178,7 @@ impl JtagAdapter {
     fn flush(&mut self) -> Result<(), DebugProbeError> {
         self.finalize_command()?;
         self.send_buffer()?;
-        self.read_response()
-            .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
+        self.read_response()?;
 
         Ok(())
     }
@@ -332,9 +331,7 @@ impl DebugProbe for FtdiProbe {
     fn attach(&mut self) -> Result<(), DebugProbeError> {
         tracing::debug!("Attaching...");
 
-        self.adapter
-            .attach()
-            .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
+        self.adapter.attach()?;
 
         self.scan_chain()?;
         self.select_target(0)
