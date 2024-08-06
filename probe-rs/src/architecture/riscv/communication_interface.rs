@@ -247,6 +247,9 @@ pub struct RiscvCommunicationInterfaceState {
     /// Workaround for certain MCUs. If set, the target will be halted for a sysbus access, even
     /// though the spec says it should not be necessary.
     sysbus_requires_halting: bool,
+
+    /// Whether the core is currently halted.
+    is_halted: bool,
 }
 
 /// Timeout for RISC-V operations.
@@ -294,6 +297,7 @@ impl RiscvCommunicationInterfaceState {
             last_selected_hart: 0,
             hasresethaltreq: None,
             sysbus_requires_halting: false,
+            is_halted: false,
         }
     }
 
@@ -377,7 +381,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         let mut control: Dmcontrol = self.read_dm_register()?;
         control.set_dmactive(true);
         control.set_hartsel(hart);
-        self.write_dm_register(control)?;
+        self.schedule_write_dm_register(control)?;
         self.state.last_selected_hart = hart;
         Ok(())
     }
@@ -448,13 +452,14 @@ impl<'state> RiscvCommunicationInterface<'state> {
         // enable the debug module
         let mut control = Dmcontrol(0);
         control.set_dmactive(true);
-        self.write_dm_register(control)?;
+        self.schedule_write_dm_register(control)?;
 
         // read the  version of the debug module
         let status: Dmstatus = self.read_dm_register()?;
 
         self.state.progbuf_cache.fill(0);
         self.state.debug_version = DebugModuleVersion::from(status.version() as u8);
+        self.state.is_halted = status.allhalted();
 
         // Only version of 0.13 of the debug specification is currently supported.
         if self.state.debug_version != DebugModuleVersion::Version0_13 {
@@ -488,7 +493,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         control.set_dmactive(true);
         control.set_hartsel(0xffff_ffff);
 
-        self.write_dm_register(control)?;
+        self.schedule_write_dm_register(control)?;
 
         let control: Dmcontrol = self.read_dm_register()?;
 
@@ -511,7 +516,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         let mut control = Dmcontrol(0);
         control.set_dmactive(true);
         control.set_hartsel(max_hart_index - 1);
-        self.write_dm_register(control)?;
+        self.schedule_write_dm_register(control)?;
 
         // Check if the anynonexistent works
         let status: Dmstatus = self.read_dm_register()?;
@@ -522,7 +527,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
                 control.set_dmactive(true);
                 control.set_hartsel(hart_index);
 
-                self.write_dm_register(control)?;
+                self.schedule_write_dm_register(control)?;
 
                 // Check if the current hart exists
                 let status: Dmstatus = self.read_dm_register()?;
@@ -550,7 +555,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         control.set_dmactive(true);
         control.set_hartsel(0);
 
-        self.write_dm_register(control)?;
+        self.schedule_write_dm_register(control)?;
 
         // determine size of the program buffer, and number of data
         // registers for abstract commands
@@ -576,7 +581,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         abstractauto.set_autoexecprogbuf(2u32.pow(self.state.progbuf_size as u32) - 1);
         abstractauto.set_autoexecdata(2u32.pow(self.state.data_register_count as u32) - 1);
 
-        self.write_dm_register(abstractauto)?;
+        self.schedule_write_dm_register(abstractauto)?;
 
         let abstractauto_readback: Abstractauto = self.read_dm_register()?;
 
@@ -585,7 +590,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
         // clear abstractauto
         abstractauto = Abstractauto(0);
-        self.write_dm_register(abstractauto)?;
+        self.schedule_write_dm_register(abstractauto)?;
 
         // determine support system bus access
         let sbcs = self.read_dm_register::<Sbcs>()?;
@@ -648,14 +653,14 @@ impl<'state> RiscvCommunicationInterface<'state> {
         dmcontrol.set_dmactive(true);
         dmcontrol.set_haltreq(true);
 
-        self.write_dm_register(dmcontrol)?;
+        self.schedule_write_dm_register(dmcontrol)?;
 
         self.wait_for_core_halted(timeout)?;
 
         // clear the halt request
         dmcontrol.set_haltreq(false);
 
-        self.write_dm_register(dmcontrol)?;
+        self.schedule_write_dm_register(dmcontrol)?;
 
         let pc: u64 = self
             .read_csr(super::registers::PC.id().0)
@@ -665,11 +670,15 @@ impl<'state> RiscvCommunicationInterface<'state> {
     }
 
     pub(crate) fn core_halted(&mut self) -> Result<bool, RiscvError> {
-        let dmstatus: Dmstatus = self.read_dm_register()?;
+        if !self.state.is_halted {
+            let dmstatus: Dmstatus = self.read_dm_register()?;
 
-        tracing::trace!("{:?}", dmstatus);
+            tracing::trace!("{:?}", dmstatus);
 
-        Ok(dmstatus.allhalted())
+            self.state.is_halted = dmstatus.allhalted();
+        }
+
+        Ok(self.state.is_halted)
     }
 
     pub(crate) fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), RiscvError> {
@@ -1607,11 +1616,13 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
     // Resume the core.
     pub(crate) fn resume_core(&mut self) -> Result<(), RiscvError> {
+        self.state.is_halted = false; // `false` will re-query the DM, so it's safe to write
+
         // set resume request.
         let mut dmcontrol: Dmcontrol = self.read_dm_register()?;
         dmcontrol.set_dmactive(true);
         dmcontrol.set_resumereq(true);
-        self.write_dm_register(dmcontrol)?;
+        self.schedule_write_dm_register(dmcontrol)?;
 
         // check if request has been acknowleged.
         let status: Dmstatus = self.read_dm_register()?;
@@ -1621,7 +1632,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
         // clear resume request.
         dmcontrol.set_resumereq(false);
-        self.write_dm_register(dmcontrol)?;
+        self.schedule_write_dm_register(dmcontrol)?;
 
         Ok(())
     }
@@ -1634,7 +1645,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         dmcontrol.set_hartreset(true);
         dmcontrol.set_haltreq(true);
 
-        self.write_dm_register(dmcontrol)?;
+        self.schedule_write_dm_register(dmcontrol)?;
 
         // Read back register to verify reset is supported
         let readback: Dmcontrol = self.read_dm_register()?;
@@ -1646,7 +1657,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
             dmcontrol.set_dmactive(true);
             dmcontrol.set_hartreset(false);
 
-            self.write_dm_register(dmcontrol)?;
+            self.schedule_write_dm_register(dmcontrol)?;
         } else {
             // Hartreset is not supported, whole core needs to be reset
             //
@@ -1656,13 +1667,13 @@ impl<'state> RiscvCommunicationInterface<'state> {
             dmcontrol.set_ndmreset(true);
             dmcontrol.set_haltreq(true);
 
-            self.write_dm_register(dmcontrol)?;
+            self.schedule_write_dm_register(dmcontrol)?;
 
             tracing::debug!("Clearing ndmreset bit");
             dmcontrol.set_ndmreset(false);
             dmcontrol.set_haltreq(true);
 
-            self.write_dm_register(dmcontrol)?;
+            self.schedule_write_dm_register(dmcontrol)?;
         }
 
         let start = Instant::now();
@@ -1686,7 +1697,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         dmcontrol.set_hartreset(false);
         dmcontrol.set_ndmreset(false);
 
-        self.write_dm_register(dmcontrol)?;
+        self.schedule_write_dm_register(dmcontrol)?;
 
         // Reenable halt on breakpoint because this gets disabled if we reset the core
         self.debug_on_sw_breakpoint(true)?; // TODO: only restore if enabled before?

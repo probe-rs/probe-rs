@@ -107,7 +107,7 @@ impl Default for XtensaInterfaceState {
     fn default() -> Self {
         Self {
             saved_registers: Default::default(),
-            is_halted: Default::default(),
+            is_halted: false,
 
             // FIXME: these are per-chip configuration parameters
             hw_breakpoint_num: 2,
