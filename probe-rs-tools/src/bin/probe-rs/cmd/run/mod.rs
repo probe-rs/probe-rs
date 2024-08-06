@@ -484,16 +484,14 @@ fn poll_rtt<S: Write + ?Sized>(
         }
 
         impl<O: Write + ?Sized> ChannelDataCallbacks for OutCollector<'_, O> {
-            fn on_string_data(
-                &mut self,
-                _channel: usize,
-                data: String,
-            ) -> Result<(), anyhow::Error> {
+            fn on_string_data(&mut self, _channel: usize, data: String) -> Result<(), RttError> {
                 if data.is_empty() {
                     return Ok(());
                 }
                 self.had_data = true;
-                self.out_stream.write_all(data.as_bytes())?;
+                self.out_stream
+                    .write_all(data.as_bytes())
+                    .map_err(|err| anyhow!(err))?;
                 Ok(())
             }
         }
@@ -546,7 +544,7 @@ fn attach_to_rtt(
             Ok(rtta) => return Ok(Some(rtta)),
             Err(error) => {
                 if start.elapsed() > timeout {
-                    return Err(error);
+                    return Err(error.into());
                 }
             }
         }

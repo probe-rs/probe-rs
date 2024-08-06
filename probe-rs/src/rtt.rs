@@ -478,6 +478,12 @@ pub enum Error {
 
     /// Unexpected error while reading {0} from target memory. Please report this as a bug.
     MemoryRead(String),
+
+    /// Defmt-related error.
+    Defmt(#[source] anyhow::Error),
+
+    /// Some uncategorized error occurred.
+    Other(#[from] anyhow::Error),
 }
 
 fn display_list(list: &[Rtt]) -> String {

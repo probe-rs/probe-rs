@@ -476,7 +476,7 @@ fn attach_to_rtt_shared(
             Ok(rtta) => return Ok(Some(rtta)),
             Err(error) => {
                 if start.elapsed() > timeout {
-                    return Err(error);
+                    return Err(error.into());
                 }
             }
         }
