@@ -11,13 +11,13 @@ use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Result};
 use probe_rs::debug::{DebugInfo, DebugRegisters};
 use probe_rs::flashing::FileDownloadError;
 use probe_rs::{
     exception_handler_for_core,
     probe::list::Lister,
-    rtt::{try_attach_to_rtt, Error as RttError, ScanRegion},
+    rtt::{Error as RttError, ScanRegion},
     Core, CoreInterface, Error, HaltReason, Session, VectorCatchCondition,
 };
 use signal_hook::consts::signal;
@@ -25,9 +25,8 @@ use time::UtcOffset;
 
 use crate::util::common_options::{BinaryDownloadOptions, ProbeOptions};
 use crate::util::flash::{build_loader, run_flash_download};
-use crate::util::rtt::{
-    self, ChannelDataCallbacks, DefmtState, RttActiveTarget, RttChannelConfig, RttConfig,
-};
+use crate::util::rtt::client::RttClient;
+use crate::util::rtt::{self, ChannelDataCallbacks, RttChannelConfig, RttConfig};
 use crate::FormatOptions;
 
 #[derive(clap::Parser)]
@@ -126,17 +125,29 @@ impl Cmd {
             false => ScanRegion::Ranges(vec![]),
         };
 
+        let mut rtt_config = RttConfig::default();
+        rtt_config.channels.push(RttChannelConfig {
+            channel_number: Some(0),
+            show_location: !self.shared_options.no_location,
+            log_format: self.shared_options.log_format.clone(),
+            ..Default::default()
+        });
+
+        let elf = fs::read(&self.shared_options.path)?;
+
         run_mode.run(
             session,
             RunLoop {
                 core_id,
-                rtt_scan_regions,
-                timestamp_offset,
                 path: self.shared_options.path,
                 always_print_stacktrace: self.shared_options.always_print_stacktrace,
-                no_location: self.shared_options.no_location,
-                log_format: self.shared_options.log_format,
-                defmt_state: None,
+                rtt_client: {
+                    let mut client = RttClient::new(Some(&elf), rtt_config, rtt_scan_regions)?;
+
+                    client.timezone_offset = timestamp_offset;
+
+                    client
+                },
             },
         )?;
 
@@ -195,13 +206,9 @@ fn elf_contains_test(path: &Path) -> anyhow::Result<bool> {
 
 struct RunLoop {
     core_id: usize,
-    rtt_scan_regions: ScanRegion,
     path: PathBuf,
-    timestamp_offset: UtcOffset,
     always_print_stacktrace: bool,
-    no_location: bool,
-    log_format: Option<String>,
-    defmt_state: Option<DefmtState>,
+    rtt_client: RttClient,
 }
 
 #[derive(PartialEq, Debug)]
@@ -265,42 +272,10 @@ impl RunLoop {
         }
         let start = Instant::now();
 
-        let mut rtt_config = RttConfig::default();
-        rtt_config.channels.push(RttChannelConfig {
-            channel_number: Some(0),
-            show_location: !self.no_location,
-            log_format: self.log_format.clone(),
-            ..Default::default()
-        });
-
-        let elf = fs::read(&self.path)?;
-        self.defmt_state = DefmtState::try_from_bytes(&elf)?;
-        let mut rtta = attach_to_rtt(
-            core,
-            Duration::from_secs(1),
-            &self.rtt_scan_regions,
-            &elf,
-            &rtt_config,
-            self.timestamp_offset,
-            self.defmt_state.as_ref(),
-        )
-        .context("Failed to attach to RTT")?;
-
-        let result = self.do_run_until(
-            core,
-            &mut rtta,
-            output_stream,
-            timeout,
-            start,
-            &mut predicate,
-        );
+        let result = self.do_run_until(core, output_stream, timeout, start, &mut predicate);
 
         // Always clean up after RTT but don't overwrite the original result.
-        let cleanup_result = if let Some(mut rtta) = rtta {
-            rtta.clean_up(core)
-        } else {
-            Ok(())
-        };
+        let cleanup_result = self.rtt_client.clean_up(core);
 
         if result.is_ok() {
             // If the result is Ok, we return the potential error during cleanup.
@@ -311,9 +286,8 @@ impl RunLoop {
     }
 
     fn do_run_until<F, R>(
-        &self,
+        &mut self,
         core: &mut Core,
-        rtta: &mut Option<RttActiveTarget>,
         output_stream: OutputStream,
         timeout: Option<Duration>,
         start: Instant,
@@ -360,7 +334,7 @@ impl RunLoop {
                 }
             }
 
-            let had_rtt_data = poll_rtt(rtta, core, output_stream, self.defmt_state.as_ref())?;
+            let had_rtt_data = poll_rtt(&mut self.rtt_client, core, output_stream)?;
 
             if return_reason.is_none() {
                 if exit.load(Ordering::Relaxed) {
@@ -477,81 +451,34 @@ fn print_stacktrace<S: Write + ?Sized>(
 
 /// Poll RTT and print the received buffer.
 fn poll_rtt<S: Write + ?Sized>(
-    rtta: &mut Option<RttActiveTarget>,
+    rtt_client: &mut RttClient,
     core: &mut Core<'_>,
     out_stream: &mut S,
-    defmt_state: Option<&DefmtState>,
 ) -> Result<bool, anyhow::Error> {
-    let mut had_data = false;
-    if let Some(rtta) = rtta {
-        struct OutCollector<'a, O: Write + ?Sized> {
-            out_stream: &'a mut O,
-            had_data: bool,
-        }
-
-        impl<O: Write + ?Sized> ChannelDataCallbacks for OutCollector<'_, O> {
-            fn on_string_data(&mut self, _channel: usize, data: String) -> Result<(), RttError> {
-                if data.is_empty() {
-                    return Ok(());
-                }
-                self.had_data = true;
-                self.out_stream
-                    .write_all(data.as_bytes())
-                    .map_err(|err| anyhow!(err))?;
-                Ok(())
-            }
-        }
-
-        let mut out = OutCollector {
-            out_stream,
-            had_data: false,
-        };
-
-        rtta.poll_rtt_fallible(core, &mut out, defmt_state)?;
-        had_data = out.had_data;
+    struct OutCollector<'a, O: Write + ?Sized> {
+        out_stream: &'a mut O,
+        had_data: bool,
     }
 
-    Ok(had_data)
-}
+    impl<O: Write + ?Sized> ChannelDataCallbacks for OutCollector<'_, O> {
+        fn on_string_data(&mut self, _channel: usize, data: String) -> Result<(), RttError> {
+            if data.is_empty() {
+                return Ok(());
+            }
+            self.had_data = true;
+            self.out_stream
+                .write_all(data.as_bytes())
+                .map_err(|err| anyhow!(err))?;
+            Ok(())
+        }
+    }
 
-fn attach_to_rtt(
-    core: &mut Core<'_>,
-    timeout: Duration,
-    rtt_region: &ScanRegion,
-    elf: &[u8],
-    rtt_config: &RttConfig,
-    timestamp_offset: UtcOffset,
-    defmt_state: Option<&DefmtState>,
-) -> Result<Option<RttActiveTarget>> {
-    // Try to find the RTT control block symbol in the ELF file.
-    // If we find it, we can use the exact address to attach to the RTT control block. Otherwise, we
-    // fall back to the caller-provided scan regions.
-    let exact_region;
-    let scan_region = if let Some(address) = RttActiveTarget::get_rtt_symbol_from_bytes(&elf) {
-        exact_region = ScanRegion::Exact(address);
-        &exact_region
-    } else {
-        rtt_region
+    let mut out = OutCollector {
+        out_stream,
+        had_data: false,
     };
 
-    // FIXME: this is a terrible way to do this. While it works (for a particular error), it's not
-    // a general solution and it's also wasting a lot of time on re-parsing ELF and looking for the
-    // control block. We should refactor this to only try a single iteration of the attaching
-    // once per poll call.
-    let start = Instant::now();
-    loop {
-        let rtt = match try_attach_to_rtt(core, timeout, scan_region) {
-            Ok(rtt) => rtt,
-            Err(RttError::NoControlBlockLocation) => return Ok(None),
-            Err(err) => return Err(anyhow!("Error attempting to attach to RTT: {err}")),
-        };
-        match RttActiveTarget::new(core, rtt, defmt_state, rtt_config, timestamp_offset) {
-            Ok(rtta) => return Ok(Some(rtta)),
-            Err(error) => {
-                if start.elapsed() > timeout {
-                    return Err(error.into());
-                }
-            }
-        }
-    }
+    rtt_client.poll(core, &mut out)?;
+
+    Ok(out.had_data)
 }

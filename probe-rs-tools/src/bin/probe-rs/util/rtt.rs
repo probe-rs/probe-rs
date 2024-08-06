@@ -8,15 +8,15 @@ use probe_rs_target::MemoryRegion;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::path::PathBuf;
-use std::time::Duration;
 use std::{
     fmt,
     fmt::Write,
     io::{Read, Seek},
     path::Path,
-    thread,
 };
 use time::{macros::format_description, OffsetDateTime, UtcOffset};
+
+pub(crate) mod client;
 
 /// Infer the target core from the RTT symbol. Useful for multi-core targets.
 pub fn get_target_core_id(session: &mut Session, elf_file: impl AsRef<Path>) -> usize {
@@ -403,23 +403,13 @@ impl RttActiveUpChannel {
     }
 
     /// Polls the RTT target for new data on the channel represented by `self`.
-    /// Processes all the new data into the channel internal buffer and returns the number of bytes that was read.
-    pub fn poll_rtt(&mut self, core: &mut Core) -> Option<usize> {
-        // Retry loop, in case the probe is temporarily unavailable, e.g. user pressed the `reset` button.
-        const RETRY_COUNT: usize = 10;
-        for loop_count in 1..=RETRY_COUNT {
-            match self.up_channel.read(core, self.rtt_buffer.0.as_mut()) {
-                Ok(0) => return None,
-                Ok(count) => return Some(count),
-                Err(error) if loop_count == RETRY_COUNT => {
-                    tracing::error!("Error reading from RTT: {:?}", anyhow::anyhow!(error));
-                    return None;
-                }
-                _ => thread::sleep(Duration::from_millis(50)),
-            }
+    /// Processes all the new data into the channel internal buffer and
+    /// returns the number of bytes that was read.
+    pub fn poll_rtt(&mut self, core: &mut Core) -> Result<Option<usize>, Error> {
+        match self.up_channel.read(core, self.rtt_buffer.0.as_mut())? {
+            0 => return Ok(None),
+            count => return Ok(Some(count)),
         }
-
-        None
     }
 
     /// Retrieves available data from the channel and if available, returns `Some(channel_number:String, formatted_data:String)`.
@@ -431,7 +421,7 @@ impl RttActiveUpChannel {
         defmt_state: Option<&DefmtState>,
         collector: &mut impl ChannelDataCallbacks,
     ) -> Result<(), Error> {
-        let Some(bytes_read) = self.poll_rtt(core) else {
+        let Some(bytes_read) = self.poll_rtt(core)? else {
             return Ok(());
         };
 
