@@ -101,6 +101,7 @@ use zerocopy::{FromBytes, FromZeroes};
 ///         RTT, because the buffer sizes are incorrect.
 #[derive(Debug)]
 pub struct Rtt {
+    /// The location of the control block in target memory.
     ptr: u64,
 
     /// The detected up (target to host) channels.
@@ -420,6 +421,12 @@ impl Rtt {
     /// Returns a particular down channel.
     pub fn down_channel(&mut self, channel: usize) -> Option<&mut DownChannel> {
         self.down_channels.get_mut(channel)
+    }
+
+    /// Returns the size of the RTT control block.
+    pub fn control_block_size(core: &Core) -> usize {
+        let is_64_bit = core.is_64_bit();
+        RttControlBlockHeader::minimal_header_size(is_64_bit)
     }
 }
 
