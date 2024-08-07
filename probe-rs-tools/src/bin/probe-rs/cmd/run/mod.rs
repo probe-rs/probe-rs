@@ -135,19 +135,28 @@ impl Cmd {
 
         let elf = fs::read(&self.shared_options.path)?;
 
+        let rtt_client = {
+            let mut client = RttClient::new(Some(&elf), rtt_config, rtt_scan_regions)?;
+
+            client.timezone_offset = timestamp_offset;
+
+            if run_download {
+                // We ended up resetting the MCU, throw away old RTT data and prevent
+                // printing warnings when it initialises.
+                let mut core = session.core(core_id)?;
+                client.clear_control_block(&mut core)?;
+            }
+
+            client
+        };
+
         run_mode.run(
             session,
             RunLoop {
                 core_id,
                 path: self.shared_options.path,
                 always_print_stacktrace: self.shared_options.always_print_stacktrace,
-                rtt_client: {
-                    let mut client = RttClient::new(Some(&elf), rtt_config, rtt_scan_regions)?;
-
-                    client.timezone_offset = timestamp_offset;
-
-                    client
-                },
+                rtt_client,
             },
         )?;
 

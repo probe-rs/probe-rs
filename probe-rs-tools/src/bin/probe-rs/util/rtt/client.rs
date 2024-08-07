@@ -114,4 +114,22 @@ impl RttClient {
 
         Ok(())
     }
+
+    pub(crate) fn clear_control_block(&mut self, core: &mut Core) -> Result<(), Error> {
+        if self.target.is_none() {
+            self.try_attach(core)?;
+        }
+
+        let Some(target) = self.target.as_mut() else {
+            // If we can't attach, we don't have a valid
+            // control block and don't have to do anything.
+            return Ok(());
+        };
+
+        target.clear_control_block(core)?;
+
+        self.target = None;
+
+        Ok(())
+    }
 }

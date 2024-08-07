@@ -2,8 +2,8 @@ use anyhow::{anyhow, Context};
 use defmt_decoder::log::format::{Formatter, FormatterConfig, FormatterFormat};
 use defmt_decoder::DecodeError;
 pub use probe_rs::rtt::ChannelMode;
-use probe_rs::rtt::{DownChannel, Error, UpChannel};
-use probe_rs::{Core, Session};
+use probe_rs::rtt::{DownChannel, Error, Rtt, UpChannel};
+use probe_rs::{Core, MemoryInterface, Session};
 use probe_rs_target::MemoryRegion;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
@@ -472,6 +472,7 @@ impl RttActiveDownChannel {
 /// each of the active channels, and hold essential state information for successful communication.
 #[derive(Debug)]
 pub struct RttActiveTarget {
+    control_block_addr: u64,
     pub active_up_channels: Vec<RttActiveUpChannel>,
     pub active_down_channels: Vec<RttActiveDownChannel>,
 }
@@ -516,11 +517,12 @@ impl RttActiveTarget {
     /// RttActiveTarget collects references to all the `RttActiveChannel`s, for latter polling/pushing of data.
     pub fn new(
         core: &mut Core,
-        rtt: probe_rs::rtt::Rtt,
+        rtt: Rtt,
         defmt_state: Option<&DefmtState>,
         rtt_config: &RttConfig,
         timestamp_offset: UtcOffset,
     ) -> Result<Self, Error> {
+        let control_block_addr = rtt.ptr();
         let mut active_up_channels = Vec::with_capacity(rtt.up_channels.len());
 
         // For each channel configured in the RTT Control Block (`Rtt`), check if there are
@@ -546,6 +548,7 @@ impl RttActiveTarget {
             .collect::<Vec<_>>();
 
         Ok(Self {
+            control_block_addr,
             active_up_channels,
             active_down_channels,
         })
@@ -596,6 +599,15 @@ impl RttActiveTarget {
         for channel in self.active_up_channels.iter_mut() {
             channel.clean_up(core)?;
         }
+        Ok(())
+    }
+
+    /// Overwrites the control block with zeros. This is useful after resets.
+    pub fn clear_control_block(&mut self, core: &mut Core) -> Result<(), Error> {
+        let zeros = vec![0; Rtt::control_block_size(core)];
+        core.write(self.control_block_addr, &zeros)?;
+        self.active_down_channels.clear();
+        self.active_up_channels.clear();
         Ok(())
     }
 }
