@@ -7,13 +7,13 @@ mod interface;
 mod speed;
 pub mod swo;
 
+use std::fmt;
 use std::iter;
-use std::mem::take;
 use std::time::{Duration, Instant};
-use std::{cmp, fmt};
 
 use bitvec::prelude::*;
 
+use itertools::Itertools;
 use nusb::transfer::{Direction, EndpointType};
 use nusb::DeviceInfo;
 use probe_rs_target::ScanChainElement;
@@ -657,8 +657,8 @@ impl JLink {
         // buf[2..=3] is the bit count
         let bit_count = u16::try_from(tms_bit_count).expect("too much data to transfer");
         buf[2..=3].copy_from_slice(&bit_count.to_le_bytes());
-        buf.extend(take(&mut self.jtag_tms_bits).into_iter().collapse_bytes());
-        buf.extend(take(&mut self.jtag_tdi_bits).into_iter().collapse_bytes());
+        buf.extend(self.jtag_tms_bits.drain(..).collapse_bytes());
+        buf.extend(self.jtag_tdi_bits.drain(..).collapse_bytes());
 
         self.write_cmd(&buf)?;
 
@@ -690,7 +690,7 @@ impl JLink {
 
         let response = BitIter::new(&buf[..num_resp_bytes], tms_bit_count);
 
-        for (bit, capture) in response.zip(std::mem::take(&mut self.jtag_capture_tdo)) {
+        for (bit, capture) in response.zip(self.jtag_capture_tdo.drain(..)) {
             if capture {
                 self.jtag_response.push(bit);
             }
@@ -716,59 +716,61 @@ impl JLink {
     {
         self.require_interface_selected(Interface::Swd)?;
 
-        // Collect the bit iterators into the buffer. We don't know the length in advance.
-        let dir = dir.into_iter();
-        let swdio = swdio.into_iter();
+        const COMMAND_OVERHEAD: u32 = 4;
 
-        let bit_count_hint = cmp::max(dir.size_hint().0, swdio.size_hint().0);
-        let capacity = 1 + 1 + 2 + bit_count_hint.div_ceil(8) * 2;
-        let mut buf = Vec::with_capacity(capacity);
+        let max_bits = ((self.max_mem_block_size - COMMAND_OVERHEAD) / 2 * 8) as usize;
+        let max_bits = max_bits.min(65535);
+
+        let dir_chunks = dir.into_iter().chunks(max_bits);
+        let swdio_chunks = swdio.into_iter().chunks(max_bits);
+
+        #[allow(clippy::useless_conversion)]
+        let chunks = dir_chunks.into_iter().zip(swdio_chunks.into_iter());
+
+        let mut output = Vec::new();
+        let mut buf = Vec::with_capacity(self.max_mem_block_size as usize);
         buf.resize(4, 0);
         buf[0] = Command::HwJtag3 as u8;
-        buf[1] = 0;
         // buf[1] is dummy data for alignment
+        buf[1] = 0;
         // buf[2..=3] is the bit count, which we'll fill in later
-        let mut dir_bit_count = 0;
-        buf.extend(dir.inspect(|_| dir_bit_count += 1).collapse_bytes());
-        let mut swdio_bit_count = 0;
-        buf.extend(swdio.inspect(|_| swdio_bit_count += 1).collapse_bytes());
 
-        assert_eq!(
-            dir_bit_count, swdio_bit_count,
-            "`dir` and `swdio` must have the same number of bits"
-        );
-        assert!(dir_bit_count < 65535, "too much data to transfer");
+        for (dir, swdio) in chunks {
+            buf.truncate(4);
 
-        let num_bits = dir_bit_count as u16;
-        buf[2..=3].copy_from_slice(&num_bits.to_le_bytes());
-        let num_bytes = usize::from((num_bits + 7) >> 3);
+            let mut dir_bit_count = 0;
+            buf.extend(dir.inspect(|_| dir_bit_count += 1).collapse_bytes());
+            let mut swdio_bit_count = 0;
+            buf.extend(swdio.inspect(|_| swdio_bit_count += 1).collapse_bytes());
 
-        tracing::debug!("Buffer length for j-link transfer: {}", buf.len());
-
-        if buf.len() > self.max_mem_block_size as usize {
-            return Err(DebugProbeError::Other(format!("Maximum transfer size for this probe is {} bytes, but current transfer is {} bytes", self.max_mem_block_size, buf.len())));
-        } else {
-            tracing::debug!(
-                "Transferring {} bytes, max is {}",
-                buf.len(),
-                self.max_mem_block_size
+            assert_eq!(
+                dir_bit_count, swdio_bit_count,
+                "`dir` and `swdio` must have the same number of bits"
             );
+
+            let num_bits = dir_bit_count as u16;
+            buf[2..=3].copy_from_slice(&num_bits.to_le_bytes());
+            let num_bytes = usize::from(num_bits.div_ceil(8));
+
+            tracing::debug!("Buffer length for j-link transfer: {}", buf.len());
+
+            self.write_cmd(&buf)?;
+
+            // Response is `num_bytes` SWDIO data bytes and one status byte
+            self.read(&mut buf[..num_bytes + 1])?;
+
+            if buf[num_bytes] != 0 {
+                return Err(JlinkError::Other(format!(
+                    "probe I/O command returned error code {:#x}",
+                    buf[num_bytes]
+                ))
+                .into());
+            }
+
+            output.extend(BitIter::new(&buf[..num_bytes], num_bits as usize));
         }
 
-        self.write_cmd(&buf)?;
-
-        // Response is `num_bytes` SWDIO data bytes and one status byte
-        self.read(&mut buf[..num_bytes + 1])?;
-
-        if buf[num_bytes] != 0 {
-            return Err(JlinkError::Other(format!(
-                "probe I/O command returned error code {:#x}",
-                buf[num_bytes]
-            ))
-            .into());
-        }
-
-        Ok(BitIter::new(&buf[..num_bytes], dir_bit_count).collect())
+        Ok(output)
     }
 
     /// Enable/Disable the Target Power Supply of the probe.
@@ -1051,37 +1053,8 @@ impl RawProtocolIo for JLink {
         D: IntoIterator<Item = bool>,
         S: IntoIterator<Item = bool>,
     {
-        self.require_interface_selected(Interface::Swd)?;
-
         self.probe_statistics.report_io();
-
-        let dir = dir.into_iter();
-        let swdio = swdio.into_iter();
-
-        let mut dir_bit_count = 0;
-        let dir: Vec<_> = dir.inspect(|_| dir_bit_count += 1).collect();
-        let mut swdio_bit_count = 0;
-        let swdio: Vec<_> = swdio.inspect(|_| swdio_bit_count += 1).collect();
-
-        let command_overhead = 4;
-
-        let max_bits = ((self.max_mem_block_size - command_overhead) / 2 * 8) as usize;
-
-        let dir_chunks = dir.chunks(max_bits);
-        let swdio_chunks = swdio.chunks(max_bits);
-
-        let chunks = dir_chunks.zip(swdio_chunks);
-
-        let mut output = Vec::new();
-
-        for (dir, swdio) in chunks {
-            let mut resp =
-                self.perform_swdio_transfer(dir.iter().copied(), swdio.iter().copied())?;
-
-            output.append(&mut resp);
-        }
-
-        Ok(output)
+        self.perform_swdio_transfer(dir, swdio)
     }
 
     fn swj_pins(

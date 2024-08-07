@@ -685,6 +685,7 @@ impl DapTransfer {
     fn io_sequence(&self) -> IoSequence {
         let mut seq = build_swd_transfer(self.port, self.transfer_type(), self.address);
 
+        seq.reserve(self.idle_cycles_after);
         for _ in 0..self.idle_cycles_after {
             seq.add_output(false);
         }
@@ -836,6 +837,18 @@ impl IoSequence {
         }
     }
 
+    fn with_capacity(capacity: usize) -> Self {
+        IoSequence {
+            io: Vec::with_capacity(capacity),
+            direction: Vec::with_capacity(capacity),
+        }
+    }
+
+    fn reserve(&mut self, idle_cycles_after: usize) {
+        self.io.reserve(idle_cycles_after);
+        self.direction.reserve(idle_cycles_after);
+    }
+
     fn from_bytes(data: &[u8], mut bits: usize) -> Self {
         let mut this = Self::new();
 
@@ -910,7 +923,7 @@ fn build_swd_transfer(port: PortType, direction: TransferType, address: u8) -> I
     let a2 = (address >> 2) & 0x01 == 1;
     let a3 = (address >> 3) & 0x01 == 1;
 
-    let mut sequence = IoSequence::new();
+    let mut sequence = IoSequence::with_capacity(46);
 
     // Then we assemble the actual request.
 
