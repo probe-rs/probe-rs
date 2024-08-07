@@ -8,7 +8,7 @@ use colored::Colorize;
 use parking_lot::FairMutex;
 use probe_rs::gdb_server::GdbInstanceConfiguration;
 use probe_rs::probe::list::Lister;
-use probe_rs::rtt::{try_attach_to_rtt_shared, Error, ScanRegion};
+use probe_rs::rtt::ScanRegion;
 use probe_rs::{probe::DebugProbeSelector, Session};
 use std::ffi::OsString;
 use std::time::Instant;
@@ -28,7 +28,8 @@ use crate::util::cargo::target_instruction_set;
 use crate::util::common_options::{BinaryDownloadOptions, OperationError, ProbeOptions};
 use crate::util::flash::{build_loader, run_flash_download};
 use crate::util::logging::setup_logging;
-use crate::util::rtt::{self, DefmtState, RttActiveTarget, RttChannelConfig, RttConfig};
+use crate::util::rtt::client::RttClient;
+use crate::util::rtt::{self, DefmtState, RttChannelConfig, RttConfig};
 use crate::util::{cargo::build_artifact, common_options::CargoOptions, logging, rtt::DataFormat};
 use crate::FormatOptions;
 
@@ -249,14 +250,9 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
     }
 
     let core_id = rtt::get_target_core_id(&mut session, &path);
-    if config.reset.enabled {
+    if config.reset.enabled || config.flashing.enabled {
         let mut core = session.core(core_id)?;
-        let halt_timeout = Duration::from_millis(500);
-        if config.reset.halt_afterwards {
-            core.reset_and_halt(halt_timeout)?;
-        } else {
-            core.reset()?;
-        }
+        core.reset_and_halt(Duration::from_millis(500))?;
     }
 
     let session = Arc::new(FairMutex::new(session));
@@ -292,6 +288,14 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
     if config.rtt.enabled {
         // GDB is also using the session, so we do not lock on the outside.
         run_rttui_app(name, &session, core_id, config, &path, offset)?;
+    } else if should_resume_core(&config) {
+        // If we don't run the app, we have to resume the core somewhere else.
+        let mut session_handle = session.lock();
+        let mut core = session_handle.core(core_id)?;
+
+        if core.core_halted()? {
+            core.run()?;
+        }
     }
 
     if let Some(gdb_thread_handle) = gdb_thread_handle {
@@ -305,6 +309,14 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
     ));
 
     Ok(())
+}
+
+fn should_resume_core(config: &config::Config) -> bool {
+    if config.flashing.enabled {
+        true
+    } else {
+        !(config.reset.enabled && config.reset.halt_afterwards)
+    }
 }
 
 fn run_rttui_app(
@@ -368,22 +380,39 @@ fn run_rttui_app(
     let elf = fs::read(elf_path)?;
     let defmt_state = DefmtState::try_from_bytes(&elf)?;
 
-    let Some(rtt) = attach_to_rtt_shared(
-        session,
-        core_id,
-        config.rtt.timeout,
-        &elf,
-        &rtt_config,
-        timezone_offset,
-        defmt_state.as_ref(),
-    )
-    .context("Failed to attach to RTT")?
-    else {
-        tracing::info!("RTT not found, skipping RTT initialization.");
-        return Ok(());
+    let mut client = RttClient::new(Some(&elf), rtt_config.clone(), ScanRegion::Ram)?;
+
+    if config.flashing.enabled {
+        let mut session_handle = session.lock();
+        let mut core = session_handle.core(core_id)?;
+
+        client.clear_control_block(&mut core)?;
+    }
+
+    if should_resume_core(&config) {
+        let mut session_handle = session.lock();
+        let mut core = session_handle.core(core_id)?;
+
+        if core.core_halted()? {
+            core.run()?;
+        }
+    }
+
+    let start = Instant::now();
+    let rtt = loop {
+        let mut session_handle = session.lock();
+        let mut core = session_handle.core(core_id)?;
+
+        if client.try_attach(&mut core)? {
+            break client;
+        }
+
+        if start.elapsed() > config.rtt.timeout {
+            return Err(anyhow!("Failed to attach to RTT: Timeout"));
+        }
     };
 
-    if require_defmt && defmt_state.is_none() {
+    if require_defmt && !rtt.supports_defmt() {
         tracing::warn!(
             "RTT channels with format = defmt found, but no defmt metadata found in the ELF file."
         );
@@ -417,7 +446,8 @@ fn run_rttui_app(
         / 1_000_000;
 
     let logname = format!("{name}_{chip_name}_{timestamp_millis}");
-    let mut app = rttui::app::App::new(rtt, config, logname, defmt_state)?;
+    // TODO: work with the client instead of unwrapping it
+    let mut app = rttui::app::App::new(rtt.into_target(), config, logname, defmt_state)?;
     loop {
         app.render();
 
@@ -441,47 +471,4 @@ fn run_rttui_app(
     app.clean_up(&mut core)?;
 
     Ok(())
-}
-
-fn attach_to_rtt_shared(
-    session: &FairMutex<Session>,
-    core_id: usize,
-    timeout: Duration,
-    elf: &[u8],
-    rtt_config: &RttConfig,
-    timestamp_offset: UtcOffset,
-    defmt_state: Option<&DefmtState>,
-) -> Result<Option<RttActiveTarget>> {
-    // Try to find the RTT control block symbol in the ELF file.
-    // If we find it, we can use the exact address to attach to the RTT control block. Otherwise, we
-    // fall back to the caller-provided scan regions.
-    let scan_region = if let Some(address) = RttActiveTarget::get_rtt_symbol_from_bytes(elf) {
-        ScanRegion::Exact(address)
-    } else {
-        ScanRegion::Ram
-    };
-
-    // FIXME: this is a terrible way to do this. While it works (for a particular error), it's not
-    // a general solution and it's also wasting a lot of time on re-parsing ELF and looking for the
-    // control block. We should refactor this to only try a single iteration of the attaching
-    // once per poll call.
-    let start = Instant::now();
-    loop {
-        let rtt = match try_attach_to_rtt_shared(session, core_id, timeout, &scan_region) {
-            Ok(rtt) => rtt,
-            Err(Error::NoControlBlockLocation) => return Ok(None),
-            Err(err) => return Err(anyhow!("Error attempting to attach to RTT: {err}")),
-        };
-
-        let mut session_handle = session.lock();
-        let mut core = session_handle.core(core_id)?;
-        match RttActiveTarget::new(&mut core, rtt, defmt_state, rtt_config, timestamp_offset) {
-            Ok(rtta) => return Ok(Some(rtta)),
-            Err(error) => {
-                if start.elapsed() > timeout {
-                    return Err(error.into());
-                }
-            }
-        }
-    }
 }

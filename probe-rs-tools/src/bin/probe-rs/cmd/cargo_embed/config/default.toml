@@ -29,7 +29,7 @@ verify = false
 
 [default.reset]
 # Whether or not the target should be reset.
-# When flashing is enabled as well, the target will be reset after flashing.
+# When flashing is enabled as well, the target will be reset after flashing regardless of this setting.
 enabled = true
 # Whether or not the target should be halted after reset.
 halt_afterwards = false

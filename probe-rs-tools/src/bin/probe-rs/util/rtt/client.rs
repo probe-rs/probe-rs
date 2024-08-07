@@ -41,9 +41,13 @@ impl RttClient {
         Ok(this)
     }
 
-    fn try_attach(&mut self, core: &mut Core) -> Result<(), Error> {
+    pub fn try_attach(&mut self, core: &mut Core) -> Result<bool, Error> {
+        if self.target.is_some() {
+            return Ok(true);
+        }
+
         if !self.try_attaching {
-            return Ok(());
+            return Ok(false);
         }
 
         match Rtt::attach_region(core, &self.scan_region).and_then(|rtt| {
@@ -65,7 +69,7 @@ impl RttClient {
             Err(error) => return Err(error),
         };
 
-        Ok(())
+        Ok(self.target.is_some())
     }
 
     pub fn poll(
@@ -73,9 +77,7 @@ impl RttClient {
         core: &mut Core,
         collector: &mut impl ChannelDataCallbacks,
     ) -> Result<(), Error> {
-        if self.target.is_none() {
-            self.try_attach(core)?;
-        }
+        self.try_attach(core)?;
 
         let Some(target) = self.target.as_mut() else {
             return Ok(());
@@ -116,9 +118,7 @@ impl RttClient {
     }
 
     pub(crate) fn clear_control_block(&mut self, core: &mut Core) -> Result<(), Error> {
-        if self.target.is_none() {
-            self.try_attach(core)?;
-        }
+        self.try_attach(core)?;
 
         let Some(target) = self.target.as_mut() else {
             // If we can't attach, we don't have a valid
@@ -131,5 +131,13 @@ impl RttClient {
         self.target = None;
 
         Ok(())
+    }
+
+    pub(crate) fn supports_defmt(&self) -> bool {
+        self.defmt_data.is_some()
+    }
+
+    pub(crate) fn into_target(self) -> RttActiveTarget {
+        self.target.unwrap()
     }
 }
