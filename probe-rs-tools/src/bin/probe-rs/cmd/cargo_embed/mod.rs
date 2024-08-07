@@ -381,7 +381,7 @@ fn run_rttui_app(
 
     let mut client = RttClient::new(Some(&elf), rtt_config.clone(), ScanRegion::Ram)?;
 
-    if config.flashing.enabled {
+    if config.flashing.enabled || config.reset.enabled {
         let mut session_handle = session.lock();
         let mut core = session_handle.core(core_id)?;
 
