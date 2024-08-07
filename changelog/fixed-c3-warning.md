@@ -1,0 +1,1 @@
+Fixed warning printed for ESP32-C2/C3 devices when stopping `probe-rs run`
