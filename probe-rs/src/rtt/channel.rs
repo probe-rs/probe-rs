@@ -183,6 +183,7 @@ pub(crate) struct Channel {
     buffer_ptr: u64,
     size: u64,
     info: RttChannelBuffer,
+    last_read_ptr: Option<u64>,
 }
 
 // Chanels must follow this data layout when reading/writing memory in order to be compatible with
@@ -227,6 +228,7 @@ impl Channel {
             buffer_ptr,
             size,
             info,
+            last_read_ptr: None,
         };
 
         // It's possible that the channel is not initialized with the magic string written last.
@@ -338,10 +340,17 @@ impl UpChannel {
         self.0.set_mode(core, mode)
     }
 
-    fn read_core(&self, core: &mut Core, mut buf: &mut [u8]) -> Result<(u64, usize), Error> {
+    fn read_core(&mut self, core: &mut Core, mut buf: &mut [u8]) -> Result<(u64, usize), Error> {
         let (write, mut read) = self.0.read_pointers(core, "up ")?;
 
         let mut total = 0;
+
+        if let Some(ptr) = self.0.last_read_ptr {
+            // Check if the read pointer has changed since we last wrote it.
+            if read != ptr {
+                return Err(Error::ReadPointerChanged);
+            }
+        }
 
         // Read while buffer contains data and output buffer has space (maximum of two iterations)
         while !buf.is_empty() {
@@ -362,6 +371,7 @@ impl UpChannel {
 
             buf = &mut buf[count..];
         }
+        self.0.last_read_ptr = Some(read);
 
         Ok((read, total))
     }
@@ -371,7 +381,7 @@ impl UpChannel {
     ///
     /// This method will not block waiting for data in the target buffer, and may read less bytes
     /// than would fit in `buf`.
-    pub fn read(&self, core: &mut Core, buf: &mut [u8]) -> Result<usize, Error> {
+    pub fn read(&mut self, core: &mut Core, buf: &mut [u8]) -> Result<usize, Error> {
         let (read, total) = self.read_core(core, buf)?;
 
         if total > 0 {
@@ -387,7 +397,7 @@ impl UpChannel {
     ///
     /// The difference from [`read`](UpChannel::read) is that this does not discard the data in the
     /// buffer.
-    pub fn peek(&self, core: &mut Core, buf: &mut [u8]) -> Result<usize, Error> {
+    pub fn peek(&mut self, core: &mut Core, buf: &mut [u8]) -> Result<usize, Error> {
         Ok(self.read_core(core, buf)?.1)
     }
 
@@ -439,7 +449,7 @@ impl DownChannel {
     ///
     /// This method will not block waiting for space to become available in the channel buffer, and
     /// may not write all of `buf`.
-    pub fn write(&self, core: &mut Core, mut buf: &[u8]) -> Result<usize, Error> {
+    pub fn write(&mut self, core: &mut Core, mut buf: &[u8]) -> Result<usize, Error> {
         let (mut write, read) = self.0.read_pointers(core, "down ")?;
 
         let mut total = 0;

@@ -1,6 +1,6 @@
 use std::net::SocketAddr;
 
-use probe_rs::Core;
+use probe_rs::{rtt::Error, Core};
 
 use crate::{
     cmd::cargo_embed::rttui::tcp::TcpPublisher,
@@ -13,7 +13,7 @@ pub enum ChannelData {
 }
 
 impl ChannelDataCallbacks for (&mut Option<TcpPublisher>, &mut ChannelData) {
-    fn on_string_data(&mut self, _channel: usize, data: String) -> anyhow::Result<()> {
+    fn on_string_data(&mut self, _channel: usize, data: String) -> Result<(), Error> {
         if let Some(ref mut stream) = self.0 {
             stream.send(data.as_bytes());
         }
@@ -26,7 +26,7 @@ impl ChannelDataCallbacks for (&mut Option<TcpPublisher>, &mut ChannelData) {
         Ok(())
     }
 
-    fn on_binary_data(&mut self, _channel: usize, incoming: &[u8]) -> anyhow::Result<()> {
+    fn on_binary_data(&mut self, _channel: usize, incoming: &[u8]) -> Result<(), Error> {
         if let Some(ref mut stream) = self.0 {
             stream.send(incoming);
         }
@@ -65,7 +65,7 @@ impl UpChannel {
         &mut self,
         core: &mut Core<'_>,
         defmt_state: Option<&DefmtState>,
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), Error> {
         self.rtt_channel.poll_process_rtt_data(
             core,
             defmt_state,
@@ -73,7 +73,7 @@ impl UpChannel {
         )
     }
 
-    pub(crate) fn clean_up(&mut self, core: &mut Core<'_>) -> anyhow::Result<()> {
+    pub(crate) fn clean_up(&mut self, core: &mut Core<'_>) -> Result<(), Error> {
         self.rtt_channel.clean_up(core)
     }
 
