@@ -83,8 +83,6 @@ impl From<RiscvError> for ProbeRsError {
 /// Errors which can occur while executing an abstract command.
 #[derive(Debug)]
 pub enum AbstractCommandErrorKind {
-    /// No error happened.
-    None = 0,
     /// An abstract command was executing
     /// while command, `abstractcs`, or `abstractauto`
     /// was written, or when one of the `data` or `progbuf`
@@ -108,10 +106,16 @@ pub enum AbstractCommandErrorKind {
     Other = 7,
 }
 
+impl From<AbstractCommandErrorKind> for RiscvError {
+    fn from(err: AbstractCommandErrorKind) -> Self {
+        RiscvError::AbstractCommand(err)
+    }
+}
+
 impl AbstractCommandErrorKind {
-    fn parse(value: u8) -> Self {
-        match value {
-            0 => Self::None,
+    fn parse(status: Abstractcs) -> Result<(), Self> {
+        let err = match status.cmderr() {
+            0 => return Ok(()),
             1 => Self::Busy,
             2 => Self::NotSupported,
             3 => Self::Exception,
@@ -120,7 +124,9 @@ impl AbstractCommandErrorKind {
             6 => Self::_Reserved,
             7 => Self::Other,
             _ => unreachable!("cmderr is a 3 bit value, values higher than 7 should not occur."),
-        }
+        };
+
+        Err(err)
     }
 }
 
@@ -964,11 +970,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
             let value = core.abstract_cmd_register_read(&registers::S0)?;
 
             let abstractcs = Abstractcs(core.dtm.read_deferred_result(abstractcs_idx)?.into_u32());
-            if abstractcs.cmderr() != 0 {
-                return Err(RiscvError::AbstractCommand(
-                    AbstractCommandErrorKind::parse(abstractcs.cmderr() as u8),
-                ));
-            }
+            AbstractCommandErrorKind::parse(abstractcs)?;
 
             // Restore s0 register
             core.restore_s0(s0)?;
@@ -1047,12 +1049,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
             }
 
             let status: Abstractcs = core.read_dm_register()?;
-
-            if status.cmderr() != 0 {
-                return Err(RiscvError::AbstractCommand(
-                    AbstractCommandErrorKind::parse(status.cmderr() as u8),
-                ));
-            }
+            AbstractCommandErrorKind::parse(status)?;
 
             core.restore_s0(s0)?;
             core.restore_s1(s1)?;
@@ -1136,9 +1133,8 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
             let status = core.read_dm_register::<Abstractcs>()?;
 
-            if status.cmderr() != 0 {
-                let error = AbstractCommandErrorKind::parse(status.cmderr() as u8);
-
+            let error = AbstractCommandErrorKind::parse(status);
+            if let Err(error) = error {
                 tracing::error!(
                     "Executing the abstract command for write_{} failed: {:?} ({:x?})",
                     V::WIDTH.byte_width() * 8,
@@ -1201,9 +1197,8 @@ impl<'state> RiscvCommunicationInterface<'state> {
             // Errors are sticky, so we can just check at the end if everything worked.
             let status = core.read_dm_register::<Abstractcs>()?;
 
-            if status.cmderr() != 0 {
-                let error = AbstractCommandErrorKind::parse(status.cmderr() as u8);
-
+            let error = AbstractCommandErrorKind::parse(status);
+            if let Err(error) = error {
                 tracing::error!(
                     "Executing the abstract command for write_multiple_{} failed: {:?} ({:x?})",
                     V::WIDTH.byte_width() * 8,
@@ -1236,39 +1231,55 @@ impl<'state> RiscvCommunicationInterface<'state> {
         dmcontrol.set_ackhavereset(false);
         self.schedule_write_dm_register(dmcontrol)?;
 
-        // Clear any previous command errors.
-        let mut abstractcs_clear = Abstractcs(0);
-        abstractcs_clear.set_cmderr(0x7);
+        fn do_execute_abstract_command(
+            core: &mut RiscvCommunicationInterface,
+            command: Command,
+        ) -> Result<(), RiscvError> {
+            // Clear any previous command errors.
+            let mut abstractcs_clear = Abstractcs(0);
+            abstractcs_clear.set_cmderr(0x7);
 
-        self.schedule_write_dm_register(abstractcs_clear)?;
-        self.schedule_write_dm_register(Command(command))?;
+            core.schedule_write_dm_register(abstractcs_clear)?;
+            core.schedule_write_dm_register(command)?;
 
-        let start_time = Instant::now();
+            let start_time = Instant::now();
 
-        // Poll busy flag in abstractcs.
-        let mut abstractcs;
-        loop {
-            abstractcs = self.read_dm_register::<Abstractcs>()?;
+            // Poll busy flag in abstractcs.
+            let mut abstractcs;
+            loop {
+                abstractcs = core.read_dm_register::<Abstractcs>()?;
 
-            if !abstractcs.busy() {
-                break;
+                if !abstractcs.busy() {
+                    break;
+                }
+
+                if start_time.elapsed() > RISCV_TIMEOUT {
+                    return Err(RiscvError::Timeout);
+                }
             }
 
-            if start_time.elapsed() > RISCV_TIMEOUT {
-                return Err(RiscvError::Timeout);
+            tracing::debug!("abstracts: {:?}", abstractcs);
+
+            // Check command result for error.
+            AbstractCommandErrorKind::parse(abstractcs)?;
+
+            Ok(())
+        }
+
+        match do_execute_abstract_command(self, Command(command)) {
+            err @ Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::HaltResume)) => {
+                if !self.core_halted()? {
+                    // This command requires the core to be halted.
+                    // We can do that, so let's try again.
+                    self.halted_access(|core| do_execute_abstract_command(core, Command(command)))
+                } else {
+                    // This command requires the core to be resumed. This is a bit more drastic than
+                    // what we want to do here, so we bubble up the error.
+                    err
+                }
             }
+            other => other,
         }
-
-        tracing::debug!("abstracts: {:?}", abstractcs);
-
-        // Check command result for error.
-        if abstractcs.cmderr() != 0 {
-            return Err(RiscvError::AbstractCommand(
-                AbstractCommandErrorKind::parse(abstractcs.cmderr() as u8),
-            ));
-        }
-
-        Ok(())
     }
 
     /// Check if a register can be accessed via abstract commands
