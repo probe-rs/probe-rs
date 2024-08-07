@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::PathBuf;
 
 use probe_rs::probe::list::Lister;
 
@@ -11,20 +11,20 @@ use crate::FormatOptions;
 #[derive(clap::Parser)]
 pub struct Cmd {
     #[clap(flatten)]
-    probe_options: ProbeOptions,
+    pub probe_options: ProbeOptions,
 
     /// The path to the file to be downloaded to the flash
-    path: String,
+    pub path: PathBuf,
 
     /// Whether to erase the entire chip before downloading
     #[clap(long)]
-    chip_erase: bool,
+    pub chip_erase: bool,
 
     #[clap(flatten)]
-    download_options: BinaryDownloadOptions,
+    pub download_options: BinaryDownloadOptions,
 
     #[clap(flatten)]
-    format_options: FormatOptions,
+    pub format_options: FormatOptions,
 }
 
 impl Cmd {
@@ -34,7 +34,7 @@ impl Cmd {
         let loader = build_loader(&mut session, &self.path, self.format_options, None)?;
         run_flash_download(
             &mut session,
-            Path::new(&self.path),
+            &self.path,
             &self.download_options,
             &probe_options,
             loader,

@@ -72,6 +72,8 @@ enum Subcommand {
     Debug(cmd::debug::Cmd),
     /// Download memory to attached target
     Download(cmd::download::Cmd),
+    /// Compare memory to attached target
+    Verify(cmd::verify::Cmd),
     /// Erase all nonvolatile memory of attached target
     Erase(cmd::erase::Cmd),
     /// Flash and run an ELF program
@@ -311,7 +313,10 @@ fn main() -> Result<()> {
         Subcommand::Gdb(cmd) => cmd.run(&lister),
         Subcommand::Reset(cmd) => cmd.run(&lister),
         Subcommand::Debug(cmd) => cmd.run(&lister),
-        Subcommand::Download(cmd) => cmd.run(&lister),
+        Subcommand::Download(cmd) => {
+            elf = Some(cmd.path.clone());
+            cmd.run(&lister)
+        }
         Subcommand::Run(cmd) => {
             elf = Some(cmd.shared_options.path.clone());
             cmd.run(&lister, true, utc_offset)
@@ -319,6 +324,10 @@ fn main() -> Result<()> {
         Subcommand::Attach(cmd) => {
             elf = Some(cmd.run.shared_options.path.clone());
             cmd.run(&lister, utc_offset)
+        }
+        Subcommand::Verify(cmd) => {
+            elf = Some(cmd.path.clone());
+            cmd.run(&lister)
         }
         Subcommand::Erase(cmd) => cmd.run(&lister),
         Subcommand::Trace(cmd) => cmd.run(&lister),
