@@ -61,8 +61,6 @@ variants:
       end: 0x20004000
     cores:
     - main
-    access:
-      execute: true
   - !Ram
     name: IRAM2
     range:
