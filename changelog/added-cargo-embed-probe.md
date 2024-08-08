@@ -1,0 +1,1 @@
+Added `probe` option under `[general]` to specify a complete probe selector.

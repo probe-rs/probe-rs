@@ -11,8 +11,10 @@ use std::{
     str::FromStr,
 };
 
-use super::*;
-use crate::session::Session;
+use crate::{
+    flashing::{FlashError, FlashLoader, FlashProgress},
+    session::Session,
+};
 
 /// Extended options for flashing a binary file.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Default)]

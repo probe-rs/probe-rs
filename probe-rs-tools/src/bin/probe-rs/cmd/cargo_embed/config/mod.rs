@@ -3,7 +3,7 @@ use figment::{
     providers::{Format, Json, Toml, Yaml},
     Figment,
 };
-use probe_rs::probe::WireProtocol;
+use probe_rs::probe::{DebugProbeSelector, WireProtocol};
 use probe_rs::rtt::ChannelMode;
 use serde::{Deserialize, Serialize};
 use std::{net::SocketAddr, path::PathBuf, time::Duration};
@@ -34,9 +34,13 @@ pub struct Config {
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Probe {
+    #[deprecated]
     pub usb_vid: Option<String>,
+    #[deprecated]
     pub usb_pid: Option<String>,
+    #[deprecated]
     pub serial: Option<String>,
+    pub probe: Option<DebugProbeSelector>,
     pub protocol: WireProtocol,
     pub speed: Option<u32>,
 }

@@ -5,6 +5,8 @@
 # usb_pid = "1337"
 # Serial number
 # serial = "12345678"
+# ... or use a complete probe selector, like:
+# probe = "1337:1337:12345678"
 # The protocol to be used for communicating with the target.
 protocol = "Swd"
 # The speed in kHz of the data link to the target.

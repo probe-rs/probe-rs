@@ -7,11 +7,11 @@ use probe_rs::probe::list::Lister;
 use std::ffi::OsString;
 use std::{path::PathBuf, process};
 
-use crate::util::cargo::target_instruction_set;
+use crate::util::cargo::Artifact;
 use crate::util::common_options::{
     BinaryDownloadOptions, CargoOptions, OperationError, ProbeOptions,
 };
-use crate::util::flash;
+use crate::util::flash::{self, build_loader};
 use crate::util::logging::{setup_logging, LevelFilter};
 use crate::util::{cargo::build_artifact, logging};
 
@@ -75,9 +75,6 @@ fn main_try(args: &[OsString]) -> Result<(), OperationError> {
     // Parse the commandline options.
     let opt = CliOptions::parse_from(args);
 
-    // Initialize the logger with the loglevel given on the commandline.
-    let _log_guard = setup_logging(None, opt.log);
-
     // Change the work dir if the user asked to do so.
     if let Some(ref work_dir) = opt.work_dir {
         std::env::set_current_dir(work_dir).map_err(|error| {
@@ -89,38 +86,22 @@ fn main_try(args: &[OsString]) -> Result<(), OperationError> {
     }
     let work_dir = std::env::current_dir()?;
 
+    // Initialize the logger with the loglevel given on the commandline.
+    let _log_guard = setup_logging(None, opt.log);
+
     // Get the path to the binary we want to flash.
     // This can either be give from the arguments or can be a cargo build artifact.
-    let image_instr_set;
-    let path = if let Some(path_buf) = &opt.path {
-        image_instr_set = None;
-        path_buf.clone()
+    let artifact = if let Some(path_buf) = opt.path.clone() {
+        Artifact::from_path_buf(path_buf)
     } else {
-        let cargo_options = opt.cargo_options.to_cargo_options();
-        image_instr_set = target_instruction_set(opt.cargo_options.target.clone());
-
         // Build the project, and extract the path of the built artifact.
-        build_artifact(&work_dir, &cargo_options)
-            .map_err(|error| {
-                if let Some(ref work_dir) = opt.work_dir {
-                    OperationError::FailedToBuildExternalCargoProject {
-                        source: error,
-                        // This unwrap is okay, because if we get this error, the path was properly canonicalized on the internal
-                        // `cargo build` step.
-                        path: work_dir.canonicalize().unwrap(),
-                    }
-                } else {
-                    OperationError::FailedToBuildCargoProject(error)
-                }
-            })?
-            .path()
-            .into()
+        build_artifact(&work_dir, &opt.cargo_options, opt.work_dir.is_some())?
     };
 
     logging::eprintln(format!(
         "    {} {}",
         "Flashing".green().bold(),
-        path.display()
+        artifact.path().display()
     ));
 
     let lister = Lister::new();
@@ -129,11 +110,15 @@ fn main_try(args: &[OsString]) -> Result<(), OperationError> {
     let (mut session, probe_options) = opt.probe_options.simple_attach(&lister)?;
 
     // Flash the binary
-    let loader =
-        flash::build_loader(&mut session, &path, opt.format_options, image_instr_set).unwrap();
+    let loader = build_loader(
+        &mut session,
+        artifact.path(),
+        opt.format_options,
+        artifact.instruction_set,
+    )?;
     flash::run_flash_download(
         &mut session,
-        &path,
+        artifact.path(),
         &opt.download_options,
         &probe_options,
         loader,
