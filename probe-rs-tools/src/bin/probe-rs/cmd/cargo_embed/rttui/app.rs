@@ -88,7 +88,7 @@ impl App {
                         0
                     },
                     down_channel: Some(number),
-                    name: Some(down.channel_name.clone()),
+                    name: Some(down.channel_name()),
                     hide: false,
                 });
             }
