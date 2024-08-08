@@ -45,7 +45,7 @@ impl Tab {
         name: Option<String>,
     ) -> Self {
         Self {
-            name: name.unwrap_or_else(|| up_channel.borrow().channel_name().to_string()),
+            name: name.unwrap_or_else(|| up_channel.borrow().channel_name()),
             up_channel,
             down_channel: down_channel.map(|down| (down, String::new())),
             scroll_offset: 0,

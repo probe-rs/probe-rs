@@ -77,7 +77,7 @@ impl UpChannel {
         self.rtt_channel.clean_up(core)
     }
 
-    pub(crate) fn channel_name(&self) -> &str {
-        &self.rtt_channel.channel_name
+    pub(crate) fn channel_name(&self) -> String {
+        self.rtt_channel.channel_name()
     }
 }
