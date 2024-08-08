@@ -186,8 +186,8 @@ impl TestRunMode {
     fn run_test(test: Test, session_and_runloop: &mut SessionAndRunLoop) -> Result<(), Failed> {
         let core = &mut session_and_runloop.session.core(0)?;
         tracing::info!("Running test {}", test.name);
-        core.reset_and_halt(Duration::from_millis(100))?;
-
+        core.reset_and_halt(Duration::from_millis(100))
+            .map_err(|e| anyhow::anyhow!(e))?;
         let timeout = test.timeout.map(|t| Duration::from_secs(t as u64));
         let timeout = timeout.unwrap_or(Duration::from_secs(60)); // TODO: make global timeout configurable: https://github.com/probe-rs/embedded-test/issues/3
         let mut cmdline_requested = false;

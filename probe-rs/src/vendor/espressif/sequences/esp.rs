@@ -5,9 +5,8 @@ use probe_rs_target::{Architecture, Chip, MemoryRegion};
 use crate::{
     architecture::xtensa::arch::{
         instruction::{into_binary, Instruction},
-        CpuRegister, Register,
+        CpuRegister,
     },
-    config::DebugSequence,
     MemoryInterface, Session,
 };
 
@@ -115,14 +114,8 @@ fn attach_flash_xtensa(
     load_addr: u32,
     attach_fn: u32,
 ) -> Result<(), crate::Error> {
-    // TODO: we shouldn't need to touch sequences here.
-    let DebugSequence::Xtensa(sequence) = session.target().debug_sequence.clone() else {
-        unreachable!()
-    };
-    let interface = &mut session.get_xtensa_interface(0)?;
-
-    // We're very intrusive here but the flashing process should reset the MCU again anyway
-    sequence.reset_system_and_halt(interface, Duration::from_millis(500))?;
+    let mut core = session.core(0)?;
+    core.reset_and_halt(Duration::from_millis(500))?;
 
     let instructions = into_binary([
         Instruction::CallX8(CpuRegister::A4),
@@ -131,19 +124,16 @@ fn attach_flash_xtensa(
     ]);
 
     // Download code
-    interface.write_8(load_addr as u64, &instructions)?;
+    core.write_8(load_addr as u64, &instructions)?;
 
     // Set up processor state
-    interface.write_register_untyped(Register::CurrentPc, load_addr)?;
-
-    interface.write_register_untyped(CpuRegister::A1, stack_pointer)?;
-    interface.write_register_untyped(CpuRegister::A4, attach_fn)?;
+    core.write_core_reg(core.program_counter(), load_addr)?;
+    core.write_core_reg(core.stack_pointer(), stack_pointer)?;
+    core.write_core_reg(CpuRegister::A4, attach_fn)?;
 
     // Let it run
-    tracing::debug!("Running program to attach flash");
-    interface.resume()?;
-
-    interface.wait_for_core_halted(Duration::from_millis(500))?;
+    core.run()?;
+    core.wait_for_core_halted(Duration::from_millis(500))?;
 
     Ok(())
 }

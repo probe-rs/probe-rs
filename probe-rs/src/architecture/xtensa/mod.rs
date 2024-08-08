@@ -22,7 +22,7 @@ use crate::{
 };
 
 pub(crate) mod arch;
-mod xdm;
+pub(crate) mod xdm;
 
 pub mod communication_interface;
 pub(crate) mod registers;
@@ -84,20 +84,62 @@ impl<'probe> Xtensa<'probe> {
 
     /// Create a new Xtensa interface for a particular core.
     pub fn new(
-        mut interface: XtensaCommunicationInterface<'probe>,
+        interface: XtensaCommunicationInterface<'probe>,
         state: &'probe mut XtensaCoreState,
         sequence: Arc<dyn XtensaDebugSequence>,
     ) -> Result<Self, Error> {
-        if !state.enabled {
-            interface.enter_debug_mode()?;
-            state.enabled = true;
-        }
-
-        Ok(Self {
+        let mut this = Self {
             interface,
             state,
             sequence,
-        })
+        };
+
+        this.on_attach()?;
+
+        Ok(this)
+    }
+
+    fn on_attach(&mut self) -> Result<(), Error> {
+        // If the core was reset, force a reconnection.
+        let core_reset;
+        if self.state.enabled {
+            core_reset = self.interface.xdm.core_was_reset()?;
+            let debug_reset = self.interface.xdm.debug_was_reset()?;
+
+            if core_reset {
+                tracing::debug!("Core was reset");
+                *self.state = XtensaCoreState::new();
+            }
+            if debug_reset {
+                tracing::debug!("Debug was reset");
+                self.state.enabled = false;
+            }
+        } else {
+            core_reset = true;
+        }
+
+        // (Re)enter debug mode if necessary. This also checks if the core is enabled.
+        if !self.state.enabled {
+            // Enable debug module.
+            self.interface.enter_debug_mode()?;
+            self.state.enabled = true;
+
+            if core_reset {
+                // Run the connection sequence while halted.
+                let was_halted = self.core_halted()?;
+                if !was_halted {
+                    self.halt(Duration::from_millis(500))?;
+                }
+
+                self.sequence.on_connect(&mut self.interface)?;
+
+                if !was_halted {
+                    self.run()?;
+                }
+            }
+        }
+
+        Ok(())
     }
 
     fn core_info(&mut self) -> Result<CoreInformation, Error> {
@@ -244,9 +286,7 @@ impl<'probe> CoreInterface for Xtensa<'probe> {
     }
 
     fn reset(&mut self) -> Result<(), Error> {
-        self.state.semihosting_command = None;
-        self.sequence
-            .reset_system_and_halt(&mut self.interface, Duration::from_millis(500))?;
+        self.reset_and_halt(Duration::from_millis(500))?;
 
         self.run()
     }
@@ -255,6 +295,9 @@ impl<'probe> CoreInterface for Xtensa<'probe> {
         self.state.semihosting_command = None;
         self.sequence
             .reset_system_and_halt(&mut self.interface, timeout)?;
+
+        // TODO: this may return that the core has gone away, which is fine but currently unexpected
+        self.on_attach()?;
 
         self.core_info()
     }
