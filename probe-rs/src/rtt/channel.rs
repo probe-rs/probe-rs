@@ -178,9 +178,8 @@ impl RttChannelBuffer {
 pub(crate) struct Channel {
     number: usize,
     core_id: usize,
-    ptr: u64,
     name: Option<String>,
-    buffer_ptr: u64,
+    metadata_ptr: u64,
     size: u64,
     info: RttChannelBuffer,
 }
@@ -202,7 +201,7 @@ impl Channel {
     pub(crate) fn from(
         core: &mut Core,
         number: usize,
-        ptr: u64,
+        metadata_ptr: u64,
         info: RttChannelBuffer,
     ) -> Result<Option<Channel>, Error> {
         let buffer_ptr = info.buffer_start_pointer();
@@ -222,9 +221,8 @@ impl Channel {
         let this = Channel {
             number,
             core_id: core.id(),
-            ptr,
+            metadata_ptr,
             name,
-            buffer_ptr,
             size,
             info,
         };
@@ -260,7 +258,7 @@ impl Channel {
     /// See [`ChannelMode`] for more information on what the modes mean.
     pub fn mode(&self, core: &mut Core) -> Result<ChannelMode, Error> {
         self.validate_core_id(core)?;
-        let flags = self.info.read_flags(core, self.ptr)?;
+        let flags = self.info.read_flags(core, self.metadata_ptr)?;
 
         ChannelMode::try_from(flags)
     }
@@ -270,10 +268,10 @@ impl Channel {
     /// See [`ChannelMode`] for more information on what the modes mean.
     pub fn set_mode(&self, core: &mut Core, mode: ChannelMode) -> Result<(), Error> {
         self.validate_core_id(core)?;
-        let flags = self.info.read_flags(core, self.ptr)?;
+        let flags = self.info.read_flags(core, self.metadata_ptr)?;
 
         let new_flags = ChannelMode::set(mode, flags);
-        self.info.write_flags(core, self.ptr, new_flags)?;
+        self.info.write_flags(core, self.metadata_ptr, new_flags)?;
 
         Ok(())
     }
@@ -281,7 +279,7 @@ impl Channel {
     fn read_pointers(&self, core: &mut Core, channel_kind: &str) -> Result<(u64, u64), Error> {
         self.validate_core_id(core)?;
 
-        let (write, read) = self.info.read_buffer_offsets(core, self.ptr)?;
+        let (write, read) = self.info.read_buffer_offsets(core, self.metadata_ptr)?;
 
         let validate = |which, value| {
             if value >= self.size {
@@ -350,7 +348,7 @@ impl UpChannel {
                 break;
             }
 
-            core.read(self.0.buffer_ptr + read, &mut buf[..count])?;
+            core.read(self.0.info.buffer_start_pointer() + read, &mut buf[..count])?;
 
             total += count;
             read += count as u64;
@@ -376,7 +374,9 @@ impl UpChannel {
 
         if total > 0 {
             // Write read pointer back to target if something was read
-            self.0.info.write_read_buffer_ptr(core, self.0.ptr, read)?;
+            self.0
+                .info
+                .write_read_buffer_ptr(core, self.0.metadata_ptr, read)?;
         }
 
         Ok(total)
@@ -451,7 +451,7 @@ impl DownChannel {
                 break;
             }
 
-            core.write_8(self.0.buffer_ptr + write, &buf[..count])?;
+            core.write_8(self.0.info.buffer_start_pointer() + write, &buf[..count])?;
 
             total += count;
             write += count as u64;
@@ -467,7 +467,7 @@ impl DownChannel {
         // Write write pointer back to target
         self.0
             .info
-            .write_write_buffer_ptr(core, self.0.ptr, write)?;
+            .write_write_buffer_ptr(core, self.0.metadata_ptr, write)?;
 
         Ok(total)
     }
