@@ -407,6 +407,12 @@ fn cortex_m_reset_system(interface: &mut dyn ArmMemoryInterface) -> Result<(), A
 ///
 /// Should be implemented on a custom handle for chips that require special sequence code.
 pub trait ArmDebugSequence: Send + Sync + Debug {
+    /// Provide a list of valid access ports for the target.
+    /// All possible access ports are scanned by default if none are provided.
+    fn valid_access_ports(&self) -> Option<&'static [u8]> {
+        None
+    }
+
     /// Assert a system-wide reset line nRST. This is based on the
     /// `ResetHardwareAssert` function from the [ARM SVD Debug Description].
     ///
