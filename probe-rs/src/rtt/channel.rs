@@ -180,7 +180,6 @@ pub(crate) struct Channel {
     core_id: usize,
     name: Option<String>,
     metadata_ptr: u64,
-    size: u64,
     info: RttChannelBuffer,
     last_read_ptr: Option<u64>,
 }
@@ -217,14 +216,11 @@ impl Channel {
             read_c_string(core, info.standard_name_pointer())?
         };
 
-        let size = info.size_of_buffer();
-
         let this = Channel {
             number,
             core_id: core.id(),
             metadata_ptr,
             name,
-            size,
             info,
             last_read_ptr: None,
         };
@@ -252,7 +248,7 @@ impl Channel {
     }
 
     pub fn buffer_size(&self) -> usize {
-        self.size as usize
+        self.info.size_of_buffer() as usize
     }
 
     /// Reads the current channel mode from the target and returns its.
@@ -284,10 +280,10 @@ impl Channel {
         let (write, read) = self.info.read_buffer_offsets(core, self.metadata_ptr)?;
 
         let validate = |which, value| {
-            if value >= self.size {
+            if value >= self.info.size_of_buffer() {
                 Err(Error::ControlBlockCorrupted(format!(
                     "{which} pointer is {value} while buffer size is {} for {channel_kind}channel {} ({})",
-                    self.size,
+                    self.info.size_of_buffer(),
                     self.number,
                     self.name().unwrap_or("no name"),
                 )))
@@ -362,7 +358,7 @@ impl UpChannel {
             total += count;
             read += count as u64;
 
-            if read >= self.0.size {
+            if read >= self.0.info.size_of_buffer() {
                 // Wrap around to start
                 read = 0;
             }
@@ -403,7 +399,11 @@ impl UpChannel {
 
     /// Calculates amount of contiguous data available for reading
     fn readable_contiguous(&self, write: u64, read: u64) -> usize {
-        let end = if read > write { self.0.size } else { write };
+        let end = if read > write {
+            self.0.info.size_of_buffer()
+        } else {
+            write
+        };
 
         (end - read) as usize
     }
@@ -466,7 +466,7 @@ impl DownChannel {
             total += count;
             write += count as u64;
 
-            if write >= self.0.size {
+            if write >= self.0.info.size_of_buffer() {
                 // Wrap around to start
                 write = 0;
             }
@@ -487,9 +487,9 @@ impl DownChannel {
         (if read > write {
             read - write - 1
         } else if read == 0 {
-            self.0.size - write - 1
+            self.0.info.size_of_buffer() - write - 1
         } else {
-            self.0.size - write
+            self.0.info.size_of_buffer() - write
         }) as usize
     }
 }
