@@ -16,7 +16,7 @@ use crate::{
 use jep106::JEP106Code;
 
 use std::{
-    collections::{hash_map, BTreeSet, HashMap},
+    collections::{BTreeSet, HashMap},
     fmt::Debug,
     sync::Arc,
     time::Duration,
@@ -209,6 +209,16 @@ impl DpState {
             access_ports: BTreeSet::new(),
         }
     }
+
+    fn select_reg(&self) -> Select {
+        let mut select = Select(0);
+
+        select.set_ap_sel(self.current_apsel);
+        select.set_ap_bank_sel(self.current_apbanksel);
+        select.set_dp_bank_sel(self.current_dpbanksel);
+
+        select
+    }
 }
 
 /// An implementation of the communication protocol between probe and target.
@@ -339,17 +349,11 @@ impl UninitializedArmProbe for ArmCommunicationInterface<Uninitialized> {
 impl<'interface> ArmCommunicationInterface<Initialized> {
     /// Set up and start the debug port with brand-new state.
     fn try_setup(
-        mut probe: Box<dyn DapProbe>,
+        probe: Box<dyn DapProbe>,
         sequence: Arc<dyn ArmDebugSequence>,
         dp: DpAddress,
         use_overrun_detect: bool,
     ) -> Result<Self, (Box<dyn DapProbe>, ArmError)> {
-        if let Err(err) = tracing::debug_span!("debug_port_setup")
-            .in_scope(|| sequence.debug_port_setup(&mut *probe, dp))
-        {
-            return Err((probe, err));
-        }
-
         let mut initializing = Self {
             probe: Some(probe),
             state: Initialized::new(sequence, dp, use_overrun_detect),
@@ -421,90 +425,97 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
     }
 
     fn select_dp(&mut self, dp: DpAddress) -> Result<&mut DpState, ArmError> {
-        let mut switched_dp = false;
+        // If we don't have a state for this DP, this means that
+        // we haven't run the necessary init sequence yet.
+        if self.state.dps.contains_key(&dp) {
+            if self.state.current_dp != dp {
+                self.do_select_dp(dp)?;
+            }
+        } else {
+            // We've never seen this DP, set it up.
+            let sequence = self.state.sequence.clone();
+            sequence.debug_port_setup(&mut *self.probe_mut(), dp)?;
+
+            // Insert a dummy value to prevent endless recursion.
+            self.state.dps.insert(dp, DpState::new());
+
+            let dp_entry = self.initialize_dp_state(dp)?;
+
+            self.state.dps.insert(dp, dp_entry);
+        }
+
+        Ok(self.state.dps.get_mut(&dp).unwrap())
+    }
+
+    fn do_select_dp(&mut self, dp: DpAddress) -> Result<(), ArmError> {
+        tracing::debug!("Selecting DP {:x?}", dp);
+
+        self.probe_mut().raw_flush()?;
 
         let sequence = self.state.sequence.clone();
 
-        if self.state.current_dp != dp {
-            tracing::debug!("Selecting DP {:x?}", dp);
+        // Try to switch to the new DP.
+        if let Err(e) = sequence.debug_port_connect(&mut *self.probe_mut(), dp) {
+            tracing::warn!("Failed to switch to DP {:x?}: {}", dp, e);
 
-            switched_dp = true;
-
-            self.probe_mut().raw_flush()?;
-
-            // Try to switch to the new DP.
-            if let Err(e) = sequence.debug_port_connect(&mut *self.probe_mut(), dp) {
-                tracing::warn!("Failed to switch to DP {:x?}: {}", dp, e);
-
-                // Try the more involved debug_port_setup sequence, which also handles dormant mode.
-                sequence.debug_port_setup(&mut *self.probe_mut(), dp)?;
-            }
-
-            self.state.current_dp = dp;
+            // Try the more involved debug_port_setup sequence, which also handles dormant mode.
+            sequence.debug_port_setup(&mut *self.probe_mut(), dp)?;
         }
 
-        // If we don't have  a state for this DP, this means that we haven't run the necessary init sequence yet.
-        if let hash_map::Entry::Vacant(entry) = self.state.dps.entry(dp) {
-            let sequence = self.state.sequence.clone();
+        self.state.current_dp = dp;
 
-            entry.insert(DpState::new());
+        Ok(())
+    }
 
-            let start_span = tracing::debug_span!("debug_port_start").entered();
-            sequence.debug_port_start(self, dp)?;
-            drop(start_span);
+    fn initialize_dp_state(&mut self, dp: DpAddress) -> Result<DpState, ArmError> {
+        let sequence = self.state.sequence.clone();
 
-            // Make sure we enable the overrun detect mode when requested.
-            // For "bit-banging" probes, such as JLink or FTDI, we rely on it for good, stable communication.
-            // This is required as the default sequence (and most special implementations) does not do this.
-            let mut ctrl_reg: Ctrl = self.read_dp_register(dp)?;
-            if ctrl_reg.orun_detect() != self.state.use_overrun_detect {
-                tracing::debug!("Setting orun_detect: {}", self.state.use_overrun_detect);
-                // only write if there’s a need for it.
-                ctrl_reg.set_orun_detect(self.state.use_overrun_detect);
-                self.write_dp_register(dp, ctrl_reg)?;
-            }
+        let start_span = tracing::debug_span!("debug_port_start").entered();
+        sequence.debug_port_start(self, dp)?;
+        drop(start_span);
 
-            let idr: DebugPortId = self.read_dp_register::<DPIDR>(dp)?.into();
-            if idr.version == DebugPortVersion::DPv3 {
-                let idr1: DPIDR1 = self.read_dp_register(dp)?;
-                let base_ptr0: BASEPTR0 = self.read_dp_register(dp)?;
-                let base_ptr1: BASEPTR1 = self.read_dp_register(dp)?;
-                let base_ptr_str = base_ptr0.valid().then(|| {
-                    format!(
-                        "0x{:x}",
-                        u64::from(base_ptr1.ptr()) | u64::from(base_ptr0.ptr() << 12)
-                    )
-                });
-                tracing::info!(
-                    "DPv3 detected: DPIDR1:{:?} BASE_PTR: {}",
-                    idr1,
-                    base_ptr_str.as_deref().unwrap_or("not valid")
-                );
-
-                return Err(ArmError::DebugPort(DebugPortError::Unsupported(
-                    "Unsupported version (DPv3)".to_string(),
-                )));
-            }
-
-            /* determine the number and type of available APs */
-            tracing::trace!("Searching valid APs");
-
-            let ap_span = tracing::debug_span!("AP discovery").entered();
-            let access_ports = valid_access_ports(self, dp);
-            let state = self.state.dps.get_mut(&dp).unwrap();
-            state.access_ports = access_ports.into_iter().collect();
-
-            drop(ap_span);
-        } else if switched_dp {
-            let sequence = self.state.sequence.clone();
-
-            let start_span = tracing::debug_span!("debug_port_start").entered();
-            sequence.debug_port_start(self, dp)?;
-            drop(start_span);
+        // Make sure we enable the overrun detect mode when requested.
+        // For "bit-banging" probes, such as JLink or FTDI, we rely on it for good, stable communication.
+        // This is required as the default sequence (and most special implementations) does not do this.
+        let mut ctrl_reg: Ctrl = self.read_dp_register(dp)?;
+        if ctrl_reg.orun_detect() != self.state.use_overrun_detect {
+            tracing::debug!("Setting orun_detect: {}", self.state.use_overrun_detect);
+            // only write if there’s a need for it.
+            ctrl_reg.set_orun_detect(self.state.use_overrun_detect);
+            self.write_dp_register(dp, ctrl_reg)?;
         }
 
-        // note(unwrap): Entry gets inserted above
-        Ok(self.state.dps.get_mut(&dp).unwrap())
+        let idr: DebugPortId = self.read_dp_register::<DPIDR>(dp)?.into();
+        if idr.version == DebugPortVersion::DPv3 {
+            let idr1: DPIDR1 = self.read_dp_register(dp)?;
+            let base_ptr0: BASEPTR0 = self.read_dp_register(dp)?;
+            let base_ptr1: BASEPTR1 = self.read_dp_register(dp)?;
+            let base_ptr_str = base_ptr0.valid().then(|| {
+                format!(
+                    "{:#x}",
+                    u64::from(base_ptr1.ptr()) | u64::from(base_ptr0.ptr() << 12)
+                )
+            });
+            tracing::info!(
+                "DPv3 detected: DPIDR1:{:?} BASE_PTR: {}",
+                idr1,
+                base_ptr_str.as_deref().unwrap_or("not valid")
+            );
+
+            return Err(ArmError::DebugPort(DebugPortError::Unsupported(
+                "Unsupported version (DPv3)".to_string(),
+            )));
+        }
+
+        /* determine the number and type of available APs */
+        tracing::trace!("Searching valid APs");
+
+        let _ap_span = tracing::debug_span!("AP discovery").entered();
+
+        let mut state = DpState::new();
+        state.access_ports = valid_access_ports(self, dp).collect();
+
+        Ok(state)
     }
 
     fn select_dp_and_dp_bank(
@@ -527,16 +538,10 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
         }
 
         if bank != dp_state.current_dpbanksel {
+            tracing::debug!("Changing DP_BANK_SEL to {bank}");
             dp_state.current_dpbanksel = bank;
 
-            let mut select = Select(0);
-
-            tracing::debug!("Changing DP_BANK_SEL to {}", dp_state.current_dpbanksel);
-
-            select.set_ap_sel(dp_state.current_apsel);
-            select.set_ap_bank_sel(dp_state.current_apbanksel);
-            select.set_dp_bank_sel(dp_state.current_dpbanksel);
-
+            let select = dp_state.select_reg();
             self.write_dp_register(dp, select)?;
         }
 
@@ -566,18 +571,13 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
         }
 
         if cache_changed {
-            let mut select = Select(0);
-
             tracing::debug!(
                 "Changing AP to {}, AP_BANK_SEL to {}",
                 dp_state.current_apsel,
                 dp_state.current_apbanksel
             );
 
-            select.set_ap_sel(dp_state.current_apsel);
-            select.set_ap_bank_sel(dp_state.current_apbanksel);
-            select.set_dp_bank_sel(dp_state.current_dpbanksel);
-
+            let select = dp_state.select_reg();
             self.write_dp_register(ap.dp(), select)?;
         }
 
