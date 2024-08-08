@@ -1,6 +1,9 @@
 //! Sequence for the ESP32-S2.
 
-use std::{sync::Arc, time::Duration};
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 use probe_rs_target::Chip;
 
@@ -164,8 +167,12 @@ impl XtensaDebugSequence for ESP32S2 {
         core.write_word_32(Self::OPTIONS0, options | SYS_RESET)?;
 
         // Wait for reset to happen
+        let start = Instant::now();
         std::thread::sleep(Duration::from_millis(100));
         while !core.xdm.read_power_status()?.core_was_reset() {
+            if start.elapsed() > timeout {
+                return Err(crate::Error::Timeout);
+            }
             std::thread::sleep(Duration::from_millis(10));
         }
 
