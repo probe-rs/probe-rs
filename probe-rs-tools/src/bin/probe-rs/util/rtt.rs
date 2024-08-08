@@ -310,7 +310,7 @@ pub struct RttActiveUpChannel {
     pub up_channel: UpChannel,
     pub channel_name: String,
     pub data_format: ChannelDataFormat,
-    rtt_buffer: RttBuffer,
+    rtt_buffer: Box<[u8]>,
 
     /// If set, the original mode of the channel before we changed it. Upon exit we should do
     /// our best to restore the original mode.
@@ -390,7 +390,7 @@ impl RttActiveUpChannel {
         }
 
         Ok(Self {
-            rtt_buffer: RttBuffer::new(up_channel.buffer_size()),
+            rtt_buffer: vec![0; up_channel.buffer_size().max(1)].into_boxed_slice(),
             up_channel,
             channel_name,
             data_format,
@@ -406,7 +406,7 @@ impl RttActiveUpChannel {
     /// Processes all the new data into the channel internal buffer and
     /// returns the number of bytes that was read.
     pub fn poll_rtt(&mut self, core: &mut Core) -> Result<Option<usize>, Error> {
-        match self.up_channel.read(core, self.rtt_buffer.0.as_mut())? {
+        match self.up_channel.read(core, self.rtt_buffer.as_mut())? {
             0 => Ok(None),
             count => Ok(Some(count)),
         }
@@ -425,7 +425,7 @@ impl RttActiveUpChannel {
             return Ok(());
         };
 
-        let buffer = &self.rtt_buffer.0[..bytes_read];
+        let buffer = &self.rtt_buffer[..bytes_read];
 
         self.data_format
             .process(self.number(), buffer, defmt_state, collector)
@@ -609,20 +609,5 @@ impl RttActiveTarget {
         self.active_down_channels.clear();
         self.active_up_channels.clear();
         Ok(())
-    }
-}
-
-pub(crate) struct RttBuffer(pub Vec<u8>);
-impl RttBuffer {
-    /// Initialize the buffer and ensure it has enough capacity to match the size of the RTT channel
-    /// on the target at the time of instantiation. Doing this now prevents later performance impact
-    /// if the buffer capacity has to be grown dynamically.
-    pub fn new(buffer_size: usize) -> RttBuffer {
-        RttBuffer(vec![0u8; buffer_size.max(1)])
-    }
-}
-impl fmt::Debug for RttBuffer {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.0.fmt(f)
     }
 }
