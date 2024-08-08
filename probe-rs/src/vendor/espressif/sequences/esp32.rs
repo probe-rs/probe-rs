@@ -10,8 +10,9 @@ use probe_rs_target::Chip;
 use super::esp::EspFlashSizeDetector;
 use crate::{
     architecture::xtensa::{
-        communication_interface::{ProgramCounter, XtensaCommunicationInterface},
+        communication_interface::{ProgramCounter, XtensaCommunicationInterface, XtensaError},
         sequences::XtensaDebugSequence,
+        xdm,
     },
     MemoryInterface, Session,
 };
@@ -133,9 +134,19 @@ impl XtensaDebugSequence for ESP32 {
             core.write_word_32(RTC_CNTL_RESET_STATE_REG, new_state)?;
         }
 
-        core.resume()?;
+        match core.resume() {
+            err @ Err(XtensaError::XdmError(
+                xdm::Error::ExecOverrun | xdm::Error::InstructionIgnored,
+            )) => {
+                // ignore error
+                tracing::debug!("Error ignored: {err:?}");
+            }
+            other => other?,
+        }
 
         std::thread::sleep(Duration::from_millis(100));
+
+        core.enter_debug_mode()?;
 
         let start = Instant::now();
         tracing::debug!("Waiting for program to complete");
@@ -143,6 +154,7 @@ impl XtensaDebugSequence for ESP32 {
             // RTC_CNTL_RESET_STATE_REG is the last one to be set,
             // so if it's set, the program has completed.
             let reset_state = core.read_word_32(RTC_CNTL_RESET_STATE_REG)?;
+
             tracing::debug!("Reset status register: {:#010x}", reset_state);
             if reset_state & RTC_CNTL_RESET_STATE_DEF == RTC_CNTL_RESET_STATE_DEF {
                 break;
