@@ -211,7 +211,7 @@ impl<'p> CoreHandle<'p> {
             });
             debug_adapter.rtt_window(
                 up_channel.number(),
-                up_channel.channel_name.clone(),
+                up_channel.channel_name(),
                 DataFormat::from(&up_channel.data_format),
             );
         }

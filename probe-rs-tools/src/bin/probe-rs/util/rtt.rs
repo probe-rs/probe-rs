@@ -308,7 +308,6 @@ pub trait ChannelDataCallbacks {
 #[derive(Debug)]
 pub struct RttActiveUpChannel {
     pub up_channel: UpChannel,
-    pub channel_name: String,
     pub data_format: ChannelDataFormat,
     rtt_buffer: Box<[u8]>,
 
@@ -365,17 +364,6 @@ impl RttActiveUpChannel {
             }
         };
 
-        let channel_name = up_channel
-            .name()
-            .map(ToString::to_string)
-            .unwrap_or_else(|| {
-                format!(
-                    "Unnamed {} RTT up channel - {}",
-                    channel_config.data_format,
-                    up_channel.number()
-                )
-            });
-
         let mut original_mode = None;
         if let Some(mode) = channel_config.mode.or(
             // Try not to corrupt the byte stream if using defmt
@@ -392,10 +380,22 @@ impl RttActiveUpChannel {
         Ok(Self {
             rtt_buffer: vec![0; up_channel.buffer_size().max(1)].into_boxed_slice(),
             up_channel,
-            channel_name,
             data_format,
             original_mode,
         })
+    }
+
+    pub fn channel_name(&self) -> String {
+        self.up_channel
+            .name()
+            .map(ToString::to_string)
+            .unwrap_or_else(|| {
+                format!(
+                    "Unnamed {} RTT up channel - {}",
+                    DataFormat::from(&self.data_format),
+                    self.up_channel.number()
+                )
+            })
     }
 
     pub fn number(&self) -> usize {
