@@ -95,7 +95,7 @@ pub enum DebugRegisterError {
     /// Register-specific error
     Error,
 
-    /// Unexpected value {0}
+    /// Unexpected value {0:#04x}
     Unexpected(u8),
 }
 

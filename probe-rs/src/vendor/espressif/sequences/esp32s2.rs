@@ -10,8 +10,9 @@ use probe_rs_target::Chip;
 use super::esp::EspFlashSizeDetector;
 use crate::{
     architecture::xtensa::{
-        communication_interface::XtensaCommunicationInterface, sequences::XtensaDebugSequence,
-        xdm::DebugControlBits,
+        communication_interface::{XtensaCommunicationInterface, XtensaError},
+        sequences::XtensaDebugSequence,
+        xdm::{self, DebugControlBits, DebugRegisterError},
     },
     MemoryInterface, Session,
 };
@@ -163,8 +164,16 @@ impl XtensaDebugSequence for ESP32S2 {
         })?;
 
         // Reset CPU
-        let options = core.read_word_32(Self::OPTIONS0)?;
-        core.write_word_32(Self::OPTIONS0, options | SYS_RESET)?;
+        match self.set_peri_reg_mask(core, Self::OPTIONS0, SYS_RESET, SYS_RESET) {
+            err @ Err(crate::Error::Xtensa(XtensaError::XdmError(xdm::Error::Xdm {
+                source: DebugRegisterError::Unexpected(_),
+                ..
+            }))) => {
+                // ignore error
+                tracing::debug!("Error ignored: {err:?}");
+            }
+            other => other?,
+        }
 
         // Wait for reset to happen
         let start = Instant::now();
@@ -176,10 +185,17 @@ impl XtensaDebugSequence for ESP32S2 {
             std::thread::sleep(Duration::from_millis(10));
         }
 
-        core.halt()?;
-        core.wait_for_core_halted(Duration::from_millis(500))?;
+        core.reset_and_halt(timeout)?;
 
         self.unstall(core)?;
+
+        core.xdm.debug_control({
+            let mut control = DebugControlBits(0);
+
+            control.set_enable_ocd(true);
+
+            control
+        })?;
 
         Ok(())
     }
