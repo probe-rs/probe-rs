@@ -178,10 +178,8 @@ impl RttChannelBuffer {
 pub(crate) struct Channel {
     number: usize,
     core_id: usize,
-    ptr: u64,
     name: Option<String>,
-    buffer_ptr: u64,
-    size: u64,
+    metadata_ptr: u64,
     info: RttChannelBuffer,
 }
 
@@ -202,7 +200,7 @@ impl Channel {
     pub(crate) fn from(
         core: &mut Core,
         number: usize,
-        ptr: u64,
+        metadata_ptr: u64,
         info: RttChannelBuffer,
     ) -> Result<Option<Channel>, Error> {
         let buffer_ptr = info.buffer_start_pointer();
@@ -217,15 +215,11 @@ impl Channel {
             read_c_string(core, info.standard_name_pointer())?
         };
 
-        let size = info.size_of_buffer();
-
         let this = Channel {
             number,
             core_id: core.id(),
-            ptr,
+            metadata_ptr,
             name,
-            buffer_ptr,
-            size,
             info,
         };
 
@@ -252,7 +246,7 @@ impl Channel {
     }
 
     pub fn buffer_size(&self) -> usize {
-        self.size as usize
+        self.info.size_of_buffer() as usize
     }
 
     /// Reads the current channel mode from the target and returns its.
@@ -260,7 +254,7 @@ impl Channel {
     /// See [`ChannelMode`] for more information on what the modes mean.
     pub fn mode(&self, core: &mut Core) -> Result<ChannelMode, Error> {
         self.validate_core_id(core)?;
-        let flags = self.info.read_flags(core, self.ptr)?;
+        let flags = self.info.read_flags(core, self.metadata_ptr)?;
 
         ChannelMode::try_from(flags)
     }
@@ -270,10 +264,10 @@ impl Channel {
     /// See [`ChannelMode`] for more information on what the modes mean.
     pub fn set_mode(&self, core: &mut Core, mode: ChannelMode) -> Result<(), Error> {
         self.validate_core_id(core)?;
-        let flags = self.info.read_flags(core, self.ptr)?;
+        let flags = self.info.read_flags(core, self.metadata_ptr)?;
 
         let new_flags = ChannelMode::set(mode, flags);
-        self.info.write_flags(core, self.ptr, new_flags)?;
+        self.info.write_flags(core, self.metadata_ptr, new_flags)?;
 
         Ok(())
     }
@@ -281,13 +275,13 @@ impl Channel {
     fn read_pointers(&self, core: &mut Core, channel_kind: &str) -> Result<(u64, u64), Error> {
         self.validate_core_id(core)?;
 
-        let (write, read) = self.info.read_buffer_offsets(core, self.ptr)?;
+        let (write, read) = self.info.read_buffer_offsets(core, self.metadata_ptr)?;
 
         let validate = |which, value| {
-            if value >= self.size {
+            if value >= self.info.size_of_buffer() {
                 Err(Error::ControlBlockCorrupted(format!(
                     "{which} pointer is {value} while buffer size is {} for {channel_kind}channel {} ({})",
-                    self.size,
+                    self.info.size_of_buffer(),
                     self.number,
                     self.name().unwrap_or("no name"),
                 )))
@@ -350,12 +344,12 @@ impl UpChannel {
                 break;
             }
 
-            core.read(self.0.buffer_ptr + read, &mut buf[..count])?;
+            core.read(self.0.info.buffer_start_pointer() + read, &mut buf[..count])?;
 
             total += count;
             read += count as u64;
 
-            if read >= self.0.size {
+            if read >= self.0.info.size_of_buffer() {
                 // Wrap around to start
                 read = 0;
             }
@@ -376,7 +370,9 @@ impl UpChannel {
 
         if total > 0 {
             // Write read pointer back to target if something was read
-            self.0.info.write_read_buffer_ptr(core, self.0.ptr, read)?;
+            self.0
+                .info
+                .write_read_buffer_ptr(core, self.0.metadata_ptr, read)?;
         }
 
         Ok(total)
@@ -393,7 +389,11 @@ impl UpChannel {
 
     /// Calculates amount of contiguous data available for reading
     fn readable_contiguous(&self, write: u64, read: u64) -> usize {
-        let end = if read > write { self.0.size } else { write };
+        let end = if read > write {
+            self.0.info.size_of_buffer()
+        } else {
+            write
+        };
 
         (end - read) as usize
     }
@@ -451,12 +451,12 @@ impl DownChannel {
                 break;
             }
 
-            core.write_8(self.0.buffer_ptr + write, &buf[..count])?;
+            core.write_8(self.0.info.buffer_start_pointer() + write, &buf[..count])?;
 
             total += count;
             write += count as u64;
 
-            if write >= self.0.size {
+            if write >= self.0.info.size_of_buffer() {
                 // Wrap around to start
                 write = 0;
             }
@@ -467,7 +467,7 @@ impl DownChannel {
         // Write write pointer back to target
         self.0
             .info
-            .write_write_buffer_ptr(core, self.0.ptr, write)?;
+            .write_write_buffer_ptr(core, self.0.metadata_ptr, write)?;
 
         Ok(total)
     }
@@ -477,9 +477,9 @@ impl DownChannel {
         (if read > write {
             read - write - 1
         } else if read == 0 {
-            self.0.size - write - 1
+            self.0.info.size_of_buffer() - write - 1
         } else {
-            self.0.size - write
+            self.0.info.size_of_buffer() - write
         }) as usize
     }
 }

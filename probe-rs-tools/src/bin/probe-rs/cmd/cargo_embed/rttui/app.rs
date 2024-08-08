@@ -60,7 +60,7 @@ impl App {
                 tab_config.push(TabConfig {
                     up_channel: number,
                     down_channel: None,
-                    name: Some(up.channel_name.clone()),
+                    name: Some(up.channel_name()),
                     hide: false,
                 });
             }
@@ -88,7 +88,7 @@ impl App {
                         0
                     },
                     down_channel: Some(number),
-                    name: Some(down.channel_name.clone()),
+                    name: Some(down.channel_name()),
                     hide: false,
                 });
             }

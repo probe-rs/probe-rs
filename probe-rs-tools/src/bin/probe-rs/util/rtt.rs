@@ -307,9 +307,8 @@ pub trait ChannelDataCallbacks {
 #[derive(Debug)]
 pub struct RttActiveUpChannel {
     pub up_channel: UpChannel,
-    pub channel_name: String,
     pub data_format: ChannelDataFormat,
-    rtt_buffer: RttBuffer,
+    rtt_buffer: Box<[u8]>,
 
     /// If set, the original mode of the channel before we changed it. Upon exit we should do
     /// our best to restore the original mode.
@@ -364,17 +363,6 @@ impl RttActiveUpChannel {
             }
         };
 
-        let channel_name = up_channel
-            .name()
-            .map(ToString::to_string)
-            .unwrap_or_else(|| {
-                format!(
-                    "Unnamed {} RTT up channel - {}",
-                    channel_config.data_format,
-                    up_channel.number()
-                )
-            });
-
         let mut original_mode = None;
         if let Some(mode) = channel_config.mode.or(
             // Try not to corrupt the byte stream if using defmt
@@ -389,12 +377,24 @@ impl RttActiveUpChannel {
         }
 
         Ok(Self {
-            rtt_buffer: RttBuffer::new(up_channel.buffer_size()),
+            rtt_buffer: vec![0; up_channel.buffer_size().max(1)].into_boxed_slice(),
             up_channel,
-            channel_name,
             data_format,
             original_mode,
         })
+    }
+
+    pub fn channel_name(&self) -> String {
+        self.up_channel
+            .name()
+            .map(ToString::to_string)
+            .unwrap_or_else(|| {
+                format!(
+                    "Unnamed {} RTT up channel - {}",
+                    DataFormat::from(&self.data_format),
+                    self.up_channel.number()
+                )
+            })
     }
 
     pub fn number(&self) -> usize {
@@ -407,7 +407,7 @@ impl RttActiveUpChannel {
         // Retry loop, in case the probe is temporarily unavailable, e.g. user pressed the `reset` button.
         const RETRY_COUNT: usize = 10;
         for loop_count in 1..=RETRY_COUNT {
-            match self.up_channel.read(core, self.rtt_buffer.0.as_mut()) {
+            match self.up_channel.read(core, self.rtt_buffer.as_mut()) {
                 Ok(0) => return None,
                 Ok(count) => return Some(count),
                 Err(error) if loop_count == RETRY_COUNT => {
@@ -434,7 +434,7 @@ impl RttActiveUpChannel {
             return Ok(());
         };
 
-        let buffer = &self.rtt_buffer.0[..bytes_read];
+        let buffer = &self.rtt_buffer[..bytes_read];
 
         self.data_format
             .process(self.number(), buffer, defmt_state, collector)
@@ -452,20 +452,18 @@ impl RttActiveUpChannel {
 #[derive(Debug)]
 pub struct RttActiveDownChannel {
     pub down_channel: DownChannel,
-    pub channel_name: String,
 }
 
 impl RttActiveDownChannel {
     pub fn new(down_channel: DownChannel) -> Self {
-        let channel_name = down_channel
+        Self { down_channel }
+    }
+
+    pub fn channel_name(&self) -> String {
+        self.down_channel
             .name()
             .map(ToString::to_string)
-            .unwrap_or_else(|| format!("Unnamed RTT down channel - {}", down_channel.number()));
-
-        Self {
-            down_channel,
-            channel_name,
-        }
+            .unwrap_or_else(|| format!("Unnamed RTT down channel - {}", self.down_channel.number()))
     }
 
     pub fn number(&self) -> usize {
@@ -610,20 +608,5 @@ impl RttActiveTarget {
             channel.clean_up(core)?;
         }
         Ok(())
-    }
-}
-
-pub(crate) struct RttBuffer(pub Vec<u8>);
-impl RttBuffer {
-    /// Initialize the buffer and ensure it has enough capacity to match the size of the RTT channel
-    /// on the target at the time of instantiation. Doing this now prevents later performance impact
-    /// if the buffer capacity has to be grown dynamically.
-    pub fn new(buffer_size: usize) -> RttBuffer {
-        RttBuffer(vec![0u8; buffer_size.max(1)])
-    }
-}
-impl fmt::Debug for RttBuffer {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.0.fmt(f)
     }
 }
