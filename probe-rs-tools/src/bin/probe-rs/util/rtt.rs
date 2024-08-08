@@ -443,20 +443,18 @@ impl RttActiveUpChannel {
 #[derive(Debug)]
 pub struct RttActiveDownChannel {
     pub down_channel: DownChannel,
-    pub channel_name: String,
 }
 
 impl RttActiveDownChannel {
     pub fn new(down_channel: DownChannel) -> Self {
-        let channel_name = down_channel
+        Self { down_channel }
+    }
+
+    pub fn channel_name(&self) -> String {
+        self.down_channel
             .name()
             .map(ToString::to_string)
-            .unwrap_or_else(|| format!("Unnamed RTT down channel - {}", down_channel.number()));
-
-        Self {
-            down_channel,
-            channel_name,
-        }
+            .unwrap_or_else(|| format!("Unnamed RTT down channel - {}", self.down_channel.number()))
     }
 
     pub fn number(&self) -> usize {
