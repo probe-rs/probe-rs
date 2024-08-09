@@ -5,7 +5,7 @@ manufacturer:
 generated_from_pack: true
 pack_file_release: 2.17.1
 variants:
-- name: STM32F401CBUx
+- name: STM32F401CB
   cores:
   - name: main
     type: armv7em
@@ -34,36 +34,7 @@ variants:
   - stm32f4xx_128
   - stm32f401xx_opt
   - stm32f4xx_otp
-- name: STM32F401CBYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_128
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F401CCFx
+- name: STM32F401CC
   cores:
   - name: main
     type: armv7em
@@ -92,65 +63,7 @@ variants:
   - stm32f4xx_1024
   - stm32f401xx_opt
   - stm32f4xx_otp
-- name: STM32F401CCUx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F401CCYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F401CDUx
+- name: STM32F401CD
   cores:
   - name: main
     type: armv7em
@@ -179,7 +92,94 @@ variants:
   - stm32f4xx_1024
   - stm32f401xx_opt
   - stm32f4xx_otp
-- name: STM32F401CDYx
+- name: STM32F401CE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f401xx_opt
+  - stm32f4xx_otp
+- name: STM32F401RB
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_128
+  - stm32f401xx_opt
+  - stm32f4xx_otp
+- name: STM32F401RC
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f401xx_opt
+  - stm32f4xx_otp
+- name: STM32F401RD
   cores:
   - name: main
     type: armv7em
@@ -208,7 +208,7 @@ variants:
   - stm32f4xx_1024
   - stm32f401xx_opt
   - stm32f4xx_otp
-- name: STM32F401CEUx
+- name: STM32F401RE
   cores:
   - name: main
     type: armv7em
@@ -237,36 +237,7 @@ variants:
   - stm32f4xx_1024
   - stm32f401xx_opt
   - stm32f4xx_otp
-- name: STM32F401CEYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F401RBTx
+- name: STM32F401VB
   cores:
   - name: main
     type: armv7em
@@ -295,7 +266,7 @@ variants:
   - stm32f4xx_128
   - stm32f401xx_opt
   - stm32f4xx_otp
-- name: STM32F401RCTx
+- name: STM32F401VC
   cores:
   - name: main
     type: armv7em
@@ -324,7 +295,7 @@ variants:
   - stm32f4xx_1024
   - stm32f401xx_opt
   - stm32f4xx_otp
-- name: STM32F401RDTx
+- name: STM32F401VD
   cores:
   - name: main
     type: armv7em
@@ -353,7 +324,7 @@ variants:
   - stm32f4xx_1024
   - stm32f401xx_opt
   - stm32f4xx_otp
-- name: STM32F401RETx
+- name: STM32F401VE
   cores:
   - name: main
     type: armv7em
@@ -382,239 +353,7 @@ variants:
   - stm32f4xx_1024
   - stm32f401xx_opt
   - stm32f4xx_otp
-- name: STM32F401VBHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_128
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F401VBTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_128
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F401VCHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F401VCTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F401VDHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8060000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F401VDTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8060000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F401VEHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F401VETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F405OEYx
+- name: STM32F405OE
   cores:
   - name: main
     type: armv7em
@@ -659,7 +398,7 @@ variants:
   - stm32f4xx_1024
   - stm32f401xx_opt
   - stm32f4xx_otp
-- name: STM32F405OGYx
+- name: STM32F405OG
   cores:
   - name: main
     type: armv7em
@@ -704,7 +443,7 @@ variants:
   - stm32f4xx_1024
   - stm32f401xx_opt
   - stm32f4xx_otp
-- name: STM32F405RGTx
+- name: STM32F405RG
   cores:
   - name: main
     type: armv7em
@@ -749,7 +488,7 @@ variants:
   - stm32f4xx_1024
   - stm32f401xx_opt
   - stm32f4xx_otp
-- name: STM32F405VGTx
+- name: STM32F405VG
   cores:
   - name: main
     type: armv7em
@@ -794,7 +533,7 @@ variants:
   - stm32f4xx_1024
   - stm32f401xx_opt
   - stm32f4xx_otp
-- name: STM32F405ZGTx
+- name: STM32F405ZG
   cores:
   - name: main
     type: armv7em
@@ -839,7 +578,7 @@ variants:
   - stm32f4xx_1024
   - stm32f401xx_opt
   - stm32f4xx_otp
-- name: STM32F407IEHx
+- name: STM32F407IE
   cores:
   - name: main
     type: armv7em
@@ -884,7 +623,52 @@ variants:
   - stm32f4xx_1024
   - stm32f401xx_opt
   - stm32f4xx_otp
-- name: STM32F407IETx
+- name: STM32F407IG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x2001c000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x2001c000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f401xx_opt
+  - stm32f4xx_otp
+- name: STM32F407VE
   cores:
   - name: main
     type: armv7em
@@ -929,7 +713,7 @@ variants:
   - stm32f4xx_1024
   - stm32f401xx_opt
   - stm32f4xx_otp
-- name: STM32F407IGHx
+- name: STM32F407VG
   cores:
   - name: main
     type: armv7em
@@ -974,52 +758,7 @@ variants:
   - stm32f4xx_1024
   - stm32f401xx_opt
   - stm32f4xx_otp
-- name: STM32F407IGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2001c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2001c000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F407VETx
+- name: STM32F407ZE
   cores:
   - name: main
     type: armv7em
@@ -1064,7 +803,7 @@ variants:
   - stm32f4xx_1024
   - stm32f401xx_opt
   - stm32f4xx_otp
-- name: STM32F407VGTx
+- name: STM32F407ZG
   cores:
   - name: main
     type: armv7em
@@ -1109,97 +848,7 @@ variants:
   - stm32f4xx_1024
   - stm32f401xx_opt
   - stm32f4xx_otp
-- name: STM32F407ZETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2001c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2001c000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F407ZGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2001c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2001c000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F410C8Tx
+- name: STM32F410C8
   cores:
   - name: main
     type: armv7em
@@ -1227,7 +876,35 @@ variants:
   flash_algorithms:
   - stm32f4xx_128
   - stm32f401xx_opt
-- name: STM32F410C8Ux
+- name: STM32F410CB
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_128
+  - stm32f401xx_opt
+- name: STM32F410R8
   cores:
   - name: main
     type: armv7em
@@ -1255,7 +932,7 @@ variants:
   flash_algorithms:
   - stm32f4xx_128
   - stm32f401xx_opt
-- name: STM32F410CBTx
+- name: STM32F410RB
   cores:
   - name: main
     type: armv7em
@@ -1283,35 +960,7 @@ variants:
   flash_algorithms:
   - stm32f4xx_128
   - stm32f401xx_opt
-- name: STM32F410CBUx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_128
-  - stm32f401xx_opt
-- name: STM32F410R8Ix
+- name: STM32F410T8
   cores:
   - name: main
     type: armv7em
@@ -1339,35 +988,7 @@ variants:
   flash_algorithms:
   - stm32f4xx_128
   - stm32f401xx_opt
-- name: STM32F410R8Tx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_128
-  - stm32f401xx_opt
-- name: STM32F410RBIx
+- name: STM32F410TB
   cores:
   - name: main
     type: armv7em
@@ -1395,91 +1016,7 @@ variants:
   flash_algorithms:
   - stm32f4xx_128
   - stm32f401xx_opt
-- name: STM32F410RBTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_128
-  - stm32f401xx_opt
-- name: STM32F410T8Yx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_128
-  - stm32f401xx_opt
-- name: STM32F410TBYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_128
-  - stm32f401xx_opt
-- name: STM32F411CCUx
+- name: STM32F411CC
   cores:
   - name: main
     type: armv7em
@@ -1508,7 +1045,36 @@ variants:
   - stm32f4xx_1024
   - stm32f401xx_opt
   - stm32f4xx_otp
-- name: STM32F411CCYx
+- name: STM32F411CE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f401xx_opt
+  - stm32f4xx_otp
+- name: STM32F411RC
   cores:
   - name: main
     type: armv7em
@@ -1537,7 +1103,7 @@ variants:
   - stm32f4xx_1024
   - stm32f401xx_opt
   - stm32f4xx_otp
-- name: STM32F411CEUx
+- name: STM32F411RE
   cores:
   - name: main
     type: armv7em
@@ -1566,36 +1132,7 @@ variants:
   - stm32f4xx_1024
   - stm32f401xx_opt
   - stm32f4xx_otp
-- name: STM32F411CEYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F411RCTx
+- name: STM32F411VC
   cores:
   - name: main
     type: armv7em
@@ -1624,7 +1161,7 @@ variants:
   - stm32f4xx_1024
   - stm32f401xx_opt
   - stm32f4xx_otp
-- name: STM32F411RETx
+- name: STM32F411VE
   cores:
   - name: main
     type: armv7em
@@ -1653,7 +1190,2891 @@ variants:
   - stm32f4xx_1024
   - stm32f401xx_opt
   - stm32f4xx_otp
-- name: STM32F411VCHx
+- name: STM32F412CE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f401xx_opt
+  - stm32f4xx_otp
+- name: STM32F412CG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f401xx_opt
+  - stm32f4xx_otp
+- name: STM32F412RE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f401xx_opt
+  - stm32f4xx_otp
+- name: STM32F412RG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f401xx_opt
+  - stm32f4xx_otp
+- name: STM32F412VE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f401xx_opt
+  - stm32f4xx_otp
+- name: STM32F412VG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f401xx_opt
+  - stm32f4xx_otp
+- name: STM32F412ZE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f401xx_opt
+  - stm32f4xx_otp
+- name: STM32F412ZG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f401xx_opt
+  - stm32f4xx_otp
+- name: STM32F413CG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f401xx_opt
+- name: STM32F413CH
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1536
+  - stm32f401xx_opt
+- name: STM32F413MG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f401xx_opt
+- name: STM32F413MH
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1536
+  - stm32f401xx_opt
+- name: STM32F413RG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f401xx_opt
+- name: STM32F413RH
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1536
+  - stm32f401xx_opt
+- name: STM32F413VG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f401xx_opt
+- name: STM32F413VH
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1536
+  - stm32f401xx_opt
+- name: STM32F413ZG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f401xx_opt
+- name: STM32F413ZH
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1536
+  - stm32f401xx_opt
+- name: STM32F415OG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f401xx_opt
+  - stm32f4xx_otp
+- name: STM32F415RG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f401xx_opt
+  - stm32f4xx_otp
+- name: STM32F415VG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f401xx_opt
+  - stm32f4xx_otp
+- name: STM32F415ZG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f401xx_opt
+  - stm32f4xx_otp
+- name: STM32F417IE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f401xx_opt
+  - stm32f4xx_otp
+- name: STM32F417IG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f401xx_opt
+  - stm32f4xx_otp
+- name: STM32F417VE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f401xx_opt
+  - stm32f4xx_otp
+- name: STM32F417VG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f401xx_opt
+  - stm32f4xx_otp
+- name: STM32F417ZE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f401xx_opt
+  - stm32f4xx_otp
+- name: STM32F417ZG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f401xx_opt
+  - stm32f4xx_otp
+- name: STM32F423CH
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1536
+  - stm32f401xx_opt
+- name: STM32F423MH
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1536
+  - stm32f401xx_opt
+- name: STM32F423RH
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1536
+  - stm32f401xx_opt
+- name: STM32F423VH
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1536
+  - stm32f401xx_opt
+- name: STM32F423ZH
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1536
+  - stm32f401xx_opt
+- name: STM32F427AG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f4xx_1024dual
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F427AI
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_2048
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F427IG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f4xx_1024dual
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F427II
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_2048
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F427VG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f4xx_1024dual
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F427VI
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_2048
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F427ZG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f4xx_1024dual
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F427ZI
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_2048
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F429AG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f4xx_1024dual
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F429AI
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_2048
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F429BE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F429BG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f4xx_1024dual
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F429BI
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_2048
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F429IE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F429IG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f4xx_1024dual
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F429II
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_2048
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F429NE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F429NG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f4xx_1024dual
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F429NI
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_2048
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F429VE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F429VG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f4xx_1024dual
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F429VI
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_2048
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F429ZE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F429ZG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f4xx_1024dual
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F429ZI
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_2048
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F437AI
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_2048
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F437IG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f4xx_1024dual
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F437II
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_2048
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F437VG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f4xx_1024dual
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F437VI
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_2048
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F437ZG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f4xx_1024dual
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F437ZI
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_2048
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F439AI
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_2048
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F439BG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f4xx_1024dual
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F439BI
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_2048
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F439IG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f4xx_1024dual
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F439II
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_2048
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F439NG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f4xx_1024dual
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F439NI
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_2048
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F439VG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f4xx_1024dual
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F439VI
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_2048
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F439ZG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f4xx_1024dual
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F439ZI
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_2048
+  - stm32f42xxx_43xxx_opt
+  - stm32f4xx_otp
+- name: STM32F446MC
   cores:
   - name: main
     type: armv7em
@@ -1682,7 +4103,36 @@ variants:
   - stm32f4xx_1024
   - stm32f401xx_opt
   - stm32f4xx_otp
-- name: STM32F411VCTx
+- name: STM32F446ME
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f401xx_opt
+  - stm32f4xx_otp
+- name: STM32F446RC
   cores:
   - name: main
     type: armv7em
@@ -1711,7 +4161,7 @@ variants:
   - stm32f4xx_1024
   - stm32f401xx_opt
   - stm32f4xx_otp
-- name: STM32F411VEHx
+- name: STM32F446RE
   cores:
   - name: main
     type: armv7em
@@ -1740,3956 +4190,7 @@ variants:
   - stm32f4xx_1024
   - stm32f401xx_opt
   - stm32f4xx_otp
-- name: STM32F411VETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F412CEUx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F412CGUx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F412RETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F412REYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F412REYxP
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F412RGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F412RGYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F412RGYxP
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F412VEHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F412VETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F412VGHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F412VGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F412ZEJx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F412ZETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F412ZGJx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F412ZGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F413CGUx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-- name: STM32F413CHUx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8180000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1536
-  - stm32f401xx_opt
-- name: STM32F413MGYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-- name: STM32F413MHYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8180000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1536
-  - stm32f401xx_opt
-- name: STM32F413RGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-- name: STM32F413RHTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8180000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1536
-  - stm32f401xx_opt
-- name: STM32F413VGHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-- name: STM32F413VGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-- name: STM32F413VHHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8180000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1536
-  - stm32f401xx_opt
-- name: STM32F413VHTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8180000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1536
-  - stm32f401xx_opt
-- name: STM32F413ZGJx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-- name: STM32F413ZGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-- name: STM32F413ZHJx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8180000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1536
-  - stm32f401xx_opt
-- name: STM32F413ZHTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8180000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1536
-  - stm32f401xx_opt
-- name: STM32F415OGYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F415RGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F415VGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F415ZGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F417IEHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F417IETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F417IGHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F417IGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F417VETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F417VGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F417ZETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F417ZGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F423CHUx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8180000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1536
-  - stm32f401xx_opt
-- name: STM32F423MHYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8180000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1536
-  - stm32f401xx_opt
-- name: STM32F423RHTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8180000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1536
-  - stm32f401xx_opt
-- name: STM32F423VHHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8180000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1536
-  - stm32f401xx_opt
-- name: STM32F423VHTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8180000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1536
-  - stm32f401xx_opt
-- name: STM32F423ZHJx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8180000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1536
-  - stm32f401xx_opt
-- name: STM32F423ZHTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8180000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1536
-  - stm32f401xx_opt
-- name: STM32F427AGHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f4xx_1024dual
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F427AIHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_2048
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F427IGHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f4xx_1024dual
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F427IGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f4xx_1024dual
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F427IIHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_2048
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F427IITx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_2048
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F427VGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f4xx_1024dual
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F427VITx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_2048
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F427ZGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f4xx_1024dual
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F427ZITx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_2048
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F429AGHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f4xx_1024dual
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F429AIHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_2048
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F429BETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F429BGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f4xx_1024dual
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F429BITx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_2048
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F429IEHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F429IETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F429IGHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f4xx_1024dual
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F429IGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f4xx_1024dual
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F429IIHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_2048
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F429IITx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_2048
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F429NEHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F429NGHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f4xx_1024dual
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F429NIHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_2048
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F429VETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F429VGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f4xx_1024dual
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F429VITx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_2048
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F429ZETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F429ZGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f4xx_1024dual
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F429ZGYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f4xx_1024dual
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F429ZITx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_2048
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F429ZIYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_2048
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F437AIHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_2048
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F437IGHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f4xx_1024dual
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F437IGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f4xx_1024dual
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F437IIHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_2048
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F437IITx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_2048
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F437VGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f4xx_1024dual
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F437VITx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_2048
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F437ZGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f4xx_1024dual
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F437ZITx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_2048
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F439AIHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_2048
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F439BGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f4xx_1024dual
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F439BITx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_2048
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F439IGHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f4xx_1024dual
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F439IGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f4xx_1024dual
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F439IIHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_2048
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F439IITx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_2048
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F439NGHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f4xx_1024dual
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F439NIHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_2048
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F439VGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f4xx_1024dual
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F439VITx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_2048
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F439ZGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f4xx_1024dual
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F439ZGYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f4xx_1024dual
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F439ZITx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_2048
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F439ZIYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_2048
-  - stm32f42xxx_43xxx_opt
-  - stm32f4xx_otp
-- name: STM32F446MCYx
+- name: STM32F446VC
   cores:
   - name: main
     type: armv7em
@@ -5718,7 +4219,7 @@ variants:
   - stm32f4xx_1024
   - stm32f401xx_opt
   - stm32f4xx_otp
-- name: STM32F446MEYx
+- name: STM32F446VE
   cores:
   - name: main
     type: armv7em
@@ -5747,7 +4248,7 @@ variants:
   - stm32f4xx_1024
   - stm32f401xx_opt
   - stm32f4xx_otp
-- name: STM32F446RCTx
+- name: STM32F446ZC
   cores:
   - name: main
     type: armv7em
@@ -5776,7 +4277,7 @@ variants:
   - stm32f4xx_1024
   - stm32f401xx_opt
   - stm32f4xx_otp
-- name: STM32F446RETx
+- name: STM32F446ZE
   cores:
   - name: main
     type: armv7em
@@ -5805,239 +4306,7 @@ variants:
   - stm32f4xx_1024
   - stm32f401xx_opt
   - stm32f4xx_otp
-- name: STM32F446VCTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F446VETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F446ZCHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F446ZCJx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F446ZCTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F446ZEHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F446ZEJx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F446ZETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f401xx_opt
-  - stm32f4xx_otp
-- name: STM32F469AEHx
+- name: STM32F469AE
   cores:
   - name: main
     type: armv7em
@@ -6075,7 +4344,94 @@ variants:
   - stm32f4xx_1024
   - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
-- name: STM32F469AEYx
+- name: STM32F469AG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f4xx_1024dual
+  - stm32f42xxx_43xxx_opt
+  - stm32f469_quad_spi
+- name: STM32F469AI
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_2048
+  - stm32f42xxx_43xxx_opt
+  - stm32f469_quad_spi
+- name: STM32F469BE
   cores:
   - name: main
     type: armv7em
@@ -6113,7 +4469,7 @@ variants:
   - stm32f4xx_1024
   - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
-- name: STM32F469AGHx
+- name: STM32F469BG
   cores:
   - name: main
     type: armv7em
@@ -6152,46 +4508,7 @@ variants:
   - stm32f4xx_1024dual
   - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
-- name: STM32F469AGYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f4xx_1024dual
-  - stm32f42xxx_43xxx_opt
-  - stm32f469_quad_spi
-- name: STM32F469AIHx
+- name: STM32F469BI
   cores:
   - name: main
     type: armv7em
@@ -6239,55 +4556,7 @@ variants:
   - stm32f4xx_2048
   - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
-- name: STM32F469AIYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_2048
-  - stm32f42xxx_43xxx_opt
-  - stm32f469_quad_spi
-- name: STM32F469BETx
+- name: STM32F469IE
   cores:
   - name: main
     type: armv7em
@@ -6325,7 +4594,7 @@ variants:
   - stm32f4xx_1024
   - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
-- name: STM32F469BGTx
+- name: STM32F469IG
   cores:
   - name: main
     type: armv7em
@@ -6364,7 +4633,7 @@ variants:
   - stm32f4xx_1024dual
   - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
-- name: STM32F469BITx
+- name: STM32F469II
   cores:
   - name: main
     type: armv7em
@@ -6412,7 +4681,7 @@ variants:
   - stm32f4xx_2048
   - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
-- name: STM32F469IEHx
+- name: STM32F469NE
   cores:
   - name: main
     type: armv7em
@@ -6450,7 +4719,94 @@ variants:
   - stm32f4xx_1024
   - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
-- name: STM32F469IETx
+- name: STM32F469NG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f4xx_1024dual
+  - stm32f42xxx_43xxx_opt
+  - stm32f469_quad_spi
+- name: STM32F469NI
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_2048
+  - stm32f42xxx_43xxx_opt
+  - stm32f469_quad_spi
+- name: STM32F469VE
   cores:
   - name: main
     type: armv7em
@@ -6488,7 +4844,7 @@ variants:
   - stm32f4xx_1024
   - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
-- name: STM32F469IGHx
+- name: STM32F469VG
   cores:
   - name: main
     type: armv7em
@@ -6527,46 +4883,7 @@ variants:
   - stm32f4xx_1024dual
   - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
-- name: STM32F469IGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f4xx_1024dual
-  - stm32f42xxx_43xxx_opt
-  - stm32f469_quad_spi
-- name: STM32F469IIHx
+- name: STM32F469VI
   cores:
   - name: main
     type: armv7em
@@ -6614,55 +4931,7 @@ variants:
   - stm32f4xx_2048
   - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
-- name: STM32F469IITx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_2048
-  - stm32f42xxx_43xxx_opt
-  - stm32f469_quad_spi
-- name: STM32F469NEHx
+- name: STM32F469ZE
   cores:
   - name: main
     type: armv7em
@@ -6700,7 +4969,7 @@ variants:
   - stm32f4xx_1024
   - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
-- name: STM32F469NGHx
+- name: STM32F469ZG
   cores:
   - name: main
     type: armv7em
@@ -6739,7 +5008,7 @@ variants:
   - stm32f4xx_1024dual
   - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
-- name: STM32F469NIHx
+- name: STM32F469ZI
   cores:
   - name: main
     type: armv7em
@@ -6787,45 +5056,7 @@ variants:
   - stm32f4xx_2048
   - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
-- name: STM32F469VETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f42xxx_43xxx_opt
-  - stm32f469_quad_spi
-- name: STM32F469VGTx
+- name: STM32F479AG
   cores:
   - name: main
     type: armv7em
@@ -6864,7 +5095,7 @@ variants:
   - stm32f4xx_1024dual
   - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
-- name: STM32F469VITx
+- name: STM32F479AI
   cores:
   - name: main
     type: armv7em
@@ -6912,45 +5143,7 @@ variants:
   - stm32f4xx_2048
   - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
-- name: STM32F469ZETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f42xxx_43xxx_opt
-  - stm32f469_quad_spi
-- name: STM32F469ZGTx
+- name: STM32F479BG
   cores:
   - name: main
     type: armv7em
@@ -6989,7 +5182,7 @@ variants:
   - stm32f4xx_1024dual
   - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
-- name: STM32F469ZITx
+- name: STM32F479BI
   cores:
   - name: main
     type: armv7em
@@ -7037,7 +5230,7 @@ variants:
   - stm32f4xx_2048
   - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
-- name: STM32F479AGHx
+- name: STM32F479IG
   cores:
   - name: main
     type: armv7em
@@ -7076,46 +5269,7 @@ variants:
   - stm32f4xx_1024dual
   - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
-- name: STM32F479AGYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f4xx_1024dual
-  - stm32f42xxx_43xxx_opt
-  - stm32f469_quad_spi
-- name: STM32F479AIHx
+- name: STM32F479II
   cores:
   - name: main
     type: armv7em
@@ -7163,7 +5317,46 @@ variants:
   - stm32f4xx_2048
   - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
-- name: STM32F479AIYx
+- name: STM32F479NG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f4xx_1024
+  - stm32f4xx_1024dual
+  - stm32f42xxx_43xxx_opt
+  - stm32f469_quad_spi
+- name: STM32F479NI
   cores:
   - name: main
     type: armv7em
@@ -7211,7 +5404,7 @@ variants:
   - stm32f4xx_2048
   - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
-- name: STM32F479BGTx
+- name: STM32F479VG
   cores:
   - name: main
     type: armv7em
@@ -7250,7 +5443,7 @@ variants:
   - stm32f4xx_1024dual
   - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
-- name: STM32F479BITx
+- name: STM32F479VI
   cores:
   - name: main
     type: armv7em
@@ -7298,7 +5491,7 @@ variants:
   - stm32f4xx_2048
   - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
-- name: STM32F479IGHx
+- name: STM32F479ZG
   cores:
   - name: main
     type: armv7em
@@ -7337,355 +5530,7 @@ variants:
   - stm32f4xx_1024dual
   - stm32f42xxx_43xxx_opt
   - stm32f469_quad_spi
-- name: STM32F479IGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f4xx_1024dual
-  - stm32f42xxx_43xxx_opt
-  - stm32f469_quad_spi
-- name: STM32F479IIHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_2048
-  - stm32f42xxx_43xxx_opt
-  - stm32f469_quad_spi
-- name: STM32F479IITx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_2048
-  - stm32f42xxx_43xxx_opt
-  - stm32f469_quad_spi
-- name: STM32F479NGHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f4xx_1024dual
-  - stm32f42xxx_43xxx_opt
-  - stm32f469_quad_spi
-- name: STM32F479NIHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_2048
-  - stm32f42xxx_43xxx_opt
-  - stm32f469_quad_spi
-- name: STM32F479VGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f4xx_1024dual
-  - stm32f42xxx_43xxx_opt
-  - stm32f469_quad_spi
-- name: STM32F479VITx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_2048
-  - stm32f42xxx_43xxx_opt
-  - stm32f469_quad_spi
-- name: STM32F479ZGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-    access:
-      execute: false
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f4xx_1024
-  - stm32f4xx_1024dual
-  - stm32f42xxx_43xxx_opt
-  - stm32f469_quad_spi
-- name: STM32F479ZITx
+- name: STM32F479ZI
   cores:
   - name: main
     type: armv7em

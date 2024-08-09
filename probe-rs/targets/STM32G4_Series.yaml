@@ -5,7 +5,7 @@ manufacturer:
 generated_from_pack: true
 pack_file_release: 1.6.0
 variants:
-- name: STM32G431C6Tx
+- name: STM32G431C6
   cores:
   - name: main
     type: armv7em
@@ -55,7 +55,107 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G431C6Ux
+- name: STM32G431C8
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM_ICODE
+    range:
+      start: 0x10000000
+      end: 0x10002800
+    cores:
+    - main
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20004000
+      end: 0x20005800
+    cores:
+    - main
+  - !Ram
+    name: CCMRAM_DCODE
+    range:
+      start: 0x20005800
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32g47x-8x_512
+  - stm32g4xx_sb_opt
+  - mt25ql512abb_stm32g474e-eval
+- name: STM32G431CB
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM_ICODE
+    range:
+      start: 0x10000000
+      end: 0x10002800
+    cores:
+    - main
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20004000
+      end: 0x20005800
+    cores:
+    - main
+  - !Ram
+    name: CCMRAM_DCODE
+    range:
+      start: 0x20005800
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32g47x-8x_512
+  - stm32g4xx_sb_opt
+  - mt25ql512abb_stm32g474e-eval
+- name: STM32G431K6
   cores:
   - name: main
     type: armv7em
@@ -105,7 +205,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G431C8Tx
+- name: STM32G431K8
   cores:
   - name: main
     type: armv7em
@@ -155,57 +255,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G431C8Ux
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10002800
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20004000
-      end: 0x20005800
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20005800
-      end: 0x20008000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G431CBTx
+- name: STM32G431KB
   cores:
   - name: main
     type: armv7em
@@ -255,107 +305,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G431CBUx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10002800
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20004000
-      end: 0x20005800
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20005800
-      end: 0x20008000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G431CBYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10002800
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20004000
-      end: 0x20005800
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20005800
-      end: 0x20008000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G431K6Tx
+- name: STM32G431M6
   cores:
   - name: main
     type: armv7em
@@ -405,7 +355,107 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G431K6Ux
+- name: STM32G431M8
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM_ICODE
+    range:
+      start: 0x10000000
+      end: 0x10002800
+    cores:
+    - main
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20004000
+      end: 0x20005800
+    cores:
+    - main
+  - !Ram
+    name: CCMRAM_DCODE
+    range:
+      start: 0x20005800
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32g47x-8x_512
+  - stm32g4xx_sb_opt
+  - mt25ql512abb_stm32g474e-eval
+- name: STM32G431MB
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM_ICODE
+    range:
+      start: 0x10000000
+      end: 0x10002800
+    cores:
+    - main
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20004000
+      end: 0x20005800
+    cores:
+    - main
+  - !Ram
+    name: CCMRAM_DCODE
+    range:
+      start: 0x20005800
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32g47x-8x_512
+  - stm32g4xx_sb_opt
+  - mt25ql512abb_stm32g474e-eval
+- name: STM32G431R6
   cores:
   - name: main
     type: armv7em
@@ -455,7 +505,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G431K8Tx
+- name: STM32G431R8
   cores:
   - name: main
     type: armv7em
@@ -505,57 +555,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G431K8Ux
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10002800
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20004000
-      end: 0x20005800
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20005800
-      end: 0x20008000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G431KBTx
+- name: STM32G431RB
   cores:
   - name: main
     type: armv7em
@@ -605,57 +605,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G431KBUx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10002800
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20004000
-      end: 0x20005800
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20005800
-      end: 0x20008000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G431M6Tx
+- name: STM32G431V6
   cores:
   - name: main
     type: armv7em
@@ -705,7 +655,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G431M8Tx
+- name: STM32G431V8
   cores:
   - name: main
     type: armv7em
@@ -755,7 +705,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G431MBTx
+- name: STM32G431VB
   cores:
   - name: main
     type: armv7em
@@ -805,207 +755,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G431R6Ix
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10002800
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20004000
-      end: 0x20005800
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20005800
-      end: 0x20008000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G431R6Tx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10002800
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20004000
-      end: 0x20005800
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20005800
-      end: 0x20008000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G431R8Ix
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10002800
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20004000
-      end: 0x20005800
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20005800
-      end: 0x20008000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G431R8Tx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10002800
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20004000
-      end: 0x20005800
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20005800
-      end: 0x20008000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G431RBIx
+- name: STM32G441CB
   cores:
   - name: main
     type: armv7em
@@ -1055,7 +805,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G431RBTx
+- name: STM32G441KB
   cores:
   - name: main
     type: armv7em
@@ -1105,107 +855,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G431V6Tx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10002800
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20004000
-      end: 0x20005800
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20005800
-      end: 0x20008000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G431V8Tx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10002800
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20004000
-      end: 0x20005800
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20005800
-      end: 0x20008000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G431VBTx
+- name: STM32G441MB
   cores:
   - name: main
     type: armv7em
@@ -1255,7 +905,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G441CBTx
+- name: STM32G441RB
   cores:
   - name: main
     type: armv7em
@@ -1305,7 +955,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G441CBUx
+- name: STM32G441VB
   cores:
   - name: main
     type: armv7em
@@ -1355,357 +1005,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G441CBYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10002800
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20004000
-      end: 0x20005800
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20005800
-      end: 0x20008000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G441KBTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10002800
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20004000
-      end: 0x20005800
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20005800
-      end: 0x20008000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G441KBUx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10002800
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20004000
-      end: 0x20005800
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20005800
-      end: 0x20008000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G441MBTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10002800
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20004000
-      end: 0x20005800
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20005800
-      end: 0x20008000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G441RBIx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10002800
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20004000
-      end: 0x20005800
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20005800
-      end: 0x20008000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G441RBTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10002800
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20004000
-      end: 0x20005800
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20005800
-      end: 0x20008000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G441VBTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10002800
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20004000
-      end: 0x20005800
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20005800
-      end: 0x20008000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G471CCTx
+- name: STM32G471CC
   cores:
   - name: main
     type: armv7em
@@ -1755,7 +1055,57 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G471CCUx
+- name: STM32G471CE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM_ICODE
+    range:
+      start: 0x10000000
+      end: 0x10008000
+    cores:
+    - main
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20014000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20014000
+      end: 0x20018000
+    cores:
+    - main
+  - !Ram
+    name: CCMRAM_DCODE
+    range:
+      start: 0x20018000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32g47x-8x_512
+  - stm32g4xx_db_opt
+  - mt25ql512abb_stm32g474e-eval
+- name: STM32G471MC
   cores:
   - name: main
     type: armv7em
@@ -1805,7 +1155,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G471CETx
+- name: STM32G471ME
   cores:
   - name: main
     type: armv7em
@@ -1855,57 +1205,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G471CEUx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G471MCTx
+- name: STM32G471QC
   cores:
   - name: main
     type: armv7em
@@ -1955,7 +1255,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G471METx
+- name: STM32G471QE
   cores:
   - name: main
     type: armv7em
@@ -2005,57 +1305,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G471MEYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G471QCTx
+- name: STM32G471RC
   cores:
   - name: main
     type: armv7em
@@ -2105,7 +1355,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G471QETx
+- name: STM32G471RE
   cores:
   - name: main
     type: armv7em
@@ -2155,7 +1405,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G471RCTx
+- name: STM32G471VC
   cores:
   - name: main
     type: armv7em
@@ -2205,7 +1455,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G471RETx
+- name: STM32G471VE
   cores:
   - name: main
     type: armv7em
@@ -2255,307 +1505,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G471VCHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G471VCIx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G471VCTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G471VEHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G471VEIx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G471VETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G473CBTx
+- name: STM32G473CB
   cores:
   - name: main
     type: armv7em
@@ -2605,7 +1555,107 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G473CBUx
+- name: STM32G473CC
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM_ICODE
+    range:
+      start: 0x10000000
+      end: 0x10008000
+    cores:
+    - main
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20014000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20014000
+      end: 0x20018000
+    cores:
+    - main
+  - !Ram
+    name: CCMRAM_DCODE
+    range:
+      start: 0x20018000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32g47x-8x_512
+  - stm32g4xx_db_opt
+  - mt25ql512abb_stm32g474e-eval
+- name: STM32G473CE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM_ICODE
+    range:
+      start: 0x10000000
+      end: 0x10008000
+    cores:
+    - main
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20014000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20014000
+      end: 0x20018000
+    cores:
+    - main
+  - !Ram
+    name: CCMRAM_DCODE
+    range:
+      start: 0x20018000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32g47x-8x_512
+  - stm32g4xx_db_opt
+  - mt25ql512abb_stm32g474e-eval
+- name: STM32G473MB
   cores:
   - name: main
     type: armv7em
@@ -2655,7 +1705,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G473CCTx
+- name: STM32G473MC
   cores:
   - name: main
     type: armv7em
@@ -2705,57 +1755,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G473CCUx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G473CETx
+- name: STM32G473ME
   cores:
   - name: main
     type: armv7em
@@ -2805,57 +1805,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G473CEUx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G473MBTx
+- name: STM32G473PB
   cores:
   - name: main
     type: armv7em
@@ -2905,7 +1855,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G473MCTx
+- name: STM32G473PC
   cores:
   - name: main
     type: armv7em
@@ -2955,7 +1905,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G473METx
+- name: STM32G473PE
   cores:
   - name: main
     type: armv7em
@@ -3005,57 +1955,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G473MEYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G473PBIx
+- name: STM32G473QB
   cores:
   - name: main
     type: armv7em
@@ -3105,7 +2005,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G473PCIx
+- name: STM32G473QC
   cores:
   - name: main
     type: armv7em
@@ -3155,7 +2055,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G473PEIx
+- name: STM32G473QE
   cores:
   - name: main
     type: armv7em
@@ -3205,7 +2105,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G473QBTx
+- name: STM32G473RB
   cores:
   - name: main
     type: armv7em
@@ -3255,7 +2155,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G473QCTx
+- name: STM32G473RC
   cores:
   - name: main
     type: armv7em
@@ -3305,7 +2205,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G473QETx
+- name: STM32G473RE
   cores:
   - name: main
     type: armv7em
@@ -3355,7 +2255,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G473RBTx
+- name: STM32G473VB
   cores:
   - name: main
     type: armv7em
@@ -3405,7 +2305,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G473RCTx
+- name: STM32G473VC
   cores:
   - name: main
     type: armv7em
@@ -3455,7 +2355,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G473RETx
+- name: STM32G473VE
   cores:
   - name: main
     type: armv7em
@@ -3505,7 +2405,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G473VBHx
+- name: STM32G474CB
   cores:
   - name: main
     type: armv7em
@@ -3555,7 +2455,107 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G473VBIx
+- name: STM32G474CC
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM_ICODE
+    range:
+      start: 0x10000000
+      end: 0x10008000
+    cores:
+    - main
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20014000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20014000
+      end: 0x20018000
+    cores:
+    - main
+  - !Ram
+    name: CCMRAM_DCODE
+    range:
+      start: 0x20018000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32g47x-8x_512
+  - stm32g4xx_db_opt
+  - mt25ql512abb_stm32g474e-eval
+- name: STM32G474CE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM_ICODE
+    range:
+      start: 0x10000000
+      end: 0x10008000
+    cores:
+    - main
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20014000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20014000
+      end: 0x20018000
+    cores:
+    - main
+  - !Ram
+    name: CCMRAM_DCODE
+    range:
+      start: 0x20018000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32g47x-8x_512
+  - stm32g4xx_db_opt
+  - mt25ql512abb_stm32g474e-eval
+- name: STM32G474MB
   cores:
   - name: main
     type: armv7em
@@ -3605,7 +2605,107 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G473VBTx
+- name: STM32G474MC
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM_ICODE
+    range:
+      start: 0x10000000
+      end: 0x10008000
+    cores:
+    - main
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20014000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20014000
+      end: 0x20018000
+    cores:
+    - main
+  - !Ram
+    name: CCMRAM_DCODE
+    range:
+      start: 0x20018000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32g47x-8x_512
+  - stm32g4xx_db_opt
+  - mt25ql512abb_stm32g474e-eval
+- name: STM32G474ME
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM_ICODE
+    range:
+      start: 0x10000000
+      end: 0x10008000
+    cores:
+    - main
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20014000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20014000
+      end: 0x20018000
+    cores:
+    - main
+  - !Ram
+    name: CCMRAM_DCODE
+    range:
+      start: 0x20018000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32g47x-8x_512
+  - stm32g4xx_db_opt
+  - mt25ql512abb_stm32g474e-eval
+- name: STM32G474PB
   cores:
   - name: main
     type: armv7em
@@ -3655,7 +2755,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G473VCHx
+- name: STM32G474PC
   cores:
   - name: main
     type: armv7em
@@ -3705,107 +2805,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G473VCIx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G473VCTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G473VEHx
+- name: STM32G474PE
   cores:
   - name: main
     type: armv7em
@@ -3855,107 +2855,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G473VEIx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G473VETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G474CBTx
+- name: STM32G474QB
   cores:
   - name: main
     type: armv7em
@@ -4005,7 +2905,107 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G474CBUx
+- name: STM32G474QC
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM_ICODE
+    range:
+      start: 0x10000000
+      end: 0x10008000
+    cores:
+    - main
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20014000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20014000
+      end: 0x20018000
+    cores:
+    - main
+  - !Ram
+    name: CCMRAM_DCODE
+    range:
+      start: 0x20018000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32g47x-8x_512
+  - stm32g4xx_db_opt
+  - mt25ql512abb_stm32g474e-eval
+- name: STM32G474QE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM_ICODE
+    range:
+      start: 0x10000000
+      end: 0x10008000
+    cores:
+    - main
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20014000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20014000
+      end: 0x20018000
+    cores:
+    - main
+  - !Ram
+    name: CCMRAM_DCODE
+    range:
+      start: 0x20018000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32g47x-8x_512
+  - stm32g4xx_db_opt
+  - mt25ql512abb_stm32g474e-eval
+- name: STM32G474RB
   cores:
   - name: main
     type: armv7em
@@ -4055,7 +3055,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G474CCTx
+- name: STM32G474RC
   cores:
   - name: main
     type: armv7em
@@ -4105,57 +3105,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G474CCUx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G474CETx
+- name: STM32G474RE
   cores:
   - name: main
     type: armv7em
@@ -4205,57 +3155,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G474CEUx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G474MBTx
+- name: STM32G474VB
   cores:
   - name: main
     type: armv7em
@@ -4305,7 +3205,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G474MCTx
+- name: STM32G474VC
   cores:
   - name: main
     type: armv7em
@@ -4355,7 +3255,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G474METx
+- name: STM32G474VE
   cores:
   - name: main
     type: armv7em
@@ -4405,7 +3305,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G474MEYx
+- name: STM32G483CE
   cores:
   - name: main
     type: armv7em
@@ -4455,107 +3355,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G474PBIx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G474PCIx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G474PEIx
+- name: STM32G483ME
   cores:
   - name: main
     type: armv7em
@@ -4605,107 +3405,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G474QBTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G474QCTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G474QETx
+- name: STM32G483PE
   cores:
   - name: main
     type: armv7em
@@ -4755,107 +3455,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G474RBTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G474RCTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G474RETx
+- name: STM32G483QE
   cores:
   - name: main
     type: armv7em
@@ -4905,307 +3505,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G474VBHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G474VBIx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G474VBTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G474VCHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G474VCIx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G474VCTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G474VEHx
+- name: STM32G483RE
   cores:
   - name: main
     type: armv7em
@@ -5255,7 +3555,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G474VEIx
+- name: STM32G483VE
   cores:
   - name: main
     type: armv7em
@@ -5305,7 +3605,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G474VETx
+- name: STM32G484CE
   cores:
   - name: main
     type: armv7em
@@ -5355,7 +3655,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G483CETx
+- name: STM32G484ME
   cores:
   - name: main
     type: armv7em
@@ -5405,7 +3705,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G483CEUx
+- name: STM32G484PE
   cores:
   - name: main
     type: armv7em
@@ -5455,7 +3755,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G483METx
+- name: STM32G484QE
   cores:
   - name: main
     type: armv7em
@@ -5505,7 +3805,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G483MEYx
+- name: STM32G484RE
   cores:
   - name: main
     type: armv7em
@@ -5555,7 +3855,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G483PEIx
+- name: STM32G484VE
   cores:
   - name: main
     type: armv7em
@@ -5605,757 +3905,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_db_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G483QETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G483RETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G483VEHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G483VEIx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G483VETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G484CETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G484CEUx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G484METx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G484MEYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G484PEIx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G484QETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G484RETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G484VEHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G484VEIx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G484VETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_db_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G491CCTx
+- name: STM32G491CC
   cores:
   - name: main
     type: armv7em
@@ -6405,7 +3955,57 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G491CCUx
+- name: STM32G491CE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM_ICODE
+    range:
+      start: 0x10000000
+      end: 0x10004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20014000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20014000
+      end: 0x20018000
+    cores:
+    - main
+  - !Ram
+    name: CCMRAM_DCODE
+    range:
+      start: 0x20018000
+      end: 0x2001c000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32g47x-8x_512
+  - stm32g4xx_sb_opt
+  - mt25ql512abb_stm32g474e-eval
+- name: STM32G491KC
   cores:
   - name: main
     type: armv7em
@@ -6455,7 +4055,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G491CETx
+- name: STM32G491KE
   cores:
   - name: main
     type: armv7em
@@ -6505,57 +4105,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G491CEUx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x2001c000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G491KCUx
+- name: STM32G491MC
   cores:
   - name: main
     type: armv7em
@@ -6605,7 +4155,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G491KEUx
+- name: STM32G491ME
   cores:
   - name: main
     type: armv7em
@@ -6655,7 +4205,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G491MCSx
+- name: STM32G491RC
   cores:
   - name: main
     type: armv7em
@@ -6705,7 +4255,57 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G491MCTx
+- name: STM32G491RE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: CCMRAM_ICODE
+    range:
+      start: 0x10000000
+      end: 0x10004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20014000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20014000
+      end: 0x20018000
+    cores:
+    - main
+  - !Ram
+    name: CCMRAM_DCODE
+    range:
+      start: 0x20018000
+      end: 0x2001c000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32g47x-8x_512
+  - stm32g4xx_sb_opt
+  - mt25ql512abb_stm32g474e-eval
+- name: STM32G491VC
   cores:
   - name: main
     type: armv7em
@@ -6755,7 +4355,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G491MESx
+- name: STM32G491VE
   cores:
   - name: main
     type: armv7em
@@ -6805,7 +4405,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G491METx
+- name: STM32G4A1CE
   cores:
   - name: main
     type: armv7em
@@ -6855,107 +4455,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G491RCIx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x2001c000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G491RCTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x2001c000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G491REIx
+- name: STM32G4A1KE
   cores:
   - name: main
     type: armv7em
@@ -7005,7 +4505,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G491RETx
+- name: STM32G4A1ME
   cores:
   - name: main
     type: armv7em
@@ -7055,7 +4555,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G491REYx
+- name: STM32G4A1RE
   cores:
   - name: main
     type: armv7em
@@ -7105,507 +4605,7 @@ variants:
   - stm32g47x-8x_512
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
-- name: STM32G491VCTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x2001c000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G491VETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x2001c000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G4A1CETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x2001c000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G4A1CEUx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x2001c000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G4A1KEUx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x2001c000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G4A1MESx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x2001c000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G4A1METx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x2001c000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G4A1REIx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x2001c000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G4A1RETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x2001c000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G4A1REYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: CCMRAM_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20014000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20014000
-      end: 0x20018000
-    cores:
-    - main
-  - !Ram
-    name: CCMRAM_DCODE
-    range:
-      start: 0x20018000
-      end: 0x2001c000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32g47x-8x_512
-  - stm32g4xx_sb_opt
-  - mt25ql512abb_stm32g474e-eval
-- name: STM32G4A1VETx
+- name: STM32G4A1VE
   cores:
   - name: main
     type: armv7em
