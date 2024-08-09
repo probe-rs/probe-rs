@@ -205,6 +205,8 @@ impl<'p> CoreHandle<'p> {
             return Ok(());
         }
 
+        // TODO: we should probably use the RttClient all the way, then we can clean up this allow.
+        #[allow(clippy::unwrap_used)] // We know the client is Some() because of the if let above.
         let target_rtt = self.core_data.rtt_client.take().unwrap().into_target();
 
         let mut debugger_rtt_channels: Vec<debug_rtt::DebuggerRttChannel> = vec![];
