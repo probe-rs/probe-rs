@@ -2,8 +2,13 @@ name: esp32
 manufacturer:
   id: 0x12
   cc: 0xc
+chip_detection:
+- !Espressif
+  idcode: 0x120034e5
+  variants:
+    0x00f01d83: esp32
 variants:
-- name: esp32-3.3v
+- name: esp32
   cores:
   - name: main
     type: xtensa
