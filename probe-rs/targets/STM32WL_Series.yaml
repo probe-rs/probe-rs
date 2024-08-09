@@ -5,7 +5,7 @@ manufacturer:
 generated_from_pack: true
 pack_file_release: 1.2.0
 variants:
-- name: STM32WL54CCUx
+- name: STM32WL54CC
   cores:
   - name: cm4
     type: armv7em
@@ -48,7 +48,7 @@ variants:
   flash_algorithms:
   - stm32wlxx_cm4
   - stm32wlxx_cm0+
-- name: STM32WL54JCIx
+- name: STM32WL54JC
   cores:
   - name: cm4
     type: armv7em
@@ -91,7 +91,7 @@ variants:
   flash_algorithms:
   - stm32wlxx_cm4
   - stm32wlxx_cm0+
-- name: STM32WL55CCUx
+- name: STM32WL55CC
   cores:
   - name: cm4
     type: armv7em
@@ -134,7 +134,7 @@ variants:
   flash_algorithms:
   - stm32wlxx_cm4
   - stm32wlxx_cm0+
-- name: STM32WL55JCIx
+- name: STM32WL55JC
   cores:
   - name: cm4
     type: armv7em
@@ -177,7 +177,7 @@ variants:
   flash_algorithms:
   - stm32wlxx_cm4
   - stm32wlxx_cm0+
-- name: STM32WL5MOCHx
+- name: STM32WL5MOC
   cores:
   - name: cm4
     type: armv7em
@@ -220,7 +220,7 @@ variants:
   flash_algorithms:
   - stm32wlxx_cm4
   - stm32wlxx_cm0+
-- name: STM32WLE4C8Ux
+- name: STM32WLE4C8
   cores:
   - name: main
     type: armv7em
@@ -254,7 +254,7 @@ variants:
     - main
   flash_algorithms:
   - stm32wlexx_128
-- name: STM32WLE4CBUx
+- name: STM32WLE4CB
   cores:
   - name: main
     type: armv7em
@@ -288,7 +288,7 @@ variants:
     - main
   flash_algorithms:
   - stm32wlexx_128
-- name: STM32WLE4CCUx
+- name: STM32WLE4CC
   cores:
   - name: main
     type: armv7em
@@ -322,7 +322,7 @@ variants:
     - main
   flash_algorithms:
   - stm32wlxx_cm4
-- name: STM32WLE4J8Ix
+- name: STM32WLE4J8
   cores:
   - name: main
     type: armv7em
@@ -356,7 +356,7 @@ variants:
     - main
   flash_algorithms:
   - stm32wlexx_128
-- name: STM32WLE4JBIx
+- name: STM32WLE4JB
   cores:
   - name: main
     type: armv7em
@@ -390,7 +390,7 @@ variants:
     - main
   flash_algorithms:
   - stm32wlexx_128
-- name: STM32WLE4JCIx
+- name: STM32WLE4JC
   cores:
   - name: main
     type: armv7em
@@ -424,7 +424,7 @@ variants:
     - main
   flash_algorithms:
   - stm32wlxx_cm4
-- name: STM32WLE5C8Ux
+- name: STM32WLE5C8
   cores:
   - name: main
     type: armv7em
@@ -458,7 +458,7 @@ variants:
     - main
   flash_algorithms:
   - stm32wlexx_128
-- name: STM32WLE5CBUx
+- name: STM32WLE5CB
   cores:
   - name: main
     type: armv7em
@@ -492,7 +492,7 @@ variants:
     - main
   flash_algorithms:
   - stm32wlexx_128
-- name: STM32WLE5CCUx
+- name: STM32WLE5CC
   cores:
   - name: main
     type: armv7em
@@ -526,7 +526,7 @@ variants:
     - main
   flash_algorithms:
   - stm32wlxx_cm4
-- name: STM32WLE5J8Ix
+- name: STM32WLE5J8
   cores:
   - name: main
     type: armv7em
@@ -560,7 +560,7 @@ variants:
     - main
   flash_algorithms:
   - stm32wlexx_128
-- name: STM32WLE5JBIx
+- name: STM32WLE5JB
   cores:
   - name: main
     type: armv7em
@@ -594,7 +594,7 @@ variants:
     - main
   flash_algorithms:
   - stm32wlexx_128
-- name: STM32WLE5JCIx
+- name: STM32WLE5JC
   cores:
   - name: main
     type: armv7em
