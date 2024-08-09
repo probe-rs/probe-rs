@@ -8,6 +8,7 @@ use probe_rs_target::MemoryRegion;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::{
     fmt,
     fmt::Write,
@@ -137,6 +138,7 @@ pub enum ChannelDataFormat {
         formatter: Formatter,
         // CWD to strip from file paths in defmt output
         cwd: PathBuf,
+        defmt_data: Option<Arc<DefmtState>>,
     },
 }
 
@@ -178,7 +180,6 @@ impl ChannelDataFormat {
         &mut self,
         number: usize,
         buffer: &[u8],
-        defmt_state: Option<&DefmtState>,
         collector: &mut impl ChannelDataCallbacks,
     ) -> Result<(), Error> {
         // FIXME: clean this up by splitting the enum variants out into separate structs
@@ -194,8 +195,9 @@ impl ChannelDataFormat {
             ChannelDataFormat::Defmt {
                 ref formatter,
                 ref cwd,
+                ref defmt_data,
             } => {
-                let string = Self::process_defmt(buffer, defmt_state, formatter, cwd)?;
+                let string = Self::process_defmt(buffer, defmt_data.as_deref(), formatter, cwd)?;
                 collector.on_string_data(number, string)
             }
         }
@@ -322,7 +324,7 @@ impl RttActiveUpChannel {
         up_channel: UpChannel,
         channel_config: &RttChannelConfig,
         timestamp_offset: UtcOffset,
-        defmt_state: Option<&DefmtState>,
+        defmt_data: Option<Arc<DefmtState>>,
     ) -> Result<Self, Error> {
         let is_defmt_channel = up_channel.name() == Some("defmt");
 
@@ -336,7 +338,7 @@ impl RttActiveUpChannel {
 
             // either DataFormat::Defmt is configured, or defmt_enabled is true
             _ => {
-                let has_timestamp = if let Some(defmt) = defmt_state {
+                let has_timestamp = if let Some(ref defmt) = defmt_data {
                     defmt.table.has_timestamp()
                 } else {
                     tracing::warn!("No `Table` definition in DWARF info; compile your program with `debug = 2` to enable location info.");
@@ -360,6 +362,7 @@ impl RttActiveUpChannel {
                         is_timestamp_available: has_timestamp && channel_config.show_timestamps,
                     }),
                     cwd: std::env::current_dir().unwrap(),
+                    defmt_data,
                 }
             }
         };
@@ -418,7 +421,6 @@ impl RttActiveUpChannel {
     pub fn poll_process_rtt_data(
         &mut self,
         core: &mut Core,
-        defmt_state: Option<&DefmtState>,
         collector: &mut impl ChannelDataCallbacks,
     ) -> Result<(), Error> {
         let Some(bytes_read) = self.poll_rtt(core)? else {
@@ -427,8 +429,7 @@ impl RttActiveUpChannel {
 
         let buffer = &self.rtt_buffer[..bytes_read];
 
-        self.data_format
-            .process(self.number(), buffer, defmt_state, collector)
+        self.data_format.process(self.number(), buffer, collector)
     }
 
     /// Clean up temporary changes made to the channel.
@@ -516,7 +517,7 @@ impl RttActiveTarget {
     pub fn new(
         core: &mut Core,
         rtt: Rtt,
-        defmt_state: Option<&DefmtState>,
+        defmt_state: Option<Arc<DefmtState>>,
         rtt_config: &RttConfig,
         timestamp_offset: UtcOffset,
     ) -> Result<Self, Error> {
@@ -535,7 +536,7 @@ impl RttActiveTarget {
                 channel,
                 &channel_config,
                 timestamp_offset,
-                defmt_state,
+                defmt_state.clone(),
             )?);
         }
 
@@ -584,10 +585,9 @@ impl RttActiveTarget {
         &mut self,
         core: &mut Core,
         collector: &mut impl ChannelDataCallbacks,
-        defmt_state: Option<&DefmtState>,
     ) -> Result<(), Error> {
         for channel in self.active_up_channels.iter_mut() {
-            channel.poll_process_rtt_data(core, defmt_state, collector)?;
+            channel.poll_process_rtt_data(core, collector)?;
         }
         Ok(())
     }

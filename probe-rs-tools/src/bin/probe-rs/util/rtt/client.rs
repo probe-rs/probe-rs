@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::util::rtt::{ChannelDataCallbacks, DefmtState, RttActiveTarget, RttConfig};
 use probe_rs::{
     rtt::{Error, Rtt, ScanRegion},
@@ -6,7 +8,7 @@ use probe_rs::{
 use time::UtcOffset;
 
 pub struct RttClient {
-    pub defmt_data: Option<DefmtState>,
+    pub defmt_data: Option<Arc<DefmtState>>,
     pub scan_region: ScanRegion,
     rtt_config: RttConfig,
     target: Option<RttActiveTarget>,
@@ -35,7 +37,7 @@ impl RttClient {
             if let Some(address) = RttActiveTarget::get_rtt_symbol_from_bytes(elf) {
                 this.scan_region = ScanRegion::Exact(address);
             }
-            this.defmt_data = DefmtState::try_from_bytes(elf)?;
+            this.defmt_data = DefmtState::try_from_bytes(elf)?.map(Arc::new);
         }
 
         Ok(this)
@@ -54,7 +56,7 @@ impl RttClient {
             RttActiveTarget::new(
                 core,
                 rtt,
-                self.defmt_data.as_ref(),
+                self.defmt_data.clone(),
                 &self.rtt_config,
                 self.timezone_offset,
             )
@@ -83,7 +85,7 @@ impl RttClient {
             return Ok(());
         };
 
-        let result = target.poll_rtt_fallible(core, collector, self.defmt_data.as_ref());
+        let result = target.poll_rtt_fallible(core, collector);
         self.handle_poll_result(result)
     }
 
@@ -131,10 +133,6 @@ impl RttClient {
         self.target = None;
 
         Ok(())
-    }
-
-    pub(crate) fn supports_defmt(&self) -> bool {
-        self.defmt_data.is_some()
     }
 
     pub(crate) fn into_target(self) -> RttActiveTarget {

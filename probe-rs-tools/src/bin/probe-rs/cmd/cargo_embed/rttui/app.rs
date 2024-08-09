@@ -17,7 +17,7 @@ use std::{path::PathBuf, sync::mpsc::TryRecvError};
 
 use crate::{
     cmd::cargo_embed::rttui::{channel::ChannelData, tab::TabConfig},
-    util::rtt::{DefmtState, RttActiveTarget},
+    util::rtt::RttActiveTarget,
 };
 
 use super::super::config;
@@ -38,18 +38,11 @@ pub struct App {
 
     current_height: usize,
 
-    defmt_state: Option<DefmtState>,
-
     pub(crate) up_channels: Vec<Rc<RefCell<UpChannel>>>,
 }
 
 impl App {
-    pub fn new(
-        rtt: RttActiveTarget,
-        config: config::Config,
-        logname: String,
-        defmt_state: Option<DefmtState>,
-    ) -> Result<Self> {
+    pub fn new(rtt: RttActiveTarget, config: config::Config, logname: String) -> Result<Self> {
         let mut tab_config = config.rtt.tabs;
 
         // Create channel states
@@ -159,7 +152,6 @@ impl App {
             events,
             history_path,
             logname,
-            defmt_state,
             current_height: 0,
 
             up_channels,
@@ -248,9 +240,7 @@ impl App {
     /// Polls the RTT target for new data on all channels.
     pub fn poll_rtt(&mut self, core: &mut Core) -> Result<()> {
         for channel in self.up_channels.iter_mut() {
-            channel
-                .borrow_mut()
-                .poll_rtt(core, self.defmt_state.as_ref())?;
+            channel.borrow_mut().poll_rtt(core)?;
         }
 
         Ok(())

@@ -142,6 +142,7 @@ impl SessionData {
                 stack_frames: vec![],
                 breakpoints: vec![],
                 rtt_connection: None,
+                rtt_client: None,
             })
         }
 
