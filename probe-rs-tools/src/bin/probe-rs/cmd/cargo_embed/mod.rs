@@ -29,8 +29,8 @@ use crate::util::common_options::{BinaryDownloadOptions, OperationError, ProbeOp
 use crate::util::flash::{build_loader, run_flash_download};
 use crate::util::logging::setup_logging;
 use crate::util::rtt::client::RttClient;
-use crate::util::rtt::{self, DefmtState, RttChannelConfig, RttConfig};
-use crate::util::{cargo::build_artifact, common_options::CargoOptions, logging, rtt::DataFormat};
+use crate::util::rtt::{self, RttChannelConfig, RttConfig};
+use crate::util::{cargo::build_artifact, common_options::CargoOptions, logging};
 use crate::FormatOptions;
 
 #[derive(Debug, clap::Parser)]
@@ -336,10 +336,9 @@ fn run_rttui_app(
     // Make sure our defaults are the same as the ones intended in the config struct.
     let default_channel_config = RttChannelConfig::default();
 
-    let mut require_defmt = false;
     for channel_config in config.rtt.up_channels.iter() {
         // Where `channel_config` is unspecified, apply default from `default_channel_config`.
-        let rtt_channel_config = RttChannelConfig {
+        rtt_config.channels.push(RttChannelConfig {
             channel_number: Some(channel_config.channel),
             data_format: channel_config
                 .format
@@ -355,11 +354,7 @@ fn run_rttui_app(
                 .clone()
                 .or_else(|| default_channel_config.log_format.clone()),
             mode: channel_config.mode.or(default_channel_config.mode),
-        };
-        if rtt_channel_config.data_format == DataFormat::Defmt {
-            require_defmt = true;
-        }
-        rtt_config.channels.push(rtt_channel_config);
+        });
     }
     // In case we have down channels without up channels, add them separately.
     for channel_config in config.rtt.down_channels.iter() {
@@ -378,7 +373,6 @@ fn run_rttui_app(
     }
 
     let elf = fs::read(elf_path)?;
-    let defmt_state = DefmtState::try_from_bytes(&elf)?;
 
     let mut client = RttClient::new(Some(&elf), rtt_config.clone(), ScanRegion::Ram)?;
 
@@ -412,12 +406,6 @@ fn run_rttui_app(
         }
     };
 
-    if require_defmt && !rtt.supports_defmt() {
-        tracing::warn!(
-            "RTT channels with format = defmt found, but no defmt metadata found in the ELF file."
-        );
-    }
-
     tracing::info!("RTT initialized.");
 
     // Check if the terminal supports x
@@ -447,7 +435,7 @@ fn run_rttui_app(
 
     let logname = format!("{name}_{chip_name}_{timestamp_millis}");
     // TODO: work with the client instead of unwrapping it
-    let mut app = rttui::app::App::new(rtt.into_target(), config, logname, defmt_state)?;
+    let mut app = rttui::app::App::new(rtt.into_target(), config, logname)?;
     loop {
         app.render();
 

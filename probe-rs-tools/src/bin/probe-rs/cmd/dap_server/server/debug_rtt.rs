@@ -15,9 +15,6 @@ pub struct RttConnection {
     pub(crate) target_rtt: rtt::RttActiveTarget,
     /// Some status fields and methods to ensure continuity in flow of data from target to debugger to client.
     pub(crate) debugger_rtt_channels: Vec<DebuggerRttChannel>,
-
-    /// defmt decoding and location information
-    pub(crate) defmt_state: Option<rtt::DefmtState>,
 }
 
 impl RttConnection {
@@ -30,12 +27,8 @@ impl RttConnection {
     ) -> bool {
         let mut at_least_one_channel_had_data = false;
         for debugger_rtt_channel in self.debugger_rtt_channels.iter_mut() {
-            at_least_one_channel_had_data |= debugger_rtt_channel.poll_rtt_data(
-                target_core,
-                debug_adapter,
-                &mut self.target_rtt,
-                self.defmt_state.as_ref(),
-            )
+            at_least_one_channel_had_data |=
+                debugger_rtt_channel.poll_rtt_data(target_core, debug_adapter, &mut self.target_rtt)
         }
         at_least_one_channel_had_data
     }
@@ -64,7 +57,6 @@ impl DebuggerRttChannel {
         core: &mut Core,
         debug_adapter: &mut DebugAdapter<P>,
         rtt_target: &mut rtt::RttActiveTarget,
-        defmt_state: Option<&rtt::DefmtState>,
     ) -> bool {
         if !self.has_client_window {
             return false;
@@ -87,7 +79,7 @@ impl DebuggerRttChannel {
 
         let mut out = StringCollector { data: None };
 
-        if let Err(e) = rtt_channel.poll_process_rtt_data(core, defmt_state, &mut out) {
+        if let Err(e) = rtt_channel.poll_process_rtt_data(core, &mut out) {
             debug_adapter
                 .show_error_message(&DebuggerError::Other(anyhow!(e)))
                 .ok();

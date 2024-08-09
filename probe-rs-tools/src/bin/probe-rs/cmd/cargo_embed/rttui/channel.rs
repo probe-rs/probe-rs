@@ -4,7 +4,7 @@ use probe_rs::{rtt::Error, Core};
 
 use crate::{
     cmd::cargo_embed::rttui::tcp::TcpPublisher,
-    util::rtt::{ChannelDataCallbacks, DefmtState, RttActiveUpChannel},
+    util::rtt::{ChannelDataCallbacks, RttActiveUpChannel},
 };
 
 pub enum ChannelData {
@@ -61,16 +61,9 @@ impl UpChannel {
         }
     }
 
-    pub fn poll_rtt(
-        &mut self,
-        core: &mut Core<'_>,
-        defmt_state: Option<&DefmtState>,
-    ) -> Result<(), Error> {
-        self.rtt_channel.poll_process_rtt_data(
-            core,
-            defmt_state,
-            &mut (&mut self.tcp_stream, &mut self.data),
-        )
+    pub fn poll_rtt(&mut self, core: &mut Core<'_>) -> Result<(), Error> {
+        self.rtt_channel
+            .poll_process_rtt_data(core, &mut (&mut self.tcp_stream, &mut self.data))
     }
 
     pub(crate) fn clean_up(&mut self, core: &mut Core<'_>) -> Result<(), Error> {
