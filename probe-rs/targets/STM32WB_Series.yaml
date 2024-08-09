@@ -5,7 +5,7 @@ manufacturer:
 generated_from_pack: true
 pack_file_release: 1.4.0
 variants:
-- name: STM32WB10CCUx
+- name: STM32WB10CC
   cores:
   - name: main
     type: armv7em
@@ -32,61 +32,7 @@ variants:
     - main
   flash_algorithms:
   - stm32wb1x_320_m4
-- name: STM32WB15CCUx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8050000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20003000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32wb1x_320_m4
-- name: STM32WB15CCUxE
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8050000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20003000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32wb1x_320_m4
-- name: STM32WB15CCYx
+- name: STM32WB15CC
   cores:
   - name: main
     type: armv7em
@@ -146,7 +92,7 @@ variants:
     - main
   flash_algorithms:
   - stm32wb1x_320_m4
-- name: STM32WB30CEUxA
+- name: STM32WB30CE
   cores:
   - name: main
     type: armv7em
@@ -173,7 +119,7 @@ variants:
     - main
   flash_algorithms:
   - stm32wb3x_512_m4
-- name: STM32WB35CCUxA
+- name: STM32WB35CC
   cores:
   - name: main
     type: armv7em
@@ -200,7 +146,7 @@ variants:
     - main
   flash_algorithms:
   - stm32wb3x_512_m4
-- name: STM32WB35CEUxA
+- name: STM32WB35CE
   cores:
   - name: main
     type: armv7em
@@ -227,7 +173,7 @@ variants:
     - main
   flash_algorithms:
   - stm32wb3x_512_m4
-- name: STM32WB50CGUx
+- name: STM32WB50CG
   cores:
   - name: main
     type: armv7em
@@ -254,7 +200,7 @@ variants:
     - main
   flash_algorithms:
   - stm32wb5x_m4_1024
-- name: STM32WB55CCUx
+- name: STM32WB55CC
   cores:
   - name: main
     type: armv7em
@@ -282,7 +228,7 @@ variants:
   flash_algorithms:
   - stm32wb5x_m4_1024
   - stm32wb55x_35x_m4_opt
-- name: STM32WB55CEUx
+- name: STM32WB55CE
   cores:
   - name: main
     type: armv7em
@@ -310,7 +256,7 @@ variants:
   flash_algorithms:
   - stm32wb5x_m4_1024
   - stm32wb55x_35x_m4_opt
-- name: STM32WB55CGUx
+- name: STM32WB55CG
   cores:
   - name: main
     type: armv7em
@@ -338,7 +284,7 @@ variants:
   flash_algorithms:
   - stm32wb5x_m4_1024
   - stm32wb55x_35x_m4_opt
-- name: STM32WB55RCVx
+- name: STM32WB55RC
   cores:
   - name: main
     type: armv7em
@@ -366,7 +312,7 @@ variants:
   flash_algorithms:
   - stm32wb5x_m4_1024
   - stm32wb55x_35x_m4_opt
-- name: STM32WB55REVx
+- name: STM32WB55RE
   cores:
   - name: main
     type: armv7em
@@ -394,7 +340,7 @@ variants:
   flash_algorithms:
   - stm32wb5x_m4_1024
   - stm32wb55x_35x_m4_opt
-- name: STM32WB55RGVx
+- name: STM32WB55RG
   cores:
   - name: main
     type: armv7em
@@ -422,7 +368,7 @@ variants:
   flash_algorithms:
   - stm32wb5x_m4_1024
   - stm32wb55x_35x_m4_opt
-- name: STM32WB55VCQx
+- name: STM32WB55VC
   cores:
   - name: main
     type: armv7em
@@ -450,35 +396,7 @@ variants:
   flash_algorithms:
   - stm32wb5x_m4_1024
   - stm32wb55x_35x_m4_opt
-- name: STM32WB55VCYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32wb5x_m4_1024
-  - stm32wb55x_35x_m4_opt
-- name: STM32WB55VEQx
+- name: STM32WB55VE
   cores:
   - name: main
     type: armv7em
@@ -506,35 +424,7 @@ variants:
   flash_algorithms:
   - stm32wb5x_m4_1024
   - stm32wb55x_35x_m4_opt
-- name: STM32WB55VEYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32wb5x_m4_1024
-  - stm32wb55x_35x_m4_opt
-- name: STM32WB55VGQx
+- name: STM32WB55VG
   cores:
   - name: main
     type: armv7em
@@ -562,35 +452,7 @@ variants:
   flash_algorithms:
   - stm32wb5x_m4_1024
   - stm32wb55x_35x_m4_opt
-- name: STM32WB55VGYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32wb5x_m4_1024
-  - stm32wb55x_35x_m4_opt
-- name: STM32WB55VYYx
+- name: STM32WB55VY
   cores:
   - name: main
     type: armv7em

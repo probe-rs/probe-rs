@@ -5,7 +5,7 @@ manufacturer:
 generated_from_pack: true
 pack_file_release: 1.3.0
 variants:
-- name: STM32H503CBTx
+- name: STM32H503CB
   cores:
   - name: main
     type: armv8m
@@ -49,7 +49,7 @@ variants:
     - main
   flash_algorithms:
   - stm32h503_128k_0800
-- name: STM32H503CBUx
+- name: STM32H503EB
   cores:
   - name: main
     type: armv8m
@@ -93,7 +93,7 @@ variants:
     - main
   flash_algorithms:
   - stm32h503_128k_0800
-- name: STM32H503EBYx
+- name: STM32H503KB
   cores:
   - name: main
     type: armv8m
@@ -137,7 +137,7 @@ variants:
     - main
   flash_algorithms:
   - stm32h503_128k_0800
-- name: STM32H503KBUx
+- name: STM32H503RB
   cores:
   - name: main
     type: armv8m
@@ -181,51 +181,7 @@ variants:
     - main
   flash_algorithms:
   - stm32h503_128k_0800
-- name: STM32H503RBTx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 1
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8010000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20004000
-      end: 0x20008000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h503_128k_0800
-- name: STM32H523CCTx
+- name: STM32H523CC
   cores:
   - name: main
     type: armv8m
@@ -277,111 +233,7 @@ variants:
   flash_algorithms:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
-- name: STM32H523CCUx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 1
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8020000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20020000
-      end: 0x20034000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20034000
-      end: 0x20044000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
-- name: STM32H523CETx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 1
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8040000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20020000
-      end: 0x20034000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20034000
-      end: 0x20044000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
-- name: STM32H523CEUx
+- name: STM32H523CE
   cores:
   - name: main
     type: armv8m
@@ -468,7 +320,7 @@ variants:
   flash_algorithms:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
-- name: STM32H523RCTx
+- name: STM32H523RC
   cores:
   - name: main
     type: armv8m
@@ -520,7 +372,7 @@ variants:
   flash_algorithms:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
-- name: STM32H523RETx
+- name: STM32H523RE
   cores:
   - name: main
     type: armv8m
@@ -572,7 +424,7 @@ variants:
   flash_algorithms:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
-- name: STM32H523VCIx
+- name: STM32H523VC
   cores:
   - name: main
     type: armv8m
@@ -624,7 +476,59 @@ variants:
   flash_algorithms:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
-- name: STM32H523VCTx
+- name: STM32H523VE
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 1
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20020000
+      end: 0x20034000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x20034000
+      end: 0x20044000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32h5xx_2m_0800
+  - stm32h5xx_1m_0c00
+- name: STM32H523ZC
   cores:
   - name: main
     type: armv8m
@@ -676,7 +580,7 @@ variants:
   flash_algorithms:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
-- name: STM32H523VEIx
+- name: STM32H523ZE
   cores:
   - name: main
     type: armv8m
@@ -728,319 +632,7 @@ variants:
   flash_algorithms:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
-- name: STM32H523VETx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 1
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8040000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20020000
-      end: 0x20034000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20034000
-      end: 0x20044000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
-- name: STM32H523ZCJx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 1
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8020000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20020000
-      end: 0x20034000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20034000
-      end: 0x20044000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
-- name: STM32H523ZCTx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 1
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8020000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20020000
-      end: 0x20034000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20034000
-      end: 0x20044000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
-- name: STM32H523ZEJx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 1
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8040000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20020000
-      end: 0x20034000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20034000
-      end: 0x20044000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
-- name: STM32H523ZETx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 1
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8040000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20020000
-      end: 0x20034000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20034000
-      end: 0x20044000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
-- name: STM32H533CETx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 1
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8040000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20020000
-      end: 0x20034000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20034000
-      end: 0x20044000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
-- name: STM32H533CEUx
+- name: STM32H533CE
   cores:
   - name: main
     type: armv8m
@@ -1127,7 +719,7 @@ variants:
   flash_algorithms:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
-- name: STM32H533RETx
+- name: STM32H533RE
   cores:
   - name: main
     type: armv8m
@@ -1179,7 +771,7 @@ variants:
   flash_algorithms:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
-- name: STM32H533VEIx
+- name: STM32H533VE
   cores:
   - name: main
     type: armv8m
@@ -1231,7 +823,7 @@ variants:
   flash_algorithms:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
-- name: STM32H533VETx
+- name: STM32H533ZE
   cores:
   - name: main
     type: armv8m
@@ -1283,111 +875,7 @@ variants:
   flash_algorithms:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
-- name: STM32H533ZEJx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 1
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8040000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20020000
-      end: 0x20034000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20034000
-      end: 0x20044000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
-- name: STM32H533ZETx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 1
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8040000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20020000
-      end: 0x20034000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20034000
-      end: 0x20044000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
-- name: STM32H562AGIx
+- name: STM32H562AG
   cores:
   - name: main
     type: armv8m
@@ -1439,7 +927,7 @@ variants:
   flash_algorithms:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
-- name: STM32H562AIIx
+- name: STM32H562AI
   cores:
   - name: main
     type: armv8m
@@ -1491,7 +979,7 @@ variants:
   flash_algorithms:
   - stm32h5xx_2m_0800
   - stm32h5xx_2m_0c00
-- name: STM32H562IGKx
+- name: STM32H562IG
   cores:
   - name: main
     type: armv8m
@@ -1543,7 +1031,59 @@ variants:
   flash_algorithms:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
-- name: STM32H562IGTx
+- name: STM32H562II
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 1
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20040000
+      end: 0x20050000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x20050000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32h5xx_2m_0800
+  - stm32h5xx_2m_0c00
+- name: STM32H562RG
   cores:
   - name: main
     type: armv8m
@@ -1595,7 +1135,7 @@ variants:
   flash_algorithms:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
-- name: STM32H562IIKx
+- name: STM32H562RI
   cores:
   - name: main
     type: armv8m
@@ -1647,59 +1187,7 @@ variants:
   flash_algorithms:
   - stm32h5xx_2m_0800
   - stm32h5xx_2m_0c00
-- name: STM32H562IITx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 1
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20040000
-      end: 0x20050000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20050000
-      end: 0x200a0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
-- name: STM32H562RGTx
+- name: STM32H562VG
   cores:
   - name: main
     type: armv8m
@@ -1751,7 +1239,59 @@ variants:
   flash_algorithms:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
-- name: STM32H562RGVx
+- name: STM32H562VI
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 1
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20040000
+      end: 0x20050000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x20050000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32h5xx_2m_0800
+  - stm32h5xx_2m_0c00
+- name: STM32H562ZG
   cores:
   - name: main
     type: armv8m
@@ -1803,7 +1343,7 @@ variants:
   flash_algorithms:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
-- name: STM32H562RITx
+- name: STM32H562ZI
   cores:
   - name: main
     type: armv8m
@@ -1855,59 +1395,7 @@ variants:
   flash_algorithms:
   - stm32h5xx_2m_0800
   - stm32h5xx_2m_0c00
-- name: STM32H562RIVx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 1
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20040000
-      end: 0x20050000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20050000
-      end: 0x200a0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
-- name: STM32H562VGTx
+- name: STM32H563AG
   cores:
   - name: main
     type: armv8m
@@ -1959,7 +1447,7 @@ variants:
   flash_algorithms:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
-- name: STM32H562VITx
+- name: STM32H563AI
   cores:
   - name: main
     type: armv8m
@@ -2011,7 +1499,7 @@ variants:
   flash_algorithms:
   - stm32h5xx_2m_0800
   - stm32h5xx_2m_0c00
-- name: STM32H562ZGTx
+- name: STM32H563IG
   cores:
   - name: main
     type: armv8m
@@ -2063,7 +1551,7 @@ variants:
   flash_algorithms:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
-- name: STM32H562ZITx
+- name: STM32H563II
   cores:
   - name: main
     type: armv8m
@@ -2115,7 +1603,59 @@ variants:
   flash_algorithms:
   - stm32h5xx_2m_0800
   - stm32h5xx_2m_0c00
-- name: STM32H563AGIx
+- name: STM32H563MI
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 1
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20040000
+      end: 0x20050000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x20050000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32h5xx_2m_0800
+  - stm32h5xx_2m_0c00
+- name: STM32H563RG
   cores:
   - name: main
     type: armv8m
@@ -2167,7 +1707,7 @@ variants:
   flash_algorithms:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
-- name: STM32H563AIIx
+- name: STM32H563RI
   cores:
   - name: main
     type: armv8m
@@ -2219,59 +1759,7 @@ variants:
   flash_algorithms:
   - stm32h5xx_2m_0800
   - stm32h5xx_2m_0c00
-- name: STM32H563AIIxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 1
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20040000
-      end: 0x20050000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20050000
-      end: 0x200a0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
-- name: STM32H563IGKx
+- name: STM32H563VG
   cores:
   - name: main
     type: armv8m
@@ -2323,7 +1811,59 @@ variants:
   flash_algorithms:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
-- name: STM32H563IGTx
+- name: STM32H563VI
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 1
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20040000
+      end: 0x20050000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x20050000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32h5xx_2m_0800
+  - stm32h5xx_2m_0c00
+- name: STM32H563ZG
   cores:
   - name: main
     type: armv8m
@@ -2375,7 +1915,7 @@ variants:
   flash_algorithms:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
-- name: STM32H563IIKx
+- name: STM32H563ZI
   cores:
   - name: main
     type: armv8m
@@ -2427,7 +1967,7 @@ variants:
   flash_algorithms:
   - stm32h5xx_2m_0800
   - stm32h5xx_2m_0c00
-- name: STM32H563IIKxQ
+- name: STM32H573AI
   cores:
   - name: main
     type: armv8m
@@ -2479,7 +2019,7 @@ variants:
   flash_algorithms:
   - stm32h5xx_2m_0800
   - stm32h5xx_2m_0c00
-- name: STM32H563IITx
+- name: STM32H573II
   cores:
   - name: main
     type: armv8m
@@ -2531,7 +2071,7 @@ variants:
   flash_algorithms:
   - stm32h5xx_2m_0800
   - stm32h5xx_2m_0c00
-- name: STM32H563IITxQ
+- name: STM32H573MI
   cores:
   - name: main
     type: armv8m
@@ -2583,7 +2123,7 @@ variants:
   flash_algorithms:
   - stm32h5xx_2m_0800
   - stm32h5xx_2m_0c00
-- name: STM32H563MIYxQ
+- name: STM32H573RI
   cores:
   - name: main
     type: armv8m
@@ -2635,111 +2175,7 @@ variants:
   flash_algorithms:
   - stm32h5xx_2m_0800
   - stm32h5xx_2m_0c00
-- name: STM32H563RGTx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 1
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8080000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20040000
-      end: 0x20050000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20050000
-      end: 0x200a0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
-- name: STM32H563RGVx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 1
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8080000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20040000
-      end: 0x20050000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20050000
-      end: 0x200a0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
-- name: STM32H563RITx
+- name: STM32H573VI
   cores:
   - name: main
     type: armv8m
@@ -2791,995 +2227,7 @@ variants:
   flash_algorithms:
   - stm32h5xx_2m_0800
   - stm32h5xx_2m_0c00
-- name: STM32H563RIVx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 1
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20040000
-      end: 0x20050000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20050000
-      end: 0x200a0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
-- name: STM32H563VGTx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 1
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8080000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20040000
-      end: 0x20050000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20050000
-      end: 0x200a0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
-- name: STM32H563VITx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 1
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20040000
-      end: 0x20050000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20050000
-      end: 0x200a0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
-- name: STM32H563VITxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 1
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20040000
-      end: 0x20050000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20050000
-      end: 0x200a0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
-- name: STM32H563ZGTx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 1
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8080000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20040000
-      end: 0x20050000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20050000
-      end: 0x200a0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h5xx_2m_0800
-  - stm32h5xx_1m_0c00
-- name: STM32H563ZITx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 1
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20040000
-      end: 0x20050000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20050000
-      end: 0x200a0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
-- name: STM32H563ZITxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 1
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20040000
-      end: 0x20050000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20050000
-      end: 0x200a0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
-- name: STM32H573AIIx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 1
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20040000
-      end: 0x20050000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20050000
-      end: 0x200a0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
-- name: STM32H573AIIxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 1
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20040000
-      end: 0x20050000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20050000
-      end: 0x200a0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
-- name: STM32H573IIKx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 1
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20040000
-      end: 0x20050000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20050000
-      end: 0x200a0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
-- name: STM32H573IIKxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 1
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20040000
-      end: 0x20050000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20050000
-      end: 0x200a0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
-- name: STM32H573IITx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 1
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20040000
-      end: 0x20050000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20050000
-      end: 0x200a0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
-- name: STM32H573IITxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 1
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20040000
-      end: 0x20050000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20050000
-      end: 0x200a0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
-- name: STM32H573MIYxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 1
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20040000
-      end: 0x20050000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20050000
-      end: 0x200a0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
-- name: STM32H573RITx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 1
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20040000
-      end: 0x20050000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20050000
-      end: 0x200a0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
-- name: STM32H573RIVx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 1
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20040000
-      end: 0x20050000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20050000
-      end: 0x200a0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
-- name: STM32H573VITx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 1
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20040000
-      end: 0x20050000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20050000
-      end: 0x200a0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
-- name: STM32H573VITxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 1
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20040000
-      end: 0x20050000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20050000
-      end: 0x200a0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
-- name: STM32H573ZITx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 1
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20040000
-      end: 0x20050000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20050000
-      end: 0x200a0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h5xx_2m_0800
-  - stm32h5xx_2m_0c00
-- name: STM32H573ZITxQ
+- name: STM32H573ZI
   cores:
   - name: main
     type: armv8m

@@ -5,7 +5,7 @@ manufacturer:
 generated_from_pack: true
 pack_file_release: 2.16.0
 variants:
-- name: STM32F722ICKx
+- name: STM32F722IC
   cores:
   - name: main
     type: armv7em
@@ -48,7 +48,50 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F722ICTx
+- name: STM32F722IE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: DTCM
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20010000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f7x2_512
+  - stm32f7x2tcm_512
+  - stm32f72x_73x_opt
+  - stm32f7x2_otp
+  - stm32f7xx_qspi_disco
+  - stm32f7xx_qspi_micron
+  - stm32f77x_qspi_micron
+  - stm32f7xx_nor_micron
+  - stm32f769i_qspi_macronix
+  - stm32f769i_qspi_macronix
+- name: STM32F722RC
   cores:
   - name: main
     type: armv7em
@@ -91,7 +134,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F722IEKx
+- name: STM32F722RE
   cores:
   - name: main
     type: armv7em
@@ -134,50 +177,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F722IETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20010000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x2_512
-  - stm32f7x2tcm_512
-  - stm32f72x_73x_opt
-  - stm32f7x2_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F722RCTx
+- name: STM32F722VC
   cores:
   - name: main
     type: armv7em
@@ -220,7 +220,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F722RETx
+- name: STM32F722VE
   cores:
   - name: main
     type: armv7em
@@ -263,7 +263,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F722VCTx
+- name: STM32F722ZC
   cores:
   - name: main
     type: armv7em
@@ -306,7 +306,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F722VETx
+- name: STM32F722ZE
   cores:
   - name: main
     type: armv7em
@@ -349,7 +349,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F722ZCTx
+- name: STM32F723IC
   cores:
   - name: main
     type: armv7em
@@ -392,7 +392,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F722ZETx
+- name: STM32F723IE
   cores:
   - name: main
     type: armv7em
@@ -435,7 +435,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F723ICKx
+- name: STM32F723VC
   cores:
   - name: main
     type: armv7em
@@ -478,7 +478,50 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F723ICTx
+- name: STM32F723VE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: DTCM
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20010000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f7x2_512
+  - stm32f7x2tcm_512
+  - stm32f72x_73x_opt
+  - stm32f7x2_otp
+  - stm32f7xx_qspi_disco
+  - stm32f7xx_qspi_micron
+  - stm32f77x_qspi_micron
+  - stm32f7xx_nor_micron
+  - stm32f769i_qspi_macronix
+  - stm32f769i_qspi_macronix
+- name: STM32F723ZC
   cores:
   - name: main
     type: armv7em
@@ -521,7 +564,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F723IEKx
+- name: STM32F723ZE
   cores:
   - name: main
     type: armv7em
@@ -564,394 +607,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F723IETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20010000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x2_512
-  - stm32f7x2tcm_512
-  - stm32f72x_73x_opt
-  - stm32f7x2_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F723VCTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20010000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x2_512
-  - stm32f7x2tcm_512
-  - stm32f72x_73x_opt
-  - stm32f7x2_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F723VCYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20010000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x2_512
-  - stm32f7x2tcm_512
-  - stm32f72x_73x_opt
-  - stm32f7x2_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F723VETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20010000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x2_512
-  - stm32f7x2tcm_512
-  - stm32f72x_73x_opt
-  - stm32f7x2_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F723VEYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20010000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x2_512
-  - stm32f7x2tcm_512
-  - stm32f72x_73x_opt
-  - stm32f7x2_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F723ZCIx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20010000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x2_512
-  - stm32f7x2tcm_512
-  - stm32f72x_73x_opt
-  - stm32f7x2_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F723ZCTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20010000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x2_512
-  - stm32f7x2tcm_512
-  - stm32f72x_73x_opt
-  - stm32f7x2_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F723ZEIx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20010000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x2_512
-  - stm32f7x2tcm_512
-  - stm32f72x_73x_opt
-  - stm32f7x2_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F723ZETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20010000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x2_512
-  - stm32f7x2tcm_512
-  - stm32f72x_73x_opt
-  - stm32f7x2_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F730I8Kx
+- name: STM32F730I8
   cores:
   - name: main
     type: armv7em
@@ -994,7 +650,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F730R8Tx
+- name: STM32F730R8
   cores:
   - name: main
     type: armv7em
@@ -1037,7 +693,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F730V8Tx
+- name: STM32F730V8
   cores:
   - name: main
     type: armv7em
@@ -1080,7 +736,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F730Z8Tx
+- name: STM32F730Z8
   cores:
   - name: main
     type: armv7em
@@ -1123,7 +779,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F732IEKx
+- name: STM32F732IE
   cores:
   - name: main
     type: armv7em
@@ -1166,7 +822,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F732IETx
+- name: STM32F732RE
   cores:
   - name: main
     type: armv7em
@@ -1209,7 +865,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F732RETx
+- name: STM32F732VE
   cores:
   - name: main
     type: armv7em
@@ -1252,7 +908,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F732VETx
+- name: STM32F732ZE
   cores:
   - name: main
     type: armv7em
@@ -1295,7 +951,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F732ZETx
+- name: STM32F733IE
   cores:
   - name: main
     type: armv7em
@@ -1338,7 +994,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F733IEKx
+- name: STM32F733VE
   cores:
   - name: main
     type: armv7em
@@ -1381,7 +1037,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F733IETx
+- name: STM32F733ZE
   cores:
   - name: main
     type: armv7em
@@ -1424,179 +1080,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F733VETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20010000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x2_512
-  - stm32f7x2tcm_512
-  - stm32f72x_73x_opt
-  - stm32f7x2_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F733VEYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20010000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x2_512
-  - stm32f7x2tcm_512
-  - stm32f72x_73x_opt
-  - stm32f7x2_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F733ZEIx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20010000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x2_512
-  - stm32f7x2tcm_512
-  - stm32f72x_73x_opt
-  - stm32f7x2_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F733ZETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20010000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x2_512
-  - stm32f7x2tcm_512
-  - stm32f72x_73x_opt
-  - stm32f7x2_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F745IEKx
+- name: STM32F745IE
   cores:
   - name: main
     type: armv7em
@@ -1639,50 +1123,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F745IETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20010000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x_2048
-  - stm32f7xtcm_2048
-  - stm32f74x_75x_opt
-  - stm32f7xx_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F745IGKx
+- name: STM32F745IG
   cores:
   - name: main
     type: armv7em
@@ -1725,50 +1166,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F745IGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20010000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x_2048
-  - stm32f7xtcm_2048
-  - stm32f74x_75x_opt
-  - stm32f7xx_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F745VEHx
+- name: STM32F745VE
   cores:
   - name: main
     type: armv7em
@@ -1811,7 +1209,50 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F745VETx
+- name: STM32F745VG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: DTCM
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20010000
+      end: 0x20050000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f7x_2048
+  - stm32f7xtcm_2048
+  - stm32f74x_75x_opt
+  - stm32f7xx_otp
+  - stm32f7xx_qspi_disco
+  - stm32f7xx_qspi_micron
+  - stm32f77x_qspi_micron
+  - stm32f7xx_nor_micron
+  - stm32f769i_qspi_macronix
+  - stm32f769i_qspi_macronix
+- name: STM32F745ZE
   cores:
   - name: main
     type: armv7em
@@ -1854,7 +1295,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F745VGHx
+- name: STM32F745ZG
   cores:
   - name: main
     type: armv7em
@@ -1897,50 +1338,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F745VGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20010000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x_2048
-  - stm32f7xtcm_2048
-  - stm32f74x_75x_opt
-  - stm32f7xx_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F745ZETx
+- name: STM32F746BE
   cores:
   - name: main
     type: armv7em
@@ -1983,7 +1381,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F745ZGTx
+- name: STM32F746BG
   cores:
   - name: main
     type: armv7em
@@ -2026,7 +1424,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F746BETx
+- name: STM32F746IE
   cores:
   - name: main
     type: armv7em
@@ -2069,7 +1467,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F746BGTx
+- name: STM32F746IG
   cores:
   - name: main
     type: armv7em
@@ -2112,7 +1510,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F746IEKx
+- name: STM32F746NE
   cores:
   - name: main
     type: armv7em
@@ -2155,7 +1553,50 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F746IETx
+- name: STM32F746NG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: DTCM
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20010000
+      end: 0x20050000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f7x_2048
+  - stm32f7xtcm_2048
+  - stm32f74x_75x_opt
+  - stm32f7xx_otp
+  - stm32f7xx_qspi_disco
+  - stm32f7xx_qspi_micron
+  - stm32f77x_qspi_micron
+  - stm32f7xx_nor_micron
+  - stm32f769i_qspi_macronix
+  - stm32f769i_qspi_macronix
+- name: STM32F746VE
   cores:
   - name: main
     type: armv7em
@@ -2198,7 +1639,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F746IGKx
+- name: STM32F746VG
   cores:
   - name: main
     type: armv7em
@@ -2241,50 +1682,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F746IGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20010000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x_2048
-  - stm32f7xtcm_2048
-  - stm32f74x_75x_opt
-  - stm32f7xx_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F746NEHx
+- name: STM32F746ZE
   cores:
   - name: main
     type: armv7em
@@ -2327,7 +1725,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F746NGHx
+- name: STM32F746ZG
   cores:
   - name: main
     type: armv7em
@@ -2370,351 +1768,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F746VEHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20010000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x_2048
-  - stm32f7xtcm_2048
-  - stm32f74x_75x_opt
-  - stm32f7xx_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F746VETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20010000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x_2048
-  - stm32f7xtcm_2048
-  - stm32f74x_75x_opt
-  - stm32f7xx_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F746VGHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20010000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x_2048
-  - stm32f7xtcm_2048
-  - stm32f74x_75x_opt
-  - stm32f7xx_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F746VGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20010000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x_2048
-  - stm32f7xtcm_2048
-  - stm32f74x_75x_opt
-  - stm32f7xx_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F746ZETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20010000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x_2048
-  - stm32f7xtcm_2048
-  - stm32f74x_75x_opt
-  - stm32f7xx_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F746ZEYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20010000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x_2048
-  - stm32f7xtcm_2048
-  - stm32f74x_75x_opt
-  - stm32f7xx_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F746ZGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20010000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x_2048
-  - stm32f7xtcm_2048
-  - stm32f74x_75x_opt
-  - stm32f7xx_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F746ZGYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20010000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x_2048
-  - stm32f7xtcm_2048
-  - stm32f74x_75x_opt
-  - stm32f7xx_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F750N8Hx
+- name: STM32F750N8
   cores:
   - name: main
     type: armv7em
@@ -2757,7 +1811,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F750V8Tx
+- name: STM32F750V8
   cores:
   - name: main
     type: armv7em
@@ -2800,7 +1854,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F750Z8Tx
+- name: STM32F750Z8
   cores:
   - name: main
     type: armv7em
@@ -2843,7 +1897,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F756BGTx
+- name: STM32F756BG
   cores:
   - name: main
     type: armv7em
@@ -2886,7 +1940,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F756IGKx
+- name: STM32F756IG
   cores:
   - name: main
     type: armv7em
@@ -2929,7 +1983,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F756IGTx
+- name: STM32F756NG
   cores:
   - name: main
     type: armv7em
@@ -2972,7 +2026,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F756NGHx
+- name: STM32F756VG
   cores:
   - name: main
     type: armv7em
@@ -3015,7 +2069,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F756VGHx
+- name: STM32F756ZG
   cores:
   - name: main
     type: armv7em
@@ -3058,136 +2112,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F756VGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20010000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x_2048
-  - stm32f7xtcm_2048
-  - stm32f74x_75x_opt
-  - stm32f7xx_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F756ZGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20010000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x_2048
-  - stm32f7xtcm_2048
-  - stm32f74x_75x_opt
-  - stm32f7xx_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F756ZGYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20010000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x_2048
-  - stm32f7xtcm_2048
-  - stm32f74x_75x_opt
-  - stm32f7xx_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F765BGTx
+- name: STM32F765BG
   cores:
   - name: main
     type: armv7em
@@ -3232,7 +2157,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F765BITx
+- name: STM32F765BI
   cores:
   - name: main
     type: armv7em
@@ -3277,7 +2202,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F765IGKx
+- name: STM32F765IG
   cores:
   - name: main
     type: armv7em
@@ -3322,7 +2247,52 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F765IGTx
+- name: STM32F765II
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: DTCM
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20020000
+      end: 0x20080000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f7x_2048
+  - stm32f7x_2048dual
+  - stm32f7xtcm_2048
+  - stm32f7xtcm_2048dual
+  - stm32f76x_77x_opt
+  - stm32f7xx_otp
+  - stm32f7xx_qspi_disco
+  - stm32f7xx_qspi_micron
+  - stm32f77x_qspi_micron
+  - stm32f7xx_nor_micron
+  - stm32f769i_qspi_macronix
+  - stm32f769i_qspi_macronix
+- name: STM32F765NG
   cores:
   - name: main
     type: armv7em
@@ -3367,7 +2337,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F765IIKx
+- name: STM32F765NI
   cores:
   - name: main
     type: armv7em
@@ -3412,52 +2382,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F765IITx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20020000
-      end: 0x20080000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x_2048
-  - stm32f7x_2048dual
-  - stm32f7xtcm_2048
-  - stm32f7xtcm_2048dual
-  - stm32f76x_77x_opt
-  - stm32f7xx_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F765NGHx
+- name: STM32F765VG
   cores:
   - name: main
     type: armv7em
@@ -3502,7 +2427,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F765NIHx
+- name: STM32F765VI
   cores:
   - name: main
     type: armv7em
@@ -3547,7 +2472,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F765VGHx
+- name: STM32F765ZG
   cores:
   - name: main
     type: armv7em
@@ -3592,7 +2517,52 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F765VGTx
+- name: STM32F765ZI
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: DTCM
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20020000
+      end: 0x20080000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f7x_2048
+  - stm32f7x_2048dual
+  - stm32f7xtcm_2048
+  - stm32f7xtcm_2048dual
+  - stm32f76x_77x_opt
+  - stm32f7xx_otp
+  - stm32f7xx_qspi_disco
+  - stm32f7xx_qspi_micron
+  - stm32f77x_qspi_micron
+  - stm32f7xx_nor_micron
+  - stm32f769i_qspi_macronix
+  - stm32f769i_qspi_macronix
+- name: STM32F767BG
   cores:
   - name: main
     type: armv7em
@@ -3637,7 +2607,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F765VIHx
+- name: STM32F767BI
   cores:
   - name: main
     type: armv7em
@@ -3682,52 +2652,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F765VITx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20020000
-      end: 0x20080000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x_2048
-  - stm32f7x_2048dual
-  - stm32f7xtcm_2048
-  - stm32f7xtcm_2048dual
-  - stm32f76x_77x_opt
-  - stm32f7xx_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F765ZGTx
+- name: STM32F767IG
   cores:
   - name: main
     type: armv7em
@@ -3772,7 +2697,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F765ZITx
+- name: STM32F767II
   cores:
   - name: main
     type: armv7em
@@ -3817,7 +2742,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F767BGTx
+- name: STM32F767NG
   cores:
   - name: main
     type: armv7em
@@ -3862,7 +2787,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F767BITx
+- name: STM32F767NI
   cores:
   - name: main
     type: armv7em
@@ -3907,7 +2832,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F767IGKx
+- name: STM32F767VG
   cores:
   - name: main
     type: armv7em
@@ -3952,7 +2877,52 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F767IGTx
+- name: STM32F767VI
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: DTCM
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20020000
+      end: 0x20080000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f7x_2048
+  - stm32f7x_2048dual
+  - stm32f7xtcm_2048
+  - stm32f7xtcm_2048dual
+  - stm32f76x_77x_opt
+  - stm32f7xx_otp
+  - stm32f7xx_qspi_disco
+  - stm32f7xx_qspi_micron
+  - stm32f77x_qspi_micron
+  - stm32f7xx_nor_micron
+  - stm32f769i_qspi_macronix
+  - stm32f769i_qspi_macronix
+- name: STM32F767ZG
   cores:
   - name: main
     type: armv7em
@@ -3997,7 +2967,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F767IIKx
+- name: STM32F767ZI
   cores:
   - name: main
     type: armv7em
@@ -4042,7 +3012,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F767IITx
+- name: STM32F768AI
   cores:
   - name: main
     type: armv7em
@@ -4087,412 +3057,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F767NGHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20020000
-      end: 0x20080000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x_2048
-  - stm32f7xtcm_2048
-  - stm32f7x_1024dual
-  - stm32f7xtcm_1024dual
-  - stm32f76x_77x_opt
-  - stm32f7xx_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F767NIHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20020000
-      end: 0x20080000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x_2048
-  - stm32f7x_2048dual
-  - stm32f7xtcm_2048
-  - stm32f7xtcm_2048dual
-  - stm32f76x_77x_opt
-  - stm32f7xx_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F767VGHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20020000
-      end: 0x20080000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x_2048
-  - stm32f7xtcm_2048
-  - stm32f7x_1024dual
-  - stm32f7xtcm_1024dual
-  - stm32f76x_77x_opt
-  - stm32f7xx_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F767VGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20020000
-      end: 0x20080000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x_2048
-  - stm32f7xtcm_2048
-  - stm32f7x_1024dual
-  - stm32f7xtcm_1024dual
-  - stm32f76x_77x_opt
-  - stm32f7xx_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F767VIHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20020000
-      end: 0x20080000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x_2048
-  - stm32f7x_2048dual
-  - stm32f7xtcm_2048
-  - stm32f7xtcm_2048dual
-  - stm32f76x_77x_opt
-  - stm32f7xx_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F767VITx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20020000
-      end: 0x20080000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x_2048
-  - stm32f7x_2048dual
-  - stm32f7xtcm_2048
-  - stm32f7xtcm_2048dual
-  - stm32f76x_77x_opt
-  - stm32f7xx_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F767ZGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20020000
-      end: 0x20080000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x_2048
-  - stm32f7xtcm_2048
-  - stm32f7x_1024dual
-  - stm32f7xtcm_1024dual
-  - stm32f76x_77x_opt
-  - stm32f7xx_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F767ZITx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20020000
-      end: 0x20080000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x_2048
-  - stm32f7x_2048dual
-  - stm32f7xtcm_2048
-  - stm32f7xtcm_2048dual
-  - stm32f76x_77x_opt
-  - stm32f7xx_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F768AIYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20020000
-      end: 0x20080000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x_2048
-  - stm32f7x_2048dual
-  - stm32f7xtcm_2048
-  - stm32f7xtcm_2048dual
-  - stm32f76x_77x_opt
-  - stm32f7xx_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F769AGYx
+- name: STM32F769AG
   cores:
   - name: main
     type: armv7em
@@ -4537,7 +3102,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F769AIYx
+- name: STM32F769AI
   cores:
   - name: main
     type: armv7em
@@ -4582,7 +3147,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F769BGTx
+- name: STM32F769BG
   cores:
   - name: main
     type: armv7em
@@ -4627,7 +3192,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F769BITx
+- name: STM32F769BI
   cores:
   - name: main
     type: armv7em
@@ -4672,7 +3237,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F769IGTx
+- name: STM32F769IG
   cores:
   - name: main
     type: armv7em
@@ -4717,7 +3282,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F769IITx
+- name: STM32F769II
   cores:
   - name: main
     type: armv7em
@@ -4762,7 +3327,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F769NGHx
+- name: STM32F769NG
   cores:
   - name: main
     type: armv7em
@@ -4807,7 +3372,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F769NIHx
+- name: STM32F769NI
   cores:
   - name: main
     type: armv7em
@@ -4852,7 +3417,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F777BITx
+- name: STM32F777BI
   cores:
   - name: main
     type: armv7em
@@ -4897,7 +3462,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F777IIKx
+- name: STM32F777II
   cores:
   - name: main
     type: armv7em
@@ -4942,7 +3507,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F777IITx
+- name: STM32F777NI
   cores:
   - name: main
     type: armv7em
@@ -4987,7 +3552,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F777NIHx
+- name: STM32F777VI
   cores:
   - name: main
     type: armv7em
@@ -5032,7 +3597,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F777VIHx
+- name: STM32F777ZI
   cores:
   - name: main
     type: armv7em
@@ -5077,7 +3642,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F777VITx
+- name: STM32F778AI
   cores:
   - name: main
     type: armv7em
@@ -5122,7 +3687,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F777ZITx
+- name: STM32F779AI
   cores:
   - name: main
     type: armv7em
@@ -5167,7 +3732,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F778AIYx
+- name: STM32F779BI
   cores:
   - name: main
     type: armv7em
@@ -5212,7 +3777,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F779AIYx
+- name: STM32F779II
   cores:
   - name: main
     type: armv7em
@@ -5257,97 +3822,7 @@ variants:
   - stm32f7xx_nor_micron
   - stm32f769i_qspi_macronix
   - stm32f769i_qspi_macronix
-- name: STM32F779BITx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20020000
-      end: 0x20080000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x_2048
-  - stm32f7x_2048dual
-  - stm32f7xtcm_2048
-  - stm32f7xtcm_2048dual
-  - stm32f76x_77x_opt
-  - stm32f7xx_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F779IITx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20020000
-      end: 0x20080000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f7x_2048
-  - stm32f7x_2048dual
-  - stm32f7xtcm_2048
-  - stm32f7xtcm_2048dual
-  - stm32f76x_77x_opt
-  - stm32f7xx_otp
-  - stm32f7xx_qspi_disco
-  - stm32f7xx_qspi_micron
-  - stm32f77x_qspi_micron
-  - stm32f7xx_nor_micron
-  - stm32f769i_qspi_macronix
-  - stm32f769i_qspi_macronix
-- name: STM32F779NIHx
+- name: STM32F779NI
   cores:
   - name: main
     type: armv7em
