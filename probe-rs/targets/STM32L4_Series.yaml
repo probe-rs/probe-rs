@@ -5,7 +5,10 @@ manufacturer:
 generated_from_pack: true
 pack_file_release: 2.7.0
 variants:
-- name: STM32L412C8Tx
+- name: STM32L412C8
+  package_variants:
+  - STM32L412C8Tx
+  - STM32L412C8Ux
   cores:
   - name: main
     type: armv7em
@@ -54,7 +57,64 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L412C8Ux
+- name: STM32L412CB
+  package_variants:
+  - STM32L412CBTx
+  - STM32L412CBUx
+  - STM32L412CBTxP
+  - STM32L412CBUxP
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM2_ICODE
+    range:
+      start: 0x10000000
+      end: 0x10002000
+    cores:
+    - main
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20008000
+      end: 0x2000a000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l4xx_128
+  - stm32l4xx_sb_opt
+  - stm32l4r9i_eval
+  - stm32l4r9i_disco_ospi1
+  - stm32l4r9i_disco_ospi2
+  - stm32l4r9i-dk_psram
+  - mx25lm51245g_stm32l4p5-disco
+  - aps6408l-3ob_stm32l4p5g-dk
+  - n25q128a_stm32l476-disco
+- name: STM32L412K8
+  package_variants:
+  - STM32L412K8Tx
+  - STM32L412K8Ux
   cores:
   - name: main
     type: armv7em
@@ -103,7 +163,10 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L412CBTx
+- name: STM32L412KB
+  package_variants:
+  - STM32L412KBTx
+  - STM32L412KBUx
   cores:
   - name: main
     type: armv7em
@@ -152,154 +215,10 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L412CBTxP
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10002000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20008000
-      end: 0x2000a000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_128
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L412CBUx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10002000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20008000
-      end: 0x2000a000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_128
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L412CBUxP
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10002000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20008000
-      end: 0x2000a000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_128
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L412K8Tx
+- name: STM32L412R8
+  package_variants:
+  - STM32L412R8Tx
+  - STM32L412R8Ix
   cores:
   - name: main
     type: armv7em
@@ -348,7 +267,63 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L412K8Ux
+- name: STM32L412RB
+  package_variants:
+  - STM32L412RBTx
+  - STM32L412RBIx
+  - STM32L412RBTxP
+  - STM32L412RBIxP
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM2_ICODE
+    range:
+      start: 0x10000000
+      end: 0x10002000
+    cores:
+    - main
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20008000
+      end: 0x2000a000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l4xx_128
+  - stm32l4xx_sb_opt
+  - stm32l4r9i_eval
+  - stm32l4r9i_disco_ospi1
+  - stm32l4r9i_disco_ospi2
+  - stm32l4r9i-dk_psram
+  - mx25lm51245g_stm32l4p5-disco
+  - aps6408l-3ob_stm32l4p5g-dk
+  - n25q128a_stm32l476-disco
+- name: STM32L412T8
+  package_variants:
+  - STM32L412T8Yx
   cores:
   - name: main
     type: armv7em
@@ -397,7 +372,10 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L412KBTx
+- name: STM32L412TB
+  package_variants:
+  - STM32L412TBYx
+  - STM32L412TBYxP
   cores:
   - name: main
     type: armv7em
@@ -446,7 +424,10 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L412KBUx
+- name: STM32L422CB
+  package_variants:
+  - STM32L422CBTx
+  - STM32L422CBUx
   cores:
   - name: main
     type: armv7em
@@ -495,105 +476,10 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L412R8Ix
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10002000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20008000
-      end: 0x2000a000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_64
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L412R8Tx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10002000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20008000
-      end: 0x2000a000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_64
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L412RBIx
+- name: STM32L422KB
+  package_variants:
+  - STM32L422KBTx
+  - STM32L422KBUx
   cores:
   - name: main
     type: armv7em
@@ -642,7 +528,11 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L412RBIxP
+- name: STM32L422RB
+  package_variants:
+  - STM32L422RBTx
+  - STM32L422RBIx
+  - STM32L422RBTxP
   cores:
   - name: main
     type: armv7em
@@ -691,7 +581,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L412RBTx
+- name: STM32L422TB
+  package_variants:
+  - STM32L422TBYx
   cores:
   - name: main
     type: armv7em
@@ -740,546 +632,11 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L412RBTxP
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10002000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20008000
-      end: 0x2000a000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_128
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L412T8Yx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10002000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20008000
-      end: 0x2000a000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_64
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L412TBYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10002000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20008000
-      end: 0x2000a000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_128
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L412TBYxP
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10002000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20008000
-      end: 0x2000a000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_128
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L422CBTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10002000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20008000
-      end: 0x2000a000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_128
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L422CBUx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10002000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20008000
-      end: 0x2000a000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_128
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L422KBTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10002000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20008000
-      end: 0x2000a000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_128
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L422KBUx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10002000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20008000
-      end: 0x2000a000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_128
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L422RBIx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10002000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20008000
-      end: 0x2000a000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_128
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L422RBTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10002000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20008000
-      end: 0x2000a000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_128
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L422TBYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10002000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20008000
-      end: 0x2000a000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_128
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L431CBTx
+- name: STM32L431CB
+  package_variants:
+  - STM32L431CBTx
+  - STM32L431CBUx
+  - STM32L431CBYx
   cores:
   - name: main
     type: armv7em
@@ -1328,7 +685,62 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L431CBUx
+- name: STM32L431CC
+  package_variants:
+  - STM32L431CCTx
+  - STM32L431CCUx
+  - STM32L431CCYx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM2_ICODE
+    range:
+      start: 0x10000000
+      end: 0x10004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x2000c000
+      end: 0x20010000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l4xx_256
+  - stm32l4xx_sb_opt
+  - stm32l4r9i_eval
+  - stm32l4r9i_disco_ospi1
+  - stm32l4r9i_disco_ospi2
+  - stm32l4r9i-dk_psram
+  - mx25lm51245g_stm32l4p5-disco
+  - aps6408l-3ob_stm32l4p5g-dk
+  - n25q128a_stm32l476-disco
+- name: STM32L431KB
+  package_variants:
+  - STM32L431KBUx
   cores:
   - name: main
     type: armv7em
@@ -1377,7 +789,63 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L431CBYx
+- name: STM32L431KC
+  package_variants:
+  - STM32L431KCUx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM2_ICODE
+    range:
+      start: 0x10000000
+      end: 0x10004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x2000c000
+      end: 0x20010000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l4xx_256
+  - stm32l4xx_sb_opt
+  - stm32l4r9i_eval
+  - stm32l4r9i_disco_ospi1
+  - stm32l4r9i_disco_ospi2
+  - stm32l4r9i-dk_psram
+  - mx25lm51245g_stm32l4p5-disco
+  - aps6408l-3ob_stm32l4p5g-dk
+  - n25q128a_stm32l476-disco
+- name: STM32L431RB
+  package_variants:
+  - STM32L431RBTx
+  - STM32L431RBHx
+  - STM32L431RBIx
+  - STM32L431RBYx
   cores:
   - name: main
     type: armv7em
@@ -1426,7 +894,12 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L431CCTx
+- name: STM32L431RC
+  package_variants:
+  - STM32L431RCTx
+  - STM32L431RCHx
+  - STM32L431RCIx
+  - STM32L431RCYx
   cores:
   - name: main
     type: armv7em
@@ -1475,7 +948,11 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L431CCUx
+- name: STM32L431VC
+  package_variants:
+  - STM32L431VCTx
+  - STM32L431VCHx
+  - STM32L431VCIx
   cores:
   - name: main
     type: armv7em
@@ -1524,56 +1001,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L431CCYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2000c000
-      end: 0x20010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_256
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L431KBUx
+- name: STM32L432KB
+  package_variants:
+  - STM32L432KBUx
   cores:
   - name: main
     type: armv7em
@@ -1622,7 +1052,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L431KCUx
+- name: STM32L432KC
+  package_variants:
+  - STM32L432KCUx
   cores:
   - name: main
     type: armv7em
@@ -1671,7 +1103,11 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L431RBIx
+- name: STM32L433CB
+  package_variants:
+  - STM32L433CBTx
+  - STM32L433CBUx
+  - STM32L433CBYx
   cores:
   - name: main
     type: armv7em
@@ -1720,7 +1156,65 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L431RBTx
+- name: STM32L433CC
+  package_variants:
+  - STM32L433CCTx
+  - STM32L433CCUx
+  - STM32L433CCYx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM2_ICODE
+    range:
+      start: 0x10000000
+      end: 0x10004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x2000c000
+      end: 0x20010000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l4xx_256
+  - stm32l4xx_sb_opt
+  - stm32l4r9i_eval
+  - stm32l4r9i_disco_ospi1
+  - stm32l4r9i_disco_ospi2
+  - stm32l4r9i-dk_psram
+  - mx25lm51245g_stm32l4p5-disco
+  - aps6408l-3ob_stm32l4p5g-dk
+  - n25q128a_stm32l476-disco
+- name: STM32L433RB
+  package_variants:
+  - STM32L433RBTx
+  - STM32L433RBHx
+  - STM32L433RBIx
+  - STM32L433RBYx
   cores:
   - name: main
     type: armv7em
@@ -1769,56 +1263,13 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L431RBYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2000c000
-      end: 0x20010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_128
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L431RCIx
+- name: STM32L433RC
+  package_variants:
+  - STM32L433RCTx
+  - STM32L433RCHx
+  - STM32L433RCIx
+  - STM32L433RCYx
+  - STM32L433RCTxP
   cores:
   - name: main
     type: armv7em
@@ -1867,7 +1318,11 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L431RCTx
+- name: STM32L433VC
+  package_variants:
+  - STM32L433VCTx
+  - STM32L433VCHx
+  - STM32L433VCIx
   cores:
   - name: main
     type: armv7em
@@ -1916,7 +1371,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L431RCYx
+- name: STM32L442KC
+  package_variants:
+  - STM32L442KCUx
   cores:
   - name: main
     type: armv7em
@@ -1965,7 +1422,12 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L431VCIx
+- name: STM32L443CC
+  package_variants:
+  - STM32L443CCTx
+  - STM32L443CCUx
+  - STM32L443CCYx
+  - STM32L443CCFx
   cores:
   - name: main
     type: armv7em
@@ -2014,7 +1476,12 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L431VCTx
+- name: STM32L443RC
+  package_variants:
+  - STM32L443RCTx
+  - STM32L443RCHx
+  - STM32L443RCIx
+  - STM32L443RCYx
   cores:
   - name: main
     type: armv7em
@@ -2063,56 +1530,11 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L432KBUx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2000c000
-      end: 0x20010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_128
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L432KCUx
+- name: STM32L443VC
+  package_variants:
+  - STM32L443VCTx
+  - STM32L443VCHx
+  - STM32L443VCIx
   cores:
   - name: main
     type: armv7em
@@ -2161,1232 +1583,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L433CBTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2000c000
-      end: 0x20010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_128
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L433CBUx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2000c000
-      end: 0x20010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_128
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L433CBYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2000c000
-      end: 0x20010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_128
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L433CCTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2000c000
-      end: 0x20010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_256
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L433CCUx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2000c000
-      end: 0x20010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_256
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L433CCYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2000c000
-      end: 0x20010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_256
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L433RBIx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2000c000
-      end: 0x20010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_128
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L433RBTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2000c000
-      end: 0x20010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_128
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L433RBYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2000c000
-      end: 0x20010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_128
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L433RCIx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2000c000
-      end: 0x20010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_256
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L433RCTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2000c000
-      end: 0x20010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_256
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L433RCTxP
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2000c000
-      end: 0x20010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_256
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L433RCYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2000c000
-      end: 0x20010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_256
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L433VCIx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2000c000
-      end: 0x20010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_256
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L433VCTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2000c000
-      end: 0x20010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_256
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L442KCUx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2000c000
-      end: 0x20010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_256
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L443CCFx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2000c000
-      end: 0x20010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_256
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L443CCTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2000c000
-      end: 0x20010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_256
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L443CCUx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2000c000
-      end: 0x20010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_256
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L443CCYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2000c000
-      end: 0x20010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_256
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L443RCIx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2000c000
-      end: 0x20010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_256
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L443RCTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2000c000
-      end: 0x20010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_256
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L443RCYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2000c000
-      end: 0x20010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_256
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L443VCIx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2000c000
-      end: 0x20010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_256
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L443VCTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10004000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2000c000
-      end: 0x20010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_256
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L451CCUx
+- name: STM32L451CC
+  package_variants:
+  - STM32L451CCUx
   cores:
   - name: main
     type: armv7em
@@ -3435,7 +1634,10 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L451CETx
+- name: STM32L451CE
+  package_variants:
+  - STM32L451CETx
+  - STM32L451CEUx
   cores:
   - name: main
     type: armv7em
@@ -3484,56 +1686,11 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L451CEUx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20020000
-      end: 0x20028000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_512
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L451RCIx
+- name: STM32L451RC
+  package_variants:
+  - STM32L451RCTx
+  - STM32L451RCIx
+  - STM32L451RCYx
   cores:
   - name: main
     type: armv7em
@@ -3582,7 +1739,63 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L451RCTx
+- name: STM32L451RE
+  package_variants:
+  - STM32L451RETx
+  - STM32L451REIx
+  - STM32L451REYx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM2_ICODE
+    range:
+      start: 0x10000000
+      end: 0x10008000
+    cores:
+    - main
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20020000
+      end: 0x20028000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l4xx_512
+  - stm32l4xx_sb_opt
+  - stm32l4r9i_eval
+  - stm32l4r9i_disco_ospi1
+  - stm32l4r9i_disco_ospi2
+  - stm32l4r9i-dk_psram
+  - mx25lm51245g_stm32l4p5-disco
+  - aps6408l-3ob_stm32l4p5g-dk
+  - n25q128a_stm32l476-disco
+- name: STM32L451VC
+  package_variants:
+  - STM32L451VCTx
+  - STM32L451VCIx
   cores:
   - name: main
     type: armv7em
@@ -3631,7 +1844,10 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L451REIx
+- name: STM32L451VE
+  package_variants:
+  - STM32L451VETx
+  - STM32L451VEIx
   cores:
   - name: main
     type: armv7em
@@ -3680,105 +1896,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L451RETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20020000
-      end: 0x20028000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_512
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L451REYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20020000
-      end: 0x20028000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_512
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L451VCIx
+- name: STM32L452CC
+  package_variants:
+  - STM32L452CCUx
   cores:
   - name: main
     type: armv7em
@@ -3827,7 +1947,64 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L451VCTx
+- name: STM32L452CE
+  package_variants:
+  - STM32L452CETx
+  - STM32L452CEUx
+  - STM32L452CETxP
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM2_ICODE
+    range:
+      start: 0x10000000
+      end: 0x10008000
+    cores:
+    - main
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20020000
+      end: 0x20028000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l4xx_512
+  - stm32l4xx_sb_opt
+  - stm32l4r9i_eval
+  - stm32l4r9i_disco_ospi1
+  - stm32l4r9i_disco_ospi2
+  - stm32l4r9i-dk_psram
+  - mx25lm51245g_stm32l4p5-disco
+  - aps6408l-3ob_stm32l4p5g-dk
+  - n25q128a_stm32l476-disco
+- name: STM32L452RC
+  package_variants:
+  - STM32L452RCTx
+  - STM32L452RCIx
+  - STM32L452RCYx
   cores:
   - name: main
     type: armv7em
@@ -3876,7 +2053,13 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L451VEIx
+- name: STM32L452RE
+  package_variants:
+  - STM32L452RETx
+  - STM32L452REIx
+  - STM32L452REYx
+  - STM32L452RETxP
+  - STM32L452REYxP
   cores:
   - name: main
     type: armv7em
@@ -3925,56 +2108,10 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L451VETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20020000
-      end: 0x20028000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_512
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L452CCUx
+- name: STM32L452VC
+  package_variants:
+  - STM32L452VCTx
+  - STM32L452VCIx
   cores:
   - name: main
     type: armv7em
@@ -4023,7 +2160,10 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L452CETx
+- name: STM32L452VE
+  package_variants:
+  - STM32L452VETx
+  - STM32L452VEIx
   cores:
   - name: main
     type: armv7em
@@ -4072,7 +2212,11 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L452CETxP
+- name: STM32L462CE
+  package_variants:
+  - STM32L462CETx
+  - STM32L462CEUx
+  - STM32L462CETxP
   cores:
   - name: main
     type: armv7em
@@ -4121,7 +2265,11 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L452CEUx
+- name: STM32L462RE
+  package_variants:
+  - STM32L462RETx
+  - STM32L462REIx
+  - STM32L462REYx
   cores:
   - name: main
     type: armv7em
@@ -4170,105 +2318,10 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L452RCIx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20020000
-      end: 0x20028000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_256
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L452RCTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20020000
-      end: 0x20028000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_256
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L452REIx
+- name: STM32L462VE
+  package_variants:
+  - STM32L462VETx
+  - STM32L462VEIx
   cores:
   - name: main
     type: armv7em
@@ -4317,742 +2370,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L452RETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20020000
-      end: 0x20028000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_512
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L452RETxP
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20020000
-      end: 0x20028000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_512
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L452REYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20020000
-      end: 0x20028000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_512
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L452REYxP
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20020000
-      end: 0x20028000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_512
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L452VCIx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20020000
-      end: 0x20028000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_256
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L452VCTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20020000
-      end: 0x20028000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_256
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L452VEIx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20020000
-      end: 0x20028000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_512
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L452VETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20020000
-      end: 0x20028000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_512
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L462CETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20020000
-      end: 0x20028000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_512
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L462CEUx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20020000
-      end: 0x20028000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_512
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L462REIx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20020000
-      end: 0x20028000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_512
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L462RETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20020000
-      end: 0x20028000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_512
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L462REYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20020000
-      end: 0x20028000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_512
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L462VEIx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20020000
-      end: 0x20028000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_512
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L462VETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20020000
-      end: 0x20028000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_512
-  - stm32l4xx_sb_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L471QEIx
+- name: STM32L471QE
+  package_variants:
+  - STM32L471QEIx
   cores:
   - name: main
     type: armv7em
@@ -5104,7 +2424,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L471QGIx
+- name: STM32L471QG
+  package_variants:
+  - STM32L471QGIx
   cores:
   - name: main
     type: armv7em
@@ -5156,7 +2478,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L471RETx
+- name: STM32L471RE
+  package_variants:
+  - STM32L471RETx
   cores:
   - name: main
     type: armv7em
@@ -5208,7 +2532,10 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L471RGTx
+- name: STM32L471RG
+  package_variants:
+  - STM32L471RGTx
+  - STM32L471RGYx
   cores:
   - name: main
     type: armv7em
@@ -5260,7 +2587,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L471VETx
+- name: STM32L471VE
+  package_variants:
+  - STM32L471VETx
   cores:
   - name: main
     type: armv7em
@@ -5312,7 +2641,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L471VGTx
+- name: STM32L471VG
+  package_variants:
+  - STM32L471VGTx
   cores:
   - name: main
     type: armv7em
@@ -5364,7 +2695,10 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L471ZEJx
+- name: STM32L471ZE
+  package_variants:
+  - STM32L471ZETx
+  - STM32L471ZEJx
   cores:
   - name: main
     type: armv7em
@@ -5416,59 +2750,10 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L471ZETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8040000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_512
-  - stm32l4xx_db_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L471ZGJx
+- name: STM32L471ZG
+  package_variants:
+  - STM32L471ZGTx
+  - STM32L471ZGJx
   cores:
   - name: main
     type: armv7em
@@ -5520,59 +2805,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L471ZGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8080000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_1024
-  - stm32l4xx_db_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L475RCTx
+- name: STM32L475RC
+  package_variants:
+  - STM32L475RCTx
   cores:
   - name: main
     type: armv7em
@@ -5624,7 +2859,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L475RETx
+- name: STM32L475RE
+  package_variants:
+  - STM32L475RETx
   cores:
   - name: main
     type: armv7em
@@ -5676,7 +2913,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L475RGTx
+- name: STM32L475RG
+  package_variants:
+  - STM32L475RGTx
   cores:
   - name: main
     type: armv7em
@@ -5728,7 +2967,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L475VCTx
+- name: STM32L475VC
+  package_variants:
+  - STM32L475VCTx
   cores:
   - name: main
     type: armv7em
@@ -5780,7 +3021,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L475VETx
+- name: STM32L475VE
+  package_variants:
+  - STM32L475VETx
   cores:
   - name: main
     type: armv7em
@@ -5832,7 +3075,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L475VGTx
+- name: STM32L475VG
+  package_variants:
+  - STM32L475VGTx
   cores:
   - name: main
     type: armv7em
@@ -5884,7 +3129,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L476JEYx
+- name: STM32L476JE
+  package_variants:
+  - STM32L476JEYx
   cores:
   - name: main
     type: armv7em
@@ -5936,7 +3183,10 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L476JGYx
+- name: STM32L476JG
+  package_variants:
+  - STM32L476JGYx
+  - STM32L476JGYxP
   cores:
   - name: main
     type: armv7em
@@ -5988,59 +3238,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L476JGYxP
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8080000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_1024
-  - stm32l4xx_db_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L476MEYx
+- name: STM32L476ME
+  package_variants:
+  - STM32L476MEYx
   cores:
   - name: main
     type: armv7em
@@ -6092,7 +3292,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L476MGYx
+- name: STM32L476MG
+  package_variants:
+  - STM32L476MGYx
   cores:
   - name: main
     type: armv7em
@@ -6144,7 +3346,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L476QEIx
+- name: STM32L476QE
+  package_variants:
+  - STM32L476QEIx
   cores:
   - name: main
     type: armv7em
@@ -6196,7 +3400,11 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L476QGIx
+- name: STM32L476QG
+  package_variants:
+  - STM32L476QGIx
+  - STM32L476QGIxP
+  - STM32L476QGIxS
   cores:
   - name: main
     type: armv7em
@@ -6248,59 +3456,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L476QGIxP
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8080000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_1024
-  - stm32l4xx_db_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L476RCTx
+- name: STM32L476RC
+  package_variants:
+  - STM32L476RCTx
   cores:
   - name: main
     type: armv7em
@@ -6352,7 +3510,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L476RETx
+- name: STM32L476RE
+  package_variants:
+  - STM32L476RETx
   cores:
   - name: main
     type: armv7em
@@ -6404,7 +3564,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L476RGTx
+- name: STM32L476RG
+  package_variants:
+  - STM32L476RGTx
   cores:
   - name: main
     type: armv7em
@@ -6456,7 +3618,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L476VCTx
+- name: STM32L476VC
+  package_variants:
+  - STM32L476VCTx
   cores:
   - name: main
     type: armv7em
@@ -6508,7 +3672,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L476VETx
+- name: STM32L476VE
+  package_variants:
+  - STM32L476VETx
   cores:
   - name: main
     type: armv7em
@@ -6560,7 +3726,10 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L476VGTx
+- name: STM32L476VG
+  package_variants:
+  - STM32L476VGTx
+  - STM32L476VGYxP
   cores:
   - name: main
     type: armv7em
@@ -6612,7 +3781,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L476ZETx
+- name: STM32L476ZE
+  package_variants:
+  - STM32L476ZETx
   cores:
   - name: main
     type: armv7em
@@ -6664,7 +3835,11 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L476ZGJx
+- name: STM32L476ZG
+  package_variants:
+  - STM32L476ZGTx
+  - STM32L476ZGJx
+  - STM32L476ZGTxP
   cores:
   - name: main
     type: armv7em
@@ -6716,7 +3891,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L476ZGTx
+- name: STM32L486JG
+  package_variants:
+  - STM32L486JGYx
   cores:
   - name: main
     type: armv7em
@@ -6768,7 +3945,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L476ZGTxP
+- name: STM32L486QG
+  package_variants:
+  - STM32L486QGIx
   cores:
   - name: main
     type: armv7em
@@ -6820,7 +3999,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L486JGYx
+- name: STM32L486RG
+  package_variants:
+  - STM32L486RGTx
   cores:
   - name: main
     type: armv7em
@@ -6872,7 +4053,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L486QGIx
+- name: STM32L486VG
+  package_variants:
+  - STM32L486VGTx
   cores:
   - name: main
     type: armv7em
@@ -6924,7 +4107,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L486RGTx
+- name: STM32L486ZG
+  package_variants:
+  - STM32L486ZGTx
   cores:
   - name: main
     type: armv7em
@@ -6976,111 +4161,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L486VGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8080000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_1024
-  - stm32l4xx_db_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L486ZGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8080000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10008000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_1024
-  - stm32l4xx_db_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L496AEIx
+- name: STM32L496AE
+  package_variants:
+  - STM32L496AEIx
   cores:
   - name: main
     type: armv7em
@@ -7139,7 +4222,10 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L496AGIx
+- name: STM32L496AG
+  package_variants:
+  - STM32L496AGIx
+  - STM32L496AGIxP
   cores:
   - name: main
     type: armv7em
@@ -7198,66 +4284,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L496AGIxP
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8080000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20040000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_1024
-  - stm32l4xx_db_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L496QEIx
+- name: STM32L496QE
+  package_variants:
+  - STM32L496QEIx
   cores:
   - name: main
     type: armv7em
@@ -7316,7 +4345,11 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L496QGIx
+- name: STM32L496QG
+  package_variants:
+  - STM32L496QGIx
+  - STM32L496QGIxP
+  - STM32L496QGIxS
   cores:
   - name: main
     type: armv7em
@@ -7375,125 +4408,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L496QGIxP
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8080000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20040000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_1024
-  - stm32l4xx_db_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L496QGIxS
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8080000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20040000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_1024
-  - stm32l4xx_db_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L496RETx
+- name: STM32L496RE
+  package_variants:
+  - STM32L496RETx
   cores:
   - name: main
     type: armv7em
@@ -7552,7 +4469,10 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L496RGTx
+- name: STM32L496RG
+  package_variants:
+  - STM32L496RGTx
+  - STM32L496RGTxP
   cores:
   - name: main
     type: armv7em
@@ -7611,66 +4531,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L496RGTxP
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8080000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20040000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_1024
-  - stm32l4xx_db_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L496VETx
+- name: STM32L496VE
+  package_variants:
+  - STM32L496VETx
   cores:
   - name: main
     type: armv7em
@@ -7729,7 +4592,12 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L496VGTx
+- name: STM32L496VG
+  package_variants:
+  - STM32L496VGTx
+  - STM32L496VGYx
+  - STM32L496VGTxP
+  - STM32L496VGYxP
   cores:
   - name: main
     type: armv7em
@@ -7788,7 +4656,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L496VGTxP
+- name: STM32L496WG
+  package_variants:
+  - STM32L496WGYxP
   cores:
   - name: main
     type: armv7em
@@ -7847,184 +4717,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L496VGYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8080000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20040000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_1024
-  - stm32l4xx_db_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L496VGYxP
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8080000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20040000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_1024
-  - stm32l4xx_db_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L496WGYxP
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8080000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20040000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_1024
-  - stm32l4xx_db_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L496ZETx
+- name: STM32L496ZE
+  package_variants:
+  - STM32L496ZETx
   cores:
   - name: main
     type: armv7em
@@ -8083,7 +4778,10 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L496ZGTx
+- name: STM32L496ZG
+  package_variants:
+  - STM32L496ZGTx
+  - STM32L496ZGTxP
   cores:
   - name: main
     type: armv7em
@@ -8142,7 +4840,10 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L496ZGTxP
+- name: STM32L4A6AG
+  package_variants:
+  - STM32L4A6AGIx
+  - STM32L4A6AGIxP
   cores:
   - name: main
     type: armv7em
@@ -8201,7 +4902,10 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4A6AGIx
+- name: STM32L4A6QG
+  package_variants:
+  - STM32L4A6QGIx
+  - STM32L4A6QGIxP
   cores:
   - name: main
     type: armv7em
@@ -8260,7 +4964,10 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4A6AGIxP
+- name: STM32L4A6RG
+  package_variants:
+  - STM32L4A6RGTx
+  - STM32L4A6RGTxP
   cores:
   - name: main
     type: armv7em
@@ -8319,7 +5026,12 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4A6QGIx
+- name: STM32L4A6VG
+  package_variants:
+  - STM32L4A6VGTx
+  - STM32L4A6VGYx
+  - STM32L4A6VGTxP
+  - STM32L4A6VGYxP
   cores:
   - name: main
     type: armv7em
@@ -8378,7 +5090,10 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4A6QGIxP
+- name: STM32L4A6ZG
+  package_variants:
+  - STM32L4A6ZGTx
+  - STM32L4A6ZGTxP
   cores:
   - name: main
     type: armv7em
@@ -8437,479 +5152,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4A6RGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8080000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20040000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_1024
-  - stm32l4xx_db_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4A6RGTxP
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8080000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20040000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_1024
-  - stm32l4xx_db_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4A6VGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8080000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20040000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_1024
-  - stm32l4xx_db_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4A6VGTxP
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8080000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20040000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_1024
-  - stm32l4xx_db_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4A6VGYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8080000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20040000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_1024
-  - stm32l4xx_db_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4A6VGYxP
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8080000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20040000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_1024
-  - stm32l4xx_db_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4A6ZGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8080000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20040000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_1024
-  - stm32l4xx_db_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4A6ZGTxP
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8080000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM2_ICODE
-    range:
-      start: 0x10000000
-      end: 0x10010000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20040000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4xx_1024
-  - stm32l4xx_db_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4P5AEIx
+- name: STM32L4P5AE
+  package_variants:
+  - STM32L4P5AEIx
   cores:
   - name: main
     type: armv7em
@@ -8943,7 +5188,10 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4P5AGIx
+- name: STM32L4P5AG
+  package_variants:
+  - STM32L4P5AGIx
+  - STM32L4P5AGIxP
   cores:
   - name: main
     type: armv7em
@@ -8977,41 +5225,10 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4P5AGIxP
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4p5xx_1m
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4P5CETx
+- name: STM32L4P5CE
+  package_variants:
+  - STM32L4P5CETx
+  - STM32L4P5CEUx
   cores:
   - name: main
     type: armv7em
@@ -9045,7 +5262,48 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4P5CEUx
+- name: STM32L4P5CG
+  package_variants:
+  - STM32L4P5CGTx
+  - STM32L4P5CGUx
+  - STM32L4P5CGTxP
+  - STM32L4P5CGUxP
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l4p5xx_1m
+  - stm32l4r9i_eval
+  - stm32l4r9i_disco_ospi1
+  - stm32l4r9i_disco_ospi2
+  - stm32l4r9i-dk_psram
+  - mx25lm51245g_stm32l4p5-disco
+  - aps6408l-3ob_stm32l4p5g-dk
+  - n25q128a_stm32l476-disco
+- name: STM32L4P5QE
+  package_variants:
+  - STM32L4P5QEIx
   cores:
   - name: main
     type: armv7em
@@ -9079,7 +5337,11 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4P5CGTx
+- name: STM32L4P5QG
+  package_variants:
+  - STM32L4P5QGIx
+  - STM32L4P5QGIxP
+  - STM32L4P5QGIxS
   cores:
   - name: main
     type: armv7em
@@ -9113,109 +5375,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4P5CGTxP
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4p5xx_1m
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4P5CGUx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4p5xx_1m
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4P5CGUxP
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4p5xx_1m
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4P5QEIx
+- name: STM32L4P5RE
+  package_variants:
+  - STM32L4P5RETx
   cores:
   - name: main
     type: armv7em
@@ -9249,7 +5411,10 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4P5QGIx
+- name: STM32L4P5RG
+  package_variants:
+  - STM32L4P5RGTx
+  - STM32L4P5RGTxP
   cores:
   - name: main
     type: armv7em
@@ -9283,75 +5448,10 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4P5QGIxP
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4p5xx_1m
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4P5QGIxS
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4p5xx_1m
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4P5RETx
+- name: STM32L4P5VE
+  package_variants:
+  - STM32L4P5VETx
+  - STM32L4P5VEYx
   cores:
   - name: main
     type: armv7em
@@ -9385,7 +5485,12 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4P5RGTx
+- name: STM32L4P5VG
+  package_variants:
+  - STM32L4P5VGTx
+  - STM32L4P5VGYx
+  - STM32L4P5VGTxP
+  - STM32L4P5VGYxP
   cores:
   - name: main
     type: armv7em
@@ -9419,41 +5524,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4P5RGTxP
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4p5xx_1m
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4P5VETx
+- name: STM32L4P5ZE
+  package_variants:
+  - STM32L4P5ZETx
   cores:
   - name: main
     type: armv7em
@@ -9487,41 +5560,10 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4P5VEYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4p5xx_1m
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4P5VGTx
+- name: STM32L4P5ZG
+  package_variants:
+  - STM32L4P5ZGTx
+  - STM32L4P5ZGTxP
   cores:
   - name: main
     type: armv7em
@@ -9555,7 +5597,10 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4P5VGTxP
+- name: STM32L4Q5AG
+  package_variants:
+  - STM32L4Q5AGIx
+  - STM32L4Q5AGIxP
   cores:
   - name: main
     type: armv7em
@@ -9589,7 +5634,12 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4P5VGYx
+- name: STM32L4Q5CG
+  package_variants:
+  - STM32L4Q5CGTx
+  - STM32L4Q5CGUx
+  - STM32L4Q5CGTxP
+  - STM32L4Q5CGUxP
   cores:
   - name: main
     type: armv7em
@@ -9623,7 +5673,10 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4P5VGYxP
+- name: STM32L4Q5QG
+  package_variants:
+  - STM32L4Q5QGIx
+  - STM32L4Q5QGIxP
   cores:
   - name: main
     type: armv7em
@@ -9657,41 +5710,10 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4P5ZETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4p5xx_1m
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4P5ZGTx
+- name: STM32L4Q5RG
+  package_variants:
+  - STM32L4Q5RGTx
+  - STM32L4Q5RGTxP
   cores:
   - name: main
     type: armv7em
@@ -9725,7 +5747,12 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4P5ZGTxP
+- name: STM32L4Q5VG
+  package_variants:
+  - STM32L4Q5VGTx
+  - STM32L4Q5VGYx
+  - STM32L4Q5VGTxP
+  - STM32L4Q5VGYxP
   cores:
   - name: main
     type: armv7em
@@ -9759,7 +5786,10 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4Q5AGIx
+- name: STM32L4Q5ZG
+  package_variants:
+  - STM32L4Q5ZGTx
+  - STM32L4Q5ZGTxP
   cores:
   - name: main
     type: armv7em
@@ -9793,517 +5823,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4Q5AGIxP
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4p5xx_1m
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4Q5CGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4p5xx_1m
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4Q5CGTxP
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4p5xx_1m
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4Q5CGUx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4p5xx_1m
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4Q5CGUxP
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4p5xx_1m
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4Q5QGIx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4p5xx_1m
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4Q5QGIxP
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4p5xx_1m
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4Q5RGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4p5xx_1m
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4Q5RGTxP
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4p5xx_1m
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4Q5VGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4p5xx_1m
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4Q5VGTxP
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4p5xx_1m
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4Q5VGYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4p5xx_1m
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4Q5VGYxP
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4p5xx_1m
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4Q5ZGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4p5xx_1m
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4Q5ZGTxP
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20050000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4p5xx_1m
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4R5AGIx
+- name: STM32L4R5AG
+  package_variants:
+  - STM32L4R5AGIx
   cores:
   - name: main
     type: armv7em
@@ -10339,7 +5861,10 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4R5AIIx
+- name: STM32L4R5AI
+  package_variants:
+  - STM32L4R5AIIx
+  - STM32L4R5AIIxP
   cores:
   - name: main
     type: armv7em
@@ -10375,7 +5900,49 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4R5AIIxP
+- name: STM32L4R5QG
+  package_variants:
+  - STM32L4R5QGIx
+  - STM32L4R5QGIxS
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l4rx_2048_dual
+  - stm32l4rx_sb_opt
+  - stm32l4rx_db_opt
+  - stm32l4r9i_eval
+  - stm32l4r9i_disco_ospi1
+  - stm32l4r9i_disco_ospi2
+  - stm32l4r9i-dk_psram
+  - mx25lm51245g_stm32l4p5-disco
+  - aps6408l-3ob_stm32l4p5g-dk
+  - n25q128a_stm32l476-disco
+- name: STM32L4R5QI
+  package_variants:
+  - STM32L4R5QIIx
+  - STM32L4R5QIIxP
   cores:
   - name: main
     type: armv7em
@@ -10411,7 +5978,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4R5QGIx
+- name: STM32L4R5VG
+  package_variants:
+  - STM32L4R5VGTx
   cores:
   - name: main
     type: armv7em
@@ -10447,43 +6016,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4R5QGIxS
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200a0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4rx_2048_dual
-  - stm32l4rx_sb_opt
-  - stm32l4rx_db_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4R5QIIx
+- name: STM32L4R5VI
+  package_variants:
+  - STM32L4R5VITx
   cores:
   - name: main
     type: armv7em
@@ -10519,43 +6054,10 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4R5QIIxP
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200a0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4rx_2048_dual
-  - stm32l4rx_sb_opt
-  - stm32l4rx_db_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4R5VGTx
+- name: STM32L4R5ZG
+  package_variants:
+  - STM32L4R5ZGTx
+  - STM32L4R5ZGYx
   cores:
   - name: main
     type: armv7em
@@ -10591,115 +6093,11 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4R5VITx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200a0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4rx_2048_dual
-  - stm32l4rx_sb_opt
-  - stm32l4rx_db_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4R5ZGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200a0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4rx_2048_dual
-  - stm32l4rx_sb_opt
-  - stm32l4rx_db_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4R5ZGYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200a0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4rx_2048_dual
-  - stm32l4rx_sb_opt
-  - stm32l4rx_db_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4R5ZITx
+- name: STM32L4R5ZI
+  package_variants:
+  - STM32L4R5ZITx
+  - STM32L4R5ZIYx
+  - STM32L4R5ZITxPP
   cores:
   - name: main
     type: armv7em
@@ -10785,7 +6183,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4R5ZIYx
+- name: STM32L4R7AI
+  package_variants:
+  - STM32L4R7AIIx
   cores:
   - name: main
     type: armv7em
@@ -10821,7 +6221,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4R7AIIx
+- name: STM32L4R7VI
+  package_variants:
+  - STM32L4R7VITx
   cores:
   - name: main
     type: armv7em
@@ -10857,7 +6259,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4R7VITx
+- name: STM32L4R7ZI
+  package_variants:
+  - STM32L4R7ZITx
   cores:
   - name: main
     type: armv7em
@@ -10893,43 +6297,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4R7ZITx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200a0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4rx_2048_dual
-  - stm32l4rx_sb_opt
-  - stm32l4rx_db_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4R9AGIx
+- name: STM32L4R9AG
+  package_variants:
+  - STM32L4R9AGIx
   cores:
   - name: main
     type: armv7em
@@ -10965,7 +6335,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4R9AIIx
+- name: STM32L4R9AI
+  package_variants:
+  - STM32L4R9AIIx
   cores:
   - name: main
     type: armv7em
@@ -11001,7 +6373,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4R9VGTx
+- name: STM32L4R9VG
+  package_variants:
+  - STM32L4R9VGTx
   cores:
   - name: main
     type: armv7em
@@ -11037,7 +6411,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4R9VITx
+- name: STM32L4R9VI
+  package_variants:
+  - STM32L4R9VITx
   cores:
   - name: main
     type: armv7em
@@ -11073,7 +6449,11 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4R9ZGJx
+- name: STM32L4R9ZG
+  package_variants:
+  - STM32L4R9ZGTx
+  - STM32L4R9ZGJx
+  - STM32L4R9ZGYx
   cores:
   - name: main
     type: armv7em
@@ -11109,151 +6489,12 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4R9ZGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200a0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4rx_2048_dual
-  - stm32l4rx_sb_opt
-  - stm32l4rx_db_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4R9ZGYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200a0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4rx_2048_dual
-  - stm32l4rx_sb_opt
-  - stm32l4rx_db_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4R9ZIJx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200a0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4rx_2048_dual
-  - stm32l4rx_sb_opt
-  - stm32l4rx_db_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4R9ZITx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200a0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4rx_2048_dual
-  - stm32l4rx_sb_opt
-  - stm32l4rx_db_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4R9ZIYx
+- name: STM32L4R9ZI
+  package_variants:
+  - STM32L4R9ZITx
+  - STM32L4R9ZIJx
+  - STM32L4R9ZIYx
+  - STM32L4R9ZIYxPP
   cores:
   - name: main
     type: armv7em
@@ -11339,7 +6580,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4S5AIIx
+- name: STM32L4S5AI
+  package_variants:
+  - STM32L4S5AIIx
   cores:
   - name: main
     type: armv7em
@@ -11375,7 +6618,10 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4S5QIIx
+- name: STM32L4S5QI
+  package_variants:
+  - STM32L4S5QIIx
+  - STM32L4S5QIIxP
   cores:
   - name: main
     type: armv7em
@@ -11411,7 +6657,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4S5VITx
+- name: STM32L4S5VI
+  package_variants:
+  - STM32L4S5VITx
   cores:
   - name: main
     type: armv7em
@@ -11447,7 +6695,10 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4S5ZITx
+- name: STM32L4S5ZI
+  package_variants:
+  - STM32L4S5ZITx
+  - STM32L4S5ZIYx
   cores:
   - name: main
     type: armv7em
@@ -11483,7 +6734,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4S5ZIYx
+- name: STM32L4S7AI
+  package_variants:
+  - STM32L4S7AIIx
   cores:
   - name: main
     type: armv7em
@@ -11519,7 +6772,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4S7AIIx
+- name: STM32L4S7VI
+  package_variants:
+  - STM32L4S7VITx
   cores:
   - name: main
     type: armv7em
@@ -11555,7 +6810,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4S7VITx
+- name: STM32L4S7ZI
+  package_variants:
+  - STM32L4S7ZITx
   cores:
   - name: main
     type: armv7em
@@ -11591,7 +6848,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4S7ZITx
+- name: STM32L4S9AI
+  package_variants:
+  - STM32L4S9AIIx
   cores:
   - name: main
     type: armv7em
@@ -11627,7 +6886,9 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4S9AIIx
+- name: STM32L4S9VI
+  package_variants:
+  - STM32L4S9VITx
   cores:
   - name: main
     type: armv7em
@@ -11663,115 +6924,11 @@ variants:
   - mx25lm51245g_stm32l4p5-disco
   - aps6408l-3ob_stm32l4p5g-dk
   - n25q128a_stm32l476-disco
-- name: STM32L4S9VITx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200a0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4rx_2048_dual
-  - stm32l4rx_sb_opt
-  - stm32l4rx_db_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4S9ZIJx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200a0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4rx_2048_dual
-  - stm32l4rx_sb_opt
-  - stm32l4rx_db_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4S9ZITx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200a0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l4rx_2048_dual
-  - stm32l4rx_sb_opt
-  - stm32l4rx_db_opt
-  - stm32l4r9i_eval
-  - stm32l4r9i_disco_ospi1
-  - stm32l4r9i_disco_ospi2
-  - stm32l4r9i-dk_psram
-  - mx25lm51245g_stm32l4p5-disco
-  - aps6408l-3ob_stm32l4p5g-dk
-  - n25q128a_stm32l476-disco
-- name: STM32L4S9ZIYx
+- name: STM32L4S9ZI
+  package_variants:
+  - STM32L4S9ZITx
+  - STM32L4S9ZIJx
+  - STM32L4S9ZIYx
   cores:
   - name: main
     type: armv7em
