@@ -62,17 +62,6 @@ impl DebuggerRttChannel {
             return false;
         }
 
-        struct StringCollector {
-            data: Option<String>,
-        }
-
-        impl ChannelDataCallbacks for StringCollector {
-            fn on_string_data(&mut self, _channel: usize, data: String) -> Result<(), Error> {
-                self.data = Some(data);
-                Ok(())
-            }
-        }
-
         let mut out = StringCollector { data: None };
 
         if let Err(e) = client.poll_channel(core, self.channel_number, &mut out) {
@@ -86,5 +75,16 @@ impl DebuggerRttChannel {
             Some(data) => debug_adapter.rtt_output(self.channel_number, data),
             None => false,
         }
+    }
+}
+
+struct StringCollector {
+    data: Option<String>,
+}
+
+impl ChannelDataCallbacks for StringCollector {
+    fn on_string_data(&mut self, _channel: usize, data: String) -> Result<(), Error> {
+        self.data = Some(data);
+        Ok(())
     }
 }
