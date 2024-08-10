@@ -4,7 +4,7 @@ use probe_rs::{rtt::Error, Core};
 
 use crate::{
     cmd::cargo_embed::rttui::tcp::TcpPublisher,
-    util::rtt::{ChannelDataCallbacks, RttActiveUpChannel},
+    util::rtt::{client::RttClient, ChannelDataCallbacks, RttActiveUpChannel},
 };
 
 pub enum ChannelData {
@@ -41,13 +41,14 @@ impl ChannelDataCallbacks for (&mut Option<TcpPublisher>, &mut ChannelData) {
 }
 
 pub struct UpChannel {
-    rtt_channel: RttActiveUpChannel,
+    channel_number: usize,
     tcp_stream: Option<TcpPublisher>,
+    channel_name: String,
     pub data: ChannelData,
 }
 
 impl UpChannel {
-    pub fn new(rtt_channel: RttActiveUpChannel, tcp_stream: Option<SocketAddr>) -> Self {
+    pub fn new(rtt_channel: &RttActiveUpChannel, tcp_stream: Option<SocketAddr>) -> Self {
         Self {
             data: if rtt_channel.data_format.is_binary() {
                 ChannelData::Binary { data: Vec::new() }
@@ -57,20 +58,20 @@ impl UpChannel {
                 }
             },
             tcp_stream: tcp_stream.map(TcpPublisher::new),
-            rtt_channel,
+            channel_number: rtt_channel.number(),
+            channel_name: rtt_channel.channel_name().to_string(),
         }
     }
 
-    pub fn poll_rtt(&mut self, core: &mut Core<'_>) -> Result<(), Error> {
-        self.rtt_channel
-            .poll_process_rtt_data(core, &mut (&mut self.tcp_stream, &mut self.data))
+    pub fn poll_rtt(&mut self, core: &mut Core<'_>, client: &mut RttClient) -> Result<(), Error> {
+        client.poll_channel(
+            core,
+            self.channel_number,
+            &mut (&mut self.tcp_stream, &mut self.data),
+        )
     }
 
-    pub(crate) fn clean_up(&mut self, core: &mut Core<'_>) -> Result<(), Error> {
-        self.rtt_channel.clean_up(core)
-    }
-
-    pub(crate) fn channel_name(&self) -> String {
-        self.rtt_channel.channel_name()
+    pub(crate) fn channel_name(&self) -> &str {
+        &self.channel_name
     }
 }

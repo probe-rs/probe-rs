@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
 use crate::util::rtt::{
-    ChannelDataCallbacks, DefmtState, RttActiveTarget, RttActiveUpChannel, RttConfig,
+    ChannelDataCallbacks, DefmtState, RttActiveDownChannel, RttActiveTarget, RttActiveUpChannel,
+    RttConfig,
 };
 use probe_rs::{
     rtt::{Error, Rtt, ScanRegion},
@@ -129,6 +130,21 @@ impl RttClient {
         Ok(())
     }
 
+    pub(crate) fn write_down_channel(
+        &mut self,
+        core: &mut Core,
+        channel: usize,
+        input: impl AsRef<[u8]>,
+    ) -> Result<(), Error> {
+        self.try_attach(core)?;
+
+        let Some(target) = self.target.as_mut() else {
+            return Ok(());
+        };
+
+        target.write_down_channel(core, channel, input)
+    }
+
     pub fn clean_up(&mut self, core: &mut Core) -> Result<(), Error> {
         if let Some(target) = self.target.as_mut() {
             target.clean_up(core)?;
@@ -153,13 +169,15 @@ impl RttClient {
         Ok(())
     }
 
-    pub(crate) fn into_target(self) -> RttActiveTarget {
-        self.target.unwrap()
-    }
-
     pub(crate) fn up_channels(&self) -> &[RttActiveUpChannel] {
         self.target
             .as_ref()
             .map_or(&[], |t| t.active_up_channels.as_slice())
+    }
+
+    pub(crate) fn down_channels(&self) -> &[RttActiveDownChannel] {
+        self.target
+            .as_ref()
+            .map_or(&[], |t| t.active_down_channels.as_slice())
     }
 }

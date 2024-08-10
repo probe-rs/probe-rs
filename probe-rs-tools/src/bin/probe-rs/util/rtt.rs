@@ -462,8 +462,8 @@ impl RttActiveDownChannel {
         self.down_channel.number()
     }
 
-    pub fn push_rtt(&mut self, core: &mut Core<'_>, data: &str) -> Result<(), Error> {
-        self.down_channel.write(core, data.as_bytes()).map(|_| ())
+    pub fn push_rtt(&mut self, core: &mut Core<'_>, data: impl AsRef<[u8]>) -> Result<(), Error> {
+        self.down_channel.write(core, data.as_ref()).map(|_| ())
     }
 }
 
@@ -603,6 +603,20 @@ impl RttActiveTarget {
         if let Some(channel) = self.active_up_channels.get_mut(channel) {
             channel.poll_process_rtt_data(core, collector)?;
             Ok(())
+        } else {
+            Err(Error::MissingChannel(channel))
+        }
+    }
+
+    /// Send data to a down channel.
+    pub fn write_down_channel(
+        &mut self,
+        core: &mut Core,
+        channel: usize,
+        data: impl AsRef<[u8]>,
+    ) -> Result<(), Error> {
+        if let Some(channel) = self.active_down_channels.get_mut(channel) {
+            channel.push_rtt(core, data)
         } else {
             Err(Error::MissingChannel(channel))
         }
