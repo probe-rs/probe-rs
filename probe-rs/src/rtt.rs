@@ -480,7 +480,7 @@ pub enum Error {
     /// Attempted an RTT operation against a Core number that is different from the Core number against which RTT was initialized. Expected {0}, found {1}
     IncorrectCoreSpecified(usize, usize),
 
-    /// Error communicating with probe: {0}
+    /// Error communicating with the probe.
     Probe(#[from] crate::Error),
 
     /// Unexpected error while reading {0} from target memory. Please report this as a bug.
