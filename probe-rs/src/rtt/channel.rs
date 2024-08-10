@@ -1,6 +1,7 @@
 use crate::rtt::Error;
 use crate::{Core, MemoryInterface};
 use std::cmp::min;
+use std::ffi::CStr;
 use zerocopy::{FromBytes, FromZeroes};
 
 /// Trait for channel information shared between up and down channels.
@@ -516,8 +517,7 @@ fn read_c_string(core: &mut Core, ptr: u64) -> Result<Option<String>, Error> {
     let Some(range) = core
         .memory_regions()
         .filter(|r| r.is_ram() || r.is_nvm())
-        .find(|r| r.contains(ptr))
-        .map(|r| r.address_range())
+        .find_map(|r| r.contains(ptr).then_some(r.address_range()))
     else {
         // If the pointer is not within any valid range, return None.
         return Ok(None);
@@ -528,10 +528,10 @@ fn read_c_string(core: &mut Core, ptr: u64) -> Result<Option<String>, Error> {
     core.read(ptr, bytes.as_mut())?;
 
     // If the bytes read contain a null, return the preceding part as a string, otherwise None.
-    let return_value = bytes
-        .iter()
-        .position(|&b| b == 0)
-        .map(|p| String::from_utf8_lossy(&bytes[..p]).into_owned());
+    let return_value = CStr::from_bytes_until_nul(&bytes)
+        .map(|s| s.to_string_lossy().into_owned())
+        .ok();
+
     tracing::trace!("read_c_string() result = {:?}", return_value);
     Ok(return_value)
 }
