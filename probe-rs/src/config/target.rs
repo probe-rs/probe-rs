@@ -3,8 +3,9 @@ use crate::flashing::FlashLoader;
 use crate::{
     architecture::{
         arm::{
+            dp::DpAddress,
             sequences::{ArmDebugSequence, DefaultArmSequence},
-            DpAddress, FullyQualifiedApAddress,
+            FullyQualifiedApAddress,
         },
         riscv::sequences::{DefaultRiscvSequence, RiscvDebugSequence},
         xtensa::sequences::{DefaultXtensaSequence, XtensaDebugSequence},

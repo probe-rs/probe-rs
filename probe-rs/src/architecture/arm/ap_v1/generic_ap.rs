@@ -1,6 +1,6 @@
 //! Generic access port
 
-use crate::architecture::arm::communication_interface::RegisterParseError;
+use crate::architecture::arm::RegisterParseError;
 
 /// Describes the class of an access port defined in the [`ARM Debug Interface v5.2`](https://developer.arm.com/documentation/ihi0031/f/?lang=en) specification.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

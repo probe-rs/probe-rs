@@ -5,10 +5,10 @@ mod tools;
 use crate::{
     architecture::arm::{
         communication_interface::{DapProbe, UninitializedArmProbe},
-        dp::{Abort, Ctrl},
+        dp::{Abort, Ctrl, DpRegister},
         swo::poll_interval_from_buf_size,
-        ArmCommunicationInterface, ArmError, DapError, Pins, PortType, RawDapAccess, Register,
-        SwoAccess, SwoConfig, SwoMode,
+        ArmCommunicationInterface, ArmError, DapError, Pins, PortAddress, RawDapAccess, SwoAccess,
+        SwoConfig, SwoMode,
     },
     probe::{
         cmsisdap::commands::{
@@ -417,7 +417,7 @@ impl CmsisDap {
     fn read_ctrl_register(&mut self) -> Result<Ctrl, ArmError> {
         let response = commands::send_command(
             &mut self.device,
-            TransferRequest::read(PortType::DebugPort, Ctrl::ADDRESS),
+            TransferRequest::read(PortAddress::DebugPort(Ctrl::ADDRESS)),
         )
         .map_err(CmsisDapError::from)
         .map_err(DebugProbeError::from)?;
@@ -453,7 +453,7 @@ impl CmsisDap {
     fn write_abort(&mut self, abort: Abort) -> Result<(), ArmError> {
         let response = commands::send_command(
             &mut self.device,
-            TransferRequest::write(PortType::DebugPort, Abort::ADDRESS, abort.into()),
+            TransferRequest::write(PortAddress::DebugPort(Abort::ADDRESS), abort.into()),
         )
         .map_err(CmsisDapError::from)
         .map_err(DebugProbeError::from)?;
@@ -498,13 +498,13 @@ impl CmsisDap {
             }
 
             let mut transfers = TransferRequest::empty();
-            for command in batch.iter().copied() {
+            for command in batch.iter().cloned() {
                 match command {
-                    BatchCommand::Read(port, register) => {
-                        transfers.add_read(port, register as u8);
+                    BatchCommand::Read(port) => {
+                        transfers.add_read(port);
                     }
-                    BatchCommand::Write(port, register, value) => {
-                        transfers.add_write(port, register as u8, value);
+                    BatchCommand::Write(port, value) => {
+                        transfers.add_write(port, value);
                     }
                 }
             }
@@ -596,14 +596,15 @@ impl CmsisDap {
     fn batch_add(&mut self, command: BatchCommand) -> Result<Option<u32>, ArmError> {
         tracing::debug!("Adding command to batch: {}", command);
 
+        let command_is_read = matches!(command, BatchCommand::Read(_));
         self.batch.push(command);
 
         // We always immediately process any reads, which means there will never
         // be more than one read in a batch. We also process whenever the batch
         // is as long as can fit in one packet.
         let max_writes = (self.packet_size as usize - 3) / (1 + 4);
-        match command {
-            BatchCommand::Read(_, _) => self.process_batch(),
+        match command_is_read {
+            true => self.process_batch(),
             _ if self.batch.len() == max_writes => self.process_batch(),
             _ => Ok(None),
         }
@@ -925,8 +926,8 @@ impl RawDapAccess for CmsisDap {
     }
 
     /// Reads the DAP register on the specified port and address.
-    fn raw_read_register(&mut self, port: PortType, addr: u8) -> Result<u32, ArmError> {
-        let res = self.batch_add(BatchCommand::Read(port, addr as u16))?;
+    fn raw_read_register(&mut self, address: PortAddress) -> Result<u32, ArmError> {
+        let res = self.batch_add(BatchCommand::Read(address))?;
 
         // NOTE(unwrap): batch_add will always return Some if the last command is a read
         // and running the batch was successful.
@@ -934,17 +935,12 @@ impl RawDapAccess for CmsisDap {
     }
 
     /// Writes a value to the DAP register on the specified port and address.
-    fn raw_write_register(&mut self, port: PortType, addr: u8, value: u32) -> Result<(), ArmError> {
-        self.batch_add(BatchCommand::Write(port, addr as u16, value))
+    fn raw_write_register(&mut self, address: PortAddress, value: u32) -> Result<(), ArmError> {
+        self.batch_add(BatchCommand::Write(address, value))
             .map(|_| ())
     }
 
-    fn raw_write_block(
-        &mut self,
-        port: PortType,
-        register_address: u8,
-        values: &[u32],
-    ) -> Result<(), ArmError> {
+    fn raw_write_block(&mut self, address: PortAddress, values: &[u32]) -> Result<(), ArmError> {
         self.process_batch()?;
 
         // the overhead for a single packet is 6 bytes
@@ -962,8 +958,7 @@ impl RawDapAccess for CmsisDap {
         let data_chunk_len = max_packet_size_words as usize;
 
         for (i, chunk) in values.chunks(data_chunk_len).enumerate() {
-            let request =
-                TransferBlockRequest::write_request(register_address, port, Vec::from(chunk));
+            let request = TransferBlockRequest::write_request(address.clone(), Vec::from(chunk));
 
             tracing::debug!("Transfer block: chunk={}, len={} bytes", i, chunk.len() * 4);
 
@@ -978,12 +973,7 @@ impl RawDapAccess for CmsisDap {
         Ok(())
     }
 
-    fn raw_read_block(
-        &mut self,
-        port: PortType,
-        register_address: u8,
-        values: &mut [u32],
-    ) -> Result<(), ArmError> {
+    fn raw_read_block(&mut self, address: PortAddress, values: &mut [u32]) -> Result<(), ArmError> {
         self.process_batch()?;
 
         // the overhead for a single packet is 6 bytes
@@ -1001,8 +991,7 @@ impl RawDapAccess for CmsisDap {
         let data_chunk_len = max_packet_size_words as usize;
 
         for (i, chunk) in values.chunks_mut(data_chunk_len).enumerate() {
-            let request =
-                TransferBlockRequest::read_request(register_address, port, chunk.len() as u16);
+            let request = TransferBlockRequest::read_request(address.clone(), chunk.len() as u16);
 
             tracing::debug!("Transfer block: chunk={}, len={} bytes", i, chunk.len() * 4);
 

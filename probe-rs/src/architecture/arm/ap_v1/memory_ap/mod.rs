@@ -16,8 +16,8 @@ mod amba_axi5;
 pub use registers::DataSize;
 use registers::{AddressIncrement, BaseAddrFormat, BASE, BASE2, DRW, TAR, TAR2};
 
-use super::{AccessPortError, AccessPortType, ApAccess, ApRegAccess};
-use crate::architecture::arm::{ArmError, DapAccess, FullyQualifiedApAddress, Register};
+use super::{AccessPortError, AccessPortType, ApAccess, ApRegAccess, Register};
+use crate::architecture::arm::{ArmError, DapAccess, FullyQualifiedApAddress};
 
 /// Implements all default registers of a memory AP to the given type.
 ///
@@ -180,7 +180,7 @@ macro_rules! memory_aps {
                 interface: &mut I,
                 address: &FullyQualifiedApAddress,
             ) -> Result<Self, ArmError> {
-                use crate::architecture::arm::{ap_v1::IDR, Register};
+                use crate::architecture::arm::ap_v1::{IDR, Register};
                 let idr: IDR = interface
                     .read_raw_ap_register(address, IDR::ADDRESS)?
                     .try_into()?;

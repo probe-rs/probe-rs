@@ -11,10 +11,10 @@ use crate::{
         ap_v1::{memory_ap::MemoryApType, AccessPortType, ApAccess, GenericAp, IDR},
         communication_interface::{FlushableArmAccess, Initialized},
         core::armv8m::{Aircr, Demcr, Dhcsr},
-        dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
+        dp::{Abort, Ctrl, DpAccess, DpAddress, Select, DPIDR},
         memory::ArmMemoryInterface,
         sequences::ArmDebugSequence,
-        ArmCommunicationInterface, ArmError, DapAccess, DpAddress, FullyQualifiedApAddress, Pins,
+        ArmCommunicationInterface, ArmError, DapAccess, FullyQualifiedApAddress, Pins,
     },
     core::MemoryMappedRegister,
 };
@@ -582,30 +582,38 @@ impl ArmDebugSequence for MIMXRT5xxS {
         interface: &mut ArmCommunicationInterface<Initialized>,
         dp: DpAddress,
     ) -> Result<(), ArmError> {
-        const SW_DP_ABORT: u8 = 0x0;
-        const DP_CTRL_STAT: u8 = 0x4;
-        const DP_SELECT: u8 = 0x8;
+        let mut abort = Abort::default();
+        abort.set_wderrclr(true);
+        abort.set_orunerrclr(true);
+        abort.set_stkcmpclr(true);
+        abort.set_stkerrclr(true);
 
         tracing::trace!("MIMXRT5xxS debug port start");
 
         // Clear WDATAERR, STICKYORUN, STICKYCMP, and STICKYERR bits of CTRL/STAT Register by write to ABORT register
-        interface.write_raw_dp_register(dp, SW_DP_ABORT, 0x0000001E)?;
+        interface.write_dp_register(dp, abort)?;
 
         // Switch to DP Register Bank 0
-        interface.write_raw_dp_register(dp, DP_SELECT, 0x00000000)?;
+        interface.write_dp_register(dp, Select(0))?;
 
         // Read DP CTRL/STAT Register and check if CSYSPWRUPACK and CDBGPWRUPACK bits are set
-        let powered_down =
-            (interface.read_raw_dp_register(dp, DP_CTRL_STAT)? & 0xA0000000) != 0xA0000000;
+        let mut ctrl: Ctrl = interface.read_dp_register(dp)?;
+        let powered_down = !ctrl.csyspwrupack() || !ctrl.cdbgpwrupack();
         if powered_down {
             tracing::trace!("MIMXRT5xxS is powered down, so requesting power-up");
 
             // Request Debug/System Power-Up
-            interface.write_raw_dp_register(dp, DP_CTRL_STAT, 0x50000000)?;
+            ctrl.set_csyspwrupreq(true);
+            ctrl.set_cdbgpwrupreq(true);
+            interface.write_dp_register(dp, ctrl)?;
 
             // Wait for Power-Up Request to be acknowledged
             let start = Instant::now();
-            while (interface.read_raw_dp_register(dp, DP_CTRL_STAT)? & 0xA0000000) != 0xA0000000 {
+            loop {
+                ctrl = interface.read_dp_register(dp)?;
+                if ctrl.csyspwrupack() && ctrl.cdbgpwrupack() {
+                    break;
+                }
                 if start.elapsed() >= Duration::from_secs(1) {
                     return Err(ArmError::Timeout);
                 }
@@ -619,10 +627,11 @@ impl ArmDebugSequence for MIMXRT5xxS {
         // CMSIS Pack code uses: <control if="(__protocol &amp; 0xFFFF) == 2">
         {
             // Init AP Transfer Mode, Transaction Counter, and Lane Mask (Normal Transfer Mode, Include all Byte Lanes)
-            interface.write_raw_dp_register(dp, DP_CTRL_STAT, 0x50000F00)?;
+            ctrl.set_mask_lane(0xF);
+            interface.write_dp_register(dp, ctrl)?;
 
             // Clear WDATAERR, STICKYORUN, STICKYCMP, and STICKYERR bits of CTRL/STAT Register by write to ABORT register
-            interface.write_raw_dp_register(dp, SW_DP_ABORT, 0x0000001E)?;
+            interface.write_dp_register(dp, abort)?;
 
             let ap = FullyQualifiedApAddress::v1_with_dp(dp, 0);
             self.enable_debug_mailbox(interface, dp, &ap)?;

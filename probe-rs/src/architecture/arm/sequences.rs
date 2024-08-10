@@ -12,7 +12,7 @@ use probe_rs_target::CoreType;
 
 use crate::{
     architecture::arm::{
-        dp::{DLPIDR, TARGETID},
+        dp::{DpRegister, DLPIDR, TARGETID},
         ArmProbeInterface,
     },
     probe::{DebugProbeError, WireProtocol},
@@ -25,13 +25,12 @@ use super::{
     communication_interface::{DapProbe, Initialized},
     component::{TraceFunnel, TraceSink},
     core::cortex_m::Dhcsr,
-    dp::{Abort, Ctrl, DebugPortError, DpAccess, Select, DPIDR},
+    dp::{Abort, Ctrl, DebugPortError, DpAccess, DpAddress, Select, DPIDR},
     memory::{
         romtable::{CoresightComponent, PeripheralType},
         ArmMemoryInterface,
     },
-    ArmCommunicationInterface, ArmError, DpAddress, FullyQualifiedApAddress, Pins, PortType,
-    Register,
+    ArmCommunicationInterface, ArmError, FullyQualifiedApAddress, Pins,
 };
 
 /// An error occurred when executing an ARM debug sequence
@@ -826,15 +825,15 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     fn debug_port_stop(&self, interface: &mut dyn DapProbe, dp: DpAddress) -> Result<(), ArmError> {
         tracing::info!("Powering down debug port {dp:x?}");
         // Select Bank 0
-        interface.raw_write_register(PortType::DebugPort, Select::ADDRESS, 0)?;
+        interface.raw_write_register(Select::ADDRESS.into(), 0)?;
 
         // De-assert debug power request
-        interface.raw_write_register(PortType::DebugPort, Ctrl::ADDRESS, 0)?;
+        interface.raw_write_register(Ctrl::ADDRESS.into(), 0)?;
 
         // Wait for the power domains to go away
         let start = Instant::now();
         loop {
-            let ctrl = interface.raw_read_register(PortType::DebugPort, Ctrl::ADDRESS)?;
+            let ctrl = interface.raw_read_register(Ctrl::ADDRESS.into())?;
             let ctrl = Ctrl(ctrl);
             if !(ctrl.csyspwrupack() || ctrl.cdbgpwrupack()) {
                 return Ok(());
@@ -905,7 +904,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         tracing::debug!("Reading DPIDR to enable SWD interface");
 
         // Read DPIDR to enable SWD interface.
-        let dpidr = interface.raw_read_register(PortType::DebugPort, DPIDR::ADDRESS)?;
+        let dpidr = interface.raw_read_register(DPIDR::ADDRESS.into())?;
 
         tracing::debug!("Result of DPIDR read: {:#x?}", dpidr);
 
@@ -917,7 +916,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         abort.set_stkcmpclr(true);
 
         // DPBANKSEL does not matter for ABORT
-        interface.raw_write_register(PortType::DebugPort, Abort::ADDRESS, abort.0)?;
+        interface.raw_write_register(Abort::ADDRESS.into(), abort.0)?;
         interface.raw_flush()?;
 
         // Check that we are connected to the right DP
@@ -925,14 +924,13 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         if let DpAddress::Multidrop(targetsel) = dp {
             tracing::debug!("Checking TARGETID and DLPIDR match");
             // Select DP Bank 2
-            interface.raw_write_register(PortType::DebugPort, Select::ADDRESS, 2)?;
+            interface.raw_write_register(Select::ADDRESS.into(), 2)?;
 
-            let target_id =
-                interface.raw_read_register(PortType::DebugPort, TARGETID::ADDRESS & 0xf)?;
+            let target_id = interface.raw_read_register(TARGETID::ADDRESS.into())?;
 
             // Select DP Bank 3
-            interface.raw_write_register(PortType::DebugPort, Select::ADDRESS, 3)?;
-            let dlpidr = interface.raw_read_register(PortType::DebugPort, DLPIDR::ADDRESS & 0xf)?;
+            interface.raw_write_register(Select::ADDRESS.into(), 3)?;
+            let dlpidr = interface.raw_read_register(DLPIDR::ADDRESS.into())?;
 
             const TARGETID_MASK: u32 = 0x0FFF_FFFF;
             const DLPIDR_MASK: u32 = 0xF000_0000;
@@ -952,10 +950,8 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
             }
         }
 
-        interface.raw_write_register(PortType::DebugPort, Select::ADDRESS, 0)?;
-        let ctrl_stat = interface
-            .raw_read_register(PortType::DebugPort, Ctrl::ADDRESS & 0xf)
-            .map(Ctrl);
+        interface.raw_write_register(Select::ADDRESS.into(), 0)?;
+        let ctrl_stat = interface.raw_read_register(Ctrl::ADDRESS.into()).map(Ctrl);
 
         match ctrl_stat {
             Ok(ctrl_stat) => {

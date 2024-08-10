@@ -1,13 +1,18 @@
 use crate::{
     architecture::arm::{
         ap_v1::valid_access_ports,
+        //ap_v2,
         dp::{
             Abort, Ctrl, DebugPortError, DebugPortId, DebugPortVersion, DpAccess, Select, BASEPTR0,
             BASEPTR1, DPIDR, DPIDR1,
         },
         memory::{adi_v5_memory_interface::ADIMemoryInterface, ArmMemoryInterface, Component},
         sequences::{ArmDebugSequence, DefaultArmSequence},
-        ArmError, DapAccess, DpAddress, FullyQualifiedApAddress, PortType, RawDapAccess, SwoAccess,
+        ArmError,
+        DapAccess,
+        FullyQualifiedApAddress,
+        RawDapAccess,
+        SwoAccess,
         SwoConfig,
     },
     probe::{DebugProbe, DebugProbeError, Probe},
@@ -20,6 +25,11 @@ use std::{
     fmt::Debug,
     sync::Arc,
     time::Duration,
+};
+
+use super::{
+    dp::{DpAddress, DpRegisterAddress},
+    ApAddress,
 };
 
 /// An error in the communication with an access port or
@@ -41,29 +51,6 @@ pub enum DapError {
     /// The parity bit on the read request was incorrect.
     #[error("Incorrect parity on READ request.")]
     IncorrectParity,
-}
-
-/// A trait to be implemented on register types for typed device access.
-pub trait Register:
-    Clone + TryFrom<u32, Error = RegisterParseError> + Into<u32> + Sized + Debug
-{
-    /// The address of the register (in bytes).
-    const ADDRESS: u8;
-    /// The name of the register as string.
-    const NAME: &'static str;
-}
-
-#[derive(Debug, thiserror::Error)]
-#[error("Failed to parse register {name} from {value:#010x}")]
-pub struct RegisterParseError {
-    name: &'static str,
-    value: u32,
-}
-
-impl RegisterParseError {
-    pub fn new(name: &'static str, value: u32) -> Self {
-        RegisterParseError { name, value }
-    }
 }
 
 /// To be implemented by debug probe drivers that support debugging ARM cores.
@@ -495,17 +482,25 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
                 let idr1: DPIDR1 = self.read_dp_register(dp)?;
                 let base_ptr0: BASEPTR0 = self.read_dp_register(dp)?;
                 let base_ptr1: BASEPTR1 = self.read_dp_register(dp)?;
-                let base_ptr_str = base_ptr0.valid().then(|| {
-                    format!(
-                        "0x{:x}",
-                        u64::from(base_ptr1.ptr()) | u64::from(base_ptr0.ptr() << 12)
-                    )
-                });
+                let base_ptr = base_ptr0
+                    .valid()
+                    .then(|| u64::from(base_ptr1.ptr()) | u64::from(base_ptr0.ptr() << 12));
                 tracing::info!(
                     "DPv3 detected: DPIDR1:{:?} BASE_PTR: {}",
                     idr1,
-                    base_ptr_str.as_deref().unwrap_or("not valid")
+                    base_ptr
+                        .map(|ptr| format!("0x{:x}", ptr))
+                        .as_deref()
+                        .unwrap_or("not valid")
                 );
+
+                let Some(base_ptr) = base_ptr else {
+                    return Err(ArmError::Other(
+                        "No base ROM table base address found for the root AP".to_owned(),
+                    ));
+                };
+                tracing::debug!("reading rom table at {:x}", base_ptr);
+                //let access_ports = ap_v2::scan_rom_tables(self, base_ptr)?;
 
                 return Err(ArmError::DebugPort(DebugPortError::Unsupported(
                     "Unsupported version (DPv3)".to_string(),
@@ -536,7 +531,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
     fn select_dp_and_dp_bank(
         &mut self,
         dp: DpAddress,
-        dp_register_address: u8,
+        dp_register_address: &DpRegisterAddress,
     ) -> Result<(), ArmError> {
         let dp_state = self.select_dp(dp)?;
 
@@ -545,8 +540,10 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
         // On ADIv5, only address 0x4 is banked, the rest are don't care.
         // On ADIv6, address 0x0 and 0x4 are banked, the rest are don't care.
 
-        let bank = dp_register_address >> 4;
-        let addr = dp_register_address & 0xF;
+        let &DpRegisterAddress {
+            bank,
+            address: addr,
+        } = dp_register_address;
 
         if addr != 0 && addr != 4 {
             return Ok(());
@@ -641,23 +638,24 @@ impl SwoAccess for ArmCommunicationInterface<Initialized> {
 }
 
 impl DapAccess for ArmCommunicationInterface<Initialized> {
-    fn read_raw_dp_register(&mut self, dp: DpAddress, address: u8) -> Result<u32, ArmError> {
-        self.select_dp_and_dp_bank(dp, address)?;
-        let result = self
-            .probe_mut()
-            .raw_read_register(PortType::DebugPort, address & 0xf)?;
+    fn read_raw_dp_register(
+        &mut self,
+        dp: DpAddress,
+        address: DpRegisterAddress,
+    ) -> Result<u32, ArmError> {
+        self.select_dp_and_dp_bank(dp, &address)?;
+        let result = self.probe_mut().raw_read_register(address.into())?;
         Ok(result)
     }
 
     fn write_raw_dp_register(
         &mut self,
         dp: DpAddress,
-        address: u8,
+        address: DpRegisterAddress,
         value: u32,
     ) -> Result<(), ArmError> {
-        self.select_dp_and_dp_bank(dp, address)?;
-        self.probe_mut()
-            .raw_write_register(PortType::DebugPort, address, value)?;
+        self.select_dp_and_dp_bank(dp, &address)?;
+        self.probe_mut().raw_write_register(address.into(), value)?;
         Ok(())
     }
 
@@ -670,7 +668,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
 
         let result = self
             .probe_mut()
-            .raw_read_register(PortType::AccessPort, address & 0xf)?;
+            .raw_read_register(ApAddress::V1(address).into())?;
 
         Ok(result)
     }
@@ -684,7 +682,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
         self.select_ap_and_ap_bank(ap, address)?;
 
         self.probe_mut()
-            .raw_read_block(PortType::AccessPort, address, values)?;
+            .raw_read_block(ApAddress::V1(address).into(), values)?;
         Ok(())
     }
 
@@ -697,7 +695,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
         self.select_ap_and_ap_bank(ap, address)?;
 
         self.probe_mut()
-            .raw_write_register(PortType::AccessPort, address, value)?;
+            .raw_write_register(ApAddress::V1(address).into(), value)?;
 
         Ok(())
     }
@@ -711,7 +709,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
         self.select_ap_and_ap_bank(ap, address)?;
 
         self.probe_mut()
-            .raw_write_block(PortType::AccessPort, address, values)?;
+            .raw_write_block(ApAddress::V1(address).into(), values)?;
         Ok(())
     }
 }
