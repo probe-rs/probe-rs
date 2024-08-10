@@ -26,7 +26,7 @@ use time::UtcOffset;
 use crate::util::common_options::{BinaryDownloadOptions, ProbeOptions};
 use crate::util::flash::{build_loader, run_flash_download};
 use crate::util::rtt::client::RttClient;
-use crate::util::rtt::{self, ChannelDataCallbacks, RttChannelConfig, RttConfig};
+use crate::util::rtt::{ChannelDataCallbacks, RttChannelConfig, RttConfig};
 use crate::FormatOptions;
 
 #[derive(clap::Parser)]
@@ -96,7 +96,25 @@ impl Cmd {
 
         let (mut session, probe_options) =
             self.shared_options.probe_options.simple_attach(lister)?;
-        let core_id = rtt::get_target_core_id(&mut session, &self.shared_options.path);
+
+        let rtt_scan_regions = match self.shared_options.rtt_scan_memory {
+            true => session.target().rtt_scan_regions.clone(),
+            false => ScanRegion::Ranges(vec![]),
+        };
+
+        let mut rtt_config = RttConfig::default();
+        rtt_config.channels.push(RttChannelConfig {
+            channel_number: Some(0),
+            show_location: !self.shared_options.no_location,
+            log_format: self.shared_options.log_format.clone(),
+            ..Default::default()
+        });
+
+        let elf = fs::read(&self.shared_options.path)?;
+        let mut rtt_client =
+            RttClient::new(Some(&elf), session.target(), rtt_config, rtt_scan_regions)?;
+
+        let core_id = rtt_client.core_id();
 
         if run_download {
             let loader = build_loader(
@@ -120,35 +138,14 @@ impl Cmd {
                 .reset_and_halt(Duration::from_millis(100))?;
         }
 
-        let rtt_scan_regions = match self.shared_options.rtt_scan_memory {
-            true => session.target().rtt_scan_regions.clone(),
-            false => ScanRegion::Ranges(vec![]),
-        };
+        rtt_client.timezone_offset = timestamp_offset;
 
-        let mut rtt_config = RttConfig::default();
-        rtt_config.channels.push(RttChannelConfig {
-            channel_number: Some(0),
-            show_location: !self.shared_options.no_location,
-            log_format: self.shared_options.log_format.clone(),
-            ..Default::default()
-        });
-
-        let elf = fs::read(&self.shared_options.path)?;
-
-        let rtt_client = {
-            let mut client = RttClient::new(Some(&elf), rtt_config, rtt_scan_regions)?;
-
-            client.timezone_offset = timestamp_offset;
-
-            if run_download {
-                // We ended up resetting the MCU, throw away old RTT data and prevent
-                // printing warnings when it initialises.
-                let mut core = session.core(core_id)?;
-                client.clear_control_block(&mut core)?;
-            }
-
-            client
-        };
+        if run_download {
+            // We ended up resetting the MCU, throw away old RTT data and prevent
+            // printing warnings when it initialises.
+            let mut core = session.core(core_id)?;
+            rtt_client.clear_control_block(&mut core)?;
+        }
 
         run_mode.run(
             session,

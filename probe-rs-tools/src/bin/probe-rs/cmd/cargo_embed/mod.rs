@@ -29,7 +29,7 @@ use crate::util::common_options::{BinaryDownloadOptions, OperationError, ProbeOp
 use crate::util::flash::{build_loader, run_flash_download};
 use crate::util::logging::setup_logging;
 use crate::util::rtt::client::RttClient;
-use crate::util::rtt::{self, RttChannelConfig, RttConfig};
+use crate::util::rtt::{RttChannelConfig, RttConfig};
 use crate::util::{cargo::build_artifact, common_options::CargoOptions, logging};
 use crate::FormatOptions;
 
@@ -249,7 +249,20 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
         )?;
     }
 
-    let core_id = rtt::get_target_core_id(&mut session, &path);
+    // FIXME: we should probably figure out in a different way which core we can work with.
+    // It seems arbitrary that we reset the target using the same core we use for polling RTT.
+    let elf = fs::read(&path)?;
+    let core_id = {
+        let client = RttClient::new(
+            Some(&elf),
+            session.target(),
+            RttConfig::default(),
+            ScanRegion::Ram,
+        )?;
+
+        client.core_id()
+    };
+
     if config.reset.enabled || config.flashing.enabled {
         let mut core = session.core(core_id)?;
         core.reset_and_halt(Duration::from_millis(500))?;
@@ -287,11 +300,11 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
 
     if config.rtt.enabled {
         // GDB is also using the session, so we do not lock on the outside.
-        run_rttui_app(name, &session, core_id, config, &path, offset)?;
+        run_rttui_app(name, &session, config, &elf, offset)?;
     } else if should_resume_core(&config) {
         // If we don't run the app, we have to resume the core somewhere else.
         let mut session_handle = session.lock();
-        let mut core = session_handle.core(core_id)?;
+        let mut core = session_handle.core(0)?;
 
         if core.core_halted()? {
             core.run()?;
@@ -322,9 +335,8 @@ fn should_resume_core(config: &config::Config) -> bool {
 fn run_rttui_app(
     name: &str,
     session: &FairMutex<Session>,
-    core_id: usize,
     config: config::Config,
-    elf_path: &Path,
+    elf: &[u8],
     timezone_offset: UtcOffset,
 ) -> anyhow::Result<()> {
     // Transform channel configurations
@@ -372,9 +384,14 @@ fn run_rttui_app(
         });
     }
 
-    let elf = fs::read(elf_path)?;
+    let mut client = RttClient::new(
+        Some(&elf),
+        session.lock().target(),
+        rtt_config.clone(),
+        ScanRegion::Ram,
+    )?;
 
-    let mut client = RttClient::new(Some(&elf), rtt_config.clone(), ScanRegion::Ram)?;
+    let core_id = client.core_id();
 
     if config.flashing.enabled || config.reset.enabled {
         let mut session_handle = session.lock();

@@ -42,8 +42,6 @@ impl CombinedCoreState {
         target: &'probe Target,
         arm_interface: &'probe mut Box<dyn ArmProbeInterface>,
     ) -> Result<Core<'probe>, Error> {
-        let memory_regions = &target.memory_map;
-
         let name = &target.cores[self.id].name;
 
         let memory = arm_interface.memory_interface(&self.arm_memory_ap())?;
@@ -61,13 +59,13 @@ impl CombinedCoreState {
             SpecificCoreState::Armv6m(s) => Core::new(
                 self.id,
                 name,
-                memory_regions,
+                target,
                 crate::architecture::arm::armv6m::Armv6m::new(memory, s, debug_sequence)?,
             ),
             SpecificCoreState::Armv7a(s) => Core::new(
                 self.id,
                 name,
-                memory_regions,
+                target,
                 crate::architecture::arm::armv7a::Armv7a::new(
                     memory,
                     s,
@@ -78,13 +76,13 @@ impl CombinedCoreState {
             SpecificCoreState::Armv7m(s) | SpecificCoreState::Armv7em(s) => Core::new(
                 self.id,
                 name,
-                memory_regions,
+                target,
                 crate::architecture::arm::armv7m::Armv7m::new(memory, s, debug_sequence)?,
             ),
             SpecificCoreState::Armv8a(s) => Core::new(
                 self.id,
                 name,
-                memory_regions,
+                target,
                 crate::architecture::arm::armv8a::Armv8a::new(
                     memory,
                     s,
@@ -96,7 +94,7 @@ impl CombinedCoreState {
             SpecificCoreState::Armv8m(s) => Core::new(
                 self.id,
                 name,
-                memory_regions,
+                target,
                 crate::architecture::arm::armv8m::Armv8m::new(memory, s, debug_sequence)?,
             ),
             _ => {
@@ -161,7 +159,6 @@ impl CombinedCoreState {
         target: &'probe Target,
         mut interface: RiscvCommunicationInterface<'probe>,
     ) -> Result<Core<'probe>, Error> {
-        let memory_regions = &target.memory_map;
         let name = &target.cores[self.id].name;
 
         let ResolvedCoreOptions::Riscv { options, sequence } = &self.core_state.core_access_options
@@ -190,7 +187,7 @@ impl CombinedCoreState {
         Ok(Core::new(
             self.id,
             name,
-            memory_regions,
+            target,
             crate::architecture::riscv::Riscv32::new(interface, s, debug_sequence)?,
         ))
     }
@@ -200,7 +197,6 @@ impl CombinedCoreState {
         target: &'probe Target,
         interface: XtensaCommunicationInterface<'probe>,
     ) -> Result<Core<'probe>, Error> {
-        let memory_regions = &target.memory_map;
         let name = &target.cores[self.id].name;
 
         let ResolvedCoreOptions::Xtensa { sequence, .. } = &self.core_state.core_access_options
@@ -222,7 +218,7 @@ impl CombinedCoreState {
         Ok(Core::new(
             self.id,
             name,
-            memory_regions,
+            target,
             crate::architecture::xtensa::Xtensa::new(interface, s, debug_sequence)?,
         ))
     }

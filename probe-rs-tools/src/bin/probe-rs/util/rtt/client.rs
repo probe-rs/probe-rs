@@ -6,7 +6,7 @@ use crate::util::rtt::{
 };
 use probe_rs::{
     rtt::{Error, Rtt, ScanRegion},
-    Core,
+    Core, Target,
 };
 use time::UtcOffset;
 
@@ -18,11 +18,13 @@ pub struct RttClient {
     try_attaching: bool,
     pub timezone_offset: UtcOffset,
     polled_data: bool,
+    core_id: usize,
 }
 
 impl RttClient {
     pub fn new(
         elf: Option<&[u8]>,
+        target: &Target,
         rtt_config: RttConfig,
         scan_region: ScanRegion,
     ) -> Result<Self, Error> {
@@ -34,11 +36,13 @@ impl RttClient {
             try_attaching: true,
             timezone_offset: UtcOffset::UTC,
             polled_data: false,
+            core_id: 0,
         };
 
         if let Some(elf) = elf {
             if let Some(address) = RttActiveTarget::get_rtt_symbol_from_bytes(elf) {
                 this.scan_region = ScanRegion::Exact(address);
+                this.core_id = target.core_index_by_address(address).unwrap_or(0);
             }
             this.defmt_data = DefmtState::try_from_bytes(elf)?.map(Arc::new);
         }
@@ -179,5 +183,9 @@ impl RttClient {
         self.target
             .as_ref()
             .map_or(&[], |t| t.active_down_channels.as_slice())
+    }
+
+    pub(crate) fn core_id(&self) -> usize {
+        self.core_id
     }
 }

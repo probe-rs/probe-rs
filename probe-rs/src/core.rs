@@ -214,7 +214,7 @@ where
 pub struct Core<'probe> {
     id: usize,
     name: &'probe str,
-    memory_regions: &'probe [MemoryRegion],
+    target: &'probe Target,
 
     inner: Box<dyn CoreInterface + 'probe>,
 }
@@ -241,22 +241,28 @@ impl<'probe> Core<'probe> {
     pub(crate) fn new(
         id: usize,
         name: &'probe str,
-        memory_regions: &'probe [MemoryRegion],
+        target: &'probe Target,
         core: impl CoreInterface + 'probe,
     ) -> Core<'probe> {
         Self {
             id,
             name,
-            memory_regions,
+            target,
             inner: Box::new(core),
         }
     }
 
-    /// Return the memory regions associated with this core.
+    /// Returns the memory regions associated with this core.
     pub fn memory_regions(&self) -> impl Iterator<Item = &MemoryRegion> {
-        self.memory_regions
+        self.target
+            .memory_map
             .iter()
             .filter(|r| r.cores().iter().any(|m| m == self.name))
+    }
+
+    /// Returns the target descriptor of the current `Session`.
+    pub fn target(&self) -> &Target {
+        self.target
     }
 
     /// Creates a new [`CoreState`]

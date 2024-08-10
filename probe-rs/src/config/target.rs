@@ -153,13 +153,20 @@ impl Target {
         self.flash_algorithms.iter().find(|a| a.name == name)
     }
 
-    /// Gets the core index from the core name
-    pub(crate) fn core_index_by_name(&self, name: &str) -> Option<usize> {
+    /// Returns the core index from the core name
+    pub fn core_index_by_name(&self, name: &str) -> Option<usize> {
         self.cores.iter().position(|c| c.name == name)
     }
 
-    /// Gets the first found [MemoryRegion] that contains the given address
-    pub(crate) fn get_memory_region_by_address(&self, address: u64) -> Option<&MemoryRegion> {
+    /// Returns the core index from the core name
+    pub fn core_index_by_address(&self, address: u64) -> Option<usize> {
+        let target_memory = self.memory_region_by_address(address)?;
+        let core_name = target_memory.cores().first()?;
+        self.core_index_by_name(core_name)
+    }
+
+    /// Returns the first found [MemoryRegion] that contains the given address
+    pub fn memory_region_by_address(&self, address: u64) -> Option<&MemoryRegion> {
         self.memory_map
             .iter()
             .find(|region| region.contains(address))

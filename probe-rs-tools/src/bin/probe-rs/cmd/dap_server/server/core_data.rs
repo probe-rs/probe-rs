@@ -191,6 +191,7 @@ impl<'p> CoreHandle<'p> {
 
             let mut client = RttClient::new(
                 Some(&elf),
+                self.core.target(),
                 rtt_config.clone(),
                 // Do not scan the memory for the control block.
                 ScanRegion::Ranges(vec![]),
