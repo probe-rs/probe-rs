@@ -17,7 +17,7 @@ use std::{path::PathBuf, sync::mpsc::TryRecvError};
 
 use crate::{
     cmd::cargo_embed::rttui::{channel::ChannelData, tab::TabConfig},
-    util::rtt::RttActiveTarget,
+    util::rtt::client::RttClient,
 };
 
 use super::super::config;
@@ -42,8 +42,10 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(rtt: RttActiveTarget, config: config::Config, logname: String) -> Result<Self> {
+    pub fn new(rtt: RttClient, config: config::Config, logname: String) -> Result<Self> {
         let mut tab_config = config.rtt.tabs;
+
+        let rtt = rtt.into_target();
 
         // Create channel states
         let mut up_channels = Vec::new();

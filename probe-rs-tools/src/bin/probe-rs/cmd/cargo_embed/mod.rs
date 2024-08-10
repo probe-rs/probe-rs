@@ -435,7 +435,7 @@ fn run_rttui_app(
 
     let logname = format!("{name}_{chip_name}_{timestamp_millis}");
     // TODO: work with the client instead of unwrapping it
-    let mut app = rttui::app::App::new(rtt.into_target(), config, logname)?;
+    let mut app = rttui::app::App::new(rtt, config, logname)?;
     loop {
         app.render();
 
