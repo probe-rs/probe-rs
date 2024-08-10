@@ -491,6 +491,9 @@ pub enum Error {
 
     /// The read pointer changed unexpectedly.
     ReadPointerChanged,
+
+    /// Channel {0} does not exist.
+    MissingChannel(usize),
 }
 
 fn display_list(list: &[Rtt]) -> String {

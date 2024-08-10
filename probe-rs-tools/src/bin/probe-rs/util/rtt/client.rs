@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
-use crate::util::rtt::{ChannelDataCallbacks, DefmtState, RttActiveTarget, RttConfig};
+use crate::util::rtt::{
+    ChannelDataCallbacks, DefmtState, RttActiveTarget, RttActiveUpChannel, RttConfig,
+};
 use probe_rs::{
     rtt::{Error, Rtt, ScanRegion},
     Core,
@@ -89,6 +91,22 @@ impl RttClient {
         self.handle_poll_result(result)
     }
 
+    pub fn poll_channel(
+        &mut self,
+        core: &mut Core,
+        channel: usize,
+        collector: &mut impl ChannelDataCallbacks,
+    ) -> Result<(), Error> {
+        self.try_attach(core)?;
+
+        let Some(target) = self.target.as_mut() else {
+            return Ok(());
+        };
+
+        let result = target.poll_channel_fallible(core, channel, collector);
+        self.handle_poll_result(result)
+    }
+
     fn handle_poll_result(&mut self, result: Result<(), Error>) -> Result<(), Error> {
         match result {
             Ok(()) => self.polled_data = true,
@@ -137,5 +155,11 @@ impl RttClient {
 
     pub(crate) fn into_target(self) -> RttActiveTarget {
         self.target.unwrap()
+    }
+
+    pub(crate) fn up_channels(&self) -> &[RttActiveUpChannel] {
+        self.target
+            .as_ref()
+            .map_or(&[], |t| t.active_up_channels.as_slice())
     }
 }

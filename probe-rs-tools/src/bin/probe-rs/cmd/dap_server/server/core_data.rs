@@ -205,12 +205,14 @@ impl<'p> CoreHandle<'p> {
             return Ok(());
         }
 
-        // TODO: we should probably use the RttClient all the way, then we can clean up this allow.
-        #[allow(clippy::unwrap_used)] // We know the client is Some() because of the if let above.
-        let target_rtt = self.core_data.rtt_client.take().unwrap().into_target();
+        // Now that we're attached, we can transform our state.
+        let Some(client) = self.core_data.rtt_client.take() else {
+            return Ok(());
+        };
 
-        let mut debugger_rtt_channels: Vec<debug_rtt::DebuggerRttChannel> = vec![];
-        for up_channel in target_rtt.active_up_channels.iter() {
+        let mut debugger_rtt_channels = vec![];
+
+        for up_channel in client.up_channels() {
             debugger_rtt_channels.push(debug_rtt::DebuggerRttChannel {
                 channel_number: up_channel.number(),
                 // This value will eventually be set to true by a VSCode client request "rttWindowOpened"
@@ -224,7 +226,7 @@ impl<'p> CoreHandle<'p> {
         }
 
         self.core_data.rtt_connection = Some(debug_rtt::RttConnection {
-            target_rtt,
+            client,
             debugger_rtt_channels,
         });
 

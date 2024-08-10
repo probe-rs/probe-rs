@@ -1,4 +1,4 @@
-use crate::util::rtt;
+use crate::util::rtt::client::RttClient;
 use crate::{
     cmd::dap_server::{
         debug_adapter::{dap::adapter::*, protocol::ProtocolAdapter},
@@ -12,7 +12,7 @@ use probe_rs::{rtt::Error, Core};
 /// Manage the active RTT target for a specific SessionData, as well as provide methods to reliably move RTT from target, through the debug_adapter, to the client.
 pub struct RttConnection {
     /// The connection to RTT on the target
-    pub(crate) target_rtt: rtt::RttActiveTarget,
+    pub(crate) client: RttClient,
     /// Some status fields and methods to ensure continuity in flow of data from target to debugger to client.
     pub(crate) debugger_rtt_channels: Vec<DebuggerRttChannel>,
 }
@@ -28,14 +28,14 @@ impl RttConnection {
         let mut at_least_one_channel_had_data = false;
         for debugger_rtt_channel in self.debugger_rtt_channels.iter_mut() {
             at_least_one_channel_had_data |=
-                debugger_rtt_channel.poll_rtt_data(target_core, debug_adapter, &mut self.target_rtt)
+                debugger_rtt_channel.poll_rtt_data(target_core, debug_adapter, &mut self.client)
         }
         at_least_one_channel_had_data
     }
 
     /// Clean up the RTT connection, restoring the state changes that we made.
     pub fn clean_up(&mut self, target_core: &mut Core) -> Result<(), DebuggerError> {
-        self.target_rtt
+        self.client
             .clean_up(target_core)
             .map_err(|err| DebuggerError::Other(anyhow!(err)))?;
         Ok(())
@@ -56,15 +56,11 @@ impl DebuggerRttChannel {
         &mut self,
         core: &mut Core,
         debug_adapter: &mut DebugAdapter<P>,
-        rtt_target: &mut rtt::RttActiveTarget,
+        client: &mut RttClient,
     ) -> bool {
         if !self.has_client_window {
             return false;
         }
-
-        let Some(rtt_channel) = rtt_target.active_up_channels.get_mut(self.channel_number) else {
-            return false;
-        };
 
         struct StringCollector {
             data: Option<String>,
@@ -79,7 +75,7 @@ impl DebuggerRttChannel {
 
         let mut out = StringCollector { data: None };
 
-        if let Err(e) = rtt_channel.poll_process_rtt_data(core, &mut out) {
+        if let Err(e) = client.poll_channel(core, self.channel_number, &mut out) {
             debug_adapter
                 .show_error_message(&DebuggerError::Other(anyhow!(e)))
                 .ok();

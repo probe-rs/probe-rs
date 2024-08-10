@@ -592,6 +592,22 @@ impl RttActiveTarget {
         Ok(())
     }
 
+    /// Polls the RTT target on all channels and returns available data.
+    /// An error on any channel will return an error instead of incomplete data.
+    pub fn poll_channel_fallible(
+        &mut self,
+        core: &mut Core,
+        channel: usize,
+        collector: &mut impl ChannelDataCallbacks,
+    ) -> Result<(), Error> {
+        if let Some(channel) = self.active_up_channels.get_mut(channel) {
+            channel.poll_process_rtt_data(core, collector)?;
+            Ok(())
+        } else {
+            Err(Error::MissingChannel(channel))
+        }
+    }
+
     /// Clean up temporary changes made to the channels.
     pub fn clean_up(&mut self, core: &mut Core) -> Result<(), Error> {
         for channel in self.active_up_channels.iter_mut() {
