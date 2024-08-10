@@ -211,17 +211,11 @@ impl Channel {
             return Ok(None);
         };
 
-        let name = if info.standard_name_pointer() == 0 {
-            None
-        } else {
-            read_c_string(core, info.standard_name_pointer())?
-        };
-
         let this = Channel {
             number,
             core_id: core.id(),
             metadata_ptr,
-            name,
+            name: read_c_string(core, info.standard_name_pointer())?,
             info,
             last_read_ptr: None,
         };
@@ -513,6 +507,10 @@ impl RttChannel for DownChannel {
 /// Reads a null-terminated string from target memory. Lossy UTF-8 decoding is used.
 fn read_c_string(core: &mut Core, ptr: u64) -> Result<Option<String>, Error> {
     // Find out which memory range contains the pointer
+    if ptr == 0 {
+        // If the pointer is null, return None.
+        return Ok(None);
+    }
 
     let Some(range) = core
         .memory_regions()
