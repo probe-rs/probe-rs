@@ -249,19 +249,17 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
         )?;
     }
 
+    let elf = fs::read(&path)?;
+    let rtt_client = RttClient::new(
+        Some(&elf),
+        session.target(),
+        create_rtt_config(&config).clone(),
+        ScanRegion::Ram,
+    )?;
+
     // FIXME: we should probably figure out in a different way which core we can work with.
     // It seems arbitrary that we reset the target using the same core we use for polling RTT.
-    let elf = fs::read(&path)?;
-    let core_id = {
-        let client = RttClient::new(
-            Some(&elf),
-            session.target(),
-            RttConfig::default(),
-            ScanRegion::Ram,
-        )?;
-
-        client.core_id()
-    };
+    let core_id = rtt_client.core_id();
 
     if config.reset.enabled || config.flashing.enabled {
         let mut core = session.core(core_id)?;
@@ -300,7 +298,7 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
 
     if config.rtt.enabled {
         // GDB is also using the session, so we do not lock on the outside.
-        run_rttui_app(name, &session, config, &elf, offset)?;
+        run_rttui_app(name, &session, config, offset, rtt_client)?;
     } else if should_resume_core(&config) {
         // If we don't run the app, we have to resume the core somewhere else.
         let mut session_handle = session.lock();
@@ -336,61 +334,9 @@ fn run_rttui_app(
     name: &str,
     session: &FairMutex<Session>,
     config: config::Config,
-    elf: &[u8],
     timezone_offset: UtcOffset,
+    mut client: RttClient,
 ) -> anyhow::Result<()> {
-    // Transform channel configurations
-    let mut rtt_config = RttConfig {
-        enabled: true,
-        channels: vec![],
-    };
-
-    // Make sure our defaults are the same as the ones intended in the config struct.
-    let default_channel_config = RttChannelConfig::default();
-
-    for channel_config in config.rtt.up_channels.iter() {
-        // Where `channel_config` is unspecified, apply default from `default_channel_config`.
-        rtt_config.channels.push(RttChannelConfig {
-            channel_number: Some(channel_config.channel),
-            data_format: channel_config
-                .format
-                .unwrap_or(default_channel_config.data_format),
-            show_timestamps: channel_config
-                .show_timestamps
-                .unwrap_or(default_channel_config.show_timestamps),
-            show_location: channel_config
-                .show_location
-                .unwrap_or(default_channel_config.show_location),
-            log_format: channel_config
-                .log_format
-                .clone()
-                .or_else(|| default_channel_config.log_format.clone()),
-            mode: channel_config.mode.or(default_channel_config.mode),
-        });
-    }
-    // In case we have down channels without up channels, add them separately.
-    for channel_config in config.rtt.down_channels.iter() {
-        if config
-            .rtt
-            .up_channel_config(channel_config.channel)
-            .is_some()
-        {
-            continue;
-        }
-        // Set up channel defaults, we don't read from it anyway.
-        rtt_config.channels.push(RttChannelConfig {
-            channel_number: Some(channel_config.channel),
-            ..Default::default()
-        });
-    }
-
-    let mut client = RttClient::new(
-        Some(&elf),
-        session.lock().target(),
-        rtt_config.clone(),
-        ScanRegion::Ram,
-    )?;
-
     let core_id = client.core_id();
 
     if config.flashing.enabled || config.reset.enabled {
@@ -451,7 +397,6 @@ fn run_rttui_app(
         / 1_000_000;
 
     let logname = format!("{name}_{chip_name}_{timestamp_millis}");
-    // TODO: work with the client instead of unwrapping it
     let mut app = rttui::app::App::new(rtt, config, logname)?;
     loop {
         app.render();
@@ -476,4 +421,52 @@ fn run_rttui_app(
     app.clean_up(&mut core)?;
 
     Ok(())
+}
+
+fn create_rtt_config(config: &config::Config) -> RttConfig {
+    let mut rtt_config = RttConfig {
+        enabled: true,
+        channels: vec![],
+    };
+
+    // Make sure our defaults are the same as the ones intended in the config struct.
+    let default_channel_config = RttChannelConfig::default();
+
+    for channel_config in config.rtt.up_channels.iter() {
+        // Where `channel_config` is unspecified, apply default from `default_channel_config`.
+        rtt_config.channels.push(RttChannelConfig {
+            channel_number: Some(channel_config.channel),
+            data_format: channel_config
+                .format
+                .unwrap_or(default_channel_config.data_format),
+            show_timestamps: channel_config
+                .show_timestamps
+                .unwrap_or(default_channel_config.show_timestamps),
+            show_location: channel_config
+                .show_location
+                .unwrap_or(default_channel_config.show_location),
+            log_format: channel_config
+                .log_format
+                .clone()
+                .or_else(|| default_channel_config.log_format.clone()),
+            mode: channel_config.mode.or(default_channel_config.mode),
+        });
+    }
+    // In case we have down channels without up channels, add them separately.
+    for channel_config in config.rtt.down_channels.iter() {
+        if config
+            .rtt
+            .up_channel_config(channel_config.channel)
+            .is_some()
+        {
+            continue;
+        }
+        // Set up channel defaults, we don't read from it anyway.
+        rtt_config.channels.push(RttChannelConfig {
+            channel_number: Some(channel_config.channel),
+            ..Default::default()
+        });
+    }
+
+    rtt_config
 }

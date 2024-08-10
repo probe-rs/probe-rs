@@ -13,11 +13,20 @@ use time::UtcOffset;
 pub struct RttClient {
     pub defmt_data: Option<Arc<DefmtState>>,
     pub scan_region: ScanRegion,
-    rtt_config: RttConfig,
-    target: Option<RttActiveTarget>,
-    try_attaching: bool,
     pub timezone_offset: UtcOffset,
+    rtt_config: RttConfig,
+
+    /// The internal RTT handle, if we have successfully attached to the target.
+    target: Option<RttActiveTarget>,
+
+    /// If false, don't try to attach to the target.
+    try_attaching: bool,
+
+    /// Whether we have polled data since the last time the control block was corrupted. Used to
+    /// prevent spamming the log with messages about corrupted control blocks.
     polled_data: bool,
+
+    /// The core used to poll the target.
     core_id: usize,
 }
 
