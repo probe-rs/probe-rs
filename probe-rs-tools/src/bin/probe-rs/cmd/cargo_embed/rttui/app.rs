@@ -38,7 +38,7 @@ pub struct App {
 
     current_height: usize,
 
-    pub(crate) up_channels: Vec<Rc<RefCell<UpChannel>>>,
+    up_channels: Vec<Rc<RefCell<UpChannel>>>,
 }
 
 impl App {
