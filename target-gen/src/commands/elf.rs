@@ -1,7 +1,8 @@
 use anyhow::{bail, Context, Result};
 use probe_rs_target::{
     ArmCoreAccessOptions, Chip, ChipFamily, Core, CoreAccessOptions, CoreType, MemoryAccess,
-    MemoryRegion, NvmRegion, RamRegion, RawFlashAlgorithm, TargetDescriptionSource,
+    MemoryRange as _, MemoryRegion, NvmRegion, RamRegion, RawFlashAlgorithm,
+    TargetDescriptionSource,
 };
 use std::{
     borrow::Cow,
@@ -9,6 +10,7 @@ use std::{
     fmt::Write,
     fs::{File, OpenOptions},
     io::Write as _,
+    ops::Range,
     path::Path,
 };
 
@@ -170,8 +172,8 @@ fn compact_flash_algos(out: &mut ChipFamily) {
     let mut renames = std::collections::HashMap::<String, String>::new();
 
     let algos = std::mem::take(&mut out.flash_algorithms);
-    let mut algos = algos.iter();
-    while let Some(algo) = algos.next() {
+    let mut algos_iter = algos.iter();
+    while let Some(algo) = algos_iter.next() {
         if renames.contains_key(&algo.name) {
             continue;
         }
@@ -182,7 +184,7 @@ fn compact_flash_algos(out: &mut ChipFamily) {
         // Find the algo with the widest address range and replace all others with it.
         let algo_template = comparable_algo(algo);
         let mut widest_algo = algo.clone();
-        for algo_b in algos.clone() {
+        for algo_b in algos_iter.clone() {
             if renames.contains_key(&algo_b.name) {
                 continue;
             }
@@ -201,17 +203,58 @@ fn compact_flash_algos(out: &mut ChipFamily) {
         for renamed in renamed {
             renames.insert(renamed, widest_algo.name.clone());
         }
+        if widest_algo.name != algo.name {
+            // Keep the original algo, too. We will remove these if no uses remain.
+            out.flash_algorithms.push(algo.clone());
+        }
         out.flash_algorithms.push(widest_algo);
+    }
+
+    fn memory_range_of_algo(algo_name: &str, algos: &[RawFlashAlgorithm]) -> Option<Range<u64>> {
+        algos
+            .iter()
+            .find(|a| a.name == algo_name)
+            .map(|a| &a.flash_properties.address_range)
+            .cloned()
     }
 
     // Now walk through the target variants' flash algo map and apply the renames
     for variant in &mut out.variants {
-        for flash_algo in &mut variant.flash_algorithms {
-            if let Some(new_name) = renames.get(flash_algo) {
-                flash_algo.clone_from(new_name);
+        for algo_name in &mut variant.flash_algorithms {
+            let Some(replacement_name) = renames.get(algo_name) else {
+                continue;
+            };
+
+            // Only algos that have memory regions in the memory map are subject to renaming.
+            let memory_range = memory_range_of_algo(algo_name, &algos)
+                .unwrap_or_else(|| panic!("Flash algorithm {algo_name} not found."));
+
+            if !variant
+                .memory_map
+                .iter()
+                .any(|region| region.address_range().intersects_range(&memory_range))
+            {
+                // This flash algo has no memory region, so we conjure up one ourselves. We can
+                // only deduplicate these algos if the replacement has the same size.
+                let replacement_memory_range = memory_range_of_algo(replacement_name, &algos)
+                    .unwrap_or_else(|| panic!("Flash algorithm {replacement_name} not found."));
+
+                if replacement_memory_range != memory_range {
+                    continue;
+                }
             }
+
+            // Apply rename.
+            algo_name.clone_from(replacement_name);
         }
     }
+
+    // Remove flash algos with no uses
+    out.flash_algorithms.retain(|algo| {
+        out.variants
+            .iter()
+            .any(|variant| variant.flash_algorithms.contains(&algo.name))
+    });
 }
 
 /// Some optimizations to improve the readability of the `serde_yaml` output:
