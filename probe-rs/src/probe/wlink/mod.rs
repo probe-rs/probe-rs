@@ -558,7 +558,7 @@ pub(crate) enum WchLinkError {
     InvalidPayload,
     /// Protocol error.
     Protocol(u8, Vec<u8>),
-    /// Unknown chip {0:#02x}.
+    /// Unknown chip {0:#04x}.
     UnknownChip(u8),
     /// Unsupported operation.
     UnsupportedOperation,
