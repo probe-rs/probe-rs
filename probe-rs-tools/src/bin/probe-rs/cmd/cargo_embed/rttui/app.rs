@@ -17,7 +17,7 @@ use std::{path::PathBuf, sync::mpsc::TryRecvError};
 
 use crate::{
     cmd::cargo_embed::rttui::{channel::ChannelData, tab::TabConfig},
-    util::rtt::{DefmtState, RttActiveTarget},
+    util::rtt::client::RttClient,
 };
 
 use super::super::config;
@@ -38,13 +38,13 @@ pub struct App {
 
     current_height: usize,
 
-    defmt_state: Option<DefmtState>,
+    up_channels: Vec<Rc<RefCell<UpChannel>>>,
 
-    pub(crate) up_channels: Vec<Rc<RefCell<UpChannel>>>,
+    client: RttClient,
 }
 
 impl App {
-    pub fn new(rtt: RttActiveTarget, config: config::Config, logname: String) -> Result<Self> {
+    pub fn new(client: RttClient, config: config::Config, logname: String) -> Result<Self> {
         let mut tab_config = config.rtt.tabs;
 
         // Create channel states
@@ -52,7 +52,7 @@ impl App {
         let mut down_channels = Vec::new();
 
         // Create tab config based on detected channels
-        for up in rtt.active_up_channels.into_iter() {
+        for up in client.up_channels() {
             let number = up.number();
 
             // Create a default tab config if the user didn't specify one
@@ -60,7 +60,7 @@ impl App {
                 tab_config.push(TabConfig {
                     up_channel: number,
                     down_channel: None,
-                    name: Some(up.channel_name.clone()),
+                    name: Some(up.channel_name()),
                     hide: false,
                 });
             }
@@ -75,7 +75,8 @@ impl App {
 
             up_channels.push(Rc::new(RefCell::new(UpChannel::new(up, stream))));
         }
-        for down in rtt.active_down_channels.into_iter() {
+
+        for down in client.down_channels() {
             let number = down.number();
             if !tab_config
                 .iter()
@@ -88,7 +89,7 @@ impl App {
                         0
                     },
                     down_channel: Some(number),
-                    name: Some(down.channel_name.clone()),
+                    name: Some(down.channel_name()),
                     hide: false,
                 });
             }
@@ -110,10 +111,7 @@ impl App {
                 continue;
             };
 
-            let down_channel = tab
-                .down_channel
-                .and_then(|down| down_channels.get(down).cloned());
-            tabs.push(Tab::new(up_channel.clone(), down_channel, tab.name));
+            tabs.push(Tab::new(up_channel.clone(), tab.down_channel, tab.name));
         }
 
         // Code farther down relies on tabs being configured and might panic
@@ -154,10 +152,10 @@ impl App {
             events,
             history_path,
             logname,
-            defmt_state: rtt.defmt_state,
             current_height: 0,
 
             up_channels,
+            client,
         })
     }
 
@@ -243,16 +241,14 @@ impl App {
     /// Polls the RTT target for new data on all channels.
     pub fn poll_rtt(&mut self, core: &mut Core) -> Result<()> {
         for channel in self.up_channels.iter_mut() {
-            channel
-                .borrow_mut()
-                .poll_rtt(core, self.defmt_state.as_ref())?;
+            channel.borrow_mut().poll_rtt(core, &mut self.client)?;
         }
 
         Ok(())
     }
 
     pub fn push_rtt(&mut self, core: &mut Core) {
-        if let Err(error) = self.tabs[self.current_tab].send_input(core) {
+        if let Err(error) = self.tabs[self.current_tab].send_input(core, &mut self.client) {
             tracing::warn!("Failed to send input to RTT channel: {error:?}");
         }
     }
@@ -265,9 +261,7 @@ impl App {
             self.save_tab_logs(i, tab);
         }
 
-        for channel in self.up_channels.iter_mut() {
-            channel.borrow_mut().clean_up(core)?;
-        }
+        self.client.clean_up(core)?;
 
         Ok(())
     }

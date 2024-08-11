@@ -1,30 +1,28 @@
 use std::{ops::Range, path::Path};
 
 use super::session_data::{self, ActiveBreakpoint, BreakpointType, SourceLocationScope};
-use crate::util::rtt::{self, DataFormat, DefmtState, RttActiveTarget};
-use crate::{
-    cmd::dap_server::{
-        debug_adapter::{
-            dap::{
-                adapter::DebugAdapter,
-                core_status::DapStatus,
-                dap_types::{ContinuedEventBody, MessageSeverity, Source, StoppedEventBody},
-            },
-            protocol::ProtocolAdapter,
+use crate::cmd::dap_server::{
+    debug_adapter::{
+        dap::{
+            adapter::DebugAdapter,
+            core_status::DapStatus,
+            dap_types::{ContinuedEventBody, MessageSeverity, Source, StoppedEventBody},
         },
-        peripherals::svd_variables::SvdCache,
-        server::debug_rtt,
-        DebuggerError,
+        protocol::ProtocolAdapter,
     },
-    util::rtt::RttConfig,
+    peripherals::svd_variables::SvdCache,
+    server::debug_rtt,
+    DebuggerError,
 };
+use crate::util::rtt::client::RttClient;
+use crate::util::rtt::{self, DataFormat};
 use anyhow::{anyhow, Result};
 use probe_rs::debug::VerifiedBreakpoint;
 use probe_rs::{
     debug::{
         debug_info::DebugInfo, stack_frame::StackFrameInfo, ColumnType, ObjectRef, VariableCache,
     },
-    rtt::{Rtt, ScanRegion},
+    rtt::ScanRegion,
     Core, CoreStatus, HaltReason,
 };
 use time::UtcOffset;
@@ -49,6 +47,7 @@ pub struct CoreData {
     pub stack_frames: Vec<probe_rs::debug::stack_frame::StackFrame>,
     pub breakpoints: Vec<session_data::ActiveBreakpoint>,
     pub rtt_connection: Option<debug_rtt::RttConnection>,
+    pub rtt_client: Option<RttClient>,
 }
 
 /// [CoreHandle] provides handles to various data structures required to debug a single instance of a core. The actual state is stored in [session_data::SessionData].
@@ -183,17 +182,38 @@ impl<'p> CoreHandle<'p> {
         rtt_config: &rtt::RttConfig,
         timestamp_offset: UtcOffset,
     ) -> Result<()> {
-        let mut debugger_rtt_channels: Vec<debug_rtt::DebuggerRttChannel> = vec![];
+        let client = if let Some(client) = self.core_data.rtt_client.as_mut() {
+            client
+        } else {
+            // Create the RTT client using the RTT control block address from the ELF file.
+            let elf = std::fs::read(program_binary)
+                .map_err(|error| anyhow!("Error attempting to attach to RTT: {error}"))?;
 
-        // Attach to RTT by using the RTT control block address from the ELF file. Do not scan the memory for the control block.
-        let Ok(target_rtt) =
-            try_attach_rtt(&mut self.core, program_binary, rtt_config, timestamp_offset)
-        else {
-            tracing::warn!("Failed to initalize RTT. Will try again on the next request... ");
+            let mut client = RttClient::new(
+                Some(&elf),
+                self.core.target(),
+                rtt_config.clone(),
+                // Do not scan the memory for the control block.
+                ScanRegion::Ranges(vec![]),
+            )?;
+
+            client.timezone_offset = timestamp_offset;
+
+            self.core_data.rtt_client.insert(client)
+        };
+
+        if !client.try_attach(&mut self.core)? {
+            return Ok(());
+        }
+
+        // Now that we're attached, we can transform our state.
+        let Some(client) = self.core_data.rtt_client.take() else {
             return Ok(());
         };
 
-        for up_channel in target_rtt.active_up_channels.iter() {
+        let mut debugger_rtt_channels = vec![];
+
+        for up_channel in client.up_channels() {
             debugger_rtt_channels.push(debug_rtt::DebuggerRttChannel {
                 channel_number: up_channel.number(),
                 // This value will eventually be set to true by a VSCode client request "rttWindowOpened"
@@ -201,13 +221,13 @@ impl<'p> CoreHandle<'p> {
             });
             debug_adapter.rtt_window(
                 up_channel.number(),
-                up_channel.channel_name.clone(),
+                up_channel.channel_name(),
                 DataFormat::from(&up_channel.data_format),
             );
         }
 
         self.core_data.rtt_connection = Some(debug_rtt::RttConnection {
-            target_rtt,
+            client,
             debugger_rtt_channels,
         });
 
@@ -424,30 +444,6 @@ impl<'p> CoreHandle<'p> {
         // Consolidating all memory ranges that are withing 0x400 bytes of each other.
         consolidate_memory_ranges(all_discrete_memory_ranges, 0x400)
     }
-}
-
-fn try_attach_rtt(
-    core: &mut Core,
-    elf_file: &Path,
-    rtt_config: &RttConfig,
-    timestamp_offset: UtcOffset,
-) -> Result<RttActiveTarget, DebuggerError> {
-    let elf = std::fs::read(elf_file)
-        .map_err(|error| anyhow!("Error attempting to attach to RTT: {}", error))?;
-
-    let header_address = RttActiveTarget::get_rtt_symbol_from_bytes(&elf)
-        .ok_or_else(|| anyhow!("No RTT control block found in ELF file"))?;
-
-    let scan_region = ScanRegion::Exact(header_address);
-
-    let rtt = Rtt::attach_region(core, &scan_region)
-        .map_err(|error| anyhow!("Error attempting to attach to RTT: {}", error))?;
-
-    tracing::info!("RTT initialized.");
-    let defmt_state = DefmtState::try_from_bytes(&elf)?;
-    let target = RttActiveTarget::new(core, rtt, defmt_state, rtt_config, timestamp_offset)?;
-
-    Ok(target)
 }
 
 /// Return a Vec of memory ranges that consolidate the adjacent memory ranges of the input ranges.

@@ -720,10 +720,7 @@ impl FlashLoader {
                 data.len()
             );
 
-            let associated_region = session
-                .target()
-                .get_memory_region_by_address(address)
-                .unwrap();
+            let associated_region = session.target().memory_region_by_address(address).unwrap();
 
             // We verified NVM regions before, in flasher.program().
             if !associated_region.is_ram() {

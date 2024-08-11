@@ -6,7 +6,7 @@ use std::{
 
 use probe_rs::Core;
 
-use crate::{cmd::cargo_embed::rttui::channel::ChannelData, util::rtt::RttActiveDownChannel};
+use crate::{cmd::cargo_embed::rttui::channel::ChannelData, util::rtt::client::RttClient};
 
 use super::channel::UpChannel;
 
@@ -30,7 +30,7 @@ pub struct TabConfig {
 
 pub struct Tab {
     up_channel: Rc<RefCell<UpChannel>>,
-    down_channel: Option<(Rc<RefCell<RttActiveDownChannel>>, String)>,
+    down_channel: Option<(usize, String)>,
     name: String,
     scroll_offset: usize,
     messages: Vec<String>,
@@ -41,7 +41,7 @@ pub struct Tab {
 impl Tab {
     pub fn new(
         up_channel: Rc<RefCell<UpChannel>>,
-        down_channel: Option<Rc<RefCell<RttActiveDownChannel>>>,
+        down_channel: Option<usize>,
         name: Option<String>,
     ) -> Self {
         Self {
@@ -99,10 +99,10 @@ impl Tab {
         self.down_channel.as_ref().map(|(_, input)| input.as_str())
     }
 
-    pub fn send_input(&mut self, core: &mut Core) -> anyhow::Result<()> {
+    pub fn send_input(&mut self, core: &mut Core, client: &mut RttClient) -> anyhow::Result<()> {
         if let Some((channel, input)) = self.down_channel.as_mut() {
             input.push('\n');
-            channel.borrow_mut().push_rtt(core, input.as_str())?;
+            client.write_down_channel(core, *channel, input.as_str())?;
             input.clear();
         }
 

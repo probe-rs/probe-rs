@@ -101,6 +101,7 @@ use zerocopy::{FromBytes, FromZeroes};
 ///         RTT, because the buffer sizes are incorrect.
 #[derive(Debug)]
 pub struct Rtt {
+    /// The location of the control block in target memory.
     ptr: u64,
 
     /// The detected up (target to host) channels.
@@ -403,23 +404,29 @@ impl Rtt {
     }
 
     /// Returns a reference to the detected up channels.
-    pub fn up_channels(&mut self) -> &[UpChannel] {
+    pub fn up_channels(&mut self) -> &mut [UpChannel] {
         &mut self.up_channels
     }
 
     /// Returns a reference to the detected down channels.
-    pub fn down_channels(&mut self) -> &[DownChannel] {
+    pub fn down_channels(&mut self) -> &mut [DownChannel] {
         &mut self.down_channels
     }
 
     /// Returns a particular up channel.
-    pub fn up_channel(&self, channel: usize) -> Option<&UpChannel> {
-        self.up_channels.get(channel)
+    pub fn up_channel(&mut self, channel: usize) -> Option<&mut UpChannel> {
+        self.up_channels.get_mut(channel)
     }
 
     /// Returns a particular down channel.
-    pub fn down_channel(&self, channel: usize) -> Option<&DownChannel> {
-        self.down_channels.get(channel)
+    pub fn down_channel(&mut self, channel: usize) -> Option<&mut DownChannel> {
+        self.down_channels.get_mut(channel)
+    }
+
+    /// Returns the size of the RTT control block.
+    pub fn control_block_size(core: &Core) -> usize {
+        let is_64_bit = core.is_64_bit();
+        RttControlBlockHeader::minimal_header_size(is_64_bit)
     }
 }
 
@@ -467,17 +474,26 @@ pub enum Error {
     /// Multiple control blocks found in target memory: {display_list(_0)}.
     MultipleControlBlocksFound(Vec<Rtt>),
 
-    /// The control block has been corrupted. {0}
+    /// The control block has been corrupted: {0}
     ControlBlockCorrupted(String),
 
     /// Attempted an RTT operation against a Core number that is different from the Core number against which RTT was initialized. Expected {0}, found {1}
     IncorrectCoreSpecified(usize, usize),
 
-    /// Error communicating with probe: {0}
+    /// Error communicating with the probe.
     Probe(#[from] crate::Error),
 
     /// Unexpected error while reading {0} from target memory. Please report this as a bug.
     MemoryRead(String),
+
+    /// Some uncategorized error occurred.
+    Other(#[from] anyhow::Error),
+
+    /// The read pointer changed unexpectedly.
+    ReadPointerChanged,
+
+    /// Channel {0} does not exist.
+    MissingChannel(usize),
 }
 
 fn display_list(list: &[Rtt]) -> String {

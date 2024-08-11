@@ -1,53 +1,21 @@
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context};
 use defmt_decoder::log::format::{Formatter, FormatterConfig, FormatterFormat};
 use defmt_decoder::DecodeError;
 pub use probe_rs::rtt::ChannelMode;
-use probe_rs::rtt::{DownChannel, Error, UpChannel};
-use probe_rs::{Core, Session};
-use probe_rs_target::MemoryRegion;
+use probe_rs::rtt::{DownChannel, Error, Rtt, UpChannel};
+use probe_rs::{Core, MemoryInterface};
 use serde::{Deserialize, Serialize};
-use std::fs::File;
 use std::path::PathBuf;
-use std::time::Duration;
+use std::sync::Arc;
 use std::{
     fmt,
     fmt::Write,
     io::{Read, Seek},
     path::Path,
-    thread,
 };
 use time::{macros::format_description, OffsetDateTime, UtcOffset};
 
-/// Infer the target core from the RTT symbol. Useful for multi-core targets.
-pub fn get_target_core_id(session: &mut Session, elf_file: impl AsRef<Path>) -> usize {
-    let maybe_core_id = || {
-        let mut file = File::open(elf_file).ok()?;
-        let address = RttActiveTarget::get_rtt_symbol(&mut file)?;
-
-        tracing::debug!("RTT symbol found at {address:#010x}");
-
-        let target_memory = session
-            .target()
-            .memory_map
-            .iter()
-            .filter_map(MemoryRegion::as_ram_region)
-            .find(|region| region.range.contains(&address))?;
-
-        tracing::debug!("RTT symbol is in RAM region {:?}", target_memory.name);
-
-        let core_name = target_memory.cores.first()?;
-        let core_id = session
-            .target()
-            .cores
-            .iter()
-            .position(|core| core.name == *core_name)?;
-
-        tracing::debug!("RTT symbol is in core {core_id}");
-
-        Some(core_id)
-    };
-    maybe_core_id().unwrap_or(0)
-}
+pub(crate) mod client;
 
 /// Used by serde to provide defaults for `RttChannelConfig::show_timestamps`
 fn default_show_timestamps() -> bool {
@@ -137,6 +105,7 @@ pub enum ChannelDataFormat {
         formatter: Formatter,
         // CWD to strip from file paths in defmt output
         cwd: PathBuf,
+        defmt_data: Option<Arc<DefmtState>>,
     },
 }
 
@@ -178,9 +147,8 @@ impl ChannelDataFormat {
         &mut self,
         number: usize,
         buffer: &[u8],
-        defmt_state: Option<&DefmtState>,
         collector: &mut impl ChannelDataCallbacks,
-    ) -> Result<()> {
+    ) -> Result<(), Error> {
         // FIXME: clean this up by splitting the enum variants out into separate structs
         match self {
             ChannelDataFormat::BinaryLE => collector.on_binary_data(number, buffer),
@@ -194,8 +162,9 @@ impl ChannelDataFormat {
             ChannelDataFormat::Defmt {
                 ref formatter,
                 ref cwd,
+                ref defmt_data,
             } => {
-                let string = Self::process_defmt(buffer, defmt_state, formatter, cwd)?;
+                let string = Self::process_defmt(buffer, defmt_data.as_deref(), formatter, cwd)?;
                 collector.on_string_data(number, string)
             }
         }
@@ -205,7 +174,7 @@ impl ChannelDataFormat {
         buffer: &[u8],
         offset: Option<UtcOffset>,
         last_line_done: &mut bool,
-    ) -> Result<String> {
+    ) -> Result<String, Error> {
         let incoming = String::from_utf8_lossy(buffer);
 
         let Some(offset) = offset else {
@@ -216,7 +185,8 @@ impl ChannelDataFormat {
             .to_offset(offset)
             .format(format_description!(
                 "[hour repr:24]:[minute]:[second].[subsecond digits:3]"
-            ))?;
+            ))
+            .expect("Incorrect format string. This shouldn't happen.");
 
         let mut formatted_data = String::new();
         for line in incoming.split_inclusive('\n') {
@@ -234,7 +204,7 @@ impl ChannelDataFormat {
         defmt_state: Option<&DefmtState>,
         formatter: &Formatter,
         cwd: &Path,
-    ) -> Result<String> {
+    ) -> Result<String, Error> {
         let Some(DefmtState { table, locs }) = defmt_state else {
             return Ok(String::from(
                 "Trying to process defmt data but table or locations could not be loaded.\n",
@@ -278,11 +248,11 @@ impl ChannelDataFormat {
                     // If recovery is possible, skip the current frame and continue with new data.
                 }
                 Err(DecodeError::Malformed) => {
-                    return Err(anyhow!(
+                    return Err(Error::Other(anyhow!(
                         "Unrecoverable error while decoding Defmt \
-                        data and some data may have been lost: {:?}",
+                        data. Some data may have been lost: {}",
                         DecodeError::Malformed
-                    ));
+                    )));
                 }
             }
         }
@@ -292,7 +262,7 @@ impl ChannelDataFormat {
 }
 
 pub trait ChannelDataCallbacks {
-    fn on_binary_data(&mut self, channel: usize, data: &[u8]) -> Result<()> {
+    fn on_binary_data(&mut self, channel: usize, data: &[u8]) -> Result<(), Error> {
         let mut formatted_data = String::with_capacity(data.len() * 4);
         for element in data {
             // Width of 4 allows 0xFF to be printed.
@@ -301,15 +271,14 @@ pub trait ChannelDataCallbacks {
         self.on_string_data(channel, formatted_data)
     }
 
-    fn on_string_data(&mut self, channel: usize, data: String) -> Result<()>;
+    fn on_string_data(&mut self, channel: usize, data: String) -> Result<(), Error>;
 }
 
 #[derive(Debug)]
 pub struct RttActiveUpChannel {
     pub up_channel: UpChannel,
-    pub channel_name: String,
     pub data_format: ChannelDataFormat,
-    rtt_buffer: RttBuffer,
+    rtt_buffer: Box<[u8]>,
 
     /// If set, the original mode of the channel before we changed it. Upon exit we should do
     /// our best to restore the original mode.
@@ -322,8 +291,8 @@ impl RttActiveUpChannel {
         up_channel: UpChannel,
         channel_config: &RttChannelConfig,
         timestamp_offset: UtcOffset,
-        defmt_state: Option<&DefmtState>,
-    ) -> Result<Self> {
+        defmt_data: Option<Arc<DefmtState>>,
+    ) -> Result<Self, Error> {
         let is_defmt_channel = up_channel.name() == Some("defmt");
 
         let data_format = match channel_config.data_format {
@@ -336,7 +305,7 @@ impl RttActiveUpChannel {
 
             // either DataFormat::Defmt is configured, or defmt_enabled is true
             _ => {
-                let has_timestamp = if let Some(defmt) = defmt_state {
+                let has_timestamp = if let Some(ref defmt) = defmt_data {
                     defmt.table.has_timestamp()
                 } else {
                     tracing::warn!("No `Table` definition in DWARF info; compile your program with `debug = 2` to enable location info.");
@@ -360,20 +329,10 @@ impl RttActiveUpChannel {
                         is_timestamp_available: has_timestamp && channel_config.show_timestamps,
                     }),
                     cwd: std::env::current_dir().unwrap(),
+                    defmt_data,
                 }
             }
         };
-
-        let channel_name = up_channel
-            .name()
-            .map(ToString::to_string)
-            .unwrap_or_else(|| {
-                format!(
-                    "Unnamed {} RTT up channel - {}",
-                    channel_config.data_format,
-                    up_channel.number()
-                )
-            });
 
         let mut original_mode = None;
         if let Some(mode) = channel_config.mode.or(
@@ -389,12 +348,24 @@ impl RttActiveUpChannel {
         }
 
         Ok(Self {
-            rtt_buffer: RttBuffer::new(up_channel.buffer_size()),
+            rtt_buffer: vec![0; up_channel.buffer_size().max(1)].into_boxed_slice(),
             up_channel,
-            channel_name,
             data_format,
             original_mode,
         })
+    }
+
+    pub fn channel_name(&self) -> String {
+        self.up_channel
+            .name()
+            .map(ToString::to_string)
+            .unwrap_or_else(|| {
+                format!(
+                    "Unnamed {} RTT up channel - {}",
+                    DataFormat::from(&self.data_format),
+                    self.up_channel.number()
+                )
+            })
     }
 
     pub fn number(&self) -> usize {
@@ -402,23 +373,13 @@ impl RttActiveUpChannel {
     }
 
     /// Polls the RTT target for new data on the channel represented by `self`.
-    /// Processes all the new data into the channel internal buffer and returns the number of bytes that was read.
-    pub fn poll_rtt(&mut self, core: &mut Core) -> Option<usize> {
-        // Retry loop, in case the probe is temporarily unavailable, e.g. user pressed the `reset` button.
-        const RETRY_COUNT: usize = 10;
-        for loop_count in 1..=RETRY_COUNT {
-            match self.up_channel.read(core, self.rtt_buffer.0.as_mut()) {
-                Ok(0) => return None,
-                Ok(count) => return Some(count),
-                Err(error) if loop_count == RETRY_COUNT => {
-                    tracing::error!("\nError reading from RTT: {:?}", anyhow::anyhow!(error));
-                    return None;
-                }
-                _ => thread::sleep(Duration::from_millis(50)),
-            }
+    /// Processes all the new data into the channel internal buffer and
+    /// returns the number of bytes that was read.
+    pub fn poll_rtt(&mut self, core: &mut Core) -> Result<Option<usize>, Error> {
+        match self.up_channel.read(core, self.rtt_buffer.as_mut())? {
+            0 => Ok(None),
+            count => Ok(Some(count)),
         }
-
-        None
     }
 
     /// Retrieves available data from the channel and if available, returns `Some(channel_number:String, formatted_data:String)`.
@@ -427,21 +388,19 @@ impl RttActiveUpChannel {
     pub fn poll_process_rtt_data(
         &mut self,
         core: &mut Core,
-        defmt_state: Option<&DefmtState>,
         collector: &mut impl ChannelDataCallbacks,
-    ) -> Result<()> {
-        let Some(bytes_read) = self.poll_rtt(core) else {
+    ) -> Result<(), Error> {
+        let Some(bytes_read) = self.poll_rtt(core)? else {
             return Ok(());
         };
 
-        let buffer = &self.rtt_buffer.0[..bytes_read];
+        let buffer = &self.rtt_buffer[..bytes_read];
 
-        self.data_format
-            .process(self.number(), buffer, defmt_state, collector)
+        self.data_format.process(self.number(), buffer, collector)
     }
 
     /// Clean up temporary changes made to the channel.
-    pub fn clean_up(&mut self, core: &mut Core) -> Result<()> {
+    pub fn clean_up(&mut self, core: &mut Core) -> Result<(), Error> {
         if let Some(mode) = self.original_mode.take() {
             self.up_channel.set_mode(core, mode)?;
         }
@@ -452,28 +411,26 @@ impl RttActiveUpChannel {
 #[derive(Debug)]
 pub struct RttActiveDownChannel {
     pub down_channel: DownChannel,
-    pub channel_name: String,
 }
 
 impl RttActiveDownChannel {
     pub fn new(down_channel: DownChannel) -> Self {
-        let channel_name = down_channel
+        Self { down_channel }
+    }
+
+    pub fn channel_name(&self) -> String {
+        self.down_channel
             .name()
             .map(ToString::to_string)
-            .unwrap_or_else(|| format!("Unnamed RTT down channel - {}", down_channel.number()));
-
-        Self {
-            down_channel,
-            channel_name,
-        }
+            .unwrap_or_else(|| format!("Unnamed RTT down channel - {}", self.down_channel.number()))
     }
 
     pub fn number(&self) -> usize {
         self.down_channel.number()
     }
 
-    pub fn push_rtt(&mut self, core: &mut Core<'_>, data: &str) -> Result<(), Error> {
-        self.down_channel.write(core, data.as_bytes()).map(|_| ())
+    pub fn push_rtt(&mut self, core: &mut Core<'_>, data: impl AsRef<[u8]>) -> Result<(), Error> {
+        self.down_channel.write(core, data.as_ref()).map(|_| ())
     }
 }
 
@@ -481,9 +438,9 @@ impl RttActiveDownChannel {
 /// each of the active channels, and hold essential state information for successful communication.
 #[derive(Debug)]
 pub struct RttActiveTarget {
+    control_block_addr: u64,
     pub active_up_channels: Vec<RttActiveUpChannel>,
     pub active_down_channels: Vec<RttActiveDownChannel>,
-    pub defmt_state: Option<DefmtState>,
 }
 
 /// defmt information common to all defmt channels.
@@ -492,12 +449,16 @@ pub struct DefmtState {
     pub locs: Option<defmt_decoder::Locations>,
 }
 impl DefmtState {
-    pub fn try_from_bytes(buffer: &[u8]) -> Result<Option<Self>> {
-        let Some(table) = defmt_decoder::Table::parse(buffer)? else {
+    pub fn try_from_bytes(buffer: &[u8]) -> Result<Option<Self>, Error> {
+        let Some(table) =
+            defmt_decoder::Table::parse(buffer).with_context(|| "Failed to parse defmt data")?
+        else {
             return Ok(None);
         };
 
-        let locs = table.get_locations(buffer)?;
+        let locs = table
+            .get_locations(buffer)
+            .with_context(|| "Failed to parse defmt data")?;
 
         let locs = if !table.is_empty() && locs.is_empty() {
             tracing::warn!("Insufficient DWARF info; compile your program with `debug = 2` to enable location info.");
@@ -522,11 +483,12 @@ impl RttActiveTarget {
     /// RttActiveTarget collects references to all the `RttActiveChannel`s, for latter polling/pushing of data.
     pub fn new(
         core: &mut Core,
-        rtt: probe_rs::rtt::Rtt,
-        defmt_state: Option<DefmtState>,
+        rtt: Rtt,
+        defmt_state: Option<Arc<DefmtState>>,
         rtt_config: &RttConfig,
         timestamp_offset: UtcOffset,
-    ) -> Result<Self> {
+    ) -> Result<Self, Error> {
+        let control_block_addr = rtt.ptr();
         let mut active_up_channels = Vec::with_capacity(rtt.up_channels.len());
 
         // For each channel configured in the RTT Control Block (`Rtt`), check if there are
@@ -541,15 +503,9 @@ impl RttActiveTarget {
                 channel,
                 &channel_config,
                 timestamp_offset,
-                defmt_state.as_ref(),
+                defmt_state.clone(),
             )?);
         }
-
-        // It doesn't make sense to pretend RTT is active, if there are no active up channels
-        anyhow::ensure!(
-            !active_up_channels.is_empty(),
-            "RTT Initialized correctly, but there were no active channels configured"
-        );
 
         let active_down_channels = rtt
             .down_channels
@@ -558,9 +514,9 @@ impl RttActiveTarget {
             .collect::<Vec<_>>();
 
         Ok(Self {
+            control_block_addr,
             active_up_channels,
             active_down_channels,
-            defmt_state,
         })
     }
 
@@ -596,34 +552,57 @@ impl RttActiveTarget {
         &mut self,
         core: &mut Core,
         collector: &mut impl ChannelDataCallbacks,
-    ) -> Result<()> {
-        let defmt_state = self.defmt_state.as_ref();
+    ) -> Result<(), Error> {
         for channel in self.active_up_channels.iter_mut() {
-            channel.poll_process_rtt_data(core, defmt_state, collector)?;
+            channel.poll_process_rtt_data(core, collector)?;
         }
         Ok(())
     }
 
+    /// Polls the RTT target on all channels and returns available data.
+    /// An error on any channel will return an error instead of incomplete data.
+    pub fn poll_channel_fallible(
+        &mut self,
+        core: &mut Core,
+        channel: usize,
+        collector: &mut impl ChannelDataCallbacks,
+    ) -> Result<(), Error> {
+        if let Some(channel) = self.active_up_channels.get_mut(channel) {
+            channel.poll_process_rtt_data(core, collector)?;
+            Ok(())
+        } else {
+            Err(Error::MissingChannel(channel))
+        }
+    }
+
+    /// Send data to a down channel.
+    pub fn write_down_channel(
+        &mut self,
+        core: &mut Core,
+        channel: usize,
+        data: impl AsRef<[u8]>,
+    ) -> Result<(), Error> {
+        if let Some(channel) = self.active_down_channels.get_mut(channel) {
+            channel.push_rtt(core, data)
+        } else {
+            Err(Error::MissingChannel(channel))
+        }
+    }
+
     /// Clean up temporary changes made to the channels.
-    pub fn clean_up(&mut self, core: &mut Core) -> Result<()> {
+    pub fn clean_up(&mut self, core: &mut Core) -> Result<(), Error> {
         for channel in self.active_up_channels.iter_mut() {
             channel.clean_up(core)?;
         }
         Ok(())
     }
-}
 
-pub(crate) struct RttBuffer(pub Vec<u8>);
-impl RttBuffer {
-    /// Initialize the buffer and ensure it has enough capacity to match the size of the RTT channel
-    /// on the target at the time of instantiation. Doing this now prevents later performance impact
-    /// if the buffer capacity has to be grown dynamically.
-    pub fn new(buffer_size: usize) -> RttBuffer {
-        RttBuffer(vec![0u8; buffer_size.max(1)])
-    }
-}
-impl fmt::Debug for RttBuffer {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.0.fmt(f)
+    /// Overwrites the control block with zeros. This is useful after resets.
+    pub fn clear_control_block(&mut self, core: &mut Core) -> Result<(), Error> {
+        let zeros = vec![0; Rtt::control_block_size(core)];
+        core.write(self.control_block_addr, &zeros)?;
+        self.active_down_channels.clear();
+        self.active_up_channels.clear();
+        Ok(())
     }
 }
