@@ -10,7 +10,7 @@ use std::{
 
 use crate::probe::{
     espusbjtag::EspUsbJtagFactory, usb_util::InterfaceExt, DebugProbeError, DebugProbeInfo,
-    DebugProbeSelector, ProbeCreationError,
+    DebugProbeSelector, ProbeCreationError, ProbeError,
 };
 
 const JTAG_PROTOCOL_CAPABILITIES_VERSION: u8 = 1;
@@ -33,6 +33,18 @@ const USB_PID: u16 = 0x1001;
 
 const DESCRIPTOR_JTAG_CAPABILITIES_TYPE: u8 = 0x20;
 const DESCRIPTOR_JTAG_CAPABILITIES_INDEX: u8 = 0x00;
+
+/// Errors that can occur when working with the ESP JTAG adapter.
+#[derive(Debug, thiserror::Error, docsplay::Display)]
+pub enum EspError {
+    /// USB interface or endpoints could not be found.
+    InterfaceNotFound,
+
+    /// Unknown capabilities descriptor version: {0:#04x}.
+    UnknownCapabilities(u8),
+}
+
+impl ProbeError for EspError {}
 
 pub(super) struct ProtocolHandler {
     // The USB device handle.
@@ -131,9 +143,7 @@ impl ProtocolHandler {
         }
 
         let Some((interface_number, ep_in, ep_out)) = found else {
-            return Err(ProbeCreationError::ProbeSpecific(
-                "USB interface or endpoints could not be found.".into(),
-            ));
+            return Err(EspError::InterfaceNotFound.into());
         };
 
         tracing::debug!(
@@ -168,9 +178,7 @@ impl ProtocolHandler {
         tracing::trace!("Descriptor bytes: {:02x?}", buffer);
         tracing::debug!("Protocol version: {protocol_version}");
         if protocol_version != JTAG_PROTOCOL_CAPABILITIES_VERSION {
-            return Err(ProbeCreationError::ProbeSpecific(
-                "Unknown capabilities descriptor version.".into(),
-            ));
+            return Err(EspError::UnknownCapabilities(protocol_version).into());
         }
 
         let mut base_speed_khz = 1000;
