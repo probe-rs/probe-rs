@@ -5,6 +5,7 @@ use crate::flashing::{FlashLayout, FlashPage, FlashSector};
 trait EncoderAlgorithm {
     fn pages(&self) -> &[FlashPage];
     fn sectors(&self) -> &[FlashSector];
+    fn layout(&self) -> &FlashLayout;
 }
 
 /// No-op encoder.
@@ -25,6 +26,10 @@ impl EncoderAlgorithm for RawEncoder {
 
     fn sectors(&self) -> &[FlashSector] {
         self.flash.sectors()
+    }
+
+    fn layout(&self) -> &FlashLayout {
+        &self.flash
     }
 }
 
@@ -117,6 +122,10 @@ impl EncoderAlgorithm for MinizEncoder {
     fn sectors(&self) -> &[FlashSector] {
         self.flash.sectors()
     }
+
+    fn layout(&self) -> &FlashLayout {
+        &self.flash
+    }
 }
 
 pub struct FlashEncoder {
@@ -143,5 +152,9 @@ impl FlashEncoder {
 
     pub fn program_size(&self) -> u64 {
         self.pages().iter().map(|p| p.data().len() as u64).sum()
+    }
+
+    pub fn flash_layout(&self) -> &FlashLayout {
+        self.encoder.layout()
     }
 }

@@ -49,7 +49,7 @@ impl Operation for Verify {
 ///
 /// Once constructed it can be used to program date to the flash.
 pub(super) struct Flasher<'session> {
-    session: &'session mut Session,
+    pub(super) session: &'session mut Session,
     core_index: usize,
     flash_algorithm: FlashAlgorithm,
     loaded: bool,
@@ -264,6 +264,7 @@ impl<'session> Flasher<'session> {
         restore_unwritten_bytes: bool,
         enable_double_buffering: bool,
         skip_erasing: bool,
+        verify: bool,
     ) -> Result<(), FlashError> {
         tracing::debug!("Starting program procedure.");
         // Convert the list of flash operations into flash sectors and pages.
@@ -312,10 +313,14 @@ impl<'session> Flasher<'session> {
             self.program_simple(&flash_encoder)?;
         };
 
+        if verify && !self.verify(flash_encoder.flash_layout(), !restore_unwritten_bytes)? {
+            return Err(FlashError::Verify);
+        }
+
         Ok(())
     }
 
-    /// Fills all the bytes of `current_page`.
+    /// Fills all the bytes of `page`.
     ///
     /// If `restore_unwritten_bytes` is `true`, all bytes of the page,
     /// that are not to be written during flashing will be read from the flash first
@@ -328,6 +333,93 @@ impl<'session> Flasher<'session> {
         let page_offset = (fill.address() - page.address()) as usize;
         let page_slice = &mut page.data_mut()[page_offset..][..fill.size() as usize];
         self.run_verify(|active| active.read_flash(fill.address(), page_slice))
+    }
+
+    /// Verifies all the to-be-written bytes of `layout`.
+    pub(super) fn verify(
+        &mut self,
+        layout: &FlashLayout,
+        ignore_filled: bool,
+    ) -> Result<bool, FlashError> {
+        self.run_verify(|active| {
+            if let Some(verify) = active.flash_algorithm.pc_verify {
+                tracing::debug!("Verify using CMSIS function");
+                // Prefer Verify as we may use compression
+                // FIXME: avoid compressing multiple times
+                let flash_encoder =
+                    FlashEncoder::new(active.flash_algorithm.transfer_encoding, layout.clone());
+
+                for page in flash_encoder.pages() {
+                    let address = page.address();
+                    let bytes = page.data();
+
+                    tracing::debug!(
+                        "Verifying page at address {:#010x} with size: {}",
+                        address,
+                        bytes.len()
+                    );
+
+                    // Transfer the bytes to RAM.
+                    let buffer_address = active.load_page_buffer(bytes, 0)?;
+
+                    let result = active.call_function_and_wait(
+                        &Registers {
+                            pc: into_reg(verify)?,
+                            r0: Some(into_reg(address)?),
+                            r1: Some(into_reg(bytes.len() as u64)?),
+                            r2: Some(into_reg(buffer_address)?),
+                            r3: None,
+                        },
+                        false,
+                        Duration::from_secs(30),
+                    )?;
+
+                    // Returns
+                    // status information:
+                    // the sum of (adr+sz) - on success.
+                    // any other number - on failure, and represents the failing address.
+                    if result as u64 != address + bytes.len() as u64 {
+                        tracing::debug!("Verification failed for page at address {:#010x}", result);
+                        return Ok(false);
+                    }
+                }
+            } else {
+                tracing::debug!("Verify using manual comparison");
+                for (idx, page) in layout.pages.iter().enumerate() {
+                    let address = page.address();
+                    let data = page.data();
+
+                    let mut read_back = vec![0; data.len()];
+                    active.read_flash(address, &mut read_back)?;
+
+                    if ignore_filled {
+                        // "Unfill" fill regions. These don't get flashed, so their contents are
+                        // allowed to differ. We mask these bytes with default flash content here,
+                        // just for the verification process.
+                        for fill in layout.fills() {
+                            if fill.page_index() != idx {
+                                continue;
+                            }
+
+                            let fill_offset = (fill.address() - address) as usize;
+                            let fill_size = fill.size() as usize;
+
+                            let default_bytes = &data[fill_offset..][..fill_size];
+                            read_back[fill_offset..][..fill_size].copy_from_slice(default_bytes);
+                        }
+                    }
+
+                    if data != read_back.as_slice() {
+                        tracing::debug!(
+                            "Verification failed for page at address {:#010x}",
+                            address
+                        );
+                        return Ok(false);
+                    }
+                }
+            }
+            Ok(true)
+        })
     }
 
     /// Programs the pages given in `flash_layout` into the flash.
@@ -788,6 +880,65 @@ impl<O: Operation> ActiveFlasher<'_, O> {
             self.core.read(address, data).map_err(FlashError::Core)
         }
     }
+
+    /// Returns the address of the buffer that was used.
+    pub(super) fn load_page_buffer(
+        &mut self,
+        bytes: &[u8],
+        buffer_number: usize,
+    ) -> Result<u64, FlashError> {
+        // Ensure the buffer number is valid, otherwise there is a bug somewhere
+        // in the flashing code.
+        assert!(
+            buffer_number < self.flash_algorithm.page_buffers.len(),
+            "Trying to use non-existing buffer ({}/{}) for flashing. This is a bug. Please report it.",
+            buffer_number, self.flash_algorithm.page_buffers.len()
+        );
+
+        let buffer_address = self.flash_algorithm.page_buffers[buffer_number];
+        self.load_data(buffer_address, bytes)?;
+
+        Ok(buffer_address)
+    }
+
+    /// Transfers the buffer bytes to RAM.
+    fn load_data(&mut self, address: u64, bytes: &[u8]) -> Result<(), FlashError> {
+        tracing::debug!(
+            "Loading {} bytes of data into RAM at address {:#010x}\n",
+            bytes.len(),
+            address
+        );
+        // TODO: Prevent security settings from locking the device.
+
+        // In case some of the previous preprocessing forgets to pad the last page,
+        // we will fill the missing bytes with the erased byte value.
+        let empty = self.flash_algorithm.flash_properties.erased_byte_value;
+        let words: Vec<u32> = bytes
+            .chunks(std::mem::size_of::<u32>())
+            .map(|a| {
+                u32::from_le_bytes([
+                    a[0],
+                    a.get(1).copied().unwrap_or(empty),
+                    a.get(2).copied().unwrap_or(empty),
+                    a.get(3).copied().unwrap_or(empty),
+                ])
+            })
+            .collect();
+
+        let t1 = Instant::now();
+
+        self.core
+            .write_32(address, &words)
+            .map_err(FlashError::Core)?;
+
+        tracing::info!(
+            "Took {:?} to download {} byte page into ram",
+            t1.elapsed(),
+            bytes.len()
+        );
+
+        Ok(())
+    }
 }
 
 impl<'probe> ActiveFlasher<'probe, Erase> {
@@ -864,45 +1015,6 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
 }
 
 impl<'p> ActiveFlasher<'p, Program> {
-    /// Transfers the buffer bytes to RAM.
-    fn load_data(&mut self, address: u64, bytes: &[u8]) -> Result<(), FlashError> {
-        tracing::debug!(
-            "Loading {} bytes of data into RAM at address {:#010x}\n",
-            bytes.len(),
-            address
-        );
-        // TODO: Prevent security settings from locking the device.
-
-        // In case some of the previous preprocessing forgets to pad the last page,
-        // we will fill the missing bytes with the erased byte value.
-        let empty = self.flash_algorithm.flash_properties.erased_byte_value;
-        let words: Vec<u32> = bytes
-            .chunks(std::mem::size_of::<u32>())
-            .map(|a| {
-                u32::from_le_bytes([
-                    a[0],
-                    a.get(1).copied().unwrap_or(empty),
-                    a.get(2).copied().unwrap_or(empty),
-                    a.get(3).copied().unwrap_or(empty),
-                ])
-            })
-            .collect();
-
-        let t1 = Instant::now();
-
-        self.core
-            .write_32(address, &words)
-            .map_err(FlashError::Core)?;
-
-        tracing::info!(
-            "Took {:?} to download {} byte page into ram",
-            t1.elapsed(),
-            bytes.len()
-        );
-
-        Ok(())
-    }
-
     pub(super) fn program_page(&mut self, page: &FlashPage) -> Result<(), FlashError> {
         let t1 = Instant::now();
 
@@ -949,26 +1061,6 @@ impl<'p> ActiveFlasher<'p, Program> {
         })?;
 
         Ok(())
-    }
-
-    /// Returns the address of the buffer that was used.
-    pub(super) fn load_page_buffer(
-        &mut self,
-        bytes: &[u8],
-        buffer_number: usize,
-    ) -> Result<u64, FlashError> {
-        // Ensure the buffer number is valid, otherwise there is a bug somewhere
-        // in the flashing code.
-        assert!(
-            buffer_number < self.flash_algorithm.page_buffers.len(),
-            "Trying to use non-existing buffer ({}/{}) for flashing. This is a bug. Please report it.",
-            buffer_number, self.flash_algorithm.page_buffers.len()
-        );
-
-        let buffer_address = self.flash_algorithm.page_buffers[buffer_number];
-        self.load_data(buffer_address, bytes)?;
-
-        Ok(buffer_address)
     }
 
     fn wait_for_write_end(&mut self, last_page_address: u64) -> Result<(), FlashError> {
