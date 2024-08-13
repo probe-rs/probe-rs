@@ -84,8 +84,7 @@ impl XtensaDebugSequence for ESP32S3 {
         {
             let _span = tracing::debug_span!("Halting core").entered();
             if !core.core_halted()? {
-                core.halt()?;
-                core.wait_for_core_halted(timeout)?;
+                core.halt(timeout)?;
             }
         }
 

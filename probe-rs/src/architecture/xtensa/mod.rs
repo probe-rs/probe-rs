@@ -216,6 +216,18 @@ impl<'probe> Xtensa<'probe> {
             Ok(None)
         }
     }
+
+    fn on_halted(&mut self) -> Result<(), Error> {
+        self.state.pc_written = false;
+
+        // Poll core status. For now we don't do anything with it, but in the future we
+        // may check expected status, and record the status to prevent decoding semihosting
+        // multiple times (possibly incorrectly after answering).
+        let status = self.status()?;
+        tracing::debug!("Core halted: {:#?}", status);
+
+        Ok(())
+    }
 }
 
 impl<'probe> CoreMemoryInterface for Xtensa<'probe> {
@@ -233,11 +245,7 @@ impl<'probe> CoreMemoryInterface for Xtensa<'probe> {
 impl<'probe> CoreInterface for Xtensa<'probe> {
     fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
         self.interface.wait_for_core_halted(timeout)?;
-        self.state.pc_written = false;
-
-        let status = self.status()?;
-
-        tracing::debug!("Core halted: {:#?}", status);
+        self.on_halted()?;
 
         Ok(())
     }
@@ -271,8 +279,8 @@ impl<'probe> CoreInterface for Xtensa<'probe> {
     }
 
     fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
-        self.interface.halt()?;
-        self.interface.wait_for_core_halted(timeout)?;
+        self.interface.halt(timeout)?;
+        self.on_halted()?;
 
         self.core_info()
     }
@@ -295,6 +303,7 @@ impl<'probe> CoreInterface for Xtensa<'probe> {
         self.state.semihosting_command = None;
         self.sequence
             .reset_system_and_halt(&mut self.interface, timeout)?;
+        self.on_halted()?;
 
         // TODO: this may return that the core has gone away, which is fine but currently unexpected
         self.on_attach()?;
@@ -305,7 +314,7 @@ impl<'probe> CoreInterface for Xtensa<'probe> {
     fn step(&mut self) -> Result<CoreInformation, Error> {
         self.skip_breakpoint_instruction()?;
         self.interface.step()?;
-        self.state.pc_written = false;
+        self.on_halted()?;
 
         self.core_info()
     }
