@@ -128,7 +128,7 @@ pub struct XtensaDebugInterfaceState {
 // here but one layer up.
 pub struct XtensaCommunicationInterface<'probe> {
     /// The Xtensa debug module
-    pub(super) xdm: Xdm<'probe>,
+    pub(crate) xdm: Xdm<'probe>,
     state: &'probe mut XtensaInterfaceState,
 }
 
@@ -701,6 +701,16 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         self.xdm.reset_and_halt()?;
         self.wait_for_core_halted(timeout)?;
 
+        // TODO: this is only necessary to run code, so this might not be the best place
+        // Make sure the CPU is in a known state and is able to run code we download.
+        self.write_register({
+            let mut ps = ProgramStatus(0);
+            ps.set_intlevel(0);
+            ps.set_user_mode(true);
+            ps.set_woe(true);
+            ps
+        })?;
+
         Ok(())
     }
 
@@ -984,3 +994,8 @@ u32_register!(ICount, SpecialRegister::ICount);
 #[derive(Copy, Clone, Debug)]
 pub struct ICountLevel(pub u32);
 u32_register!(ICountLevel, SpecialRegister::ICountLevel);
+
+/// The Program Counter register.
+#[derive(Copy, Clone, Debug)]
+pub struct ProgramCounter(pub u32);
+u32_register!(ProgramCounter, Register::CurrentPc);

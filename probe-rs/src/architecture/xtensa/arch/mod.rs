@@ -14,6 +14,31 @@ pub enum Register {
     CurrentPs,
 }
 
+impl TryFrom<RegisterId> for Register {
+    type Error = XtensaError;
+
+    fn try_from(value: RegisterId) -> Result<Self, Self::Error> {
+        match value.0.to_le_bytes() {
+            [id, 0] => Ok(Self::Cpu(CpuRegister::try_from(id)?)),
+            [id, 1] => Ok(Self::Special(SpecialRegister::try_from(id)?)),
+            [0, 0xFF] => Ok(Self::CurrentPc),
+            [1, 0xFF] => Ok(Self::CurrentPs),
+            _ => Err(XtensaError::RegisterNotAvailable),
+        }
+    }
+}
+
+impl From<Register> for RegisterId {
+    fn from(register: Register) -> RegisterId {
+        match register {
+            Register::Cpu(reg) => reg.into(),
+            Register::Special(reg) => reg.into(),
+            Register::CurrentPc => RegisterId(u16::from_le_bytes([0, 0xFF])),
+            Register::CurrentPs => RegisterId(u16::from_le_bytes([1, 0xFF])),
+        }
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub enum CpuRegister {
     A0 = 0,
@@ -57,6 +82,12 @@ impl TryFrom<u8> for CpuRegister {
             15 => Ok(Self::A15),
             _ => Err(XtensaError::RegisterNotAvailable),
         }
+    }
+}
+
+impl From<CpuRegister> for RegisterId {
+    fn from(register: CpuRegister) -> RegisterId {
+        RegisterId(u16::from_le_bytes([register as u8, 0]))
     }
 }
 
@@ -236,6 +267,12 @@ impl TryFrom<u8> for SpecialRegister {
     }
 }
 
+impl From<SpecialRegister> for RegisterId {
+    fn from(register: SpecialRegister) -> RegisterId {
+        RegisterId(u16::from_le_bytes([register as u8, 1]))
+    }
+}
+
 #[allow(non_upper_case_globals)] // Aliasses have same style as other register names
 impl SpecialRegister {
     // Aliasses
@@ -243,22 +280,6 @@ impl SpecialRegister {
     pub const MpuCfg: Self = Self::DTlbCfg;
     pub const Depc: Self = Self::IBreakC0;
     pub const Interrupt: Self = Self::IntSet;
-}
-
-impl TryFrom<RegisterId> for Register {
-    type Error = XtensaError;
-
-    fn try_from(value: RegisterId) -> Result<Self, Self::Error> {
-        let [id, group] = value.0.to_le_bytes();
-
-        match (group, id) {
-            (0, id) => Ok(Self::Cpu(CpuRegister::try_from(id)?)),
-            (1, id) => Ok(Self::Special(SpecialRegister::try_from(id)?)),
-            (0xFF, 0) => Ok(Self::CurrentPc),
-            (0xFF, 1) => Ok(Self::CurrentPs),
-            _ => Err(XtensaError::RegisterNotAvailable),
-        }
-    }
 }
 
 impl From<CpuRegister> for Register {

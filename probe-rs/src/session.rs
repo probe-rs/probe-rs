@@ -374,16 +374,18 @@ impl Session {
         for core_id in 0..session.cores.len() {
             match session.core(core_id) {
                 Ok(mut core) => {
-                    core.halt(Duration::from_millis(100))?;
+                    if !core.core_halted()? {
+                        core.halt(Duration::from_millis(100))?;
+                    }
                 }
-                Err(Error::CoreDisabled(_)) => {}
+                Err(Error::CoreDisabled(i)) => tracing::debug!("Core {i} is disabled"),
                 Err(error) => return Err(error),
             }
         }
 
         // Connect to the cores
         match session.target.debug_sequence.clone() {
-            DebugSequence::Xtensa(sequence) => sequence.on_connect(&mut session)?,
+            DebugSequence::Xtensa(_) => {}
 
             DebugSequence::Riscv(sequence) => {
                 for core_id in 0..session.cores.len() {
@@ -438,9 +440,9 @@ impl Session {
                 other => other?,
             };
             let status = c.status()?;
-            tracing::info!("Core status: {:?}", status);
+            tracing::debug!("Core {core} status: {:?}", status);
             if !status.is_halted() {
-                tracing::info!("Halting core...");
+                tracing::debug!("Halting core...");
                 resume_state.push(core);
                 c.halt(Duration::from_millis(100))?;
             }
@@ -449,7 +451,7 @@ impl Session {
         let r = f(self);
 
         for core in resume_state {
-            tracing::info!("Resuming core...");
+            tracing::debug!("Resuming core...");
             self.core(core)?.run()?;
         }
 

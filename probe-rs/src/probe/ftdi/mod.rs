@@ -184,7 +184,7 @@ impl JtagAdapter {
     }
 
     fn append_command(&mut self, command: Command) -> Result<(), DebugProbeError> {
-        tracing::debug!("Appending {:?}", command);
+        tracing::trace!("Appending {:?}", command);
         // 1 byte is reserved for the send immediate command
         if self.commands.len() + command.len() + 1 >= self.ftdi.buffer_size {
             self.send_buffer()?;
