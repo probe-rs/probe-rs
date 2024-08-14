@@ -382,6 +382,14 @@ impl ProtocolHandler {
 
         let len = (self.output_buffer.len() + 1) / 2;
 
+        if len > commands.len() {
+            tracing::warn!(
+                "Output buffer too large: {} bytes ({} nibbles)",
+                len,
+                self.output_buffer.len()
+            );
+        }
+
         tracing::trace!(
             "Writing {} bytes ({} nibbles) to usb endpoint",
             len,

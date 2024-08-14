@@ -439,9 +439,9 @@ impl Session {
                 Err(Error::CoreDisabled(_)) => continue,
                 other => other?,
             };
-            let status = c.status()?;
-            tracing::debug!("Core {core} status: {:?}", status);
-            if !status.is_halted() {
+            if c.core_halted()? {
+                tracing::debug!("Core {core} already halted");
+            } else {
                 tracing::debug!("Halting core...");
                 resume_state.push(core);
                 c.halt(Duration::from_millis(100))?;
