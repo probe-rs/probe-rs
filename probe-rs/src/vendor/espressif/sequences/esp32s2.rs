@@ -165,10 +165,14 @@ impl XtensaDebugSequence for ESP32S2 {
 
         // Reset CPU
         match self.set_peri_reg_mask(core, Self::OPTIONS0, SYS_RESET, SYS_RESET) {
-            err @ Err(crate::Error::Xtensa(XtensaError::XdmError(xdm::Error::Xdm {
-                source: DebugRegisterError::Unexpected(_),
-                ..
-            }))) => {
+            err @ Err(crate::Error::Xtensa(XtensaError::XdmError(
+                xdm::Error::ExecOverrun
+                | xdm::Error::InstructionIgnored
+                | xdm::Error::Xdm {
+                    source: DebugRegisterError::Unexpected(_),
+                    ..
+                },
+            ))) => {
                 // ignore error
                 tracing::debug!("Error ignored: {err:?}");
             }
