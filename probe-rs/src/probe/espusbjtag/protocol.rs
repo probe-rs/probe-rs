@@ -365,6 +365,12 @@ impl ProtocolHandler {
 
     /// Sends the commands stored in the output buffer to the USB EP.
     fn send_buffer(&mut self) -> Result<(), DebugProbeError> {
+        assert!(
+            self.output_buffer.len() <= OUT_BUFFER_SIZE,
+            "Output buffer too large: {} elements, max {OUT_BUFFER_SIZE}",
+            self.output_buffer.len()
+        );
+
         let mut commands = [0; OUT_EP_BUFFER_SIZE];
         for (out, byte) in commands
             .iter_mut()
@@ -381,6 +387,13 @@ impl ProtocolHandler {
         }
 
         let len = (self.output_buffer.len() + 1) / 2;
+
+        assert!(
+            len <= commands.len(),
+            "Output buffer too large: {len} bytes ({} nibbles), max {}",
+            self.output_buffer.len(),
+            commands.len(),
+        );
 
         tracing::trace!(
             "Writing {} bytes ({} nibbles) to usb endpoint",
