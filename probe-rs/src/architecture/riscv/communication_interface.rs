@@ -646,7 +646,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         Ok(())
     }
 
-    pub(crate) fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, RiscvError> {
+    pub(crate) fn halt(&mut self, timeout: Duration) -> Result<(), RiscvError> {
         // write 1 to the haltreq register, which is part
         // of the dmcontrol register
 
@@ -666,8 +666,12 @@ impl<'state> RiscvCommunicationInterface<'state> {
         // clear the halt request
         dmcontrol.set_haltreq(false);
 
-        self.schedule_write_dm_register(dmcontrol)?;
+        self.write_dm_register(dmcontrol)?;
 
+        Ok(())
+    }
+
+    pub(crate) fn core_info(&mut self) -> Result<CoreInformation, RiscvError> {
         let pc: u64 = self
             .read_csr(super::registers::PC.id().0)
             .map(|v| v.into())?;

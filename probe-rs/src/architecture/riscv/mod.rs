@@ -249,7 +249,8 @@ impl<'state> CoreInterface for Riscv32<'state> {
     }
 
     fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
-        Ok(self.interface.halt(timeout)?)
+        self.interface.halt(timeout)?;
+        Ok(self.interface.core_info()?)
     }
 
     fn run(&mut self) -> Result<(), Error> {
