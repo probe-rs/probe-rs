@@ -126,14 +126,13 @@ impl<'probe> Xtensa<'probe> {
 
             if core_reset {
                 // Run the connection sequence while halted.
-                let was_halted = self.core_halted()?;
-                if !was_halted {
-                    self.halt(Duration::from_millis(500))?;
-                }
+                let was_running = self
+                    .interface
+                    .halt_with_previous(Duration::from_millis(500))?;
 
                 self.sequence.on_connect(&mut self.interface)?;
 
-                if !was_halted {
+                if was_running {
                     self.run()?;
                 }
             }
@@ -290,7 +289,7 @@ impl<'probe> CoreInterface for Xtensa<'probe> {
         if self.state.pc_written {
             self.interface.clear_register_cache();
         }
-        Ok(self.interface.resume()?)
+        Ok(self.interface.resume_core()?)
     }
 
     fn reset(&mut self) -> Result<(), Error> {

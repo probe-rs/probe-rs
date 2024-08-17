@@ -133,7 +133,7 @@ impl XtensaDebugSequence for ESP32 {
             core.write_word_32(RTC_CNTL_RESET_STATE_REG, new_state)?;
         }
 
-        match core.resume() {
+        match core.resume_core() {
             err @ Err(XtensaError::XdmError(
                 xdm::Error::ExecOverrun | xdm::Error::InstructionIgnored,
             )) => {

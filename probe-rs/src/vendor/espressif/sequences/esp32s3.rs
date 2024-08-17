@@ -134,7 +134,7 @@ impl XtensaDebugSequence for ESP32S3 {
             core.write_word_32(RTC_CNTL_RESET_STATE_REG, new_state)?;
         }
 
-        core.resume()?;
+        core.resume_core()?;
 
         std::thread::sleep(Duration::from_millis(100));
 

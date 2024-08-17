@@ -472,7 +472,7 @@ impl<'probe> Xdm<'probe> {
         Ok(res)
     }
 
-    fn schedule_read_nexus_register<R: NexusRegister>(&mut self) -> DeferredResultIndex {
+    pub(super) fn schedule_read_nexus_register<R: NexusRegister>(&mut self) -> DeferredResultIndex {
         tracing::debug!("Reading from {}", R::NAME);
         self.schedule_dbg_read(R::ADDRESS)
     }

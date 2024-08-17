@@ -8,7 +8,7 @@ use std::{
 use crate::{
     architecture::xtensa::{
         arch::{instruction::Instruction, CpuRegister, Register, SpecialRegister},
-        xdm::XdmState,
+        xdm::{DebugStatus, XdmState},
     },
     probe::{DebugProbeError, DeferredResultIndex, JTAGAccess},
     BreakpointCause, Error as ProbeRsError, HaltReason, MemoryInterface,
@@ -167,7 +167,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
     pub(crate) fn leave_debug_mode(&mut self) -> Result<(), XtensaError> {
         if self.xdm.status()?.stopped() {
             self.restore_registers()?;
-            self.resume()?;
+            self.resume_core()?;
         }
         self.xdm.leave_ocd_mode()?;
 
@@ -217,23 +217,38 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         Ok(())
     }
 
+    /// Halts the core and returns `true` if the core was running before the halt.
+    pub(crate) fn halt_with_previous(&mut self, timeout: Duration) -> Result<bool, XtensaError> {
+        let was_running = if self.state.is_halted {
+            // Core is already halted, we don't need to do anything.
+            false
+        } else {
+            // If we have not halted the core, it may still be halted on a breakpoint, for example.
+            // Let's check status.
+            let status_idx = self.xdm.schedule_read_nexus_register::<DebugStatus>();
+            self.halt(timeout)?;
+            let before_status = DebugStatus(self.xdm.read_deferred_result(status_idx)?.into_u32());
+
+            !before_status.stopped()
+        };
+
+        Ok(was_running)
+    }
+
     /// Executes a closure while ensuring the core is halted.
     pub fn halted_access<R>(
         &mut self,
         op: impl FnOnce(&mut Self) -> Result<R, XtensaError>,
     ) -> Result<R, XtensaError> {
-        let was_halted = self.core_halted()?;
-        if !was_halted {
-            self.halt(Duration::from_millis(100))?;
+        let was_running = self.halt_with_previous(Duration::from_millis(100))?;
+
+        let result = op(self);
+
+        if was_running {
+            self.resume_core()?;
         }
 
-        let result = op(self)?;
-
-        if !was_halted {
-            self.resume()?;
-        }
-
-        Ok(result)
+        result
     }
 
     /// Steps the core by one instruction.
@@ -243,7 +258,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         // An exception is generated at the beginning of an instruction that would overflow ICOUNT.
         self.schedule_write_register(ICount(-2_i32 as u32))?;
 
-        self.resume()?;
+        self.resume_core()?;
         self.wait_for_core_halted(Duration::from_millis(100))?;
 
         // Avoid stopping again
@@ -253,7 +268,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
     }
 
     /// Resumes program execution.
-    pub fn resume(&mut self) -> Result<(), XtensaError> {
+    pub fn resume_core(&mut self) -> Result<(), XtensaError> {
         tracing::debug!("Resuming core");
         self.state.is_halted = false;
         self.xdm.resume()?;
