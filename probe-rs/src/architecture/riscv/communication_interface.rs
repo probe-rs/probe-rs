@@ -222,7 +222,7 @@ pub struct RiscvCommunicationInterfaceState {
     /// Pointer to the configuration string
     confstrptr: Option<u128>,
 
-    /// Width of the hartsel register
+    /// Width of the `hartsel` register
     hartsellen: u8,
 
     /// Number of harts
@@ -647,10 +647,9 @@ impl<'state> RiscvCommunicationInterface<'state> {
     }
 
     pub(crate) fn halt(&mut self, timeout: Duration) -> Result<(), RiscvError> {
-        // write 1 to the haltreq register, which is part
-        // of the dmcontrol register
-
-        let mut dmcontrol: Dmcontrol = self.read_dm_register()?;
+        // Fast path.
+        // Try to do the halt, in a single (well, 2 but we can cache Dmcontrol later) step.
+        let mut dmcontrol = self.read_dm_register::<Dmcontrol>()?;
         tracing::debug!(
             "Before requesting halt, the Dmcontrol register value was: {:?}",
             dmcontrol
@@ -661,14 +660,52 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
         self.schedule_write_dm_register(dmcontrol)?;
 
+        let result_status_idx = self.schedule_read_dm_register::<Dmstatus>()?;
+
+        // clear the halt request
+        dmcontrol.set_haltreq(false);
+        self.write_dm_register(dmcontrol)?;
+
+        let result_status = Dmstatus(self.dtm.read_deferred_result(result_status_idx)?.into_u32());
+
+        if result_status.allhalted() {
+            self.state.is_halted = true;
+            // Cores have halted, we have nothing else to do but return.
+            return Ok(());
+        }
+
+        // Not every core has halted in time. Let's do things slowly.
+
+        // set the halt request again
+        dmcontrol.set_haltreq(true);
+        self.write_dm_register(dmcontrol)?;
+
+        // Wait until halted state is active again.
         self.wait_for_core_halted(timeout)?;
 
         // clear the halt request
         dmcontrol.set_haltreq(false);
-
         self.write_dm_register(dmcontrol)?;
 
         Ok(())
+    }
+
+    /// Halts the core and returns `true` if the core was running before the halt.
+    pub(crate) fn halt_with_previous(&mut self, timeout: Duration) -> Result<bool, RiscvError> {
+        let was_running = if self.state.is_halted {
+            // Core is already halted, we don't need to do anything.
+            false
+        } else {
+            // If we have not halted the core, it may still be halted on a breakpoint, for example.
+            // Let's check status.
+            let status_idx = self.schedule_read_dm_register::<Dmstatus>()?;
+            self.halt(timeout)?;
+            let before_status = Dmstatus(self.dtm.read_deferred_result(status_idx)?.into_u32());
+
+            !before_status.allhalted()
+        };
+
+        Ok(was_running)
     }
 
     pub(crate) fn core_info(&mut self) -> Result<CoreInformation, RiscvError> {
@@ -710,10 +747,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         &mut self,
         op: impl FnOnce(&mut Self) -> Result<R, RiscvError>,
     ) -> Result<R, RiscvError> {
-        let was_running = !self.core_halted()?;
-        if was_running {
-            self.halt(Duration::from_millis(100))?;
-        }
+        let was_running = self.halt_with_previous(Duration::from_millis(100))?;
 
         let result = op(self);
 
