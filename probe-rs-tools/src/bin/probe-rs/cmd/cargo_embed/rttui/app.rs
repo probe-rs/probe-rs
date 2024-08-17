@@ -347,7 +347,7 @@ fn layout_chunks(f: &mut ratatui::Frame, has_down_channel: bool) -> Rc<[Rect]> {
         .direction(Direction::Vertical)
         .margin(0)
         .constraints(constraints)
-        .split(f.size())
+        .split(f.area())
 }
 
 fn render_tabs(f: &mut ratatui::Frame, chunk: Rect, tabs: &[Tab], current_tab: usize) {
