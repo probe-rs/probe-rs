@@ -533,7 +533,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         }
 
         self.state.saved_registers.clear();
-        self.xdm.execute()
+        Ok(())
     }
 
     fn read_memory(&mut self, address: u64, mut dst: &mut [u8]) -> Result<(), XtensaError> {
@@ -587,6 +587,8 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
                 aligned_reads.push(this.xdm.schedule_read_ddr());
             };
 
+            this.restore_register(key)?;
+
             if let Some((read, offset, bytes_to_copy)) = first_read {
                 let word = this
                     .xdm
@@ -610,8 +612,6 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
                 dst[..bytes].copy_from_slice(&word[..bytes]);
                 dst = &mut dst[bytes..];
             }
-
-            this.restore_register(key)?;
 
             Ok(())
         })
@@ -714,7 +714,6 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
     }
 
     pub(crate) fn reset_and_halt(&mut self, timeout: Duration) -> Result<(), XtensaError> {
-        self.xdm.execute()?;
         self.clear_register_cache();
         self.xdm.reset_and_halt()?;
         self.wait_for_core_halted(timeout)?;

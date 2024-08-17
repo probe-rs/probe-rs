@@ -659,6 +659,7 @@ impl<'probe> Xdm<'probe> {
     }
 
     pub fn reset_and_halt(&mut self) -> Result<(), XtensaError> {
+        self.execute()?;
         self.pwr_write(PowerDevice::PowerControl, {
             let mut pwr_control = PowerControl(0);
 
