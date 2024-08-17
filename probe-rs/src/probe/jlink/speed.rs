@@ -105,6 +105,8 @@ impl JLink {
             self.require_capability(Capability::AdaptiveClocking)?;
         }
 
+        tracing::info!("Selecting speed: {} Hz", speed.raw);
+
         let [low, high] = speed.raw.to_le_bytes();
         self.write_cmd(&[Command::SetSpeed as u8, low, high])?;
 

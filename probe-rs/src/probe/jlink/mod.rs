@@ -1030,6 +1030,14 @@ impl DebugProbe for JLink {
             }
         }
 
+        self.write_cmd(&[Command::HwReset1 as u8])?;
+        self.write_cmd(&[Command::HwTrst1 as u8])?;
+
+        // Set a default speed if not already set
+        if self.speed_khz == 0 {
+            self.set_speed(400)?;
+        }
+
         tracing::debug!("Attached succesfully");
 
         Ok(())
