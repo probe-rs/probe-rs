@@ -471,9 +471,9 @@ mod tests {
     #[test]
     fn try_fetch_not_unique() {
         let registry = Registry::from_builtin_families();
-        // ambiguous: partially matches STM32G081KB and STM32G081CB, etc.
+        // ambiguous: partially matches STM32G081KBUx and STM32G081KBUxN
         assert!(matches!(
-            registry.get_target_by_name("STM32G081"),
+            registry.get_target_by_name("STM32G081KBU"),
             Err(RegistryError::ChipNotUnique(_, _))
         ));
     }
@@ -487,48 +487,10 @@ mod tests {
         ));
     }
 
+    #[cfg(feature = "builtin-targets")]
     #[test]
     fn try_fetch2() {
-        let registry = Registry {
-            families: vec![ChipFamily {
-                name: String::from("STM32G0"),
-                manufacturer: None,
-                chip_detection: vec![],
-                generated_from_pack: false,
-                pack_file_release: None,
-                variants: vec![
-                    Chip {
-                        name: String::from("STM32G081"),
-                        part: None,
-                        svd: None,
-                        documentation: HashMap::new(),
-                        package_variants: vec![String::from("STM32G081KBUx")],
-                        cores: vec![],
-                        memory_map: vec![],
-                        flash_algorithms: vec![],
-                        rtt_scan_ranges: None,
-                        jtag: None,
-                        default_binary_format: None,
-                    },
-                    Chip {
-                        name: String::from("STM32G081xN"),
-                        part: None,
-                        svd: None,
-                        documentation: HashMap::new(),
-                        package_variants: vec![String::from("STM32G081KBUxN")],
-                        cores: vec![],
-                        memory_map: vec![],
-                        flash_algorithms: vec![],
-                        rtt_scan_ranges: None,
-                        jtag: None,
-                        default_binary_format: None,
-                    },
-                ],
-                flash_algorithms: vec![],
-                source: TargetDescriptionSource::Generic,
-            }],
-        };
-
+        let registry = Registry::from_builtin_families();
         // ok: matches both STM32G081KBUx and STM32G081KBUxN, but the first one is an exact match
         assert!(registry.get_target_by_name("stm32G081KBUx").is_ok());
     }
