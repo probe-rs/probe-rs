@@ -1688,14 +1688,16 @@ impl<'state> RiscvCommunicationInterface<'state> {
         self.schedule_write_dm_register(dmcontrol)?;
 
         // check if request has been acknowleged.
-        let status: Dmstatus = self.read_dm_register()?;
-        if !status.allresumeack() {
-            return Err(RiscvError::RequestNotAcknowledged);
-        }
+        let status_idx = self.schedule_read_dm_register::<Dmstatus>()?;
 
         // clear resume request.
         dmcontrol.set_resumereq(false);
         self.write_dm_register(dmcontrol)?;
+
+        let status = Dmstatus(self.dtm.read_deferred_result(status_idx)?.into_u32());
+        if !status.allresumeack() {
+            return Err(RiscvError::RequestNotAcknowledged);
+        }
 
         Ok(())
     }
