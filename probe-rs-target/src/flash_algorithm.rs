@@ -11,7 +11,7 @@ pub enum TransferEncoding {
     #[default]
     Raw,
 
-    /// Flash data is compressed using the `miniz_oxide` crate.
+    /// Zlib-compressed data, originally using the `miniz_oxide` crate.
     ///
     /// Compressed images are written in page sized chunks, each chunk written to the image's start
     /// address. The length of the compressed image is stored in the first 4 bytes of the first

@@ -53,7 +53,7 @@ ihex = "3.0"
 itertools = "0.13"
 jep106 = "0.2"
 once_cell = "1"
-miniz_oxide = "0.8"
+flate2 = "1.0"
 object = { version = "0.36", default-features = false, features = [
     "elf",
     "read_core",
