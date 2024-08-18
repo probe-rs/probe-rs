@@ -4,6 +4,7 @@ use super::{Chip, ChipFamily, ChipInfo, Core, Target, TargetDescriptionSource};
 use crate::config::CoreType;
 use parking_lot::{RwLock, RwLockReadGuard};
 use probe_rs_target::{CoreAccessOptions, RiscvCoreAccessOptions};
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::io::Read;
 use std::ops::Deref;
@@ -173,21 +174,26 @@ impl Registry {
                 .flat_map(|chip| chip.package_variants().map(move |p| (chip, p)))
             {
                 if match_name_prefix(package, name) {
-                    if package.len() == name.len() {
-                        tracing::debug!("Exact match for chip name: {package}");
-                        exact_matches += 1;
-                    } else if package.len() > name.len() {
-                        tracing::debug!("Partial match for chip name: {package}");
-                        partial_matches.push(package.as_str());
-                        // Only select partial match if we don't have an exact match yet
-                        if exact_matches > 0 {
+                    match package.len().cmp(&name.len()) {
+                        Ordering::Less => {
+                            // The user specified more than the current package name, so we can't
+                            // accept this as a match.
                             continue;
                         }
-                    } else {
-                        // The user specified more than the current package name, so we can't
-                        // accept this as a match.
-                        continue;
+                        Ordering::Equal => {
+                            tracing::debug!("Exact match for chip name: {package}");
+                            exact_matches += 1;
+                        }
+                        Ordering::Greater => {
+                            tracing::debug!("Partial match for chip name: {package}");
+                            partial_matches.push(package.as_str());
+                            // Only select partial match if we don't have an exact match yet
+                            if exact_matches > 0 {
+                                continue;
+                            }
+                        }
                     }
+
                     selected_family_and_chip = Some((family, variant, package));
                 }
             }
