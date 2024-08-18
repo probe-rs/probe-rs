@@ -176,13 +176,17 @@ impl Registry {
                     if package.len() == name.len() {
                         tracing::debug!("Exact match for chip name: {package}");
                         exact_matches += 1;
-                    } else {
+                    } else if package.len() > name.len() {
                         tracing::debug!("Partial match for chip name: {package}");
                         partial_matches.push(package.as_str());
                         // Only select partial match if we don't have an exact match yet
                         if exact_matches > 0 {
                             continue;
                         }
+                    } else {
+                        // The user specified more than the current package name, so we can't
+                        // accept this as a match.
+                        continue;
                     }
                     selected_family_and_chip = Some((family, variant, package));
                 }
