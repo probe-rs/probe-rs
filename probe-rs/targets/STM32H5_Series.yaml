@@ -6,6 +6,9 @@ generated_from_pack: true
 pack_file_release: 1.3.0
 variants:
 - name: STM32H503CB
+  package_variants:
+  - STM32H503CBTx
+  - STM32H503CBUx
   cores:
   - name: main
     type: armv8m
@@ -50,6 +53,8 @@ variants:
   flash_algorithms:
   - stm32h503_128k_0800
 - name: STM32H503EB
+  package_variants:
+  - STM32H503EBYx
   cores:
   - name: main
     type: armv8m
@@ -94,6 +99,8 @@ variants:
   flash_algorithms:
   - stm32h503_128k_0800
 - name: STM32H503KB
+  package_variants:
+  - STM32H503KBUx
   cores:
   - name: main
     type: armv8m
@@ -138,6 +145,8 @@ variants:
   flash_algorithms:
   - stm32h503_128k_0800
 - name: STM32H503RB
+  package_variants:
+  - STM32H503RBTx
   cores:
   - name: main
     type: armv8m
@@ -182,6 +191,9 @@ variants:
   flash_algorithms:
   - stm32h503_128k_0800
 - name: STM32H523CC
+  package_variants:
+  - STM32H523CCTx
+  - STM32H523CCUx
   cores:
   - name: main
     type: armv8m
@@ -234,6 +246,9 @@ variants:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
 - name: STM32H523CE
+  package_variants:
+  - STM32H523CETx
+  - STM32H523CEUx
   cores:
   - name: main
     type: armv8m
@@ -321,6 +336,8 @@ variants:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
 - name: STM32H523RC
+  package_variants:
+  - STM32H523RCTx
   cores:
   - name: main
     type: armv8m
@@ -373,6 +390,8 @@ variants:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
 - name: STM32H523RE
+  package_variants:
+  - STM32H523RETx
   cores:
   - name: main
     type: armv8m
@@ -425,6 +444,9 @@ variants:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
 - name: STM32H523VC
+  package_variants:
+  - STM32H523VCTx
+  - STM32H523VCIx
   cores:
   - name: main
     type: armv8m
@@ -477,6 +499,9 @@ variants:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
 - name: STM32H523VE
+  package_variants:
+  - STM32H523VETx
+  - STM32H523VEIx
   cores:
   - name: main
     type: armv8m
@@ -529,6 +554,9 @@ variants:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
 - name: STM32H523ZC
+  package_variants:
+  - STM32H523ZCTx
+  - STM32H523ZCJx
   cores:
   - name: main
     type: armv8m
@@ -581,6 +609,9 @@ variants:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
 - name: STM32H523ZE
+  package_variants:
+  - STM32H523ZETx
+  - STM32H523ZEJx
   cores:
   - name: main
     type: armv8m
@@ -633,6 +664,9 @@ variants:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
 - name: STM32H533CE
+  package_variants:
+  - STM32H533CETx
+  - STM32H533CEUx
   cores:
   - name: main
     type: armv8m
@@ -720,6 +754,8 @@ variants:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
 - name: STM32H533RE
+  package_variants:
+  - STM32H533RETx
   cores:
   - name: main
     type: armv8m
@@ -772,6 +808,9 @@ variants:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
 - name: STM32H533VE
+  package_variants:
+  - STM32H533VETx
+  - STM32H533VEIx
   cores:
   - name: main
     type: armv8m
@@ -824,6 +863,9 @@ variants:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
 - name: STM32H533ZE
+  package_variants:
+  - STM32H533ZETx
+  - STM32H533ZEJx
   cores:
   - name: main
     type: armv8m
@@ -876,6 +918,8 @@ variants:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
 - name: STM32H562AG
+  package_variants:
+  - STM32H562AGIx
   cores:
   - name: main
     type: armv8m
@@ -928,6 +972,8 @@ variants:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
 - name: STM32H562AI
+  package_variants:
+  - STM32H562AIIx
   cores:
   - name: main
     type: armv8m
@@ -980,6 +1026,9 @@ variants:
   - stm32h5xx_2m_0800
   - stm32h5xx_2m_0c00
 - name: STM32H562IG
+  package_variants:
+  - STM32H562IGTx
+  - STM32H562IGKx
   cores:
   - name: main
     type: armv8m
@@ -1032,6 +1081,9 @@ variants:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
 - name: STM32H562II
+  package_variants:
+  - STM32H562IITx
+  - STM32H562IIKx
   cores:
   - name: main
     type: armv8m
@@ -1084,6 +1136,9 @@ variants:
   - stm32h5xx_2m_0800
   - stm32h5xx_2m_0c00
 - name: STM32H562RG
+  package_variants:
+  - STM32H562RGTx
+  - STM32H562RGVx
   cores:
   - name: main
     type: armv8m
@@ -1136,6 +1191,9 @@ variants:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
 - name: STM32H562RI
+  package_variants:
+  - STM32H562RITx
+  - STM32H562RIVx
   cores:
   - name: main
     type: armv8m
@@ -1188,6 +1246,8 @@ variants:
   - stm32h5xx_2m_0800
   - stm32h5xx_2m_0c00
 - name: STM32H562VG
+  package_variants:
+  - STM32H562VGTx
   cores:
   - name: main
     type: armv8m
@@ -1240,6 +1300,8 @@ variants:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
 - name: STM32H562VI
+  package_variants:
+  - STM32H562VITx
   cores:
   - name: main
     type: armv8m
@@ -1292,6 +1354,8 @@ variants:
   - stm32h5xx_2m_0800
   - stm32h5xx_2m_0c00
 - name: STM32H562ZG
+  package_variants:
+  - STM32H562ZGTx
   cores:
   - name: main
     type: armv8m
@@ -1344,6 +1408,8 @@ variants:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
 - name: STM32H562ZI
+  package_variants:
+  - STM32H562ZITx
   cores:
   - name: main
     type: armv8m
@@ -1396,6 +1462,8 @@ variants:
   - stm32h5xx_2m_0800
   - stm32h5xx_2m_0c00
 - name: STM32H563AG
+  package_variants:
+  - STM32H563AGIx
   cores:
   - name: main
     type: armv8m
@@ -1448,6 +1516,9 @@ variants:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
 - name: STM32H563AI
+  package_variants:
+  - STM32H563AIIx
+  - STM32H563AIIxQ
   cores:
   - name: main
     type: armv8m
@@ -1500,6 +1571,9 @@ variants:
   - stm32h5xx_2m_0800
   - stm32h5xx_2m_0c00
 - name: STM32H563IG
+  package_variants:
+  - STM32H563IGTx
+  - STM32H563IGKx
   cores:
   - name: main
     type: armv8m
@@ -1552,6 +1626,11 @@ variants:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
 - name: STM32H563II
+  package_variants:
+  - STM32H563IITx
+  - STM32H563IIKx
+  - STM32H563IITxQ
+  - STM32H563IIKxQ
   cores:
   - name: main
     type: armv8m
@@ -1604,6 +1683,8 @@ variants:
   - stm32h5xx_2m_0800
   - stm32h5xx_2m_0c00
 - name: STM32H563MI
+  package_variants:
+  - STM32H563MIYxQ
   cores:
   - name: main
     type: armv8m
@@ -1656,6 +1737,9 @@ variants:
   - stm32h5xx_2m_0800
   - stm32h5xx_2m_0c00
 - name: STM32H563RG
+  package_variants:
+  - STM32H563RGTx
+  - STM32H563RGVx
   cores:
   - name: main
     type: armv8m
@@ -1708,6 +1792,9 @@ variants:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
 - name: STM32H563RI
+  package_variants:
+  - STM32H563RITx
+  - STM32H563RIVx
   cores:
   - name: main
     type: armv8m
@@ -1760,6 +1847,8 @@ variants:
   - stm32h5xx_2m_0800
   - stm32h5xx_2m_0c00
 - name: STM32H563VG
+  package_variants:
+  - STM32H563VGTx
   cores:
   - name: main
     type: armv8m
@@ -1812,6 +1901,9 @@ variants:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
 - name: STM32H563VI
+  package_variants:
+  - STM32H563VITx
+  - STM32H563VITxQ
   cores:
   - name: main
     type: armv8m
@@ -1864,6 +1956,8 @@ variants:
   - stm32h5xx_2m_0800
   - stm32h5xx_2m_0c00
 - name: STM32H563ZG
+  package_variants:
+  - STM32H563ZGTx
   cores:
   - name: main
     type: armv8m
@@ -1916,6 +2010,9 @@ variants:
   - stm32h5xx_2m_0800
   - stm32h5xx_1m_0c00
 - name: STM32H563ZI
+  package_variants:
+  - STM32H563ZITx
+  - STM32H563ZITxQ
   cores:
   - name: main
     type: armv8m
@@ -1968,6 +2065,9 @@ variants:
   - stm32h5xx_2m_0800
   - stm32h5xx_2m_0c00
 - name: STM32H573AI
+  package_variants:
+  - STM32H573AIIx
+  - STM32H573AIIxQ
   cores:
   - name: main
     type: armv8m
@@ -2020,6 +2120,11 @@ variants:
   - stm32h5xx_2m_0800
   - stm32h5xx_2m_0c00
 - name: STM32H573II
+  package_variants:
+  - STM32H573IITx
+  - STM32H573IIKx
+  - STM32H573IITxQ
+  - STM32H573IIKxQ
   cores:
   - name: main
     type: armv8m
@@ -2072,6 +2177,8 @@ variants:
   - stm32h5xx_2m_0800
   - stm32h5xx_2m_0c00
 - name: STM32H573MI
+  package_variants:
+  - STM32H573MIYxQ
   cores:
   - name: main
     type: armv8m
@@ -2124,6 +2231,9 @@ variants:
   - stm32h5xx_2m_0800
   - stm32h5xx_2m_0c00
 - name: STM32H573RI
+  package_variants:
+  - STM32H573RITx
+  - STM32H573RIVx
   cores:
   - name: main
     type: armv8m
@@ -2176,6 +2286,9 @@ variants:
   - stm32h5xx_2m_0800
   - stm32h5xx_2m_0c00
 - name: STM32H573VI
+  package_variants:
+  - STM32H573VITx
+  - STM32H573VITxQ
   cores:
   - name: main
     type: armv8m
@@ -2228,6 +2341,9 @@ variants:
   - stm32h5xx_2m_0800
   - stm32h5xx_2m_0c00
 - name: STM32H573ZI
+  package_variants:
+  - STM32H573ZITx
+  - STM32H573ZITxQ
   cores:
   - name: main
     type: armv8m

@@ -6,6 +6,9 @@ generated_from_pack: true
 pack_file_release: 1.0.0
 variants:
 - name: STM32U031C6
+  package_variants:
+  - STM32U031C6Ux
+  - STM32U031C6Tx
   cores:
   - name: main
     type: armv6m
@@ -33,6 +36,9 @@ variants:
   flash_algorithms:
   - stm32u0xx_256k
 - name: STM32U031C8
+  package_variants:
+  - STM32U031C8Ux
+  - STM32U031C8Tx
   cores:
   - name: main
     type: armv6m
@@ -60,6 +66,8 @@ variants:
   flash_algorithms:
   - stm32u0xx_64k
 - name: STM32U031F4
+  package_variants:
+  - STM32U031F4Px
   cores:
   - name: main
     type: armv6m
@@ -87,6 +95,8 @@ variants:
   flash_algorithms:
   - stm32u0xx_256k
 - name: STM32U031F6
+  package_variants:
+  - STM32U031F6Px
   cores:
   - name: main
     type: armv6m
@@ -114,6 +124,8 @@ variants:
   flash_algorithms:
   - stm32u0xx_256k
 - name: STM32U031F8
+  package_variants:
+  - STM32U031F8Px
   cores:
   - name: main
     type: armv6m
@@ -207,6 +219,8 @@ variants:
   flash_algorithms:
   - stm32u0xx_64k
 - name: STM32U031K4
+  package_variants:
+  - STM32U031K4Ux
   cores:
   - name: main
     type: armv6m
@@ -234,6 +248,8 @@ variants:
   flash_algorithms:
   - stm32u0xx_256k
 - name: STM32U031K6
+  package_variants:
+  - STM32U031K6Ux
   cores:
   - name: main
     type: armv6m
@@ -261,6 +277,9 @@ variants:
   flash_algorithms:
   - stm32u0xx_256k
 - name: STM32U031K8
+  package_variants:
+  - STM32U031K8Px
+  - STM32U031K8Ux
   cores:
   - name: main
     type: armv6m
@@ -288,6 +307,9 @@ variants:
   flash_algorithms:
   - stm32u0xx_64k
 - name: STM32U031R6
+  package_variants:
+  - STM32U031R6Ix
+  - STM32U031R6Tx
   cores:
   - name: main
     type: armv6m
@@ -315,6 +337,9 @@ variants:
   flash_algorithms:
   - stm32u0xx_256k
 - name: STM32U031R8
+  package_variants:
+  - STM32U031R8Ix
+  - STM32U031R8Tx
   cores:
   - name: main
     type: armv6m
@@ -342,6 +367,11 @@ variants:
   flash_algorithms:
   - stm32u0xx_64k
 - name: STM32U073C8
+  package_variants:
+  - STM32U073C8Tx
+  - STM32U073C8Ux
+  - STM32U073C8Ux
+  - STM32U073C8Tx
   cores:
   - name: main
     type: armv6m
@@ -369,6 +399,10 @@ variants:
   flash_algorithms:
   - stm32u0xx_64k
 - name: STM32U073CB
+  package_variants:
+  - STM32U073CBTx
+  - STM32U073CBUx
+  - STM32U073CBTx
   cores:
   - name: main
     type: armv6m
@@ -396,6 +430,9 @@ variants:
   flash_algorithms:
   - stm32u0xx_256k
 - name: STM32U073CC
+  package_variants:
+  - STM32U073CCTx
+  - STM32U073CCUx
   cores:
   - name: main
     type: armv6m
@@ -522,6 +559,9 @@ variants:
   flash_algorithms:
   - stm32u0xx_256k
 - name: STM32U073K8
+  package_variants:
+  - STM32U073K8Ux
+  - STM32U073K8Ux
   cores:
   - name: main
     type: armv6m
@@ -549,6 +589,9 @@ variants:
   flash_algorithms:
   - stm32u0xx_64k
 - name: STM32U073KB
+  package_variants:
+  - STM32U073KBUx
+  - STM32U073KBUx
   cores:
   - name: main
     type: armv6m
@@ -576,6 +619,8 @@ variants:
   flash_algorithms:
   - stm32u0xx_256k
 - name: STM32U073KC
+  package_variants:
+  - STM32U073KCUx
   cores:
   - name: main
     type: armv6m
@@ -603,6 +648,11 @@ variants:
   flash_algorithms:
   - stm32u0xx_256k
 - name: STM32U073M8
+  package_variants:
+  - STM32U073M8Tx
+  - STM32U073M8Ix
+  - STM32U073M8Ix
+  - STM32U073M8Tx
   cores:
   - name: main
     type: armv6m
@@ -630,6 +680,11 @@ variants:
   flash_algorithms:
   - stm32u0xx_64k
 - name: STM32U073MB
+  package_variants:
+  - STM32U073MBTx
+  - STM32U073MBIx
+  - STM32U073MBIx
+  - STM32U073MBTx
   cores:
   - name: main
     type: armv6m
@@ -657,6 +712,9 @@ variants:
   flash_algorithms:
   - stm32u0xx_256k
 - name: STM32U073MC
+  package_variants:
+  - STM32U073MCTx
+  - STM32U073MCIx
   cores:
   - name: main
     type: armv6m
@@ -684,6 +742,11 @@ variants:
   flash_algorithms:
   - stm32u0xx_256k
 - name: STM32U073R8
+  package_variants:
+  - STM32U073R8Tx
+  - STM32U073R8Ix
+  - STM32U073R8Ix
+  - STM32U073R8Tx
   cores:
   - name: main
     type: armv6m
@@ -711,6 +774,11 @@ variants:
   flash_algorithms:
   - stm32u0xx_64k
 - name: STM32U073RB
+  package_variants:
+  - STM32U073RBTx
+  - STM32U073RBIx
+  - STM32U073RBIx
+  - STM32U073RBTx
   cores:
   - name: main
     type: armv6m
@@ -738,6 +806,9 @@ variants:
   flash_algorithms:
   - stm32u0xx_256k
 - name: STM32U073RC
+  package_variants:
+  - STM32U073RCTx
+  - STM32U073RCIx
   cores:
   - name: main
     type: armv6m
@@ -765,6 +836,9 @@ variants:
   flash_algorithms:
   - stm32u0xx_256k
 - name: STM32U083CC
+  package_variants:
+  - STM32U083CCUx
+  - STM32U083CCTx
   cores:
   - name: main
     type: armv6m
@@ -825,6 +899,8 @@ variants:
   flash_algorithms:
   - stm32u0xx_256k
 - name: STM32U083KC
+  package_variants:
+  - STM32U083KCUx
   cores:
   - name: main
     type: armv6m
@@ -852,6 +928,9 @@ variants:
   flash_algorithms:
   - stm32u0xx_256k
 - name: STM32U083MC
+  package_variants:
+  - STM32U083MCIx
+  - STM32U083MCTx
   cores:
   - name: main
     type: armv6m
@@ -879,6 +958,9 @@ variants:
   flash_algorithms:
   - stm32u0xx_256k
 - name: STM32U083RC
+  package_variants:
+  - STM32U083RCIx
+  - STM32U083RCTx
   cores:
   - name: main
     type: armv6m

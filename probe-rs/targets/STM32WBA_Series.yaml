@@ -6,6 +6,8 @@ generated_from_pack: true
 pack_file_release: 1.3.0
 variants:
 - name: STM32WBA50KE
+  package_variants:
+  - STM32WBA50KEUx
   cores:
   - name: main
     type: armv8m
@@ -34,6 +36,8 @@ variants:
   - stm32wbax_1m_0800
   - stm32wbax_1m_0c00
 - name: STM32WBA50KG
+  package_variants:
+  - STM32WBA50KGUx
   cores:
   - name: main
     type: armv8m
@@ -62,6 +66,8 @@ variants:
   - stm32wbax_1m_0800
   - stm32wbax_1m_0c00
 - name: STM32WBA52CE
+  package_variants:
+  - STM32WBA52CEUx
   cores:
   - name: main
     type: armv8m
@@ -90,6 +96,8 @@ variants:
   - stm32wbax_1m_0800
   - stm32wbax_1m_0c00
 - name: STM32WBA52CG
+  package_variants:
+  - STM32WBA52CGUx
   cores:
   - name: main
     type: armv8m
@@ -118,6 +126,8 @@ variants:
   - stm32wbax_1m_0800
   - stm32wbax_1m_0c00
 - name: STM32WBA52KE
+  package_variants:
+  - STM32WBA52KEUx
   cores:
   - name: main
     type: armv8m
@@ -146,6 +156,8 @@ variants:
   - stm32wbax_1m_0800
   - stm32wbax_1m_0c00
 - name: STM32WBA52KG
+  package_variants:
+  - STM32WBA52KGUx
   cores:
   - name: main
     type: armv8m
@@ -174,6 +186,8 @@ variants:
   - stm32wbax_1m_0800
   - stm32wbax_1m_0c00
 - name: STM32WBA54CE
+  package_variants:
+  - STM32WBA54CEUx
   cores:
   - name: main
     type: armv8m
@@ -202,6 +216,8 @@ variants:
   - stm32wbax_1m_0800
   - stm32wbax_1m_0c00
 - name: STM32WBA54CG
+  package_variants:
+  - STM32WBA54CGUx
   cores:
   - name: main
     type: armv8m
@@ -230,6 +246,8 @@ variants:
   - stm32wbax_1m_0800
   - stm32wbax_1m_0c00
 - name: STM32WBA54KE
+  package_variants:
+  - STM32WBA54KEUx
   cores:
   - name: main
     type: armv8m
@@ -258,6 +276,8 @@ variants:
   - stm32wbax_1m_0800
   - stm32wbax_1m_0c00
 - name: STM32WBA54KG
+  package_variants:
+  - STM32WBA54KGUx
   cores:
   - name: main
     type: armv8m
@@ -286,6 +306,8 @@ variants:
   - stm32wbax_1m_0800
   - stm32wbax_1m_0c00
 - name: STM32WBA55CE
+  package_variants:
+  - STM32WBA55CEUx
   cores:
   - name: main
     type: armv8m
@@ -314,6 +336,8 @@ variants:
   - stm32wbax_1m_0800
   - stm32wbax_1m_0c00
 - name: STM32WBA55CG
+  package_variants:
+  - STM32WBA55CGUx
   cores:
   - name: main
     type: armv8m
@@ -342,6 +366,8 @@ variants:
   - stm32wbax_1m_0800
   - stm32wbax_1m_0c00
 - name: STM32WBA55HE
+  package_variants:
+  - STM32WBA55HEFx
   cores:
   - name: main
     type: armv8m
@@ -370,6 +396,8 @@ variants:
   - stm32wbax_1m_0800
   - stm32wbax_1m_0c00
 - name: STM32WBA55HG
+  package_variants:
+  - STM32WBA55HGFx
   cores:
   - name: main
     type: armv8m
@@ -398,6 +426,8 @@ variants:
   - stm32wbax_1m_0800
   - stm32wbax_1m_0c00
 - name: STM32WBA55UE
+  package_variants:
+  - STM32WBA55UEIx
   cores:
   - name: main
     type: armv8m
@@ -426,6 +456,8 @@ variants:
   - stm32wbax_1m_0800
   - stm32wbax_1m_0c00
 - name: STM32WBA55UG
+  package_variants:
+  - STM32WBA55UGIx
   cores:
   - name: main
     type: armv8m

@@ -6,6 +6,9 @@ generated_from_pack: true
 pack_file_release: 1.4.0
 variants:
 - name: STM32L552CC
+  package_variants:
+  - STM32L552CCTx
+  - STM32L552CCUx
   cores:
   - name: main
     type: armv8m
@@ -38,6 +41,11 @@ variants:
   - stm32l562e_dk_mx25l51245g
   - stm32l5x_opt
 - name: STM32L552CE
+  package_variants:
+  - STM32L552CETx
+  - STM32L552CEUx
+  - STM32L552CETxP
+  - STM32L552CEUxP
   cores:
   - name: main
     type: armv8m
@@ -70,6 +78,9 @@ variants:
   - stm32l562e_dk_mx25l51245g
   - stm32l5x_opt
 - name: STM32L552ME
+  package_variants:
+  - STM32L552MEYxP
+  - STM32L552MEYxQ
   cores:
   - name: main
     type: armv8m
@@ -102,6 +113,8 @@ variants:
   - stm32l562e_dk_mx25l51245g
   - stm32l5x_opt
 - name: STM32L552QC
+  package_variants:
+  - STM32L552QCIxQ
   cores:
   - name: main
     type: armv8m
@@ -134,6 +147,10 @@ variants:
   - stm32l562e_dk_mx25l51245g
   - stm32l5x_opt
 - name: STM32L552QE
+  package_variants:
+  - STM32L552QEIx
+  - STM32L552QEIxP
+  - STM32L552QEIxQ
   cores:
   - name: main
     type: armv8m
@@ -166,6 +183,8 @@ variants:
   - stm32l562e_dk_mx25l51245g
   - stm32l5x_opt
 - name: STM32L552RC
+  package_variants:
+  - STM32L552RCTx
   cores:
   - name: main
     type: armv8m
@@ -198,6 +217,10 @@ variants:
   - stm32l562e_dk_mx25l51245g
   - stm32l5x_opt
 - name: STM32L552RE
+  package_variants:
+  - STM32L552RETx
+  - STM32L552RETxP
+  - STM32L552RETxQ
   cores:
   - name: main
     type: armv8m
@@ -230,6 +253,8 @@ variants:
   - stm32l562e_dk_mx25l51245g
   - stm32l5x_opt
 - name: STM32L552VC
+  package_variants:
+  - STM32L552VCTxQ
   cores:
   - name: main
     type: armv8m
@@ -262,6 +287,9 @@ variants:
   - stm32l562e_dk_mx25l51245g
   - stm32l5x_opt
 - name: STM32L552VE
+  package_variants:
+  - STM32L552VETx
+  - STM32L552VETxQ
   cores:
   - name: main
     type: armv8m
@@ -294,6 +322,8 @@ variants:
   - stm32l562e_dk_mx25l51245g
   - stm32l5x_opt
 - name: STM32L552ZC
+  package_variants:
+  - STM32L552ZCTxQ
   cores:
   - name: main
     type: armv8m
@@ -326,6 +356,9 @@ variants:
   - stm32l562e_dk_mx25l51245g
   - stm32l5x_opt
 - name: STM32L552ZE
+  package_variants:
+  - STM32L552ZETx
+  - STM32L552ZETxQ
   cores:
   - name: main
     type: armv8m
@@ -358,6 +391,11 @@ variants:
   - stm32l562e_dk_mx25l51245g
   - stm32l5x_opt
 - name: STM32L562CE
+  package_variants:
+  - STM32L562CETx
+  - STM32L562CEUx
+  - STM32L562CETxP
+  - STM32L562CEUxP
   cores:
   - name: main
     type: armv8m
@@ -390,6 +428,9 @@ variants:
   - stm32l562e_dk_mx25l51245g
   - stm32l5x_opt
 - name: STM32L562ME
+  package_variants:
+  - STM32L562MEYxP
+  - STM32L562MEYxQ
   cores:
   - name: main
     type: armv8m
@@ -422,6 +463,10 @@ variants:
   - stm32l562e_dk_mx25l51245g
   - stm32l5x_opt
 - name: STM32L562QE
+  package_variants:
+  - STM32L562QEIxP
+  - STM32L562QEIxQ
+  - STM32L562QEIx
   cores:
   - name: main
     type: armv8m
@@ -454,6 +499,10 @@ variants:
   - stm32l562e_dk_mx25l51245g
   - stm32l5x_opt
 - name: STM32L562RE
+  package_variants:
+  - STM32L562RETx
+  - STM32L562RETxP
+  - STM32L562RETxQ
   cores:
   - name: main
     type: armv8m
@@ -486,6 +535,9 @@ variants:
   - stm32l562e_dk_mx25l51245g
   - stm32l5x_opt
 - name: STM32L562VE
+  package_variants:
+  - STM32L562VETx
+  - STM32L562VETxQ
   cores:
   - name: main
     type: armv8m
@@ -518,6 +570,9 @@ variants:
   - stm32l562e_dk_mx25l51245g
   - stm32l5x_opt
 - name: STM32L562ZE
+  package_variants:
+  - STM32L562ZETx
+  - STM32L562ZETxQ
   cores:
   - name: main
     type: armv8m

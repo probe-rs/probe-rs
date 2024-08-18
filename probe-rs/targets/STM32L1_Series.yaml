@@ -6,6 +6,9 @@ generated_from_pack: true
 pack_file_release: 1.4.1
 variants:
 - name: STM32L100C6
+  package_variants:
+  - STM32L100C6Ux
+  - STM32L100C6UxAA
   cores:
   - name: main
     type: armv7m
@@ -64,6 +67,9 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L100R8
+  package_variants:
+  - STM32L100R8Tx
+  - STM32L100R8TxAA
   cores:
   - name: main
     type: armv7m
@@ -122,6 +128,9 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L100RB
+  package_variants:
+  - STM32L100RBTx
+  - STM32L100RBTxAA
   cores:
   - name: main
     type: armv7m
@@ -180,6 +189,8 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L100RC
+  package_variants:
+  - STM32L100RCTx
   cores:
   - name: main
     type: armv7m
@@ -209,6 +220,11 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
 - name: STM32L151C6
+  package_variants:
+  - STM32L151C6Tx
+  - STM32L151C6Ux
+  - STM32L151C6TxAA
+  - STM32L151C6UxAA
   cores:
   - name: main
     type: armv7m
@@ -296,6 +312,11 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L151C8
+  package_variants:
+  - STM32L151C8Tx
+  - STM32L151C8Ux
+  - STM32L151C8TxAA
+  - STM32L151C8UxAA
   cores:
   - name: main
     type: armv7m
@@ -383,6 +404,11 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L151CB
+  package_variants:
+  - STM32L151CBTx
+  - STM32L151CBUx
+  - STM32L151CBTxAA
+  - STM32L151CBUxAA
   cores:
   - name: main
     type: armv7m
@@ -470,6 +496,9 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L151CC
+  package_variants:
+  - STM32L151CCTx
+  - STM32L151CCUx
   cores:
   - name: main
     type: armv7m
@@ -499,6 +528,8 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
 - name: STM32L151QC
+  package_variants:
+  - STM32L151QCHx
   cores:
   - name: main
     type: armv7m
@@ -528,6 +559,8 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
 - name: STM32L151QD
+  package_variants:
+  - STM32L151QDHx
   cores:
   - name: main
     type: armv7m
@@ -567,6 +600,8 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_384_opt
 - name: STM32L151QE
+  package_variants:
+  - STM32L151QEHx
   cores:
   - name: main
     type: armv7m
@@ -606,6 +641,11 @@ variants:
   - stm32l1xx_512_eeprom
   - stm32l1xx_512_opt
 - name: STM32L151R6
+  package_variants:
+  - STM32L151R6Tx
+  - STM32L151R6Hx
+  - STM32L151R6TxAA
+  - STM32L151R6HxAA
   cores:
   - name: main
     type: armv7m
@@ -693,6 +733,11 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L151R8
+  package_variants:
+  - STM32L151R8Tx
+  - STM32L151R8Hx
+  - STM32L151R8TxAA
+  - STM32L151R8HxAA
   cores:
   - name: main
     type: armv7m
@@ -780,6 +825,11 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L151RB
+  package_variants:
+  - STM32L151RBTx
+  - STM32L151RBHx
+  - STM32L151RBTxAA
+  - STM32L151RBHxAA
   cores:
   - name: main
     type: armv7m
@@ -867,6 +917,10 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L151RC
+  package_variants:
+  - STM32L151RCTx
+  - STM32L151RCYx
+  - STM32L151RCTxAA
   cores:
   - name: main
     type: armv7m
@@ -925,6 +979,9 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
 - name: STM32L151RD
+  package_variants:
+  - STM32L151RDTx
+  - STM32L151RDYx
   cores:
   - name: main
     type: armv7m
@@ -964,6 +1021,8 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_384_opt
 - name: STM32L151RE
+  package_variants:
+  - STM32L151RETx
   cores:
   - name: main
     type: armv7m
@@ -1003,6 +1062,8 @@ variants:
   - stm32l1xx_512_eeprom
   - stm32l1xx_512_opt
 - name: STM32L151UC
+  package_variants:
+  - STM32L151UCYx
   cores:
   - name: main
     type: armv7m
@@ -1032,6 +1093,11 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
 - name: STM32L151V8
+  package_variants:
+  - STM32L151V8Tx
+  - STM32L151V8Hx
+  - STM32L151V8TxAA
+  - STM32L151V8HxAA
   cores:
   - name: main
     type: armv7m
@@ -1119,6 +1185,11 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L151VB
+  package_variants:
+  - STM32L151VBTx
+  - STM32L151VBHx
+  - STM32L151VBTxAA
+  - STM32L151VBHxAA
   cores:
   - name: main
     type: armv7m
@@ -1206,6 +1277,10 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L151VC
+  package_variants:
+  - STM32L151VCTx
+  - STM32L151VCHx
+  - STM32L151VCTxAA
   cores:
   - name: main
     type: armv7m
@@ -1264,6 +1339,10 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
 - name: STM32L151VD
+  package_variants:
+  - STM32L151VDTx
+  - STM32L151VDTxXX
+  - STM32L151VDYxXX
   cores:
   - name: main
     type: armv7m
@@ -1361,6 +1440,9 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_384_opt
 - name: STM32L151VE
+  package_variants:
+  - STM32L151VETx
+  - STM32L151VEYx
   cores:
   - name: main
     type: armv7m
@@ -1400,6 +1482,8 @@ variants:
   - stm32l1xx_512_eeprom
   - stm32l1xx_512_opt
 - name: STM32L151ZC
+  package_variants:
+  - STM32L151ZCTx
   cores:
   - name: main
     type: armv7m
@@ -1429,6 +1513,8 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
 - name: STM32L151ZD
+  package_variants:
+  - STM32L151ZDTx
   cores:
   - name: main
     type: armv7m
@@ -1468,6 +1554,8 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_384_opt
 - name: STM32L151ZE
+  package_variants:
+  - STM32L151ZETx
   cores:
   - name: main
     type: armv7m
@@ -1507,6 +1595,11 @@ variants:
   - stm32l1xx_512_eeprom
   - stm32l1xx_512_opt
 - name: STM32L152C6
+  package_variants:
+  - STM32L152C6Tx
+  - STM32L152C6Ux
+  - STM32L152C6TxAA
+  - STM32L152C6UxAA
   cores:
   - name: main
     type: armv7m
@@ -1594,6 +1687,11 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L152C8
+  package_variants:
+  - STM32L152C8Tx
+  - STM32L152C8Ux
+  - STM32L152C8TxAA
+  - STM32L152C8UxAA
   cores:
   - name: main
     type: armv7m
@@ -1681,6 +1779,11 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L152CB
+  package_variants:
+  - STM32L152CBTx
+  - STM32L152CBUx
+  - STM32L152CBTxAA
+  - STM32L152CBUxAA
   cores:
   - name: main
     type: armv7m
@@ -1768,6 +1871,9 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L152CC
+  package_variants:
+  - STM32L152CCTx
+  - STM32L152CCUx
   cores:
   - name: main
     type: armv7m
@@ -1797,6 +1903,8 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
 - name: STM32L152QC
+  package_variants:
+  - STM32L152QCHx
   cores:
   - name: main
     type: armv7m
@@ -1826,6 +1934,8 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
 - name: STM32L152QD
+  package_variants:
+  - STM32L152QDHx
   cores:
   - name: main
     type: armv7m
@@ -1865,6 +1975,8 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_384_opt
 - name: STM32L152QE
+  package_variants:
+  - STM32L152QEHx
   cores:
   - name: main
     type: armv7m
@@ -1904,6 +2016,11 @@ variants:
   - stm32l1xx_512_eeprom
   - stm32l1xx_512_opt
 - name: STM32L152R6
+  package_variants:
+  - STM32L152R6Tx
+  - STM32L152R6Hx
+  - STM32L152R6HxAA
+  - STM32L152R6TxAA
   cores:
   - name: main
     type: armv7m
@@ -1991,6 +2108,11 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L152R8
+  package_variants:
+  - STM32L152R8Tx
+  - STM32L152R8Hx
+  - STM32L152R8TxAA
+  - STM32L152R8HxAA
   cores:
   - name: main
     type: armv7m
@@ -2078,6 +2200,11 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L152RB
+  package_variants:
+  - STM32L152RBTx
+  - STM32L152RBHx
+  - STM32L152RBTxAA
+  - STM32L152RBHxAA
   cores:
   - name: main
     type: armv7m
@@ -2165,6 +2292,9 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L152RC
+  package_variants:
+  - STM32L152RCTx
+  - STM32L152RCTxAA
   cores:
   - name: main
     type: armv7m
@@ -2223,6 +2353,9 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
 - name: STM32L152RD
+  package_variants:
+  - STM32L152RDTx
+  - STM32L152RDYx
   cores:
   - name: main
     type: armv7m
@@ -2262,6 +2395,8 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_384_opt
 - name: STM32L152RE
+  package_variants:
+  - STM32L152RETx
   cores:
   - name: main
     type: armv7m
@@ -2301,6 +2436,9 @@ variants:
   - stm32l1xx_512_eeprom
   - stm32l1xx_512_opt
 - name: STM32L152UC
+  package_variants:
+  - STM32L152UCTx
+  - STM32L152UCYx
   cores:
   - name: main
     type: armv7m
@@ -2330,6 +2468,11 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
 - name: STM32L152V8
+  package_variants:
+  - STM32L152V8Tx
+  - STM32L152V8Hx
+  - STM32L152V8TxAA
+  - STM32L152V8HxAA
   cores:
   - name: main
     type: armv7m
@@ -2417,6 +2560,11 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L152VB
+  package_variants:
+  - STM32L152VBTx
+  - STM32L152VBHx
+  - STM32L152VBTxAA
+  - STM32L152VBHxAA
   cores:
   - name: main
     type: armv7m
@@ -2504,6 +2652,10 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
 - name: STM32L152VC
+  package_variants:
+  - STM32L152VCTx
+  - STM32L152VCHx
+  - STM32L152VCTxAA
   cores:
   - name: main
     type: armv7m
@@ -2562,6 +2714,9 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
 - name: STM32L152VD
+  package_variants:
+  - STM32L152VDTx
+  - STM32L152VDTxXX
   cores:
   - name: main
     type: armv7m
@@ -2630,6 +2785,9 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_384_opt
 - name: STM32L152VE
+  package_variants:
+  - STM32L152VETx
+  - STM32L152VEYx
   cores:
   - name: main
     type: armv7m
@@ -2669,6 +2827,8 @@ variants:
   - stm32l1xx_512_eeprom
   - stm32l1xx_512_opt
 - name: STM32L152ZC
+  package_variants:
+  - STM32L152ZCTx
   cores:
   - name: main
     type: armv7m
@@ -2698,6 +2858,8 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
 - name: STM32L152ZD
+  package_variants:
+  - STM32L152ZDTx
   cores:
   - name: main
     type: armv7m
@@ -2737,6 +2899,8 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_384_opt
 - name: STM32L152ZE
+  package_variants:
+  - STM32L152ZETx
   cores:
   - name: main
     type: armv7m
@@ -2776,6 +2940,9 @@ variants:
   - stm32l1xx_512_eeprom
   - stm32l1xx_512_opt
 - name: STM32L162QC
+  package_variants:
+  - STM32L162QCTx
+  - STM32L162QCHx
   cores:
   - name: main
     type: armv7m
@@ -2805,6 +2972,8 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
 - name: STM32L162QD
+  package_variants:
+  - STM32L162QDHx
   cores:
   - name: main
     type: armv7m
@@ -2844,6 +3013,9 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_384_opt
 - name: STM32L162RC
+  package_variants:
+  - STM32L162RCTx
+  - STM32L162RCTxAA
   cores:
   - name: main
     type: armv7m
@@ -2902,6 +3074,9 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
 - name: STM32L162RD
+  package_variants:
+  - STM32L162RDTx
+  - STM32L162RDYx
   cores:
   - name: main
     type: armv7m
@@ -2941,6 +3116,8 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_384_opt
 - name: STM32L162RE
+  package_variants:
+  - STM32L162RETx
   cores:
   - name: main
     type: armv7m
@@ -2980,6 +3157,10 @@ variants:
   - stm32l1xx_512_eeprom
   - stm32l1xx_512_opt
 - name: STM32L162VC
+  package_variants:
+  - STM32L162VCTx
+  - STM32L162VCHx
+  - STM32L162VCTxAA
   cores:
   - name: main
     type: armv7m
@@ -3038,6 +3219,9 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
 - name: STM32L162VD
+  package_variants:
+  - STM32L162VDTx
+  - STM32L162VDYxXX
   cores:
   - name: main
     type: armv7m
@@ -3106,6 +3290,9 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_384_opt
 - name: STM32L162VE
+  package_variants:
+  - STM32L162VETx
+  - STM32L162VEYx
   cores:
   - name: main
     type: armv7m
@@ -3145,6 +3332,8 @@ variants:
   - stm32l1xx_512_eeprom
   - stm32l1xx_512_opt
 - name: STM32L162ZC
+  package_variants:
+  - STM32L162ZCTx
   cores:
   - name: main
     type: armv7m
@@ -3174,6 +3363,8 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
 - name: STM32L162ZD
+  package_variants:
+  - STM32L162ZDTx
   cores:
   - name: main
     type: armv7m
@@ -3213,6 +3404,8 @@ variants:
   - stm32l1xx_384_eeprom
   - stm32l1xx_384_opt
 - name: STM32L162ZE
+  package_variants:
+  - STM32L162ZETx
   cores:
   - name: main
     type: armv7m
