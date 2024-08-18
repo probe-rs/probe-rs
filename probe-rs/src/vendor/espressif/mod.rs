@@ -97,9 +97,7 @@ impl Vendor for Espressif {
         probe: &mut RiscvCommunicationInterface,
         idcode: u32,
     ) -> Result<Option<String>, Error> {
-        let result = probe.halted_access(|probe| Ok(try_detect_espressif_chip(probe, idcode)))?;
-
-        Ok(result)
+        Ok(try_detect_espressif_chip(probe, idcode))
     }
 
     fn try_detect_xtensa_chip(
