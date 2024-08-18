@@ -164,15 +164,19 @@ impl XtensaDebugSequence for ESP32S2 {
         })?;
 
         // Reset CPU
-        match self.set_peri_reg_mask(core, Self::OPTIONS0, SYS_RESET, SYS_RESET) {
-            err @ Err(crate::Error::Xtensa(XtensaError::XdmError(
+        self.set_peri_reg_mask(core, Self::OPTIONS0, SYS_RESET, SYS_RESET)?;
+
+        // Need to manually execute here, because a yet-to-be-flushed write will start the
+        // reset process.
+        match core.xdm.execute() {
+            err @ Err(XtensaError::XdmError(
                 xdm::Error::ExecOverrun
                 | xdm::Error::InstructionIgnored
                 | xdm::Error::Xdm {
                     source: DebugRegisterError::Unexpected(_),
                     ..
                 },
-            ))) => {
+            )) => {
                 // ignore error
                 tracing::debug!("Error ignored: {err:?}");
             }

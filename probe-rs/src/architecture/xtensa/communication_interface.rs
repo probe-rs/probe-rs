@@ -460,7 +460,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
             let reader = value.unwrap();
             let value = self.xdm.read_deferred_result(reader)?.into_u32();
 
-            self.write_register_untyped(key, value)?;
+            self.schedule_write_register_untyped(key, value)?;
         }
 
         Ok(())
@@ -653,7 +653,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
             .schedule_execute_instruction(Instruction::Sddr32P(CpuRegister::A3));
         self.restore_register(key)?;
 
-        self.xdm.execute()
+        Ok(())
     }
 
     pub(crate) fn write_memory(&mut self, address: u64, data: &[u8]) -> Result<(), XtensaError> {
@@ -707,8 +707,6 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
 
             this.restore_register(key)?;
 
-            this.xdm.execute()?;
-
             // TODO: implement cache flushing on CPUs that need it.
 
             Ok(())
@@ -716,6 +714,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
     }
 
     pub(crate) fn reset_and_halt(&mut self, timeout: Duration) -> Result<(), XtensaError> {
+        self.xdm.execute()?;
         self.clear_register_cache();
         self.xdm.reset_and_halt()?;
         self.wait_for_core_halted(timeout)?;
