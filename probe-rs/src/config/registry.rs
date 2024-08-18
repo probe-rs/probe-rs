@@ -244,7 +244,8 @@ impl Registry {
             );
         }
 
-        let targ = self.get_target(family, chip);
+        let mut targ = self.get_target(family, chip);
+        targ.name = package.to_string();
         Ok((targ, family.clone()))
     }
 
