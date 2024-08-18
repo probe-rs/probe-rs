@@ -222,7 +222,7 @@ pub struct RiscvCommunicationInterfaceState {
     /// Pointer to the configuration string
     confstrptr: Option<u128>,
 
-    /// Width of the hartsel register
+    /// Width of the `hartsel` register
     hartsellen: u8,
 
     /// Number of harts
@@ -247,7 +247,7 @@ pub struct RiscvCommunicationInterfaceState {
     /// The index of the last selected hart
     last_selected_hart: u32,
 
-    /// Store the value of the `hasresethaltreq` bit of the `dmcstatus` register.
+    /// Store the value of the `hasresethaltreq` bit of the `dmstatus` register.
     hasresethaltreq: Option<bool>,
 
     /// Workaround for certain MCUs. If set, the target will be halted for a sysbus access, even
@@ -256,6 +256,9 @@ pub struct RiscvCommunicationInterfaceState {
 
     /// Whether the core is currently halted.
     is_halted: bool,
+
+    /// The current value of the `dmcontrol` register.
+    current_dmcontrol: Dmcontrol,
 }
 
 /// Timeout for RISC-V operations.
@@ -304,6 +307,8 @@ impl RiscvCommunicationInterfaceState {
             hasresethaltreq: None,
             sysbus_requires_halting: false,
             is_halted: false,
+
+            current_dmcontrol: Dmcontrol(0),
         }
     }
 
@@ -384,7 +389,8 @@ impl<'state> RiscvCommunicationInterface<'state> {
             return Ok(());
         }
 
-        let mut control: Dmcontrol = self.read_dm_register()?;
+        // Since we changed harts, we don't know the state of the Dmcontrol register anymore.
+        let mut control = self.read_dm_register::<Dmcontrol>()?;
         control.set_dmactive(true);
         control.set_hartsel(hart);
         self.schedule_write_dm_register(control)?;
@@ -501,7 +507,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
         self.schedule_write_dm_register(control)?;
 
-        let control: Dmcontrol = self.read_dm_register()?;
+        let control = self.read_dm_register::<Dmcontrol>()?;
 
         self.state.hartsellen = control.hartsel().count_ones() as u8;
 
@@ -647,10 +653,9 @@ impl<'state> RiscvCommunicationInterface<'state> {
     }
 
     pub(crate) fn halt(&mut self, timeout: Duration) -> Result<(), RiscvError> {
-        // write 1 to the haltreq register, which is part
-        // of the dmcontrol register
-
-        let mut dmcontrol: Dmcontrol = self.read_dm_register()?;
+        // Fast path.
+        // Try to do the halt, in a single step.
+        let mut dmcontrol = self.state.current_dmcontrol;
         tracing::debug!(
             "Before requesting halt, the Dmcontrol register value was: {:?}",
             dmcontrol
@@ -661,14 +666,52 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
         self.schedule_write_dm_register(dmcontrol)?;
 
+        let result_status_idx = self.schedule_read_dm_register::<Dmstatus>()?;
+
+        // clear the halt request
+        dmcontrol.set_haltreq(false);
+        self.write_dm_register(dmcontrol)?;
+
+        let result_status = Dmstatus(self.dtm.read_deferred_result(result_status_idx)?.into_u32());
+
+        if result_status.allhalted() {
+            self.state.is_halted = true;
+            // Cores have halted, we have nothing else to do but return.
+            return Ok(());
+        }
+
+        // Not every core has halted in time. Let's do things slowly.
+
+        // set the halt request again
+        dmcontrol.set_haltreq(true);
+        self.write_dm_register(dmcontrol)?;
+
+        // Wait until halted state is active again.
         self.wait_for_core_halted(timeout)?;
 
         // clear the halt request
         dmcontrol.set_haltreq(false);
-
         self.write_dm_register(dmcontrol)?;
 
         Ok(())
+    }
+
+    /// Halts the core and returns `true` if the core was running before the halt.
+    pub(crate) fn halt_with_previous(&mut self, timeout: Duration) -> Result<bool, RiscvError> {
+        let was_running = if self.state.is_halted {
+            // Core is already halted, we don't need to do anything.
+            false
+        } else {
+            // If we have not halted the core, it may still be halted on a breakpoint, for example.
+            // Let's check status.
+            let status_idx = self.schedule_read_dm_register::<Dmstatus>()?;
+            self.halt(timeout)?;
+            let before_status = Dmstatus(self.dtm.read_deferred_result(status_idx)?.into_u32());
+
+            !before_status.allhalted()
+        };
+
+        Ok(was_running)
     }
 
     pub(crate) fn core_info(&mut self) -> Result<CoreInformation, RiscvError> {
@@ -710,10 +753,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         &mut self,
         op: impl FnOnce(&mut Self) -> Result<R, RiscvError>,
     ) -> Result<R, RiscvError> {
-        let was_running = !self.core_halted()?;
-        if was_running {
-            self.halt(Duration::from_millis(100))?;
-        }
+        let was_running = self.halt_with_previous(Duration::from_millis(100))?;
 
         let result = op(self);
 
@@ -796,9 +836,16 @@ impl<'state> RiscvCommunicationInterface<'state> {
     ///
     /// Use the [`Self::write_dm_register()`] function if possible.
     fn write_dm_register_untyped(&mut self, address: u64, value: u32) -> Result<(), RiscvError> {
+        self.cache_write(address, value);
         self.dtm.write_with_timeout(address, value, RISCV_TIMEOUT)?;
 
         Ok(())
+    }
+
+    fn cache_write(&mut self, address: u64, value: u32) {
+        if address == Dmcontrol::ADDRESS_OFFSET {
+            self.state.current_dmcontrol = Dmcontrol(value);
+        }
     }
 
     fn schedule_write_progbuf(&mut self, index: usize, value: u32) -> Result<(), RiscvError> {
@@ -908,7 +955,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
         let data_len = data.len();
 
-        let mut read_results: Vec<DeferredResultIndex> = vec![];
+        let mut read_results = Vec::with_capacity(data_len);
         for _ in data[..data_len - 1].iter() {
             let idx = self.schedule_read_large_dtm_register::<V, Sbdata>()?;
             read_results.push(idx);
@@ -1228,7 +1275,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         // resumereq    = 0
         // ackhavereset = 0
 
-        let mut dmcontrol: Dmcontrol = self.read_dm_register()?;
+        let mut dmcontrol = self.state.current_dmcontrol;
         dmcontrol.set_dmactive(true);
         dmcontrol.set_haltreq(false);
         dmcontrol.set_resumereq(false);
@@ -1568,6 +1615,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         address: u64,
         value: u32,
     ) -> Result<Option<DeferredResultIndex>, RiscvError> {
+        self.cache_write(address, value);
         self.dtm.schedule_write(address, value)
     }
 
@@ -1634,20 +1682,22 @@ impl<'state> RiscvCommunicationInterface<'state> {
         self.state.is_halted = false; // `false` will re-query the DM, so it's safe to write
 
         // set resume request.
-        let mut dmcontrol: Dmcontrol = self.read_dm_register()?;
+        let mut dmcontrol = self.state.current_dmcontrol;
         dmcontrol.set_dmactive(true);
         dmcontrol.set_resumereq(true);
         self.schedule_write_dm_register(dmcontrol)?;
 
         // check if request has been acknowleged.
-        let status: Dmstatus = self.read_dm_register()?;
-        if !status.allresumeack() {
-            return Err(RiscvError::RequestNotAcknowledged);
-        }
+        let status_idx = self.schedule_read_dm_register::<Dmstatus>()?;
 
         // clear resume request.
         dmcontrol.set_resumereq(false);
         self.write_dm_register(dmcontrol)?;
+
+        let status = Dmstatus(self.dtm.read_deferred_result(status_idx)?.into_u32());
+        if !status.allresumeack() {
+            return Err(RiscvError::RequestNotAcknowledged);
+        }
 
         Ok(())
     }
@@ -1655,7 +1705,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
     pub(crate) fn reset_hart_and_halt(&mut self, timeout: Duration) -> Result<(), RiscvError> {
         tracing::debug!("Resetting core, setting hartreset bit");
 
-        let mut dmcontrol: Dmcontrol = self.read_dm_register()?;
+        let mut dmcontrol = self.state.current_dmcontrol;
         dmcontrol.set_dmactive(true);
         dmcontrol.set_hartreset(true);
         dmcontrol.set_haltreq(true);
