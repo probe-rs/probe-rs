@@ -1,0 +1,1 @@
+Improved compatibility with certain J-Link clones
