@@ -93,6 +93,7 @@ pub fn cmd_elf(
                 part: None,
                 svd: None,
                 documentation: HashMap::new(),
+                package_variants: vec![],
                 name: "<chip name>".to_owned(),
                 memory_map: vec![
                     MemoryRegion::Nvm(NvmRegion {
