@@ -955,7 +955,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
         let data_len = data.len();
 
-        let mut read_results: Vec<DeferredResultIndex> = vec![];
+        let mut read_results = Vec::with_capacity(data_len);
         for _ in data[..data_len - 1].iter() {
             let idx = self.schedule_read_large_dtm_register::<V, Sbdata>()?;
             read_results.push(idx);
