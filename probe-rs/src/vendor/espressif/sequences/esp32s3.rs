@@ -10,8 +10,9 @@ use probe_rs_target::Chip;
 use super::esp::EspFlashSizeDetector;
 use crate::{
     architecture::xtensa::{
-        communication_interface::{ProgramCounter, XtensaCommunicationInterface},
+        communication_interface::{ProgramCounter, XtensaCommunicationInterface, XtensaError},
         sequences::XtensaDebugSequence,
+        xdm,
     },
     MemoryInterface, Session,
 };
@@ -134,7 +135,15 @@ impl XtensaDebugSequence for ESP32S3 {
             core.write_word_32(RTC_CNTL_RESET_STATE_REG, new_state)?;
         }
 
-        core.resume_core()?;
+        match core.resume_core() {
+            err @ Err(XtensaError::XdmError(
+                xdm::Error::ExecOverrun | xdm::Error::InstructionIgnored,
+            )) => {
+                // ignore error
+                tracing::debug!("Error ignored: {err:?}");
+            }
+            other => other?,
+        }
 
         std::thread::sleep(Duration::from_millis(100));
 
