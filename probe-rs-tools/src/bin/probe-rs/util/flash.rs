@@ -144,7 +144,7 @@ pub fn run_flash_download(
     logging::clear_progress_bar();
 
     logging::eprintln(format!(
-        "    {} in {}s",
+        "     {} in {:.02}s",
         "Finished".green().bold(),
         flash_timer.elapsed().as_secs_f32(),
     ));
@@ -190,7 +190,7 @@ impl ProgressBarGroup {
     }
 
     pub fn add(&mut self, bar: ProgressBar) {
-        let msg_template = "{msg:.green.bold} {spinner} [{elapsed_precise}] [{wide_bar}] {bytes:>8}/{total_bytes:>8} @ {bytes_per_sec:>10} (eta {eta:3})";
+        let msg_template = "{msg:.green.bold} {spinner} [{elapsed_precise}] [{wide_bar}] {bytes:>10}/{total_bytes:>10} @ {bytes_per_sec:>12} (ETA {eta_precise})";
         let style = ProgressStyle::default_bar()
             .tick_chars("⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈✔")
             .progress_chars("--")
