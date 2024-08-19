@@ -1095,9 +1095,9 @@ dependencies = [
 
 [[package]]
 name = "flate2"
-version = "1.0.30"
+version = "1.0.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f54427cfd1c7829e2a139fcefea601bf088ebca651d2bf53ebc600eac295dae"
+checksum = "7f211bbe8e69bbd0cfdea405084f128ae8b4aaa6b0b522fc8f2b009084797920"
 dependencies = [
  "crc32fast",
  "miniz_oxide",
@@ -1225,9 +1225,9 @@ dependencies = [
 
 [[package]]
 name = "gdbstub"
-version = "0.7.1"
+version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6341b3480afbb34eaefc7f92713bc92f2d83e338aaa1c44192f9c2956f4a4903"
+checksum = "fbcc892208d6998fb57e7c3e05883def66f8130924bba066beb0cfe71566a9f6"
 dependencies = [
  "bitflags 2.5.0",
  "cfg-if",
@@ -1524,9 +1524,9 @@ checksum = "365a784774bb381e8c19edb91190a90d7f2625e057b55de2bc0f6b57bc779ff2"
 
 [[package]]
 name = "indexmap"
-version = "2.3.0"
+version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de3fc2e30ba82dd1b3911c8de1ffc143c74a914a14e99514d7637e3099df5ea0"
+checksum = "93ead53efc7ea8ed3cfb0c79fc8023fbb782a5432b52830b6518941cebe6505c"
 dependencies = [
  "equivalent",
  "hashbrown",
@@ -1750,18 +1750,18 @@ checksum = "0717cef1bc8b636c6e1c1bbdefc09e6322da8a9321966e8928ef80d20f7f770f"
 
 [[package]]
 name = "linkme"
-version = "0.3.27"
+version = "0.3.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ccb76662d78edc9f9bf56360d6919bdacc8b7761227727e5082f128eeb90bbf5"
+checksum = "3c943daedff228392b791b33bba32e75737756e80a613e32e246c6ce9cbab20a"
 dependencies = [
  "linkme-impl",
 ]
 
 [[package]]
 name = "linkme-impl"
-version = "0.3.27"
+version = "0.3.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f8dccda732e04fa3baf2e17cf835bfe2601c7c2edafd64417c627dabae3a8cda"
+checksum = "cb26336e6dc7cc76e7927d2c9e7e3bb376d7af65a6f56a0b16c47d18a9b1abc5"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3344,15 +3344,15 @@ dependencies = [
 
 [[package]]
 name = "tempfile"
-version = "3.11.0"
+version = "3.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b8fcd239983515c23a32fb82099f97d0b11b8c72f654ed659363a95c3dad7a53"
+checksum = "04cbcdd0c794ebb0d4cf35e88edd2f7d2c4c3e9a5a6dab322839b321c6a87a64"
 dependencies = [
  "cfg-if",
  "fastrand",
  "once_cell",
  "rustix",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -3535,9 +3535,9 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 
 [[package]]
 name = "tokio"
-version = "1.39.2"
+version = "1.39.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "daa4fb1bc778bd6f04cbfc4bb2d06a7396a8f299dc33ea1900cedaa316f467b1"
+checksum = "9babc99b9923bfa4804bd74722ff02c0381021eafa4db9949217e3be8e84fff5"
 dependencies = [
  "backtrace",
  "bytes",
