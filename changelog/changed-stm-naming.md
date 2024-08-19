@@ -1,1 +1,1 @@
-Removed the package suffix from STM32 target names
+Added the option to refer to STM32 targets without their package suffix
