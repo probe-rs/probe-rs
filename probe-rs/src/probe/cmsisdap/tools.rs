@@ -169,12 +169,22 @@ pub fn open_v2_device(device_info: &DeviceInfo) -> Option<CmsisDapDevice> {
                 continue;
             };
             if !is_cmsis_dap(interface_str) {
+                tracing::debug!(
+                    "Skipping interface {} with string {:?}",
+                    i_desc.interface_number(),
+                    interface_str
+                );
                 continue;
             }
 
             // Skip interfaces without 2 or 3 endpoints
             let n_ep = i_desc.num_endpoints();
             if !(2..=3).contains(&n_ep) {
+                tracing::debug!(
+                    "Skipping interface {} with {} endpoints",
+                    i_desc.interface_number(),
+                    n_ep
+                );
                 continue;
             }
 
@@ -183,11 +193,19 @@ pub fn open_v2_device(device_info: &DeviceInfo) -> Option<CmsisDapDevice> {
             // Check the first endpoint is bulk out
             if eps[0].transfer_type() != EndpointType::Bulk || eps[0].direction() != Direction::Out
             {
+                tracing::debug!(
+                    "Skipping interface {}: first endpoint is not bulk out",
+                    i_desc.interface_number()
+                );
                 continue;
             }
 
             // Check the second endpoint is bulk in
             if eps[1].transfer_type() != EndpointType::Bulk || eps[1].direction() != Direction::In {
+                tracing::debug!(
+                    "Skipping interface {}: second endpoint is not bulk in",
+                    i_desc.interface_number()
+                );
                 continue;
             }
 
@@ -213,7 +231,16 @@ pub fn open_v2_device(device_info: &DeviceInfo) -> Option<CmsisDapDevice> {
                         max_packet_size: eps[1].max_packet_size(),
                     });
                 }
-                Err(_) => continue,
+                Err(error) => {
+                    tracing::debug!(
+                        "Failed to claim interface {} for {:04x}:{:04x}: {:?}",
+                        i_desc.interface_number(),
+                        vid,
+                        pid,
+                        error
+                    );
+                    continue;
+                }
             }
         }
     }
