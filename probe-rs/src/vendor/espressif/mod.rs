@@ -71,9 +71,7 @@ pub struct Espressif;
 
 impl Vendor for Espressif {
     fn try_create_debug_sequence(&self, chip: &Chip) -> Option<DebugSequence> {
-        let sequence = if chip.name.starts_with("esp32-") {
-            DebugSequence::Xtensa(ESP32::create(chip))
-        } else if chip.name.eq_ignore_ascii_case("esp32s2") {
+        let sequence = if chip.name.eq_ignore_ascii_case("esp32s2") {
             DebugSequence::Xtensa(ESP32S2::create(chip))
         } else if chip.name.eq_ignore_ascii_case("esp32s3") {
             DebugSequence::Xtensa(ESP32S3::create(chip))
@@ -85,6 +83,8 @@ impl Vendor for Espressif {
             DebugSequence::Riscv(ESP32C6::create(chip))
         } else if chip.name.eq_ignore_ascii_case("esp32h2") {
             DebugSequence::Riscv(ESP32H2::create(chip))
+        } else if chip.name.starts_with("esp32") {
+            DebugSequence::Xtensa(ESP32::create(chip))
         } else {
             return None;
         };
