@@ -235,6 +235,46 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         Ok(was_running)
     }
 
+    fn fast_halted_access(
+        &mut self,
+        mut op: impl FnMut(&mut Self) -> Result<(), XtensaError>,
+    ) -> Result<(), XtensaError> {
+        if self.state.is_halted {
+            // Core is already halted, we don't need to do anything.
+            return op(self);
+        }
+
+        // If we have not halted the core, it may still be halted on a breakpoint, for example.
+        // Let's check status.
+        let status_idx = self.xdm.schedule_read_nexus_register::<DebugStatus>();
+
+        // Queue up halting.
+        self.xdm.schedule_halt();
+
+        // We will need to check if we managed to halt the core.
+        let is_halted_idx = self.xdm.schedule_read_nexus_register::<DebugStatus>();
+        self.state.is_halted = true;
+
+        // Execute the operation while the core is presumed halted. If it is not, we will have
+        // various errors, but we will retry the operation.
+        let result = op(self);
+
+        // If the core was running, resume it.
+        let before_status = DebugStatus(self.xdm.read_deferred_result(status_idx)?.into_u32());
+        if !before_status.stopped() {
+            self.resume_core()?;
+        }
+
+        // If we did not manage to halt the core at once, let's retry using the slow path.
+        let after_status = DebugStatus(self.xdm.read_deferred_result(is_halted_idx)?.into_u32());
+
+        if after_status.stopped() {
+            return result;
+        }
+        self.state.is_halted = false;
+        self.halted_access(|this| op(this))
+    }
+
     /// Executes a closure while ensuring the core is halted.
     pub fn halted_access<R>(
         &mut self,
@@ -536,13 +576,14 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         Ok(())
     }
 
-    fn read_memory(&mut self, address: u64, mut dst: &mut [u8]) -> Result<(), XtensaError> {
+    fn read_memory(&mut self, address: u64, dst: &mut [u8]) -> Result<(), XtensaError> {
         tracing::debug!("Reading {} bytes from address {:08x}", dst.len(), address);
         if dst.is_empty() {
             return Ok(());
         }
 
-        self.halted_access(move |this| {
+        self.fast_halted_access(move |this| {
+            let mut dst = &mut dst[..];
             // Write aligned address to the scratch register
             let key = this.save_register(CpuRegister::A3)?;
             this.schedule_write_cpu_register(CpuRegister::A3, address as u32 & !0x3)?;
@@ -662,7 +703,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
             return Ok(());
         }
 
-        self.halted_access(move |this| {
+        self.fast_halted_access(move |this| {
             let key = this.save_register(CpuRegister::A3)?;
 
             let address = address as u32;
