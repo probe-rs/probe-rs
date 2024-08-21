@@ -791,7 +791,10 @@ impl Drop for Session {
     #[tracing::instrument(name = "session_drop", skip(self))]
     fn drop(&mut self) {
         if let Err(err) = self.clear_all_hw_breakpoints() {
-            tracing::warn!("Could not clear all hardware breakpoints: {:?}", err);
+            tracing::warn!(
+                "Could not clear all hardware breakpoints: {:?}",
+                anyhow::anyhow!(err)
+            );
         }
 
         // Call any necessary deconfiguration/shutdown hooks.

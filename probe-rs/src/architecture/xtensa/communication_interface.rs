@@ -8,7 +8,7 @@ use std::{
 use crate::{
     architecture::xtensa::{
         arch::{instruction::Instruction, CpuRegister, Register, SpecialRegister},
-        xdm::XdmState,
+        xdm::{DebugStatus, XdmState},
     },
     probe::{DebugProbeError, DeferredResultIndex, JTAGAccess},
     BreakpointCause, Error as ProbeRsError, HaltReason, MemoryInterface,
@@ -167,7 +167,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
     pub(crate) fn leave_debug_mode(&mut self) -> Result<(), XtensaError> {
         if self.xdm.status()?.stopped() {
             self.restore_registers()?;
-            self.resume()?;
+            self.resume_core()?;
         }
         self.xdm.leave_ocd_mode()?;
 
@@ -217,23 +217,78 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         Ok(())
     }
 
+    /// Halts the core and returns `true` if the core was running before the halt.
+    pub(crate) fn halt_with_previous(&mut self, timeout: Duration) -> Result<bool, XtensaError> {
+        let was_running = if self.state.is_halted {
+            // Core is already halted, we don't need to do anything.
+            false
+        } else {
+            // If we have not halted the core, it may still be halted on a breakpoint, for example.
+            // Let's check status.
+            let status_idx = self.xdm.schedule_read_nexus_register::<DebugStatus>();
+            self.halt(timeout)?;
+            let before_status = DebugStatus(self.xdm.read_deferred_result(status_idx)?.into_u32());
+
+            !before_status.stopped()
+        };
+
+        Ok(was_running)
+    }
+
+    fn fast_halted_access(
+        &mut self,
+        mut op: impl FnMut(&mut Self) -> Result<(), XtensaError>,
+    ) -> Result<(), XtensaError> {
+        if self.state.is_halted {
+            // Core is already halted, we don't need to do anything.
+            return op(self);
+        }
+
+        // If we have not halted the core, it may still be halted on a breakpoint, for example.
+        // Let's check status.
+        let status_idx = self.xdm.schedule_read_nexus_register::<DebugStatus>();
+
+        // Queue up halting.
+        self.xdm.schedule_halt();
+
+        // We will need to check if we managed to halt the core.
+        let is_halted_idx = self.xdm.schedule_read_nexus_register::<DebugStatus>();
+        self.state.is_halted = true;
+
+        // Execute the operation while the core is presumed halted. If it is not, we will have
+        // various errors, but we will retry the operation.
+        let result = op(self);
+
+        // If the core was running, resume it.
+        let before_status = DebugStatus(self.xdm.read_deferred_result(status_idx)?.into_u32());
+        if !before_status.stopped() {
+            self.resume_core()?;
+        }
+
+        // If we did not manage to halt the core at once, let's retry using the slow path.
+        let after_status = DebugStatus(self.xdm.read_deferred_result(is_halted_idx)?.into_u32());
+
+        if after_status.stopped() {
+            return result;
+        }
+        self.state.is_halted = false;
+        self.halted_access(|this| op(this))
+    }
+
     /// Executes a closure while ensuring the core is halted.
     pub fn halted_access<R>(
         &mut self,
         op: impl FnOnce(&mut Self) -> Result<R, XtensaError>,
     ) -> Result<R, XtensaError> {
-        let was_halted = self.core_halted()?;
-        if !was_halted {
-            self.halt(Duration::from_millis(100))?;
+        let was_running = self.halt_with_previous(Duration::from_millis(100))?;
+
+        let result = op(self);
+
+        if was_running {
+            self.resume_core()?;
         }
 
-        let result = op(self)?;
-
-        if !was_halted {
-            self.resume()?;
-        }
-
-        Ok(result)
+        result
     }
 
     /// Steps the core by one instruction.
@@ -243,7 +298,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         // An exception is generated at the beginning of an instruction that would overflow ICOUNT.
         self.schedule_write_register(ICount(-2_i32 as u32))?;
 
-        self.resume()?;
+        self.resume_core()?;
         self.wait_for_core_halted(Duration::from_millis(100))?;
 
         // Avoid stopping again
@@ -253,7 +308,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
     }
 
     /// Resumes program execution.
-    pub fn resume(&mut self) -> Result<(), XtensaError> {
+    pub fn resume_core(&mut self) -> Result<(), XtensaError> {
         tracing::debug!("Resuming core");
         self.state.is_halted = false;
         self.xdm.resume()?;
@@ -445,7 +500,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
             let reader = value.unwrap();
             let value = self.xdm.read_deferred_result(reader)?.into_u32();
 
-            self.write_register_untyped(key, value)?;
+            self.schedule_write_register_untyped(key, value)?;
         }
 
         Ok(())
@@ -518,16 +573,17 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         }
 
         self.state.saved_registers.clear();
-        self.xdm.execute()
+        Ok(())
     }
 
-    fn read_memory(&mut self, address: u64, mut dst: &mut [u8]) -> Result<(), XtensaError> {
+    fn read_memory(&mut self, address: u64, dst: &mut [u8]) -> Result<(), XtensaError> {
         tracing::debug!("Reading {} bytes from address {:08x}", dst.len(), address);
         if dst.is_empty() {
             return Ok(());
         }
 
-        self.halted_access(move |this| {
+        self.fast_halted_access(move |this| {
+            let mut dst = &mut dst[..];
             // Write aligned address to the scratch register
             let key = this.save_register(CpuRegister::A3)?;
             this.schedule_write_cpu_register(CpuRegister::A3, address as u32 & !0x3)?;
@@ -572,6 +628,8 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
                 aligned_reads.push(this.xdm.schedule_read_ddr());
             };
 
+            this.restore_register(key)?;
+
             if let Some((read, offset, bytes_to_copy)) = first_read {
                 let word = this
                     .xdm
@@ -595,8 +653,6 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
                 dst[..bytes].copy_from_slice(&word[..bytes]);
                 dst = &mut dst[bytes..];
             }
-
-            this.restore_register(key)?;
 
             Ok(())
         })
@@ -638,7 +694,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
             .schedule_execute_instruction(Instruction::Sddr32P(CpuRegister::A3));
         self.restore_register(key)?;
 
-        self.xdm.execute()
+        Ok(())
     }
 
     pub(crate) fn write_memory(&mut self, address: u64, data: &[u8]) -> Result<(), XtensaError> {
@@ -647,7 +703,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
             return Ok(());
         }
 
-        self.halted_access(move |this| {
+        self.fast_halted_access(move |this| {
             let key = this.save_register(CpuRegister::A3)?;
 
             let address = address as u32;
@@ -691,8 +747,6 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
             }
 
             this.restore_register(key)?;
-
-            this.xdm.execute()?;
 
             // TODO: implement cache flushing on CPUs that need it.
 

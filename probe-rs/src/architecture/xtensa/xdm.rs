@@ -269,7 +269,10 @@ impl<'probe> Xdm<'probe> {
     }
 
     fn check_enabled(&mut self) -> Result<(), XtensaError> {
-        let device_id = self.read_nexus_register::<OcdId>()?.0;
+        let Ok(device_id) = self.read_nexus_register::<OcdId>() else {
+            return Err(XtensaError::CoreDisabled);
+        };
+        let device_id = device_id.0;
         tracing::debug!("Read OCDID: {:#010X}", device_id);
 
         if device_id == 0 || device_id == u32::MAX {
@@ -472,7 +475,7 @@ impl<'probe> Xdm<'probe> {
         Ok(res)
     }
 
-    fn schedule_read_nexus_register<R: NexusRegister>(&mut self) -> DeferredResultIndex {
+    pub(super) fn schedule_read_nexus_register<R: NexusRegister>(&mut self) -> DeferredResultIndex {
         tracing::debug!("Reading from {}", R::NAME);
         self.schedule_dbg_read(R::ADDRESS)
     }
@@ -659,6 +662,7 @@ impl<'probe> Xdm<'probe> {
     }
 
     pub fn reset_and_halt(&mut self) -> Result<(), XtensaError> {
+        self.execute()?;
         self.pwr_write(PowerDevice::PowerControl, {
             let mut pwr_control = PowerControl(0);
 
