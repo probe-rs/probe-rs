@@ -4,7 +4,7 @@ use crate::probe::{
     DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeCreationError, ProbeFactory,
 };
 
-use super::{cmsisdap, espusbjtag, ftdi, jlink, stlink, wlink};
+use super::{blackmagic, cmsisdap, espusbjtag, ftdi, jlink, stlink, wlink};
 
 /// Struct to list all attached debug probes
 #[derive(Debug)]
@@ -75,6 +75,7 @@ impl Default for AllProbesLister {
 
 impl AllProbesLister {
     const DRIVERS: &'static [&'static dyn ProbeFactory] = &[
+        &blackmagic::BlackMagicProbeFactory,
         &cmsisdap::CmsisDapFactory,
         &ftdi::FtdiProbeFactory,
         &stlink::StLinkFactory,
