@@ -830,15 +830,6 @@ impl<D: StLinkUsb> StLink<D> {
 
     /// Reads the DAP register on the specified port and address.
     fn read_register(&mut self, port: u16, addr: u8) -> Result<u32, DebugProbeError> {
-        if port == DP_PORT && addr & 0xf0 != 0 && !self.supports_dp_bank_selection() {
-            tracing::warn!("Trying to access DP register at address {addr:#x}, which is not supported on ST-Links.");
-            return Err(StlinkError::BanksNotAllowedOnDPRegister.into());
-        }
-
-        if port != DP_PORT {
-            self.select_ap(port as u8)?;
-        }
-
         let port = port.to_le_bytes();
 
         let cmd = &[
@@ -857,15 +848,6 @@ impl<D: StLinkUsb> StLink<D> {
 
     /// Writes a value to the DAP register on the specified port and address.
     fn write_register(&mut self, port: u16, addr: u8, value: u32) -> Result<(), DebugProbeError> {
-        if port == DP_PORT && addr & 0xf0 != 0 && !self.supports_dp_bank_selection() {
-            tracing::warn!("Trying to access DP register at address {addr:#x}, which is not supported on ST-Links.");
-            return Err(StlinkError::BanksNotAllowedOnDPRegister.into());
-        }
-
-        if port != DP_PORT {
-            self.select_ap(port as u8)?;
-        }
-
         let port = port.to_le_bytes();
         let bytes = value.to_le_bytes();
 
@@ -913,23 +895,9 @@ impl<D: StLinkUsb> StLink<D> {
             return Err(DebugProbeError::from(StlinkError::UnalignedAddress));
         }
 
-        let data_length = data.len().to_le_bytes();
-
-        let addbytes = address.to_le_bytes();
-
         retry_on_wait(|| {
             self.device.write(
-                &[
-                    commands::JTAG_COMMAND,
-                    commands::JTAG_READMEM_32BIT,
-                    addbytes[0],
-                    addbytes[1],
-                    addbytes[2],
-                    addbytes[3],
-                    data_length[0],
-                    data_length[1],
-                    apsel,
-                ],
+                &memory_command(commands::JTAG_READMEM_32BIT, address, data.len(), apsel),
                 &[],
                 data,
                 TIMEOUT,
@@ -963,22 +931,9 @@ impl<D: StLinkUsb> StLink<D> {
             return Err(DebugProbeError::from(StlinkError::UnalignedAddress));
         }
 
-        let data_length = data.len().to_le_bytes();
-        let addbytes = address.to_le_bytes();
-
         retry_on_wait(|| {
             self.device.write(
-                &[
-                    commands::JTAG_COMMAND,
-                    commands::JTAG_READMEM_16BIT,
-                    addbytes[0],
-                    addbytes[1],
-                    addbytes[2],
-                    addbytes[3],
-                    data_length[0],
-                    data_length[1],
-                    apsel,
-                ],
+                &memory_command(commands::JTAG_READMEM_16BIT, address, data.len(), apsel),
                 &[],
                 data,
                 TIMEOUT,
@@ -1026,22 +981,9 @@ impl<D: StLinkUsb> StLink<D> {
 
         tracing::trace!("Read mem 8 bit, address={:08x}, length={}", address, length);
 
-        let addbytes = address.to_le_bytes();
-        let lenbytes = length.to_le_bytes();
-
         retry_on_wait(|| {
             self.device.write(
-                &[
-                    commands::JTAG_COMMAND,
-                    commands::JTAG_READMEM_8BIT,
-                    addbytes[0],
-                    addbytes[1],
-                    addbytes[2],
-                    addbytes[3],
-                    lenbytes[0],
-                    lenbytes[1],
-                    apsel,
-                ],
+                &memory_command(commands::JTAG_READMEM_8BIT, address, length as usize, apsel),
                 &[],
                 &mut receive_buffer,
                 TIMEOUT,
@@ -1083,21 +1025,9 @@ impl<D: StLinkUsb> StLink<D> {
             return Err(DebugProbeError::from(StlinkError::UnalignedAddress));
         }
 
-        let addbytes = address.to_le_bytes();
-        let lenbytes = length.to_le_bytes();
         retry_on_wait(|| {
             self.device.write(
-                &[
-                    commands::JTAG_COMMAND,
-                    commands::JTAG_WRITEMEM_32BIT,
-                    addbytes[0],
-                    addbytes[1],
-                    addbytes[2],
-                    addbytes[3],
-                    lenbytes[0],
-                    lenbytes[1],
-                    apsel,
-                ],
+                &memory_command(commands::JTAG_WRITEMEM_32BIT, address, data.len(), apsel),
                 data,
                 &mut [],
                 TIMEOUT,
@@ -1118,7 +1048,6 @@ impl<D: StLinkUsb> StLink<D> {
         self.select_ap(apsel)?;
 
         tracing::trace!("write_mem_16bit");
-        let length = data.len();
 
         // TODO what is the maximum supported length?
 
@@ -1131,21 +1060,9 @@ impl<D: StLinkUsb> StLink<D> {
             return Err(DebugProbeError::from(StlinkError::UnalignedAddress));
         }
 
-        let addbytes = address.to_le_bytes();
-        let lenbytes = length.to_le_bytes();
         retry_on_wait(|| {
             self.device.write(
-                &[
-                    commands::JTAG_COMMAND,
-                    commands::JTAG_WRITEMEM_16BIT,
-                    addbytes[0],
-                    addbytes[1],
-                    addbytes[2],
-                    addbytes[3],
-                    lenbytes[0],
-                    lenbytes[1],
-                    apsel,
-                ],
+                &memory_command(commands::JTAG_WRITEMEM_16BIT, address, data.len(), apsel),
                 data,
                 &mut [],
                 TIMEOUT,
@@ -1180,21 +1097,9 @@ impl<D: StLinkUsb> StLink<D> {
             );
         }
 
-        let addbytes = address.to_le_bytes();
-        let lenbytes = byte_length.to_le_bytes();
         retry_on_wait(|| {
             self.device.write(
-                &[
-                    commands::JTAG_COMMAND,
-                    commands::JTAG_WRITEMEM_8BIT,
-                    addbytes[0],
-                    addbytes[1],
-                    addbytes[2],
-                    addbytes[3],
-                    lenbytes[0],
-                    lenbytes[1],
-                    apsel,
-                ],
+                &memory_command(commands::JTAG_WRITEMEM_8BIT, address, data.len(), apsel),
                 data,
                 &mut [],
                 TIMEOUT,
@@ -1243,6 +1148,22 @@ impl<D: StLinkUsb> StLink<D> {
 
         Ok(())
     }
+}
+
+const fn memory_command(command: u8, address: u32, len: usize, apsel: u8) -> [u8; 9] {
+    let addbytes = address.to_le_bytes();
+    let data_length = len.to_le_bytes();
+    [
+        commands::JTAG_COMMAND,
+        command,
+        addbytes[0],
+        addbytes[1],
+        addbytes[2],
+        addbytes[3],
+        data_length[0],
+        data_length[1],
+        apsel,
+    ]
 }
 
 impl<D: StLinkUsb> SwoAccess for StLink<D> {
@@ -1373,7 +1294,6 @@ impl StlinkArmDebug {
         probe: Box<StLink<StLinkUsbDevice>>,
     ) -> Result<Self, (Box<UninitializedStLink>, ArmError)> {
         // Determine the number and type of available APs.
-
         let mut interface = Self {
             probe,
             access_ports: BTreeSet::new(),
@@ -1388,14 +1308,42 @@ impl StlinkArmDebug {
 
         Ok(interface)
     }
+
+    fn select_dp(&mut self, dp: DpAddress) -> Result<(), ArmError> {
+        if dp != DpAddress::Default {
+            return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
+        }
+
+        Ok(())
+    }
+
+    fn select_dp_and_dp_bank(&mut self, dp: DpAddress, address: u8) -> Result<(), ArmError> {
+        self.select_dp(dp)?;
+
+        if address & 0xf0 != 0 && !self.probe.supports_dp_bank_selection() {
+            tracing::warn!("Trying to access DP register at address {address:#x}, which is not supported on ST-Links.");
+            return Err(DebugProbeError::from(StlinkError::BanksNotAllowedOnDPRegister).into());
+        }
+
+        Ok(())
+    }
+
+    fn select_ap_and_ap_bank(
+        &mut self,
+        ap: &FullyQualifiedApAddress,
+        _address: u8,
+    ) -> Result<(), ArmError> {
+        self.select_dp(ap.dp())?;
+        self.probe.select_ap(ap.ap_v1()?)?;
+
+        Ok(())
+    }
 }
 
 impl DapAccess for StlinkArmDebug {
     #[tracing::instrument(skip(self), fields(value))]
     fn read_raw_dp_register(&mut self, dp: DpAddress, address: u8) -> Result<u32, ArmError> {
-        if dp != DpAddress::Default {
-            return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
-        }
+        self.select_dp_and_dp_bank(dp, address)?;
         let result = self.probe.read_register(DP_PORT, address)?;
 
         tracing::Span::current().record("value", result);
@@ -1412,9 +1360,7 @@ impl DapAccess for StlinkArmDebug {
         address: u8,
         value: u32,
     ) -> Result<(), ArmError> {
-        if dp != DpAddress::Default {
-            return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
-        }
+        self.select_dp_and_dp_bank(dp, address)?;
 
         self.probe.write_register(DP_PORT, address, value)?;
         Ok(())
@@ -1425,9 +1371,7 @@ impl DapAccess for StlinkArmDebug {
         ap: &FullyQualifiedApAddress,
         address: u8,
     ) -> Result<u32, ArmError> {
-        if ap.dp() != DpAddress::Default {
-            return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
-        }
+        self.select_ap_and_ap_bank(ap, address)?;
 
         let value = self.probe.read_register(ap.ap_v1()? as u16, address)?;
 
@@ -1440,9 +1384,7 @@ impl DapAccess for StlinkArmDebug {
         address: u8,
         value: u32,
     ) -> Result<(), ArmError> {
-        if ap.dp() != DpAddress::Default {
-            return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
-        }
+        self.select_ap_and_ap_bank(ap, address)?;
 
         self.probe
             .write_register(ap.ap_v1()? as u16, address, value)?;
@@ -1469,9 +1411,7 @@ impl ArmProbeInterface for StlinkArmDebug {
         &mut self,
         dp: DpAddress,
     ) -> Result<Option<crate::architecture::arm::ArmChipInfo>, ArmError> {
-        if dp != DpAddress::Default {
-            return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
-        }
+        self.select_dp(dp)?;
 
         for ap in self.access_ports.clone() {
             if let Ok(mut memory) = self.memory_interface(&ap) {
@@ -1496,9 +1436,7 @@ impl ArmProbeInterface for StlinkArmDebug {
         &mut self,
         dp: DpAddress,
     ) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError> {
-        if dp != DpAddress::Default {
-            return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
-        }
+        self.select_dp(dp)?;
 
         Ok(self.access_ports.clone())
     }
