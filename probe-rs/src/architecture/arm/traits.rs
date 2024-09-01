@@ -141,6 +141,23 @@ impl FullyQualifiedApAddress {
         }
     }
 
+    /// Create a new `FullyQualifiedApAddress` belonging to the default debug port.
+    pub const fn v2_with_default_dp(ap: ApV2Address) -> Self {
+        Self {
+            dp: DpAddress::Default,
+            ap: ApAddress::V2(ap),
+        }
+    }
+
+    /// Create a new `FullyQualifiedApAddress` belonging to the given debug port using Ap Address
+    /// in the version 2 format.
+    pub const fn v2_with_dp(dp: DpAddress, ap: ApV2Address) -> Self {
+        Self {
+            dp,
+            ap: ApAddress::V2(ap),
+        }
+    }
+
     /// Returns the Debug port’s address.
     pub fn dp(&self) -> DpAddress {
         self.dp

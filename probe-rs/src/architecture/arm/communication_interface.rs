@@ -1,19 +1,14 @@
 use crate::{
     architecture::arm::{
         ap_v1::valid_access_ports,
-        //ap_v2,
+        ap_v2,
         dp::{
             Abort, Ctrl, DebugPortError, DebugPortId, DebugPortVersion, DpAccess, Select, BASEPTR0,
             BASEPTR1, DPIDR, DPIDR1,
         },
         memory::{adi_v5_memory_interface::ADIMemoryInterface, ArmMemoryInterface, Component},
         sequences::{ArmDebugSequence, DefaultArmSequence},
-        ArmError,
-        DapAccess,
-        FullyQualifiedApAddress,
-        RawDapAccess,
-        SwoAccess,
-        SwoConfig,
+        ArmError, DapAccess, FullyQualifiedApAddress, RawDapAccess, SwoAccess, SwoConfig,
     },
     probe::{DebugProbe, DebugProbeError, Probe},
     CoreStatus, Error,
@@ -174,26 +169,21 @@ impl ArmDebugState for Initialized {
 
 #[derive(Debug)]
 pub(crate) struct DpState {
-    pub _debug_port_version: DebugPortVersion,
+    pub debug_port_version: DebugPortVersion,
 
     pub current_dpbanksel: u8,
 
     pub current_apsel: u8,
     pub current_apbanksel: u8,
-
-    /// Information about the APs of the target.
-    /// APs are identified by a number, starting from zero.
-    pub access_ports: BTreeSet<FullyQualifiedApAddress>,
 }
 
 impl DpState {
     pub fn new() -> Self {
         Self {
-            _debug_port_version: DebugPortVersion::Unsupported(0xFF),
+            debug_port_version: DebugPortVersion::Unsupported(0xFF),
             current_dpbanksel: 0,
             current_apsel: 0,
             current_apbanksel: 0,
-            access_ports: BTreeSet::new(),
         }
     }
 }
@@ -241,16 +231,11 @@ impl ArmProbeInterface for ArmCommunicationInterface<Initialized> {
         &mut self,
         access_port_address: &FullyQualifiedApAddress,
     ) -> Result<Box<dyn ArmMemoryInterface + '_>, ArmError> {
-        if !self
-            .select_dp(access_port_address.dp())?
-            .access_ports
-            .contains(access_port_address)
-        {
-            return Err(ArmError::ApDoesNotExist(access_port_address.clone()));
-        }
-
-        let memory_interface = ADIMemoryInterface::new(self, access_port_address)?;
-        Ok(Box::new(memory_interface))
+        let memory_interface = match access_port_address.ap() {
+            ApAddress::V1(_) => Box::new(ADIMemoryInterface::new(self, access_port_address)?),
+            ApAddress::V2(_) => ap_v2::new_memory_interface(self, access_port_address)?,
+        };
+        Ok(memory_interface)
     }
 
     fn read_chip_info_from_rom_table(
@@ -267,9 +252,18 @@ impl ArmProbeInterface for ArmCommunicationInterface<Initialized> {
             self.write_dp_register(dp, abort)?;
         }
 
-        let state = self.select_dp(dp)?;
+        let dp_version = self.select_dp(dp)?.debug_port_version;
+        let access_ports = match dp_version {
+            DebugPortVersion::DPv0 | DebugPortVersion::DPv1 | DebugPortVersion::DPv2 => {
+                valid_access_ports(self, dp)
+            }
+            DebugPortVersion::DPv3 => {
+                todo!()
+            }
+            DebugPortVersion::Unsupported(_) => unreachable!(),
+        };
 
-        for access_port in state.access_ports.clone() {
+        for access_port in access_ports {
             if let Ok(mut memory) = self.memory_interface(&access_port) {
                 let base_addr = memory.base_address()?;
                 let component = Component::try_parse(&mut *memory, base_addr)?;
@@ -306,7 +300,17 @@ impl ArmProbeInterface for ArmCommunicationInterface<Initialized> {
         &mut self,
         dp: DpAddress,
     ) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError> {
-        self.select_dp(dp).map(|state| state.access_ports.clone())
+        match self.select_dp(dp).map(|state| state.debug_port_version)? {
+            DebugPortVersion::DPv0 | DebugPortVersion::DPv1 | DebugPortVersion::DPv2 => {
+                Ok(valid_access_ports(self, dp).into_iter().collect())
+            }
+            DebugPortVersion::DPv3 => ap_v2::enumerate_access_ports(self).map(|r| {
+                r.into_iter()
+                    .map(|addr| FullyQualifiedApAddress::v2_with_dp(dp, addr))
+                    .collect()
+            }),
+            DebugPortVersion::Unsupported(_) => unreachable!(),
+        }
     }
 }
 
@@ -500,22 +504,14 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
                     ));
                 };
                 tracing::debug!("reading rom table at {:x}", base_ptr);
-                //let access_ports = ap_v2::scan_rom_tables(self, base_ptr)?;
 
                 return Err(ArmError::DebugPort(DebugPortError::Unsupported(
                     "Unsupported version (DPv3)".to_string(),
                 )));
             }
 
-            /* determine the number and type of available APs */
-            tracing::trace!("Searching valid APs");
-
-            let ap_span = tracing::debug_span!("AP discovery").entered();
-            let access_ports = valid_access_ports(self, dp);
-            let state = self.state.dps.get_mut(&dp).unwrap();
-            state.access_ports = access_ports.into_iter().collect();
-
-            drop(ap_span);
+            let state = self.state.dps.get_mut(&dp).expect("This DP State was inserted earlier in this function");
+            state.debug_port_version = idr.version;
         } else if switched_dp {
             let sequence = self.state.sequence.clone();
 
