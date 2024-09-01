@@ -8,7 +8,6 @@ use super::error::JlinkError;
 use super::interface::Interface;
 
 use std::{cmp, ops::Deref};
-use tracing::warn;
 
 type Result<T> = std::result::Result<T, JlinkError>;
 
@@ -56,7 +55,7 @@ impl SwoStatus {
     fn new(bits: u32) -> Self {
         let flags = bits & Self::ALL_MASK;
         if flags != bits {
-            warn!("Unknown SWO status flag bits: {:#010x}", bits);
+            tracing::warn!("Unknown SWO status flag bits: {:#010x}", bits);
         }
         Self(flags)
     }
@@ -251,7 +250,7 @@ impl JLink {
         };
 
         if status.contains(SwoStatus::OVERRUN) {
-            warn!("SWO probe buffer overrun");
+            tracing::warn!("SWO probe buffer overrun");
         }
 
         let buf = &mut data[..length];
