@@ -383,7 +383,11 @@ pub trait RiscvInterfaceBuilder<'probe> {
     where
         'probe: 'state,
     {
-        let maybe_tunnel = target.jtag.as_ref().map(|j| j.tunnel.as_ref()).flatten();
+        let maybe_tunnel = target
+            .jtag
+            .as_ref()
+            .map(|j| j.riscv_tunnel.as_ref())
+            .flatten();
         if let Some(tunnel) = maybe_tunnel {
             self.attach_tunneled(tunnel.ir_id, tunnel.ir_width, state)
         } else {

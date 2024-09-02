@@ -22,7 +22,7 @@ pub struct ScanChainElement {
 /// example, this can be used to access a Risc-V core in an FPGA using the same JTAG cable that
 /// configures the FPGA.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct JtagTunnel {
+pub struct RiscvJtagTunnel {
     /// JTAG instruction used to tunnel
     pub ir_id: u32,
 
@@ -39,9 +39,9 @@ pub struct Jtag {
     #[serde(default)]
     pub scan_chain: Option<Vec<ScanChainElement>>,
 
-    /// Describes JTAG tunnel
+    /// Describes JTAG tunnel for Risc-V
     #[serde(default)]
-    pub tunnel: Option<JtagTunnel>,
+    pub riscv_tunnel: Option<RiscvJtagTunnel>,
 }
 
 /// A single chip variant.
