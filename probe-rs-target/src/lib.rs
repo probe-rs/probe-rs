@@ -19,7 +19,7 @@ mod memory;
 pub(crate) mod serialize;
 
 pub use chip::{
-    ArmCoreAccessOptions, Chip, Core, CoreAccessOptions, Jtag, RiscvCoreAccessOptions,
+    ArmCoreAccessOptions, Chip, Core, CoreAccessOptions, Jtag, JtagTunnel, RiscvCoreAccessOptions,
     ScanChainElement, XtensaCoreAccessOptions,
 };
 pub use chip_family::{
