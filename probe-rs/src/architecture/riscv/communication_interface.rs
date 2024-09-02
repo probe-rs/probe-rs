@@ -354,6 +354,22 @@ pub trait RiscvInterfaceBuilder<'probe> {
     ) -> Result<RiscvCommunicationInterface<'state>, DebugProbeError>
     where
         'probe: 'state;
+
+    /// Consumes the factory and creates a communication interface
+    /// object using a JTAG tunnel initialised with the given state.
+    fn attach_tunneled<'state>(
+        self: Box<Self>,
+        _tunnel_ir_id: u32,
+        _tunnel_ir_width: u32,
+        _state: &'state mut RiscvDebugInterfaceState,
+    ) -> Result<RiscvCommunicationInterface<'state>, DebugProbeError>
+    where
+        'probe: 'state,
+    {
+        Err(DebugProbeError::InterfaceNotAvailable {
+            interface_name: "Tunneled RISC-V",
+        })
+    }
 }
 
 /// A interface that implements controls for RISC-V cores.
