@@ -69,10 +69,7 @@ impl<'probe> JtagDtm<'probe> {
     }
 
     fn transform_dmi_result(response_bytes: Vec<u8>) -> Result<u32, DmiOperationStatus> {
-        let response_value: u128 = response_bytes.iter().enumerate().fold(0, |acc, elem| {
-            let (byte_offset, value) = elem;
-            acc + ((*value as u128) << (8 * byte_offset))
-        });
+        let response_value = u128_from_data(&response_bytes);
 
         // Verify that the transfer was ok
         let op = (response_value & DMI_OP_MASK) as u8;
@@ -356,6 +353,13 @@ impl DmiOperationStatus {
 
         Some(status)
     }
+}
+
+fn u128_from_data(data: &[u8]) -> u128 {
+    data.iter().enumerate().fold(0, |acc, elem| {
+        let (byte_offset, value) = elem;
+        acc + ((*value as u128) << (8 * byte_offset))
+    })
 }
 
 /// Address of the `dtmcs` JTAG register.
