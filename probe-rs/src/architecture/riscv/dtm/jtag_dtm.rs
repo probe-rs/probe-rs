@@ -5,7 +5,6 @@
 
 use bitfield::bitfield;
 use std::time::{Duration, Instant};
-use std::u32;
 
 use crate::architecture::riscv::communication_interface::{
     RiscvCommunicationInterface, RiscvDebugInterfaceState, RiscvError, RiscvInterfaceBuilder,
@@ -366,7 +365,7 @@ impl<'probe> TunneledJtagDtm<'probe> {
 
     fn transform_tunneled_dr_result(response_bytes: Vec<u8>) -> Vec<u8> {
         let raw_response = u128_from_data(&response_bytes);
-        let response = (raw_response >> 4) as u128;
+        let response = raw_response >> 4;
         response.to_le_bytes().into()
     }
 
