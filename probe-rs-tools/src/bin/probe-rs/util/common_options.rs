@@ -453,17 +453,8 @@ pub enum OperationError {
     #[error("No connected probes were found.")]
     NoProbesFound,
 
-    #[error("Failed to open the ELF file '{path}' for flashing.")]
-    #[allow(dead_code)]
-    FailedToOpenElf {
-        #[source]
-        source: std::io::Error,
-        path: PathBuf,
-    },
-
     #[error("Failed to load the ELF data.")]
-    #[allow(dead_code)]
-    FailedToLoadElfData(#[source] FileDownloadError),
+    FailedToLoadElfData(#[from] FileDownloadError),
 
     #[error("Failed to open the debug probe.")]
     FailedToOpenProbe(#[from] DebugProbeError),
