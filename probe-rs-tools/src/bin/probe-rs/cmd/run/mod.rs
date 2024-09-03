@@ -116,6 +116,7 @@ impl Cmd {
 
         let core_id = rtt_client.core_id();
 
+        let mut should_clear_rtt_header = true;
         if run_download {
             let loader = build_loader(
                 &mut session,
@@ -123,6 +124,16 @@ impl Cmd {
                 self.shared_options.format_options,
                 None,
             )?;
+
+            // When using RTT with a program in flash, the RTT header will be moved to RAM on
+            // startup, so clearing it before startup is ok. However, if we're downloading to the
+            // header's final address in RAM, then it's not relocated on startup and we should not
+            // clear it. This impacts static RTT headers, like used in defmt_rtt.
+            if let ScanRegion::Exact(address) = rtt_client.scan_region {
+                should_clear_rtt_header = !loader.has_data_for_address(address);
+                tracing::debug!("RTT ScanRegion::Exact address is within region to be flashed")
+            }
+
             run_flash_download(
                 &mut session,
                 &self.shared_options.path,
@@ -140,11 +151,14 @@ impl Cmd {
 
         rtt_client.timezone_offset = timestamp_offset;
 
-        if run_download {
+        if run_download && should_clear_rtt_header {
             // We ended up resetting the MCU, throw away old RTT data and prevent
             // printing warnings when it initialises.
             let mut core = session.core(core_id)?;
             rtt_client.clear_control_block(&mut core)?;
+            tracing::debug!("Cleared RTT header");
+        } else {
+            tracing::debug!("Skipped clearing RTT header")
         }
 
         run_mode.run(
