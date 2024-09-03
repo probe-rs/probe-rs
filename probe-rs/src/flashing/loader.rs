@@ -352,6 +352,11 @@ impl FlashLoader {
         memory_map.iter().find(|region| region.contains(address))
     }
 
+    /// Returns whether an address will be flashed with data
+    pub fn has_data_for_address(&self, address: u64) -> bool {
+        self.builder.has_data_in_range(&(address..address + 1))
+    }
+
     /// Reads the image according to the file format and adds it to the loader.
     pub fn load_image<T: Read + Seek>(
         &mut self,
