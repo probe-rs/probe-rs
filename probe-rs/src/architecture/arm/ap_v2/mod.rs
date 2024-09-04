@@ -1,11 +1,26 @@
 use std::collections::BTreeSet;
 
-use crate::MemoryInterface;
+use registers::Register;
+use traits::ApAccess;
+
+use crate::{
+    architecture::arm::{
+        dp::{DpAccess, BASEPTR0, BASEPTR1, DPIDR1},
+        memory::romtable::RomTable,
+    },
+    MemoryInterface,
+};
 
 use super::{
-    communication_interface::{Initialized, SwdSequence}, memory::ArmMemoryInterface, ApAddress, ApV2Address,
-    ArmCommunicationInterface, ArmError, FullyQualifiedApAddress,
+    communication_interface::{Initialized, SwdSequence},
+    dp::DpAddress,
+    memory::ArmMemoryInterface,
+    ApAddress, ApV2Address, ArmCommunicationInterface, ArmError, DapAccess,
+    FullyQualifiedApAddress,
 };
+
+mod registers;
+mod traits;
 
 type ACI = ArmCommunicationInterface<Initialized>;
 
@@ -20,15 +35,19 @@ impl<'i> MemoryAccessPort<'i> {
     }
 }
 impl SwdSequence for MemoryAccessPort<'_> {
-    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), crate::probe::DebugProbeError> {
+    fn swj_sequence(
+        &mut self,
+        _bit_len: u8,
+        _bits: u64,
+    ) -> Result<(), crate::probe::DebugProbeError> {
         todo!()
     }
 
     fn swj_pins(
         &mut self,
-        pin_out: u32,
-        pin_select: u32,
-        pin_wait: u32,
+        _pin_out: u32,
+        _pin_select: u32,
+        _pin_wait: u32,
     ) -> Result<u32, crate::probe::DebugProbeError> {
         todo!()
     }
@@ -38,35 +57,35 @@ impl MemoryInterface<ArmError> for MemoryAccessPort<'_> {
         todo!()
     }
 
-    fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), ArmError> {
+    fn read_64(&mut self, _address: u64, _data: &mut [u64]) -> Result<(), ArmError> {
         todo!()
     }
 
-    fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError> {
+    fn read_32(&mut self, _address: u64, _data: &mut [u32]) -> Result<(), ArmError> {
         todo!()
     }
 
-    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), ArmError> {
+    fn read_16(&mut self, _address: u64, _data: &mut [u16]) -> Result<(), ArmError> {
         todo!()
     }
 
-    fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError> {
+    fn read_8(&mut self, _address: u64, _data: &mut [u8]) -> Result<(), ArmError> {
         todo!()
     }
 
-    fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), ArmError> {
+    fn write_64(&mut self, _address: u64, _data: &[u64]) -> Result<(), ArmError> {
         todo!()
     }
 
-    fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), ArmError> {
+    fn write_32(&mut self, _address: u64, _data: &[u32]) -> Result<(), ArmError> {
         todo!()
     }
 
-    fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), ArmError> {
+    fn write_16(&mut self, _address: u64, _data: &[u16]) -> Result<(), ArmError> {
         todo!()
     }
 
-    fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), ArmError> {
+    fn write_8(&mut self, _address: u64, _data: &[u8]) -> Result<(), ArmError> {
         todo!()
     }
 
@@ -83,6 +102,10 @@ impl ArmMemoryInterface for MemoryAccessPort<'_> {
         todo!()
     }
 
+    fn fully_qualified_address(&self) -> FullyQualifiedApAddress {
+        todo!()
+    }
+
     fn base_address(&mut self) -> Result<u64, ArmError> {
         todo!()
     }
@@ -95,69 +118,105 @@ impl ArmMemoryInterface for MemoryAccessPort<'_> {
 
     fn try_as_parts(
         &mut self,
-    ) -> Result<(&mut ArmCommunicationInterface<Initialized>, &mut super::ap_v1::memory_ap::MemoryAp), crate::probe::DebugProbeError> {
+    ) -> Result<
+        (
+            &mut ArmCommunicationInterface<Initialized>,
+            &mut super::ap_v1::memory_ap::MemoryAp,
+        ),
+        crate::probe::DebugProbeError,
+    > {
         todo!()
     }
 }
 
-struct RootMemoryAp<'iface> {
+struct RootMemoryAP;
+
+struct RootMemoryInterface<'iface> {
     iface: &'iface mut ACI,
+    dp: DpAddress,
     base: u64,
 }
-impl<'iface> RootMemoryAp<'iface> {
-    fn new(iface: &'iface mut ACI, base: u64) -> Result<Self, ArmError> {
-        // TODO! validity check from the DP’s root table
-        Ok(Self { iface, base })
+impl<'iface> RootMemoryInterface<'iface> {
+    fn new(iface: &'iface mut ACI, dp: DpAddress) -> Result<Self, ArmError> {
+        let base_ptr0: BASEPTR0 = iface.read_dp_register(dp)?;
+        let base_ptr1: BASEPTR1 = iface.read_dp_register(dp)?;
+        let base = base_ptr0
+            .valid()
+            .then(|| u64::from(base_ptr1.ptr()) | u64::from(base_ptr0.ptr() << 12))
+            .inspect(|base| tracing::info!("DPv3 BASE_PTR: 0x{base:x}"))
+            .ok_or_else(|| ArmError::Other("DP has no valid base address defined.".into()))?;
+
+        Ok(Self { iface, dp, base })
+    }
+
+    fn address(&self) -> FullyQualifiedApAddress {
+        FullyQualifiedApAddress::v2_with_dp(self.dp, ApV2Address::Leaf(self.base))
+    }
+
+    fn base_address(&mut self) -> u64 {
+        self.base
     }
 }
-impl SwdSequence for RootMemoryAp<'_> {
-    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), crate::probe::DebugProbeError> {
+impl SwdSequence for RootMemoryInterface<'_> {
+    fn swj_sequence(
+        &mut self,
+        _bit_len: u8,
+        _bits: u64,
+    ) -> Result<(), crate::probe::DebugProbeError> {
         todo!()
     }
 
     fn swj_pins(
         &mut self,
-        pin_out: u32,
-        pin_select: u32,
-        pin_wait: u32,
+        _pin_out: u32,
+        _pin_select: u32,
+        _pin_wait: u32,
     ) -> Result<u32, crate::probe::DebugProbeError> {
         todo!()
     }
 }
-impl MemoryInterface<ArmError> for RootMemoryAp<'_> {
+impl MemoryInterface<ArmError> for RootMemoryInterface<'_> {
     fn supports_native_64bit_access(&mut self) -> bool {
         todo!()
     }
 
-    fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), ArmError> {
+    fn read_64(&mut self, _address: u64, _data: &mut [u64]) -> Result<(), ArmError> {
         todo!()
     }
 
-    fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError> {
+    fn read_32(&mut self, address: u64, _data: &mut [u32]) -> Result<(), ArmError> {
+        let fq_address =
+            FullyQualifiedApAddress::v2_with_dp(self.dp, ApV2Address::Leaf(self.base + address & 0xFFFF_FFFF_FFFF_FFF0));
+
+        // read content
+        for d in _data.iter_mut() {
+            *d =
+                self.iface.read_raw_ap_register(&fq_address, (address & 0xF) as u8)?;
+        }
+        Ok(())
+    }
+
+    fn read_16(&mut self, _address: u64, _data: &mut [u16]) -> Result<(), ArmError> {
         todo!()
     }
 
-    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), ArmError> {
+    fn read_8(&mut self, _address: u64, _data: &mut [u8]) -> Result<(), ArmError> {
         todo!()
     }
 
-    fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError> {
+    fn write_64(&mut self, _address: u64, _data: &[u64]) -> Result<(), ArmError> {
         todo!()
     }
 
-    fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), ArmError> {
+    fn write_32(&mut self, _address: u64, _data: &[u32]) -> Result<(), ArmError> {
         todo!()
     }
 
-    fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), ArmError> {
+    fn write_16(&mut self, _address: u64, _data: &[u16]) -> Result<(), ArmError> {
         todo!()
     }
 
-    fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), ArmError> {
-        todo!()
-    }
-
-    fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), ArmError> {
+    fn write_8(&mut self, _address: u64, _data: &[u8]) -> Result<(), ArmError> {
         todo!()
     }
 
@@ -169,9 +228,13 @@ impl MemoryInterface<ArmError> for RootMemoryAp<'_> {
         todo!()
     }
 }
-impl ArmMemoryInterface for RootMemoryAp<'_> {
+impl ArmMemoryInterface for RootMemoryInterface<'_> {
     fn ap(&mut self) -> &mut super::ap_v1::memory_ap::MemoryAp {
         todo!()
+    }
+
+    fn fully_qualified_address(&self) -> FullyQualifiedApAddress {
+        self.address()
     }
 
     fn base_address(&mut self) -> Result<u64, ArmError> {
@@ -186,18 +249,24 @@ impl ArmMemoryInterface for RootMemoryAp<'_> {
 
     fn try_as_parts(
         &mut self,
-    ) -> Result<(&mut ArmCommunicationInterface<Initialized>, &mut super::ap_v1::memory_ap::MemoryAp), crate::probe::DebugProbeError> {
+    ) -> Result<
+        (
+            &mut ArmCommunicationInterface<Initialized>,
+            &mut super::ap_v1::memory_ap::MemoryAp,
+        ),
+        crate::probe::DebugProbeError,
+    > {
         todo!()
     }
 }
 
 pub fn enumerate_access_ports(
-    _probe: &mut ACI,
+    probe: &mut ACI,
+    dp: DpAddress,
 ) -> Result<BTreeSet<ApV2Address>, ArmError> {
-    // get root base address
-    //
-    // build a root memory interface
-    //let rom_table = RomTable::try_parse(memory, base_address)?;
+    let mut root_ap = RootMemoryInterface::new(probe, dp)?;
+    let base_address = root_ap.base_address();
+    let rom_table = RomTable::try_parse(&mut root_ap, base_address)?;
     //for e in rom_table.entries() {
     // if e is a mem_ap
     //  add it to the set
@@ -214,23 +283,26 @@ fn scan_rom_tables_internal(
     todo!()
 }
 
+/// Returns a Memory Interface accessing the Memory AP at the given `address` through the `iface`
+/// Arm Communication Interface.
 pub fn new_memory_interface<'i>(
     iface: &'i mut ACI,
     address: &FullyQualifiedApAddress,
 ) -> Result<Box<dyn ArmMemoryInterface + 'i>, ArmError> {
-    let ApAddress::V2(address) = address.ap() else {
+    let ApAddress::V2(ap_address) = address.ap() else {
         unimplemented!("this is only for APv2 addresses")
     };
 
     let mut next = None;
-    let base = match address {
+    let base = match ap_address {
         ApV2Address::Leaf(base) => base,
         ApV2Address::Node(base, n) => {
             next = Some(n);
             base
         }
     };
-    let mut ap: Box<dyn ArmMemoryInterface + 'i> = Box::new(RootMemoryAp::new(iface, *base)?);
+    let mut ap: Box<dyn ArmMemoryInterface + 'i> =
+        Box::new(RootMemoryInterface::new(iface, address.dp())?);
     while let Some(n) = next {
         match n.as_ref() {
             ApV2Address::Leaf(base) => {

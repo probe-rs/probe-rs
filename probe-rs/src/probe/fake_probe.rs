@@ -185,6 +185,10 @@ impl ArmMemoryInterface for &mut MockCore {
         todo!()
     }
 
+    fn fully_qualified_address(&self) -> FullyQualifiedApAddress {
+        todo!()
+    }
+
     fn ap(&mut self) -> &mut MemoryAp {
         todo!()
     }

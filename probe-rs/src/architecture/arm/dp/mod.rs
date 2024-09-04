@@ -334,8 +334,8 @@ impl_dpregister!(Ctrl, DebugPortVersion::DPv1, 0x4, "CTRL/STAT");
 
 bitfield! {
     /// SELECT, AP Select register (see ADI v5.2 B2.2.9)
-    #[derive(Clone)]
-    pub struct Select(u32);
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    pub struct SelectV1(u32);
     impl Debug;
     /// Selects the AP with the ID number APSEL. If there is no AP with the ID APSEL, all AP transactions return zero on reads and are ignored on writes. See Register maps, and accesses to reserved addresses on page B2-52.
     /// After a powerup reset, the value of this field is UNKNOWN.
@@ -366,7 +366,39 @@ bitfield! {
     /// Some previous ADI revisions have described DPBANKSEL as a single-bit field called CTRSEL, defined only for SW-DP. From issue B of this document, DPBANKSEL is redefined. The new definition is backwards-compatible.
     pub u8, dp_bank_sel, set_dp_bank_sel: 3, 0;
 }
-impl_dpregister!(Select, DebugPortVersion::DPv1, 0x8, "SELECT");
+impl_dpregister!(SelectV1, DebugPortVersion::DPv1, 0x8, "SELECT");
+
+bitfield! {
+    /// SELECT, AP Select register (see ADI v5.2 B2.2.9)
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    pub struct SelectV3(u32);
+    impl Debug;
+    /// Address output bits[63:4], formed by concatenating bits[31:0] of SELECT1 with bits[31:4] of SELECT.
+    /// The ADDR field selects a four-word bank of system locations to access.
+    /// - Bits[3:2] of the address, that are used to select a specific register in a bank, are provided with APACC transactions.
+    /// - Bits[1:0] are always 0b00.
+    ///
+    /// After a powerup reset or an SWD line reset, the value of this field is UNKNOWN
+    pub u32, addr, set_addr: 31, 4;
+    /// Debug Port address bank select.
+    pub u8, dp_bank_sel, set_dp_bank_sel: 3, 0;
+}
+impl_dpregister!(SelectV3, DebugPortVersion::DPv3, 0x8, "SELECT");
+
+bitfield! {
+    /// SELECT1, AP Select register (see ADI v5.2 B2.2.9)
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    pub struct Select1(u32);
+    impl Debug;
+    /// Address output bits[63:4], formed by concatenating bits[31:0] of SELECT1 with bits[31:4] of SELECT.
+    /// The ADDR field selects a four-word bank of system locations to access.
+    /// - Bits[3:2] of the address, that are used to select a specific register in a bank, are provided with APACC transactions.
+    /// - Bits[1:0] are always 0b00.
+    ///
+    /// After a powerup reset or an SWD line reset, the value of this field is UNKNOWN
+    pub u32, addr, set_addr: 31, 0;
+}
+impl_dpregister!(Select1, DebugPortVersion::DPv3, 0x4, 0x5, "SELECT1");
 
 bitfield! {
     /// DPIDR, Debug Port Identification register (see ADI v5.2 B2.2.5)

@@ -18,11 +18,12 @@ pub enum PortAddress {
 }
 
 impl PortAddress {
-    /// Returns the address pointed at by this port address.
-    pub fn address(&self) -> u8 {
+    /// Returns the lower 8bits of the address pointed at by this port address.
+    pub fn lsb_address(&self) -> u8 {
         match self {
             PortAddress::DebugPort(DpRegisterAddress { address, .. }) => *address,
             PortAddress::AccessPort(ApAddress::V1(address)) => *address,
+            PortAddress::AccessPort(ApAddress::V2(ApV2Address::Leaf(address))) => (*address) as u8,
             PortAddress::AccessPort(_) => {
                 unimplemented!("This is not yet implemented. Please report your use case.")
             }
