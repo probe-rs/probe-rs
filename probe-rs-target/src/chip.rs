@@ -16,6 +16,20 @@ pub struct ScanChainElement {
     pub ir_len: Option<u8>,
 }
 
+/// Configuration for JTAG tunneling.
+///
+/// This JTAG tunnel wraps JTAG IR and DR accesses as DR access to a specific instruction. For
+/// example, this can be used to access a Risc-V core in an FPGA using the same JTAG cable that
+/// configures the FPGA.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct RiscvJtagTunnel {
+    /// JTAG instruction used to tunnel
+    pub ir_id: u32,
+
+    /// Width of tunneled JTAG instruction register
+    pub ir_width: u32,
+}
+
 /// Configuration for JTAG probes.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Jtag {
@@ -24,6 +38,10 @@ pub struct Jtag {
     /// ref: `<https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/sdf_pg.html#sdf_element_scanchain>`
     #[serde(default)]
     pub scan_chain: Option<Vec<ScanChainElement>>,
+
+    /// Describes JTAG tunnel for Risc-V
+    #[serde(default)]
+    pub riscv_tunnel: Option<RiscvJtagTunnel>,
 }
 
 /// A single chip variant.
