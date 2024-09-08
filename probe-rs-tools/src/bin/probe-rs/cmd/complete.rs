@@ -67,7 +67,7 @@ impl Cmd {
                 Zsh.install(&file_name, &script)?;
             }
             Shell::Bash => {
-                Zsh.install(&file_name, &script)?;
+                Bash.install(&file_name, &script)?;
             }
             Shell::PowerShell => {
                 PowerShell.install(&file_name, &script)?;
@@ -255,15 +255,16 @@ impl ShellExt for Zsh {
 
 impl ShellExt for Bash {
     fn install(&self, file_name: &str, script: &str) -> Result<()> {
+        const DEST: &str = ".local/share/bash-completion/completions/";
         let Some(dir) = directories::UserDirs::new() else {
             println!("{script}");
             eprintln!("The user home directory could not be located.");
-            eprintln!("Write the script to ~/.bash_completion/{file_name}");
+            eprintln!("Write the script to ~/{DEST}/{file_name}");
             eprintln!("Install the autocompletion by reloading the bash");
             return Ok(());
         };
 
-        let path = dir.home_dir().join(".bash_completions/").join(file_name);
+        let path = dir.home_dir().join(DEST).join(file_name);
         write_script(&path, script)
     }
 }
