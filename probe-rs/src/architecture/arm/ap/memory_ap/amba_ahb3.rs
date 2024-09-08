@@ -30,6 +30,11 @@ impl AmbaAhb3 {
 
         let me = Self { address, csw, cfg };
         let csw = CSW {
+            DbgSwEnable: true,
+            MasterType: true,
+            Cacheable: true,
+            Privileged: true,
+            Data: true,
             AddrInc: AddressIncrement::Single,
             ..me.csw
         };
@@ -161,16 +166,16 @@ define_ap_register!(
     ],
     from: value => Ok(CSW {
         DbgSwEnable: ((value >> 31) & 0x01) != 0,
-        HNONSEC: ((value >> 30) & 0x01) != 0,
+        HNONSEC:    ((value >> 30) & 0x01) != 0,
         MasterType: ((value >> 29) & 0x01) != 0,
-        Allocate: ((value >> 28) & 0x01) != 0,
-        Cacheable: ((value >> 27) & 0x01) != 0,
+        Allocate:   ((value >> 28) & 0x01) != 0,
+        Cacheable:  ((value >> 27) & 0x01) != 0,
         Bufferable: ((value >> 26) & 0x01) != 0,
         Privileged: ((value >> 25) & 0x01) != 0,
-        Data: ((value >> 24) & 0x01) != 0,
-        SPIDEN: ((value >> 23) & 0x01) != 0,
-        TrInProg: ((value >> 7) & 0x01) != 0,
-        DeviceEn: ((value >> 6) & 0x01) != 0,
+        Data:       ((value >> 24) & 0x01) != 0,
+        SPIDEN:     ((value >> 23) & 0x01) != 0,
+        TrInProg:   ((value >> 7) & 0x01) != 0,
+        DeviceEn:   ((value >> 6) & 0x01) != 0,
         AddrInc: AddressIncrement::from_u8(((value >> 4) & 0x03) as u8).ok_or_else(|| RegisterParseError::new("CSW", value))?,
         Size: DataSize::try_from((value & 0x07) as u8).map_err(|_| RegisterParseError::new("CSW", value))?,
         _reserved_bits: value & 0x007F_FF08,

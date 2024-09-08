@@ -30,6 +30,10 @@ impl AmbaAhb5 {
 
         let me = Self { address, csw, cfg };
         let csw = CSW {
+            DbgSwEnable: true,
+            MasterType: true,
+            Privileged: true,
+            Data: true,
             AddrInc: AddressIncrement::Single,
             ..me.csw
         };
@@ -116,12 +120,17 @@ define_ap_register!(
         ///
         /// Support of this function is implementation defined.
         MasterType: bool,           // [29]
-        /// `HPROT[6:0]`.
+        /// `HPROT[6:3]`.
         ///
-        /// - bit 0 to 2 respectively control `HPROT`’s bit 0 to 2
         /// - bit 3 controls bits `HPROT`’s bit 3, 4 and 6
         /// - `HPROT[5]` is tied to 0
-        HPROT: u8,                  // [27:24]
+        CombinedHPROT346: bool,     // [27]
+        /// `HPROT[2]`
+        Bufferable: bool,           // [26]
+        /// `HPROT[1]`
+        Privileged: bool,           // [25]
+        /// `HPROT[0]`
+        Data: bool,                 // [24]
         /// Secure Debug Enabled.
         ///
         /// This field has one of the following values:
@@ -154,12 +163,15 @@ define_ap_register!(
     ],
     from: value => Ok(CSW {
         DbgSwEnable: ((value >> 31) & 0x01) != 0,
-        HNONSEC: ((value >> 30) & 0x01) != 0,
+        HNONSEC:    ((value >> 30) & 0x01) != 0,
         MasterType: ((value >> 29) & 0x01) != 0,
-        HPROT: ((value >> 24) & 0x0F) as u8,
-        SPIDEN: ((value >> 23) & 0x01) != 0,
-        TrInProg: ((value >> 7) & 0x01) != 0,
-        DeviceEn: ((value >> 6) & 0x01) != 0,
+        CombinedHPROT346: ((value >> 27) & 0x01) != 0,
+        Bufferable: ((value >> 26) & 0x01) != 0,
+        Privileged: ((value >> 25) & 0x01) != 0,
+        Data:       ((value >> 24) & 0x01) != 0,
+        SPIDEN:     ((value >> 23) & 0x01) != 0,
+        TrInProg:   ((value >> 7) & 0x01) != 0,
+        DeviceEn:   ((value >> 6) & 0x01) != 0,
         AddrInc: AddressIncrement::from_u8(((value >> 4) & 0x03) as u8).ok_or_else(|| RegisterParseError::new("CSW", value))?,
         Size: DataSize::try_from((value & 0x07) as u8).map_err(|_| RegisterParseError::new("CSW", value))?,
         _reserved_bits: value & 0x107F_FF08,
@@ -167,7 +179,10 @@ define_ap_register!(
     to: value => (u32::from(value.DbgSwEnable) << 31)
     | (u32::from(value.HNONSEC      ) << 30)
     | (u32::from(value.MasterType   ) << 29)
-    | (u32::from(value.HPROT        ) << 24)
+    | (u32::from(value.CombinedHPROT346) << 27)
+    | (u32::from(value.Bufferable   ) << 26)
+    | (u32::from(value.Privileged   ) << 25)
+    | (u32::from(value.Data         ) << 24)
     | (u32::from(value.SPIDEN       ) << 23)
     | (u32::from(value.TrInProg     ) <<  7)
     | (u32::from(value.DeviceEn     ) <<  6)
