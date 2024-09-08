@@ -23,7 +23,7 @@ pub enum DpAddress {
 }
 
 /// A Debug port register address and its bank.
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Eq, PartialEq, Clone, Copy)]
 pub struct DpRegisterAddress {
     /// The register address.
     pub address: u8,

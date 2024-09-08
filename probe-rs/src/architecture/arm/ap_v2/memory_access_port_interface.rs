@@ -1,0 +1,160 @@
+use crate::{
+    architecture::arm::{
+        ap_v2::registers::{Register, DRW, TAR, TAR2},
+        communication_interface::{Initialized, SwdSequence},
+        memory::ArmMemoryInterface,
+        ApAddress, ArmCommunicationInterface, ArmError, FullyQualifiedApAddress,
+    },
+    MemoryInterface,
+};
+
+use super::{registers::{BASE, BASE2}, MemoryAccessPortInterfaces};
+
+pub struct MemoryAccessPortInterface<'iface> {
+    iface: MemoryAccessPortInterfaces<'iface>,
+    base: u64,
+}
+impl<'iface> MemoryAccessPortInterface<'iface> {
+    pub fn new<T: Into<MemoryAccessPortInterfaces<'iface>>>(
+        iface: T,
+        base: u64,
+    ) -> Result<Self, ArmError> {
+        // TODO! validity check from the parent root table
+        Ok(Self {
+            iface: iface.into(),
+            base,
+        })
+    }
+
+    pub fn release(self) -> MemoryAccessPortInterfaces<'iface> {
+        self.iface
+    }
+}
+impl<'iface> SwdSequence for MemoryAccessPortInterface<'iface> {
+    fn swj_sequence(
+        &mut self,
+        _bit_len: u8,
+        _bits: u64,
+    ) -> Result<(), crate::probe::DebugProbeError> {
+        todo!()
+    }
+
+    fn swj_pins(
+        &mut self,
+        _pin_out: u32,
+        _pin_select: u32,
+        _pin_wait: u32,
+    ) -> Result<u32, crate::probe::DebugProbeError> {
+        todo!()
+    }
+}
+impl<'iface> MemoryInterface<ArmError> for MemoryAccessPortInterface<'iface> {
+    fn supports_native_64bit_access(&mut self) -> bool {
+        todo!()
+    }
+
+    fn read_64(&mut self, _address: u64, _data: &mut [u64]) -> Result<(), ArmError> {
+        todo!()
+    }
+
+    fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError> {
+        // iface: fully qualified address points parent
+        // base-address: base for the registers of this AP in the parent’s memory space
+        // address: register address of the register, relative to the base address.
+        let faq = self.fully_qualified_address();
+        for (i, d) in data.iter_mut().enumerate() {
+            let address = address + (i as u64) * 4;
+            //tracing::debug!("Setting TAR to : {address:x}.");
+            self.iface
+                .write_32(self.base + u64::from(TAR::ADDRESS), &[address as u32])?;
+            self.iface
+                .write_32(self.base + u64::from(TAR2::ADDRESS), &[(address >> 32) as u32])?;
+            self.iface
+                .read_32(self.base + u64::from(DRW::ADDRESS), std::slice::from_mut(d))?;
+            //tracing::trace!("Reading at {:x?}->{:x}: {:x}", faq, address, d);
+        }
+
+        Ok(())
+    }
+
+    fn read_16(&mut self, _address: u64, _data: &mut [u16]) -> Result<(), ArmError> {
+        todo!()
+    }
+
+    fn read_8(&mut self, _address: u64, _data: &mut [u8]) -> Result<(), ArmError> {
+        todo!()
+    }
+
+    fn write_64(&mut self, _address: u64, _data: &[u64]) -> Result<(), ArmError> {
+        todo!()
+    }
+
+    fn write_32(&mut self, _address: u64, _data: &[u32]) -> Result<(), ArmError> {
+        todo!()
+    }
+
+    fn write_16(&mut self, _address: u64, _data: &[u16]) -> Result<(), ArmError> {
+        todo!()
+    }
+
+    fn write_8(&mut self, _address: u64, _data: &[u8]) -> Result<(), ArmError> {
+        todo!()
+    }
+
+    fn supports_8bit_transfers(&self) -> Result<bool, ArmError> {
+        todo!()
+    }
+
+    fn flush(&mut self) -> Result<(), ArmError> {
+        todo!()
+    }
+}
+impl<'iface> ArmMemoryInterface for MemoryAccessPortInterface<'iface> {
+    fn ap(&mut self) -> &mut crate::architecture::arm::ap_v1::memory_ap::MemoryAp {
+        todo!()
+    }
+
+    fn fully_qualified_address(&self) -> FullyQualifiedApAddress {
+        match &self.iface {
+            MemoryAccessPortInterfaces::Root(r) => FullyQualifiedApAddress::v2_with_dp(
+                r.fully_qualified_address().dp(),
+                crate::architecture::arm::ApV2Address::Root.append(self.base),
+            ),
+            MemoryAccessPortInterfaces::Node(iface) => {
+                let fqa = iface.fully_qualified_address();
+                let ApAddress::V2(ap) = fqa.ap() else {
+                    panic!("Wrong ap version")
+                };
+               FullyQualifiedApAddress::v2_with_dp(fqa.dp(), ap.clone().append(self.base))
+            }
+        }
+    }
+
+    fn rom_table_address(&mut self) -> Result<u64, ArmError> {
+        let mut base = 0;
+        let mut base1 = 0;
+        self.iface.read_32(self.base + u64::from(BASE::ADDRESS), std::slice::from_mut(&mut base))?;
+        self.iface.read_32(self.base + u64::from(BASE2::ADDRESS), std::slice::from_mut(&mut base1))?;
+        let base = (u64::from(base1) << 32) | u64::from(base);
+        tracing::debug!("{:x?}’s rom table is at: {:x}", self.fully_qualified_address(), base);
+        Ok(base & 0xFFFF_FFFF_FFFF_FFF0)
+    }
+
+    fn get_arm_communication_interface(
+        &mut self,
+    ) -> Result<&mut ArmCommunicationInterface<Initialized>, crate::probe::DebugProbeError> {
+        todo!()
+    }
+
+    fn try_as_parts(
+        &mut self,
+    ) -> Result<
+        (
+            &mut ArmCommunicationInterface<Initialized>,
+            &mut crate::architecture::arm::ap_v1::memory_ap::MemoryAp,
+        ),
+        crate::probe::DebugProbeError,
+    > {
+        todo!()
+    }
+}

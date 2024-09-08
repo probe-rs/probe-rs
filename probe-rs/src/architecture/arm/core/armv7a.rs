@@ -1188,7 +1188,7 @@ mod test {
             todo!()
         }
 
-        fn base_address(&mut self) -> Result<u64, ArmError> {
+        fn rom_table_address(&mut self) -> Result<u64, ArmError> {
             todo!()
         }
     }

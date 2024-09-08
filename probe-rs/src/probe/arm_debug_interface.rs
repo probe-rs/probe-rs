@@ -17,6 +17,8 @@ use crate::{
     Error,
 };
 
+const CTRL_PORT: PortAddress = PortAddress::DpRegister(Ctrl::ADDRESS);
+
 #[derive(Debug)]
 pub struct SwdSettings {
     /// Initial number of idle cycles between consecutive writes.
@@ -142,12 +144,12 @@ fn build_jtag_payload_and_address(transfer: &DapTransfer) -> (u64, u32) {
     if transfer.is_abort() {
         (JTAG_ABORT_VALUE, JTAG_ABORT_IR_VALUE)
     } else {
-        let address = match transfer.address {
-            PortAddress::DebugPort(_) => JTAG_DEBUG_PORT_IR_VALUE,
-            PortAddress::AccessPort(_) => JTAG_ACCESS_PORT_IR_VALUE,
+        let address = match transfer.address.is_ap() {
+            false => JTAG_DEBUG_PORT_IR_VALUE,
+            true => JTAG_ACCESS_PORT_IR_VALUE,
         };
 
-        let port_address = transfer.address.lsb_address();
+        let port_address = transfer.address.a2_and_3();
         let mut payload = 0u64;
 
         // 32-bit value, bits 35:3
@@ -608,7 +610,7 @@ fn write_dp_register<P: DebugProbe + RawProtocolIo + JTAGAccess, R: DpRegister>(
     probe: &mut P,
     register: R,
 ) -> Result<(), ArmError> {
-    let mut transfer = DapTransfer::write(PortAddress::DebugPort(R::ADDRESS), register.into());
+    let mut transfer = DapTransfer::write(R::ADDRESS, register.into());
 
     transfer.idle_cycles_after = probe.swd_settings().idle_cycles_before_write_verify
         + probe.swd_settings().num_idle_cycles_between_writes;
@@ -689,11 +691,11 @@ impl DapTransfer {
         let (payload, address) = if self.is_abort() {
             (JTAG_ABORT_VALUE, JTAG_ABORT_IR_VALUE)
         } else {
-            let jtag_address = match self.address {
-                PortAddress::DebugPort(_) => JTAG_DEBUG_PORT_IR_VALUE,
-                PortAddress::AccessPort(_) => JTAG_ACCESS_PORT_IR_VALUE,
+            let jtag_address = match self.address.is_ap() {
+                false => JTAG_DEBUG_PORT_IR_VALUE,
+                true => JTAG_ACCESS_PORT_IR_VALUE,
             };
-            let port_address = self.address.lsb_address();
+            let port_address = self.address.a2_and_3();
 
             let mut payload = 0u64;
 
@@ -746,13 +748,11 @@ impl DapTransfer {
     // Helper functions for combining transfers
 
     fn is_ap_read(&self) -> bool {
-        matches!(self.address, PortAddress::AccessPort(_))
-            && self.direction == TransferDirection::Read
+        self.address.is_ap() && self.direction == TransferDirection::Read
     }
 
     fn is_ap_write(&self) -> bool {
-        matches!(self.address, PortAddress::AccessPort(_))
-            && self.direction == TransferDirection::Write
+        self.address.is_ap() && self.direction == TransferDirection::Write
     }
 
     fn is_write(&self) -> bool {
@@ -760,12 +760,12 @@ impl DapTransfer {
     }
 
     fn is_abort(&self) -> bool {
-        matches!(self.address, PortAddress::DebugPort(Abort::ADDRESS))
+        matches!(self.address, PortAddress::DpRegister(Abort::ADDRESS))
             && self.direction == TransferDirection::Write
     }
 
     fn is_rdbuff(&self) -> bool {
-        matches!(self.address, PortAddress::DebugPort(RdBuff::ADDRESS))
+        matches!(self.address, PortAddress::DpRegister(RdBuff::ADDRESS))
             && self.direction == TransferDirection::Read
     }
 
@@ -779,10 +779,10 @@ impl DapTransfer {
         // the write buffer is empty.
         let abort_write = self.is_abort();
 
-        let dpidr_read = matches!(self.address, PortAddress::DebugPort(DPIDR::ADDRESS))
+        let dpidr_read = matches!(self.address, PortAddress::DpRegister(DPIDR::ADDRESS))
             && self.direction == TransferDirection::Read;
 
-        let ctrl_stat_read = matches!(self.address, PortAddress::DebugPort(Ctrl::ADDRESS))
+        let ctrl_stat_read = matches!(self.address, PortAddress::DpRegister(Ctrl::ADDRESS))
             && self.direction == TransferDirection::Read;
 
         abort_write || dpidr_read || ctrl_stat_read
@@ -901,7 +901,6 @@ fn build_swd_transfer(address: &PortAddress, direction: TransferType) -> IoSeque
 
     // First we determine the APnDP bit.
     let ap_n_dp = address.is_ap();
-    let address = address.lsb_address();
 
     // Set direction bit to 1 for reads.
     let direction_bit = direction == TransferType::Read;
@@ -909,8 +908,8 @@ fn build_swd_transfer(address: &PortAddress, direction: TransferType) -> IoSeque
     // Then we determine the address bits.
     // Only bits 2 and 3 are relevant as we use byte addressing but can only read 32bits
     // which means we can skip bits 0 and 1. The ADI specification is defined like this.
-    let a2 = (address >> 2) & 0x01 == 1;
-    let a3 = (address >> 3) & 0x01 == 1;
+    let a2 = address.a2();
+    let a3 = address.a3();
 
     let mut sequence = IoSequence::with_capacity(46);
 
@@ -1043,7 +1042,7 @@ pub trait RawProtocolIo {
 
 impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for Probe {
     fn raw_read_register(&mut self, address: PortAddress) -> Result<u32, ArmError> {
-        let is_ctrl_access = PortAddress::DebugPort(Ctrl::ADDRESS) == address;
+        let is_ctrl_access = CTRL_PORT == address;
 
         let mut transfer = DapTransfer::read(address);
         perform_transfers(self, std::slice::from_mut(&mut transfer))?;
@@ -1063,10 +1062,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                 if is_ctrl_access {
                     tracing::warn!("Error reading CTRL/STAT register. This should not happen...");
                 } else {
-                    let response = RawDapAccess::raw_read_register(
-                        self,
-                        PortAddress::DebugPort(Ctrl::ADDRESS),
-                    )?;
+                    let response = RawDapAccess::raw_read_register(self, CTRL_PORT)?;
                     let ctrl = Ctrl::try_from(response)?;
                     tracing::warn!(
                         "Reading DAP register failed. Ctrl/Stat register value is: {:#?}",
@@ -1134,8 +1130,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                 // To get a clue about the actual fault we read the ctrl register,
                 // which will have the fault status flags set.
 
-                let response =
-                    RawDapAccess::raw_read_register(self, PortAddress::DebugPort(Ctrl::ADDRESS))?;
+                let response = RawDapAccess::raw_read_register(self, CTRL_PORT)?;
 
                 let ctrl = Ctrl::try_from(response)?;
                 tracing::warn!(

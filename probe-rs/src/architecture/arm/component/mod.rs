@@ -114,7 +114,7 @@ pub fn get_arm_components(
 
     for ap_index in interface.access_ports(dp)? {
         let component = if let Ok(mut memory) = interface.memory_interface(&ap_index) {
-            match memory.base_address()? {
+            match memory.rom_table_address()? {
                 0 => Err(Error::Other("AP has a base address of 0".to_string())),
                 debug_base_address => {
                     let component = Component::try_parse(&mut *memory, debug_base_address)?;

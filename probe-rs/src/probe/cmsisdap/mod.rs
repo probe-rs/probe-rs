@@ -417,7 +417,7 @@ impl CmsisDap {
     fn read_ctrl_register(&mut self) -> Result<Ctrl, ArmError> {
         let response = commands::send_command(
             &mut self.device,
-            TransferRequest::read(PortAddress::DebugPort(Ctrl::ADDRESS)),
+            TransferRequest::read(Ctrl::ADDRESS),
         )
         .map_err(CmsisDapError::from)
         .map_err(DebugProbeError::from)?;
@@ -453,7 +453,7 @@ impl CmsisDap {
     fn write_abort(&mut self, abort: Abort) -> Result<(), ArmError> {
         let response = commands::send_command(
             &mut self.device,
-            TransferRequest::write(PortAddress::DebugPort(Abort::ADDRESS), abort.into()),
+            TransferRequest::write(Abort::ADDRESS, abort.into()),
         )
         .map_err(CmsisDapError::from)
         .map_err(DebugProbeError::from)?;
