@@ -61,7 +61,7 @@ impl<'iface> MemoryInterface<ArmError> for MemoryAccessPortInterface<'iface> {
         // iface: fully qualified address points parent
         // base-address: base for the registers of this AP in the parent’s memory space
         // address: register address of the register, relative to the base address.
-        let faq = self.fully_qualified_address();
+        let _faq = self.fully_qualified_address();
         for (i, d) in data.iter_mut().enumerate() {
             let address = address + (i as u64) * 4;
             //tracing::debug!("Setting TAR to : {address:x}.");
@@ -71,7 +71,7 @@ impl<'iface> MemoryInterface<ArmError> for MemoryAccessPortInterface<'iface> {
                 .write_32(self.base + u64::from(TAR2::ADDRESS), &[(address >> 32) as u32])?;
             self.iface
                 .read_32(self.base + u64::from(DRW::ADDRESS), std::slice::from_mut(d))?;
-            //tracing::trace!("Reading at {:x?}->{:x}: {:x}", faq, address, d);
+            //tracing::trace!("Reading at {:x?}->{:x}: {:x}", _faq, address, d);
         }
 
         Ok(())

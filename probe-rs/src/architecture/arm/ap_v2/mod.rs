@@ -1,7 +1,10 @@
 use std::collections::BTreeSet;
 
 use crate::{
-    architecture::arm::memory::{romtable::RomTable, PeripheralType},
+    architecture::arm::memory::{
+        romtable::{RomTable, CORESIGHT_ROM_TABLE_ARCHID},
+        Component, PeripheralType,
+    },
     MemoryInterface,
 };
 
@@ -84,11 +87,26 @@ pub fn enumerate_access_ports<'i>(
     probe: &'i mut ArmCommunicationInterface<Initialized>,
     dp: DpAddress,
 ) -> Result<BTreeSet<ApV2Address>, ArmError> {
-    let root_ap = RootMemoryInterface::new(probe, dp)?;
-    let mut result = BTreeSet::new();
-    result.insert(ApV2Address::Node(0, Box::new(ApV2Address::Root)));
+    let mut root_ap = RootMemoryInterface::new(probe, dp)?;
 
-    scan_rom_tables_internal(root_ap, &mut result)?;
+    let mut result = BTreeSet::new();
+
+    let component = Component::try_parse(&mut root_ap as &mut dyn ArmMemoryInterface, 0)?;
+    match component {
+        Component::CoresightComponent(c) => {
+            if c.peripheral_id().arch_id() == CORESIGHT_ROM_TABLE_ARCHID {
+                scan_rom_tables_internal(root_ap, &mut result)?;
+            } else if c.peripheral_id().is_of_type(PeripheralType::MemAp) {
+                result.insert(ApV2Address::Node(0, Box::new(ApV2Address::Root)));
+                let subiface = MemoryAccessPortInterface::new(root_ap, 0)?;
+                scan_rom_tables_internal(subiface, &mut result)?;
+            }
+        }
+        _ => {
+            // not a coresight component
+            return Ok(BTreeSet::new());
+        }
+    }
 
     tracing::info!("Memory APs: {:x?}", result);
     Ok(result)
@@ -103,6 +121,7 @@ fn scan_rom_tables_internal<
 ) -> Result<MemoryAccessPortInterfaces<'iface>, ArmError> {
     let mut iface = iface.into();
     let rom_table_address = iface.rom_table_address()?;
+
     let rom_table =
         RomTable::try_parse(&mut iface as &mut dyn ArmMemoryInterface, rom_table_address)?;
     for e in rom_table.entries() {
@@ -120,7 +139,7 @@ fn scan_rom_tables_internal<
             let MemoryAccessPortInterfaces::Node(subiface) =
                 scan_rom_tables_internal(subiface, mem_aps)?
             else {
-                panic!("scan_rom_tables_internal should return the same iface it was given.");
+                unreachable!("scan_rom_tables_internal should return the same iface it was given.");
             };
             iface = subiface.release();
         }

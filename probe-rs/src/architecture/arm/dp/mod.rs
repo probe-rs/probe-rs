@@ -135,9 +135,9 @@ impl<T: DapAccess> DpAccess for T {
     #[tracing::instrument(skip(self))]
     fn read_dp_register<R: DpRegister>(&mut self, dp: DpAddress) -> Result<R, ArmError> {
         tracing::debug!("Reading DP register {}", R::NAME);
-        let result = self.read_raw_dp_register(dp, R::ADDRESS)?;
-        tracing::debug!("Read    DP register {}, value=0x{:08x}", R::NAME, result);
-        Ok(result.try_into()?)
+        let result = self.read_raw_dp_register(dp, R::ADDRESS)?.try_into()?;
+        tracing::debug!("Read    DP register {}, value=0x{:08x?}", R::NAME, result);
+        Ok(result)
     }
 
     #[tracing::instrument(skip(self))]
