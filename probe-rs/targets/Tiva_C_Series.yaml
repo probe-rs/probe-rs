@@ -1,0 +1,1985 @@
+name: Tiva C Series
+generated_from_pack: true
+pack_file_release: 1.1.0
+variants:
+- name: TM4C1230C3PM
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x8000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C1230D5PM
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C1230E6PM
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C1230H6PM
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C1231C3PM
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x8000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C1231D5PM
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C1231D5PZ
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C1231E6PM
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C1231E6PZ
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C1231H6PGE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C1231H6PM
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C1231H6PZ
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C1232C3PM
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x8000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C1232D5PM
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C1232E6PM
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C1232H6PM
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C1233C3PM
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x8000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C1233D5PM
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C1233D5PZ
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C1233E6PM
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C1233E6PZ
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C1233H6PGE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C1233H6PM
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C1233H6PZ
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C1236D5PM
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C1236E6PM
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C1236H6PM
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C1237D5PM
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C1237D5PZ
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C1237E6PM
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C1237E6PZ
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C1237H6PGE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C1237H6PM
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C1237H6PZ
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C123AE6PM
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C123AH6PM
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C123BE6PM
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C123BE6PZ
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C123BH6PGE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C123BH6PM
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C123BH6PZ
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C123BH6ZRB
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C123FE6PM
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C123FH6PM
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C123GE6PM
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C123GE6PZ
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C123GH6PGE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C123GH6PM
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C123GH6PZ
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C123GH6ZRB
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C123GH6ZXR
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c123_256
+- name: TM4C1290NCPDT
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c129_1024
+- name: TM4C1290NCZAD
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c129_1024
+- name: TM4C1292NCPDT
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c129_1024
+- name: TM4C1292NCZAD
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c129_1024
+- name: TM4C1294KCPDT
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c129_512
+- name: TM4C1294NCPDT
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c129_1024
+- name: TM4C1294NCZAD
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c129_1024
+- name: TM4C1297NCZAD
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c129_1024
+- name: TM4C1299KCZAD
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c129_512
+- name: TM4C1299NCZAD
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c129_1024
+- name: TM4C129CNCPDT
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c129_1024
+- name: TM4C129CNCZAD
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c129_1024
+- name: TM4C129DNCPDT
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c129_1024
+- name: TM4C129DNCZAD
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c129_1024
+- name: TM4C129EKCPDT
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c129_512
+- name: TM4C129ENCPDT
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c129_1024
+- name: TM4C129ENCZAD
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c129_1024
+- name: TM4C129LNCZAD
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c129_1024
+- name: TM4C129XKCZAD
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c129_512
+- name: TM4C129XNCZAD
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - tm4c129_1024
+flash_algorithms:
+- name: tm4c123_256
+  description: TM4C123 256kB Flash
+  default: true
+  instructions: iAo0SUhDAA0zSUAeCGAySQEggDkIYwAgcEcAIHBHL0gBIUFhLkmBYIFoSQf81MBowAcA0AEgcEeBBQzRJ0kBIkphCGAmSIAeiGCIaIAH/NTIaMAHANABIHBH8LWDBzfRyRyJCIkAHU0BI2thGktAMxtqHEzbBybQG058IwApJNDECeQBLGAG4AdGEMofQL8ZPGAAHQkfRAbkDgLRLGsALAHRACnw0Q9MLGIsauQH/NHk5yhgE2hrYKxgq2jbB/zRAB0SHQkfACnz0ehowAcA0AEg8L0yBAAAQOEPQADQD0AEAEKkAQBCpADRD0AAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x1b
+  pc_program_page: 0x5b
+  pc_erase_sector: 0x39
+  pc_erase_all: 0x1f
+  data_section_offset: 0xec
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x40000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 500
+    erase_sector_timeout: 500
+    sectors:
+    - size: 0x400
+      address: 0x0
+- name: tm4c129_1024
+  description: TM4C129 1024kB Flash
+  default: true
+  instructions: iAo0SUhDAA0zSUAeCGAySQEggDkIYwAgcEcAIHBHL0gBIUFhLkmBYIFoSQf81MBowAcA0AEgcEeBBQzRJ0kBIkphCGAmSIAeiGCIaIAH/NTIaMAHANABIHBH8LWDBzfRyRyJCIkAHU0BI2thGktAMxtqHEzbBybQG058IwApJNDECeQBLGAG4AdGEMofQL8ZPGAAHQkfRAbkDgLRLGsALAHRACnw0Q9MLGIsauQH/NHk5yhgE2hrYKxgq2jbB/zRAB0SHQkfACnz0ehowAcA0AEg8L0yBAAAQOEPQADQD0AEAEKkAQBCpADRD0AAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x1b
+  pc_program_page: 0x5b
+  pc_erase_sector: 0x39
+  pc_erase_all: 0x1f
+  data_section_offset: 0xec
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x100000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 500
+    erase_sector_timeout: 500
+    sectors:
+    - size: 0x4000
+      address: 0x0
+- name: tm4c129_512
+  description: TM4C129 512kB Flash
+  default: true
+  instructions: iAo0SUhDAA0zSUAeCGAySQEggDkIYwAgcEcAIHBHL0gBIUFhLkmBYIFoSQf81MBowAcA0AEgcEeBBQzRJ0kBIkphCGAmSIAeiGCIaIAH/NTIaMAHANABIHBH8LWDBzfRyRyJCIkAHU0BI2thGktAMxtqHEzbBybQG058IwApJNDECeQBLGAG4AdGEMofQL8ZPGAAHQkfRAbkDgLRLGsALAHRACnw0Q9MLGIsauQH/NHk5yhgE2hrYKxgq2jbB/zRAB0JHxIdACnz0ehowAcA0AEg8L0yBAAAQOEPQADQD0AEAEKkAQBCpADRD0AAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x1b
+  pc_program_page: 0x5b
+  pc_erase_sector: 0x39
+  pc_erase_all: 0x1f
+  data_section_offset: 0xec
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x80000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 500
+    erase_sector_timeout: 500
+    sectors:
+    - size: 0x4000
+      address: 0x0
