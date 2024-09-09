@@ -6,8 +6,8 @@
 
 use crate::architecture::riscv::dtm::dtm_access::DtmAccess;
 use crate::{
-    architecture::riscv::*, memory_mapped_bitfield_register, probe::DeferredResultIndex,
-    Error as ProbeRsError,
+    architecture::riscv::*, config::Target, memory_mapped_bitfield_register,
+    probe::DeferredResultIndex, Error as ProbeRsError,
 };
 use std::any::Any;
 use std::collections::HashMap;
@@ -354,6 +354,42 @@ pub trait RiscvInterfaceBuilder<'probe> {
     ) -> Result<RiscvCommunicationInterface<'state>, DebugProbeError>
     where
         'probe: 'state;
+
+    /// Consumes the factory and creates a communication interface
+    /// object using a JTAG tunnel initialised with the given state.
+    fn attach_tunneled<'state>(
+        self: Box<Self>,
+        _tunnel_ir_id: u32,
+        _tunnel_ir_width: u32,
+        _state: &'state mut RiscvDebugInterfaceState,
+    ) -> Result<RiscvCommunicationInterface<'state>, DebugProbeError>
+    where
+        'probe: 'state,
+    {
+        Err(DebugProbeError::InterfaceNotAvailable {
+            interface_name: "Tunneled RISC-V",
+        })
+    }
+
+    /// Consumes the factory and creates a communication interface
+    /// object initialised with the given state.
+    ///
+    /// Automatically determines whether to use JTAG tunneling or not from the target.
+    fn attach_auto<'state>(
+        self: Box<Self>,
+        target: &Target,
+        state: &'state mut RiscvDebugInterfaceState,
+    ) -> Result<RiscvCommunicationInterface<'state>, DebugProbeError>
+    where
+        'probe: 'state,
+    {
+        let maybe_tunnel = target.jtag.as_ref().and_then(|j| j.riscv_tunnel.as_ref());
+        if let Some(tunnel) = maybe_tunnel {
+            self.attach_tunneled(tunnel.ir_id, tunnel.ir_width, state)
+        } else {
+            self.attach(state)
+        }
+    }
 }
 
 /// A interface that implements controls for RISC-V cores.

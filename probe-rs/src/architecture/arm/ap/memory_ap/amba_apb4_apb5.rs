@@ -100,6 +100,8 @@ define_ap_register!(
         /// - IF SPIDEN is 0, then no transfer is initiated. An access to DRW or BD0-BD3 is likely
         ///   to return an error.
         NonSecure: bool,            // [29]
+        /// Is this transaction privileged
+        Privileged: bool,            // [28]
         /// May reflect the state of the CoreSight authentication interface.
         /// If Secure debug is not supported, this field is always 0.
         SPIDEN: bool,               // [23]
@@ -121,6 +123,7 @@ define_ap_register!(
     from: value => Ok(CSW {
         DbgSwEnable: ((value >> 31) & 0x01) != 0,
         NonSecure: ((value >> 29) & 0x01) != 0,
+        Privileged: ((value >> 28) & 0x01) != 0,
         SPIDEN: ((value >> 23) & 0x01) != 0,
         TrInProg: ((value >> 7) & 0x01) != 0,
         DeviceEn: ((value >> 6) & 0x01) != 0,
@@ -130,6 +133,7 @@ define_ap_register!(
     }),
     to: value => (u32::from(value.DbgSwEnable) << 31)
     | (u32::from(value.NonSecure) << 29)
+    | (u32::from(value.Privileged) << 28)
     | (u32::from(value.SPIDEN) << 23)
     | (u32::from(value.TrInProg) << 7)
     | (u32::from(value.DeviceEn) << 6)

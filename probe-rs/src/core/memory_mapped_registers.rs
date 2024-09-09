@@ -94,7 +94,7 @@ macro_rules! memory_mapped_bitfield_register {
             #[derive(Copy, Clone)]
             #[allow(clippy::upper_case_acronyms)]
             #[allow(non_camel_case_types)]
-            ($vis_modifier) struct $struct_name($reg_type);
+            $vis_modifier struct $struct_name($reg_type);
             impl Debug;
             $($rest)*
         }

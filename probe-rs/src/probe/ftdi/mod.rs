@@ -74,12 +74,7 @@ impl JtagAdapter {
         let mut junk = vec![];
         let _ = self.device.read_to_end(&mut junk);
 
-        // TMS starts high
-        let output = 0x0008;
-
-        // TMS, TDO and TCK are outputs
-        let direction = 0x000b;
-
+        let (output, direction) = self.pin_layout();
         self.device.set_pins(output, direction)?;
 
         self.apply_clock_speed(self.speed_khz)?;
@@ -87,6 +82,26 @@ impl JtagAdapter {
         self.device.disable_loopback()?;
 
         Ok(())
+    }
+
+    fn pin_layout(&self) -> (u16, u16) {
+        let (output, direction) = match (
+            self.device.vendor_id(),
+            self.device.product_id(),
+            self.device.product_string().unwrap_or(""),
+        ) {
+            // Digilent HS3
+            (0x0403, 0x6014, "Digilent USB Device") => (0x2088, 0x308b),
+            // Digilent HS2
+            (0x0403, 0x6014, "Digilent Adept USB Device") => (0x00e8, 0x60eb),
+            // Digilent HS1
+            (0x0403, 0x6010, "Digilent Adept USB Device") => (0x0088, 0x008b),
+            // Other devices:
+            // TMS starts high
+            // TMS, TDO and TCK are outputs
+            _ => (0x0008, 0x000b),
+        };
+        (output, direction)
     }
 
     fn speed_khz(&self) -> u32 {

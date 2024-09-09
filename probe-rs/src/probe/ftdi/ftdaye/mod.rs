@@ -276,6 +276,9 @@ impl Builder {
 pub struct Device {
     context: FtdiContext,
     chip_type: Option<ChipType>,
+    vendor_id: u16,
+    product_id: u16,
+    product_string: Option<String>,
 }
 
 impl std::fmt::Debug for Device {
@@ -430,6 +433,9 @@ impl Device {
                 bitbang: None,
             },
             chip_type,
+            vendor_id: usb_device.vendor_id(),
+            product_id: usb_device.product_id(),
+            product_string: usb_device.product_string().map(|s| s.to_string()),
         })
     }
 
@@ -451,6 +457,18 @@ impl Device {
 
     pub fn chip_type(&self) -> Option<ChipType> {
         self.chip_type
+    }
+
+    pub fn vendor_id(&self) -> u16 {
+        self.vendor_id
+    }
+
+    pub fn product_id(&self) -> u16 {
+        self.product_id
+    }
+
+    pub fn product_string(&self) -> Option<&str> {
+        self.product_string.as_deref()
     }
 
     pub fn set_pins(&mut self, level: u16, direction: u16) -> Result<()> {

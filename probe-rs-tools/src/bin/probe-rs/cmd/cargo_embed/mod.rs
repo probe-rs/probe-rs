@@ -228,6 +228,15 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
         Err(e) => return Err(e.into()),
     };
 
+    let elf = fs::read(&path)?;
+    let rtt_client = RttClient::new(
+        Some(&elf),
+        session.target(),
+        create_rtt_config(&config).clone(),
+        ScanRegion::Ram,
+    )?;
+
+    let mut should_clear_rtt_header = true;
     if config.flashing.enabled {
         let download_options = BinaryDownloadOptions {
             disable_progressbars: opt.disable_progressbars,
@@ -239,6 +248,16 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
         };
         let format_options = FormatOptions::default();
         let loader = build_loader(&mut session, &path, format_options, image_instr_set)?;
+
+        // When using RTT with a program in flash, the RTT header will be moved to RAM on
+        // startup, so clearing it before startup is ok. However, if we're downloading to the
+        // header's final address in RAM, then it's not relocated on startup and we should not
+        // clear it. This impacts static RTT headers, like used in defmt_rtt.
+        if let ScanRegion::Exact(address) = rtt_client.scan_region {
+            should_clear_rtt_header = !loader.has_data_for_address(address);
+            tracing::debug!("RTT ScanRegion::Exact address is within region to be flashed")
+        }
+
         run_flash_download(
             &mut session,
             &path,
@@ -248,14 +267,6 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
             config.flashing.do_chip_erase,
         )?;
     }
-
-    let elf = fs::read(&path)?;
-    let rtt_client = RttClient::new(
-        Some(&elf),
-        session.target(),
-        create_rtt_config(&config).clone(),
-        ScanRegion::Ram,
-    )?;
 
     // FIXME: we should probably figure out in a different way which core we can work with.
     // It seems arbitrary that we reset the target using the same core we use for polling RTT.
@@ -298,7 +309,14 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
 
     if config.rtt.enabled {
         // GDB is also using the session, so we do not lock on the outside.
-        run_rttui_app(name, &session, config, offset, rtt_client)?;
+        run_rttui_app(
+            name,
+            &session,
+            config,
+            offset,
+            should_clear_rtt_header,
+            rtt_client,
+        )?;
     } else if should_resume_core(&config) {
         // If we don't run the app, we have to resume the core somewhere else.
         let mut session_handle = session.lock();
@@ -335,11 +353,12 @@ fn run_rttui_app(
     session: &FairMutex<Session>,
     config: config::Config,
     timezone_offset: UtcOffset,
+    should_clear_rtt_header: bool,
     mut client: RttClient,
 ) -> anyhow::Result<()> {
     let core_id = client.core_id();
 
-    if config.flashing.enabled || config.reset.enabled {
+    if (config.flashing.enabled || config.reset.enabled) && should_clear_rtt_header {
         let mut session_handle = session.lock();
         let mut core = session_handle.core(core_id)?;
 
