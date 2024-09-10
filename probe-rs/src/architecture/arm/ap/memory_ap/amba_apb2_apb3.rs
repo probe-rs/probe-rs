@@ -31,6 +31,7 @@ impl AmbaApb2Apb3 {
 
         let me = Self { address, csw, cfg };
         let csw = CSW {
+            DbgSwEnable: true,
             AddrInc: AddressIncrement::Single,
             ..me.csw
         };
@@ -114,8 +115,8 @@ define_ap_register!(
     ],
     from: value => Ok(CSW {
         DbgSwEnable: ((value >> 31) & 0x01) != 0,
-        TrInProg: ((value >> 7) & 0x01) != 0,
-        DeviceEn: ((value >> 6) & 0x01) != 0,
+        TrInProg:   ((value >> 7) & 0x01) != 0,
+        DeviceEn:   ((value >> 6) & 0x01) != 0,
         AddrInc: AddressIncrement::from_u8(((value >> 4) & 0x03) as u8).ok_or_else(|| RegisterParseError::new("CSW", value))?,
         Size: DataSize::try_from((value & 0x07) as u8).map_err(|_| RegisterParseError::new("CSW", value))?,
         _reserved_bits: (value & 0x7FFF_FF08),

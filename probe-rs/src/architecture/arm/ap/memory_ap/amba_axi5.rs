@@ -30,6 +30,8 @@ impl AmbaAxi5 {
 
         let me = Self { address, csw, cfg };
         let csw = CSW {
+            DbgSwEnable: true,
+            Privileged: true,
             AddrInc: AddressIncrement::Single,
             ..me.csw
         };
@@ -145,14 +147,14 @@ define_ap_register!(
     from: value => Ok(CSW {
         DbgSwEnable: ((value >> 31) & 0x01) != 0,
         Instruction: ((value >> 30) & 0x01) != 0,
-        NonSecure: ((value >> 29) & 0x01) != 0,
+        NonSecure:  ((value >> 29) & 0x01) != 0,
         Privileged: ((value >> 28) & 0x01) != 0,
-        CACHE: ((value >> 24) & 0xF) as u8,
-        SPIDEN: ((value >> 23) & 0x01) != 0,
-        MTE: ((value >> 15) & 0x01) != 0,
-        Type: ((value >> 13) & 0x03) as u8,
-        TrInProg: ((value >> 7) & 0x01) != 0,
-        DeviceEn: ((value >> 6) & 0x01) != 0,
+        CACHE:      ((value >> 24) & 0xF) as u8,
+        SPIDEN:     ((value >> 23) & 0x01) != 0,
+        MTE:        ((value >> 15) & 0x01) != 0,
+        Type:       ((value >> 13) & 0x03) as u8,
+        TrInProg:   ((value >> 7) & 0x01) != 0,
+        DeviceEn:   ((value >> 6) & 0x01) != 0,
         AddrInc: AddressIncrement::from_u8(((value >> 4) & 0x03) as u8).ok_or_else(|| RegisterParseError::new("CSW", value))?,
         Size: DataSize::try_from((value & 0x07) as u8).map_err(|_| RegisterParseError::new("CSW", value))?,
         _reserved_bits: value & 0x007F_FF08,
