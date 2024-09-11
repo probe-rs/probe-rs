@@ -250,6 +250,10 @@ pub struct RiscvCommunicationInterfaceState {
     /// Store the value of the `hasresethaltreq` bit of the `dmstatus` register.
     hasresethaltreq: Option<bool>,
 
+    /// Workaround for certain MCUs. If set, the target will be halted for a sysbus access, even
+    /// though the spec says it should not be necessary.
+    sysbus_requires_halting: bool,
+
     /// Whether the core is currently halted.
     is_halted: bool,
 
@@ -301,6 +305,7 @@ impl RiscvCommunicationInterfaceState {
             enabled_harts: 0,
             last_selected_hart: 0,
             hasresethaltreq: None,
+            sysbus_requires_halting: false,
             is_halted: false,
 
             current_dmcontrol: Dmcontrol(0),
@@ -1542,6 +1547,9 @@ impl<'state> RiscvCommunicationInterface<'state> {
     fn read_word<V: RiscvValue32>(&mut self, address: u32) -> Result<V, crate::Error> {
         let result = match self.state.memory_access_method(V::WIDTH) {
             MemoryAccessMethod::ProgramBuffer => self.perform_memory_read_progbuf(address)?,
+            MemoryAccessMethod::SystemBus if self.state.sysbus_requires_halting => {
+                self.halted_access(|this| this.perform_memory_read_sysbus(address))?
+            }
             MemoryAccessMethod::SystemBus => self.perform_memory_read_sysbus(address)?,
             MemoryAccessMethod::AbstractCommand => {
                 unimplemented!("Memory access using abstract commands is not implemted")
@@ -1562,6 +1570,9 @@ impl<'state> RiscvCommunicationInterface<'state> {
             MemoryAccessMethod::ProgramBuffer => {
                 self.perform_memory_read_multiple_progbuf(address, data)?;
             }
+            MemoryAccessMethod::SystemBus if self.state.sysbus_requires_halting => {
+                self.halted_access(|this| this.perform_memory_read_multiple_sysbus(address, data))?
+            }
             MemoryAccessMethod::SystemBus => {
                 self.perform_memory_read_multiple_sysbus(address, data)?;
             }
@@ -1578,6 +1589,9 @@ impl<'state> RiscvCommunicationInterface<'state> {
             MemoryAccessMethod::ProgramBuffer => {
                 self.perform_memory_write_progbuf(address, data)?
             }
+            MemoryAccessMethod::SystemBus if self.state.sysbus_requires_halting => {
+                self.halted_access(|this| this.perform_memory_write_sysbus(address, &[data]))?
+            }
             MemoryAccessMethod::SystemBus => self.perform_memory_write_sysbus(address, &[data])?,
             MemoryAccessMethod::AbstractCommand => {
                 unimplemented!("Memory access using abstract commands is not implemted")
@@ -1593,6 +1607,9 @@ impl<'state> RiscvCommunicationInterface<'state> {
         data: &[V],
     ) -> Result<(), crate::Error> {
         match self.state.memory_access_method(V::WIDTH) {
+            MemoryAccessMethod::SystemBus if self.state.sysbus_requires_halting => {
+                self.halted_access(|this| this.perform_memory_write_sysbus(address, data))?
+            }
             MemoryAccessMethod::SystemBus => self.perform_memory_write_sysbus(address, data)?,
             MemoryAccessMethod::ProgramBuffer => {
                 self.perform_memory_write_multiple_progbuf(address, data)?
@@ -1803,6 +1820,10 @@ impl<'state> RiscvCommunicationInterface<'state> {
             }
             other => other,
         }
+    }
+
+    pub(crate) fn sysbus_requires_halting(&mut self, en: bool) {
+        self.state.sysbus_requires_halting = en;
     }
 }
 
