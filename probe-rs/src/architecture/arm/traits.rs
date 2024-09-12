@@ -56,15 +56,12 @@ impl From<DpRegisterAddress> for PortAddress {
 
 impl From<ApAddress> for PortAddress {
     fn from(value: ApAddress) -> Self {
-        use ApV2Address::*;
         match value {
             ApAddress::V1(addr) => PortAddress::ApRegister(addr),
-            ApAddress::V2(Node(addr, n)) if matches!(*n, Root) => {
-                PortAddress::ApRegister(addr as u8)
-            }
-            ApAddress::V2(Root) | ApAddress::V2(Node(_, _)) => {
-                panic!("This is a bug, please report it.")
-            }
+            ApAddress::V2(addr) => match addr.as_slice() {
+                [addr] => PortAddress::ApRegister(*addr as u8),
+                _ => panic!("Something unexpected happened. This is a bug, please report it."),
+            },
         }
     }
 }
@@ -90,35 +87,36 @@ bitfield::bitfield! {
 
 /// Access port v2 address
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
-pub enum ApV2Address {
-    /// root node
-    Root,
-    /// Non-terminal node of an APv2 address
-    Node(u64, Box<ApV2Address>),
-}
+pub struct ApV2Address(Vec<u64>);
+
 impl ApV2Address {
     /// Create a new ApV2 Address chain
     pub fn new() -> Self {
-        ApV2Address::Root
+        Self(Vec::new())
+    }
+
+    /// Create a new ApV2 address chain using `tip` as its first element.
+    pub fn new_with_tip(tip: u64) -> Self {
+        Self(vec![tip])
     }
 
     /// Adds a node at the end of this linked list
     pub fn append(self, tip: u64) -> Self {
-        match self {
-            ApV2Address::Root => ApV2Address::Node(tip, Box::new(ApV2Address::Root)),
-            ApV2Address::Node(_, next) => next.append(tip),
-        }
+        let mut new = Self(self.0.clone());
+        new.0.push(tip);
+        new
     }
-}
-impl std::fmt::Display for ApV2Address {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ApV2Address::Root => write!(f, "Root"),
-            ApV2Address::Node(v, r) => write!(f, "{}.{}", v, r),
-        }
+
+    pub fn as_slice(&self) -> &[u64] {
+        self.0.as_slice()
     }
 }
 
+impl From<&[u64]> for ApV2Address {
+    fn from(value: &[u64]) -> Self {
+        Self(value.into())
+    }
+}
 /// Access port address
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 pub enum ApAddress {
@@ -128,14 +126,14 @@ pub enum ApAddress {
     V2(ApV2Address),
 }
 
-impl std::fmt::Display for ApAddress {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ApAddress::V1(v) => write!(f, "V1({})", v),
-            ApAddress::V2(v) => write!(f, "V2({})", v),
-        }
-    }
-}
+//impl std::fmt::Display for ApAddress {
+//    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//        match self {
+//            ApAddress::V1(v) => write!(f, "V1({})", v),
+//            ApAddress::V2(v) => write!(f, "V2({})", v),
+//        }
+//    }
+//}
 
 /// Access port address.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
@@ -198,6 +196,10 @@ impl FullyQualifiedApAddress {
         } else {
             Err(ArmError::WrongApVersion)
         }
+    }
+
+    pub fn deconstruct(self) -> (DpAddress, ApAddress) {
+        (self.dp, self.ap)
     }
 }
 

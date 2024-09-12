@@ -25,7 +25,7 @@ use super::{
     communication_interface::{DapProbe, Initialized},
     component::{TraceFunnel, TraceSink},
     core::cortex_m::Dhcsr,
-    dp::{Abort, Ctrl, DebugPortError, DpAccess, DpAddress, SelectV1, DPIDR},
+    dp::{Abort, Ctrl, DpAccess, DpAddress, SelectV1, DPIDR},
     memory::{
         romtable::{CoresightComponent, PeripheralType},
         ArmMemoryInterface,
@@ -575,7 +575,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         &self,
         interface: &mut ArmCommunicationInterface<Initialized>,
         dp: DpAddress,
-    ) -> Result<(), ArmError> {
+    ) -> Result<DPIDR, ArmError> {
         // Clear all errors.
         // CMSIS says this is only necessary to do inside the `if powered_down`, but
         // without it here, nRF52840 faults in the next access.
@@ -587,7 +587,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         abort.set_stkcmpclr(true);
         interface.write_dp_register(dp, abort)?;
 
-        interface.write_dp_register(dp, SelectV1(0))?;
+        let dpidr: DPIDR = interface.read_dp_register(dp)?;
 
         let ctrl = interface.read_dp_register::<Ctrl>(dp)?;
 
@@ -598,6 +598,13 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
             let mut ctrl = Ctrl(0);
             ctrl.set_cdbgpwrupreq(true);
             ctrl.set_csyspwrupreq(true);
+            if !dpidr.min() {
+                // Init AP Transfer Mode, Transaction Counter, and Lane Mask (Normal Transfer Mode,
+                // Include all Byte Lanes).
+                //
+                // Setting this on MINDP is unpredictable.
+                ctrl.set_mask_lane(0b1111);
+            }
             interface.write_dp_register(dp, ctrl)?;
 
             let start = Instant::now();
@@ -615,24 +622,11 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
 
             // TODO: Only run the following code when the SWD protocol is used
 
-            // Init AP Transfer Mode, Transaction Counter, and Lane Mask (Normal Transfer Mode, Include all Byte Lanes)
-            let mut ctrl = Ctrl(0);
-            ctrl.set_cdbgpwrupreq(true);
-            ctrl.set_csyspwrupreq(true);
-            ctrl.set_mask_lane(0b1111);
-            interface.write_dp_register(dp, ctrl)?;
-
-            let ctrl_reg: Ctrl = interface.read_dp_register(dp)?;
-            if !(ctrl_reg.csyspwrupack() && ctrl_reg.cdbgpwrupack()) {
-                tracing::error!("Debug power request failed");
-                return Err(DebugPortError::TargetPowerUpFailed.into());
-            }
-
             // According to CMSIS docs, here's where we would clear errors
             // in ABORT, but we do that above instead.
         }
 
-        Ok(())
+        Ok(dpidr)
     }
 
     /// Initialize core debug system. This is based on the

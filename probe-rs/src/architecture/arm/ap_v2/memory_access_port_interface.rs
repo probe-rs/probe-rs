@@ -8,7 +8,10 @@ use crate::{
     MemoryInterface,
 };
 
-use super::{registers::{BASE, BASE2}, MemoryAccessPortInterfaces};
+use super::{
+    registers::{BASE, BASE2},
+    MemoryAccessPortInterfaces,
+};
 
 pub struct MemoryAccessPortInterface<'iface> {
     iface: MemoryAccessPortInterfaces<'iface>,
@@ -67,8 +70,10 @@ impl<'iface> MemoryInterface<ArmError> for MemoryAccessPortInterface<'iface> {
             //tracing::debug!("Setting TAR to : {address:x}.");
             self.iface
                 .write_32(self.base + u64::from(TAR::ADDRESS), &[address as u32])?;
-            self.iface
-                .write_32(self.base + u64::from(TAR2::ADDRESS), &[(address >> 32) as u32])?;
+            self.iface.write_32(
+                self.base + u64::from(TAR2::ADDRESS),
+                &[(address >> 32) as u32],
+            )?;
             self.iface
                 .read_32(self.base + u64::from(DRW::ADDRESS), std::slice::from_mut(d))?;
             //tracing::trace!("Reading at {:x?}->{:x}: {:x}", _faq, address, d);
@@ -115,28 +120,29 @@ impl<'iface> ArmMemoryInterface for MemoryAccessPortInterface<'iface> {
     }
 
     fn fully_qualified_address(&self) -> FullyQualifiedApAddress {
-        match &self.iface {
-            MemoryAccessPortInterfaces::Root(r) => FullyQualifiedApAddress::v2_with_dp(
-                r.fully_qualified_address().dp(),
-                crate::architecture::arm::ApV2Address::Root.append(self.base),
-            ),
-            MemoryAccessPortInterfaces::Node(iface) => {
-                let fqa = iface.fully_qualified_address();
-                let ApAddress::V2(ap) = fqa.ap() else {
-                    panic!("Wrong ap version")
-                };
-               FullyQualifiedApAddress::v2_with_dp(fqa.dp(), ap.clone().append(self.base))
-            }
-        }
+        let (dp, ApAddress::V2(ap)) = self.iface.fully_qualified_address().deconstruct() else {
+            panic!("The sub-interface returned an address with an unexpected version. This is a bug, please report it.")
+        };
+        FullyQualifiedApAddress::v2_with_dp(dp, ap.append(self.base))
     }
 
     fn rom_table_address(&mut self) -> Result<u64, ArmError> {
         let mut base = 0;
         let mut base1 = 0;
-        self.iface.read_32(self.base + u64::from(BASE::ADDRESS), std::slice::from_mut(&mut base))?;
-        self.iface.read_32(self.base + u64::from(BASE2::ADDRESS), std::slice::from_mut(&mut base1))?;
+        self.iface.read_32(
+            self.base + u64::from(BASE::ADDRESS),
+            std::slice::from_mut(&mut base),
+        )?;
+        self.iface.read_32(
+            self.base + u64::from(BASE2::ADDRESS),
+            std::slice::from_mut(&mut base1),
+        )?;
         let base = (u64::from(base1) << 32) | u64::from(base);
-        tracing::debug!("{:x?}’s rom table is at: {:x}", self.fully_qualified_address(), base);
+        tracing::debug!(
+            "{:x?}’s rom table is at: {:x}",
+            self.fully_qualified_address(),
+            base
+        );
         Ok(base & 0xFFFF_FFFF_FFFF_FFF0)
     }
 

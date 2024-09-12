@@ -61,7 +61,7 @@ impl MemoryInterface<ArmError> for RootMemoryInterface<'_> {
         for (i, d) in data.iter_mut().enumerate() {
             let addr = address + (i as u64) * 4;
             let base = (self.base + addr) & 0xFFFF_FFFF_FFFF_FFF0;
-            let fqa = FullyQualifiedApAddress::v2_with_dp(self.dp, ApV2Address::Root.append(base));
+            let fqa = FullyQualifiedApAddress::v2_with_dp(self.dp, ApV2Address::new_with_tip(base));
 
             *d = self.iface.read_raw_ap_register(&fqa, (addr & 0xF) as u8)?;
         }
@@ -85,7 +85,7 @@ impl MemoryInterface<ArmError> for RootMemoryInterface<'_> {
         for (i, d) in data.iter().enumerate() {
             let addr = address + (i as u64) * 4;
             let base = (self.base + addr) & 0xFFFF_FFFF_FFFF_FFF0;
-            let fqa = FullyQualifiedApAddress::v2_with_dp(self.dp, ApV2Address::Root.append(base));
+            let fqa = FullyQualifiedApAddress::v2_with_dp(self.dp, ApV2Address::new_with_tip(base));
 
             self.iface
                 .write_raw_ap_register(&fqa, (addr & 0xF) as u8, *d)?;
@@ -115,7 +115,7 @@ impl ArmMemoryInterface for RootMemoryInterface<'_> {
     }
 
     fn fully_qualified_address(&self) -> FullyQualifiedApAddress {
-        FullyQualifiedApAddress::v2_with_dp(self.dp, ApV2Address::Root)
+        FullyQualifiedApAddress::v2_with_dp(self.dp, ApV2Address::new())
     }
 
     fn rom_table_address(&mut self) -> Result<u64, ArmError> {
