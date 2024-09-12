@@ -308,14 +308,17 @@ impl RttActiveUpChannel {
                 };
 
                 // Format options:
-                // 1. Custom format for the channel
-                // 2. Default with optional timestamp and location
-                let format = if let Some(format) = channel_config.log_format.as_deref() {
-                    FormatterFormat::Custom(format)
-                } else {
-                    FormatterFormat::Default {
+                // 1. Oneline format with optional location
+                // 2. Custom format for the channel
+                // 3. Default with optional location
+                let format = match channel_config.log_format.as_deref() {
+                    Some("oneline") => FormatterFormat::OneLine {
                         with_location: channel_config.show_location,
-                    }
+                    },
+                    Some(format) => FormatterFormat::Custom(format),
+                    None => FormatterFormat::Default {
+                        with_location: channel_config.show_location,
+                    },
                 };
 
                 ChannelDataFormat::Defmt {
