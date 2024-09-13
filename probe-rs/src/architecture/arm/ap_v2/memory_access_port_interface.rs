@@ -1,3 +1,8 @@
+use std::{
+    marker::PhantomData,
+    ops::{Deref, DerefMut},
+};
+
 use crate::{
     architecture::arm::{
         ap_v2::registers::{Register, DRW, TAR, TAR2},
@@ -8,32 +13,51 @@ use crate::{
     MemoryInterface,
 };
 
-use super::{
-    registers::{BASE, BASE2},
-    MemoryAccessPortInterfaces,
-};
+use super::registers::{BASE, BASE2};
+use super::MaybeOwned;
 
-pub struct MemoryAccessPortInterface<'iface> {
-    iface: MemoryAccessPortInterfaces<'iface>,
+pub struct MemoryAccessPortInterface<'iface, M: ArmMemoryInterface + 'iface> {
+    iface: MaybeOwned<'iface, M>,
     base: u64,
+    phantom: PhantomData<&'iface ()>,
 }
-impl<'iface> MemoryAccessPortInterface<'iface> {
-    pub fn new<T: Into<MemoryAccessPortInterfaces<'iface>>>(
-        iface: T,
-        base: u64,
-    ) -> Result<Self, ArmError> {
+impl<'iface, M> MemoryAccessPortInterface<'iface, M>
+where
+    M: ArmMemoryInterface + 'iface,
+{
+    pub fn new(iface: M, base: u64) -> Result<Self, ArmError> {
         // TODO! validity check from the parent root table
         Ok(Self {
-            iface: iface.into(),
+            iface: MaybeOwned::Concrete(iface),
             base,
+            phantom: PhantomData,
         })
     }
 
-    pub fn release(self) -> MemoryAccessPortInterfaces<'iface> {
-        self.iface
+    /// creates a new `MemoryAccessPortInterface` from a reference to a `dyn ArmMemoryInterface`.
+    pub fn new_with_ref(iface: &'iface mut (dyn ArmMemoryInterface + 'iface), base: u64) -> Result<Self, ArmError> {
+        // TODO! validity check from the parent root table
+        Ok(Self {
+            iface: MaybeOwned::Reference(iface),
+            base,
+            phantom: PhantomData,
+        })
+    }
+
+    /// creates a new `MemoryAccessPortInterface` from a boxed `dyn ArmMemoryInterface`.
+    pub fn boxed(iface: Box<dyn ArmMemoryInterface + 'iface>, base: u64) -> Result<Self, ArmError> {
+        // TODO! validity check from the parent root table
+        Ok(Self {
+            iface: MaybeOwned::Boxed(iface),
+            base,
+            phantom: PhantomData,
+        })
     }
 }
-impl<'iface> SwdSequence for MemoryAccessPortInterface<'iface> {
+impl<'iface, M> SwdSequence for MemoryAccessPortInterface<'iface, M>
+where
+    M: ArmMemoryInterface + 'iface,
+{
     fn swj_sequence(
         &mut self,
         _bit_len: u8,
@@ -51,7 +75,10 @@ impl<'iface> SwdSequence for MemoryAccessPortInterface<'iface> {
         todo!()
     }
 }
-impl<'iface> MemoryInterface<ArmError> for MemoryAccessPortInterface<'iface> {
+impl<'iface, M> MemoryInterface<ArmError> for MemoryAccessPortInterface<'iface, M>
+where
+    M: ArmMemoryInterface + 'iface,
+{
     fn supports_native_64bit_access(&mut self) -> bool {
         todo!()
     }
@@ -114,7 +141,10 @@ impl<'iface> MemoryInterface<ArmError> for MemoryAccessPortInterface<'iface> {
         todo!()
     }
 }
-impl<'iface> ArmMemoryInterface for MemoryAccessPortInterface<'iface> {
+impl<'iface, M> ArmMemoryInterface for MemoryAccessPortInterface<'iface, M>
+where
+    M: ArmMemoryInterface + 'iface,
+{
     fn ap(&mut self) -> &mut crate::architecture::arm::ap_v1::memory_ap::MemoryAp {
         todo!()
     }
@@ -126,7 +156,7 @@ impl<'iface> ArmMemoryInterface for MemoryAccessPortInterface<'iface> {
         FullyQualifiedApAddress::v2_with_dp(dp, ap.append(self.base))
     }
 
-    fn rom_table_address(&mut self) -> Result<u64, ArmError> {
+    fn base_address(&mut self) -> Result<u64, ArmError> {
         let mut base = 0;
         let mut base1 = 0;
         self.iface.read_32(

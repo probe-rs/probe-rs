@@ -118,7 +118,7 @@ impl ArmMemoryInterface for RootMemoryInterface<'_> {
         FullyQualifiedApAddress::v2_with_dp(self.dp, ApV2Address::new())
     }
 
-    fn rom_table_address(&mut self) -> Result<u64, ArmError> {
+    fn base_address(&mut self) -> Result<u64, ArmError> {
         Ok(self.base)
     }
 
