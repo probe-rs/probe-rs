@@ -1350,32 +1350,19 @@ mod test {
     use crate::{
         architecture::arm::core::registers::cortex_m::CORTEX_M_CORE_REGISTERS,
         debug::{
-            exception_handling::exception_handler_for_core,
-            exception_handling::{armv6m::ArmV6MExceptionHandler, armv7m::ArmV7MExceptionHandler},
+            exception_handling::{
+                armv6m::ArmV6MExceptionHandler, armv7m::ArmV7MExceptionHandler,
+                exception_handler_for_core,
+            },
             stack_frame::{StackFrameInfo, TestFormatter},
+            test_helpers::{get_path_for_test_files, load_test_elf_as_debug_info},
             DebugInfo, DebugRegister, DebugRegisters,
         },
         test::MockMemory,
         CoreDump, RegisterValue,
     };
-    use std::path::{Path, PathBuf};
+    use std::path::Path;
     use test_case::test_case;
-
-    /// Get the full path to a file in the `tests` directory.
-    fn get_path_for_test_files(relative_file: &str) -> PathBuf {
-        let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        path.push("tests");
-        path.push(relative_file);
-        path
-    }
-
-    /// Load the DebugInfo from the `elf_file` for the test.
-    /// `elf_file` should be the name of a file(or relative path) in the `tests` directory.
-    fn load_test_elf_as_debug_info(elf_file: &str) -> DebugInfo {
-        let path = get_path_for_test_files(elf_file);
-        DebugInfo::from_file(&path)
-            .unwrap_or_else(|err| panic!("Failed to open file {}: {:?}", path.display(), err))
-    }
 
     #[test]
     fn unwinding_first_instruction_after_exception() {

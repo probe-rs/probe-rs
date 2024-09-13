@@ -3,6 +3,8 @@
 //! The `debug` module contains various debug functionality, which can be
 //! used to implement a debugger based on `probe-rs`.
 
+/// Debug utils to debug a program that uses async/await.
+pub mod async_debug;
 /// Debug information which is parsed from DWARF debugging information.
 pub mod debug_info;
 /// Stepping through a program during debug, at various granularities.
@@ -17,6 +19,9 @@ pub mod registers;
 pub(crate) mod source_instructions;
 /// The stack frame information used while unwinding the stack from a specific program counter.
 pub mod stack_frame;
+/// A set of helpers to help set up tests.
+#[cfg(test)]
+pub mod test_helpers;
 /// Information about a Unit in the debug information.
 pub mod unit_info;
 /// Variable information used during debug.
