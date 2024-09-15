@@ -10,7 +10,7 @@ use super::{
     communication_interface::{Initialized, SwdSequence},
     ArmCommunicationInterface, ArmError, FullyQualifiedApAddress,
 };
-pub use romtable::{Component, ComponentId, CoresightComponent, PeripheralType};
+pub use romtable::{Component, ComponentId, CoresightComponent, PeripheralType, RomTable};
 
 /// An ArmMemoryInterface (ArmProbeInterface + MemoryAp)
 pub trait ArmMemoryInterface: SwdSequence + ArmMemoryInterfaceShim {

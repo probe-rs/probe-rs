@@ -5,7 +5,7 @@ use jep106::JEP106Code;
 use probe_rs::{
     architecture::{
         arm::{
-            ap_v1::{ApClass, Register},
+            ap_v1::{AccessPort, ApClass, Register},
             armv6m::Demcr,
             component::Scs,
             dp::{
@@ -14,7 +14,7 @@ use probe_rs::{
             },
             memory::{
                 romtable::{PeripheralID, RomTable},
-                Component, ComponentId, CoresightComponent, PeripheralType,
+                ArmMemoryInterface, Component, ComponentId, CoresightComponent, PeripheralType,
             },
             sequences::DefaultArmSequence,
             ApAddress, ApV2Address, ArmProbeInterface, FullyQualifiedApAddress,
@@ -347,10 +347,11 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result
         }
         println!("{tree}");
     } else {
-        handle_memory_ap(
+        let component_tree = handle_memory_ap(
             interface,
             &FullyQualifiedApAddress::v2_with_dp(dp, ApV2Address::new()),
         )?;
+        tree.push(component_tree);
         println!("{tree}");
     }
 
@@ -403,8 +404,9 @@ fn coresight_component_tree(
         }
         Component::CoresightComponent(id) => {
             let peripheral_id = id.peripheral_id();
+            let part_info = peripheral_id.determine_part();
 
-            let component_description = if let Some(part_info) = peripheral_id.determine_part() {
+            let component_description = if let Some(part_info) = part_info {
                 format!("{: <15} (Coresight Component)", part_info.name())
             } else {
                 format!(
@@ -506,7 +508,23 @@ fn process_component_entry(
             };
             let addr = addr.clone().append(component.id().component_address());
             let addr = FullyQualifiedApAddress::v2_with_dp(dp, addr);
-            handle_memory_ap(interface, &addr)?;
+            tree.push(handle_memory_ap(interface, &addr)?);
+        }
+        PeripheralType::Rom => {
+            let id = component.id();
+            let mut memory = interface.memory_interface(access_port)?;
+            let rom_table = RomTable::try_parse(
+                memory.as_mut() as &mut dyn ArmMemoryInterface,
+                id.component_address(),
+            )?;
+            drop(memory);
+
+            process_vendor_rom_tables(interface, id, &rom_table, access_port, tree)?;
+            for entry in rom_table.entries() {
+                let component = entry.component().clone();
+
+                tree.push(coresight_component_tree(interface, component, access_port)?);
+            }
         }
         _ => {}
     }
