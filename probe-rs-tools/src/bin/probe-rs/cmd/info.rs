@@ -441,8 +441,15 @@ fn coresight_component_tree(
             tree
         }
 
-        Component::CoreLinkOrPrimeCellOrSystemComponent(_) => {
-            Tree::new("Core Link / Prime Cell / System component".to_string())
+        Component::CoreLinkOrPrimeCellOrSystemComponent(id) => {
+            let desc = "Core Link / Prime Cell / System component";
+            let desc = if let Some(part_desc) = id.peripheral_id().determine_part() {
+                format!("{: <15} ({})", part_desc.name(), desc)
+            } else {
+                desc.to_string()
+            };
+
+            Tree::new(desc)
         }
     };
 
