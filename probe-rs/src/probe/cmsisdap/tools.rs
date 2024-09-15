@@ -58,7 +58,7 @@ pub fn list_cmsisdap_devices() -> Vec<DebugProbeInfo> {
 /// Checks if a given Device is a CMSIS-DAP probe, returning Some(DebugProbeInfo) if so.
 fn get_cmsisdap_info(device: &DeviceInfo) -> Option<DebugProbeInfo> {
     // Open device handle and read basic information
-    let prod_str = device.product_string().unwrap_or("");
+    let mut prod_str = device.product_string().unwrap_or("");
     let sn_str = device.serial_number();
 
     // Most CMSIS-DAP probes say something like "CMSIS-DAP"
@@ -84,6 +84,11 @@ fn get_cmsisdap_info(device: &DeviceInfo) -> Option<DebugProbeInfo> {
                 interface.interface_number(),
                 interface_desc
             );
+            if prod_str.is_empty() {
+                tracing::warn!("Device {:04x}:{:04x} doesn't have product string, using interface string as product string",
+                    device.vendor_id(), device.product_id());
+                prod_str = interface_desc;
+            }
             cmsis_dap_interface = true;
             if interface.class() == USB_CLASS_HID {
                 tracing::trace!("    HID interface found");

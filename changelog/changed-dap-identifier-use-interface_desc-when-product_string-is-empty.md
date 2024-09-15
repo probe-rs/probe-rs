@@ -1,0 +1,1 @@
+When detecting cmsis-dap, use interface string to instead of product string if it is empty
