@@ -100,6 +100,15 @@ impl<'a> Dwt<'a> {
         ctrl.set_postpreset(0x3);
         ctrl.store(self.component, self.interface)
     }
+
+    /// Disable PC sample trace output
+    pub fn disable_pc_sampling(&mut self) -> Result<(), ArmError> {
+        let mut ctrl = Ctrl::load(self.component, self.interface)?;
+        ctrl.set_pcsamplena(false);
+        ctrl.set_cyctap(false);
+        ctrl.set_postpreset(0x0);
+        ctrl.store(self.component, self.interface)
+    }
 }
 
 memory_mapped_bitfield_register! {
