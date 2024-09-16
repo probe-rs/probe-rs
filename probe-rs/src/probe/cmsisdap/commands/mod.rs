@@ -338,15 +338,15 @@ impl CmsisDapDevice {
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub(crate) enum Status {
-    DAPOk = 0x00,
-    DAPError = 0xFF,
+    DapOk = 0x00,
+    DapError = 0xFF,
 }
 
 impl Status {
     pub fn from_byte(value: u8) -> Result<Self, SendError> {
         match value {
-            0x00 => Ok(Status::DAPOk),
-            0xFF => Ok(Status::DAPError),
+            0x00 => Ok(Status::DapOk),
+            0xFF => Ok(Status::DapError),
             _ => Err(SendError::InvalidResponseStatus),
         }
     }

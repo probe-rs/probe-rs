@@ -163,8 +163,8 @@ impl CmsisDap {
         commands::send_command(&mut self.device, &request)
             .map_err(CmsisDapError::from)
             .and_then(|v| match v.status {
-                Status::DAPOk => Ok(()),
-                Status::DAPError => Err(CmsisDapError::ErrorResponse(RequestError::SWJClock {
+                Status::DapOk => Ok(()),
+                Status::DapError => Err(CmsisDapError::ErrorResponse(RequestError::SWJClock {
                     request,
                 })),
             })
@@ -174,8 +174,8 @@ impl CmsisDap {
         commands::send_command(&mut self.device, &request)
             .map_err(CmsisDapError::from)
             .and_then(|v| match v.status {
-                Status::DAPOk => Ok(()),
-                Status::DAPError => Err(CmsisDapError::ErrorResponse(
+                Status::DapOk => Ok(()),
+                Status::DapError => Err(CmsisDapError::ErrorResponse(
                     RequestError::TransferConfigure { request },
                 )),
             })
@@ -188,8 +188,8 @@ impl CmsisDap {
         commands::send_command(&mut self.device, &request)
             .map_err(CmsisDapError::from)
             .and_then(|v| match v.status {
-                Status::DAPOk => Ok(()),
-                Status::DAPError => Err(CmsisDapError::ErrorResponse(RequestError::SwdConfigure {
+                Status::DapOk => Ok(()),
+                Status::DapError => Err(CmsisDapError::ErrorResponse(RequestError::SwdConfigure {
                     request,
                 })),
             })
@@ -390,8 +390,8 @@ impl CmsisDap {
         commands::send_command(&mut self.device, &request)
             .map_err(CmsisDapError::from)
             .and_then(|v| match v.status {
-                Status::DAPOk => Ok(()),
-                Status::DAPError => {
+                Status::DapOk => Ok(()),
+                Status::DapError => {
                     Err(CmsisDapError::ErrorResponse(RequestError::JtagConfigure {
                         request,
                     }))
@@ -406,8 +406,8 @@ impl CmsisDap {
         commands::send_command(&mut self.device, &request)
             .map_err(CmsisDapError::from)
             .and_then(|v| match v {
-                JtagSequenceResponse(Status::DAPOk, tdo) => Ok(tdo),
-                JtagSequenceResponse(Status::DAPError, _) => {
+                JtagSequenceResponse(Status::DapOk, tdo) => Ok(tdo),
+                JtagSequenceResponse(Status::DapError, _) => {
                     Err(CmsisDapError::ErrorResponse(RequestError::JtagSequence {
                         request,
                     }))
@@ -422,8 +422,8 @@ impl CmsisDap {
         commands::send_command(&mut self.device, &request)
             .map_err(CmsisDapError::from)
             .and_then(|v| match v {
-                SequenceResponse(Status::DAPOk) => Ok(()),
-                SequenceResponse(Status::DAPError) => {
+                SequenceResponse(Status::DapOk) => Ok(()),
+                SequenceResponse(Status::DapError) => {
                     Err(CmsisDapError::ErrorResponse(RequestError::SwjSequence {
                         request,
                     }))
@@ -643,8 +643,8 @@ impl CmsisDap {
     ) -> Result<(), DebugProbeError> {
         let response = commands::send_command(&mut self.device, &transport)?;
         match response.status {
-            Status::DAPOk => Ok(()),
-            Status::DAPError => {
+            Status::DapOk => Ok(()),
+            Status::DapError => {
                 Err(CmsisDapError::ErrorResponse(RequestError::SwoTransport { transport }).into())
             }
         }
@@ -656,8 +656,8 @@ impl CmsisDap {
     fn set_swo_mode(&mut self, mode: swo::ModeRequest) -> Result<(), DebugProbeError> {
         let response = commands::send_command(&mut self.device, &mode)?;
         match response.status {
-            Status::DAPOk => Ok(()),
-            Status::DAPError => {
+            Status::DapOk => Ok(()),
+            Status::DapError => {
                 Err(CmsisDapError::ErrorResponse(RequestError::SwoMode { mode }).into())
             }
         }
@@ -684,8 +684,8 @@ impl CmsisDap {
         let command = swo::ControlRequest::Start;
         let response = commands::send_command(&mut self.device, &command)?;
         match response.status {
-            Status::DAPOk => Ok(()),
-            Status::DAPError => {
+            Status::DapOk => Ok(()),
+            Status::DapError => {
                 Err(CmsisDapError::ErrorResponse(RequestError::SwoControl { command }).into())
             }
         }
@@ -696,8 +696,8 @@ impl CmsisDap {
         let command = swo::ControlRequest::Stop;
         let response = commands::send_command(&mut self.device, &command)?;
         match response.status {
-            Status::DAPOk => Ok(()),
-            Status::DAPError => {
+            Status::DapOk => Ok(()),
+            Status::DapError => {
                 Err(CmsisDapError::ErrorResponse(RequestError::SwoControl { command }).into())
             }
         }
@@ -877,8 +877,8 @@ impl DebugProbe for CmsisDap {
         self.connected = false;
 
         match response {
-            DisconnectResponse(Status::DAPOk) => Ok(()),
-            DisconnectResponse(Status::DAPError) => Err(crate::Error::Probe(
+            DisconnectResponse(Status::DapOk) => Ok(()),
+            DisconnectResponse(Status::DapError) => Err(crate::Error::Probe(
                 CmsisDapError::ErrorResponse(RequestError::HostStatus { request }).into(),
             )),
         }
