@@ -295,7 +295,7 @@ impl Request for TransferBlockRequest {
             .expect("Buffer for CMSIS-DAP command is too small. This is a bug, please report it.");
         size += 2;
 
-        size += self.transfer_request.to_bytes(buffer, 3)?;
+        size += self.transfer_request.as_bytes(buffer, 3)?;
 
         let mut data_offset = 4;
 
@@ -391,7 +391,7 @@ pub(crate) struct InnerTransferBlockRequest {
 }
 
 impl InnerTransferBlockRequest {
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
+    fn as_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
         buffer[offset] = (self.ap_n_dp as u8)
             | (self.r_n_w as u8) << 1
             | u8::from(self.a2) << 2
