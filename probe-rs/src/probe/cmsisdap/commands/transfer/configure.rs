@@ -1,7 +1,7 @@
 use super::super::{CommandId, Request, SendError, Status};
 
 /// The DAP_TransferConfigure Command sets parameters for DAP_Transfer and DAP_TransferBlock.
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct ConfigureRequest {
     /// Number of extra idle cycles after each transfer.
     pub idle_cycles: u8,
@@ -30,9 +30,13 @@ impl Request for ConfigureRequest {
     }
 
     fn parse_response(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
-        Ok(ConfigureResponse(Status::from_byte(buffer[0])?))
+        Ok(ConfigureResponse {
+            status: Status::from_byte(buffer[0])?,
+        })
     }
 }
 
 #[derive(Debug)]
-pub struct ConfigureResponse(pub(crate) Status);
+pub struct ConfigureResponse {
+    pub(crate) status: Status,
+}

@@ -1,6 +1,6 @@
 use super::super::{CommandId, Request, SendError, Status};
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct ConfigureRequest;
 
 impl Request for ConfigureRequest {
@@ -15,9 +15,13 @@ impl Request for ConfigureRequest {
     }
 
     fn parse_response(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
-        Ok(ConfigureResponse(Status::from_byte(buffer[0])?))
+        Ok(ConfigureResponse {
+            status: Status::from_byte(buffer[0])?,
+        })
     }
 }
 
 #[derive(Debug)]
-pub struct ConfigureResponse(pub(crate) Status);
+pub struct ConfigureResponse {
+    pub(crate) status: Status,
+}
