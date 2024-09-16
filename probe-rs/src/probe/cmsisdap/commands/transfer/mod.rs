@@ -268,15 +268,16 @@ pub struct TransferResponse {
 pub(crate) struct TransferBlockRequest {
     /// Zero-based device index of the selected JTAG device. For SWD mode the
     /// value is ignored.
-    dap_index: u8,
+    pub(crate) dap_index: u8,
+
     /// Number of transfers
-    transfer_count: u16,
+    pub(crate) transfer_count: u16,
 
     /// Information about requested access
-    transfer_request: InnerTransferBlockRequest,
+    pub(crate) transfer_request: InnerTransferBlockRequest,
 
     /// Register values to write for writes
-    transfer_data: Vec<u32>,
+    pub(crate) transfer_data: Vec<u32>,
 }
 
 impl Request for TransferBlockRequest {
@@ -381,8 +382,8 @@ impl TransferBlockRequest {
     }
 }
 
-#[derive(Debug)]
-struct InnerTransferBlockRequest {
+#[derive(Debug, Copy, Clone)]
+pub(crate) struct InnerTransferBlockRequest {
     ap_n_dp: PortType,
     r_n_w: RW,
     a2: bool,

@@ -7,10 +7,14 @@ pub mod transfer;
 
 use crate::probe::cmsisdap::commands::general::info::PacketSizeCommand;
 use crate::probe::usb_util::InterfaceExt;
-use crate::probe::ProbeError;
+use crate::probe::{ProbeError, WireProtocol};
 use std::io::ErrorKind;
 use std::str::Utf8Error;
 use std::time::Duration;
+
+use self::general::host_status::HostStatusRequest;
+use self::swj::clock::SWJClockRequest;
+use self::transfer::InnerTransferBlockRequest;
 
 const USB_TIMEOUT: Duration = Duration::from_millis(1000);
 
@@ -23,7 +27,7 @@ pub enum CmsisDapError {
     },
 
     /// CMSIS-DAP responded with an error.
-    ErrorResponse,
+    ErrorResponse(RequestError),
 
     /// Too much data provided for SWJ Sequence command.
     TooMuchData,
@@ -84,6 +88,73 @@ pub enum SendError {
 
     /// Timeout in USB communication.
     Timeout,
+}
+
+#[derive(Debug, thiserror::Error, docsplay::Display)]
+pub enum RequestError {
+    /// Failed setting the SWJ Clock on probe with the following request: {request:?}
+    SWJClock { request: SWJClockRequest },
+
+    /// Failed to configure the SWD options on probe with the following request: {request:?}
+    SwdConfigure {
+        request: swd::configure::ConfigureRequest,
+    },
+
+    /// Failed to configure the JTAG options on probe with the following request: {request:?}
+    JtagConfigure {
+        request: jtag::configure::ConfigureRequest,
+    },
+
+    /// Failed to configure the transfer options on probe with the following request: {request:?}
+    TransferConfigure {
+        request: transfer::configure::ConfigureRequest,
+    },
+
+    /// Failed to send the SWD sequence to the probe with the following request: {request:?}
+    SwjSequence {
+        request: swj::sequence::SequenceRequest,
+    },
+
+    /// Failed to send the JTAG sequence to the probe with the following request: {request:?}
+    JtagSequence {
+        request: jtag::sequence::SequenceRequest,
+    },
+
+    /// The JTAG `{name}` scan chain is either too long or otherwise broken. Expected next bit to be {expected_bit}
+    BrokenScanChain {
+        name: &'static str,
+        expected_bit: u8,
+    },
+
+    /// The JTAG `{name}` scan chain is empty
+    EmptyScanChain { name: &'static str },
+
+    /// Could not set {transport:?} as the SWO transport
+    SwoTransport { transport: swo::TransportRequest },
+
+    /// Could not set {mode:?} as the SWO mode
+    SwoMode { mode: swo::ModeRequest },
+
+    /// Could not execute SWO control command {command:?}
+    SwoControl { command: swo::ControlRequest },
+
+    /// {protocol:?} initialization failed
+    InitFailed { protocol: Option<WireProtocol> },
+
+    /// Setting the host status on the debug probe failed with request {request:?}
+    HostStatus { request: HostStatusRequest },
+
+    /// Transferring {transfer_count} raw data blocks to DAP {dap_index} failed for block {transfer_request:?}
+    BlockTransfer {
+        /// The DAP index to be used in JTAG mode. This is ignored for SWD.
+        dap_index: u8,
+
+        /// Number of transfers
+        transfer_count: u16,
+
+        /// Information about requested access
+        transfer_request: InnerTransferBlockRequest,
+    },
 }
 
 pub enum CmsisDapDevice {
@@ -206,7 +277,7 @@ impl CmsisDapDevice {
     pub(super) fn find_packet_size(&mut self) -> Result<usize, CmsisDapError> {
         for repeat in 0..16 {
             tracing::debug!("Attempt {} to find packet size", repeat + 1);
-            match send_command(self, PacketSizeCommand {}) {
+            match send_command(self, &PacketSizeCommand {}) {
                 Ok(size) => {
                     tracing::debug!("Success: packet size is {}", size);
                     self.set_packet_size(size as usize);
@@ -338,7 +409,7 @@ pub(crate) trait Request {
 
 pub(crate) fn send_command<Req: Request>(
     device: &mut CmsisDapDevice,
-    request: Req,
+    request: &Req,
 ) -> Result<Req::Response, CmsisDapError> {
     send_command_inner(device, request).map_err(|e| CmsisDapError::Send {
         command_id: Req::COMMAND_ID,
@@ -348,7 +419,7 @@ pub(crate) fn send_command<Req: Request>(
 
 fn send_command_inner<Req: Request>(
     device: &mut CmsisDapDevice,
-    request: Req,
+    request: &Req,
 ) -> Result<Req::Response, SendError> {
     // Size the buffer for the maximum packet size.
     // On v1, we always send this full-sized report, while
