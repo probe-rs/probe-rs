@@ -252,7 +252,7 @@ impl ArmProbeInterface for ArmCommunicationInterface<Initialized> {
         let memory_interface = match access_port_address.ap() {
             ApAddress::V1(_) => Box::new(ADIMemoryInterface::new(self, access_port_address)?)
                 as Box<dyn ArmMemoryInterface + '_>,
-            ApAddress::V2(_) => ap_v2::new_memory_interface(self, access_port_address)?
+            ApAddress::V2(_) => ap_v2::new_memory_interface(self, access_port_address)?,
         };
         Ok(memory_interface)
     }

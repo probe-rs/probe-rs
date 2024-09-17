@@ -14,7 +14,7 @@ variants:
         type: armv6m
         core_access_options:
           !Arm
-            ap: 0x0
+            ap: !v1 0x0
             psel: 0x1002927
     memory_map:
       - !Ram
@@ -29,7 +29,7 @@ variants:
         type: armv6m
         core_access_options:
           !Arm
-            ap: 0x0
+            ap: !v1 0x0
             psel: 0x0
     memory_map:
       - !Ram
@@ -46,7 +46,7 @@ variants:
         type: armv6m
         core_access_options:
           !Arm
-            ap: 0x0
+            ap: !v1 0x0
             psel: 0x0
     jtag: {}
     memory_map:
@@ -69,7 +69,7 @@ variants:
         type: armv6m
         core_access_options:
           !Arm
-            ap: 0x0
+            ap: !v1 0x0
             psel: 0x1002927
     memory_map:
       - !Ram

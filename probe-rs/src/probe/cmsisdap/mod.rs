@@ -415,12 +415,10 @@ impl CmsisDap {
     /// as an alternative to [`Self::process_batch()`]. This function will return any errors,
     /// and not retry any transfers.
     fn read_ctrl_register(&mut self) -> Result<Ctrl, ArmError> {
-        let response = commands::send_command(
-            &mut self.device,
-            TransferRequest::read(Ctrl::ADDRESS),
-        )
-        .map_err(CmsisDapError::from)
-        .map_err(DebugProbeError::from)?;
+        let response =
+            commands::send_command(&mut self.device, TransferRequest::read(Ctrl::ADDRESS))
+                .map_err(CmsisDapError::from)
+                .map_err(DebugProbeError::from)?;
 
         // We can assume that the single transfer is always executed,
         // no need to check here.

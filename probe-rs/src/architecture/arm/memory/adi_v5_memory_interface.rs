@@ -3,7 +3,8 @@ use std::any::Any;
 use crate::{
     architecture::arm::{
         ap_v1::{
-            memory_ap::{DataSize, MemoryAp, MemoryApType}, AccessPortType, ApAccess
+            memory_ap::{DataSize, MemoryAp, MemoryApType},
+            AccessPortType, ApAccess,
         },
         communication_interface::{FlushableArmAccess, Initialized, SwdSequence},
         dp::DpAccess,
@@ -539,11 +540,6 @@ where
 
     fn fully_qualified_address(&self) -> FullyQualifiedApAddress {
         self.memory_ap.ap_address().clone()
-    }
-
-    /// Returns the underlying [`MemoryAp`].
-    fn ap(&mut self) -> &mut MemoryAp {
-        &mut self.memory_ap
     }
 
     fn get_arm_communication_interface(

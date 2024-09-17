@@ -27,7 +27,7 @@ impl Nrf for Nrf5340 {
         &self,
         memory: &mut dyn ArmMemoryInterface,
     ) -> Vec<(FullyQualifiedApAddress, FullyQualifiedApAddress)> {
-        let ap_address = memory.ap().ap_address();
+        let dp = memory.fully_qualified_address().dp();
 
         let core_aps = [(0, 2), (1, 3)];
 
@@ -35,8 +35,8 @@ impl Nrf for Nrf5340 {
             .into_iter()
             .map(|(core_ahb_ap, core_ctrl_ap)| {
                 (
-                    FullyQualifiedApAddress::v1_with_dp(ap_address.dp(), core_ahb_ap),
-                    FullyQualifiedApAddress::v1_with_dp(ap_address.dp(), core_ctrl_ap),
+                    FullyQualifiedApAddress::v1_with_dp(dp, core_ahb_ap),
+                    FullyQualifiedApAddress::v1_with_dp(dp, core_ctrl_ap),
                 )
             })
             .collect()

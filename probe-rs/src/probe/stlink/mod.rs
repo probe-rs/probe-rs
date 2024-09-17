@@ -1800,10 +1800,6 @@ impl ArmMemoryInterface for StLinkMemoryInterface<'_> {
         self.current_ap.ap_address().clone()
     }
 
-    fn ap(&mut self) -> &mut MemoryAp {
-        &mut self.current_ap
-    }
-
     fn get_arm_communication_interface(
         &mut self,
     ) -> Result<

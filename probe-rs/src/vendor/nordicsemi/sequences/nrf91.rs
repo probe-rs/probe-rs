@@ -4,9 +4,8 @@ use std::sync::Arc;
 
 use super::nrf::Nrf;
 use crate::architecture::arm::{
-    ap_v1::AccessPortType, communication_interface::Initialized, memory::ArmMemoryInterface,
-    sequences::ArmDebugSequence, ArmCommunicationInterface, ArmError, DapAccess,
-    FullyQualifiedApAddress,
+    communication_interface::Initialized, memory::ArmMemoryInterface, sequences::ArmDebugSequence,
+    ArmCommunicationInterface, ArmError, DapAccess, FullyQualifiedApAddress,
 };
 
 /// The sequence handle for the nRF9160.
@@ -25,7 +24,7 @@ impl Nrf for Nrf9160 {
         &self,
         memory: &mut dyn ArmMemoryInterface,
     ) -> Vec<(FullyQualifiedApAddress, FullyQualifiedApAddress)> {
-        let dp = memory.ap().ap_address().dp();
+        let dp = memory.fully_qualified_address().dp();
 
         let core_aps = [(0, 4)];
 

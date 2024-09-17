@@ -2,7 +2,6 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::architecture::arm::ap_v1::AccessPortType;
 use crate::architecture::arm::armv7m::{Demcr, Dhcsr};
 use crate::architecture::arm::communication_interface::DapProbe;
 use crate::architecture::arm::memory::ArmMemoryInterface;
@@ -362,7 +361,7 @@ impl ArmDebugSequence for CC13xxCC26xx {
         std::thread::sleep(Duration::from_millis(1));
 
         // Re-initializing the core(s) is on us.
-        let ap = probe.ap().ap_address().clone();
+        let ap = probe.fully_qualified_address();
         let interface = probe.get_arm_communication_interface()?;
         interface.reinitialize()?;
 

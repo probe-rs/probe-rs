@@ -424,7 +424,7 @@ impl ArmDebugSequence for MIMXRT11xx {
         //
         // The ARM communication interface knows how to re-initialize the debug port.
         // Re-initializing the core(s) is on us.
-        let ap = probe.ap().ap_address().clone();
+        let ap = probe.fully_qualified_address();
         let interface = probe.get_arm_communication_interface()?;
         interface.reinitialize()?;
 

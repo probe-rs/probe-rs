@@ -1375,7 +1375,7 @@ mod test {
             input_value: u32,
         ) {
             let port = address.into();
-            let address = port.address() as u32;
+            let address = port.lsb().into();
             let mut response = (output_value as u64) << 3;
 
             let status = match acknowlege {
@@ -1387,7 +1387,7 @@ mod test {
             response |= status as u64;
 
             let expected = ExpectedJtagTransaction {
-                ir_address: if matches!(port, PortAddress::DebugPort(_)) {
+                ir_address: if matches!(port, PortAddress::DpRegister(_)) {
                     JTAG_DEBUG_PORT_IR_VALUE
                 } else {
                     JTAG_ACCESS_PORT_IR_VALUE

@@ -82,13 +82,12 @@ impl<'iface> MemoryInterface<ArmError> for MemoryAccessPortInterface<'iface> {
             let address = address + (i as u64) * 4;
             //tracing::debug!("Setting TAR to : {address:x}.");
             self.iface
-                .write_32(self.base + u64::from(TAR::ADDRESS), &[address as u32])?;
-            self.iface.write_32(
-                self.base + u64::from(TAR2::ADDRESS),
-                &[(address >> 32) as u32],
-            )?;
+                .write_word_32(self.base + u64::from(TAR::ADDRESS), address as u32)?;
             self.iface
-                .read_32(self.base + u64::from(DRW::ADDRESS), std::slice::from_mut(d))?;
+                .write_word_32(self.base + u64::from(TAR2::ADDRESS), (address >> 32) as u32)?;
+            *d = self
+                .iface
+                .read_word_32(self.base + u64::from(DRW::ADDRESS))?;
             //tracing::trace!("Reading at {:x?}->{:x}: {:x}", _faq, address, d);
         }
 
@@ -107,8 +106,24 @@ impl<'iface> MemoryInterface<ArmError> for MemoryAccessPortInterface<'iface> {
         todo!()
     }
 
-    fn write_32(&mut self, _address: u64, _data: &[u32]) -> Result<(), ArmError> {
-        todo!()
+    fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), ArmError> {
+        // iface: fully qualified address points parent
+        // base-address: base for the registers of this AP in the parent’s memory space
+        // address: register address of the register, relative to the base address.
+        let _faq = self.fully_qualified_address();
+        for (i, d) in data.iter().enumerate() {
+            let address = address + (i as u64) * 4;
+            //tracing::debug!("Setting TAR to : {address:x}.");
+            self.iface
+                .write_word_32(self.base + u64::from(TAR::ADDRESS), address as u32)?;
+            self.iface
+                .write_word_32(self.base + u64::from(TAR2::ADDRESS), (address >> 32) as u32)?;
+            self.iface
+                .write_word_32(self.base + u64::from(DRW::ADDRESS), *d)?;
+            //tracing::trace!("Reading at {:x?}->{:x}: {:x}", _faq, address, d);
+        }
+
+        Ok(())
     }
 
     fn write_16(&mut self, _address: u64, _data: &[u16]) -> Result<(), ArmError> {
@@ -128,10 +143,6 @@ impl<'iface> MemoryInterface<ArmError> for MemoryAccessPortInterface<'iface> {
     }
 }
 impl<'iface> ArmMemoryInterface for MemoryAccessPortInterface<'iface> {
-    fn ap(&mut self) -> &mut crate::architecture::arm::ap_v1::memory_ap::MemoryAp {
-        todo!()
-    }
-
     fn fully_qualified_address(&self) -> FullyQualifiedApAddress {
         let (dp, ApAddress::V2(ap)) = self.iface.fully_qualified_address().deconstruct() else {
             panic!("The sub-interface returned an address with an unexpected version. This is a bug, please report it.")
@@ -162,7 +173,7 @@ impl<'iface> ArmMemoryInterface for MemoryAccessPortInterface<'iface> {
     fn get_arm_communication_interface(
         &mut self,
     ) -> Result<&mut ArmCommunicationInterface<Initialized>, crate::probe::DebugProbeError> {
-        todo!()
+        self.iface.get_arm_communication_interface()
     }
 
     fn try_as_parts(
