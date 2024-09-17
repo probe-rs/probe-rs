@@ -2721,9 +2721,9 @@ dependencies = [
 
 [[package]]
 name = "roxmltree"
-version = "0.20.0"
+version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6c20b6793b5c2fa6553b250154b78d6d0db37e72700ae35fad9387a46f487c97"
+checksum = "3cd14fd5e3b777a7422cca79358c57a8f6e3a703d9ac187448d0daf220c2407f"
 
 [[package]]
 name = "rtthost"
@@ -3276,9 +3276,9 @@ checksum = "b7401a30af6cb5818bb64852270bb722533397edcfc7344954a38f420819ece2"
 
 [[package]]
 name = "svd-parser"
-version = "0.14.6"
+version = "0.14.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fea184cbe4750f4016297660436b0620b3042369741397978915a462248de175"
+checksum = "3d17a2c2ef5aa450e80d714232a5932e7d8a39cac092e9e9ef8411bc833de3c4"
 dependencies = [
  "anyhow",
  "roxmltree",
