@@ -215,7 +215,6 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
             let yaml_data = insta_yaml::serialize_value(
                 &target_core.core_data.stack_frames,
                 insta_yaml::SerializationFormat::Yaml,
-                insta_yaml::SnapshotLocation::File,
             );
 
             let response_message = if let Some(location) = write_to_file {
