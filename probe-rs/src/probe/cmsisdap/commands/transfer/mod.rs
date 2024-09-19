@@ -268,15 +268,16 @@ pub struct TransferResponse {
 pub(crate) struct TransferBlockRequest {
     /// Zero-based device index of the selected JTAG device. For SWD mode the
     /// value is ignored.
-    dap_index: u8,
+    pub(crate) dap_index: u8,
+
     /// Number of transfers
-    transfer_count: u16,
+    pub(crate) transfer_count: u16,
 
     /// Information about requested access
-    transfer_request: InnerTransferBlockRequest,
+    pub(crate) transfer_request: InnerTransferBlockRequest,
 
     /// Register values to write for writes
-    transfer_data: Vec<u32>,
+    pub(crate) transfer_data: Vec<u32>,
 }
 
 impl Request for TransferBlockRequest {
@@ -294,7 +295,7 @@ impl Request for TransferBlockRequest {
             .expect("Buffer for CMSIS-DAP command is too small. This is a bug, please report it.");
         size += 2;
 
-        size += self.transfer_request.to_bytes(buffer, 3)?;
+        size += self.transfer_request.as_bytes(buffer, 3)?;
 
         let mut data_offset = 4;
 
@@ -381,8 +382,8 @@ impl TransferBlockRequest {
     }
 }
 
-#[derive(Debug)]
-struct InnerTransferBlockRequest {
+#[derive(Debug, Copy, Clone)]
+pub(crate) struct InnerTransferBlockRequest {
     ap_n_dp: PortType,
     r_n_w: RW,
     a2: bool,
@@ -390,7 +391,7 @@ struct InnerTransferBlockRequest {
 }
 
 impl InnerTransferBlockRequest {
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
+    fn as_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
         buffer[offset] = (self.ap_n_dp as u8)
             | (self.r_n_w as u8) << 1
             | u8::from(self.a2) << 2

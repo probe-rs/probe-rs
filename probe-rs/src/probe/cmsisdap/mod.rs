@@ -13,7 +13,7 @@ use crate::{
     probe::{
         cmsisdap::commands::{
             general::info::{CapabilitiesCommand, PacketCountCommand, SWOTraceBufferSizeCommand},
-            CmsisDapError,
+            CmsisDapError, RequestError,
         },
         BatchCommand, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
         JtagChainItem, ProbeFactory, WireProtocol,
@@ -30,9 +30,7 @@ use commands::{
         reset::{ResetRequest, ResetResponse},
     },
     jtag::{
-        configure::{
-            ConfigureRequest as JtagConfigureRequest, ConfigureResponse as JtagConfigureResponse,
-        },
+        configure::ConfigureRequest as JtagConfigureRequest,
         sequence::{
             Sequence as JtagSequence, SequenceRequest as JtagSequenceRequest,
             SequenceResponse as JtagSequenceResponse,
@@ -40,14 +38,14 @@ use commands::{
     },
     swd,
     swj::{
-        clock::{SWJClockRequest, SWJClockResponse},
+        clock::SWJClockRequest,
         pins::{SWJPinsRequest, SWJPinsRequestBuilder, SWJPinsResponse},
         sequence::{SequenceRequest, SequenceResponse},
     },
     swo,
     transfer::{
-        configure::{ConfigureRequest, ConfigureResponse},
-        Ack, TransferBlockRequest, TransferBlockResponse, TransferRequest,
+        configure::ConfigureRequest, Ack, TransferBlockRequest, TransferBlockResponse,
+        TransferRequest,
     },
     CmsisDapDevice, Status,
 };
@@ -129,12 +127,12 @@ impl CmsisDap {
         let packet_size = device.find_packet_size()? as u16;
 
         // Read remaining probe information.
-        let packet_count = commands::send_command(&mut device, PacketCountCommand {})?;
-        let caps: Capabilities = commands::send_command(&mut device, CapabilitiesCommand {})?;
+        let packet_count = commands::send_command(&mut device, &PacketCountCommand {})?;
+        let caps: Capabilities = commands::send_command(&mut device, &CapabilitiesCommand {})?;
         tracing::debug!("Detected probe capabilities: {:?}", caps);
         let mut swo_buffer_size = None;
         if caps.swo_uart_implemented || caps.swo_manchester_implemented {
-            let swo_size = commands::send_command(&mut device, SWOTraceBufferSizeCommand {})?;
+            let swo_size = commands::send_command(&mut device, &SWOTraceBufferSizeCommand {})?;
             swo_buffer_size = Some(swo_size as usize);
             tracing::debug!("Probe SWO buffer size: {}", swo_size);
         }
@@ -160,21 +158,26 @@ impl CmsisDap {
     /// Set maximum JTAG/SWD clock frequency to use, in Hz.
     ///
     /// The actual clock frequency used by the device might be lower.
-    fn set_swj_clock(&mut self, clock_hz: u32) -> Result<(), CmsisDapError> {
-        commands::send_command(&mut self.device, SWJClockRequest(clock_hz))
+    fn set_swj_clock(&mut self, clock_speed_hz: u32) -> Result<(), CmsisDapError> {
+        let request = SWJClockRequest { clock_speed_hz };
+        commands::send_command(&mut self.device, &request)
             .map_err(CmsisDapError::from)
-            .and_then(|v| match v {
-                SWJClockResponse(Status::DAPOk) => Ok(()),
-                SWJClockResponse(Status::DAPError) => Err(CmsisDapError::ErrorResponse),
+            .and_then(|v| match v.status {
+                Status::DapOk => Ok(()),
+                Status::DapError => Err(CmsisDapError::ErrorResponse(RequestError::SWJClock {
+                    request,
+                })),
             })
     }
 
     fn transfer_configure(&mut self, request: ConfigureRequest) -> Result<(), CmsisDapError> {
-        commands::send_command(&mut self.device, request)
+        commands::send_command(&mut self.device, &request)
             .map_err(CmsisDapError::from)
-            .and_then(|v| match v {
-                ConfigureResponse(Status::DAPOk) => Ok(()),
-                ConfigureResponse(Status::DAPError) => Err(CmsisDapError::ErrorResponse),
+            .and_then(|v| match v.status {
+                Status::DapOk => Ok(()),
+                Status::DapError => Err(CmsisDapError::ErrorResponse(
+                    RequestError::TransferConfigure { request },
+                )),
             })
     }
 
@@ -182,13 +185,13 @@ impl CmsisDap {
         &mut self,
         request: swd::configure::ConfigureRequest,
     ) -> Result<(), CmsisDapError> {
-        commands::send_command(&mut self.device, request)
+        commands::send_command(&mut self.device, &request)
             .map_err(CmsisDapError::from)
-            .and_then(|v| match v {
-                swd::configure::ConfigureResponse(Status::DAPOk) => Ok(()),
-                swd::configure::ConfigureResponse(Status::DAPError) => {
-                    Err(CmsisDapError::ErrorResponse)
-                }
+            .and_then(|v| match v.status {
+                Status::DapOk => Ok(()),
+                Status::DapError => Err(CmsisDapError::ErrorResponse(RequestError::SwdConfigure {
+                    request,
+                })),
             })
     }
 
@@ -318,23 +321,33 @@ impl CmsisDap {
                 n
             }
             None => {
+                let expected_bit = 1;
                 tracing::error!(
-                    "JTAG {name} scan chain either broken or too long: did not detect 1"
+                    "JTAG {name} scan chain either broken or too long: did not detect {expected_bit}"
                 );
-                return Err(CmsisDapError::ErrorResponse);
+                return Err(CmsisDapError::ErrorResponse(
+                    RequestError::BrokenScanChain { name, expected_bit },
+                ));
             }
         };
 
         // Check at least one register is detected in the scan chain.
         if n == 0 {
             tracing::error!("JTAG {name} scan chain is empty");
-            return Err(CmsisDapError::ErrorResponse);
+            return Err(CmsisDapError::ErrorResponse(RequestError::EmptyScanChain {
+                name,
+            }));
         }
 
         // Check d0[n..] are all 0.
         if d0[n..].any() {
-            tracing::error!("JTAG {name} scan chain either broken or too long: did not detect 0");
-            return Err(CmsisDapError::ErrorResponse);
+            let expected_bit = 0;
+            tracing::error!(
+                "JTAG {name} scan chain either broken or too long: did not detect {expected_bit}"
+            );
+            return Err(CmsisDapError::ErrorResponse(
+                RequestError::BrokenScanChain { name, expected_bit },
+            ));
         }
 
         // Extract d0[..n] as the initial scan chain contents.
@@ -374,11 +387,15 @@ impl CmsisDap {
     }
 
     fn send_jtag_configure(&mut self, request: JtagConfigureRequest) -> Result<(), CmsisDapError> {
-        commands::send_command(&mut self.device, request)
+        commands::send_command(&mut self.device, &request)
             .map_err(CmsisDapError::from)
-            .and_then(|v| match v {
-                JtagConfigureResponse(Status::DAPOk) => Ok(()),
-                JtagConfigureResponse(Status::DAPError) => Err(CmsisDapError::ErrorResponse),
+            .and_then(|v| match v.status {
+                Status::DapOk => Ok(()),
+                Status::DapError => {
+                    Err(CmsisDapError::ErrorResponse(RequestError::JtagConfigure {
+                        request,
+                    }))
+                }
             })
     }
 
@@ -386,11 +403,15 @@ impl CmsisDap {
         &mut self,
         request: JtagSequenceRequest,
     ) -> Result<Vec<u8>, CmsisDapError> {
-        commands::send_command(&mut self.device, request)
+        commands::send_command(&mut self.device, &request)
             .map_err(CmsisDapError::from)
             .and_then(|v| match v {
-                JtagSequenceResponse(Status::DAPOk, tdo) => Ok(tdo),
-                JtagSequenceResponse(Status::DAPError, _) => Err(CmsisDapError::ErrorResponse),
+                JtagSequenceResponse(Status::DapOk, tdo) => Ok(tdo),
+                JtagSequenceResponse(Status::DapError, _) => {
+                    Err(CmsisDapError::ErrorResponse(RequestError::JtagSequence {
+                        request,
+                    }))
+                }
             })
     }
 
@@ -398,11 +419,15 @@ impl CmsisDap {
         // Ensure all pending commands are processed.
         //self.process_batch()?;
 
-        commands::send_command(&mut self.device, request)
+        commands::send_command(&mut self.device, &request)
             .map_err(CmsisDapError::from)
             .and_then(|v| match v {
-                SequenceResponse(Status::DAPOk) => Ok(()),
-                SequenceResponse(Status::DAPError) => Err(CmsisDapError::ErrorResponse),
+                SequenceResponse(Status::DapOk) => Ok(()),
+                SequenceResponse(Status::DapError) => {
+                    Err(CmsisDapError::ErrorResponse(RequestError::SwjSequence {
+                        request,
+                    }))
+                }
             })
     }
 
@@ -417,7 +442,7 @@ impl CmsisDap {
     fn read_ctrl_register(&mut self) -> Result<Ctrl, ArmError> {
         let response = commands::send_command(
             &mut self.device,
-            TransferRequest::read(PortType::DebugPort, Ctrl::ADDRESS),
+            &TransferRequest::read(PortType::DebugPort, Ctrl::ADDRESS),
         )
         .map_err(CmsisDapError::from)
         .map_err(DebugProbeError::from)?;
@@ -453,7 +478,7 @@ impl CmsisDap {
     fn write_abort(&mut self, abort: Abort) -> Result<(), ArmError> {
         let response = commands::send_command(
             &mut self.device,
-            TransferRequest::write(PortType::DebugPort, Abort::ADDRESS, abort.into()),
+            &TransferRequest::write(PortType::DebugPort, Abort::ADDRESS, abort.into()),
         )
         .map_err(CmsisDapError::from)
         .map_err(DebugProbeError::from)?;
@@ -509,7 +534,7 @@ impl CmsisDap {
                 }
             }
 
-            let response = commands::send_command(&mut self.device, transfers)
+            let response = commands::send_command(&mut self.device, &transfers)
                 .map_err(CmsisDapError::from)
                 .map_err(DebugProbeError::from)?;
 
@@ -616,10 +641,12 @@ impl CmsisDap {
         &mut self,
         transport: swo::TransportRequest,
     ) -> Result<(), DebugProbeError> {
-        let response = commands::send_command(&mut self.device, transport)?;
-        match response {
-            swo::TransportResponse(Status::DAPOk) => Ok(()),
-            swo::TransportResponse(Status::DAPError) => Err(CmsisDapError::ErrorResponse.into()),
+        let response = commands::send_command(&mut self.device, &transport)?;
+        match response.status {
+            Status::DapOk => Ok(()),
+            Status::DapError => {
+                Err(CmsisDapError::ErrorResponse(RequestError::SwoTransport { transport }).into())
+            }
         }
     }
 
@@ -627,10 +654,12 @@ impl CmsisDap {
     ///
     /// Check the probe capabilities to determine which modes are available.
     fn set_swo_mode(&mut self, mode: swo::ModeRequest) -> Result<(), DebugProbeError> {
-        let response = commands::send_command(&mut self.device, mode)?;
-        match response {
-            swo::ModeResponse(Status::DAPOk) => Ok(()),
-            swo::ModeResponse(Status::DAPError) => Err(CmsisDapError::ErrorResponse.into()),
+        let response = commands::send_command(&mut self.device, &mode)?;
+        match response.status {
+            Status::DapOk => Ok(()),
+            Status::DapError => {
+                Err(CmsisDapError::ErrorResponse(RequestError::SwoMode { mode }).into())
+            }
         }
     }
 
@@ -640,9 +669,9 @@ impl CmsisDap {
     /// indicating the requested baud rate was not configured,
     /// and returns the configured baud rate on success (which
     /// may differ from the requested baud rate).
-    fn set_swo_baudrate(&mut self, baud: swo::BaudrateRequest) -> Result<u32, DebugProbeError> {
-        let response = commands::send_command(&mut self.device, baud)?;
-        tracing::debug!("Requested baud {}, got {}", baud.0, response);
+    fn set_swo_baudrate(&mut self, request: swo::BaudrateRequest) -> Result<u32, DebugProbeError> {
+        let response = commands::send_command(&mut self.device, &request)?;
+        tracing::debug!("Requested baud {}, got {}", request.baudrate, response);
         if response == 0 {
             Err(CmsisDapError::SwoBaudrateNotConfigured.into())
         } else {
@@ -652,19 +681,25 @@ impl CmsisDap {
 
     /// Start SWO trace data capture.
     fn start_swo_capture(&mut self) -> Result<(), DebugProbeError> {
-        let response = commands::send_command(&mut self.device, swo::ControlRequest::Start)?;
-        match response {
-            swo::ControlResponse(Status::DAPOk) => Ok(()),
-            swo::ControlResponse(Status::DAPError) => Err(CmsisDapError::ErrorResponse.into()),
+        let command = swo::ControlRequest::Start;
+        let response = commands::send_command(&mut self.device, &command)?;
+        match response.status {
+            Status::DapOk => Ok(()),
+            Status::DapError => {
+                Err(CmsisDapError::ErrorResponse(RequestError::SwoControl { command }).into())
+            }
         }
     }
 
     /// Stop SWO trace data capture.
     fn stop_swo_capture(&mut self) -> Result<(), DebugProbeError> {
-        let response = commands::send_command(&mut self.device, swo::ControlRequest::Stop)?;
-        match response {
-            swo::ControlResponse(Status::DAPOk) => Ok(()),
-            swo::ControlResponse(Status::DAPError) => Err(CmsisDapError::ErrorResponse.into()),
+        let command = swo::ControlRequest::Stop;
+        let response = commands::send_command(&mut self.device, &command)?;
+        match response.status {
+            Status::DapOk => Ok(()),
+            Status::DapError => {
+                Err(CmsisDapError::ErrorResponse(RequestError::SwoControl { command }).into())
+            }
         }
     }
 
@@ -673,7 +708,7 @@ impl CmsisDap {
     fn get_swo_status(&mut self) -> Result<swo::StatusResponse, DebugProbeError> {
         Ok(commands::send_command(
             &mut self.device,
-            swo::StatusRequest,
+            &swo::StatusRequest,
         )?)
     }
 
@@ -687,7 +722,7 @@ impl CmsisDap {
         &mut self,
         request: swo::ExtendedStatusRequest,
     ) -> Result<swo::ExtendedStatusResponse, DebugProbeError> {
-        Ok(commands::send_command(&mut self.device, request)?)
+        Ok(commands::send_command(&mut self.device, &request)?)
     }
 
     /// Fetch latest SWO trace data by sending a DAP_SWO_Data request.
@@ -700,7 +735,7 @@ impl CmsisDap {
                 let n = usize::min(swo_buffer_size, self.packet_size as usize) as u16;
 
                 let response: swo::DataResponse =
-                    commands::send_command(&mut self.device, swo::DataRequest { max_count: n })?;
+                    commands::send_command(&mut self.device, &swo::DataRequest { max_count: n })?;
                 if response.status.error {
                     Err(CmsisDapError::SwoTraceStreamError.into())
                 } else {
@@ -716,7 +751,7 @@ impl CmsisDap {
             return Ok(());
         }
 
-        let protocol = if let Some(protocol) = self.protocol {
+        let protocol: ConnectRequest = if let Some(protocol) = self.protocol {
             match protocol {
                 WireProtocol::Swd => ConnectRequest::Swd,
                 WireProtocol::Jtag => ConnectRequest::Jtag,
@@ -725,12 +760,16 @@ impl CmsisDap {
             ConnectRequest::DefaultPort
         };
 
-        let used_protocol = commands::send_command(&mut self.device, protocol)
+        let used_protocol = commands::send_command(&mut self.device, &protocol)
             .map_err(CmsisDapError::from)
             .and_then(|v| match v {
                 ConnectResponse::SuccessfulInitForSWD => Ok(WireProtocol::Swd),
                 ConnectResponse::SuccessfulInitForJTAG => Ok(WireProtocol::Jtag),
-                ConnectResponse::InitFailed => Err(CmsisDapError::ErrorResponse),
+                ConnectResponse::InitFailed => {
+                    Err(CmsisDapError::ErrorResponse(RequestError::InitFailed {
+                        protocol: self.protocol,
+                    }))
+                }
             })?;
 
         // Store the actually used protocol, to handle cases where the default protocol is used.
@@ -815,7 +854,7 @@ impl DebugProbe for CmsisDap {
 
         // Tell the probe we are connected so it can turn on an LED.
         let _: Result<HostStatusResponse, _> =
-            commands::send_command(&mut self.device, HostStatusRequest::connected(true));
+            commands::send_command(&mut self.device, &HostStatusRequest::connected(true));
 
         Ok(())
     }
@@ -828,20 +867,20 @@ impl DebugProbe for CmsisDap {
             self.disable_swo()?;
         }
 
-        let response = commands::send_command(&mut self.device, DisconnectRequest {})
+        let response = commands::send_command(&mut self.device, &DisconnectRequest {})
             .map_err(DebugProbeError::from)?;
 
         // Tell probe we are disconnected so it can turn off its LED.
-        let _: Result<HostStatusResponse, _> =
-            commands::send_command(&mut self.device, HostStatusRequest::connected(false));
+        let request = HostStatusRequest::connected(false);
+        let _: Result<HostStatusResponse, _> = commands::send_command(&mut self.device, &request);
 
         self.connected = false;
 
         match response {
-            DisconnectResponse(Status::DAPOk) => Ok(()),
-            DisconnectResponse(Status::DAPError) => {
-                Err(crate::Error::Probe(CmsisDapError::ErrorResponse.into()))
-            }
+            DisconnectResponse(Status::DapOk) => Ok(()),
+            DisconnectResponse(Status::DapError) => Err(crate::Error::Probe(
+                CmsisDapError::ErrorResponse(RequestError::HostStatus { request }).into(),
+            )),
         }
     }
 
@@ -865,7 +904,7 @@ impl DebugProbe for CmsisDap {
 
     /// Asserts the nRESET pin.
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
-        commands::send_command(&mut self.device, ResetRequest).map(|v: ResetResponse| {
+        commands::send_command(&mut self.device, &ResetRequest).map(|v: ResetResponse| {
             tracing::info!("Target reset response: {:?}", v);
         })?;
         Ok(())
@@ -874,7 +913,7 @@ impl DebugProbe for CmsisDap {
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
         let request = SWJPinsRequestBuilder::new().nreset(false).build();
 
-        commands::send_command(&mut self.device, request).map(|v: SWJPinsResponse| {
+        commands::send_command(&mut self.device, &request).map(|v: SWJPinsResponse| {
             tracing::info!("Pin response: {:?}", v);
         })?;
         Ok(())
@@ -883,7 +922,7 @@ impl DebugProbe for CmsisDap {
     fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
         let request = SWJPinsRequestBuilder::new().nreset(true).build();
 
-        commands::send_command(&mut self.device, request).map(|v: SWJPinsResponse| {
+        commands::send_command(&mut self.device, &request).map(|v: SWJPinsResponse| {
             tracing::info!("Pin response: {:?}", v);
         })?;
         Ok(())
@@ -920,7 +959,7 @@ impl DebugProbe for CmsisDap {
 impl RawDapAccess for CmsisDap {
     fn core_status_notification(&mut self, status: CoreStatus) -> Result<(), DebugProbeError> {
         let running = status.is_running();
-        commands::send_command(&mut self.device, HostStatusRequest::running(running))?;
+        commands::send_command(&mut self.device, &HostStatusRequest::running(running))?;
         Ok(())
     }
 
@@ -967,11 +1006,18 @@ impl RawDapAccess for CmsisDap {
 
             tracing::debug!("Transfer block: chunk={}, len={} bytes", i, chunk.len() * 4);
 
-            let resp: TransferBlockResponse =
-                commands::send_command(&mut self.device, request).map_err(DebugProbeError::from)?;
+            let resp: TransferBlockResponse = commands::send_command(&mut self.device, &request)
+                .map_err(DebugProbeError::from)?;
 
             if resp.transfer_response != 1 {
-                return Err(DebugProbeError::from(CmsisDapError::ErrorResponse).into());
+                return Err(DebugProbeError::from(CmsisDapError::ErrorResponse(
+                    RequestError::BlockTransfer {
+                        dap_index: request.dap_index,
+                        transfer_count: request.transfer_count,
+                        transfer_request: request.transfer_request,
+                    },
+                ))
+                .into());
             }
         }
 
@@ -1006,11 +1052,18 @@ impl RawDapAccess for CmsisDap {
 
             tracing::debug!("Transfer block: chunk={}, len={} bytes", i, chunk.len() * 4);
 
-            let resp: TransferBlockResponse =
-                commands::send_command(&mut self.device, request).map_err(DebugProbeError::from)?;
+            let resp: TransferBlockResponse = commands::send_command(&mut self.device, &request)
+                .map_err(DebugProbeError::from)?;
 
             if resp.transfer_response != 1 {
-                return Err(DebugProbeError::from(CmsisDapError::ErrorResponse).into());
+                return Err(DebugProbeError::from(CmsisDapError::ErrorResponse(
+                    RequestError::BlockTransfer {
+                        dap_index: request.dap_index,
+                        transfer_count: request.transfer_count,
+                        transfer_request: request.transfer_request,
+                    },
+                ))
+                .into());
             }
 
             chunk.clone_from_slice(&resp.transfer_data[..]);
@@ -1104,7 +1157,7 @@ impl RawDapAccess for CmsisDap {
 
         let request = SWJPinsRequest::from_raw_values(pin_out as u8, pin_select as u8, pin_wait);
 
-        let Pins(response) = commands::send_command(&mut self.device, request)?;
+        let Pins(response) = commands::send_command(&mut self.device, &request)?;
 
         Ok(response as u32)
     }
@@ -1150,7 +1203,9 @@ impl SwoAccess for CmsisDap {
         }
 
         // Set baud rate.
-        let baud = self.set_swo_baudrate(swo::BaudrateRequest(config.baud()))?;
+        let baud = self.set_swo_baudrate(swo::BaudrateRequest {
+            baudrate: config.baud(),
+        })?;
         if baud != config.baud() {
             tracing::warn!(
                 "Target SWO baud rate not met: requested {}, got {}",

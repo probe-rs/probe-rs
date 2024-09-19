@@ -22,12 +22,16 @@ impl Request for TransportRequest {
     }
 
     fn parse_response(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
-        Ok(TransportResponse(Status::from_byte(buffer[0])?))
+        Ok(TransportResponse {
+            status: Status::from_byte(buffer[0])?,
+        })
     }
 }
 
 #[derive(Debug)]
-pub struct TransportResponse(pub(crate) Status);
+pub struct TransportResponse {
+    pub(crate) status: Status,
+}
 
 #[repr(u8)]
 #[allow(unused)]
@@ -49,15 +53,21 @@ impl Request for ModeRequest {
     }
 
     fn parse_response(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
-        Ok(ModeResponse(Status::from_byte(buffer[0])?))
+        Ok(ModeResponse {
+            status: Status::from_byte(buffer[0])?,
+        })
     }
 }
 
 #[derive(Debug)]
-pub struct ModeResponse(pub(crate) Status);
+pub struct ModeResponse {
+    pub(crate) status: Status,
+}
 
 #[derive(Copy, Clone, Debug)]
-pub struct BaudrateRequest(pub(crate) u32);
+pub struct BaudrateRequest {
+    pub(crate) baudrate: u32,
+}
 
 impl Request for BaudrateRequest {
     const COMMAND_ID: CommandId = CommandId::SwoBaudrate;
@@ -69,7 +79,7 @@ impl Request for BaudrateRequest {
             buffer.len() >= 4,
             "Buffer for CMSIS-DAP command is too small. This is a bug, please report it."
         );
-        buffer[0..4].copy_from_slice(&self.0.to_le_bytes());
+        buffer[0..4].copy_from_slice(&self.baudrate.to_le_bytes());
         Ok(4)
     }
 
@@ -104,12 +114,16 @@ impl Request for ControlRequest {
     }
 
     fn parse_response(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
-        Ok(ControlResponse(Status::from_byte(buffer[0])?))
+        Ok(ControlResponse {
+            status: Status::from_byte(buffer[0])?,
+        })
     }
 }
 
 #[derive(Debug)]
-pub struct ControlResponse(pub(crate) Status);
+pub struct ControlResponse {
+    pub(crate) status: Status,
+}
 
 #[derive(Debug)]
 pub struct StatusRequest;
