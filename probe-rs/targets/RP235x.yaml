@@ -45,7 +45,7 @@ flash_algorithms:
   pc_init: 1
   pc_uninit: 405
   pc_program_page: 509
-  pc_erase_sector: 45
+  pc_erase_sector: 457
   data_section_offset: 0x0
   flash_properties:
     address_range:
