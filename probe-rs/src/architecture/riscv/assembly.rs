@@ -34,21 +34,6 @@ pub fn addi(source: u8, destination: u8, immediate: i16) -> u32 {
     )
 }
 
-/// Assemble a `lui` instruction.
-pub fn lui(dest: u8, imm: i32) -> u32 {
-    let opcode = 0b0110111;
-
-    u_type_instruction(opcode, dest, imm as u32)
-}
-
-/// Assemble a `jarl` instruction.
-pub fn jarl(base: u8, return_addr: u8, dst: i32) -> u32 {
-    let opcode = 0b1100111;
-    let function = 0b000;
-
-    i_type_instruction(opcode, base, function, return_addr, (dst as u16) & 0xfff)
-}
-
 // We need to perform the csrr instruction, which reads a CSR.
 // This is a pseudo instruction, which actually is encoded as a
 // csrrs instruction, with the rs1 register being x0,
@@ -94,17 +79,6 @@ fn i_type_instruction(opcode: u8, rs1: u8, funct3: u8, rd: u8, imm: u16) -> u32 
         | (funct3 as u32) << 12
         | (rd as u32) << 7
         | opcode as u32
-}
-
-/// Assemble a U-type instruction, as specified in the RISC-V ISA
-///
-/// This function panics if any of the values would have to be truncated.
-fn u_type_instruction(opcode: u8, rd: u8, imm: u32) -> u32 {
-    assert!(opcode <= 0x7f); // [06:00]
-    assert!(rd <= 0x1f); // [11:07]
-    assert!(imm <= 0xf_ffff); // [31:12]
-
-    imm << 12 | (rd as u32) << 7 | opcode as u32
 }
 
 #[cfg(test)]

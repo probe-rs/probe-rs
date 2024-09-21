@@ -73,37 +73,28 @@ fn attach_flash_riscv(
     stack_pointer: u32,
     attach_fn: u32,
 ) -> Result<(), crate::Error> {
-    use crate::architecture::riscv::{
-        assembly,
-        communication_interface::{AccessRegisterCommand, RiscvBusAccess},
-        registers::SP,
-    };
+    use crate::architecture::riscv::assembly;
 
-    let interface = &mut session.get_riscv_interface(0)?;
-    interface.halt(Duration::from_millis(100))?;
+    let core = &mut session.core(0)?;
+    core.reset_and_halt(Duration::from_millis(100))?;
 
-    // Set a valid-ish stack pointer
-    interface.abstract_cmd_register_write(SP, stack_pointer)?;
+    // Return to a breakpoint
+    core.write_32(stack_pointer as u64, &[assembly::EBREAK, assembly::EBREAK])?;
 
-    // esp_rom_spiflash_attach(0, false)
-    interface.schedule_setup_program_buffer(&[
-        assembly::addi(0, 10, 0),                       // c.li a0, zero
-        assembly::addi(0, 11, 0),                       // c.li a1, zero
-        assembly::lui(5, (attach_fn >> 12) as i32),     // lui x5, ...
-        assembly::jarl(5, 1, attach_fn as i32 & 0xFFF), // jarl ra, x5, ...
-    ])?;
+    // call esp_rom_spiflash_attach(0, false)
+    let regs = core.registers();
+    core.write_core_reg(core.program_counter(), attach_fn as u64)?;
+    core.write_core_reg(regs.argument_register(0), 0_u64)?;
+    core.write_core_reg(regs.argument_register(1), 0_u64)?;
+    core.write_core_reg(core.stack_pointer(), stack_pointer)?;
+    core.write_core_reg(core.return_address(), stack_pointer as u64)?;
 
-    // Actually call the function
-    let mut execute_progbuf = AccessRegisterCommand(0);
-    execute_progbuf.set_cmd_type(0);
-    execute_progbuf.set_transfer(false);
-    execute_progbuf.set_write(false);
-    execute_progbuf.set_aarsize(RiscvBusAccess::A32);
-    execute_progbuf.set_postexec(true);
-    execute_progbuf.set_regno(SP.id.0 as u32);
+    core.debug_on_sw_breakpoint(true)?;
 
-    interface.schedule_write_dm_register(execute_progbuf)?;
-    interface.execute()?;
+    // Let it run
+    core.run()?;
+
+    core.wait_for_core_halted(Duration::from_millis(500))?;
 
     Ok(())
 }

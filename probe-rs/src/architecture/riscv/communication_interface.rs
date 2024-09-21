@@ -1622,10 +1622,6 @@ impl<'state> RiscvCommunicationInterface<'state> {
         Ok(())
     }
 
-    pub(crate) fn execute(&mut self) -> Result<(), RiscvError> {
-        self.dtm.execute()
-    }
-
     pub(crate) fn schedule_write_dm_register<R: MemoryMappedRegister<u32>>(
         &mut self,
         register: R,
