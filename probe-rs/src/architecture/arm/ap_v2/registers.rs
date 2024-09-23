@@ -462,5 +462,3 @@ define_apv2_register!(
         | (u32::from(value.VARIANT) << 4)
         | u32::from(value.TYPE)
 );
-
-

@@ -31,28 +31,28 @@ impl<'iface> RootMemoryInterface<'iface> {
 impl SwdSequence for RootMemoryInterface<'_> {
     fn swj_sequence(
         &mut self,
-        _bit_len: u8,
-        _bits: u64,
+        bit_len: u8,
+        bits: u64,
     ) -> Result<(), crate::probe::DebugProbeError> {
-        todo!()
+        self.iface.swj_sequence(bit_len, bits)
     }
 
     fn swj_pins(
         &mut self,
-        _pin_out: u32,
-        _pin_select: u32,
-        _pin_wait: u32,
+        pin_out: u32,
+        pin_select: u32,
+        pin_wait: u32,
     ) -> Result<u32, crate::probe::DebugProbeError> {
-        todo!()
+        self.iface.swj_pins(pin_out, pin_select, pin_wait)
     }
 }
 impl MemoryInterface<ArmError> for RootMemoryInterface<'_> {
     fn supports_native_64bit_access(&mut self) -> bool {
-        todo!()
+        false
     }
 
     fn read_64(&mut self, _address: u64, _data: &mut [u64]) -> Result<(), ArmError> {
-        todo!()
+        unimplemented!("The DPv3 only supports 32bit accesses")
     }
 
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError> {
@@ -69,15 +69,15 @@ impl MemoryInterface<ArmError> for RootMemoryInterface<'_> {
     }
 
     fn read_16(&mut self, _address: u64, _data: &mut [u16]) -> Result<(), ArmError> {
-        todo!()
+        unimplemented!("The DPv3 only supports 32bit accesses")
     }
 
     fn read_8(&mut self, _address: u64, _data: &mut [u8]) -> Result<(), ArmError> {
-        todo!()
+        unimplemented!("The DPv3 only supports 32bit accesses")
     }
 
     fn write_64(&mut self, _address: u64, _data: &[u64]) -> Result<(), ArmError> {
-        todo!()
+        unimplemented!("The DPv3 only supports 32bit accesses")
     }
 
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), ArmError> {
@@ -94,26 +94,23 @@ impl MemoryInterface<ArmError> for RootMemoryInterface<'_> {
     }
 
     fn write_16(&mut self, _address: u64, _data: &[u16]) -> Result<(), ArmError> {
-        todo!()
+        unimplemented!("The DPv3 only supports 32bit accesses")
     }
 
     fn write_8(&mut self, _address: u64, _data: &[u8]) -> Result<(), ArmError> {
-        todo!()
+        unimplemented!("The DPv3 only supports 32bit accesses")
     }
 
     fn supports_8bit_transfers(&self) -> Result<bool, ArmError> {
-        todo!()
+        Ok(false)
     }
 
     fn flush(&mut self) -> Result<(), ArmError> {
-        todo!()
+        // transfers are not buffered.
+        Ok(())
     }
 }
 impl ArmMemoryInterface for RootMemoryInterface<'_> {
-    fn ap(&mut self) -> &mut crate::architecture::arm::ap_v1::memory_ap::MemoryAp {
-        todo!()
-    }
-
     fn fully_qualified_address(&self) -> FullyQualifiedApAddress {
         FullyQualifiedApAddress::v2_with_dp(self.dp, ApV2Address::new())
     }
@@ -125,7 +122,7 @@ impl ArmMemoryInterface for RootMemoryInterface<'_> {
     fn get_arm_communication_interface(
         &mut self,
     ) -> Result<&mut ArmCommunicationInterface<Initialized>, crate::probe::DebugProbeError> {
-        todo!()
+        Ok(self.iface)
     }
 
     fn try_as_parts(

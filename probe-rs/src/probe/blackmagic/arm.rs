@@ -577,10 +577,6 @@ impl DapAccess for BlackMagicProbeArmDebug {
 }
 
 impl ArmMemoryInterface for BlackMagicProbeMemoryInterface<'_> {
-    fn ap(&mut self) -> &mut MemoryAp {
-        &mut self.current_ap
-    }
-
     fn base_address(&mut self) -> Result<u64, ArmError> {
         todo!()
     }

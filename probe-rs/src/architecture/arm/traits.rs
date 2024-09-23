@@ -26,7 +26,8 @@ impl PortAddress {
         !matches!(self, PortAddress::DpRegister(_))
     }
 
-    fn lsb(&self) -> u8 {
+    /// The least significant byte of the address.
+    pub fn lsb(&self) -> u8 {
         match self {
             PortAddress::DpRegister(r) => r.address,
             PortAddress::ApRegister(r) => *r,

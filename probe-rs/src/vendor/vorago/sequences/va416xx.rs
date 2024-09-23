@@ -79,7 +79,7 @@ impl ArmDebugSequence for Va416xx {
         interface.flush().ok();
 
         // Re-initializing the core(s) is on us.
-        let ap = interface.ap().ap_address().clone();
+        let ap = interface.fully_qualified_address();
 
         let arm_interface = interface.get_arm_communication_interface()?;
         const NUM_RETRIES: u32 = 10;

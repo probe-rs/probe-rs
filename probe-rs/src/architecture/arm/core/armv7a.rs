@@ -996,7 +996,7 @@ mod test {
     use crate::{
         architecture::arm::{
             ap_v1::memory_ap::MemoryAp, communication_interface::SwdSequence,
-            sequences::DefaultArmSequence,
+            sequences::DefaultArmSequence, FullyQualifiedApAddress,
         },
         probe::DebugProbeError,
     };
@@ -1156,6 +1156,9 @@ mod test {
 
     impl ArmMemoryInterface for MockProbe {
         fn update_core_status(&mut self, _: CoreStatus) {}
+        fn fully_qualified_address(&self) -> FullyQualifiedApAddress {
+            todo!()
+        }
 
         fn get_arm_communication_interface(
             &mut self,
@@ -1181,10 +1184,6 @@ mod test {
             ),
             DebugProbeError,
         > {
-            todo!()
-        }
-
-        fn ap(&mut self) -> &mut MemoryAp {
             todo!()
         }
 

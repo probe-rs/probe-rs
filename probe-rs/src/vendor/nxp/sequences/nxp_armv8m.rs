@@ -346,7 +346,7 @@ impl MIMXRT5xxS {
         // Give bootloader time to do what it needs to do
         thread::sleep(Duration::from_millis(100));
 
-        let ap = probe.ap().ap_address().clone();
+        let ap = probe.fully_qualified_address();
         let dp = ap.dp();
         let start = Instant::now();
         while !self.csw_debug_ready(probe.get_arm_communication_interface()?, &ap)?

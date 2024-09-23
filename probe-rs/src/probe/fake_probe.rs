@@ -189,10 +189,6 @@ impl ArmMemoryInterface for &mut MockCore {
         todo!()
     }
 
-    fn ap(&mut self) -> &mut MemoryAp {
-        todo!()
-    }
-
     fn get_arm_communication_interface(
         &mut self,
     ) -> Result<

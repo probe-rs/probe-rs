@@ -65,7 +65,6 @@ impl<'iface> MemoryInterface<ArmError> for MaybeOwned<'iface> {
     dispatch!(flush(&mut self,) -> Result<(), ArmError>);
 }
 impl<'iface> ArmMemoryInterface for MaybeOwned<'iface> {
-    dispatch!(ap(&mut self,) -> &mut crate::architecture::arm::ap_v1::memory_ap::MemoryAp);
     dispatch!(fully_qualified_address(&self,) -> FullyQualifiedApAddress);
     dispatch!(base_address(&mut self,) -> Result<u64, ArmError>);
     dispatch!(get_arm_communication_interface(&mut self,) -> Result<&mut ArmCommunicationInterface<Initialized>, crate::probe::DebugProbeError>);

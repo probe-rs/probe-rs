@@ -168,7 +168,7 @@ pub enum ApAddress {
     #[serde(rename = "v1")]
     V1(u8),
     #[serde(rename = "v2")]
-    V2(Vec<u64>)
+    V2(Vec<u64>),
 }
 impl Default for ApAddress {
     fn default() -> Self {

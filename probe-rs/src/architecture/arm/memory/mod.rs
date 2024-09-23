@@ -14,9 +14,6 @@ pub use romtable::{Component, ComponentId, CoresightComponent, PeripheralType, R
 
 /// An ArmMemoryInterface (ArmProbeInterface + MemoryAp)
 pub trait ArmMemoryInterface: SwdSequence + ArmMemoryInterfaceShim {
-    /// The underlying MemoryAp.
-    fn ap(&mut self) -> &mut MemoryAp;
-
     /// The underlying MemoryAp address.
     fn fully_qualified_address(&self) -> FullyQualifiedApAddress;
 
