@@ -83,24 +83,24 @@ impl Iterator for RomTableIterator<'_, '_, '_> {
 
         self.offset += 4;
 
-        let mut entry_data = [0u32; 1];
+        let mut entry_data = 0u32;
 
         if let Err(e) = self
             .rom_table_reader
             .memory
-            .read_32(component_address, &mut entry_data)
+            .read_32(component_address, std::slice::from_mut(&mut entry_data))
         {
             return Some(Err(RomTableError::memory(e)));
         }
 
         // End of entries is marked by an all zero entry
-        if entry_data[0] == 0 {
+        if entry_data == 0 {
             tracing::debug!("Entry consists of all zeroes, stopping.");
             return None;
         }
 
         let entry_data =
-            RomTableEntryRaw::new(self.rom_table_reader.base_address as u32, entry_data[0]);
+            RomTableEntryRaw::new(self.rom_table_reader.base_address as u32, entry_data);
 
         tracing::debug!("ROM Table Entry: {:#x?}", entry_data);
         Some(Ok(entry_data))
