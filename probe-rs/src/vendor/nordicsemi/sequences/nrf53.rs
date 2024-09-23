@@ -4,9 +4,8 @@ use std::sync::Arc;
 
 use super::nrf::Nrf;
 use crate::architecture::arm::{
-    ap::v1::memory_ap::registers::CSW, communication_interface::Initialized, dp::DpAddress,
-    memory::ArmMemoryInterface, sequences::ArmDebugSequence, ArmCommunicationInterface, ArmError,
-    ArmProbeInterface, DapAccess, FullyQualifiedApAddress,
+    ap::memory::registers::CSW, dp::DpAddress, sequences::ArmDebugSequence, ArmError,
+    ArmProbeInterface, FullyQualifiedApAddress,
 };
 
 /// The sequence handle for the nRF5340.

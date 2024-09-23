@@ -108,6 +108,10 @@ impl ApV2Address {
         new
     }
 
+    /// Returns this AP v2 address as a slice.
+    ///
+    /// The first element is the position in the Debug Port’s memory space.
+    /// If the slice is empty, then this is the Debug Port itself.
     pub fn as_slice(&self) -> &[u64] {
         self.0.as_slice()
     }
@@ -199,6 +203,7 @@ impl FullyQualifiedApAddress {
         }
     }
 
+    /// Consumes the `FullyQualifiedApAddress` and returns its components.
     pub fn deconstruct(self) -> (DpAddress, ApAddress) {
         (self.dp, self.ap)
     }

@@ -1,7 +1,8 @@
 use crate::architecture::arm::{
-    ap::v1::{
-        memory_ap::{amba_ahb3::CSW, registers::CFG, AddressIncrement, DataSize, DRW, TAR},
-        ApClass, ApType, Register, IDR,
+    ap::v1::Register,
+    ap::{
+        memory::{amba_ahb3::CSW, registers::CFG, AddressIncrement, DataSize, DRW, TAR},
+        ApClass, ApType, IDR,
     },
     communication_interface::FlushableArmAccess,
     dp::{DpAddress, DpRegisterAddress},

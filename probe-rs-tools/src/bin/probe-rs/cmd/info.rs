@@ -5,7 +5,7 @@ use jep106::JEP106Code;
 use probe_rs::{
     architecture::{
         arm::{
-            ap::v1::{ApClass, Register},
+            ap::{v1::Register, ApClass},
             component::Scs,
             dp::{
                 DebugPortId, DebugPortVersion, DpAddress, DpRegister, MinDpSupport, DLPIDR, DPIDR,
@@ -301,7 +301,7 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result
             for ap_address in access_ports {
                 match ap_address.ap() {
                     ApAddress::V1(_) => {
-                        use probe_rs::architecture::arm::ap::v1::IDR;
+                        use probe_rs::architecture::arm::ap::IDR;
                         let idr: IDR = interface
                             .read_raw_ap_register(&ap_address, IDR::ADDRESS)?
                             .try_into()?;

@@ -477,7 +477,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         let mut has_dormant = matches!(dp, DpAddress::Multidrop(_));
 
         fn alert_sequence(interface: &mut dyn DapProbe) -> Result<(), ArmError> {
-            tracing::trace!("Sending SelectV1ion Alert sequence");
+            tracing::trace!("Sending Selection Alert sequence");
 
             // Ensure target is not in the middle of detecting a selection alert
             interface.swj_sequence(8, 0xFF)?;

@@ -1,7 +1,8 @@
+use std::any::Any;
+
 use crate::{
     architecture::arm::{
-        ap::v2::Register,
-        ap::memory::registers::{DRW, TAR, TAR2, BASE, BASE2},
+        ap::{memory::{registers::{BASE, BASE2, DRW, TAR, TAR2}, MemoryAp}, v2::Register},
         communication_interface::{Initialized, SwdSequence},
         memory::ArmMemoryInterface,
         ApAddress, ArmCommunicationInterface, ArmError, FullyQualifiedApAddress,
@@ -13,10 +14,13 @@ use super::MaybeOwned;
 
 pub struct MemoryAccessPortInterface<'iface> {
     iface: MaybeOwned<'iface>,
+    //memory_ap: MemoryAp,
     base: u64,
 }
 impl<'iface> MemoryAccessPortInterface<'iface> {
     pub fn new<M: ArmMemoryInterface + 'iface>(iface: M, base: u64) -> Result<Self, ArmError> {
+        //MemoryAp::new(interface, address);
+        //
         // TODO! validity check from the parent root table
         Ok(Self {
             iface: MaybeOwned::Boxed(Box::new(iface)),

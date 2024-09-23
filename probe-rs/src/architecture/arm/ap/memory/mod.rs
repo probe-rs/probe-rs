@@ -19,6 +19,8 @@ use registers::{AddressIncrement, BaseAddrFormat, BASE, BASE2, DRW, TAR, TAR2};
 use super::v1::{AccessPortError, AccessPortType, ApAccess, ApRegAccess, Register};
 use crate::architecture::arm::{ArmError, DapAccess, FullyQualifiedApAddress};
 
+use super::v1::MemoryApType;
+
 /// Implements all default registers of a memory AP to the given type.
 ///
 /// Invoke in the form `attached_regs_to_mem_ap!(mod_name => ApName)` where:
@@ -52,116 +54,6 @@ macro_rules! attached_regs_to_mem_ap {
     };
 }
 
-pub trait MemoryApType:
-    ApRegAccess<BASE> + ApRegAccess<BASE2> + ApRegAccess<TAR> + ApRegAccess<TAR2> + ApRegAccess<DRW>
-{
-    /// This Memory AP’s specific CSW type.
-    type CSW: Register;
-
-    fn has_large_address_extension(&self) -> bool;
-    fn has_large_data_extension(&self) -> bool;
-    fn supports_only_32bit_data_size(&self) -> bool;
-
-    /// Attempts to set the requested data size.
-    ///
-    /// The operation may fail if the requested data size is not supported by the Memory Access
-    /// Port.
-    fn try_set_datasize<I: ApAccess>(
-        &mut self,
-        interface: &mut I,
-        data_size: DataSize,
-    ) -> Result<(), ArmError>;
-
-    /// The current generic CSW (missing the memory AP specific fields).
-    fn generic_status<I: ApAccess>(
-        &mut self,
-        interface: &mut I,
-    ) -> Result<registers::CSW, ArmError> {
-        self.status(interface)?
-            .into()
-            .try_into()
-            .map_err(ArmError::RegisterParse)
-    }
-
-    /// The current CSW with the memory AP specific fields.
-    fn status<I: ApAccess>(&mut self, interface: &mut I) -> Result<Self::CSW, ArmError>;
-
-    /// The base address of this AP which is used to then access all relative control registers.
-    fn base_address<I: ApAccess>(&self, interface: &mut I) -> Result<u64, ArmError> {
-        let base_register: BASE = interface.read_ap_register(self)?;
-
-        let mut base_address = if BaseAddrFormat::ADIv5 == base_register.Format {
-            let base2: BASE2 = interface.read_ap_register(self)?;
-
-            u64::from(base2.BASEADDR) << 32
-        } else {
-            0
-        };
-        base_address |= u64::from(base_register.BASEADDR << 12);
-
-        Ok(base_address)
-    }
-
-    fn set_target_address<I: ApAccess>(
-        &mut self,
-        interface: &mut I,
-        address: u64,
-    ) -> Result<(), ArmError> {
-        let address_lower = address as u32;
-        let address_upper = (address >> 32) as u32;
-
-        if self.has_large_address_extension() {
-            let tar = TAR2 {
-                address: address_upper,
-            };
-            interface.write_ap_register(self, tar)?;
-        } else if address_upper != 0 {
-            return Err(ArmError::OutOfBounds);
-        }
-
-        let tar = TAR {
-            address: address_lower,
-        };
-        interface.write_ap_register(self, tar)?;
-
-        Ok(())
-    }
-
-    /// Read multiple 32 bit values from the DRW register on the given AP.
-    fn read_data<I: ApAccess>(
-        &mut self,
-        interface: &mut I,
-        values: &mut [u32],
-    ) -> Result<(), ArmError> {
-        match values {
-            // If transferring only 1 word, use non-repeated register access, because it might be
-            // faster depending on the probe.
-            [value] => interface.read_ap_register(self).map(|drw: DRW| {
-                *value = drw.data;
-            }),
-            _ => interface.read_ap_register_repeated::<_, DRW>(self, values),
-        }
-        .map_err(AccessPortError::register_read_error::<DRW, _>)
-        .map_err(|err| ArmError::from_access_port(err, self.ap_address()))
-    }
-
-    /// Write multiple 32 bit values to the DRW register on the given AP.
-    fn write_data<I: ApAccess>(
-        &mut self,
-        interface: &mut I,
-        values: &[u32],
-    ) -> Result<(), ArmError> {
-        match values {
-            // If transferring only 1 word, use non-repeated register access, because it might be
-            // faster depending on the probe.
-            &[data] => interface.write_ap_register(self, DRW { data }),
-            _ => interface.write_ap_register_repeated::<_, DRW>(self, values),
-        }
-        .map_err(AccessPortError::register_write_error::<DRW, _>)
-        .map_err(|e| ArmError::from_access_port(e, self.ap_address()))
-    }
-}
-
 macro_rules! memory_aps {
     ($($variant:ident => $type:path),*) => {
         #[derive(Debug)]
@@ -180,12 +72,12 @@ macro_rules! memory_aps {
                 interface: &mut I,
                 address: &FullyQualifiedApAddress,
             ) -> Result<Self, ArmError> {
-                use crate::architecture::arm::ap::v1::{IDR, Register};
+                use $crate::architecture::arm::ap::{IDR, v1::Register};
                 let idr: IDR = interface
                     .read_raw_ap_register(address, IDR::ADDRESS)?
                     .try_into()?;
                 tracing::debug!("reading IDR: {:x?}", idr);
-                use crate::architecture::arm::ap::v1::ApType;
+                use $crate::architecture::arm::ap::ApType;
                 Ok(match idr.TYPE {
                     ApType::JtagComAp => return Err(ArmError::WrongApType),
                     $(ApType::$variant => <$type>::new(interface, address.clone())?.into(),)*
@@ -205,7 +97,7 @@ memory_aps! {
     AmbaAxi5 => amba_axi5::AmbaAxi5
 }
 
-impl ApRegAccess<super::v1::IDR> for MemoryAp {}
+impl ApRegAccess<super::IDR> for MemoryAp {}
 attached_regs_to_mem_ap!(memory_ap_regs => MemoryAp);
 
 macro_rules! mem_ap_forward {

@@ -9,6 +9,8 @@ pub mod v2;
 
 use crate::architecture::arm::RegisterParseError;
 
+use super::{memory::ArmMemoryInterface, DapAccess, FullyQualifiedApAddress};
+
 /// Describes the class of an access port defined in the [`ARM Debug Interface v5.2`](https://developer.arm.com/documentation/ihi0031/f/?lang=en) specification.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ApClass {
@@ -119,3 +121,24 @@ define_ap_register!(
         | (u32::from(value.VARIANT) << 4)
         | (value.TYPE as u32)
 );
+
+/// A generic access port which implements just the register every access port has to implement
+/// to be compliant with the ADI 5.2 specification.
+#[derive(Clone, Debug)]
+pub struct GenericAp {
+    address: FullyQualifiedApAddress,
+}
+
+impl GenericAp {
+    /// Creates a new GenericAp with `address` as base address.
+    pub const fn new(address: FullyQualifiedApAddress) -> Self {
+        Self { address }
+    }
+}
+
+impl v1::AccessPortType for GenericAp {
+    fn ap_address(&self) -> &FullyQualifiedApAddress {
+        &self.address
+    }
+}
+impl v1::ApRegAccess<IDR> for GenericAp {}
