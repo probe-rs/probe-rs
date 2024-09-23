@@ -26,7 +26,7 @@ use super::{
     communication_interface::{DapProbe, Initialized},
     component::{TraceFunnel, TraceSink},
     core::cortex_m::{Dhcsr, Vtor},
-    dp::{Abort, Ctrl, DebugPortError, DpAccess, DpAddress, SelectV1, DPIDR},
+    dp::{Abort, Ctrl, DebugPortError, DpAccess, SelectV1, DPIDR},
     memory::{
         romtable::{CoresightComponent, PeripheralType},
         ArmMemoryInterface,

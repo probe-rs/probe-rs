@@ -9,7 +9,7 @@ pub mod v2;
 
 use crate::architecture::arm::RegisterParseError;
 
-use super::{memory::ArmMemoryInterface, DapAccess, FullyQualifiedApAddress};
+use super::FullyQualifiedApAddress;
 
 /// Describes the class of an access port defined in the [`ARM Debug Interface v5.2`](https://developer.arm.com/documentation/ihi0031/f/?lang=en) specification.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

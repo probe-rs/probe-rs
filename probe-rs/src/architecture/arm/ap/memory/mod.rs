@@ -14,9 +14,9 @@ mod amba_axi3_axi4;
 mod amba_axi5;
 
 pub use registers::DataSize;
-use registers::{AddressIncrement, BaseAddrFormat, BASE, BASE2, DRW, TAR, TAR2};
+use registers::{AddressIncrement, DRW, TAR};
 
-use super::v1::{AccessPortError, AccessPortType, ApAccess, ApRegAccess, Register};
+use super::v1::{AccessPortType, ApAccess, ApRegAccess};
 use crate::architecture::arm::{ArmError, DapAccess, FullyQualifiedApAddress};
 
 use super::v1::MemoryApType;

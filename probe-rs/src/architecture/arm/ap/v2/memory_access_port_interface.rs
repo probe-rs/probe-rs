@@ -1,8 +1,9 @@
-use std::any::Any;
-
 use crate::{
     architecture::arm::{
-        ap::{memory::{registers::{BASE, BASE2, DRW, TAR, TAR2}, MemoryAp}, v2::Register},
+        ap::{
+            memory::registers::{BASE, BASE2, DRW, TAR, TAR2},
+            v2::Register,
+        },
         communication_interface::{Initialized, SwdSequence},
         memory::ArmMemoryInterface,
         ApAddress, ArmCommunicationInterface, ArmError, FullyQualifiedApAddress,

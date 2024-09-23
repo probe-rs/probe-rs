@@ -205,7 +205,7 @@ pub trait ApAccess {
     /// Read a register of the access port.
     fn read_ap_register<PORT, R>(&mut self, port: &PORT) -> Result<R, ArmError>
     where
-        PORT: AccessPortType + ApRegAccess<R> + ?Sized,
+        PORT: ApRegAccess<R> + ?Sized,
         R: Register;
 
     /// Read a register of the access port using a block transfer.
@@ -216,13 +216,13 @@ pub trait ApAccess {
         values: &mut [u32],
     ) -> Result<(), ArmError>
     where
-        PORT: AccessPortType + ApRegAccess<R> + ?Sized,
+        PORT: ApRegAccess<R> + ?Sized,
         R: Register;
 
     /// Write a register of the access port.
     fn write_ap_register<PORT, R>(&mut self, port: &PORT, register: R) -> Result<(), ArmError>
     where
-        PORT: AccessPortType + ApRegAccess<R> + ?Sized,
+        PORT: ApRegAccess<R> + ?Sized,
         R: Register;
 
     /// Write a register of the access port using a block transfer.
@@ -233,7 +233,7 @@ pub trait ApAccess {
         values: &[u32],
     ) -> Result<(), ArmError>
     where
-        PORT: AccessPortType + ApRegAccess<R> + ?Sized,
+        PORT: ApRegAccess<R> + ?Sized,
         R: Register;
 }
 
@@ -335,7 +335,6 @@ where
 #[derive(Debug)]
 pub enum AccessPort {
     /// Any memory Access Port.
-    // TODO: Allow each memory by types to be specialised with there specific feature
     MemoryAp(MemoryAp),
     /// Other Access Ports not used for memory accesses.
     Other(GenericAp),

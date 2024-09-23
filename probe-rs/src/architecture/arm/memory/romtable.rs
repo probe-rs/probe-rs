@@ -412,6 +412,9 @@ impl RawComponent {
     }
 }
 
+/// CoreSight ROM Table architecture.
+///
+/// All class 9 (CoreSight) component with this arch ID are ROM Tables.
 pub const CORESIGHT_ROM_TABLE_ARCHID: u16 = 0x0af7;
 
 /// This enum describes a CoreSight component.
