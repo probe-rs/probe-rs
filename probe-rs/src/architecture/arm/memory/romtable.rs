@@ -118,7 +118,7 @@ impl RomTable {
     ///
     /// This does not check whether the data actually signalizes
     /// to contain a ROM table but assumes this was checked beforehand.
-    pub(crate) fn try_parse(
+    pub fn try_parse(
         memory: &mut dyn ArmMemoryInterface,
         base_address: u64,
     ) -> Result<RomTable, RomTableError> {
@@ -760,7 +760,6 @@ impl PeripheralID {
             ("ARM Ltd", 0x9A9, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M7 TPIU", PeripheralType::Tpiu)),
             ("ARM Ltd", 0xD20, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M23 TPIU", PeripheralType::Tpiu)),
             ("ARM Ltd", 0xD20, 0x13, 0x0000) => Some(PartInfo::new("Cortex-M23 ETM", PeripheralType::Etm)),
-            ("Atmel", 0xCD0, 1, 0) => Some(PartInfo::new("Atmel DSU", PeripheralType::Custom)),
             // From Arm Cortex-M55 Processor Technical Reference Manual
             ("ARM Ltd", 0xD22, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M55 TPIU", PeripheralType::Tpiu)),
             // From IHI0029F: Coresight v3.0 architecture Specifciation
@@ -776,6 +775,9 @@ impl PeripheralID {
             ("ARM Ltd", 0x193, _, _) => Some(PartInfo::new("SoC-600 Timestamp Generator", PeripheralType::Tsgen)),
             ("ARM Ltd", 0x9E7, 0x11, 0x0000) => Some(PartInfo::new("SoC-600 TPIU", PeripheralType::Tpiu)),
             ("ARM Ltd", 0x9EB, 0x12, 0x0000) => Some(PartInfo::new("SoC-600 ATB Funnel", PeripheralType::TraceFunnel)),
+            // vendors
+            ("Atmel", 0xCD0, 1, 0) => Some(PartInfo::new("Atmel DSU", PeripheralType::Custom)),
+            ("Raspberry Pi Trading Ltd", _, _, 0x0AF7) => Some(PartInfo::new("RP235x CoreSight ROM", PeripheralType::Rom)),
 
             _ => None,
         }
