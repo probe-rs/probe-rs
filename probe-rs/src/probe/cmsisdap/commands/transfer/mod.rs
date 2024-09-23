@@ -38,13 +38,13 @@ struct InnerTransferRequest {
 
 impl InnerTransferRequest {
     pub fn new(address: PortAddress, rw: RW, data: Option<u32>) -> Self {
-        let address_byte = address.lsb_address();
+        let a2and3 = address.a2_and_3();
         //tracing::warn!("InnerTransferRequest: address_byte: {:x}", address_byte);
         Self {
             APnDP: address.is_ap(),
             RnW: rw,
-            A2: (address_byte >> 2) & 0x01 == 1,
-            A3: (address_byte >> 3) & 0x01 == 1,
+            A2: (a2and3 >> 2) & 0x01 == 1,
+            A3: (a2and3 >> 3) & 0x01 == 1,
             value_match: false,
             match_mask: false,
             td_timestamp_request: false,
@@ -55,15 +55,8 @@ impl InnerTransferRequest {
 
 #[test]
 fn creating_inner_transfer_request() {
-    let req = InnerTransferRequest::new(
-        PortAddress::DebugPort(crate::architecture::arm::dp::DpRegisterAddress {
-            address: 0x8,
-            bank: 0x0,
-        }),
-        RW::W,
-        None,
-    );
-
+    use crate::architecture::arm::dp::{DpRegister, SelectV1};
+    let req = InnerTransferRequest::new(SelectV1::ADDRESS.into(), RW::W, None);
     assert!(req.A3);
     assert!(!req.A2);
 }
@@ -158,15 +151,15 @@ impl TransferRequest {
         }
     }
 
-    pub fn read(address: PortAddress) -> Self {
+    pub fn read<T: Into<PortAddress>>(address: T) -> Self {
         let mut req = Self::empty();
-        req.add_read(address);
+        req.add_read(address.into());
         req
     }
 
-    pub fn write(address: PortAddress, data: u32) -> Self {
+    pub fn write<T: Into<PortAddress>>(address: T, data: u32) -> Self {
         let mut req = Self::empty();
-        req.add_write(address, data);
+        req.add_write(address.into(), data);
         req
     }
 
@@ -359,12 +352,11 @@ impl Request for TransferBlockRequest {
 
 impl TransferBlockRequest {
     pub(crate) fn write_request(address: PortAddress, data: Vec<u32>) -> Self {
-        let address_byte = address.lsb_address();
         let inner = InnerTransferBlockRequest {
             ap_n_dp: address.is_ap(),
             r_n_w: RW::W,
-            a2: (address_byte >> 2) & 0x01 == 1,
-            a3: (address_byte >> 3) & 0x01 == 1,
+            a2: address.a2(),
+            a3: address.a3(),
         };
 
         TransferBlockRequest {
@@ -376,12 +368,11 @@ impl TransferBlockRequest {
     }
 
     pub(crate) fn read_request(address: PortAddress, read_count: u16) -> Self {
-        let address_byte = address.lsb_address();
         let inner = InnerTransferBlockRequest {
             ap_n_dp: address.is_ap(),
             r_n_w: RW::R,
-            a2: (address_byte >> 2) & 0x01 == 1,
-            a3: (address_byte >> 3) & 0x01 == 1,
+            a2: address.a2(),
+            a3: address.a3(),
         };
 
         TransferBlockRequest {

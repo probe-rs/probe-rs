@@ -9,41 +9,63 @@ use super::{
 };
 
 /// The type of port we are using.
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum PortAddress {
-    /// Debug Port (e.g. SWD or JTAG)
-    DebugPort(DpRegisterAddress),
-    /// Access Port (e.g. Memory Access Port)
-    AccessPort(ApAddress),
+    /// A Debug Port Register address.
+    DpRegister(DpRegisterAddress),
+    /// The lowest significant byte of an Access Port Register address.
+    ApRegister(u8),
 }
 
+const A2_MASK: u8 = 0b0100;
+const A3_MASK: u8 = 0b1000;
+const A2AND3_MASK: u8 = A2_MASK | A3_MASK;
 impl PortAddress {
-    /// Returns the lower 8bits of the address pointed at by this port address.
-    pub fn lsb_address(&self) -> u8 {
+    /// Is this Port Address for an Access Port?
+    pub fn is_ap(&self) -> bool {
+        !matches!(self, PortAddress::DpRegister(_))
+    }
+
+    fn lsb(&self) -> u8 {
         match self {
-            PortAddress::DebugPort(DpRegisterAddress { address, .. }) => *address,
-            PortAddress::AccessPort(ApAddress::V1(address)) => *address,
-            PortAddress::AccessPort(ApAddress::V2(ApV2Address::Leaf(address))) => (*address) as u8,
-            PortAddress::AccessPort(_) => {
-                unimplemented!("This is not yet implemented. Please report your use case.")
-            }
+            PortAddress::DpRegister(r) => r.address,
+            PortAddress::ApRegister(r) => *r,
         }
     }
 
-    /// Is this Port Address for an Access Port?
-    pub fn is_ap(&self) -> bool {
-        matches!(self, PortAddress::AccessPort(_))
+    /// returns A[3:2] of the address
+    pub fn a2_and_3(&self) -> u8 {
+        self.lsb() & A2AND3_MASK
+    }
+
+    /// Returns A[2] of the address
+    pub fn a2(&self) -> bool {
+        (self.lsb() & A2_MASK) == A2_MASK
+    }
+
+    /// Returns A[3] of the address
+    pub fn a3(&self) -> bool {
+        (self.lsb() & A3_MASK) == A3_MASK
     }
 }
 impl From<DpRegisterAddress> for PortAddress {
     fn from(value: DpRegisterAddress) -> Self {
-        PortAddress::DebugPort(value)
+        PortAddress::DpRegister(value)
     }
 }
 
 impl From<ApAddress> for PortAddress {
     fn from(value: ApAddress) -> Self {
-        PortAddress::AccessPort(value)
+        use ApV2Address::*;
+        match value {
+            ApAddress::V1(addr) => PortAddress::ApRegister(addr),
+            ApAddress::V2(Node(addr, n)) if matches!(*n, Root) => {
+                PortAddress::ApRegister(addr as u8)
+            }
+            ApAddress::V2(Root) | ApAddress::V2(Node(_, _)) => {
+                panic!("This is a bug, please report it.")
+            }
+        }
     }
 }
 
@@ -69,21 +91,21 @@ bitfield::bitfield! {
 /// Access port v2 address
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 pub enum ApV2Address {
-    /// Last node of an APv2 address
-    Leaf(u64),
+    /// root node
+    Root,
     /// Non-terminal node of an APv2 address
     Node(u64, Box<ApV2Address>),
 }
 impl ApV2Address {
     /// Create a new ApV2 Address chain
-    pub fn new(tip: u64) -> Self {
-        ApV2Address::Leaf(tip)
+    pub fn new() -> Self {
+        ApV2Address::Root
     }
 
     /// Adds a node at the end of this linked list
-    pub fn append(&mut self, tip: u64) {
+    pub fn append(self, tip: u64) -> Self {
         match self {
-            ApV2Address::Leaf(v) => *self = ApV2Address::Node(*v, Box::new(ApV2Address::Leaf(tip))),
+            ApV2Address::Root => ApV2Address::Node(tip, Box::new(ApV2Address::Root)),
             ApV2Address::Node(_, next) => next.append(tip),
         }
     }
@@ -91,7 +113,7 @@ impl ApV2Address {
 impl std::fmt::Display for ApV2Address {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ApV2Address::Leaf(v) => write!(f, "{}", v),
+            ApV2Address::Root => write!(f, "Root"),
             ApV2Address::Node(v, r) => write!(f, "{}.{}", v, r),
         }
     }
@@ -189,7 +211,7 @@ impl FullyQualifiedApAddress {
 pub trait RawDapAccess {
     /// Read a DAP register.
     ///
-    /// Only the lowest 4 bits of `addr` are used. Bank switching is the caller's responsibility.
+    /// Only bits 2 and 3 of `a2and3` are used. Bank switching is the caller's responsibility.
     fn raw_read_register(&mut self, address: PortAddress) -> Result<u32, ArmError>;
 
     /// Read multiple values from the same DAP register.
@@ -200,7 +222,7 @@ pub trait RawDapAccess {
     /// Only the lowest 4 bits of `addr` are used. Bank switching is the caller's responsibility.
     fn raw_read_block(&mut self, address: PortAddress, values: &mut [u32]) -> Result<(), ArmError> {
         for val in values {
-            *val = self.raw_read_register(address.clone())?;
+            *val = self.raw_read_register(address)?;
         }
 
         Ok(())
@@ -216,10 +238,10 @@ pub trait RawDapAccess {
     /// If possible, this uses optimized write functions, otherwise it
     /// falls back to the `write_register` function.
     ///
-    /// Only the lowest 4 bits of `addr` are used. Bank switching is the caller's responsibility.
+    /// Only bits 2 and 3 of `a2and3` are used. Bank switching is the caller's responsibility.
     fn raw_write_block(&mut self, address: PortAddress, values: &[u32]) -> Result<(), ArmError> {
         for val in values {
-            self.raw_write_register(address.clone(), *val)?;
+            self.raw_write_register(address, *val)?;
         }
 
         Ok(())

@@ -3,7 +3,7 @@ use crate::architecture::arm::ap_v1::memory_ap::{DataSize, MemoryAp, MemoryApTyp
 use crate::architecture::arm::ap_v1::valid_access_ports;
 use crate::architecture::arm::communication_interface::{Initialized, SwdSequence};
 use crate::architecture::arm::dp::{
-    Abort, Ctrl, DebugPortError, DpAccess, DpRegisterAddress, Select,
+    Abort, Ctrl, DebugPortError, DpAccess, DpRegisterAddress, SelectV1,
 };
 use crate::architecture::arm::memory::{ArmMemoryInterface, Component};
 use crate::architecture::arm::{
@@ -134,7 +134,7 @@ impl BlackMagicProbeArmDebug {
         abort.set_stkcmpclr(true);
         self.write_dp_register(dp, abort)?;
 
-        self.write_dp_register(dp, Select(0))?;
+        self.write_dp_register(dp, SelectV1(0))?;
 
         let ctrl = self.read_dp_register::<Ctrl>(dp)?;
 
@@ -336,7 +336,7 @@ impl ArmProbeInterface for BlackMagicProbeArmDebug {
 
         for ap in self.access_ports.clone() {
             if let Ok(mut memory) = self.memory_interface(&ap) {
-                let base_address = memory.base_address()?;
+                let base_address = memory.rom_table_address()?;
                 let component = Component::try_parse(&mut *memory, base_address)?;
 
                 if let Component::Class1RomTable(component_id, _) = component {
@@ -577,10 +577,6 @@ impl ArmMemoryInterface for BlackMagicProbeMemoryInterface<'_> {
         &mut self.current_ap
     }
 
-    fn base_address(&mut self) -> Result<u64, ArmError> {
-        self.current_ap.base_address(self.probe)
-    }
-
     fn get_arm_communication_interface(
         &mut self,
     ) -> Result<&mut ArmCommunicationInterface<Initialized>, DebugProbeError> {
@@ -595,6 +591,20 @@ impl ArmMemoryInterface for BlackMagicProbeMemoryInterface<'_> {
         Err(DebugProbeError::InterfaceNotAvailable {
             interface_name: "ARM",
         })
+    }
+
+    fn update_core_status(&mut self, state: crate::CoreStatus) {
+        self.get_arm_communication_interface()
+            .map(|iface| iface.core_status_notification(state))
+            .ok();
+    }
+
+    fn fully_qualified_address(&self) -> FullyQualifiedApAddress {
+        todo!()
+    }
+
+    fn rom_table_address(&mut self) -> Result<u64, ArmError> {
+        todo!()
     }
 }
 

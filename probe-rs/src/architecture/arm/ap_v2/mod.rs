@@ -1,13 +1,7 @@
 use std::collections::BTreeSet;
 
-use registers::Register;
-use traits::ApAccess;
-
 use crate::{
-    architecture::arm::{
-        dp::{DpAccess, BASEPTR0, BASEPTR1, DPIDR1},
-        memory::romtable::RomTable,
-    },
+    architecture::arm::memory::{romtable::RomTable, PeripheralType},
     MemoryInterface,
 };
 
@@ -15,306 +9,154 @@ use super::{
     communication_interface::{Initialized, SwdSequence},
     dp::DpAddress,
     memory::ArmMemoryInterface,
-    ApAddress, ApV2Address, ArmCommunicationInterface, ArmError, DapAccess,
-    FullyQualifiedApAddress,
+    ApAddress, ApV2Address, ArmCommunicationInterface, ArmError, FullyQualifiedApAddress,
 };
 
 mod registers;
 mod traits;
 
-type ACI = ArmCommunicationInterface<Initialized>;
+mod root_memory_interface;
+use root_memory_interface::RootMemoryInterface;
 
-struct MemoryAccessPort<'i> {
-    iface: Box<dyn ArmMemoryInterface + 'i>,
-    base: u64,
-}
-impl<'i> MemoryAccessPort<'i> {
-    fn new(iface: Box<dyn ArmMemoryInterface + 'i>, base: u64) -> Result<Self, ArmError> {
-        // TODO! validity check from the parent root table
-        Ok(Self { iface, base })
-    }
-}
-impl SwdSequence for MemoryAccessPort<'_> {
-    fn swj_sequence(
-        &mut self,
-        _bit_len: u8,
-        _bits: u64,
-    ) -> Result<(), crate::probe::DebugProbeError> {
-        todo!()
-    }
+mod memory_access_port_interface;
+use memory_access_port_interface::MemoryAccessPortInterface;
 
-    fn swj_pins(
-        &mut self,
-        _pin_out: u32,
-        _pin_select: u32,
-        _pin_wait: u32,
-    ) -> Result<u32, crate::probe::DebugProbeError> {
-        todo!()
+enum MemoryAccessPortInterfaces<'iface> {
+    Root(RootMemoryInterface<'iface>),
+    Node(Box<MemoryAccessPortInterface<'iface>>),
+}
+impl<'iface> From<RootMemoryInterface<'iface>> for MemoryAccessPortInterfaces<'iface> {
+    fn from(value: RootMemoryInterface<'iface>) -> Self {
+        Self::Root(value)
     }
 }
-impl MemoryInterface<ArmError> for MemoryAccessPort<'_> {
-    fn supports_native_64bit_access(&mut self) -> bool {
-        todo!()
-    }
-
-    fn read_64(&mut self, _address: u64, _data: &mut [u64]) -> Result<(), ArmError> {
-        todo!()
-    }
-
-    fn read_32(&mut self, _address: u64, _data: &mut [u32]) -> Result<(), ArmError> {
-        todo!()
-    }
-
-    fn read_16(&mut self, _address: u64, _data: &mut [u16]) -> Result<(), ArmError> {
-        todo!()
-    }
-
-    fn read_8(&mut self, _address: u64, _data: &mut [u8]) -> Result<(), ArmError> {
-        todo!()
-    }
-
-    fn write_64(&mut self, _address: u64, _data: &[u64]) -> Result<(), ArmError> {
-        todo!()
-    }
-
-    fn write_32(&mut self, _address: u64, _data: &[u32]) -> Result<(), ArmError> {
-        todo!()
-    }
-
-    fn write_16(&mut self, _address: u64, _data: &[u16]) -> Result<(), ArmError> {
-        todo!()
-    }
-
-    fn write_8(&mut self, _address: u64, _data: &[u8]) -> Result<(), ArmError> {
-        todo!()
-    }
-
-    fn supports_8bit_transfers(&self) -> Result<bool, ArmError> {
-        todo!()
-    }
-
-    fn flush(&mut self) -> Result<(), ArmError> {
-        todo!()
+impl<'iface> From<MemoryAccessPortInterface<'iface>> for MemoryAccessPortInterfaces<'iface> {
+    fn from(value: MemoryAccessPortInterface<'iface>) -> Self {
+        Self::Node(Box::new(value))
     }
 }
-impl ArmMemoryInterface for MemoryAccessPort<'_> {
-    fn ap(&mut self) -> &mut super::ap_v1::memory_ap::MemoryAp {
-        todo!()
-    }
-
-    fn fully_qualified_address(&self) -> FullyQualifiedApAddress {
-        todo!()
-    }
-
-    fn base_address(&mut self) -> Result<u64, ArmError> {
-        todo!()
-    }
-
-    fn get_arm_communication_interface(
-        &mut self,
-    ) -> Result<&mut ArmCommunicationInterface<Initialized>, crate::probe::DebugProbeError> {
-        todo!()
-    }
-
-    fn try_as_parts(
-        &mut self,
-    ) -> Result<
-        (
-            &mut ArmCommunicationInterface<Initialized>,
-            &mut super::ap_v1::memory_ap::MemoryAp,
-        ),
-        crate::probe::DebugProbeError,
-    > {
-        todo!()
-    }
-}
-
-struct RootMemoryAP;
-
-struct RootMemoryInterface<'iface> {
-    iface: &'iface mut ACI,
-    dp: DpAddress,
-    base: u64,
-}
-impl<'iface> RootMemoryInterface<'iface> {
-    fn new(iface: &'iface mut ACI, dp: DpAddress) -> Result<Self, ArmError> {
-        let base_ptr0: BASEPTR0 = iface.read_dp_register(dp)?;
-        let base_ptr1: BASEPTR1 = iface.read_dp_register(dp)?;
-        let base = base_ptr0
-            .valid()
-            .then(|| u64::from(base_ptr1.ptr()) | u64::from(base_ptr0.ptr() << 12))
-            .inspect(|base| tracing::info!("DPv3 BASE_PTR: 0x{base:x}"))
-            .ok_or_else(|| ArmError::Other("DP has no valid base address defined.".into()))?;
-
-        Ok(Self { iface, dp, base })
-    }
-
-    fn address(&self) -> FullyQualifiedApAddress {
-        FullyQualifiedApAddress::v2_with_dp(self.dp, ApV2Address::Leaf(self.base))
-    }
-
-    fn base_address(&mut self) -> u64 {
-        self.base
-    }
-}
-impl SwdSequence for RootMemoryInterface<'_> {
-    fn swj_sequence(
-        &mut self,
-        _bit_len: u8,
-        _bits: u64,
-    ) -> Result<(), crate::probe::DebugProbeError> {
-        todo!()
-    }
-
-    fn swj_pins(
-        &mut self,
-        _pin_out: u32,
-        _pin_select: u32,
-        _pin_wait: u32,
-    ) -> Result<u32, crate::probe::DebugProbeError> {
-        todo!()
-    }
-}
-impl MemoryInterface<ArmError> for RootMemoryInterface<'_> {
-    fn supports_native_64bit_access(&mut self) -> bool {
-        todo!()
-    }
-
-    fn read_64(&mut self, _address: u64, _data: &mut [u64]) -> Result<(), ArmError> {
-        todo!()
-    }
-
-    fn read_32(&mut self, address: u64, _data: &mut [u32]) -> Result<(), ArmError> {
-        let fq_address =
-            FullyQualifiedApAddress::v2_with_dp(self.dp, ApV2Address::Leaf(self.base + address & 0xFFFF_FFFF_FFFF_FFF0));
-
-        // read content
-        for d in _data.iter_mut() {
-            *d =
-                self.iface.read_raw_ap_register(&fq_address, (address & 0xF) as u8)?;
+macro_rules! dispatch {
+    ($name:ident(&mut self, $($arg:ident : $t:ty),*) -> $r:ty) => {
+        fn $name(&mut self, $($arg: $t),*) -> $r {
+            match self {
+                MemoryAccessPortInterfaces::Root(r) => r.$name($($arg),*),
+                MemoryAccessPortInterfaces::Node(m) => m.$name($($arg),*),
+            }
         }
-        Ok(())
-    }
-
-    fn read_16(&mut self, _address: u64, _data: &mut [u16]) -> Result<(), ArmError> {
-        todo!()
-    }
-
-    fn read_8(&mut self, _address: u64, _data: &mut [u8]) -> Result<(), ArmError> {
-        todo!()
-    }
-
-    fn write_64(&mut self, _address: u64, _data: &[u64]) -> Result<(), ArmError> {
-        todo!()
-    }
-
-    fn write_32(&mut self, _address: u64, _data: &[u32]) -> Result<(), ArmError> {
-        todo!()
-    }
-
-    fn write_16(&mut self, _address: u64, _data: &[u16]) -> Result<(), ArmError> {
-        todo!()
-    }
-
-    fn write_8(&mut self, _address: u64, _data: &[u8]) -> Result<(), ArmError> {
-        todo!()
-    }
-
-    fn supports_8bit_transfers(&self) -> Result<bool, ArmError> {
-        todo!()
-    }
-
-    fn flush(&mut self) -> Result<(), ArmError> {
-        todo!()
-    }
-}
-impl ArmMemoryInterface for RootMemoryInterface<'_> {
-    fn ap(&mut self) -> &mut super::ap_v1::memory_ap::MemoryAp {
-        todo!()
-    }
-
-    fn fully_qualified_address(&self) -> FullyQualifiedApAddress {
-        self.address()
-    }
-
-    fn base_address(&mut self) -> Result<u64, ArmError> {
-        todo!()
-    }
-
-    fn get_arm_communication_interface(
-        &mut self,
-    ) -> Result<&mut ArmCommunicationInterface<Initialized>, crate::probe::DebugProbeError> {
-        todo!()
-    }
-
-    fn try_as_parts(
-        &mut self,
-    ) -> Result<
-        (
-            &mut ArmCommunicationInterface<Initialized>,
-            &mut super::ap_v1::memory_ap::MemoryAp,
-        ),
-        crate::probe::DebugProbeError,
-    > {
-        todo!()
+    };
+    ($name:ident(&self, $($arg:ident : $t:ty),*) -> $r:ty) => {
+        fn $name(&self, $($arg: $t),*) -> $r {
+            match self {
+                MemoryAccessPortInterfaces::Root(r) => r.$name($($arg),*),
+                MemoryAccessPortInterfaces::Node(m) => m.$name($($arg),*),
+            }
+        }
     }
 }
 
-pub fn enumerate_access_ports(
-    probe: &mut ACI,
+impl<'iface> SwdSequence for MemoryAccessPortInterfaces<'iface> {
+    dispatch!(swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), crate::probe::DebugProbeError>);
+    dispatch!(swj_pins(&mut self, pin_out: u32, pin_select: u32, pin_wait: u32) -> Result<u32, crate::probe::DebugProbeError>);
+}
+impl<'iface> MemoryInterface<ArmError> for MemoryAccessPortInterfaces<'iface> {
+    dispatch!(supports_native_64bit_access(&mut self,) -> bool);
+    dispatch!(read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), ArmError>);
+    dispatch!(read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError>);
+    dispatch!(read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), ArmError>);
+    dispatch!(read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError>);
+    dispatch!(write_64(&mut self, address: u64, data: &[u64]) -> Result<(), ArmError>);
+    dispatch!(write_32(&mut self, address: u64, data: &[u32]) -> Result<(), ArmError>);
+    dispatch!(write_16(&mut self, address: u64, data: &[u16]) -> Result<(), ArmError>);
+    dispatch!(write_8(&mut self, address: u64, data: &[u8]) -> Result<(), ArmError>);
+    dispatch!(supports_8bit_transfers(&self,) -> Result<bool, ArmError>);
+    dispatch!(flush(&mut self,) -> Result<(), ArmError>);
+}
+impl<'iface> ArmMemoryInterface for MemoryAccessPortInterfaces<'iface> {
+    dispatch!(ap(&mut self,) -> &mut super::ap_v1::memory_ap::MemoryAp);
+    dispatch!(fully_qualified_address(&self,) -> FullyQualifiedApAddress);
+    dispatch!(rom_table_address(&mut self,) -> Result<u64, ArmError>);
+    dispatch!(get_arm_communication_interface(&mut self,) -> Result<&mut ArmCommunicationInterface<Initialized>, crate::probe::DebugProbeError>);
+    dispatch!(try_as_parts(&mut self,) -> Result<(&mut ArmCommunicationInterface<Initialized>, &mut super::ap_v1::memory_ap::MemoryAp), crate::probe::DebugProbeError>);
+}
+
+/// Deeply scans the debug port and returns a list of the addresses the memory access points discovered.
+pub fn enumerate_access_ports<'i>(
+    probe: &'i mut ArmCommunicationInterface<Initialized>,
     dp: DpAddress,
 ) -> Result<BTreeSet<ApV2Address>, ArmError> {
-    let mut root_ap = RootMemoryInterface::new(probe, dp)?;
-    let base_address = root_ap.base_address();
-    let rom_table = RomTable::try_parse(&mut root_ap, base_address)?;
-    //for e in rom_table.entries() {
-    // if e is a mem_ap
-    //  add it to the set
-    //  process its rom_table
-    //}
-    todo!()
+    let root_ap = RootMemoryInterface::new(probe, dp)?;
+    let mut result = BTreeSet::new();
+    result.insert(ApV2Address::Node(0, Box::new(ApV2Address::Root)));
+
+    scan_rom_tables_internal(root_ap, &mut result)?;
+
+    tracing::info!("Memory APs: {:x?}", result);
+    Ok(result)
 }
 
-fn scan_rom_tables_internal(
-    _probe: &mut ACI,
-    _mem_aps: &mut BTreeSet<ApAddress>,
-    _current_addr: Option<ApV2Address>,
-) -> Result<(), ArmError> {
-    todo!()
+fn scan_rom_tables_internal<
+    'iface,
+    M: Into<MemoryAccessPortInterfaces<'iface>> + ArmMemoryInterface,
+>(
+    iface: M,
+    mem_aps: &mut BTreeSet<ApV2Address>,
+) -> Result<MemoryAccessPortInterfaces<'iface>, ArmError> {
+    let mut iface = iface.into();
+    let rom_table_address = iface.rom_table_address()?;
+    let rom_table =
+        RomTable::try_parse(&mut iface as &mut dyn ArmMemoryInterface, rom_table_address)?;
+    for e in rom_table.entries() {
+        if e.component()
+            .id()
+            .peripheral_id()
+            .is_of_type(PeripheralType::MemAp)
+        {
+            let base = e.component().id().component_address();
+            tracing::info!("Found a MemAp at {:x?}", base);
+
+            mem_aps.insert(ApV2Address::Node(base, Box::new(ApV2Address::Root)));
+
+            let subiface = MemoryAccessPortInterface::new(iface, base)?;
+            let MemoryAccessPortInterfaces::Node(subiface) =
+                scan_rom_tables_internal(subiface, mem_aps)?
+            else {
+                panic!("scan_rom_tables_internal should return the same iface it was given.");
+            };
+            iface = subiface.release();
+        }
+    }
+    Ok(iface)
 }
 
 /// Returns a Memory Interface accessing the Memory AP at the given `address` through the `iface`
 /// Arm Communication Interface.
 pub fn new_memory_interface<'i>(
-    iface: &'i mut ACI,
+    iface: &'i mut ArmCommunicationInterface<Initialized>,
     address: &FullyQualifiedApAddress,
 ) -> Result<Box<dyn ArmMemoryInterface + 'i>, ArmError> {
     let ApAddress::V2(ap_address) = address.ap() else {
         unimplemented!("this is only for APv2 addresses")
     };
 
-    let mut next = None;
-    let base = match ap_address {
-        ApV2Address::Leaf(base) => base,
-        ApV2Address::Node(base, n) => {
-            next = Some(n);
-            base
-        }
-    };
-    let mut ap: Box<dyn ArmMemoryInterface + 'i> =
-        Box::new(RootMemoryInterface::new(iface, address.dp())?);
-    while let Some(n) = next {
-        match n.as_ref() {
-            ApV2Address::Leaf(base) => {
-                ap = Box::new(MemoryAccessPort::new(ap, *base)?);
-                next = None;
-            }
-            ApV2Address::Node(base, n) => {
-                ap = Box::new(MemoryAccessPort::new(ap, *base)?);
-                next = Some(n);
-            }
-        }
-    }
+    new_memory_interface_inner(iface, address.dp(), ap_address)
+        .map(|iface| Box::new(iface) as Box<dyn ArmMemoryInterface + 'i>)
+}
 
-    Ok(ap)
+fn new_memory_interface_inner<'i>(
+    iface: &'i mut ArmCommunicationInterface<Initialized>,
+    dp: DpAddress,
+    address: &ApV2Address,
+) -> Result<MemoryAccessPortInterface<'i>, ArmError> {
+    tracing::trace!("address: {:x?}", address);
+    match address {
+        ApV2Address::Node(base, ap) if matches!(**ap, ApV2Address::Root) => {
+            let root = RootMemoryInterface::new(iface, dp)?;
+            MemoryAccessPortInterface::new(root, *base)
+        }
+        ApV2Address::Node(base, ap) => {
+            let subiface = new_memory_interface_inner(iface, dp, ap)?;
+            MemoryAccessPortInterface::new(subiface, *base)
+        }
+        _ => unreachable!(),
+    }
 }

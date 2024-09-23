@@ -102,7 +102,7 @@ impl Iterator for RomTableIterator<'_, '_, '_> {
         let entry_data =
             RomTableEntryRaw::new(self.rom_table_reader.base_address as u32, entry_data);
 
-        tracing::debug!("ROM Table Entry: {:#x?}", entry_data);
+        //tracing::debug!("ROM Table Entry: {:#x?}", entry_data);
         Some(Ok(entry_data))
     }
 }
@@ -140,10 +140,8 @@ impl RomTable {
         // Iterate all entries and get their data.
         for raw_entry in reader.into_iter() {
             let entry_base_addr = raw_entry.component_address();
-
-            tracing::debug!("Parsing entry at {:#010x}", entry_base_addr);
-
             if raw_entry.entry_present {
+                tracing::debug!("Parsing entry at {:#010x}", entry_base_addr);
                 let component = Component::try_parse(memory, u64::from(entry_base_addr))?;
 
                 // Finally remember the entry.
@@ -153,6 +151,8 @@ impl RomTable {
                     power_domain_valid: raw_entry.power_domain_valid,
                     component: CoresightComponent::new(component, memory.fully_qualified_address()),
                 });
+            } else {
+                tracing::debug!("Entry at {:#010x} is not present, skipping.", entry_base_addr);
             }
         }
 
@@ -740,6 +740,7 @@ impl PeripheralID {
             ("ARM Ltd", 0x00D, 0x00, 0x0000) => Some(PartInfo::new("CoreSight ETM11", PeripheralType::Etm)),
             ("ARM Ltd", 0x00E, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M7 FBP", PeripheralType::Fbp)),
             ("ARM Ltd", 0x101, 0x00, 0x0000) => Some(PartInfo::new("System TSGEN", PeripheralType::Tsgen)),
+            ("Arm Ltd", 0x193, 0x00, 0x0000) => Some(PartInfo::new("Timestamp Generator", PeripheralType::Tsgen)),
             ("ARM Ltd", 0x471, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M0  ROM", PeripheralType::Rom)),
             ("ARM Ltd", 0x4C0, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M0+ ROM", PeripheralType::Rom)),
             ("ARM Ltd", 0x4C4, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M4 ROM", PeripheralType::Rom)),
@@ -758,7 +759,12 @@ impl PeripheralID {
             ("ARM Ltd", 0x963, 0x63, 0x0a63) => Some(PartInfo::new("CoreSight STM", PeripheralType::Stm)),
             ("ARM Ltd", 0x975, 0x13, 0x4a13) => Some(PartInfo::new("Cortex-M7 ETM", PeripheralType::Etm)),
             ("ARM Ltd", 0x9A1, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M4 TPIU", PeripheralType::Tpiu)),
+            ("ARM Ltd", 0x9A3, 0x13, 0x0000) => Some(PartInfo::new("Cortex-M0 MTB", PeripheralType::Mtb)),
             ("ARM Ltd", 0x9A9, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M7 TPIU", PeripheralType::Tpiu)),
+            ("ARM Ltd", 0x9E3, 0x00, 0x0A17) => Some(PartInfo::new("AHB-5 MemAp", PeripheralType::MemAp)),
+            ("ARM Ltd", 0x9E7, 0x11, 0x0000) => Some(PartInfo::new("RP2350 TPIU", PeripheralType::Tpiu)),
+            ("ARM Ltd", 0x9EB, 0x12, 0x0000) => Some(PartInfo::new("ATB Funnel", PeripheralType::TraceFunnel)),
+            ("ARM Ltd", 0x9ED, 0x14, 0x1a14) => Some(PartInfo::new("CTI", PeripheralType::Cti)),
             ("ARM Ltd", 0xD20, 0x00, 0x2A04) => Some(PartInfo::new("Cortex-M23 SCS", PeripheralType::Scs)),
             ("ARM Ltd", 0xD20, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M23 TPIU", PeripheralType::Tpiu)),
             ("ARM Ltd", 0xD20, 0x13, 0x0000) => Some(PartInfo::new("Cortex-M23 ETM", PeripheralType::Etm)),
@@ -772,8 +778,8 @@ impl PeripheralID {
             ("ARM Ltd", 0xD21, 0x13, 0x4A13) => Some(PartInfo::new("Cortex-M33 ETM", PeripheralType::Etm)),
             ("ARM Ltd", 0xD21, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M33 TPIU", PeripheralType::Tpiu)),
             ("ARM Ltd", 0xD21, 0x14, 0x1A14) => Some(PartInfo::new("Cortex-M33 CTI", PeripheralType::Cti)),
-            ("ARM Ltd", 0x9A3, 0x13, 0x0000) => Some(PartInfo::new("Cortex-M0 MTB", PeripheralType::Mtb)),
             ("Atmel", 0xCD0, 1, 0) => Some(PartInfo::new("Atmel DSU", PeripheralType::Custom)),
+
             _ => None,
         }
     }
@@ -850,6 +856,8 @@ pub enum PeripheralType {
     Mtb,
     /// Cross Trigger Interface
     Cti,
+    /// Memory Access Port
+    MemAp,
     /// Non-standard peripheral
     Custom,
 }
@@ -874,6 +882,7 @@ impl std::fmt::Display for PeripheralType {
             PeripheralType::Mtb => write!(f, "MTB (Micro Trace Buffer)"),
             PeripheralType::Cti => write!(f, "CTI (Cross Trigger Interface)"),
             PeripheralType::Custom => write!(f, "(Non-standard peripheral)"),
+            PeripheralType::MemAp => write!(f, "MemAp (Memory Access Port)")
         }
     }
 }

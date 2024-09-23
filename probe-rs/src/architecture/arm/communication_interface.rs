@@ -21,7 +21,7 @@ use std::{
 
 use super::{
     dp::{DpAddress, DpRegisterAddress, Select1, SelectV1, SelectV3},
-    ApAddress, ApV2Address,
+    ApAddress, ApV2Address, PortAddress,
 };
 
 /// An error in the communication with an access port or
@@ -268,15 +268,16 @@ impl ArmProbeInterface for ArmCommunicationInterface<Initialized> {
             DebugPortVersion::DPv0 | DebugPortVersion::DPv1 | DebugPortVersion::DPv2 => {
                 valid_access_ports_allowlist(self, dp, 0..=255)
             }
-            DebugPortVersion::DPv3 => {
-                todo!()
-            }
+            DebugPortVersion::DPv3 => super::ap_v2::enumerate_access_ports(self, dp)?
+                .into_iter()
+                .map(|addr| FullyQualifiedApAddress::v2_with_dp(dp, addr))
+                .collect(),
             DebugPortVersion::Unsupported(_) => unreachable!(),
         };
 
         for access_port in access_ports {
             if let Ok(mut memory) = self.memory_interface(&access_port) {
-                let base_addr = memory.base_address()?;
+                let base_addr = memory.rom_table_address()?;
                 let component = Component::try_parse(&mut *memory, base_addr)?;
                 if let Component::Class1RomTable(component_id, _) = component {
                     if let Some(jep106) = component_id.peripheral_id().jep106() {
@@ -570,12 +571,16 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
                 s.set_ap_sel(*port);
                 s.set_ap_bank_sel(ap_bank);
             }
-            (ApAddress::V2(ApV2Address::Leaf(address)), SelectCache::DPv3(s, s1)) => {
-                let address = address + u64::from(ap_register_address);
-                s.set_addr((address & 0xFFFF_FFF0) as u32);
+            (ApAddress::V2(ApV2Address::Node(base, n)), SelectCache::DPv3(s, s1))
+                if matches!(**n, ApV2Address::Root) =>
+            {
+                let address = base + u64::from(ap_register_address);
+                s.set_addr(((address >> 4) & 0xFFFF_FFF) as u32);
                 s1.set_addr((address >> 32) as u32);
             }
-            _ => unreachable!(),
+            _ => unreachable!(
+                "Did not expect to be called with {ap:x?}. This is a bug, please report it."
+            ),
         }
 
         if previous_select != dp_state.current_select {
@@ -656,8 +661,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
 
         let result = self
             .probe_mut()
-            .raw_read_register(ApAddress::V1(address).into())?;
-        tracing::warn!("read raw ap reg {:x?} - {:x}", ap, address);
+            .raw_read_register(PortAddress::ApRegister(address))?;
 
         Ok(result)
     }
@@ -671,7 +675,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
         self.select_ap_and_ap_bank(ap, address)?;
 
         self.probe_mut()
-            .raw_read_block(ApAddress::V1(address).into(), values)?;
+            .raw_read_block(PortAddress::ApRegister(address), values)?;
         Ok(())
     }
 
@@ -681,12 +685,10 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
         address: u8,
         value: u32,
     ) -> Result<(), ArmError> {
-        tracing::warn!("write raw ap reg {:x?} - {:x}", ap, address);
         self.select_ap_and_ap_bank(ap, address)?;
 
-
         self.probe_mut()
-            .raw_write_register(ApAddress::V1(address).into(), value)?;
+            .raw_write_register(PortAddress::ApRegister(address), value)?;
 
         Ok(())
     }
@@ -700,7 +702,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
         self.select_ap_and_ap_bank(ap, address)?;
 
         self.probe_mut()
-            .raw_write_block(ApAddress::V1(address).into(), values)?;
+            .raw_write_block(PortAddress::ApRegister(address), values)?;
         Ok(())
     }
 }

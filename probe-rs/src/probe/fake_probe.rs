@@ -181,7 +181,7 @@ impl MemoryInterface<ArmError> for &mut MockCore {
 }
 
 impl ArmMemoryInterface for &mut MockCore {
-    fn base_address(&mut self) -> Result<u64, ArmError> {
+    fn rom_table_address(&mut self) -> Result<u64, ArmError> {
         todo!()
     }
 

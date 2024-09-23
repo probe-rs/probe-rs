@@ -1457,7 +1457,7 @@ impl ArmProbeInterface for StlinkArmDebug {
 
         for ap in self.access_ports.clone() {
             if let Ok(mut memory) = self.memory_interface(&ap) {
-                let base_address = memory.base_address()?;
+                let base_address = memory.rom_table_address()?;
                 let component = Component::try_parse(&mut *memory, base_address)?;
 
                 if let Component::Class1RomTable(component_id, _) = component {
@@ -1818,7 +1818,7 @@ impl MemoryInterface<ArmError> for StLinkMemoryInterface<'_> {
 }
 
 impl ArmMemoryInterface for StLinkMemoryInterface<'_> {
-    fn base_address(&mut self) -> Result<u64, ArmError> {
+    fn rom_table_address(&mut self) -> Result<u64, ArmError> {
         self.current_ap.base_address(self.probe)
     }
 

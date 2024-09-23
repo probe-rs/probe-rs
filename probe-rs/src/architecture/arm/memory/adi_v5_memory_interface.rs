@@ -533,7 +533,7 @@ impl<APA> ArmMemoryInterface for ADIMemoryInterface<'_, APA>
 where
     APA: std::any::Any + FlushableArmAccess + ApAccess + DpAccess,
 {
-    fn base_address(&mut self) -> Result<u64, ArmError> {
+    fn rom_table_address(&mut self) -> Result<u64, ArmError> {
         self.memory_ap.base_address(self.interface)
     }
 
