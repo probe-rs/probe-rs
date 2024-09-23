@@ -26,7 +26,7 @@ use super::{
     communication_interface::{DapProbe, Initialized},
     component::{TraceFunnel, TraceSink},
     core::cortex_m::{Dhcsr, Vtor},
-    dp::{Abort, Ctrl, DebugPortError, DpAccess, Select, DPIDR},
+    dp::{Abort, Ctrl, DebugPortError, DpAccess, DpAddress, SelectV1, DPIDR},
     memory::{
         romtable::{CoresightComponent, PeripheralType},
         ArmMemoryInterface,
@@ -477,7 +477,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         let mut has_dormant = matches!(dp, DpAddress::Multidrop(_));
 
         fn alert_sequence(interface: &mut dyn DapProbe) -> Result<(), ArmError> {
-            tracing::trace!("Sending Selection Alert sequence");
+            tracing::trace!("Sending SelectV1ion Alert sequence");
 
             // Ensure target is not in the middle of detecting a selection alert
             interface.swj_sequence(8, 0xFF)?;
@@ -504,7 +504,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
             match interface.active_protocol() {
                 Some(WireProtocol::Jtag) => {
                     if has_dormant {
-                        tracing::debug!("Select Dormant State (from SWD)");
+                        tracing::debug!("SelectV1 Dormant State (from SWD)");
                         interface.swj_sequence(16, 0xE3BC)?;
 
                         // Send alert sequence
@@ -528,8 +528,8 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
                 }
                 Some(WireProtocol::Swd) => {
                     if has_dormant {
-                        // Select Dormant State (from JTAG)
-                        tracing::debug!("Select Dormant State (from JTAG)");
+                        // SelectV1 Dormant State (from JTAG)
+                        tracing::debug!("SelectV1 Dormant State (from JTAG)");
                         interface.swj_sequence(31, 0x33BBBBBA)?;
 
                         // Leave dormant state
@@ -594,7 +594,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         abort.set_stkcmpclr(true);
         interface.write_dp_register(dp, abort)?;
 
-        interface.write_dp_register(dp, Select(0))?;
+        interface.write_dp_register(dp, SelectV1(0))?;
 
         let ctrl = interface.read_dp_register::<Ctrl>(dp)?;
 
@@ -831,8 +831,8 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     #[doc(alias = "DebugPortStop")]
     fn debug_port_stop(&self, interface: &mut dyn DapProbe, dp: DpAddress) -> Result<(), ArmError> {
         tracing::info!("Powering down debug port {dp:x?}");
-        // Select Bank 0
-        interface.raw_write_register(Select::ADDRESS.into(), 0)?;
+        // SelectV1 Bank 0
+        interface.raw_write_register(SelectV1::ADDRESS.into(), 0)?;
 
         // De-assert debug power request
         interface.raw_write_register(Ctrl::ADDRESS.into(), 0)?;
@@ -950,13 +950,13 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
 
         if let DpAddress::Multidrop(targetsel) = dp {
             tracing::debug!("Checking TARGETID and DLPIDR match");
-            // Select DP Bank 2
-            interface.raw_write_register(Select::ADDRESS.into(), 2)?;
+            // SelectV1 DP Bank 2
+            interface.raw_write_register(SelectV1::ADDRESS.into(), 2)?;
 
             let target_id = interface.raw_read_register(TARGETID::ADDRESS.into())?;
 
-            // Select DP Bank 3
-            interface.raw_write_register(Select::ADDRESS.into(), 3)?;
+            // SelectV1 DP Bank 3
+            interface.raw_write_register(SelectV1::ADDRESS.into(), 3)?;
             let dlpidr = interface.raw_read_register(DLPIDR::ADDRESS.into())?;
 
             const TARGETID_MASK: u32 = 0x0FFF_FFFF;
@@ -977,7 +977,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
             }
         }
 
-        interface.raw_write_register(Select::ADDRESS.into(), 0)?;
+        interface.raw_write_register(SelectV1::ADDRESS.into(), 0)?;
         let ctrl_stat = interface.raw_read_register(Ctrl::ADDRESS.into()).map(Ctrl);
 
         match ctrl_stat {

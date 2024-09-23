@@ -1822,6 +1822,10 @@ impl ArmMemoryInterface for StLinkMemoryInterface<'_> {
         self.current_ap.base_address(self.probe)
     }
 
+    fn fully_qualified_address(&self) -> FullyQualifiedApAddress {
+        self.current_ap.ap_address().clone()
+    }
+
     fn ap(&mut self) -> &mut MemoryAp {
         &mut self.current_ap
     }

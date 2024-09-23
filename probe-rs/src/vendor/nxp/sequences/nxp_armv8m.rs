@@ -12,7 +12,7 @@ use crate::{
         ap_v1::{memory_ap::MemoryApType, AccessPortError, AccessPortType, ApAccess, GenericAp, IDR},
         communication_interface::{FlushableArmAccess, Initialized},
         core::armv8m::{Aircr, Demcr, Dhcsr},
-        dp::{Abort, Ctrl, DpAccess, DpAddress, Select, DPIDR},
+        dp::{Abort, Ctrl, DpAccess, DpAddress, SelectV1, DPIDR},
         memory::ArmMemoryInterface,
         sequences::ArmDebugSequence,
         ArmCommunicationInterface, ArmError, DapAccess, FullyQualifiedApAddress, Pins,
@@ -28,7 +28,7 @@ use crate::{
 fn debug_port_start(
     interface: &mut ArmCommunicationInterface<Initialized>,
     dp: DpAddress,
-    select: Select,
+    select: SelectV1,
 ) -> Result<bool, ArmError> {
     interface.write_dp_register(dp, select)?;
 
@@ -101,7 +101,7 @@ impl ArmDebugSequence for LPC55Sxx {
     ) -> Result<(), ArmError> {
         tracing::info!("debug_port_start");
 
-        let _powered_down = self::debug_port_start(interface, dp, Select(0))?;
+        let _powered_down = self::debug_port_start(interface, dp, SelectV1(0))?;
 
         // Per 51.6.2 and 51.6.3 there is no need to issue a debug mailbox
         // command if we're attaching to a valid target. In fact, running
@@ -595,7 +595,7 @@ impl ArmDebugSequence for MIMXRT5xxS {
         interface.write_dp_register(dp, abort)?;
 
         // Switch to DP Register Bank 0
-        interface.write_dp_register(dp, Select(0))?;
+        interface.write_dp_register(dp, SelectV1(0))?;
 
         // Read DP CTRL/STAT Register and check if CSYSPWRUPACK and CDBGPWRUPACK bits are set
         let mut ctrl: Ctrl = interface.read_dp_register(dp)?;

@@ -147,7 +147,7 @@ fn build_jtag_payload_and_address(transfer: &DapTransfer) -> (u64, u32) {
             PortAddress::AccessPort(_) => JTAG_ACCESS_PORT_IR_VALUE,
         };
 
-        let port_address = transfer.address.address();
+        let port_address = transfer.address.lsb_address();
         let mut payload = 0u64;
 
         // 32-bit value, bits 35:3
@@ -693,7 +693,7 @@ impl DapTransfer {
                 PortAddress::DebugPort(_) => JTAG_DEBUG_PORT_IR_VALUE,
                 PortAddress::AccessPort(_) => JTAG_ACCESS_PORT_IR_VALUE,
             };
-            let port_address = self.address.address();
+            let port_address = self.address.lsb_address();
 
             let mut payload = 0u64;
 
@@ -901,7 +901,7 @@ fn build_swd_transfer(address: &PortAddress, direction: TransferType) -> IoSeque
 
     // First we determine the APnDP bit.
     let ap_n_dp = address.is_ap();
-    let address = address.address();
+    let address = address.lsb_address();
 
     // Set direction bit to 1 for reads.
     let direction_bit = direction == TransferType::Read;

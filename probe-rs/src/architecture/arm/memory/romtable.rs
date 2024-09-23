@@ -151,7 +151,7 @@ impl RomTable {
                     format: raw_entry.format,
                     power_domain_id: raw_entry.power_domain_id,
                     power_domain_valid: raw_entry.power_domain_valid,
-                    component: CoresightComponent::new(component, memory.ap().ap_address().clone()),
+                    component: CoresightComponent::new(component, memory.fully_qualified_address()),
                 });
             }
         }
@@ -444,7 +444,17 @@ impl Component {
     ) -> Result<Component, RomTableError> {
         tracing::debug!("\tReading component data at: {:#010x}", baseaddr);
 
-        let component_id = ComponentInformationReader::new(baseaddr, memory).read_all()?;
+        let component_id = match ComponentInformationReader::new(baseaddr, memory).read_all() {
+            Ok(cid) => cid,
+            Err(_) => {
+                tracing::error!("\tFailed to read component information at {baseaddr:#x}.");
+                ComponentId {
+                    component_address: baseaddr,
+                    class: RawComponent::GenericIPComponent,
+                    peripheral_id: PeripheralID::from_raw(&[0; 8], 0, 0),
+                }
+            }
+        };
 
         // Determine the component class to find out what component we are dealing with.
         tracing::debug!("\tComponent class: {:x?}", component_id.class);

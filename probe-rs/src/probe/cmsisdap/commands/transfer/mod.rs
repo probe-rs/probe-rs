@@ -38,7 +38,8 @@ struct InnerTransferRequest {
 
 impl InnerTransferRequest {
     pub fn new(address: PortAddress, rw: RW, data: Option<u32>) -> Self {
-        let address_byte = address.address();
+        let address_byte = address.lsb_address();
+        //tracing::warn!("InnerTransferRequest: address_byte: {:x}", address_byte);
         Self {
             APnDP: address.is_ap(),
             RnW: rw,
@@ -358,7 +359,7 @@ impl Request for TransferBlockRequest {
 
 impl TransferBlockRequest {
     pub(crate) fn write_request(address: PortAddress, data: Vec<u32>) -> Self {
-        let address_byte = address.address();
+        let address_byte = address.lsb_address();
         let inner = InnerTransferBlockRequest {
             ap_n_dp: address.is_ap(),
             r_n_w: RW::W,
@@ -375,7 +376,7 @@ impl TransferBlockRequest {
     }
 
     pub(crate) fn read_request(address: PortAddress, read_count: u16) -> Self {
-        let address_byte = address.address();
+        let address_byte = address.lsb_address();
         let inner = InnerTransferBlockRequest {
             ap_n_dp: address.is_ap(),
             r_n_w: RW::R,
