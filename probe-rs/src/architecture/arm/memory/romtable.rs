@@ -1,9 +1,7 @@
 //! CoreSight ROM table parsing and handling.
 
 use crate::architecture::arm::{
-    ap_v1::{AccessPortError, AccessPortType},
-    communication_interface::ArmProbeInterface,
-    memory::ArmMemoryInterface,
+    ap_v1::AccessPortError, communication_interface::ArmProbeInterface, memory::ArmMemoryInterface,
     ArmError, FullyQualifiedApAddress,
 };
 
@@ -152,7 +150,10 @@ impl RomTable {
                     component: CoresightComponent::new(component, memory.fully_qualified_address()),
                 });
             } else {
-                tracing::debug!("Entry at {:#010x} is not present, skipping.", entry_base_addr);
+                tracing::debug!(
+                    "Entry at {:#010x} is not present, skipping.",
+                    entry_base_addr
+                );
             }
         }
 
@@ -414,6 +415,8 @@ impl RawComponent {
         }
     }
 }
+
+pub const CORESIGHT_ROM_TABLE_ARCHID: u16 = 0x0af7;
 
 /// This enum describes a CoreSight component.
 /// Described in table D1-2 in the ADIv5.2 spec.
@@ -778,6 +781,13 @@ impl PeripheralID {
             ("ARM Ltd", 0xD21, 0x13, 0x4A13) => Some(PartInfo::new("Cortex-M33 ETM", PeripheralType::Etm)),
             ("ARM Ltd", 0xD21, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M33 TPIU", PeripheralType::Tpiu)),
             ("ARM Ltd", 0xD21, 0x14, 0x1A14) => Some(PartInfo::new("Cortex-M33 CTI", PeripheralType::Cti)),
+            ("ARM Ltd", 0xD22, 0x00, 0x2A04) => Some(PartInfo::new("Cortex-M55 SCS", PeripheralType::Scs)),
+            ("ARM Ltd", 0xD22, 0x43, 0x1A01) => Some(PartInfo::new("Cortex-M55 ITM", PeripheralType::Itm)),
+            ("ARM Ltd", 0xD22, 0x00, 0x1A02) => Some(PartInfo::new("Cortex-M55 DWT", PeripheralType::Dwt)),
+            ("ARM Ltd", 0xD22, 0x00, 0x1A03) => Some(PartInfo::new("Cortex-M55 BPU", PeripheralType::Bpu)),
+            ("ARM Ltd", 0xD22, 0x13, 0x4A13) => Some(PartInfo::new("Cortex-M55 ETM", PeripheralType::Etm)),
+            ("ARM Ltd", 0xD22, 0x14, 0x1A14) => Some(PartInfo::new("Cortex-M55 CTI", PeripheralType::Cti)),
+            ("ARM Ltd", 0xD22, 0x16, 0x0A06) => Some(PartInfo::new("Cortex-M55 PMU", PeripheralType::Pmu)),
             ("Atmel", 0xCD0, 1, 0) => Some(PartInfo::new("Atmel DSU", PeripheralType::Custom)),
 
             _ => None,
@@ -858,6 +868,8 @@ pub enum PeripheralType {
     Cti,
     /// Memory Access Port
     MemAp,
+    /// Performance monitoring unit
+    Pmu,
     /// Non-standard peripheral
     Custom,
 }
@@ -882,7 +894,8 @@ impl std::fmt::Display for PeripheralType {
             PeripheralType::Mtb => write!(f, "MTB (Micro Trace Buffer)"),
             PeripheralType::Cti => write!(f, "CTI (Cross Trigger Interface)"),
             PeripheralType::Custom => write!(f, "(Non-standard peripheral)"),
-            PeripheralType::MemAp => write!(f, "MemAp (Memory Access Port)")
+            PeripheralType::MemAp => write!(f, "MemAp (Memory Access Port)"),
+            PeripheralType::Pmu => write!(f, "Pmu (Performance Monitoring Unit)"),
         }
     }
 }

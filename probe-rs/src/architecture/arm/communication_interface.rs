@@ -2,7 +2,7 @@ use crate::{
     architecture::arm::{
         ap_v1::valid_access_ports_allowlist,
         ap_v2,
-        dp::{Abort, Ctrl, DebugPortId, DebugPortVersion, DpAccess, DPIDR, DPIDR1},
+        dp::{Abort, Ctrl, DebugPortId, DebugPortVersion, DpAccess, DPIDR},
         memory::{adi_v5_memory_interface::ADIMemoryInterface, ArmMemoryInterface, Component},
         sequences::{ArmDebugSequence, DefaultArmSequence},
         ArmError, DapAccess, FullyQualifiedApAddress, RawDapAccess, SwoAccess, SwoConfig,
@@ -496,10 +496,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
             }
 
             let idr: DebugPortId = self.read_dp_register::<DPIDR>(dp)?.into();
-            if idr.version == DebugPortVersion::DPv3 {
-                let idr1: DPIDR1 = self.read_dp_register(dp)?;
-                tracing::info!("DPv3 detected: DPIDR1:{idr1:?}",);
-            }
+            tracing::info!("Debug Port version: {} MinDP: {:?}", idr.version, idr.min_dp_support);
 
             let state = self
                 .state
