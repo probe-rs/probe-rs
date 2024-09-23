@@ -14,7 +14,8 @@ macro_rules! define_ap_register {
     (
         $(#[$outer:meta])*
         name: $name:ident,
-        address: $address:expr,
+        $(address_v1: $address_v1:expr,)?
+        $(address_v2: $address_v2:expr,)?
         fields: [$($(#[$inner:meta])*$field:ident: $type:ty$(,)?)*],
         from: $from_param:ident => $from:expr,
         to: $to_param:ident => $to:expr
@@ -28,11 +29,17 @@ macro_rules! define_ap_register {
             $($(#[$inner])*pub $field: $type,)*
         }
 
-        impl $crate::architecture::arm::ap_v1::Register for $name {
+        $(impl $crate::architecture::arm::ap::v1::Register for $name {
             // ADDRESS is always the lower 4 bits of the register address.
-            const ADDRESS: u8 = $address;
+            const ADDRESS: u8 = $address_v1;
             const NAME: &'static str = stringify!($name);
-        }
+        })?
+
+        $(impl $crate::architecture::arm::ap::v2::Register for $name {
+            // ADDRESS is always the lower 4 bits of the register address.
+            const ADDRESS: u16 = $address_v2;
+            const NAME: &'static str = stringify!($name);
+        })?
 
         impl TryFrom<u32> for $name {
             type Error = $crate::architecture::arm::RegisterParseError;
@@ -50,30 +57,3 @@ macro_rules! define_ap_register {
     }
 }
 
-/// Defines a new typed access port.
-#[macro_export]
-macro_rules! define_ap {
-    (
-        $(#[$outer:meta])*
-        $name:ident
-    ) => {
-        $(#[$outer])*
-        #[derive(Clone, Debug)]
-        pub struct $name {
-            address: FullyQualifiedApAddress,
-        }
-
-        impl $name {
-            #[doc = concat!("Creates a new ", stringify!($name), " with `address` as base address.")]
-            pub const fn new(address: FullyQualifiedApAddress) -> Self {
-                Self { address }
-            }
-        }
-
-        impl AccessPortType for $name {
-            fn ap_address(&self) -> &FullyQualifiedApAddress {
-                &self.address
-            }
-        }
-    };
-}

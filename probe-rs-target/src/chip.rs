@@ -163,10 +163,13 @@ pub enum CoreAccessOptions {
     Xtensa(XtensaCoreAccessOptions),
 }
 
+/// An access port Address
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ApAddress {
+    /// Address version 1
     #[serde(rename = "v1")]
     V1(u8),
+    /// Address version 2
     #[serde(rename = "v2")]
     V2(Vec<u64>),
 }

@@ -9,7 +9,7 @@ use capstone::{
 };
 use num_traits::Num;
 use parse_int::parse;
-use probe_rs::architecture::arm::ap_v1::AccessPortError;
+use probe_rs::architecture::arm::ap::v1::AccessPortError;
 use probe_rs::debug::stack_frame::StackFrameInfo;
 use probe_rs::exception_handler_for_core;
 use probe_rs::flashing::FileDownloadError;

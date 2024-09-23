@@ -1004,14 +1004,9 @@ impl RawDapAccess for CmsisDap {
                 .map_err(DebugProbeError::from)?;
 
             if resp.transfer_response != 1 {
-                return Err(DebugProbeError::from(CmsisDapError::ErrorResponse(
-                    RequestError::BlockTransfer {
-                        dap_index: request.dap_index,
-                        transfer_count: request.transfer_count,
-                        transfer_request: request.transfer_request,
-                    },
-                ))
-                .into());
+                return Err(
+                    DebugProbeError::from(CmsisDapError::ErrorResponse(request.into())).into(),
+                );
             }
         }
 
@@ -1044,14 +1039,9 @@ impl RawDapAccess for CmsisDap {
                 .map_err(DebugProbeError::from)?;
 
             if resp.transfer_response != 1 {
-                return Err(DebugProbeError::from(CmsisDapError::ErrorResponse(
-                    RequestError::BlockTransfer {
-                        dap_index: request.dap_index,
-                        transfer_count: request.transfer_count,
-                        transfer_request: request.transfer_request,
-                    },
-                ))
-                .into());
+                return Err(
+                    DebugProbeError::from(CmsisDapError::ErrorResponse(request.into())).into(),
+                );
             }
 
             chunk.clone_from_slice(&resp.transfer_data[..]);

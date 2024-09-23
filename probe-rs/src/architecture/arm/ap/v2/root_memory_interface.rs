@@ -130,7 +130,7 @@ impl ArmMemoryInterface for RootMemoryInterface<'_> {
     ) -> Result<
         (
             &mut ArmCommunicationInterface<Initialized>,
-            &mut crate::architecture::arm::ap_v1::memory_ap::MemoryAp,
+            &mut crate::architecture::arm::ap::memory::MemoryAp,
         ),
         crate::probe::DebugProbeError,
     > {

@@ -1,5 +1,5 @@
 use crate::architecture::arm::{
-    ap_v1::{AccessPortType, ApAccess, ApRegAccess, Register},
+    ap::v1::{AccessPortType, ApAccess, ApRegAccess, Register},
     ArmError, DapAccess, FullyQualifiedApAddress, RegisterParseError,
 };
 
@@ -10,14 +10,14 @@ use super::{AddressIncrement, DataSize};
 /// The memory AP can be used to access a memory-mapped
 /// set of debug resources of the attached system.
 #[derive(Debug)]
-pub struct AmbaAhb5Hprot {
+pub struct AmbaAhb5 {
     address: FullyQualifiedApAddress,
     csw: CSW,
     cfg: super::registers::CFG,
 }
 
-impl AmbaAhb5Hprot {
-    /// Creates a new AmbaAhb5Hprot with `address` as base address.
+impl AmbaAhb5 {
+    /// Creates a new AmbaAhb5 with `address` as base address.
     pub fn new<P: DapAccess>(
         probe: &mut P,
         address: FullyQualifiedApAddress,
@@ -31,7 +31,6 @@ impl AmbaAhb5Hprot {
             DbgSwEnable: true,
             HNONSEC: !csw.SPIDEN,
             MasterType: true,
-            Cacheable: true,
             Privileged: true,
             Data: true,
             AddrInc: AddressIncrement::Single,
@@ -42,7 +41,7 @@ impl AmbaAhb5Hprot {
     }
 }
 
-impl super::MemoryApType for AmbaAhb5Hprot {
+impl super::MemoryApType for AmbaAhb5 {
     type CSW = CSW;
 
     fn status<P: ApAccess + ?Sized>(&mut self, probe: &mut P) -> Result<CSW, ArmError> {
@@ -92,15 +91,15 @@ impl super::MemoryApType for AmbaAhb5Hprot {
     }
 }
 
-impl AccessPortType for AmbaAhb5Hprot {
+impl AccessPortType for AmbaAhb5 {
     fn ap_address(&self) -> &FullyQualifiedApAddress {
         &self.address
     }
 }
 
-impl ApRegAccess<CSW> for AmbaAhb5Hprot {}
+impl ApRegAccess<CSW> for AmbaAhb5 {}
 
-crate::attached_regs_to_mem_ap!(memory_ap_regs => AmbaAhb5Hprot);
+crate::attached_regs_to_mem_ap!(memory_ap_regs => AmbaAhb5);
 
 define_ap_register!(
     /// Control and Status Word register
@@ -108,7 +107,7 @@ define_ap_register!(
     /// The control and status word register (CSW) is used
     /// to configure memory access through the memory AP.
     name: CSW,
-    address: 0x00,
+    address_v1: 0x00,
     fields: [
         /// Is debug software access enabled.
         DbgSwEnable: bool,          // [31]
@@ -122,13 +121,11 @@ define_ap_register!(
         ///
         /// Support of this function is implementation defined.
         MasterType: bool,           // [29]
-        /// Drives `HPROT[4]`, Allocate.
+        /// `HPROT[6:3]`.
         ///
-        /// `HPROT[4]` is an Armv5 extension to AHB. For more information, see the Arm1136JF-S™ and
-        /// Arm1136J-S ™ Technical Reference Manual.
-        Allocate: bool,             // [28]
-        /// `HPROT[3]`
-        Cacheable: bool,            // [27]
+        /// - bit 3 controls bits `HPROT`’s bit 3, 4 and 6
+        /// - `HPROT[5]` is tied to 0
+        CombinedHPROT346: bool,     // [27]
         /// `HPROT[2]`
         Bufferable: bool,           // [26]
         /// `HPROT[1]`
@@ -151,8 +148,6 @@ define_ap_register!(
         /// used to avoid confusion between this field and the SPIDEN signal on the authentication
         /// interface.
         SPIDEN: bool,               // [23]
-        /// `HPROT[6]`
-        HPROT6: bool,               // [15]
         /// A transfer is in progress.
         /// Can be used to poll whether an aborted transaction has completed.
         /// Read only.
@@ -171,29 +166,25 @@ define_ap_register!(
         DbgSwEnable: ((value >> 31) & 0x01) != 0,
         HNONSEC:    ((value >> 30) & 0x01) != 0,
         MasterType: ((value >> 29) & 0x01) != 0,
-        Allocate:   ((value >> 28) & 0x01) != 0,
-        Cacheable:  ((value >> 27) & 0x01) != 0,
+        CombinedHPROT346: ((value >> 27) & 0x01) != 0,
         Bufferable: ((value >> 26) & 0x01) != 0,
         Privileged: ((value >> 25) & 0x01) != 0,
         Data:       ((value >> 24) & 0x01) != 0,
         SPIDEN:     ((value >> 23) & 0x01) != 0,
-        HPROT6:     ((value >> 15) & 0x01) != 0,
         TrInProg:   ((value >> 7) & 0x01) != 0,
         DeviceEn:   ((value >> 6) & 0x01) != 0,
         AddrInc: AddressIncrement::from_u8(((value >> 4) & 0x03) as u8).ok_or_else(|| RegisterParseError::new("CSW", value))?,
         Size: DataSize::try_from((value & 0x07) as u8).map_err(|_| RegisterParseError::new("CSW", value))?,
-        _reserved_bits: value & 0x0007_70F8,
+        _reserved_bits: value & 0x107F_FF08,
     }),
     to: value => (u32::from(value.DbgSwEnable) << 31)
     | (u32::from(value.HNONSEC      ) << 30)
     | (u32::from(value.MasterType   ) << 29)
-    | (u32::from(value.Allocate     ) << 28)
-    | (u32::from(value.Cacheable    ) << 27)
+    | (u32::from(value.CombinedHPROT346) << 27)
     | (u32::from(value.Bufferable   ) << 26)
     | (u32::from(value.Privileged   ) << 25)
     | (u32::from(value.Data         ) << 24)
     | (u32::from(value.SPIDEN       ) << 23)
-    | (u32::from(value.HPROT6       ) << 15)
     | (u32::from(value.TrInProg     ) <<  7)
     | (u32::from(value.DeviceEn     ) <<  6)
     | (u32::from(value.AddrInc as u8) <<  4)

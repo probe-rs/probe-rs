@@ -6,7 +6,7 @@ mod usb_interface;
 
 use crate::{
     architecture::arm::{
-        ap_v1::{
+        ap::v1::{
             memory_ap::{MemoryAp, MemoryApType},
             valid_access_ports, AccessPortType,
         },
@@ -1483,7 +1483,7 @@ impl ArmProbeInterface for StlinkArmDebug {
         Ok(self.access_ports.clone())
     }
 
-    fn components(&mut self, dp: DpAddress) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError> {
+    fn components(&mut self, _dp: DpAddress) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError> {
         todo!()
     }
 

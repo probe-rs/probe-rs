@@ -1,12 +1,11 @@
-use std::{collections::BTreeSet, fmt::Write};
+use std::fmt::Write;
 
 use anyhow::{anyhow, Result};
 use jep106::JEP106Code;
 use probe_rs::{
     architecture::{
         arm::{
-            ap_v1::{AccessPort, ApClass, Register},
-            armv6m::Demcr,
+            ap::v1::{ApClass, Register},
             component::Scs,
             dp::{
                 DebugPortId, DebugPortVersion, DpAddress, DpRegister, MinDpSupport, DLPIDR, DPIDR,
@@ -25,7 +24,6 @@ use probe_rs::{
         },
     },
     probe::{list::Lister, Probe, WireProtocol},
-    MemoryMappedRegister,
 };
 use termtree::Tree;
 
@@ -303,7 +301,7 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result
             for ap_address in access_ports {
                 match ap_address.ap() {
                     ApAddress::V1(_) => {
-                        use probe_rs::architecture::arm::ap_v1::IDR;
+                        use probe_rs::architecture::arm::ap::v1::IDR;
                         let idr: IDR = interface
                             .read_raw_ap_register(&ap_address, IDR::ADDRESS)?
                             .try_into()?;

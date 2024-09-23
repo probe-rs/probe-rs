@@ -384,6 +384,16 @@ impl TransferBlockRequest {
     }
 }
 
+impl From<TransferBlockRequest> for super::RequestError {
+    fn from(value: TransferBlockRequest) -> Self {
+        super::RequestError::BlockTransfer {
+            dap_index: value.dap_index,
+            transfer_count: value.transfer_count,
+            transfer_request: value.transfer_request,
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 pub(crate) struct InnerTransferBlockRequest {
     ap_n_dp: bool,

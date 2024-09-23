@@ -1,11 +1,11 @@
 use crate::architecture::arm::{ArmError, DapAccess, FullyQualifiedApAddress};
 
 pub trait ApAccess {
-    fn read_register<R: super::registers::Register>(
+    fn read_register<R: super::Register>(
         &mut self,
         address: &FullyQualifiedApAddress,
     ) -> Result<R, ArmError>;
-    fn write_register<R: super::registers::Register>(
+    fn write_register<R: super::Register>(
         &mut self,
         address: &FullyQualifiedApAddress,
         reg: R,
@@ -13,7 +13,7 @@ pub trait ApAccess {
 }
 
 impl<T: DapAccess> ApAccess for T {
-    fn read_register<R: super::registers::Register>(
+    fn read_register<R: super::Register>(
         &mut self,
         address: &FullyQualifiedApAddress,
     ) -> Result<R, ArmError> {
@@ -21,7 +21,7 @@ impl<T: DapAccess> ApAccess for T {
         R::try_from(raw).map_err(Into::into)
     }
 
-    fn write_register<R: super::registers::Register>(
+    fn write_register<R: super::Register>(
         &mut self,
         address: &FullyQualifiedApAddress,
         reg: R,

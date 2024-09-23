@@ -2,7 +2,7 @@ use std::any::Any;
 
 use crate::{
     architecture::arm::{
-        ap_v1::{
+        ap::v1::{
             memory_ap::{DataSize, MemoryAp, MemoryApType},
             AccessPortType, ApAccess,
         },
@@ -571,7 +571,7 @@ mod tests {
 
     use crate::{
         architecture::arm::{
-            ap_v1::memory_ap::mock::MockMemoryAp,
+            ap::v1::memory_ap::mock::MockMemoryAp,
             memory::adi_v5_memory_interface::ADIMemoryInterface, FullyQualifiedApAddress,
         },
         MemoryInterface,

@@ -1,64 +1,5 @@
 use crate::architecture::arm::RegisterParseError;
 
-/// A trait to be implemented on Access Port register types for typed device access.
-pub trait Register:
-    Clone + TryFrom<u32, Error = RegisterParseError> + Into<u32> + Sized + std::fmt::Debug
-{
-    /// The address of the register (in bytes).
-    const ADDRESS: u16;
-    /// The name of the register as string.
-    const NAME: &'static str;
-}
-
-/// Defines a new typed access port register for a specific access port.
-/// Takes
-/// - type: The type of the port.
-/// - name: The name of the constructed type for the register. Also accepts a doc comment to be added to the type.
-/// - address: The address relative to the base address of the access port.
-/// - fields: A list of fields of the register type.
-/// - from: a closure to transform from an `u32` to the typed register.
-/// - to: A closure to transform from they typed register to an `u32`.
-#[macro_export]
-macro_rules! define_apv2_register {
-    (
-        $(#[$outer:meta])*
-        name: $name:ident,
-        address: $address:expr,
-        fields: [$($(#[$inner:meta])*$field:ident: $type:ty$(,)?)*],
-        from: $from_param:ident => $from:expr,
-        to: $to_param:ident => $to:expr
-    )
-    => {
-        $(#[$outer])*
-        #[allow(non_snake_case)]
-        #[allow(clippy::upper_case_acronyms)]
-        #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-        pub struct $name {
-            $($(#[$inner])*pub $field: $type,)*
-        }
-
-        impl $crate::architecture::arm::ap_v2::registers::Register for $name {
-            // ADDRESS is always the lower 4 bits of the register address.
-            const ADDRESS: u16 = $address;
-            const NAME: &'static str = stringify!($name);
-        }
-
-        impl TryFrom<u32> for $name {
-            type Error = $crate::architecture::arm::RegisterParseError;
-
-            fn try_from($from_param: u32) -> Result<$name, Self::Error> {
-                $from
-            }
-        }
-
-        impl From<$name> for u32 {
-            fn from($to_param: $name) -> u32 {
-                $to
-            }
-        }
-    }
-}
-
 /// The unit of data that is transferred in one transfer via the DRW commands.
 ///
 /// This can be configured with the CSW command.
@@ -162,13 +103,13 @@ pub enum DebugEntryState {
     Present = 1,
 }
 
-define_apv2_register!(
+define_ap_register!(
     /// Control and Status Word register
     ///
     /// The control and status word register (CSW) is used
     /// to configure memory access through the memory AP.
     name: CSW,
-    address: 0xD00,
+    address_v1: 0x00,
     fields: [
         /// Is debug software access enabled.
         DbgSwEnable: bool,           // 1 bit
@@ -242,14 +183,15 @@ define_apv2_register!(
     | (value.SIZE as u32)
 );
 
-define_apv2_register!(
+define_ap_register!(
     /// Transfer Address Register
     ///
     /// The transfer address register (TAR) holds the memory
     /// address which will be accessed through a read or
     /// write of the DRW register.
     name: TAR,
-    address: 0xD04,
+    address_v1: 0x04,
+    address_v2: 0xD04,
     fields: [
         /// The register address to be used for the next access to DRW.
         address: u32,
@@ -258,14 +200,15 @@ define_apv2_register!(
     to: value => value.address
 );
 
-define_apv2_register!(
+define_ap_register!(
     /// Transfer Address Register - upper word
     ///
     /// The transfer address register (TAR) holds the memory
     /// address which will be accessed through a read or
     /// write of the DRW register.
     name: TAR2,
-    address: 0xD08,
+    address_v1: 0x08,
+    address_v2: 0xD08,
     fields: [
         /// The upper 32-bits of the register address to be used for the next access to DRW.
         address: u32,
@@ -274,7 +217,7 @@ define_apv2_register!(
     to: value => value.address
 );
 
-define_apv2_register!(
+define_ap_register!(
     /// Data Read/Write register
     ///
     /// The data read/write register (DRW) can be used to read
@@ -285,7 +228,8 @@ define_apv2_register!(
     ///
     /// A read from the *DRW* register is translated to a memory read
     name: DRW,
-    address: 0xD0C,
+    address_v1: 0x0C,
+    address_v2: 0xD0C,
     fields: [
         /// The data held in the DRW corresponding to the address held in TAR.
         data: u32,
@@ -294,10 +238,11 @@ define_apv2_register!(
     to: value => value.data
 );
 
-define_apv2_register!(
+define_ap_register!(
     /// Banked Data 0 register
     name: BD0,
-    address: 0xD10,
+    address_v1: 0x10,
+    address_v2: 0xD10,
     fields: [
         /// The data held in this bank.
         data: u32,
@@ -306,10 +251,11 @@ define_apv2_register!(
     to: value => value.data
 );
 
-define_apv2_register!(
+define_ap_register!(
     /// Banked Data 1 register
     name: BD1,
-    address: 0xD14,
+    address_v1: 0x14,
+    address_v2: 0xD14,
     fields: [
         /// The data held in this bank.
         data: u32,
@@ -318,10 +264,11 @@ define_apv2_register!(
     to: value => value.data
 );
 
-define_apv2_register!(
+define_ap_register!(
     /// Banked Data 2 register
     name: BD2,
-    address: 0xD18,
+    address_v1: 0x18,
+    address_v2: 0xD18,
     fields: [
         /// The data held in this bank.
         data: u32,
@@ -330,10 +277,11 @@ define_apv2_register!(
     to: value => value.data
 );
 
-define_apv2_register!(
+define_ap_register!(
     /// Banked Data 3 register
     name: BD3,
-    address: 0xD1C,
+    address_v1: 0x1C,
+    address_v2: 0xD1C,
     fields: [
         /// The data held in this bank.
         data: u32,
@@ -342,7 +290,7 @@ define_apv2_register!(
     to: value => value.data
 );
 
-define_apv2_register!(
+define_ap_register!(
     /// Memory Barrier Transfer register
     ///
     /// The memory barrier transfer register (MBT) can
@@ -352,7 +300,8 @@ define_apv2_register!(
     /// Writes to this register only have an effect if
     /// the *Barrier Operations Extension* is implemented
     name: MBT,
-    address: 0xD20,
+    address_v1: 0x20,
+    address_v2: 0xD20,
     fields: [
         /// This value is implementation defined and the ADIv5.2 spec does not explain what it does for targets with the Barrier Operations Extension implemented.
         data: u32,
@@ -361,10 +310,11 @@ define_apv2_register!(
     to: value => value.data
 );
 
-define_apv2_register!(
+define_ap_register!(
     /// Base register
     name: BASE2,
-    address: 0xDF0,
+    address_v1: 0xF0,
+    address_v2: 0xDF0,
     fields: [
         /// The second part of the base address of this access point if required.
         BASEADDR: u32
@@ -373,13 +323,14 @@ define_apv2_register!(
     to: value => value.BASEADDR
 );
 
-define_apv2_register!(
+define_ap_register!(
     /// Configuration register
     ///
     /// The configuration register (CFG) is used to determine
     /// which extensions are included in the memory AP.
     name: CFG,
-    address: 0xDF4,
+    address_v1: 0xF4,
+    address_v2: 0xDF4,
     fields: [
         /// Specifies whether this access port includes the large data extension (access larger than 32 bits).
         LD: bool,
@@ -396,10 +347,11 @@ define_apv2_register!(
     to: value => ((value.LD as u32) << 2) | ((value.LA as u32) << 1) | (value.BE as u32)
 );
 
-define_apv2_register!(
+define_ap_register!(
     /// Base register
     name: BASE,
-    address: 0xDF8,
+    address_v1: 0xF8,
+    address_v2: 0xDF8,
     fields: [
         /// The base address of this access point.
         BASEADDR: u32,
@@ -430,35 +382,4 @@ define_apv2_register!(
         // _RES0
         | (u32::from(value.Format as u8) << 1)
         | u32::from(value.present)
-);
-
-define_apv2_register!(
-    /// Identification register
-    name: IDR,
-    address: 0xDFC,
-    fields: [
-        /// This component’s revision.
-        REVISION: u8,
-        /// This component’s designer.
-        DESIGNER: u16,
-        /// This component’s class.
-        CLASS: u8,
-        /// This component’s variant.
-        VARIANT: u8,
-        /// This component’s type.
-        TYPE: u8,
-    ],
-    from: value => Ok(IDR {
-        REVISION: (value >> 28) as u8 & 0xF,
-        DESIGNER: (value >> 17) as u16 & 0x7FF,
-        CLASS: (value >> 13) as u8 & 0xF,
-        VARIANT: (value >> 4) as u8 & 0xF,
-        TYPE: value as u8 & 0xF
-    }),
-    to: value =>
-        (u32::from(value.REVISION) << 28)
-        | (u32::from(value.DESIGNER) << 17)
-        | (u32::from(value.CLASS) << 13)
-        | (u32::from(value.VARIANT) << 4)
-        | u32::from(value.TYPE)
 );

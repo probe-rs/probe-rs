@@ -5,7 +5,6 @@ use probe_rs_target::CoreType;
 
 use crate::{
     architecture::arm::{
-        ap_v1::AccessPortType,
         armv7m::Demcr,
         memory::ArmMemoryInterface,
         sequences::{cortex_m_core_start, ArmDebugSequence},

@@ -1,7 +1,7 @@
 use crate::{
     architecture::arm::{
-        ap_v1::valid_access_ports_allowlist,
-        ap_v2,
+        ap::v1::valid_access_ports_allowlist,
+        ap::v2,
         dp::{Abort, Ctrl, DebugPortId, DebugPortVersion, DpAccess, DPIDR},
         memory::{adi_v5_memory_interface::ADIMemoryInterface, ArmMemoryInterface, Component},
         sequences::{ArmDebugSequence, DefaultArmSequence},
@@ -21,7 +21,7 @@ use std::{
 
 use super::{
     dp::{DpAddress, DpRegisterAddress, Select1, SelectV1, SelectV3},
-    ApAddress, ApV2Address, PortAddress,
+    ApAddress, PortAddress,
 };
 
 /// An error in the communication with an access port or
@@ -252,7 +252,7 @@ impl ArmProbeInterface for ArmCommunicationInterface<Initialized> {
         let memory_interface = match access_port_address.ap() {
             ApAddress::V1(_) => Box::new(ADIMemoryInterface::new(self, access_port_address)?)
                 as Box<dyn ArmMemoryInterface + '_>,
-            ApAddress::V2(_) => ap_v2::new_memory_interface(self, access_port_address)?,
+            ApAddress::V2(_) => v2::new_memory_interface(self, access_port_address)?,
         };
         Ok(memory_interface)
     }
@@ -276,7 +276,7 @@ impl ArmProbeInterface for ArmCommunicationInterface<Initialized> {
             DebugPortVersion::DPv0 | DebugPortVersion::DPv1 | DebugPortVersion::DPv2 => {
                 valid_access_ports_allowlist(self, dp, 0..=255)
             }
-            DebugPortVersion::DPv3 => super::ap_v2::enumerate_access_ports(self, dp)?
+            DebugPortVersion::DPv3 => v2::enumerate_access_ports(self, dp)?
                 .into_iter()
                 .collect(),
             DebugPortVersion::Unsupported(_) => unreachable!(),
@@ -325,7 +325,7 @@ impl ArmProbeInterface for ArmCommunicationInterface<Initialized> {
                     .into_iter()
                     .collect())
             }
-            DebugPortVersion::DPv3 => ap_v2::enumerate_access_ports(self, dp),
+            DebugPortVersion::DPv3 => v2::enumerate_access_ports(self, dp),
             DebugPortVersion::Unsupported(_) => unreachable!(),
         }
     }
@@ -337,7 +337,7 @@ impl ArmProbeInterface for ArmCommunicationInterface<Initialized> {
                     .into_iter()
                     .collect())
             }
-            DebugPortVersion::DPv3 => ap_v2::enumerate_components(self, dp),
+            DebugPortVersion::DPv3 => v2::enumerate_components(self, dp),
             DebugPortVersion::Unsupported(_) => unreachable!(),
         }
     }
@@ -510,7 +510,6 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
                 self.write_dp_register(dp, ctrl_reg)?;
             }
 
-            let idr: DebugPortId = self.read_dp_register::<DPIDR>(dp)?.into();
             tracing::info!(
                 "Debug Port version: {} MinDP: {:?}",
                 idr.version,

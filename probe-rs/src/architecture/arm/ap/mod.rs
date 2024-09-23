@@ -1,4 +1,11 @@
-//! Generic access port
+//! Types and functions for interacting with the first version of access ports.
+
+#[macro_use]
+pub mod register_generation;
+pub(crate) mod memory;
+
+pub mod v1;
+pub mod v2;
 
 use crate::architecture::arm::RegisterParseError;
 
@@ -76,7 +83,8 @@ define_ap_register!(
     ///
     /// It has to be present on every AP.
     name: IDR,
-    address: 0x0FC,
+    address_v1: 0xFC,
+    address_v2: 0xDFC,
     fields: [
         /// The revision of this access point.
         REVISION: u8,

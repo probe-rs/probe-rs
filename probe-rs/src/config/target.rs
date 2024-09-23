@@ -1,5 +1,4 @@
 use super::{Core, MemoryRegion, RawFlashAlgorithm, TargetDescriptionSource};
-use crate::architecture::arm::{ApAddress, ApV2Address};
 use crate::flashing::FlashLoader;
 use crate::{
     architecture::{

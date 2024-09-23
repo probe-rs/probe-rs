@@ -1,16 +1,14 @@
-//! Types and functions for interacting with access ports.
-
-#[macro_use]
-pub mod register_generation;
-pub(crate) mod generic_ap;
-pub(crate) mod memory_ap;
+//! Types and functions for interacting with the first version of access ports.
+pub(crate) use super::memory as memory_ap;
 
 use crate::architecture::arm::dp::DebugPortError;
 use crate::probe::DebugProbeError;
 
-pub use generic_ap::{ApClass, ApType, IDR};
+pub use super::{ApClass, ApType, IDR};
 
-use super::{dp::DpAddress, ArmError, DapAccess, FullyQualifiedApAddress, RegisterParseError};
+use super::super::{
+    dp::DpAddress, ArmError, DapAccess, FullyQualifiedApAddress, RegisterParseError,
+};
 
 /// A trait to be implemented on Access Port register types for typed device access.
 pub trait Register:
@@ -295,9 +293,23 @@ where
         })
 }
 
-define_ap!(
-    /// A generic access port which implements just the register every access port has to implement
-    /// to be compliant with the ADI 5.2 specification.
-    GenericAp
-);
+/// A generic access port which implements just the register every access port has to implement
+/// to be compliant with the ADI 5.2 specification.
+#[derive(Clone, Debug)]
+pub struct GenericAp {
+    address: FullyQualifiedApAddress,
+}
+
+impl GenericAp {
+    /// Creates a new GenericAp with `address` as base address.
+    pub const fn new(address: FullyQualifiedApAddress) -> Self {
+        Self { address }
+    }
+}
+
+impl AccessPortType for GenericAp {
+    fn ap_address(&self) -> &FullyQualifiedApAddress {
+        &self.address
+    }
+}
 impl ApRegAccess<IDR> for GenericAp {}

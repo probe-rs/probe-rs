@@ -1,6 +1,7 @@
 use crate::{
     architecture::arm::{
-        ap_v2::registers::{Register, DRW, TAR, TAR2},
+        ap::v2::Register,
+        ap::memory::registers::{DRW, TAR, TAR2, BASE, BASE2},
         communication_interface::{Initialized, SwdSequence},
         memory::ArmMemoryInterface,
         ApAddress, ArmCommunicationInterface, ArmError, FullyQualifiedApAddress,
@@ -8,7 +9,6 @@ use crate::{
     MemoryInterface,
 };
 
-use super::registers::{BASE, BASE2};
 use super::MaybeOwned;
 
 pub struct MemoryAccessPortInterface<'iface> {
@@ -181,7 +181,7 @@ impl<'iface> ArmMemoryInterface for MemoryAccessPortInterface<'iface> {
     ) -> Result<
         (
             &mut ArmCommunicationInterface<Initialized>,
-            &mut crate::architecture::arm::ap_v1::memory_ap::MemoryAp,
+            &mut crate::architecture::arm::ap::memory::MemoryAp,
         ),
         crate::probe::DebugProbeError,
     > {

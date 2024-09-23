@@ -16,7 +16,7 @@ mod amba_axi5;
 pub use registers::DataSize;
 use registers::{AddressIncrement, BaseAddrFormat, BASE, BASE2, DRW, TAR, TAR2};
 
-use super::{AccessPortError, AccessPortType, ApAccess, ApRegAccess, Register};
+use super::v1::{AccessPortError, AccessPortType, ApAccess, ApRegAccess, Register};
 use crate::architecture::arm::{ArmError, DapAccess, FullyQualifiedApAddress};
 
 /// Implements all default registers of a memory AP to the given type.
@@ -30,11 +30,11 @@ macro_rules! attached_regs_to_mem_ap {
     ($mod_name:ident => $name:ident) => {
         mod $mod_name {
             use super::$name;
-            use $crate::architecture::arm::ap_v1::{
-                memory_ap::registers::{
+            use $crate::architecture::arm::ap::{
+                memory::registers::{
                     BASE, BASE2, BD0, BD1, BD2, BD3, CFG, CSW, DRW, MBT, TAR, TAR2,
                 },
-                ApRegAccess,
+                v1::ApRegAccess,
             };
             impl ApRegAccess<CFG> for $name {}
             impl ApRegAccess<CSW> for $name {}
@@ -180,12 +180,12 @@ macro_rules! memory_aps {
                 interface: &mut I,
                 address: &FullyQualifiedApAddress,
             ) -> Result<Self, ArmError> {
-                use crate::architecture::arm::ap_v1::{IDR, Register};
+                use crate::architecture::arm::ap::v1::{IDR, Register};
                 let idr: IDR = interface
                     .read_raw_ap_register(address, IDR::ADDRESS)?
                     .try_into()?;
                 tracing::debug!("reading IDR: {:x?}", idr);
-                use crate::architecture::arm::ap_v1::ApType;
+                use crate::architecture::arm::ap::v1::ApType;
                 Ok(match idr.TYPE {
                     ApType::JtagComAp => return Err(ArmError::WrongApType),
                     $(ApType::$variant => <$type>::new(interface, address.clone())?.into(),)*
@@ -205,7 +205,7 @@ memory_aps! {
     AmbaAxi5 => amba_axi5::AmbaAxi5
 }
 
-impl ApRegAccess<super::IDR> for MemoryAp {}
+impl ApRegAccess<super::v1::IDR> for MemoryAp {}
 attached_regs_to_mem_ap!(memory_ap_regs => MemoryAp);
 
 macro_rules! mem_ap_forward {
