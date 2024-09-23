@@ -138,7 +138,6 @@ fn process_component<'iface, M: ArmMemoryInterface + 'iface>(
         Component::CoresightComponent(c) if c.peripheral_id().is_of_type(PeripheralType::MemAp) => {
             let base_address = address.clone().append(c.component_address());
 
-            // this type parameter isn’t used in this case, defaulting to RootMemoryInterface<'iface>.
             let mut subiface = MemoryAccessPortInterface::new_with_ref(
                 iface as &mut dyn ArmMemoryInterface,
                 c.component_address(),
@@ -182,16 +181,11 @@ fn new_memory_interface_internal<'i>(
     address: &[u64],
 ) -> Result<Box<dyn ArmMemoryInterface + 'i>, ArmError> {
     Ok(match address {
-        [base] => {
-            let root = RootMemoryInterface::new(iface, dp)?;
-            Box::new(MemoryAccessPortInterface::new(root, *base)?)
-                as Box<dyn ArmMemoryInterface + 'i>
-        }
         [ap @ .., base] => {
             let subiface = new_memory_interface_internal(iface, dp, ap)?;
             Box::new(MemoryAccessPortInterface::boxed(subiface, *base)?)
                 as Box<dyn ArmMemoryInterface + 'i>
         }
-        _ => unreachable!(),
+        [] => Box::new(RootMemoryInterface::new(iface, dp)?) as Box<dyn ArmMemoryInterface + 'i>,
     })
 }
