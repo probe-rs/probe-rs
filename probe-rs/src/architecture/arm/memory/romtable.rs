@@ -131,11 +131,11 @@ impl RomTable {
 
         // Read all the raw romtable entries and flatten them.
 
-        let reader = RomTableReader::new(memory, base_address)
+        // This is not a needless collect! It fixes the borrowing issue with &mut Memory that clippy cannot detect!
+        use itertools::Itertools;
+        let reader: Vec<_> = RomTableReader::new(memory, base_address)
             .entries()
-            .filter_map(Result::ok)
-            // This is not a needless collect! It fixes the borrowing issue with &mut Memory that clippy cannot detect!
-            .collect::<Vec<RomTableEntryRaw>>();
+            .try_collect()?;
 
         // Iterate all entries and get their data.
         for raw_entry in reader.into_iter() {
