@@ -2,8 +2,8 @@ use std::any::Any;
 
 use crate::{
     architecture::arm::{
-        ap::memory::{DataSize, MemoryAp, MemoryApType},
-        ap::v1::{AccessPortType, ApAccess},
+        ap::memory::{DataSize, MemoryAp},
+        ap::v1::{AccessPortType, ApAccess, MemoryApType},
         communication_interface::{FlushableArmAccess, Initialized, SwdSequence},
         dp::DpAccess,
         memory::ArmMemoryInterface,

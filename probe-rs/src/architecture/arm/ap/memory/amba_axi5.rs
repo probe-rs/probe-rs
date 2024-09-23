@@ -1,5 +1,5 @@
 use crate::architecture::arm::{
-    ap::v1::{AccessPortType, ApAccess, ApRegAccess, Register},
+    ap::v1::{AccessPortType, ApAccess, ApRegAccess, MemoryApType, Register},
     ArmError, DapAccess, FullyQualifiedApAddress, RegisterParseError,
 };
 
@@ -38,7 +38,7 @@ impl AmbaAxi5 {
     }
 }
 
-impl super::MemoryApType for AmbaAxi5 {
+impl MemoryApType for AmbaAxi5 {
     type CSW = CSW;
 
     fn status<P: ApAccess + ?Sized>(&mut self, probe: &mut P) -> Result<CSW, ArmError> {

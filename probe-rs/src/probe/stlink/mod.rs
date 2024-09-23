@@ -6,8 +6,8 @@ mod usb_interface;
 
 use crate::{
     architecture::arm::{
-        ap::memory::{MemoryAp, MemoryApType},
-        ap::v1::{valid_access_ports, AccessPortType},
+        ap::memory::MemoryAp,
+        ap::v1::{valid_access_ports, AccessPortType, MemoryApType},
         communication_interface::{
             ArmProbeInterface, Initialized, SwdSequence, UninitializedArmProbe,
         },

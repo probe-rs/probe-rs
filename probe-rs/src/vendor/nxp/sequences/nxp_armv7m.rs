@@ -11,7 +11,7 @@ use std::{
 
 use crate::{
     architecture::arm::{
-        ap::{memory::MemoryApType, v1::AccessPortError},
+        ap::{v1::{AccessPortError, MemoryApType}},
         armv7m::{FpCtrl, FpRev2CompX},
         core::{
             armv7m::{Aircr, Dhcsr},

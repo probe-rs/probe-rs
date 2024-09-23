@@ -119,7 +119,7 @@ impl AccessPortType for MemoryAp {
     }
 }
 
-impl MemoryApType for MemoryAp {
+impl super::v1::MemoryApType for MemoryAp {
     type CSW = registers::CSW;
 
     fn has_large_address_extension(&self) -> bool {
