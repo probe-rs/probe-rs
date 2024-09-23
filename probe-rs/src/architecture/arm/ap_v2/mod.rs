@@ -24,10 +24,9 @@ use root_memory_interface::RootMemoryInterface;
 mod memory_access_port_interface;
 use memory_access_port_interface::MemoryAccessPortInterface;
 
-enum MaybeOwned<'i, M: ArmMemoryInterface + 'i> {
+enum MaybeOwned<'i> {
     Reference(&'i mut (dyn ArmMemoryInterface + 'i)),
     Boxed(Box<dyn ArmMemoryInterface + 'i>),
-    Concrete(M),
 }
 macro_rules! dispatch {
     ($name:ident(&mut self, $($arg:ident : $t:ty),*) -> $r:ty) => {
@@ -35,7 +34,6 @@ macro_rules! dispatch {
             match self {
                 MaybeOwned::Reference(r) => r.$name($($arg),*),
                 MaybeOwned::Boxed(b) => b.$name($($arg),*),
-                MaybeOwned::Concrete(c) => c.$name($($arg),*),
             }
         }
     };
@@ -44,20 +42,16 @@ macro_rules! dispatch {
             match self {
                 MaybeOwned::Reference(r) => r.$name($($arg),*),
                 MaybeOwned::Boxed(b) => b.$name($($arg),*),
-                MaybeOwned::Concrete(c) => c.$name($($arg),*),
             }
         }
     }
 }
 
-impl<'iface, M: ArmMemoryInterface + 'iface> SwdSequence for MaybeOwned<'iface, M> {
+impl<'iface> SwdSequence for MaybeOwned<'iface> {
     dispatch!(swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), crate::probe::DebugProbeError>);
     dispatch!(swj_pins(&mut self, pin_out: u32, pin_select: u32, pin_wait: u32) -> Result<u32, crate::probe::DebugProbeError>);
 }
-impl<'iface, M> MemoryInterface<ArmError> for MaybeOwned<'iface, M>
-where
-    M: ArmMemoryInterface + 'iface,
-{
+impl<'iface> MemoryInterface<ArmError> for MaybeOwned<'iface> {
     dispatch!(supports_native_64bit_access(&mut self,) -> bool);
     dispatch!(read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), ArmError>);
     dispatch!(read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError>);
@@ -70,10 +64,7 @@ where
     dispatch!(supports_8bit_transfers(&self,) -> Result<bool, ArmError>);
     dispatch!(flush(&mut self,) -> Result<(), ArmError>);
 }
-impl<'iface, M> ArmMemoryInterface for MaybeOwned<'iface, M>
-where
-    M: ArmMemoryInterface + 'iface,
-{
+impl<'iface> ArmMemoryInterface for MaybeOwned<'iface> {
     dispatch!(ap(&mut self,) -> &mut crate::architecture::arm::ap_v1::memory_ap::MemoryAp);
     dispatch!(fully_qualified_address(&self,) -> FullyQualifiedApAddress);
     dispatch!(base_address(&mut self,) -> Result<u64, ArmError>);
@@ -121,12 +112,7 @@ fn enumerate_components_internal<'i>(
     let mut result = BTreeMap::new();
 
     let component = Component::try_parse(&mut root_ap as &mut dyn ArmMemoryInterface, base_addr)?;
-    process_component(
-        &mut MaybeOwned::Concrete(root_ap),
-        &ApV2Address::new(),
-        &component,
-        &mut result,
-    )?;
+    process_component(&mut root_ap, &ApV2Address::new(), &component, &mut result)?;
 
     Ok(result)
 }
@@ -153,11 +139,10 @@ fn process_component<'iface, M: ArmMemoryInterface + 'iface>(
             let base_address = address.clone().append(c.component_address());
 
             // this type parameter isn’t used in this case, defaulting to RootMemoryInterface<'iface>.
-            let mut subiface =
-                MemoryAccessPortInterface::<RootMemoryInterface<'iface>>::new_with_ref(
-                    iface as &mut dyn ArmMemoryInterface,
-                    c.component_address(),
-                )?;
+            let mut subiface = MemoryAccessPortInterface::new_with_ref(
+                iface as &mut dyn ArmMemoryInterface,
+                c.component_address(),
+            )?;
             let base_addr = subiface.base_address()?;
 
             let memap_base_component =
@@ -204,7 +189,7 @@ fn new_memory_interface_internal<'i>(
         }
         [ap @ .., base] => {
             let subiface = new_memory_interface_internal(iface, dp, ap)?;
-            Box::new(MemoryAccessPortInterface::<RootMemoryInterface<'i>>::boxed(subiface, *base)?)
+            Box::new(MemoryAccessPortInterface::boxed(subiface, *base)?)
                 as Box<dyn ArmMemoryInterface + 'i>
         }
         _ => unreachable!(),

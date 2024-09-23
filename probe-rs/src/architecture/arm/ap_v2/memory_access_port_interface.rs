@@ -1,8 +1,3 @@
-use std::{
-    marker::PhantomData,
-    ops::{Deref, DerefMut},
-};
-
 use crate::{
     architecture::arm::{
         ap_v2::registers::{Register, DRW, TAR, TAR2},
@@ -16,31 +11,28 @@ use crate::{
 use super::registers::{BASE, BASE2};
 use super::MaybeOwned;
 
-pub struct MemoryAccessPortInterface<'iface, M: ArmMemoryInterface + 'iface> {
-    iface: MaybeOwned<'iface, M>,
+pub struct MemoryAccessPortInterface<'iface> {
+    iface: MaybeOwned<'iface>,
     base: u64,
-    phantom: PhantomData<&'iface ()>,
 }
-impl<'iface, M> MemoryAccessPortInterface<'iface, M>
-where
-    M: ArmMemoryInterface + 'iface,
-{
-    pub fn new(iface: M, base: u64) -> Result<Self, ArmError> {
+impl<'iface> MemoryAccessPortInterface<'iface> {
+    pub fn new<M: ArmMemoryInterface + 'iface>(iface: M, base: u64) -> Result<Self, ArmError> {
         // TODO! validity check from the parent root table
         Ok(Self {
-            iface: MaybeOwned::Concrete(iface),
+            iface: MaybeOwned::Boxed(Box::new(iface)),
             base,
-            phantom: PhantomData,
         })
     }
 
     /// creates a new `MemoryAccessPortInterface` from a reference to a `dyn ArmMemoryInterface`.
-    pub fn new_with_ref(iface: &'iface mut (dyn ArmMemoryInterface + 'iface), base: u64) -> Result<Self, ArmError> {
+    pub fn new_with_ref(
+        iface: &'iface mut (dyn ArmMemoryInterface + 'iface),
+        base: u64,
+    ) -> Result<Self, ArmError> {
         // TODO! validity check from the parent root table
         Ok(Self {
             iface: MaybeOwned::Reference(iface),
             base,
-            phantom: PhantomData,
         })
     }
 
@@ -50,14 +42,11 @@ where
         Ok(Self {
             iface: MaybeOwned::Boxed(iface),
             base,
-            phantom: PhantomData,
         })
     }
 }
-impl<'iface, M> SwdSequence for MemoryAccessPortInterface<'iface, M>
-where
-    M: ArmMemoryInterface + 'iface,
-{
+
+impl<'iface> SwdSequence for MemoryAccessPortInterface<'iface> {
     fn swj_sequence(
         &mut self,
         _bit_len: u8,
@@ -75,10 +64,7 @@ where
         todo!()
     }
 }
-impl<'iface, M> MemoryInterface<ArmError> for MemoryAccessPortInterface<'iface, M>
-where
-    M: ArmMemoryInterface + 'iface,
-{
+impl<'iface> MemoryInterface<ArmError> for MemoryAccessPortInterface<'iface> {
     fn supports_native_64bit_access(&mut self) -> bool {
         todo!()
     }
@@ -141,10 +127,7 @@ where
         todo!()
     }
 }
-impl<'iface, M> ArmMemoryInterface for MemoryAccessPortInterface<'iface, M>
-where
-    M: ArmMemoryInterface + 'iface,
-{
+impl<'iface> ArmMemoryInterface for MemoryAccessPortInterface<'iface> {
     fn ap(&mut self) -> &mut crate::architecture::arm::ap_v1::memory_ap::MemoryAp {
         todo!()
     }
