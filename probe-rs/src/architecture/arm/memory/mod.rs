@@ -1,7 +1,6 @@
 //! Types and functions for interacting with target memory.
 
 pub(crate) mod adi_v5_memory_interface;
-//pub(crate) mod adi_v6_memory_interface;
 pub mod romtable;
 
 use crate::{memory::MemoryInterface, probe::DebugProbeError, CoreStatus};
@@ -38,9 +37,8 @@ pub trait ArmMemoryInterface: SwdSequence + ArmMemoryInterfaceShim {
     // NOTE: this function should be infallible as it is usually only
     // a visual indication.
     fn update_core_status(&mut self, state: CoreStatus) {
-        self.get_arm_communication_interface()
-            .map(|iface| iface.core_status_notification(state))
-            .ok();
+         let _ = self.get_arm_communication_interface()
+            .map(|iface| iface.core_status_notification(state));
     }
 }
 
