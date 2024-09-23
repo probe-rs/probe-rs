@@ -3,7 +3,7 @@ pub mod configure;
 use std::iter;
 
 use super::{CommandId, Request, SendError};
-use crate::architecture::arm::PortType;
+use crate::architecture::arm::PortAddress;
 use scroll::{Pread, Pwrite, LE};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -17,7 +17,7 @@ pub enum RW {
 #[derive(Clone, Debug)]
 struct InnerTransferRequest {
     /// 0 = Debug PortType (DP), 1 = Access PortType (AP).
-    pub APnDP: PortType,
+    pub APnDP: bool,
     /// 0 = Write Register, 1 = Read Register.
     pub RnW: RW,
     /// A2 Register Address bit 2.
@@ -37,12 +37,13 @@ struct InnerTransferRequest {
 }
 
 impl InnerTransferRequest {
-    pub fn new(port: PortType, rw: RW, address: u8, data: Option<u32>) -> Self {
+    pub fn new(address: PortAddress, rw: RW, data: Option<u32>) -> Self {
+        let address_byte = address.address();
         Self {
-            APnDP: port,
+            APnDP: address.is_ap(),
             RnW: rw,
-            A2: (address >> 2) & 0x01 == 1,
-            A3: (address >> 3) & 0x01 == 1,
+            A2: (address_byte >> 2) & 0x01 == 1,
+            A3: (address_byte >> 3) & 0x01 == 1,
             value_match: false,
             match_mask: false,
             td_timestamp_request: false,
@@ -53,7 +54,14 @@ impl InnerTransferRequest {
 
 #[test]
 fn creating_inner_transfer_request() {
-    let req = InnerTransferRequest::new(PortType::DebugPort, RW::W, 0x8, None);
+    let req = InnerTransferRequest::new(
+        PortAddress::DebugPort(crate::architecture::arm::dp::DpRegisterAddress {
+            address: 0x8,
+            bank: 0x0,
+        }),
+        RW::W,
+        None,
+    );
 
     assert!(req.A3);
     assert!(!req.A2);
@@ -149,26 +157,26 @@ impl TransferRequest {
         }
     }
 
-    pub fn read(port: PortType, addr: u8) -> Self {
+    pub fn read(address: PortAddress) -> Self {
         let mut req = Self::empty();
-        req.add_read(port, addr);
+        req.add_read(address);
         req
     }
 
-    pub fn write(port: PortType, addr: u8, data: u32) -> Self {
+    pub fn write(address: PortAddress, data: u32) -> Self {
         let mut req = Self::empty();
-        req.add_write(port, addr, data);
+        req.add_write(address, data);
         req
     }
 
-    pub fn add_read(&mut self, port: PortType, addr: u8) {
+    pub fn add_read(&mut self, address: PortAddress) {
         self.transfers
-            .push(InnerTransferRequest::new(port, RW::R, addr, None));
+            .push(InnerTransferRequest::new(address, RW::R, None));
     }
 
-    pub fn add_write(&mut self, port: PortType, addr: u8, data: u32) {
+    pub fn add_write(&mut self, address: PortAddress, data: u32) {
         self.transfers
-            .push(InnerTransferRequest::new(port, RW::W, addr, Some(data)));
+            .push(InnerTransferRequest::new(address, RW::W, Some(data)));
     }
 }
 
@@ -268,16 +276,16 @@ pub struct TransferResponse {
 pub(crate) struct TransferBlockRequest {
     /// Zero-based device index of the selected JTAG device. For SWD mode the
     /// value is ignored.
-    pub(crate) dap_index: u8,
+    pub dap_index: u8,
 
     /// Number of transfers
-    pub(crate) transfer_count: u16,
+    pub transfer_count: u16,
 
     /// Information about requested access
-    pub(crate) transfer_request: InnerTransferBlockRequest,
+    pub transfer_request: InnerTransferBlockRequest,
 
     /// Register values to write for writes
-    pub(crate) transfer_data: Vec<u32>,
+    transfer_data: Vec<u32>,
 }
 
 impl Request for TransferBlockRequest {
@@ -295,7 +303,7 @@ impl Request for TransferBlockRequest {
             .expect("Buffer for CMSIS-DAP command is too small. This is a bug, please report it.");
         size += 2;
 
-        size += self.transfer_request.as_bytes(buffer, 3)?;
+        size += self.transfer_request.to_bytes(buffer, 3)?;
 
         let mut data_offset = 4;
 
@@ -349,12 +357,13 @@ impl Request for TransferBlockRequest {
 }
 
 impl TransferBlockRequest {
-    pub(crate) fn write_request(address: u8, port: PortType, data: Vec<u32>) -> Self {
+    pub(crate) fn write_request(address: PortAddress, data: Vec<u32>) -> Self {
+        let address_byte = address.address();
         let inner = InnerTransferBlockRequest {
-            ap_n_dp: port,
+            ap_n_dp: address.is_ap(),
             r_n_w: RW::W,
-            a2: (address >> 2) & 0x01 == 1,
-            a3: (address >> 3) & 0x01 == 1,
+            a2: (address_byte >> 2) & 0x01 == 1,
+            a3: (address_byte >> 3) & 0x01 == 1,
         };
 
         TransferBlockRequest {
@@ -365,12 +374,13 @@ impl TransferBlockRequest {
         }
     }
 
-    pub(crate) fn read_request(address: u8, port: PortType, read_count: u16) -> Self {
+    pub(crate) fn read_request(address: PortAddress, read_count: u16) -> Self {
+        let address_byte = address.address();
         let inner = InnerTransferBlockRequest {
-            ap_n_dp: port,
+            ap_n_dp: address.is_ap(),
             r_n_w: RW::R,
-            a2: (address >> 2) & 0x01 == 1,
-            a3: (address >> 3) & 0x01 == 1,
+            a2: (address_byte >> 2) & 0x01 == 1,
+            a3: (address_byte >> 3) & 0x01 == 1,
         };
 
         TransferBlockRequest {
@@ -384,14 +394,14 @@ impl TransferBlockRequest {
 
 #[derive(Debug, Copy, Clone)]
 pub(crate) struct InnerTransferBlockRequest {
-    ap_n_dp: PortType,
+    ap_n_dp: bool,
     r_n_w: RW,
     a2: bool,
     a3: bool,
 }
 
 impl InnerTransferBlockRequest {
-    fn as_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
+    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
         buffer[offset] = (self.ap_n_dp as u8)
             | (self.r_n_w as u8) << 1
             | u8::from(self.a2) << 2

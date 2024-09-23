@@ -11,8 +11,9 @@ mod trace_funnel;
 use crate::{
     architecture::arm::{
         core::armv6m::Demcr,
+        dp::DpAddress,
         memory::romtable::{CoresightComponent, PeripheralType, RomTableError},
-        ArmError, ArmProbeInterface, DpAddress, SwoConfig, SwoMode,
+        ArmError, ArmProbeInterface, SwoConfig, SwoMode,
     },
     Core, Error, MemoryInterface, MemoryMappedRegister,
 };

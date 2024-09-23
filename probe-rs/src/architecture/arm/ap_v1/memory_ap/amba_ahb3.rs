@@ -1,7 +1,6 @@
 use crate::architecture::arm::{
-    ap_v1::{AccessPortType, ApAccess, ApRegAccess},
-    communication_interface::RegisterParseError,
-    ArmError, DapAccess, FullyQualifiedApAddress, Register,
+    ap_v1::{AccessPortType, ApAccess, ApRegAccess, Register},
+    ArmError, DapAccess, FullyQualifiedApAddress, RegisterParseError,
 };
 
 use super::{AddressIncrement, DataSize};
@@ -23,7 +22,6 @@ impl AmbaAhb3 {
         probe: &mut P,
         address: FullyQualifiedApAddress,
     ) -> Result<Self, ArmError> {
-        use crate::architecture::arm::Register;
         let csw = probe.read_raw_ap_register(&address, CSW::ADDRESS)?;
         let cfg = probe.read_raw_ap_register(&address, super::registers::CFG::ADDRESS)?;
         let (csw, cfg) = (csw.try_into()?, cfg.try_into()?);

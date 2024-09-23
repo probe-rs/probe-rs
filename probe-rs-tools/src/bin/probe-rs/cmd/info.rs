@@ -5,16 +5,19 @@ use jep106::JEP106Code;
 use probe_rs::{
     architecture::{
         arm::{
-            ap_v1::ApClass,
+            ap_v1::{ApClass, Register},
             armv6m::Demcr,
             component::Scs,
-            dp::{DebugPortId, DebugPortVersion, MinDpSupport, DLPIDR, DPIDR, TARGETID},
+            dp::DpAddress,
+            dp::{
+                DebugPortId, DebugPortVersion, DpRegister, MinDpSupport, DLPIDR, DPIDR, TARGETID,
+            },
             memory::{
                 romtable::{PeripheralID, RomTable},
                 Component, ComponentId, CoresightComponent, PeripheralType,
             },
             sequences::DefaultArmSequence,
-            ArmProbeInterface, DpAddress, FullyQualifiedApAddress, Register,
+            ArmProbeInterface, FullyQualifiedApAddress,
         },
         riscv::communication_interface::RiscvCommunicationInterface,
         xtensa::communication_interface::{

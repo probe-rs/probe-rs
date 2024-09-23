@@ -7,7 +7,7 @@ use crate::architecture::arm::armv7m::{Demcr, Dhcsr};
 use crate::architecture::arm::communication_interface::DapProbe;
 use crate::architecture::arm::memory::ArmMemoryInterface;
 use crate::architecture::arm::sequences::{ArmDebugSequence, ArmDebugSequenceError};
-use crate::architecture::arm::{ArmError, DpAddress};
+use crate::architecture::arm::{dp::DpAddress, ArmError};
 use crate::probe::{DebugProbeError, WireProtocol};
 use crate::MemoryMappedRegister;
 

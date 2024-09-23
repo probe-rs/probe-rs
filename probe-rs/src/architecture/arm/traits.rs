@@ -3,15 +3,47 @@ use crate::{
     CoreStatus,
 };
 
-use super::ArmError;
+use super::{
+    dp::{DpAddress, DpRegisterAddress},
+    ArmError,
+};
 
 /// The type of port we are using.
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum PortType {
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum PortAddress {
     /// Debug Port (e.g. SWD or JTAG)
-    DebugPort,
+    DebugPort(DpRegisterAddress),
     /// Access Port (e.g. Memory Access Port)
-    AccessPort,
+    AccessPort(ApAddress),
+}
+
+impl PortAddress {
+    /// Returns the address pointed at by this port address.
+    pub fn address(&self) -> u8 {
+        match self {
+            PortAddress::DebugPort(DpRegisterAddress { address, .. }) => *address,
+            PortAddress::AccessPort(ApAddress::V1(address)) => *address,
+            PortAddress::AccessPort(_) => {
+                unimplemented!("This is not yet implemented. Please report your use case.")
+            }
+        }
+    }
+
+    /// Is this Port Address for an Access Port?
+    pub fn is_ap(&self) -> bool {
+        matches!(self, PortAddress::AccessPort(_))
+    }
+}
+impl From<DpRegisterAddress> for PortAddress {
+    fn from(value: DpRegisterAddress) -> Self {
+        PortAddress::DebugPort(value)
+    }
+}
+
+impl From<ApAddress> for PortAddress {
+    fn from(value: ApAddress) -> Self {
+        PortAddress::AccessPort(value)
+    }
 }
 
 bitfield::bitfield! {
@@ -33,27 +65,28 @@ bitfield::bitfield! {
     pub swclk_tck, set_swclk_tck: 0;
 }
 
-/// Debug port address.
-#[derive(Debug, Eq, PartialEq, PartialOrd, Ord, Clone, Copy, Hash, Default)]
-pub enum DpAddress {
-    /// Access the single DP on the bus, assuming there is only one.
-    /// Will cause corruption if multiple are present.
-    #[default]
-    Default,
-    /// Select a particular DP on a SWDv2 multidrop bus. The contained `u32` is
-    /// the `TARGETSEL` value to select it.
-    Multidrop(u32),
-}
-
 /// Access port v2 address
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 pub enum ApV2Address {
     /// Last node of an APv2 address
-    Leaf(u32),
+    Leaf(u64),
     /// Non-terminal node of an APv2 address
-    Node(u32, Box<ApV2Address>),
+    Node(u64, Box<ApV2Address>),
 }
+impl ApV2Address {
+    /// Create a new ApV2 Address chain
+    pub fn new(tip: u64) -> Self {
+        ApV2Address::Leaf(tip)
+    }
 
+    /// Adds a node at the end of this linked list
+    pub fn append(&mut self, tip: u64) {
+        match self {
+            ApV2Address::Leaf(v) => *self = ApV2Address::Node(*v, Box::new(ApV2Address::Leaf(tip))),
+            ApV2Address::Node(_, next) => next.append(tip),
+        }
+    }
+}
 impl std::fmt::Display for ApV2Address {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -139,7 +172,7 @@ pub trait RawDapAccess {
     /// Read a DAP register.
     ///
     /// Only the lowest 4 bits of `addr` are used. Bank switching is the caller's responsibility.
-    fn raw_read_register(&mut self, port: PortType, addr: u8) -> Result<u32, ArmError>;
+    fn raw_read_register(&mut self, address: PortAddress) -> Result<u32, ArmError>;
 
     /// Read multiple values from the same DAP register.
     ///
@@ -147,14 +180,9 @@ pub trait RawDapAccess {
     /// falls back to the `read_register` function.
     ///
     /// Only the lowest 4 bits of `addr` are used. Bank switching is the caller's responsibility.
-    fn raw_read_block(
-        &mut self,
-        port: PortType,
-        addr: u8,
-        values: &mut [u32],
-    ) -> Result<(), ArmError> {
+    fn raw_read_block(&mut self, address: PortAddress, values: &mut [u32]) -> Result<(), ArmError> {
         for val in values {
-            *val = self.raw_read_register(port, addr)?;
+            *val = self.raw_read_register(address.clone())?;
         }
 
         Ok(())
@@ -163,7 +191,7 @@ pub trait RawDapAccess {
     /// Write a value to a DAP register.
     ///
     /// Only the lowest 4 bits of `addr` are used. Bank switching is the caller's responsibility.
-    fn raw_write_register(&mut self, port: PortType, addr: u8, value: u32) -> Result<(), ArmError>;
+    fn raw_write_register(&mut self, address: PortAddress, value: u32) -> Result<(), ArmError>;
 
     /// Write multiple values to the same DAP register.
     ///
@@ -171,14 +199,9 @@ pub trait RawDapAccess {
     /// falls back to the `write_register` function.
     ///
     /// Only the lowest 4 bits of `addr` are used. Bank switching is the caller's responsibility.
-    fn raw_write_block(
-        &mut self,
-        port: PortType,
-        addr: u8,
-        values: &[u32],
-    ) -> Result<(), ArmError> {
+    fn raw_write_block(&mut self, address: PortAddress, values: &[u32]) -> Result<(), ArmError> {
         for val in values {
-            self.raw_write_register(port, addr, *val)?;
+            self.raw_write_register(address.clone(), *val)?;
         }
 
         Ok(())
@@ -247,7 +270,11 @@ pub trait DapAccess {
     /// If the device uses multiple debug ports, this will switch the active debug port if necessary.
     /// In case this happens, all queued operations will be performed, and returned errors can be from
     /// these operations as well.
-    fn read_raw_dp_register(&mut self, dp: DpAddress, addr: u8) -> Result<u32, ArmError>;
+    fn read_raw_dp_register(
+        &mut self,
+        dp: DpAddress,
+        addr: DpRegisterAddress,
+    ) -> Result<u32, ArmError>;
 
     /// Write a Debug Port register.
     ///
@@ -260,7 +287,7 @@ pub trait DapAccess {
     fn write_raw_dp_register(
         &mut self,
         dp: DpAddress,
-        addr: u8,
+        addr: DpRegisterAddress,
         value: u32,
     ) -> Result<(), ArmError>;
 

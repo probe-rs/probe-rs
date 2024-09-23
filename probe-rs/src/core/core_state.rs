@@ -2,7 +2,8 @@ use crate::{
     architecture::{
         arm::{
             core::{CortexAState, CortexMState},
-            ArmProbeInterface, DpAddress, FullyQualifiedApAddress,
+            dp::DpAddress,
+            ArmProbeInterface, FullyQualifiedApAddress,
         },
         riscv::{
             communication_interface::{RiscvCommunicationInterface, RiscvError},

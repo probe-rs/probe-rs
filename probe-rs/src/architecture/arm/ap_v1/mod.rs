@@ -10,10 +10,17 @@ use crate::probe::DebugProbeError;
 
 pub use generic_ap::{ApClass, ApType, IDR};
 
-use super::{
-    communication_interface::RegisterParseError, ArmError, DapAccess, DpAddress,
-    FullyQualifiedApAddress, Register,
-};
+use super::{dp::DpAddress, ArmError, DapAccess, FullyQualifiedApAddress, RegisterParseError};
+
+/// A trait to be implemented on Access Port register types for typed device access.
+pub trait Register:
+    Clone + TryFrom<u32, Error = RegisterParseError> + Into<u32> + Sized + std::fmt::Debug
+{
+    /// The address of the register (in bytes).
+    const ADDRESS: u8;
+    /// The name of the register as string.
+    const NAME: &'static str;
+}
 
 /// Some error during AP handling occurred.
 #[derive(Debug, thiserror::Error)]

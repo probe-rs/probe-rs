@@ -2,6 +2,7 @@ use std::any::Any;
 
 use crate::{
     architecture::arm::{
+        // TODO: will need ap_v2 here
         ap_v1::{
             memory_ap::{DataSize, MemoryAp, MemoryApType},
             ApAccess,
@@ -9,7 +10,10 @@ use crate::{
         communication_interface::{FlushableArmAccess, Initialized, SwdSequence},
         dp::DpAccess,
         memory::ArmMemoryInterface,
-        ArmCommunicationInterface, ArmError, DapAccess, FullyQualifiedApAddress,
+        ArmCommunicationInterface,
+        ArmError,
+        DapAccess,
+        FullyQualifiedApAddress,
     },
     probe::DebugProbeError,
     MemoryInterface,

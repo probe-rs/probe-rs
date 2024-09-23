@@ -28,14 +28,14 @@ macro_rules! define_ap_register {
             $($(#[$inner])*pub $field: $type,)*
         }
 
-        impl $crate::architecture::arm::communication_interface::Register for $name {
+        impl $crate::architecture::arm::ap_v1::Register for $name {
             // ADDRESS is always the lower 4 bits of the register address.
             const ADDRESS: u8 = $address;
             const NAME: &'static str = stringify!($name);
         }
 
         impl TryFrom<u32> for $name {
-            type Error = $crate::architecture::arm::communication_interface::RegisterParseError;
+            type Error = $crate::architecture::arm::RegisterParseError;
 
             fn try_from($from_param: u32) -> Result<$name, Self::Error> {
                 $from
