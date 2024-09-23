@@ -762,7 +762,7 @@ impl PeripheralID {
             ("ARM Ltd", 0xD20, 0x13, 0x0000) => Some(PartInfo::new("Cortex-M23 ETM", PeripheralType::Etm)),
             // From Arm Cortex-M55 Processor Technical Reference Manual
             ("ARM Ltd", 0xD22, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M55 TPIU", PeripheralType::Tpiu)),
-            // From IHI0029F: Coresight v3.0 architecture Specifciation
+            // From IHI0029F: Coresight v3.0 architecture Specification
             ("ARM Ltd", _, _, 0x0A06) => Some(PartInfo::new("PMU architecture", PeripheralType::Pmu)),
             ("ARM Ltd", _, _, 0x1A01) => Some(PartInfo::new("ITM architecture", PeripheralType::Itm)),
             ("ARM Ltd", _, _, 0x1A02) => Some(PartInfo::new("DWT architecture", PeripheralType::Dwt)),
@@ -771,10 +771,13 @@ impl PeripheralID {
             ("ARM Ltd", _, _, 0x1A14) => Some(PartInfo::new("CTI architecture", PeripheralType::Cti)),
             ("ARM Ltd", _, _, 0x2A04) => Some(PartInfo::new("Processor debug architecture (ARMv8-M)", PeripheralType::Scs)),
             ("ARM Ltd", _, _, 0x4A13) => Some(PartInfo::new("ETM architecture", PeripheralType::Etm)),
+            ("ARM Ltd", _, _, 0x0AF7) => Some(PartInfo::new("ROM architecture", PeripheralType::Rom)),
             // From Arm CoreSight System-on-Chip SoC-600 Technical Reference Manual
             ("ARM Ltd", 0x193, _, _) => Some(PartInfo::new("SoC-600 Timestamp Generator", PeripheralType::Tsgen)),
             ("ARM Ltd", 0x9E7, 0x11, 0x0000) => Some(PartInfo::new("SoC-600 TPIU", PeripheralType::Tpiu)),
             ("ARM Ltd", 0x9EB, 0x12, 0x0000) => Some(PartInfo::new("SoC-600 ATB Funnel", PeripheralType::TraceFunnel)),
+            // From Arm CoreSight TPIU-M Technical Reference Manual
+            ("ARM Ltd", 0x9F1, 0x11, _) => Some(PartInfo::new("Coresigth TPIU-M", PeripheralType::Tpiu)),
             // vendors
             ("Atmel", 0xCD0, 1, 0) => Some(PartInfo::new("Atmel DSU", PeripheralType::Custom)),
             ("Raspberry Pi Trading Ltd", _, _, 0x0AF7) => Some(PartInfo::new("RP235x CoreSight ROM", PeripheralType::Rom)),
