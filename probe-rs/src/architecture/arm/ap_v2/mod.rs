@@ -97,7 +97,7 @@ pub fn enumerate_access_ports<'i>(
             if c.peripheral_id().arch_id() == CORESIGHT_ROM_TABLE_ARCHID {
                 scan_rom_tables_internal(root_ap, &mut result)?;
             } else if c.peripheral_id().is_of_type(PeripheralType::MemAp) {
-                result.insert(ApV2Address::Node(0, Box::new(ApV2Address::Root)));
+                result.insert(ApV2Address::new_with_tip(0));
                 let subiface = MemoryAccessPortInterface::new(root_ap, 0)?;
                 scan_rom_tables_internal(subiface, &mut result)?;
             }
@@ -133,7 +133,7 @@ fn scan_rom_tables_internal<
             let base = e.component().id().component_address();
             tracing::info!("Found a MemAp at {:x?}", base);
 
-            mem_aps.insert(ApV2Address::Node(base, Box::new(ApV2Address::Root)));
+            mem_aps.insert(ApV2Address::new_with_tip(base));
 
             let subiface = MemoryAccessPortInterface::new(iface, base)?;
             let MemoryAccessPortInterfaces::Node(subiface) =
@@ -157,22 +157,22 @@ pub fn new_memory_interface<'i>(
         unimplemented!("this is only for APv2 addresses")
     };
 
-    new_memory_interface_inner(iface, address.dp(), ap_address)
+    new_memory_interface_inner(iface, address.dp(), ap_address.as_slice())
         .map(|iface| Box::new(iface) as Box<dyn ArmMemoryInterface + 'i>)
 }
 
 fn new_memory_interface_inner<'i>(
     iface: &'i mut ArmCommunicationInterface<Initialized>,
     dp: DpAddress,
-    address: &ApV2Address,
+    address: &[u64],
 ) -> Result<MemoryAccessPortInterface<'i>, ArmError> {
     tracing::trace!("address: {:x?}", address);
     match address {
-        ApV2Address::Node(base, ap) if matches!(**ap, ApV2Address::Root) => {
+        [base] => {
             let root = RootMemoryInterface::new(iface, dp)?;
             MemoryAccessPortInterface::new(root, *base)
         }
-        ApV2Address::Node(base, ap) => {
+        [ap @ .., base] => {
             let subiface = new_memory_interface_inner(iface, dp, ap)?;
             MemoryAccessPortInterface::new(subiface, *base)
         }

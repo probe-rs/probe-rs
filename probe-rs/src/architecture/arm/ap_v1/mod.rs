@@ -211,12 +211,12 @@ where
     match idr_result {
         Ok(idr) if u32::from(idr) != 0 => Some(idr),
         Ok(_) => {
-            tracing::debug!("AP {} is not valid, IDR = 0", access_port.ap());
+            tracing::debug!("AP {:?} is not valid, IDR = 0", access_port.ap());
             None
         }
         Err(e) => {
             tracing::debug!(
-                "Error reading IDR register from AP {}: {}",
+                "Error reading IDR register from AP {:?}: {}",
                 access_port.ap(),
                 e
             );

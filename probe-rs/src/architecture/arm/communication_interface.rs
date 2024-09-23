@@ -481,7 +481,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
             entry.insert(DpState::new());
 
             let start_span = tracing::debug_span!("debug_port_start").entered();
-            sequence.debug_port_start(self, dp)?;
+            let idr: DebugPortId = sequence.debug_port_start(self, dp)?.into();
             drop(start_span);
 
             // Make sure we enable the overrun detect mode when requested.
@@ -568,13 +568,16 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
                 s.set_ap_sel(*port);
                 s.set_ap_bank_sel(ap_bank);
             }
-            (ApAddress::V2(ApV2Address::Node(base, n)), SelectCache::DPv3(s, s1))
-                if matches!(**n, ApV2Address::Root) =>
-            {
-                let address = base + u64::from(ap_register_address);
-                s.set_addr(((address >> 4) & 0xFFFF_FFF) as u32);
-                s1.set_addr((address >> 32) as u32);
-            }
+            (ApAddress::V2(addr), SelectCache::DPv3(s, s1)) => match addr.as_slice() {
+                [base] => {
+                    let address = base + u64::from(ap_register_address);
+                    s.set_addr(((address >> 4) & 0xFFFF_FFF) as u32);
+                    s1.set_addr((address >> 32) as u32);
+                }
+                _ => {
+                    unreachable!("select_ap_and_ap_bank must be called with a FullyQualifiedApAddress pointing to a component directly in the Debug Port. This is a bug, please report it.")
+                }
+            },
             _ => unreachable!(
                 "Did not expect to be called with {ap:x?}. This is a bug, please report it."
             ),

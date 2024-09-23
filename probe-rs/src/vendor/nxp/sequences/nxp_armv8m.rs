@@ -20,68 +20,6 @@ use crate::{
     core::MemoryMappedRegister,
 };
 
-/// Start the debug port, and return if the device was (true) or wasn't (false)
-/// powered down.
-///
-/// Note that this routine only supports SWD protocols. See the inline TODOs to
-/// understand where JTAG support should go.
-fn debug_port_start(
-    interface: &mut ArmCommunicationInterface<Initialized>,
-    dp: DpAddress,
-    select: SelectV1,
-) -> Result<bool, ArmError> {
-    interface.write_dp_register(dp, select)?;
-
-    let ctrl = interface.read_dp_register::<Ctrl>(dp)?;
-
-    let powered_down = !(ctrl.csyspwrupack() && ctrl.cdbgpwrupack());
-
-    if powered_down {
-        let mut ctrl = Ctrl(0);
-        ctrl.set_cdbgpwrupreq(true);
-        ctrl.set_csyspwrupreq(true);
-
-        interface.write_dp_register(dp, ctrl)?;
-
-        let start = Instant::now();
-
-        loop {
-            let ctrl = interface.read_dp_register::<Ctrl>(dp)?;
-            if ctrl.csyspwrupack() && ctrl.cdbgpwrupack() {
-                break;
-            }
-            if start.elapsed() >= Duration::from_secs(1) {
-                return Err(ArmError::Timeout);
-            }
-        }
-
-        // TODO: Handle JTAG Specific part
-
-        // TODO: Only run the following code when the SWD protocol is used
-
-        // Init AP Transfer Mode, Transaction Counter, and Lane Mask (Normal Transfer Mode, Include all Byte Lanes)
-        let mut ctrl = Ctrl(0);
-
-        ctrl.set_cdbgpwrupreq(true);
-        ctrl.set_csyspwrupreq(true);
-
-        ctrl.set_mask_lane(0b1111);
-
-        interface.write_dp_register(dp, ctrl)?;
-
-        let mut abort = Abort(0);
-
-        abort.set_orunerrclr(true);
-        abort.set_wderrclr(true);
-        abort.set_stkerrclr(true);
-        abort.set_stkcmpclr(true);
-
-        interface.write_dp_register(dp, abort)?;
-    }
-
-    Ok(powered_down)
-}
-
 /// The sequence handle for the LPC55Sxx family.
 #[derive(Debug)]
 pub struct LPC55Sxx(());
@@ -94,26 +32,6 @@ impl LPC55Sxx {
 }
 
 impl ArmDebugSequence for LPC55Sxx {
-    fn debug_port_start(
-        &self,
-        interface: &mut ArmCommunicationInterface<Initialized>,
-        dp: DpAddress,
-    ) -> Result<(), ArmError> {
-        tracing::info!("debug_port_start");
-
-        let _powered_down = self::debug_port_start(interface, dp, SelectV1(0))?;
-
-        // Per 51.6.2 and 51.6.3 there is no need to issue a debug mailbox
-        // command if we're attaching to a valid target. In fact, running
-        // the debug mailbox _prevents_ this from attaching to a running
-        // target since the debug mailbox is a separate code path.
-        // if _powered_down {
-        //     enable_debug_mailbox(interface, dp)?;
-        // }
-
-        Ok(())
-    }
-
     fn reset_catch_set(
         &self,
         interface: &mut dyn ArmMemoryInterface,
@@ -582,7 +500,7 @@ impl ArmDebugSequence for MIMXRT5xxS {
         &self,
         interface: &mut ArmCommunicationInterface<Initialized>,
         dp: DpAddress,
-    ) -> Result<(), ArmError> {
+    ) -> Result<DPIDR, ArmError> {
         let mut abort = Abort::default();
         abort.set_wderrclr(true);
         abort.set_orunerrclr(true);
@@ -593,6 +511,8 @@ impl ArmDebugSequence for MIMXRT5xxS {
 
         // Clear WDATAERR, STICKYORUN, STICKYCMP, and STICKYERR bits of CTRL/STAT Register by write to ABORT register
         interface.write_dp_register(dp, abort)?;
+
+        let dpidr: DPIDR = interface.read_dp_register(dp)?;
 
         // Switch to DP Register Bank 0
         interface.write_dp_register(dp, SelectV1(0))?;
@@ -626,7 +546,7 @@ impl ArmDebugSequence for MIMXRT5xxS {
         // SWD Specific Part of sequence
         // TODO: Should we skip this if we're not using SWD? How?
         // CMSIS Pack code uses: <control if="(__protocol &amp; 0xFFFF) == 2">
-        {
+        if !dpidr.min() {
             // Init AP Transfer Mode, Transaction Counter, and Lane Mask (Normal Transfer Mode, Include all Byte Lanes)
             ctrl.set_mask_lane(0xF);
             interface.write_dp_register(dp, ctrl)?;
@@ -640,7 +560,7 @@ impl ArmDebugSequence for MIMXRT5xxS {
 
         tracing::trace!("MIMXRT5xxS debug port start was successful");
 
-        Ok(())
+        Ok(dpidr)
     }
 
     fn reset_system(
