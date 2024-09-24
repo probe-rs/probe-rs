@@ -262,10 +262,10 @@ impl ProbeFactory for JLinkFactory {
             _ => 504,
         };
         this.config = this.read_device_config()?;
-        this.connection_handle = match selector.product_id {
-            // 0x1051: J-Link OB-K22-SiFive: reports "hardware fault or protocol violation"
-            0x1051 => None,
-            _ => Some(this.register_connection()?),
+        this.connection_handle = if requires_connection_handle(selector) {
+            Some(this.register_connection()?)
+        } else {
+            None
         };
 
         Ok(Box::new(this))
@@ -274,6 +274,21 @@ impl ProbeFactory for JLinkFactory {
     fn list_probes(&self) -> Vec<DebugProbeInfo> {
         list_jlink_devices()
     }
+}
+
+fn requires_connection_handle(selector: &DebugProbeSelector) -> bool {
+    // These devices require a connection handle to be registered before they can be used.
+    // As some other devices can't handle the registration command, we only enable it for known
+    // devices.
+    let devices = [
+        (0x1366, 0x0101, Some("000000123456")), // Blue J-Link PRO clone
+    ];
+
+    devices.contains(&(
+        selector.vendor_id,
+        selector.product_id,
+        selector.serial_number.as_deref(),
+    ))
 }
 
 impl Drop for JLink {
