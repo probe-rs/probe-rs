@@ -975,6 +975,11 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     fn debug_erase_sequence(&self) -> Option<Arc<dyn DebugEraseSequence>> {
         None
     }
+
+    /// Return the APs that are expected to work.
+    fn allowed_access_ports(&self) -> Vec<u8> {
+        (0..=255).collect()
+    }
 }
 
 /// Chip-Erase Handling via the Device's Debug Interface

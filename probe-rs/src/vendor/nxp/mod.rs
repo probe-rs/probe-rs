@@ -8,7 +8,7 @@ use crate::{
         nxp::sequences::{
             nxp_armv7m::{MIMXRT10xx, MIMXRT117x},
             nxp_armv8m::{
-                LPC55Sxx, MIMXRT5xxS,
+                LPC55Sxx, MIMXRT118x, MIMXRT5xxS,
                 MIMXRTFamily::{MIMXRT5, MIMXRT6},
             },
         },
@@ -28,6 +28,8 @@ impl Vendor for Nxp {
             DebugSequence::Arm(MIMXRT10xx::create())
         } else if chip.name.starts_with("MIMXRT117") {
             DebugSequence::Arm(MIMXRT117x::create())
+        } else if chip.name.starts_with("MIMXRT118") {
+            DebugSequence::Arm(MIMXRT118x::create())
         } else if chip.name.starts_with("MIMXRT5") {
             DebugSequence::Arm(MIMXRT5xxS::create(MIMXRT5))
         } else if chip.name.starts_with("MIMXRT6") {
