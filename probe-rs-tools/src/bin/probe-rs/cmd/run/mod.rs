@@ -13,7 +13,7 @@ use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, Result};
 use probe_rs::debug::{DebugInfo, DebugRegisters};
-use probe_rs::flashing::{FileDownloadError, Format, FormatKind};
+use probe_rs::flashing::{FileDownloadError, FormatKind};
 use probe_rs::{
     exception_handler_for_core,
     probe::list::Lister,
