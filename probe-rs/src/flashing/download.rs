@@ -33,7 +33,7 @@ pub struct IdfOptions {
 }
 
 /// A finite list of all the available binary formats probe-rs understands.
-#[derive(Debug, Default, Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[derive(Debug, Default, Serialize, Deserialize, PartialEq, Eq, Clone, Copy)]
 pub enum FormatKind {
     /// Marks a file in binary format. This means that the file contains the contents of the flash 1:1.
     /// [BinOptions] can be used to define the location in flash where the file contents should be put at.

@@ -13,7 +13,7 @@ use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, Result};
 use probe_rs::debug::{DebugInfo, DebugRegisters};
-use probe_rs::flashing::FileDownloadError;
+use probe_rs::flashing::{FileDownloadError, Format, FormatKind};
 use probe_rs::{
     exception_handler_for_core,
     probe::list::Lister,
@@ -110,9 +110,21 @@ impl Cmd {
             ..Default::default()
         });
 
-        let elf = fs::read(&self.shared_options.path)?;
-        let mut rtt_client =
-            RttClient::new(Some(&elf), session.target(), rtt_config, rtt_scan_regions)?;
+        let format = self
+            .shared_options
+            .format_options
+            .to_format_kind(session.target());
+        let elf = if matches!(format, FormatKind::Elf | FormatKind::Idf) {
+            Some(fs::read(&self.shared_options.path)?)
+        } else {
+            None
+        };
+        let mut rtt_client = RttClient::new(
+            elf.as_deref(),
+            session.target(),
+            rtt_config,
+            rtt_scan_regions,
+        )?;
 
         let core_id = rtt_client.core_id();
 
