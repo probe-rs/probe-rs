@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::util::rtt::{
     ChannelDataCallbacks, DefmtState, RttActiveDownChannel, RttActiveTarget, RttActiveUpChannel,
-    RttConfig,
+    RttConfig, RttSymbolError,
 };
 use probe_rs::{
     rtt::{Error, Rtt, ScanRegion},
@@ -49,11 +49,26 @@ impl RttClient {
         };
 
         if let Some(elf) = elf {
-            if let Some(address) = RttActiveTarget::get_rtt_symbol_from_bytes(elf) {
-                this.scan_region = ScanRegion::Exact(address);
-                this.core_id = target.core_index_by_address(address).unwrap_or(0);
+            let mut init_defmt = false;
+            match RttActiveTarget::get_rtt_symbol_from_bytes(elf) {
+                Ok(address) => {
+                    this.scan_region = ScanRegion::Exact(address);
+                    this.core_id = target.core_index_by_address(address).unwrap_or(0);
+
+                    init_defmt = true;
+                }
+                Err(RttSymbolError::Goblin(_)) => {
+                    // Not an ELF
+                }
+                Err(RttSymbolError::RttSymbolNotFound) => {
+                    // We can still try to use defmt, we might find the control block.
+                    init_defmt = true;
+                }
             }
-            this.defmt_data = DefmtState::try_from_bytes(elf)?.map(Arc::new);
+
+            if init_defmt {
+                this.defmt_data = DefmtState::try_from_bytes(elf)?.map(Arc::new);
+            }
         }
 
         Ok(this)
