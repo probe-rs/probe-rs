@@ -6,6 +6,7 @@ use anyhow::{anyhow, Context, Result};
 use clap::Parser;
 use colored::Colorize;
 use parking_lot::FairMutex;
+use probe_rs::flashing::FormatKind;
 use probe_rs::gdb_server::GdbInstanceConfiguration;
 use probe_rs::probe::list::Lister;
 use probe_rs::rtt::ScanRegion;
@@ -228,9 +229,14 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
         Err(e) => return Err(e.into()),
     };
 
-    let elf = fs::read(&path)?;
+    let format = FormatOptions::default().to_format_kind(session.target());
+    let elf = if matches!(format, FormatKind::Elf | FormatKind::Idf) {
+        Some(fs::read(&path)?)
+    } else {
+        None
+    };
     let rtt_client = RttClient::new(
-        Some(&elf),
+        elf.as_deref(),
         session.target(),
         create_rtt_config(&config).clone(),
         ScanRegion::Ram,
