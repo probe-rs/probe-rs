@@ -58,9 +58,7 @@ impl ExceptionInterface for UnimplementedExceptionHandler {
         &self,
         _stackframe_registers: &crate::debug::DebugRegisters,
     ) -> Result<u32, DebugError> {
-        Err(DebugError::NotImplemented(
-            "Not implemented for this architecture.",
-        ))
+        Err(DebugError::NotImplemented("raw exception"))
     }
 
     fn exception_description(

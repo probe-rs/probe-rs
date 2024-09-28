@@ -1291,15 +1291,29 @@ fn unwind_program_counter_register(
 
     match return_address {
         RegisterValue::U32(return_address) => {
-            if instruction_set == Some(InstructionSet::Thumb2) {
-                // NOTE: [ARMv7-M Architecture Reference Manual](https://developer.arm.com/documentation/ddi0403/ee), Section A5.1.2:
-                //
-                // We have to clear the last bit to ensure the PC is half-word aligned. (on ARM architecture,
-                // when in Thumb state for certain instruction types will set the LSB to 1)
-                *register_rule_string = "PC=(unwound LR & !0b1) (dwarf Undefined)".to_string();
-                Some(RegisterValue::U32(return_address & !0b1))
-            } else {
-                Some(RegisterValue::U32(return_address))
+            match instruction_set {
+                Some(InstructionSet::Thumb2) => {
+                    // NOTE: [ARMv7-M Architecture Reference Manual](https://developer.arm.com/documentation/ddi0403/ee), Section A5.1.2:
+                    //
+                    // We have to clear the last bit to ensure the PC is half-word aligned. (on ARM architecture,
+                    // when in Thumb state for certain instruction types will set the LSB to 1)
+                    *register_rule_string = "PC=(unwound LR & !0b1) (dwarf Undefined)".to_string();
+                    Some(RegisterValue::U32(return_address & !0b1))
+                }
+                Some(InstructionSet::RV32C) => {
+                    *register_rule_string = "PC=(unwound x1 - 2) (dwarf Undefined)".to_string();
+                    Some(RegisterValue::U32(return_address - 2))
+                }
+                Some(InstructionSet::RV32) => {
+                    *register_rule_string = "PC=(unwound x1 - 4) (dwarf Undefined)".to_string();
+                    Some(RegisterValue::U32(return_address - 4))
+                }
+                Some(InstructionSet::Xtensa) => {
+                    // TODO: detect CALL0
+                    *register_rule_string = "PC=(unwound x0 - 3) (dwarf Undefined)".to_string();
+                    Some(RegisterValue::U32(return_address - 3))
+                }
+                _ => Some(RegisterValue::U32(return_address)),
             }
         }
         RegisterValue::U64(return_address) => Some(RegisterValue::U64(return_address)),
