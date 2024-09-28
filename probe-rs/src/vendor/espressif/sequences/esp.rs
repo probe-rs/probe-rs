@@ -7,7 +7,7 @@ use crate::{
         instruction::{into_binary, Instruction},
         CpuRegister,
     },
-    MemoryInterface, Session,
+    Core, MemoryInterface, Session,
 };
 
 #[derive(Debug)]
@@ -26,17 +26,35 @@ pub(super) struct EspFlashSizeDetector {
 }
 
 impl EspFlashSizeDetector {
+    fn attach_flash(&self, session: &mut Session) -> Result<(), crate::Error> {
+        let mut core = session.core(0)?;
+        core.reset_and_halt(Duration::from_millis(500))?;
+
+        // call esp_rom_spiflash_attach(0, false)
+        if core.architecture() == Architecture::Xtensa {
+            setup_call_to_attach_xtensa(
+                &mut core,
+                self.stack_pointer,
+                self.load_address,
+                self.attach_fn,
+            )?;
+        } else {
+            setup_call_to_attach_riscv(&mut core, self.stack_pointer, self.attach_fn)?;
+        }
+
+        // Let it run
+        core.run()?;
+        core.wait_for_core_halted(Duration::from_millis(500))?;
+
+        Ok(())
+    }
+
     pub fn detect_flash_size_esp32(
         &self,
         session: &mut Session,
     ) -> Result<Option<usize>, crate::Error> {
         tracing::info!("Detecting flash size");
-        attach_flash_xtensa(
-            session,
-            self.stack_pointer,
-            self.load_address,
-            self.attach_fn,
-        )?;
+        self.attach_flash(session)?;
 
         tracing::info!("Flash attached");
         detect_flash_size_esp32(session, self.spiflash_peripheral)
@@ -44,36 +62,23 @@ impl EspFlashSizeDetector {
 
     pub fn detect_flash_size(&self, session: &mut Session) -> Result<Option<usize>, crate::Error> {
         tracing::info!("Detecting flash size");
-        if session.target().architecture() == Architecture::Xtensa {
-            attach_flash_xtensa(
-                session,
-                self.stack_pointer,
-                self.load_address,
-                self.attach_fn,
-            )?;
-        } else {
-            attach_flash_riscv(session, self.stack_pointer, self.attach_fn)?;
-        }
+        self.attach_flash(session)?;
 
         tracing::info!("Flash attached");
         detect_flash_size(session, self.spiflash_peripheral)
     }
 }
 
-fn attach_flash_riscv(
-    session: &mut Session,
+fn setup_call_to_attach_riscv(
+    core: &mut Core<'_>,
     stack_pointer: u32,
     attach_fn: u32,
 ) -> Result<(), crate::Error> {
     use crate::architecture::riscv::assembly;
 
-    let core = &mut session.core(0)?;
-    core.reset_and_halt(Duration::from_millis(100))?;
-
     // Return to a breakpoint
     core.write_32(stack_pointer as u64, &[assembly::EBREAK, assembly::EBREAK])?;
 
-    // call esp_rom_spiflash_attach(0, false)
     let regs = core.registers();
     core.write_core_reg(core.program_counter(), attach_fn as u64)?;
     core.write_core_reg(regs.argument_register(0), 0_u64)?;
@@ -83,23 +88,15 @@ fn attach_flash_riscv(
 
     core.debug_on_sw_breakpoint(true)?;
 
-    // Let it run
-    core.run()?;
-
-    core.wait_for_core_halted(Duration::from_millis(500))?;
-
     Ok(())
 }
 
-fn attach_flash_xtensa(
-    session: &mut Session,
+fn setup_call_to_attach_xtensa(
+    core: &mut Core<'_>,
     stack_pointer: u32,
     load_addr: u32,
     attach_fn: u32,
 ) -> Result<(), crate::Error> {
-    let mut core = session.core(0)?;
-    core.reset_and_halt(Duration::from_millis(500))?;
-
     let instructions = into_binary([
         Instruction::CallX8(CpuRegister::A4),
         // Set a breakpoint at the end of the code
@@ -110,13 +107,12 @@ fn attach_flash_xtensa(
     core.write_8(load_addr as u64, &instructions)?;
 
     // Set up processor state
+    let regs = core.registers();
     core.write_core_reg(core.program_counter(), load_addr)?;
-    core.write_core_reg(core.stack_pointer(), stack_pointer)?;
     core.write_core_reg(CpuRegister::A4, attach_fn)?;
-
-    // Let it run
-    core.run()?;
-    core.wait_for_core_halted(Duration::from_millis(500))?;
+    core.write_core_reg(regs.argument_register(0), 0_u64)?;
+    core.write_core_reg(regs.argument_register(1), 0_u64)?;
+    core.write_core_reg(core.stack_pointer(), stack_pointer)?;
 
     Ok(())
 }
