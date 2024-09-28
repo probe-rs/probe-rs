@@ -44,9 +44,10 @@ impl ESP32S2 {
     pub fn create() -> Arc<dyn XtensaDebugSequence> {
         Arc::new(Self {
             inner: EspFlashSizeDetector {
-                stack_pointer: 0x4000_0000,
-                load_address: 0x4002C000,
+                stack_pointer: 0x3ffce000,
+                load_address: 0x4002c400,
                 spiflash_peripheral: 0x3f40_2000,
+                efuse_get_spiconfig_fn: Some(0x4000e4a0),
                 attach_fn: 0x4001_7004,
             },
         })

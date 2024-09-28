@@ -23,8 +23,9 @@ impl ESP32C3 {
         Arc::new(Self {
             inner: EspFlashSizeDetector {
                 stack_pointer: 0x403c0000,
-                load_address: 0, // Unused for RISC-V
+                load_address: 0x40390000,
                 spiflash_peripheral: 0x6000_2000,
+                efuse_get_spiconfig_fn: Some(0x4000071c),
                 attach_fn: 0x4000_0164,
             },
         })

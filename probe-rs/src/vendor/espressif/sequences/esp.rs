@@ -18,6 +18,9 @@ pub(super) struct EspFlashSizeDetector {
     /// The address of the SPI flash peripheral (`SPIMEM1`).
     pub spiflash_peripheral: u32,
 
+    /// The address of the `ets_efuse_get_spiconfig` ROM function, if needed.
+    pub efuse_get_spiconfig_fn: Option<u32>,
+
     /// The address of the `esp_rom_spiflash_attach` ROM function.
     pub attach_fn: u32,
 

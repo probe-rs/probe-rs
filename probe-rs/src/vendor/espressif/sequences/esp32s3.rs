@@ -29,6 +29,7 @@ impl ESP32S3 {
                 stack_pointer: 0x3FCF_0000,
                 load_address: 0x4037_8000,
                 spiflash_peripheral: 0x6000_2000,
+                efuse_get_spiconfig_fn: Some(0x40001f74),
                 attach_fn: 0x4000_0aec,
             },
         })
