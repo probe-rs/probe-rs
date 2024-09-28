@@ -479,6 +479,15 @@ impl fmt::Debug for DefmtState {
     }
 }
 
+/// Error type for RTT symbol lookup.
+#[derive(Debug, thiserror::Error, docsplay::Display)]
+pub enum RttSymbolError {
+    /// RTT symbol not found in the ELF file.
+    RttSymbolNotFound,
+    /// Failed to parse the firmware as an ELF file.
+    Goblin(#[source] goblin::error::Error),
+}
+
 impl RttActiveTarget {
     /// RttActiveTarget collects references to all the `RttActiveChannel`s, for latter polling/pushing of data.
     pub fn new(
@@ -523,7 +532,7 @@ impl RttActiveTarget {
     pub fn get_rtt_symbol<T: Read + Seek>(file: &mut T) -> Option<u64> {
         let mut buffer = Vec::new();
         if file.read_to_end(&mut buffer).is_ok() {
-            if let Some(rtt) = Self::get_rtt_symbol_from_bytes(buffer.as_slice()) {
+            if let Ok(rtt) = Self::get_rtt_symbol_from_bytes(buffer.as_slice()) {
                 return Some(rtt);
             }
         }
@@ -534,16 +543,18 @@ impl RttActiveTarget {
         None
     }
 
-    pub fn get_rtt_symbol_from_bytes(buffer: &[u8]) -> Option<u64> {
-        if let Ok(binary) = goblin::elf::Elf::parse(buffer) {
-            for sym in &binary.syms {
-                if binary.strtab.get_at(sym.st_name) == Some("_SEGGER_RTT") {
-                    return Some(sym.st_value);
+    pub fn get_rtt_symbol_from_bytes(buffer: &[u8]) -> Result<u64, RttSymbolError> {
+        match goblin::elf::Elf::parse(buffer) {
+            Ok(binary) => {
+                for sym in &binary.syms {
+                    if binary.strtab.get_at(sym.st_name) == Some("_SEGGER_RTT") {
+                        return Ok(sym.st_value);
+                    }
                 }
+                Err(RttSymbolError::RttSymbolNotFound)
             }
+            Err(err) => Err(RttSymbolError::Goblin(err)),
         }
-
-        None
     }
 
     /// Polls the RTT target on all channels and returns available data.

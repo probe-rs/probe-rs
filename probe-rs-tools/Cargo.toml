@@ -46,6 +46,7 @@ directories = "5"
 dunce = "1"
 figment = { version = "0.10", features = ["toml", "json", "yaml", "env"] }
 goblin = { version = "0.8", default-features = false, features = [
+    "std",
     "elf32",
     "elf64",
     "endian_fd",
