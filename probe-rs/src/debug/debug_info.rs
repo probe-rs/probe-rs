@@ -1156,12 +1156,22 @@ pub fn unwind_register(
                     .core_register
                     .register_has_role(RegisterRole::ProgramCounter) =>
                 {
+                    let Ok(current_pc) = callee_frame_registers
+                        .get_register_value_by_role(&RegisterRole::ProgramCounter)
+                    else {
+                        return ControlFlow::Break(
+                            crate::Error::Other(
+                                "UNWIND: Tried to unwind return address value where current program counter is unknown.".to_string()
+                            )
+                        );
+                    };
                     // NOTE: PC = Value of the unwound LR, i.e. the first instruction after the one that called this function.
                     // If both the LR and PC registers have undefined rules, this will prevent the unwind from continuing.
                     register_rule_string = "PC=(unwound LR) (dwarf Undefined)".to_string();
                     unwound_return_address.and_then(|return_address| {
                         unwind_program_counter_register(
                             return_address,
+                            current_pc,
                             instruction_set,
                             &mut register_rule_string,
                         )
@@ -1281,6 +1291,7 @@ pub fn unwind_register(
 /// Helper function to determine the program counter value for the previous frame.
 fn unwind_program_counter_register(
     return_address: RegisterValue,
+    current_pc: u64,
     instruction_set: Option<InstructionSet>,
     register_rule_string: &mut String,
 ) -> Option<RegisterValue> {
@@ -1310,8 +1321,11 @@ fn unwind_program_counter_register(
                 }
                 Some(InstructionSet::Xtensa) => {
                     // TODO: detect CALL0
+                    let upper_bits = (current_pc as u32) & 0xC000_0000;
                     *register_rule_string = "PC=(unwound x0 - 3) (dwarf Undefined)".to_string();
-                    Some(RegisterValue::U32(return_address - 3))
+                    Some(RegisterValue::U32(
+                        (return_address & 0x3FFF_FFFF | upper_bits) - 3,
+                    ))
                 }
                 _ => Some(RegisterValue::U32(return_address)),
             }
