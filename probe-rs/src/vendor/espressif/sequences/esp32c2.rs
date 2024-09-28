@@ -2,8 +2,6 @@
 
 use std::{sync::Arc, time::Duration};
 
-use probe_rs_target::Chip;
-
 use super::esp::EspFlashSizeDetector;
 use crate::{
     architecture::riscv::{
@@ -21,12 +19,13 @@ pub struct ESP32C2 {
 
 impl ESP32C2 {
     /// Creates a new debug sequence handle for the ESP32C2.
-    pub fn create(chip: &Chip) -> Arc<dyn RiscvDebugSequence> {
+    pub fn create() -> Arc<dyn RiscvDebugSequence> {
         Arc::new(Self {
             inner: EspFlashSizeDetector {
-                stack_pointer: EspFlashSizeDetector::stack_pointer(chip),
-                load_address: 0, // Unused for RISC-V
+                stack_pointer: 0x403a0000,
+                load_address: 0x4038c000,
                 spiflash_peripheral: 0x6000_2000,
+                efuse_get_spiconfig_fn: None,
                 attach_fn: 0x4000_0178,
             },
         })

@@ -72,19 +72,19 @@ pub struct Espressif;
 impl Vendor for Espressif {
     fn try_create_debug_sequence(&self, chip: &Chip) -> Option<DebugSequence> {
         let sequence = if chip.name.eq_ignore_ascii_case("esp32s2") {
-            DebugSequence::Xtensa(ESP32S2::create(chip))
+            DebugSequence::Xtensa(ESP32S2::create())
         } else if chip.name.eq_ignore_ascii_case("esp32s3") {
-            DebugSequence::Xtensa(ESP32S3::create(chip))
+            DebugSequence::Xtensa(ESP32S3::create())
         } else if chip.name.eq_ignore_ascii_case("esp32c2") {
-            DebugSequence::Riscv(ESP32C2::create(chip))
+            DebugSequence::Riscv(ESP32C2::create())
         } else if chip.name.eq_ignore_ascii_case("esp32c3") {
-            DebugSequence::Riscv(ESP32C3::create(chip))
+            DebugSequence::Riscv(ESP32C3::create())
         } else if chip.name.eq_ignore_ascii_case("esp32c6") {
-            DebugSequence::Riscv(ESP32C6::create(chip))
+            DebugSequence::Riscv(ESP32C6::create())
         } else if chip.name.eq_ignore_ascii_case("esp32h2") {
-            DebugSequence::Riscv(ESP32H2::create(chip))
+            DebugSequence::Riscv(ESP32H2::create())
         } else if chip.name.starts_with("esp32") {
-            DebugSequence::Xtensa(ESP32::create(chip))
+            DebugSequence::Xtensa(ESP32::create())
         } else {
             return None;
         };

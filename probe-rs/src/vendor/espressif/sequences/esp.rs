@@ -1,14 +1,8 @@
 use std::time::Duration;
 
-use probe_rs_target::{Architecture, Chip, MemoryRegion};
+use probe_rs_target::Architecture;
 
-use crate::{
-    architecture::xtensa::arch::{
-        instruction::{into_binary, Instruction},
-        CpuRegister,
-    },
-    MemoryInterface, Session,
-};
+use crate::{Core, MemoryInterface, Session};
 
 #[derive(Debug)]
 pub(super) struct EspFlashSizeDetector {
@@ -18,6 +12,9 @@ pub(super) struct EspFlashSizeDetector {
     /// The address of the SPI flash peripheral (`SPIMEM1`).
     pub spiflash_peripheral: u32,
 
+    /// The address of the `ets_efuse_get_spiconfig` ROM function, if needed.
+    pub efuse_get_spiconfig_fn: Option<u32>,
+
     /// The address of the `esp_rom_spiflash_attach` ROM function.
     pub attach_fn: u32,
 
@@ -26,12 +23,38 @@ pub(super) struct EspFlashSizeDetector {
 }
 
 impl EspFlashSizeDetector {
-    pub fn stack_pointer(chip: &Chip) -> u32 {
-        chip.memory_map
-            .iter()
-            .find_map(MemoryRegion::as_ram_region)
-            .map(|ram| ram.range.start as u32 + 0x1_0000)
-            .unwrap()
+    fn attach_flash(&self, session: &mut Session) -> Result<(), crate::Error> {
+        let mut core = session.core(0)?;
+        core.reset_and_halt(Duration::from_millis(500))?;
+
+        let regs = core.registers();
+        let spi_config = match self.efuse_get_spiconfig_fn {
+            Some(get_spiconfig_fn) => {
+                call_function(
+                    &mut core,
+                    self.stack_pointer,
+                    self.load_address,
+                    get_spiconfig_fn,
+                )?;
+
+                core.read_core_reg::<u32>(regs.result_register(0))?;
+                0
+            }
+            None => 0,
+        };
+
+        // call esp_rom_spiflash_attach(spi_config, false)
+        core.write_core_reg(regs.argument_register(0), spi_config as u64)?;
+        core.write_core_reg(regs.argument_register(1), 0_u64)?;
+
+        call_function(
+            &mut core,
+            self.stack_pointer,
+            self.load_address,
+            self.attach_fn,
+        )?;
+
+        Ok(())
     }
 
     pub fn detect_flash_size_esp32(
@@ -39,12 +62,7 @@ impl EspFlashSizeDetector {
         session: &mut Session,
     ) -> Result<Option<usize>, crate::Error> {
         tracing::info!("Detecting flash size");
-        attach_flash_xtensa(
-            session,
-            self.stack_pointer,
-            self.load_address,
-            self.attach_fn,
-        )?;
+        self.attach_flash(session)?;
 
         tracing::info!("Flash attached");
         detect_flash_size_esp32(session, self.spiflash_peripheral)
@@ -52,84 +70,49 @@ impl EspFlashSizeDetector {
 
     pub fn detect_flash_size(&self, session: &mut Session) -> Result<Option<usize>, crate::Error> {
         tracing::info!("Detecting flash size");
-        if session.target().architecture() == Architecture::Xtensa {
-            attach_flash_xtensa(
-                session,
-                self.stack_pointer,
-                self.load_address,
-                self.attach_fn,
-            )?;
-        } else {
-            attach_flash_riscv(session, self.stack_pointer, self.attach_fn)?;
-        }
+        self.attach_flash(session)?;
 
         tracing::info!("Flash attached");
         detect_flash_size(session, self.spiflash_peripheral)
     }
 }
 
-fn attach_flash_riscv(
-    session: &mut Session,
-    stack_pointer: u32,
-    attach_fn: u32,
-) -> Result<(), crate::Error> {
-    use crate::architecture::riscv::{
-        assembly,
-        communication_interface::{AccessRegisterCommand, RiscvBusAccess},
-        registers::SP,
-    };
-
-    let interface = &mut session.get_riscv_interface(0)?;
-    interface.halt(Duration::from_millis(100))?;
-
-    // Set a valid-ish stack pointer
-    interface.abstract_cmd_register_write(SP, stack_pointer)?;
-
-    // esp_rom_spiflash_attach(0, false)
-    interface.schedule_setup_program_buffer(&[
-        assembly::addi(0, 10, 0),                       // c.li a0, zero
-        assembly::addi(0, 11, 0),                       // c.li a1, zero
-        assembly::lui(5, (attach_fn >> 12) as i32),     // lui x5, ...
-        assembly::jarl(5, 1, attach_fn as i32 & 0xFFF), // jarl ra, x5, ...
-    ])?;
-
-    // Actually call the function
-    let mut execute_progbuf = AccessRegisterCommand(0);
-    execute_progbuf.set_cmd_type(0);
-    execute_progbuf.set_transfer(false);
-    execute_progbuf.set_write(false);
-    execute_progbuf.set_aarsize(RiscvBusAccess::A32);
-    execute_progbuf.set_postexec(true);
-    execute_progbuf.set_regno(SP.id.0 as u32);
-
-    interface.schedule_write_dm_register(execute_progbuf)?;
-    interface.execute()?;
-
-    Ok(())
-}
-
-fn attach_flash_xtensa(
-    session: &mut Session,
+fn call_function(
+    core: &mut Core<'_>,
     stack_pointer: u32,
     load_addr: u32,
-    attach_fn: u32,
+    fn_addr: u32,
 ) -> Result<(), crate::Error> {
-    let mut core = session.core(0)?;
-    core.reset_and_halt(Duration::from_millis(500))?;
+    if core.architecture() == Architecture::Xtensa {
+        use crate::architecture::xtensa::arch::{
+            instruction::{into_binary, Instruction},
+            CpuRegister,
+        };
+        let instructions = into_binary([
+            Instruction::CallX8(CpuRegister::A4),
+            // Set a breakpoint at the end of the code
+            Instruction::Break(0, 0),
+        ]);
 
-    let instructions = into_binary([
-        Instruction::CallX8(CpuRegister::A4),
-        // Set a breakpoint at the end of the code
-        Instruction::Break(0, 0),
-    ]);
+        // Download code
+        core.write_8(load_addr as u64, &instructions)?;
 
-    // Download code
-    core.write_8(load_addr as u64, &instructions)?;
+        // Set up processor state
+        core.write_core_reg(core.program_counter(), load_addr)?;
+        core.write_core_reg(CpuRegister::A4, fn_addr)?;
+    } else {
+        use crate::architecture::riscv::assembly;
 
-    // Set up processor state
-    core.write_core_reg(core.program_counter(), load_addr)?;
+        // Return to a breakpoint
+        core.write_32(load_addr as u64, &[assembly::EBREAK, assembly::EBREAK])?;
+
+        core.write_core_reg(core.program_counter(), fn_addr as u64)?;
+        core.write_core_reg(core.return_address(), load_addr as u64)?;
+
+        core.debug_on_sw_breakpoint(true)?;
+    }
+
     core.write_core_reg(core.stack_pointer(), stack_pointer)?;
-    core.write_core_reg(CpuRegister::A4, attach_fn)?;
 
     // Let it run
     core.run()?;
