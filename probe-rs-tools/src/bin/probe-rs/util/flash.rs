@@ -189,24 +189,25 @@ impl ProgressBarGroup {
         }
     }
 
-    fn active() -> ProgressStyle {
-        let msg_template = "{msg:.green.bold} {spinner} {percent:>3}% ({eta_precise}) [{bar:20}] {bytes:>10} @ {bytes_per_sec:>12}";
-        let style = ProgressStyle::default_bar()
+    fn idle() -> ProgressStyle {
+        ProgressStyle::with_template("{msg:.green.bold} {spinner} {percent:>3}% [{bar:20}]")
+            .expect("Error in progress bar creation. This is a bug, please report it.")
             .tick_chars("⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈✔")
             .progress_chars("--")
-            .template(msg_template)
-            .expect("Error in progress bar creation. This is a bug, please report it.");
-        style
+    }
+
+    fn active() -> ProgressStyle {
+        ProgressStyle::with_template("{msg:.green.bold} {spinner} {percent:>3}% [{bar:20}] {bytes:>10} @ {bytes_per_sec:>12} (ETA {eta})")
+            .expect("Error in progress bar creation. This is a bug, please report it.")
+            .tick_chars("⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈✔")
+            .progress_chars("##-")
     }
 
     fn finished() -> ProgressStyle {
-        let msg_template = "{msg:.green.bold} {spinner} {percent:>3}% ({elapsed_precise}) [{bar:20}] {bytes:>10} @ {bytes_per_sec:>12}";
-        let style = ProgressStyle::default_bar()
+        ProgressStyle::with_template("{msg:.green.bold} {spinner} {percent:>3}% [{bar:20}] {bytes:>10} @ {bytes_per_sec:>12} (took {elapsed})")
+            .expect("Error in progress bar creation. This is a bug, please report it.")
             .tick_chars("⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈✔")
             .progress_chars("##")
-            .template(msg_template)
-            .expect("Error in progress bar creation. This is a bug, please report it.");
-        style
     }
 
     pub fn add(&mut self, bar: ProgressBar) {
@@ -215,7 +216,7 @@ impl ProgressBarGroup {
         } else {
             bar.set_message(self.message.clone());
         }
-        bar.set_style(Self::active());
+        bar.set_style(Self::idle());
         bar.enable_steady_tick(Duration::from_millis(100));
         bar.reset_elapsed();
 
@@ -230,8 +231,7 @@ impl ProgressBarGroup {
 
     pub fn inc(&mut self, size: u64) {
         if let Some(bar) = self.bars.get(self.selected) {
-            let style = bar.style().progress_chars("##-");
-            bar.set_style(style);
+            bar.set_style(Self::active());
             bar.inc(size);
         }
     }
