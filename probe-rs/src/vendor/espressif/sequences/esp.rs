@@ -2,13 +2,7 @@ use std::time::Duration;
 
 use probe_rs_target::Architecture;
 
-use crate::{
-    architecture::xtensa::arch::{
-        instruction::{into_binary, Instruction},
-        CpuRegister,
-    },
-    Core, MemoryInterface, Session,
-};
+use crate::{Core, MemoryInterface, Session};
 
 #[derive(Debug)]
 pub(super) struct EspFlashSizeDetector {
@@ -34,20 +28,30 @@ impl EspFlashSizeDetector {
         core.reset_and_halt(Duration::from_millis(500))?;
 
         // call esp_rom_spiflash_attach(0, false)
-        if core.architecture() == Architecture::Xtensa {
-            setup_call_to_attach_xtensa(
-                &mut core,
-                self.stack_pointer,
-                self.load_address,
-                self.attach_fn,
-            )?;
-        } else {
-            setup_call_to_attach_riscv(&mut core, self.stack_pointer, self.attach_fn)?;
-        }
+        let regs = core.registers();
+        let spi_config = match self.efuse_get_spiconfig_fn {
+            Some(get_spiconfig_fn) => {
+                call_function(
+                    &mut core,
+                    self.stack_pointer,
+                    self.load_address,
+                    get_spiconfig_fn,
+                )?;
 
-        // Let it run
-        core.run()?;
-        core.wait_for_core_halted(Duration::from_millis(500))?;
+                core.read_core_reg::<u32>(regs.result_register(0))?;
+                0
+            }
+            None => 0,
+        };
+        core.write_core_reg(regs.argument_register(0), spi_config as u64)?;
+        core.write_core_reg(regs.argument_register(1), 0_u64)?;
+
+        call_function(
+            &mut core,
+            self.stack_pointer,
+            self.load_address,
+            self.attach_fn,
+        )?;
 
         Ok(())
     }
@@ -72,50 +76,46 @@ impl EspFlashSizeDetector {
     }
 }
 
-fn setup_call_to_attach_riscv(
-    core: &mut Core<'_>,
-    stack_pointer: u32,
-    attach_fn: u32,
-) -> Result<(), crate::Error> {
-    use crate::architecture::riscv::assembly;
-
-    // Return to a breakpoint
-    core.write_32(stack_pointer as u64, &[assembly::EBREAK, assembly::EBREAK])?;
-
-    let regs = core.registers();
-    core.write_core_reg(core.program_counter(), attach_fn as u64)?;
-    core.write_core_reg(regs.argument_register(0), 0_u64)?;
-    core.write_core_reg(regs.argument_register(1), 0_u64)?;
-    core.write_core_reg(core.stack_pointer(), stack_pointer)?;
-    core.write_core_reg(core.return_address(), stack_pointer as u64)?;
-
-    core.debug_on_sw_breakpoint(true)?;
-
-    Ok(())
-}
-
-fn setup_call_to_attach_xtensa(
+fn call_function(
     core: &mut Core<'_>,
     stack_pointer: u32,
     load_addr: u32,
-    attach_fn: u32,
+    fn_addr: u32,
 ) -> Result<(), crate::Error> {
-    let instructions = into_binary([
-        Instruction::CallX8(CpuRegister::A4),
-        // Set a breakpoint at the end of the code
-        Instruction::Break(0, 0),
-    ]);
+    if core.architecture() == Architecture::Xtensa {
+        use crate::architecture::xtensa::arch::{
+            instruction::{into_binary, Instruction},
+            CpuRegister,
+        };
+        let instructions = into_binary([
+            Instruction::CallX8(CpuRegister::A4),
+            // Set a breakpoint at the end of the code
+            Instruction::Break(0, 0),
+        ]);
 
-    // Download code
-    core.write_8(load_addr as u64, &instructions)?;
+        // Download code
+        core.write_8(load_addr as u64, &instructions)?;
 
-    // Set up processor state
-    let regs = core.registers();
-    core.write_core_reg(core.program_counter(), load_addr)?;
-    core.write_core_reg(CpuRegister::A4, attach_fn)?;
-    core.write_core_reg(regs.argument_register(0), 0_u64)?;
-    core.write_core_reg(regs.argument_register(1), 0_u64)?;
+        // Set up processor state
+        core.write_core_reg(core.program_counter(), load_addr)?;
+        core.write_core_reg(CpuRegister::A4, fn_addr)?;
+    } else {
+        use crate::architecture::riscv::assembly;
+
+        // Return to a breakpoint
+        core.write_32(load_addr as u64, &[assembly::EBREAK, assembly::EBREAK])?;
+
+        core.write_core_reg(core.program_counter(), fn_addr as u64)?;
+        core.write_core_reg(core.return_address(), load_addr as u64)?;
+
+        core.debug_on_sw_breakpoint(true)?;
+    }
+
     core.write_core_reg(core.stack_pointer(), stack_pointer)?;
+
+    // Let it run
+    core.run()?;
+    core.wait_for_core_halted(Duration::from_millis(500))?;
 
     Ok(())
 }
