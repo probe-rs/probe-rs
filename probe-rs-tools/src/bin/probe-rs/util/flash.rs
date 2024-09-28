@@ -189,20 +189,33 @@ impl ProgressBarGroup {
         }
     }
 
-    pub fn add(&mut self, bar: ProgressBar) {
-        let msg_template = "{msg:.green.bold} {spinner} [{elapsed_precise}] [{wide_bar}] {bytes:>10}/{total_bytes:>10} @ {bytes_per_sec:>12} (ETA {eta_precise})";
+    fn active() -> ProgressStyle {
+        let msg_template = "{msg:.green.bold} {spinner} {percent:>3}% ({eta_precise}) [{bar:20}] {bytes:>10} @ {bytes_per_sec:>12}";
         let style = ProgressStyle::default_bar()
             .tick_chars("⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈✔")
             .progress_chars("--")
             .template(msg_template)
             .expect("Error in progress bar creation. This is a bug, please report it.");
+        style
+    }
 
+    fn finished() -> ProgressStyle {
+        let msg_template = "{msg:.green.bold} {spinner} {percent:>3}% ({elapsed_precise}) [{bar:20}] {bytes:>10} @ {bytes_per_sec:>12}";
+        let style = ProgressStyle::default_bar()
+            .tick_chars("⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈✔")
+            .progress_chars("##")
+            .template(msg_template)
+            .expect("Error in progress bar creation. This is a bug, please report it.");
+        style
+    }
+
+    pub fn add(&mut self, bar: ProgressBar) {
         if self.append_phase {
             bar.set_message(format!("{} {}", self.message, self.bars.len() + 1));
         } else {
             bar.set_message(self.message.clone());
         }
-        bar.set_style(style);
+        bar.set_style(Self::active());
         bar.enable_steady_tick(Duration::from_millis(100));
         bar.reset_elapsed();
 
@@ -239,6 +252,7 @@ impl ProgressBarGroup {
 
     pub fn finish(&mut self) {
         if let Some(bar) = self.bars.get(self.selected) {
+            bar.set_style(Self::finished());
             bar.finish();
         }
         self.next();
