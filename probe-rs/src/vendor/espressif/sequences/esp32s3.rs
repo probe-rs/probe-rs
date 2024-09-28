@@ -5,8 +5,6 @@ use std::{
     time::{Duration, Instant},
 };
 
-use probe_rs_target::Chip;
-
 use super::esp::EspFlashSizeDetector;
 use crate::{
     architecture::xtensa::{
@@ -25,7 +23,7 @@ pub struct ESP32S3 {
 
 impl ESP32S3 {
     /// Creates a new debug sequence handle for the ESP32-S3.
-    pub fn create(_chip: &Chip) -> Arc<dyn XtensaDebugSequence> {
+    pub fn create() -> Arc<dyn XtensaDebugSequence> {
         Arc::new(Self {
             inner: EspFlashSizeDetector {
                 stack_pointer: 0x3FCF_0000,

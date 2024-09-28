@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use probe_rs_target::{Architecture, Chip, MemoryRegion};
+use probe_rs_target::Architecture;
 
 use crate::{
     architecture::xtensa::arch::{
@@ -26,14 +26,6 @@ pub(super) struct EspFlashSizeDetector {
 }
 
 impl EspFlashSizeDetector {
-    pub fn stack_pointer(chip: &Chip) -> u32 {
-        chip.memory_map
-            .iter()
-            .find_map(MemoryRegion::as_ram_region)
-            .map(|ram| ram.range.start as u32 + 0x1_0000)
-            .unwrap()
-    }
-
     pub fn detect_flash_size_esp32(
         &self,
         session: &mut Session,

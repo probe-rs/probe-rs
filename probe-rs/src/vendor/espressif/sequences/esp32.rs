@@ -5,8 +5,6 @@ use std::{
     time::{Duration, Instant},
 };
 
-use probe_rs_target::Chip;
-
 use super::esp::EspFlashSizeDetector;
 use crate::{
     architecture::xtensa::{
@@ -25,7 +23,7 @@ pub struct ESP32 {
 
 impl ESP32 {
     /// Creates a new debug sequence handle for the ESP32.
-    pub fn create(_chip: &Chip) -> Arc<dyn XtensaDebugSequence> {
+    pub fn create() -> Arc<dyn XtensaDebugSequence> {
         tracing::warn!("Be careful not to reset your ESP32 while connected to the debugger! Depending on the specific device, this may render it temporarily inoperable or permanently damage it.");
         Arc::new(Self {
             inner: EspFlashSizeDetector {
