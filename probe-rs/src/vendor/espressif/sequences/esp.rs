@@ -27,7 +27,6 @@ impl EspFlashSizeDetector {
         let mut core = session.core(0)?;
         core.reset_and_halt(Duration::from_millis(500))?;
 
-        // call esp_rom_spiflash_attach(0, false)
         let regs = core.registers();
         let spi_config = match self.efuse_get_spiconfig_fn {
             Some(get_spiconfig_fn) => {
@@ -43,6 +42,8 @@ impl EspFlashSizeDetector {
             }
             None => 0,
         };
+
+        // call esp_rom_spiflash_attach(spi_config, false)
         core.write_core_reg(regs.argument_register(0), spi_config as u64)?;
         core.write_core_reg(regs.argument_register(1), 0_u64)?;
 
