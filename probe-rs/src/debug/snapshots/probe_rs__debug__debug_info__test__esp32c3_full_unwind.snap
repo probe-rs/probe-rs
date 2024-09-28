@@ -675,9 +675,9 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: ~
       value:
-        U32: 1107350508
+        U32: 1107350506
   pc:
-    U32: 1107350508
+    U32: 1107350506
   frame_base: 1070395504
   is_inlined: false
   local_variables:
@@ -1008,9 +1008,9 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: ~
       value:
-        U32: 1107350508
+        U32: 1107350506
   pc:
-    U32: 1107350508
+    U32: 1107350506
   frame_base: 1070395648
   is_inlined: false
   local_variables:
@@ -1341,9 +1341,9 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: ~
       value:
-        U32: 1107350508
+        U32: 1107350506
   pc:
-    U32: 1107350508
+    U32: 1107350506
   frame_base: 1070395792
   is_inlined: false
   local_variables:
@@ -1674,9 +1674,9 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: ~
       value:
-        U32: 1107350508
+        U32: 1107350506
   pc:
-    U32: 1107350508
+    U32: 1107350506
   frame_base: 1070395936
   is_inlined: false
   local_variables:
@@ -2007,9 +2007,9 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: ~
       value:
-        U32: 1107350508
+        U32: 1107350506
   pc:
-    U32: 1107350508
+    U32: 1107350506
   frame_base: 1070396080
   is_inlined: false
   local_variables:
@@ -2340,9 +2340,9 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: ~
       value:
-        U32: 1107350304
+        U32: 1107350302
   pc:
-    U32: 1107350304
+    U32: 1107350302
   frame_base: 1070396224
   is_inlined: false
   local_variables:
@@ -4984,7 +4984,7 @@ expression: stack_frames
   source_location:
     line: 26
     column:
-      Column: 10
+      Column: 54
     file: esp32c3.rs
     directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
   registers:
@@ -5296,9 +5296,9 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: ~
       value:
-        U32: 1107297628
+        U32: 1107297626
   pc:
-    U32: 1107297628
+    U32: 1107297626
   frame_base: 1070399200
   is_inlined: false
   local_variables:
@@ -5898,12 +5898,13 @@ expression: stack_frames
                     Base: u64
                   value: "16000000"
   canonical_frame_address: 1070399392
-- function_name: fmt
+- function_name: hal_main
   source_location:
-    line: 31
-    column: LeftEdge
-    file: riscv.rs
-    directory: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/esp-hal-0.17.0/src/interrupt
+    line: 521
+    column:
+      Column: 9
+    file: lib.rs
+    directory: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/esp-hal-0.17.0/src
   registers:
     - core_register:
         id: 4096
@@ -6208,122 +6209,379 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: ~
       value:
-        U32: 1107304768
+        U32: 1107304766
   pc:
-    U32: 1107304768
+    U32: 1107304766
   frame_base: 1070399392
   is_inlined: false
   local_variables:
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tself: &esp_hal::interrupt::riscv::Error = &esp_hal::interrupt::riscv::Error @ 0x3FCCFFB4,\n\tf: &mut core::fmt::Formatter = &mut core::fmt::Formatter @ 0x3FCCFFB8}"
+      value: "<unknown> {\n\ta0: usize = 0,\n\ta1: usize = 0,\n\ta2: usize = 0,\n\tstack_chk_guard: *mut u32 = *mut u32 @ 0x3FCCFFC0}"
       children:
         - name:
-            Named: self
+            Named: a0
           type_name:
-            Pointer: "&esp_hal::interrupt::riscv::Error"
-          value: "&esp_hal::interrupt::riscv::Error @ 0x3FCCFFB4"
-          children:
-            - name:
-                Named: "*self"
-              type_name:
-                Enum: Error
-              value: "Error::InvalidInterruptPriority"
+            Base: usize
+          value: "0"
         - name:
-            Named: f
+            Named: a1
           type_name:
-            Pointer: "&mut core::fmt::Formatter"
-          value: "&mut core::fmt::Formatter @ 0x3FCCFFB8"
+            Base: usize
+          value: "0"
+        - name:
+            Named: a2
+          type_name:
+            Base: usize
+          value: "0"
+        - name:
+            Named: stack_chk_guard
+          type_name:
+            Pointer: "*mut u32"
+          value: "*mut u32 @ 0x3FCCFFC0"
           children:
             - name:
-                Named: "*f"
+                Named: "*stack_chk_guard"
               type_name:
-                Struct: Formatter
-              value: Formatter @ 0x00000000
-              children:
-                - name:
-                    Named: flags
-                  type_name:
-                    Base: u32
-                  value: "0"
-                - name:
-                    Named: fill
-                  type_name:
-                    Base: char
-                  value: "\u0000"
-                - name:
-                    Named: align
-                  type_name:
-                    Enum: Alignment
-                  value: "Alignment::Left"
-                - name:
-                    Named: width
-                  type_name:
-                    Struct: Option<usize>
-                  value: Option<usize> @ 0x00000000
-                  children:
-                    - name:
-                        Named: None
-                      type_name:
-                        Struct: None
-                      value: None @ 0x00000000
-                - name:
-                    Named: precision
-                  type_name:
-                    Struct: Option<usize>
-                  value: Option<usize> @ 0x00000008
-                  children:
-                    - name:
-                        Named: None
-                      type_name:
-                        Struct: None
-                      value: None @ 0x00000008
-                - name:
-                    Named: buf
-                  type_name:
-                    Struct: "&mut dyn core::fmt::Write"
-                  value: "&mut dyn core::fmt::Write @ 0x00000014"
-                  children:
-                    - name:
-                        Named: pointer
-                      type_name:
-                        Pointer: "dyn core::fmt::Write"
-                      value: "*raw dyn core::fmt::Write @ 0x00000014"
-                      children:
-                        - name:
-                            Named: "*pointer"
-                          type_name:
-                            Struct: "dyn core::fmt::Write"
-                          value: "dyn core::fmt::Write @ 0x00000000"
-                    - name:
-                        Named: vtable
-                      type_name:
-                        Pointer: "&[usize; 3]"
-                      value: "&[usize; 3] @ 0x00000018"
-                      children:
-                        - name:
-                            Named: "*vtable"
-                          type_name:
-                            Array:
-                              item_type_name:
-                                Base: usize
-                              count: 3
-                          value: "[usize; 3] = [\n\t0,\n\t0,\n\t0]"
-                          children:
-                            - name:
-                                Named: __0
-                              type_name:
-                                Base: usize
-                              value: "0"
-                            - name:
-                                Named: __1
-                              type_name:
-                                Base: usize
-                              value: "0"
-                            - name:
-                                Named: __2
-                              type_name:
-                                Base: usize
-                              value: "0"
-  canonical_frame_address: 1070399392
+                Base: u32
+              value: "< Probe(Other(\"The coredump does not include the memory for address 0x3fc825f4 of size 0x4\")) >"
+  canonical_frame_address: 1070399440
+- function_name: start_rust
+  source_location:
+    line: 70
+    column:
+      Column: 5
+    file: lib.rs
+    directory: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/esp-riscv-rt-0.8.0/src
+  registers:
+    - core_register:
+        id: 4096
+        roles:
+          - Core: x0
+          - Other: zero
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 0
+      value: ~
+    - core_register:
+        id: 4097
+        roles:
+          - Core: x1
+          - ReturnAddress
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 1
+      value:
+        U32: 1107296516
+    - core_register:
+        id: 4098
+        roles:
+          - Core: x2
+          - StackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 2
+      value:
+        U32: 1070399440
+    - core_register:
+        id: 4099
+        roles:
+          - Core: x3
+          - Other: gp
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 3
+      value: ~
+    - core_register:
+        id: 4100
+        roles:
+          - Core: x4
+          - Other: tp
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 4
+      value: ~
+    - core_register:
+        id: 4101
+        roles:
+          - Core: x5
+          - Other: t0
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 5
+      value: ~
+    - core_register:
+        id: 4102
+        roles:
+          - Core: x6
+          - Other: t1
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 6
+      value: ~
+    - core_register:
+        id: 4103
+        roles:
+          - Core: x7
+          - Other: t2
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 7
+      value: ~
+    - core_register:
+        id: 4104
+        roles:
+          - Core: x8
+          - FramePointer
+          - Other: s0
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 8
+      value:
+        U32: 1070399440
+    - core_register:
+        id: 4105
+        roles:
+          - Core: x9
+          - Other: s1
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 9
+      value: ~
+    - core_register:
+        id: 4106
+        roles:
+          - Core: x10
+          - Argument: a0
+          - Return: r0
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 10
+      value: ~
+    - core_register:
+        id: 4107
+        roles:
+          - Core: x11
+          - Argument: a1
+          - Return: r1
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 11
+      value: ~
+    - core_register:
+        id: 4108
+        roles:
+          - Core: x12
+          - Argument: a2
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 12
+      value: ~
+    - core_register:
+        id: 4109
+        roles:
+          - Core: x13
+          - Argument: a3
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 13
+      value: ~
+    - core_register:
+        id: 4110
+        roles:
+          - Core: x14
+          - Argument: a4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 14
+      value: ~
+    - core_register:
+        id: 4111
+        roles:
+          - Core: x15
+          - Argument: a5
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 15
+      value: ~
+    - core_register:
+        id: 4112
+        roles:
+          - Core: x16
+          - Argument: a6
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 16
+      value: ~
+    - core_register:
+        id: 4113
+        roles:
+          - Core: x17
+          - Argument: a7
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value: ~
+    - core_register:
+        id: 4114
+        roles:
+          - Core: x18
+          - Other: s2
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 18
+      value: ~
+    - core_register:
+        id: 4115
+        roles:
+          - Core: x19
+          - Other: s3
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 19
+      value: ~
+    - core_register:
+        id: 4116
+        roles:
+          - Core: x20
+          - Other: s4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 20
+      value: ~
+    - core_register:
+        id: 4117
+        roles:
+          - Core: x21
+          - Other: s5
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 21
+      value: ~
+    - core_register:
+        id: 4118
+        roles:
+          - Core: x22
+          - Other: s6
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 22
+      value: ~
+    - core_register:
+        id: 4119
+        roles:
+          - Core: x23
+          - Other: s7
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 23
+      value: ~
+    - core_register:
+        id: 4120
+        roles:
+          - Core: x24
+          - Other: s8
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 24
+      value: ~
+    - core_register:
+        id: 4121
+        roles:
+          - Core: x25
+          - Other: s9
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 25
+      value: ~
+    - core_register:
+        id: 4122
+        roles:
+          - Core: x26
+          - Other: s10
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 26
+      value: ~
+    - core_register:
+        id: 4123
+        roles:
+          - Core: x27
+          - Other: s11
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 27
+      value: ~
+    - core_register:
+        id: 4124
+        roles:
+          - Core: x28
+          - Other: t3
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 28
+      value: ~
+    - core_register:
+        id: 4125
+        roles:
+          - Core: x29
+          - Other: t4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 29
+      value: ~
+    - core_register:
+        id: 4126
+        roles:
+          - Core: x30
+          - Other: t5
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 30
+      value: ~
+    - core_register:
+        id: 4127
+        roles:
+          - Core: x31
+          - Other: t6
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 31
+      value: ~
+    - core_register:
+        id: 1969
+        roles:
+          - Core: pc
+          - ProgramCounter
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: ~
+      value:
+        U32: 1107296514
+  pc:
+    U32: 1107296514
+  frame_base: 1070399440
+  is_inlined: false
+  local_variables:
+    Child Variables:
+      name: LocalScopeRoot
+      type_name: Unknown
+      value: "<unknown> {\n\ta0: usize = 0,\n\ta1: usize = 0,\n\ta2: usize = 0}"
+      children:
+        - name:
+            Named: a0
+          type_name:
+            Base: usize
+          value: "0"
+        - name:
+            Named: a1
+          type_name:
+            Base: usize
+          value: "0"
+        - name:
+            Named: a2
+          type_name:
+            Base: usize
+          value: "0"
+  canonical_frame_address: 1070399472

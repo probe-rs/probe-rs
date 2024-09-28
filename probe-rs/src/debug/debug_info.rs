@@ -1156,12 +1156,22 @@ pub fn unwind_register(
                     .core_register
                     .register_has_role(RegisterRole::ProgramCounter) =>
                 {
+                    let Ok(current_pc) = callee_frame_registers
+                        .get_register_value_by_role(&RegisterRole::ProgramCounter)
+                    else {
+                        return ControlFlow::Break(
+                            crate::Error::Other(
+                                "UNWIND: Tried to unwind return address value where current program counter is unknown.".to_string()
+                            )
+                        );
+                    };
                     // NOTE: PC = Value of the unwound LR, i.e. the first instruction after the one that called this function.
                     // If both the LR and PC registers have undefined rules, this will prevent the unwind from continuing.
                     register_rule_string = "PC=(unwound LR) (dwarf Undefined)".to_string();
                     unwound_return_address.and_then(|return_address| {
                         unwind_program_counter_register(
                             return_address,
+                            current_pc,
                             instruction_set,
                             &mut register_rule_string,
                         )
@@ -1281,6 +1291,7 @@ pub fn unwind_register(
 /// Helper function to determine the program counter value for the previous frame.
 fn unwind_program_counter_register(
     return_address: RegisterValue,
+    current_pc: u64,
     instruction_set: Option<InstructionSet>,
     register_rule_string: &mut String,
 ) -> Option<RegisterValue> {
@@ -1291,15 +1302,32 @@ fn unwind_program_counter_register(
 
     match return_address {
         RegisterValue::U32(return_address) => {
-            if instruction_set == Some(InstructionSet::Thumb2) {
-                // NOTE: [ARMv7-M Architecture Reference Manual](https://developer.arm.com/documentation/ddi0403/ee), Section A5.1.2:
-                //
-                // We have to clear the last bit to ensure the PC is half-word aligned. (on ARM architecture,
-                // when in Thumb state for certain instruction types will set the LSB to 1)
-                *register_rule_string = "PC=(unwound LR & !0b1) (dwarf Undefined)".to_string();
-                Some(RegisterValue::U32(return_address & !0b1))
-            } else {
-                Some(RegisterValue::U32(return_address))
+            match instruction_set {
+                Some(InstructionSet::Thumb2) => {
+                    // NOTE: [ARMv7-M Architecture Reference Manual](https://developer.arm.com/documentation/ddi0403/ee), Section A5.1.2:
+                    //
+                    // We have to clear the last bit to ensure the PC is half-word aligned. (on ARM architecture,
+                    // when in Thumb state for certain instruction types will set the LSB to 1)
+                    *register_rule_string = "PC=(unwound LR & !0b1) (dwarf Undefined)".to_string();
+                    Some(RegisterValue::U32(return_address & !0b1))
+                }
+                Some(InstructionSet::RV32C) => {
+                    *register_rule_string = "PC=(unwound x1 - 2) (dwarf Undefined)".to_string();
+                    Some(RegisterValue::U32(return_address - 2))
+                }
+                Some(InstructionSet::RV32) => {
+                    *register_rule_string = "PC=(unwound x1 - 4) (dwarf Undefined)".to_string();
+                    Some(RegisterValue::U32(return_address - 4))
+                }
+                Some(InstructionSet::Xtensa) => {
+                    // TODO: detect CALL0
+                    let upper_bits = (current_pc as u32) & 0xC000_0000;
+                    *register_rule_string = "PC=(unwound x0 - 3) (dwarf Undefined)".to_string();
+                    Some(RegisterValue::U32(
+                        (return_address & 0x3FFF_FFFF | upper_bits) - 3,
+                    ))
+                }
+                _ => Some(RegisterValue::U32(return_address)),
             }
         }
         RegisterValue::U64(return_address) => Some(RegisterValue::U64(return_address)),
