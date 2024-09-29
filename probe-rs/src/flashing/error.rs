@@ -115,12 +115,6 @@ pub enum FlashError {
         /// The size of the stack that was tried to be configured.
         size: u64,
     },
-    /// The given page size is not valid. Only page sizes multiples of 4 bytes are allowed.
-    #[error("Invalid page size {size:#010x}. Must be a multiple of 4 bytes.")]
-    InvalidPageSize {
-        /// The size of the page in bytes.
-        size: u32,
-    },
     // TODO: Warn at YAML parsing stage.
     // TODO: 1 Add information about flash (name, address)
     // TODO: 2 Add source of target definition (built-in, yaml)
