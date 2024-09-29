@@ -115,6 +115,14 @@ pub enum FlashError {
         /// The size of the stack that was tried to be configured.
         size: u64,
     },
+    /// Failed to configure the data region of a flash algorithm.
+    #[error("Failed to place data to address {data_load_addr:#010x} in RAM. The data must be placed in the range {data_ram:#x?}.")]
+    InvalidDataAddress {
+        /// The address where the data was supposed to be loaded to.
+        data_load_addr: u64,
+        /// The range of the data memory.
+        data_ram: Range<u64>,
+    },
     // TODO: Warn at YAML parsing stage.
     // TODO: 1 Add information about flash (name, address)
     // TODO: 2 Add source of target definition (built-in, yaml)

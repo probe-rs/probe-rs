@@ -548,7 +548,6 @@ mod tests {
                             .collect::<Vec<_>>()
                     };
 
-                    println!("Checking flash algorithm {}", raw_flash_algo.name);
                     for core in cores {
                         FlashAlgorithm::assemble_from_raw_with_core(raw_flash_algo, core, &target)
                             .unwrap_or_else(|error| {

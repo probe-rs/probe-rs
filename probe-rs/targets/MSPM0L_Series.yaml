@@ -124,7 +124,6 @@ variants:
     - main
   flash_algorithms:
   - mspm0l_main_16kb
-  - mspm0l_nonmain
 - name: MSPM0L1304
   cores:
   - name: main
@@ -165,7 +164,6 @@ variants:
     - main
   flash_algorithms:
   - mspm0l_main_16kb
-  - mspm0l_nonmain
 - name: MSPM0L1305
   cores:
   - name: main
@@ -288,7 +286,6 @@ variants:
     - main
   flash_algorithms:
   - mspm0l_main_16kb
-  - mspm0l_nonmain
 - name: MSPM0L1344
   cores:
   - name: main
@@ -329,7 +326,6 @@ variants:
     - main
   flash_algorithms:
   - mspm0l_main_16kb
-  - mspm0l_nonmain
 - name: MSPM0L1345
   cores:
   - name: main

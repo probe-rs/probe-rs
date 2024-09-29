@@ -305,6 +305,12 @@ impl FlashAlgorithm {
         };
 
         // Available memory for data depends on where the stack needs to be placed.
+        if data_ram_region.range.end < data_load_addr {
+            return Err(FlashError::InvalidDataAddress {
+                data_load_addr,
+                data_ram: data_ram_region.range.clone(),
+            });
+        }
         let mut ram_for_data = data_ram_region.range.end - data_load_addr;
         if code_end + stack_size > data_load_addr && ram_region == data_ram_region {
             // Stack can only go after the data, so let's reduce the available size.
