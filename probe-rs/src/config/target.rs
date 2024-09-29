@@ -68,15 +68,21 @@ impl Target {
         let mut memory_map = chip.memory_map.clone();
         let mut flash_algorithms = Vec::new();
         for algo_name in chip.flash_algorithms.iter() {
-            let mut algo = family
+            let algo = family
                 .get_algorithm(algo_name)
                 .expect(
                     "The required flash algorithm was not found. This is a bug. Please report it.",
                 )
                 .clone();
 
+            let mut algo_cores = if algo.cores.is_empty() {
+                chip.cores.iter().map(|core| core.name.clone()).collect()
+            } else {
+                algo.cores.clone()
+            };
+
             // only keep cores in the algo that are also in the chip
-            algo.cores.retain(|algo_core| {
+            algo_cores.retain(|algo_core| {
                 chip.cores
                     .iter()
                     .any(|chip_core| &chip_core.name == algo_core)
@@ -94,7 +100,7 @@ impl Target {
                 memory_map.push(MemoryRegion::Nvm(NvmRegion {
                     name: None,
                     range: algo_range.clone(),
-                    cores: algo.cores.clone(),
+                    cores: algo_cores,
                     is_alias: false,
                     access: Some(MemoryAccess {
                         read: false,
