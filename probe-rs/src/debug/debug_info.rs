@@ -691,50 +691,24 @@ impl DebugInfo {
                         tracing::trace!(
                             "UNWIND: Unable to find unwind info for address {frame_pc:#010x}: {err}"
                         );
-                        // For non exception frames, we cannot do stack unwinding if we do not have debug info.
-                        // However, there is one case where we can continue. When the frame registers have a valid
-                        // return address/LR value, we can use the LR value to calculate the PC for the calling frame.
-                        // The current logic will then use that PC to get the next frame's unwind info, and if that exists,
-                        // we will be able to continue unwinding.
-                        // If the calling frame has no debug info, then the unwinding will end with that frame.
-                        let callee_frame_registers = unwind_registers.clone();
-                        let mut unwound_return_address: Option<RegisterValue> = unwind_registers
-                            .get_return_address()
-                            .and_then(|lr| lr.value);
-
-                        // This will update the program counter in the `unwind_registers` with the PC value calculated from the LR value.
-                        if let Some(calling_pc) = unwind_registers.get_program_counter_mut() {
-                            if let ControlFlow::Break(error) = unwind_register(
-                                calling_pc,
-                                &callee_frame_registers,
-                                None,
-                                stack_frames
-                                    .last()
-                                    .and_then(|first_frame| first_frame.canonical_frame_address),
-                                &mut unwound_return_address,
-                                memory,
+                        if let ControlFlow::Break(error) = exception_handler
+                            .unwind_without_debuginfo(
+                                &mut unwind_registers,
+                                frame_pc,
+                                &stack_frames,
                                 instruction_set,
-                            ) {
+                                memory,
+                            )
+                        {
+                            if let Some(error) = error {
                                 // This is not fatal, but we cannot continue unwinding beyond the current frame.
                                 tracing::error!("{:?}", &error);
                                 if let Some(first_frame) = stack_frames.first_mut() {
                                     first_frame.function_name =
                                         format!("{} : ERROR : {error}", first_frame.function_name);
                                 };
-                                break 'unwind;
                             }
-                            if calling_pc
-                                .value
-                                .map(|calling_pc_value| {
-                                    calling_pc_value.eq(&frame_pc_register_value)
-                                })
-                                .unwrap_or(false)
-                            {
-                                // Typically if we have to infer the PC value, it might happen that we are in
-                                // a function that has no debug info, and the code is in a tight loop (typical of exception handlers).
-                                // In such cases, we will not be able to unwind the stack beyond this frame.
-                                break 'unwind;
-                            }
+                            break 'unwind;
                         }
                         continue 'unwind;
                     }
