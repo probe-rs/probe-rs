@@ -96,12 +96,14 @@ impl Target {
                 .iter()
                 .any(|region| region.address_range().intersects_range(algo_range))
             {
-                // Conjure up a memory region for the flash algorithm.
+                // Conjure up a memory region for the flash algorithm. This is mostly used by
+                // EEPROM regions. We probably don't want to erase these regions, so we set
+                // `is_alias`, which then causes "erase all" to skip the region.
                 memory_map.push(MemoryRegion::Nvm(NvmRegion {
                     name: None,
                     range: algo_range.clone(),
                     cores: algo_cores,
-                    is_alias: false,
+                    is_alias: true,
                     access: Some(MemoryAccess {
                         read: false,
                         write: false,

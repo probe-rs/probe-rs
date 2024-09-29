@@ -636,10 +636,6 @@ impl FlashLoader {
             .iter()
             .filter_map(MemoryRegion::as_nvm_region)
         {
-            if region.is_alias {
-                tracing::debug!("Skipping alias memory region {:#010X?}", region.range);
-                continue;
-            }
             tracing::debug!(
                 "    region: {:#010X?} ({} bytes)",
                 region.range,
@@ -648,6 +644,8 @@ impl FlashLoader {
 
             // If we have no data in this region, ignore it.
             // This avoids uselessly initializing and deinitializing its flash algorithm.
+            // We do not check for alias regions here, as we'll work with them if data explicitly
+            // targets them.
             if !self.builder.has_data_in_range(&region.range) {
                 tracing::debug!("     -- empty, ignoring!");
                 continue;
