@@ -253,7 +253,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32wlexx_128
+  #- stm32wlexx_128
 - name: STM32WLE4CBUx
   cores:
   - name: main
@@ -355,7 +355,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32wlexx_128
+  #- stm32wlexx_128
 - name: STM32WLE4JBIx
   cores:
   - name: main
@@ -457,7 +457,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32wlexx_128
+  #- stm32wlexx_128
 - name: STM32WLE5CBUx
   cores:
   - name: main
@@ -559,7 +559,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32wlexx_128
+  #- stm32wlexx_128
 - name: STM32WLE5JBIx
   cores:
   - name: main

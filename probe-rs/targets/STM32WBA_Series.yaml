@@ -32,7 +32,7 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
+  #- stm32wbax_1m_0c00
 - name: STM32WBA50KGUx
   cores:
   - name: main
@@ -60,7 +60,7 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
+  #- stm32wbax_1m_0c00
 - name: STM32WBA52CEUx
   cores:
   - name: main
@@ -88,7 +88,7 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
+  #- stm32wbax_1m_0c00
 - name: STM32WBA52CGUx
   cores:
   - name: main
@@ -116,7 +116,7 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
+  #- stm32wbax_1m_0c00
 - name: STM32WBA52KEUx
   cores:
   - name: main
@@ -144,7 +144,7 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
+  #- stm32wbax_1m_0c00
 - name: STM32WBA52KGUx
   cores:
   - name: main
@@ -172,7 +172,7 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
+  #- stm32wbax_1m_0c00
 - name: STM32WBA54CEUx
   cores:
   - name: main
@@ -200,7 +200,7 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
+  #- stm32wbax_1m_0c00
 - name: STM32WBA54CGUx
   cores:
   - name: main
@@ -228,7 +228,7 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
+  #- stm32wbax_1m_0c00
 - name: STM32WBA54KEUx
   cores:
   - name: main
@@ -256,7 +256,7 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
+  #- stm32wbax_1m_0c00
 - name: STM32WBA54KGUx
   cores:
   - name: main
@@ -284,7 +284,7 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
+  #- stm32wbax_1m_0c00
 - name: STM32WBA55CEUx
   cores:
   - name: main
@@ -312,7 +312,7 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
+  #- stm32wbax_1m_0c00
 - name: STM32WBA55CGUx
   cores:
   - name: main
@@ -340,7 +340,7 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
+  #- stm32wbax_1m_0c00
 - name: STM32WBA55HEFx
   cores:
   - name: main
@@ -368,7 +368,7 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
+  #- stm32wbax_1m_0c00
 - name: STM32WBA55HGFx
   cores:
   - name: main
@@ -396,7 +396,7 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
+  #- stm32wbax_1m_0c00
 - name: STM32WBA55UEIx
   cores:
   - name: main
@@ -424,7 +424,7 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
+  #- stm32wbax_1m_0c00
 - name: STM32WBA55UGIx
   cores:
   - name: main
@@ -452,7 +452,7 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
+  #- stm32wbax_1m_0c00
 flash_algorithms:
 - name: stm32wbax_1m_0800
   description: STM32WBAxx 1M NSecure Flash
