@@ -96,6 +96,7 @@ impl Target {
                 .iter()
                 .any(|region| region.address_range().intersects_range(algo_range))
             {
+                // HACK (doubly, even):
                 // Conjure up a memory region for the flash algorithm. This is mostly used by
                 // EEPROM regions. We probably don't want to erase these regions, so we set
                 // `is_alias`, which then causes "erase all" to skip the region.
