@@ -152,7 +152,7 @@ pub enum FlashError {
     // TODO: 1 Add source of target definition
     // TOOD: 2 Do this at target load time.
     /// The given chip has no RAM defined.
-    #[error("No RAM defined for target: {name}.")]
+    #[error("No suitable RAM region is defined for target: {name}.")]
     NoRamDefined {
         /// The name of the chip.
         name: String,
