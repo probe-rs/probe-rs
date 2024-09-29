@@ -225,13 +225,6 @@ impl FlashAlgorithm {
     ) -> Result<Self, FlashError> {
         use std::mem::size_of;
 
-        if raw.flash_properties.page_size % 4 != 0 {
-            // TODO move to yaml validation
-            return Err(FlashError::InvalidPageSize {
-                size: raw.flash_properties.page_size,
-            });
-        }
-
         let assembled_instructions = raw.instructions.chunks_exact(size_of::<u32>());
 
         let remainder = assembled_instructions.remainder();
@@ -312,9 +305,18 @@ impl FlashAlgorithm {
         };
 
         // Available memory for data depends on where the stack needs to be placed.
+        if data_ram_region.range.end < data_load_addr {
+            return Err(FlashError::InvalidDataAddress {
+                data_load_addr,
+                data_ram: data_ram_region.range.clone(),
+            });
+        }
         let mut ram_for_data = data_ram_region.range.end - data_load_addr;
         if code_end + stack_size > data_load_addr && ram_region == data_ram_region {
             // Stack can only go after the data, so let's reduce the available size.
+            if stack_size > ram_for_data {
+                return Err(FlashError::InvalidFlashAlgorithmStackSize { size: stack_size });
+            }
             ram_for_data -= stack_size;
         }
 

@@ -220,6 +220,8 @@ where
 
             region.cores = common_cores;
             region.range.end = next.range.end;
+
+            self.iter.next();
         }
 
         Some(region)
@@ -588,5 +590,83 @@ mod test {
         range.align_to_32_bits();
         assert_eq!(range.start, 4);
         assert_eq!(range.end, 16);
+    }
+
+    #[test]
+    fn merge_consecutive_outputs_single_region() {
+        let regions = [RamRegion {
+            name: None,
+            range: 0..4,
+            cores: vec!["core0".to_string()],
+            access: None,
+        }];
+
+        let merged_regions: Vec<RamRegion> = regions.iter().merge_consecutive().collect();
+
+        assert_eq!(
+            merged_regions,
+            vec![RamRegion {
+                name: None,
+                range: 0..4,
+                cores: vec!["core0".to_string()],
+                access: None,
+            },]
+        );
+    }
+
+    #[test]
+    fn merge_consecutive_separates_ranges_with_different_cores() {
+        let regions = vec![
+            RamRegion {
+                name: None,
+                range: 0..4,
+                cores: vec!["core0".to_string()],
+                access: None,
+            },
+            RamRegion {
+                name: None,
+                range: 4..8,
+                cores: vec!["core1".to_string()],
+                access: None,
+            },
+            RamRegion {
+                name: None,
+                range: 8..12,
+                cores: vec!["core1".to_string()],
+                access: None,
+            },
+            RamRegion {
+                name: None,
+                range: 16..20,
+                cores: vec!["core1".to_string()],
+                access: None,
+            },
+        ];
+
+        let merged_regions: Vec<RamRegion> = regions.iter().merge_consecutive().collect();
+
+        assert_eq!(
+            merged_regions,
+            vec![
+                RamRegion {
+                    name: None,
+                    range: 0..4,
+                    cores: vec!["core0".to_string()],
+                    access: None,
+                },
+                RamRegion {
+                    name: None,
+                    range: 4..12,
+                    cores: vec!["core1".to_string()],
+                    access: None,
+                },
+                RamRegion {
+                    name: None,
+                    range: 16..20,
+                    cores: vec!["core1".to_string()],
+                    access: None,
+                },
+            ]
+        );
     }
 }

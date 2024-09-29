@@ -68,19 +68,12 @@ impl Target {
         let mut memory_map = chip.memory_map.clone();
         let mut flash_algorithms = Vec::new();
         for algo_name in chip.flash_algorithms.iter() {
-            let mut algo = family
-                .get_algorithm(algo_name)
+            let algo = family
+                .get_algorithm_for_chip(algo_name, chip)
                 .expect(
                     "The required flash algorithm was not found. This is a bug. Please report it.",
                 )
                 .clone();
-
-            // only keep cores in the algo that are also in the chip
-            algo.cores.retain(|algo_core| {
-                chip.cores
-                    .iter()
-                    .any(|chip_core| &chip_core.name == algo_core)
-            });
 
             // If the flash algorithm addresses a range that is not covered by any memory region,
             // we add a new memory region for it. This is usually the case for option bytes and
@@ -90,12 +83,15 @@ impl Target {
                 .iter()
                 .any(|region| region.address_range().intersects_range(algo_range))
             {
-                // Conjure up a memory region for the flash algorithm.
+                // HACK (doubly, even):
+                // Conjure up a memory region for the flash algorithm. This is mostly used by
+                // EEPROM regions. We probably don't want to erase these regions, so we set
+                // `is_alias`, which then causes "erase all" to skip the region.
                 memory_map.push(MemoryRegion::Nvm(NvmRegion {
                     name: None,
                     range: algo_range.clone(),
                     cores: algo.cores.clone(),
-                    is_alias: false,
+                    is_alias: true,
                     access: Some(MemoryAccess {
                         read: false,
                         write: false,

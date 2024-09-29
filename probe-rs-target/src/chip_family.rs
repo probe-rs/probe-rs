@@ -421,4 +421,32 @@ impl ChipFamily {
         let name = name.as_ref();
         self.flash_algorithms.iter().find(|elem| elem.name == name)
     }
+
+    /// Tries to find a [RawFlashAlgorithm] with a given name and returns it with the
+    /// core assignment fixed to the cores of the given chip.
+    pub fn get_algorithm_for_chip(
+        &self,
+        name: impl AsRef<str>,
+        chip: &Chip,
+    ) -> Option<RawFlashAlgorithm> {
+        self.get_algorithm(name).map(|algo| {
+            let mut algo_cores = if algo.cores.is_empty() {
+                chip.cores.iter().map(|core| core.name.clone()).collect()
+            } else {
+                algo.cores.clone()
+            };
+
+            // only keep cores in the algo that are also in the chip
+            algo_cores.retain(|algo_core| {
+                chip.cores
+                    .iter()
+                    .any(|chip_core| &chip_core.name == algo_core)
+            });
+
+            RawFlashAlgorithm {
+                cores: algo_cores,
+                ..algo.clone()
+            }
+        })
+    }
 }

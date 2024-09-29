@@ -115,11 +115,13 @@ pub enum FlashError {
         /// The size of the stack that was tried to be configured.
         size: u64,
     },
-    /// The given page size is not valid. Only page sizes multiples of 4 bytes are allowed.
-    #[error("Invalid page size {size:#010x}. Must be a multiple of 4 bytes.")]
-    InvalidPageSize {
-        /// The size of the page in bytes.
-        size: u32,
+    /// Failed to configure the data region of a flash algorithm.
+    #[error("Failed to place data to address {data_load_addr:#010x} in RAM. The data must be placed in the range {data_ram:#x?}.")]
+    InvalidDataAddress {
+        /// The address where the data was supposed to be loaded to.
+        data_load_addr: u64,
+        /// The range of the data memory.
+        data_ram: Range<u64>,
     },
     // TODO: Warn at YAML parsing stage.
     // TODO: 1 Add information about flash (name, address)
@@ -150,7 +152,7 @@ pub enum FlashError {
     // TODO: 1 Add source of target definition
     // TOOD: 2 Do this at target load time.
     /// The given chip has no RAM defined.
-    #[error("No RAM defined for target: {name}.")]
+    #[error("No suitable RAM region is defined for target: {name}.")]
     NoRamDefined {
         /// The name of the chip.
         name: String,
@@ -179,7 +181,7 @@ pub enum FlashError {
     #[error("No core can access the NVM region {0:?}.")]
     NoNvmCoreAccess(NvmRegion),
     /// No core can access this RAM region.
-    #[error("No core can access the ram region {0:?}.")]
+    #[error("No core can access the RAM region {0:?}.")]
     NoRamCoreAccess(RamRegion),
     /// The register value supplied for this flash algorithm is out of the supported range.
     #[error("The register value {0:#010x} is out of the supported range.")]
