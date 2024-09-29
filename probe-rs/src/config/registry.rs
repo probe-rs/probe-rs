@@ -544,7 +544,17 @@ mod tests {
                         raw_flash_algo
                             .cores
                             .iter()
-                            .map(|c| c.as_str())
+                            .filter_map(|c| {
+                                if target
+                                    .cores
+                                    .iter()
+                                    .any(|target_core| &target_core.name == c)
+                                {
+                                    Some(c.as_str())
+                                } else {
+                                    None
+                                }
+                            })
                             .collect::<Vec<_>>()
                     };
 
