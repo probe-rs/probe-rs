@@ -683,8 +683,14 @@ impl DebugInfo {
             // and then the unwind info associated with this row.
             let unwind_info =
                 match get_unwind_info(&mut unwind_context, &self.frame_section, frame_pc) {
-                    Ok(unwind_info) => unwind_info,
-                    Err(_) => {
+                    Ok(unwind_info) => {
+                        tracing::trace!("UNWIND: Found unwind info for address {frame_pc:#010x}");
+                        unwind_info
+                    }
+                    Err(err) => {
+                        tracing::trace!(
+                            "UNWIND: Unable to find unwind info for address {frame_pc:#010x}: {err}"
+                        );
                         // For non exception frames, we cannot do stack unwinding if we do not have debug info.
                         // However, there is one case where we can continue. When the frame registers have a valid
                         // return address/LR value, we can use the LR value to calculate the PC for the calling frame.
