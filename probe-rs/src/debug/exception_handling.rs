@@ -5,7 +5,7 @@ use std::ops::ControlFlow;
 
 use probe_rs_target::CoreType;
 
-use crate::{debug::unwind_register, MemoryInterface, RegisterValue};
+use crate::{debug::unwind_pc_without_debuginfo, MemoryInterface};
 
 use super::{DebugError, DebugInfo, DebugRegisters, StackFrame};
 
@@ -127,6 +127,8 @@ pub trait ExceptionInterface {
     ) -> Result<String, DebugError>;
 
     /// Unwind the stack without debug info.
+    ///
+    /// This method can be implemented to provide a stack trace using frame pointers, for example.
     fn unwind_without_debuginfo(
         &self,
         unwind_registers: &mut DebugRegisters,
@@ -135,45 +137,12 @@ pub trait ExceptionInterface {
         instruction_set: Option<crate::InstructionSet>,
         memory: &mut dyn MemoryInterface,
     ) -> ControlFlow<Option<DebugError>> {
-        // For non exception frames, we cannot do stack unwinding if we do not have debug info.
-        // However, there is one case where we can continue. When the frame registers have a valid
-        // return address/LR value, we can use the LR value to calculate the PC for the calling frame.
-        // The current logic will then use that PC to get the next frame's unwind info, and if that exists,
-        // we will be able to continue unwinding.
-        // If the calling frame has no debug info, then the unwinding will end with that frame.
-        let callee_frame_registers = unwind_registers.clone();
-        let mut unwound_return_address: Option<RegisterValue> = unwind_registers
-            .get_return_address()
-            .and_then(|lr| lr.value);
-
-        // This will update the program counter in the `unwind_registers` with the PC value calculated from the LR value.
-        if let Some(calling_pc) = unwind_registers.get_program_counter_mut() {
-            if let ControlFlow::Break(error) = unwind_register(
-                calling_pc,
-                &callee_frame_registers,
-                None,
-                stack_frames
-                    .last()
-                    .and_then(|first_frame| first_frame.canonical_frame_address),
-                &mut unwound_return_address,
-                memory,
-                instruction_set,
-            ) {
-                return ControlFlow::Break(Some(error.into()));
-            };
-
-            if calling_pc
-                .value
-                .map(|calling_pc_value| calling_pc_value == RegisterValue::from(frame_pc))
-                .unwrap_or(false)
-            {
-                // Typically if we have to infer the PC value, it might happen that we are in
-                // a function that has no debug info, and the code is in a tight loop (typical of exception handlers).
-                // In such cases, we will not be able to unwind the stack beyond this frame.
-                return ControlFlow::Break(None);
-            }
-        }
-
-        ControlFlow::Continue(())
+        unwind_pc_without_debuginfo(
+            unwind_registers,
+            frame_pc,
+            stack_frames,
+            instruction_set,
+            memory,
+        )
     }
 }
