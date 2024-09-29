@@ -594,7 +594,7 @@ mod test {
 
     #[test]
     fn merge_consecutive_outputs_single_region() {
-        let regions = vec![RamRegion {
+        let regions = [RamRegion {
             name: None,
             range: 0..4,
             cores: vec!["core0".to_string()],
