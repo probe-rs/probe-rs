@@ -179,7 +179,7 @@ pub enum FlashError {
     #[error("No core can access the NVM region {0:?}.")]
     NoNvmCoreAccess(NvmRegion),
     /// No core can access this RAM region.
-    #[error("No core can access the ram region {0:?}.")]
+    #[error("No core can access the RAM region {0:?}.")]
     NoRamCoreAccess(RamRegion),
     /// The register value supplied for this flash algorithm is out of the supported range.
     #[error("The register value {0:#010x} is out of the supported range.")]
