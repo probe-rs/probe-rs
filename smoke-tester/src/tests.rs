@@ -162,6 +162,7 @@ fn test_hw_breakpoints(tracker: &TestTracker, core: &mut Core) -> TestResult {
     let memory_regions: Vec<_> = core
         .memory_regions()
         .filter_map(MemoryRegion::as_nvm_region)
+        .filter(|r| r.is_executable())
         .cloned()
         .collect();
 
