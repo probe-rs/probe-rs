@@ -67,7 +67,7 @@ impl UnitInfo {
         debug_info: &'debug_info super::DebugInfo,
         address: u64,
     ) -> Result<Vec<FunctionDie>, DebugError> {
-        tracing::trace!("Searching Function DIE for address {:#x}", address);
+        tracing::trace!("Searching Function DIE for address {:#010x}", address);
 
         let mut entries_cursor = self.unit.entries();
         while let Ok(Some((_depth, current))) = entries_cursor.next_dfs() {
@@ -85,7 +85,7 @@ impl UnitInfo {
             let inlined_functions =
                 self.find_inlined_functions(debug_info, address, current.offset())?;
             tracing::debug!(
-                "{} inlined functions for address {}",
+                "{} inlined functions for address {:#010x}",
                 inlined_functions.len(),
                 address
             );

@@ -172,7 +172,7 @@ impl DebugInfo {
                                 if let Some((file, directory)) =
                                     self.find_file_and_directory(unit, previous_row.file_index())
                                 {
-                                    tracing::debug!("{} - {:?}", address, previous_row.isa());
+                                    tracing::debug!("{:#010x} - {:?}", address, previous_row.isa());
                                     return Some(SourceLocation {
                                         line: previous_row.line().map(NonZeroU64::get),
                                         column: Some(previous_row.column().into()),
@@ -187,7 +187,7 @@ impl DebugInfo {
                             if let Some((file, directory)) =
                                 self.find_file_and_directory(unit, row.file_index())
                             {
-                                tracing::debug!("{} - {:?}", address, row.isa());
+                                tracing::debug!("{:#010x} - {:?}", address, row.isa());
 
                                 return Some(SourceLocation {
                                     line: row.line().map(NonZeroU64::get),
@@ -683,52 +683,32 @@ impl DebugInfo {
             // and then the unwind info associated with this row.
             let unwind_info =
                 match get_unwind_info(&mut unwind_context, &self.frame_section, frame_pc) {
-                    Ok(unwind_info) => unwind_info,
-                    Err(_) => {
-                        // For non exception frames, we cannot do stack unwinding if we do not have debug info.
-                        // However, there is one case where we can continue. When the frame registers have a valid
-                        // return address/LR value, we can use the LR value to calculate the PC for the calling frame.
-                        // The current logic will then use that PC to get the next frame's unwind info, and if that exists,
-                        // we will be able to continue unwinding.
-                        // If the calling frame has no debug info, then the unwinding will end with that frame.
-                        let callee_frame_registers = unwind_registers.clone();
-                        let mut unwound_return_address: Option<RegisterValue> = unwind_registers
-                            .get_return_address()
-                            .and_then(|lr| lr.value);
-
-                        // This will update the program counter in the `unwind_registers` with the PC value calculated from the LR value.
-                        if let Some(calling_pc) = unwind_registers.get_program_counter_mut() {
-                            if let ControlFlow::Break(error) = unwind_register(
-                                calling_pc,
-                                &callee_frame_registers,
-                                None,
-                                stack_frames
-                                    .last()
-                                    .and_then(|first_frame| first_frame.canonical_frame_address),
-                                &mut unwound_return_address,
-                                memory,
+                    Ok(unwind_info) => {
+                        tracing::trace!("UNWIND: Found unwind info for address {frame_pc:#010x}");
+                        unwind_info
+                    }
+                    Err(err) => {
+                        tracing::trace!(
+                            "UNWIND: Unable to find unwind info for address {frame_pc:#010x}: {err}"
+                        );
+                        if let ControlFlow::Break(error) = exception_handler
+                            .unwind_without_debuginfo(
+                                &mut unwind_registers,
+                                frame_pc,
+                                &stack_frames,
                                 instruction_set,
-                            ) {
+                                memory,
+                            )
+                        {
+                            if let Some(error) = error {
                                 // This is not fatal, but we cannot continue unwinding beyond the current frame.
                                 tracing::error!("{:?}", &error);
                                 if let Some(first_frame) = stack_frames.first_mut() {
                                     first_frame.function_name =
                                         format!("{} : ERROR : {error}", first_frame.function_name);
                                 };
-                                break 'unwind;
                             }
-                            if calling_pc
-                                .value
-                                .map(|calling_pc_value| {
-                                    calling_pc_value.eq(&frame_pc_register_value)
-                                })
-                                .unwrap_or(false)
-                            {
-                                // Typically if we have to infer the PC value, it might happen that we are in
-                                // a function that has no debug info, and the code is in a tight loop (typical of exception handlers).
-                                // In such cases, we will not be able to unwind the stack beyond this frame.
-                                break 'unwind;
-                            }
+                            break 'unwind;
                         }
                         continue 'unwind;
                     }
@@ -1060,6 +1040,56 @@ pub fn determine_cfa<R: gimli::ReaderOffset>(
     };
 
     Ok(cfa)
+}
+
+/// Unwind the program counter for the caller frame, using the LR value from the callee frame.
+pub fn unwind_pc_without_debuginfo(
+    unwind_registers: &mut DebugRegisters,
+    frame_pc: u64,
+    stack_frames: &[StackFrame],
+    instruction_set: Option<crate::InstructionSet>,
+    memory: &mut dyn MemoryInterface,
+) -> ControlFlow<Option<DebugError>> {
+    // For non exception frames, we cannot do stack unwinding if we do not have debug info.
+    // However, there is one case where we can continue. When the frame registers have a valid
+    // return address/LR value, we can use the LR value to calculate the PC for the calling frame.
+    // The current logic will then use that PC to get the next frame's unwind info, and if that exists,
+    // we will be able to continue unwinding.
+    // If the calling frame has no debug info, then the unwinding will end with that frame.
+    let callee_frame_registers = unwind_registers.clone();
+    let mut unwound_return_address: Option<RegisterValue> = unwind_registers
+        .get_return_address()
+        .and_then(|lr| lr.value);
+
+    // This will update the program counter in the `unwind_registers` with the PC value calculated from the LR value.
+    if let Some(calling_pc) = unwind_registers.get_program_counter_mut() {
+        if let ControlFlow::Break(error) = unwind_register(
+            calling_pc,
+            &callee_frame_registers,
+            None,
+            stack_frames
+                .last()
+                .and_then(|first_frame| first_frame.canonical_frame_address),
+            &mut unwound_return_address,
+            memory,
+            instruction_set,
+        ) {
+            return ControlFlow::Break(Some(error.into()));
+        };
+
+        if calling_pc
+            .value
+            .map(|calling_pc_value| calling_pc_value == RegisterValue::from(frame_pc))
+            .unwrap_or(false)
+        {
+            // Typically if we have to infer the PC value, it might happen that we are in
+            // a function that has no debug info, and the code is in a tight loop (typical of exception handlers).
+            // In such cases, we will not be able to unwind the stack beyond this frame.
+            return ControlFlow::Break(None);
+        }
+    }
+
+    ControlFlow::Continue(())
 }
 
 /// A per_register unwind, applying register rules and updating the [`registers::DebugRegister`] value as appropriate, before returning control to the calling function.

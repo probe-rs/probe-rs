@@ -1,9 +1,11 @@
 //! This module (and its children) contains the implementation of the [`ExceptionInterface`] for the various ARM core
 //! variants.
 
+use std::ops::ControlFlow;
+
 use probe_rs_target::CoreType;
 
-use crate::MemoryInterface;
+use crate::{debug::unwind_pc_without_debuginfo, MemoryInterface};
 
 use super::{DebugError, DebugInfo, DebugRegisters, StackFrame};
 
@@ -16,6 +18,8 @@ pub(crate) mod armv7m;
 
 pub(crate) mod armv8m;
 
+pub(crate) mod xtensa;
+
 /// Creates a new exception interface for the [`CoreType`] at hand.
 pub fn exception_handler_for_core(core_type: CoreType) -> Box<dyn ExceptionInterface> {
     use self::{armv6m, armv7m, armv8m};
@@ -23,7 +27,8 @@ pub fn exception_handler_for_core(core_type: CoreType) -> Box<dyn ExceptionInter
         CoreType::Armv6m => Box::new(armv6m::ArmV6MExceptionHandler),
         CoreType::Armv7m | CoreType::Armv7em => Box::new(armv7m::ArmV7MExceptionHandler),
         CoreType::Armv8m => Box::new(armv8m::ArmV8MExceptionHandler),
-        CoreType::Armv7a | CoreType::Armv8a | CoreType::Riscv | CoreType::Xtensa => {
+        CoreType::Xtensa => Box::new(xtensa::XtensaExceptionHandler),
+        CoreType::Armv7a | CoreType::Armv8a | CoreType::Riscv => {
             Box::new(UnimplementedExceptionHandler)
         }
     }
@@ -120,4 +125,24 @@ pub trait ExceptionInterface {
         raw_exception: u32,
         memory: &mut dyn MemoryInterface,
     ) -> Result<String, DebugError>;
+
+    /// Unwind the stack without debug info.
+    ///
+    /// This method can be implemented to provide a stack trace using frame pointers, for example.
+    fn unwind_without_debuginfo(
+        &self,
+        unwind_registers: &mut DebugRegisters,
+        frame_pc: u64,
+        stack_frames: &[StackFrame],
+        instruction_set: Option<crate::InstructionSet>,
+        memory: &mut dyn MemoryInterface,
+    ) -> ControlFlow<Option<DebugError>> {
+        unwind_pc_without_debuginfo(
+            unwind_registers,
+            frame_pc,
+            stack_frames,
+            instruction_set,
+            memory,
+        )
+    }
 }
