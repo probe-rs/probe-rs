@@ -69,24 +69,11 @@ impl Target {
         let mut flash_algorithms = Vec::new();
         for algo_name in chip.flash_algorithms.iter() {
             let algo = family
-                .get_algorithm(algo_name)
+                .get_algorithm_for_chip(algo_name, chip)
                 .expect(
                     "The required flash algorithm was not found. This is a bug. Please report it.",
                 )
                 .clone();
-
-            let mut algo_cores = if algo.cores.is_empty() {
-                chip.cores.iter().map(|core| core.name.clone()).collect()
-            } else {
-                algo.cores.clone()
-            };
-
-            // only keep cores in the algo that are also in the chip
-            algo_cores.retain(|algo_core| {
-                chip.cores
-                    .iter()
-                    .any(|chip_core| &chip_core.name == algo_core)
-            });
 
             // If the flash algorithm addresses a range that is not covered by any memory region,
             // we add a new memory region for it. This is usually the case for option bytes and
@@ -103,7 +90,7 @@ impl Target {
                 memory_map.push(MemoryRegion::Nvm(NvmRegion {
                     name: None,
                     range: algo_range.clone(),
-                    cores: algo_cores,
+                    cores: algo.cores.clone(),
                     is_alias: true,
                     access: Some(MemoryAccess {
                         read: false,

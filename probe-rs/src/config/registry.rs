@@ -533,32 +533,7 @@ mod tests {
             .for_each(|target| {
                 // Walk through the flash algorithms and cores and try to create each one.
                 for raw_flash_algo in target.flash_algorithms.iter() {
-                    // Allow all cores if not set
-                    let cores = if raw_flash_algo.cores.is_empty() {
-                        target
-                            .cores
-                            .iter()
-                            .map(|core| core.name.as_str())
-                            .collect::<Vec<_>>()
-                    } else {
-                        raw_flash_algo
-                            .cores
-                            .iter()
-                            .filter_map(|c| {
-                                if target
-                                    .cores
-                                    .iter()
-                                    .any(|target_core| &target_core.name == c)
-                                {
-                                    Some(c.as_str())
-                                } else {
-                                    None
-                                }
-                            })
-                            .collect::<Vec<_>>()
-                    };
-
-                    for core in cores {
+                    for core in raw_flash_algo.cores.iter() {
                         FlashAlgorithm::assemble_from_raw_with_core(raw_flash_algo, core, &target)
                             .unwrap_or_else(|error| {
                                 panic!(
