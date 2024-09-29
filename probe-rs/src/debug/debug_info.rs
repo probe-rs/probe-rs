@@ -172,7 +172,7 @@ impl DebugInfo {
                                 if let Some((file, directory)) =
                                     self.find_file_and_directory(unit, previous_row.file_index())
                                 {
-                                    tracing::debug!("{} - {:?}", address, previous_row.isa());
+                                    tracing::debug!("{:#010x} - {:?}", address, previous_row.isa());
                                     return Some(SourceLocation {
                                         line: previous_row.line().map(NonZeroU64::get),
                                         column: Some(previous_row.column().into()),
@@ -187,7 +187,7 @@ impl DebugInfo {
                             if let Some((file, directory)) =
                                 self.find_file_and_directory(unit, row.file_index())
                             {
-                                tracing::debug!("{} - {:?}", address, row.isa());
+                                tracing::debug!("{:#010x} - {:?}", address, row.isa());
 
                                 return Some(SourceLocation {
                                     line: row.line().map(NonZeroU64::get),
