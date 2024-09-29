@@ -1,0 +1,1 @@
+Fixed crashes when processing flash algorithm data of devices with small RAM.
