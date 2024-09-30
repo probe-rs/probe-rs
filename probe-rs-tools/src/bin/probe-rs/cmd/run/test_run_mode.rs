@@ -1,4 +1,6 @@
-use crate::cmd::run::{print_stacktrace, OutputStream, ReturnReason, RunLoop, RunMode};
+use crate::cmd::run::{
+    print_stacktrace, OutputStream, ReturnReason, RunLoop, RunMode, SemihostingPrinter,
+};
 use anyhow::Result;
 use libtest_mimic::{Arguments, Failed, FormatSetting, Trial};
 use probe_rs::{semihosting::SemihostingCommand, BreakpointCause, Core, HaltReason, Session};
@@ -230,6 +232,7 @@ impl TestRunMode {
         let timeout = timeout.unwrap_or(Duration::from_secs(60)); // TODO: make global timeout configurable: https://github.com/probe-rs/embedded-test/issues/3
         let mut cmdline_requested = false;
 
+        let mut printer = SemihostingPrinter::new();
         // When the target first invokes SYS_GET_CMDLINE (0x15), we answer "run <test_name>
         // Then we wait until the target invokes SYS_EXIT (0x18) or SYS_EXIT_EXTENDED(0x20) with the exit code
         let halt_handler = |halt_reason: HaltReason, core: &mut Core| {
@@ -254,47 +257,12 @@ impl TestRunMode {
                 SemihostingCommand::ExitError(_) if cmdline_requested => {
                     Ok(Some(TestOutcome::Panic))
                 }
-
-                SemihostingCommand::Open(request) => {
-                    let path = request.path(core)?;
-                    if path == ":tt" {
-                        request.respond_with_handle(core, NonZeroU32::new(1).unwrap())?;
-                    } else {
-                        tracing::warn!(
-                            "Target wanted to open file {path}, but probe-rs does not support this operation yet. Continuing..."
-                        );
-                    }
-                    Ok(None) // Continue running
-                }
-                SemihostingCommand::Close(request) => {
-                    let handle = request.file_handle(core)?;
-                    if handle == 1 {
-                        request.success(core)?;
-                    } else {
-                        tracing::warn!(
-                            "Target wanted to close file handle {handle}, but probe-rs does not support this operation yet. Continuing..."
-                        );
-                    }
-                    Ok(None) // Continue running
-                }
-                SemihostingCommand::Write(request) => {
-                    if request.file_handle() == 1 {
-                        std::io::stdout().write_all(&request.read(core)?).unwrap();
-
-                        request.write_status(core, 0)?;
-                    } else {
-                        tracing::warn!(
-                            "Target wanted to write to file handle {}, but probe-rs does not support this operation yet. Continuing...",
-                            request.file_handle()
-                        );
-                    }
-                    Ok(None) // Continue running
-                }
-                SemihostingCommand::WriteConsole(request) => {
-                    std::io::stdout()
-                        .write_all(request.read(core)?.as_bytes())
-                        .unwrap();
-                    Ok(None) // Continue running
+                other @ (SemihostingCommand::Open(_)
+                | SemihostingCommand::Close(_)
+                | SemihostingCommand::WriteConsole(_)
+                | SemihostingCommand::Write(_)) => {
+                    printer.handle(other, core)?;
+                    Ok(None)
                 }
                 other => {
                     // Invalid sequence of semihosting calls => Abort testing altogether

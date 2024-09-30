@@ -1,10 +1,12 @@
 mod normal_run_mode;
 use normal_run_mode::*;
 mod test_run_mode;
+use probe_rs::semihosting::SemihostingCommand;
 use test_run_mode::*;
 
 use std::fs::{self, File};
 use std::io::{Read, Write};
+use std::num::NonZeroU32;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -520,4 +522,100 @@ fn poll_rtt<S: Write + ?Sized>(
     rtt_client.poll(core, &mut out)?;
 
     Ok(out.had_data)
+}
+
+struct SemihostingPrinter {
+    stdout_open: bool,
+    stderr_open: bool,
+}
+
+impl SemihostingPrinter {
+    const STDOUT: u32 = 1;
+    const STDERR: u32 = 2;
+
+    pub fn new() -> Self {
+        Self {
+            stdout_open: false,
+            stderr_open: false,
+        }
+    }
+
+    pub fn handle(
+        &mut self,
+        command: SemihostingCommand,
+        core: &mut Core<'_>,
+    ) -> Result<(), Error> {
+        match command {
+            SemihostingCommand::Open(request) => {
+                let path = request.path(core)?;
+                if path == ":tt" {
+                    match request.mode().as_bytes()[0] {
+                        b'w' => {
+                            self.stdout_open = true;
+                            let fd = NonZeroU32::new(Self::STDOUT).unwrap();
+                            request.respond_with_handle(core, fd)?;
+                        }
+                        b'a' => {
+                            self.stderr_open = true;
+                            let fd = NonZeroU32::new(Self::STDERR).unwrap();
+                            request.respond_with_handle(core, fd)?;
+                        }
+                        other => {
+                            tracing::warn!(
+                                "Target wanted to open file {path} with mode {mode}, but probe-rs does not support this operation yet. Continuing...",
+                                path = path,
+                                mode = other
+                            );
+                        }
+                    };
+                } else {
+                    tracing::warn!(
+                        "Target wanted to open file {path}, but probe-rs does not support this operation yet. Continuing..."
+                    );
+                }
+            }
+            SemihostingCommand::Close(request) => {
+                let handle = request.file_handle(core)?;
+                if handle == Self::STDOUT {
+                    self.stdout_open = false;
+                    request.success(core)?;
+                } else if handle == Self::STDERR {
+                    self.stderr_open = false;
+                    request.success(core)?;
+                } else {
+                    tracing::warn!(
+                        "Target wanted to close file handle {handle}, but probe-rs does not support this operation yet. Continuing..."
+                    );
+                }
+            }
+            SemihostingCommand::Write(request) => match request.file_handle() {
+                handle if handle == Self::STDOUT => {
+                    if self.stdout_open {
+                        std::io::stdout().write_all(&request.read(core)?).unwrap();
+                        request.write_status(core, 0)?;
+                    }
+                }
+                handle if handle == Self::STDERR => {
+                    if self.stderr_open {
+                        std::io::stderr().write_all(&request.read(core)?).unwrap();
+                        request.write_status(core, 0)?;
+                    }
+                }
+                other => {
+                    tracing::warn!(
+                        "Target wanted to write to file handle {other}, but probe-rs does not support this operation yet. Continuing...",
+                    );
+                }
+            },
+            SemihostingCommand::WriteConsole(request) => {
+                std::io::stdout()
+                    .write_all(request.read(core)?.as_bytes())
+                    .unwrap();
+            }
+
+            _ => {}
+        };
+
+        Ok(()) // Continue running
+    }
 }

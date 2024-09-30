@@ -114,7 +114,7 @@ impl GetCommandLineRequest {
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub struct OpenRequest {
     path: ZeroTerminatedString,
-    mode: u32,
+    mode: &'static str,
 }
 
 impl OpenRequest {
@@ -124,7 +124,7 @@ impl OpenRequest {
     }
 
     /// Reads the raw mode from the target.
-    pub fn mode_raw(&self) -> u32 {
+    pub fn mode(&self) -> &'static str {
         self.mode
     }
 
@@ -362,7 +362,21 @@ pub fn decode_semihosting_syscall(
                     address: string,
                     length: Some(str_len),
                 },
-                mode,
+                mode: match mode {
+                    0 => "r",
+                    1 => "rb",
+                    2 => "r+",
+                    3 => "r+b",
+                    4 => "w",
+                    5 => "wb",
+                    6 => "w+",
+                    7 => "w+b",
+                    8 => "a",
+                    9 => "ab",
+                    10 => "a+",
+                    11 => "a+b",
+                    _ => "unknown",
+                },
             })
         }
 
