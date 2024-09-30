@@ -1,6 +1,8 @@
+use std::{io::Write as _, num::NonZeroU32};
+
 use crate::cmd::run::{OutputStream, RunLoop, RunMode};
 use anyhow::anyhow;
-use probe_rs::{BreakpointCause, Core, HaltReason, SemihostingCommand, Session};
+use probe_rs::{semihosting::SemihostingCommand, BreakpointCause, Core, HaltReason, Session};
 
 /// Options only used in normal run mode
 #[derive(Debug, clap::Parser, Clone)]
@@ -27,7 +29,7 @@ impl RunMode for NormalRunMode {
     fn run(&self, mut session: Session, mut run_loop: RunLoop) -> anyhow::Result<()> {
         let mut core = session.core(run_loop.core_id)?;
 
-        let halt_handler = |halt_reason: HaltReason, _core: &mut Core| {
+        let halt_handler = |halt_reason: HaltReason, core: &mut Core| {
             let HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd)) = halt_reason else {
                 anyhow::bail!("CPU halted unexpectedly.");
             };
@@ -50,8 +52,45 @@ impl RunMode for NormalRunMode {
                     tracing::warn!("Target wanted to run semihosting operation SYS_GET_CMDLINE, but probe-rs does not support this operation yet. Continuing...");
                     Ok(None) // Continue running
                 }
-                SemihostingCommand::WriteConsole(string) => {
-                    std::io::stdout().write_all(string.as_bytes()).unwrap();
+                SemihostingCommand::Open(request) => {
+                    let path = request.path(core)?;
+                    if path == ":tt" {
+                        request.respond_with_handle(core, NonZeroU32::new(1).unwrap())?;
+                    } else {
+                        tracing::warn!(
+                            "Target wanted to open file {path}, but probe-rs does not support this operation yet. Continuing..."
+                        );
+                    }
+                    Ok(None) // Continue running
+                }
+                SemihostingCommand::Close(request) => {
+                    let handle = request.file_handle(core)?;
+                    if handle == 1 {
+                        request.success(core)?;
+                    } else {
+                        tracing::warn!(
+                            "Target wanted to close file handle {handle}, but probe-rs does not support this operation yet. Continuing..."
+                        );
+                    }
+                    Ok(None) // Continue running
+                }
+                SemihostingCommand::Write(request) => {
+                    if request.file_handle() == 1 {
+                        std::io::stdout().write_all(&request.read(core)?).unwrap();
+
+                        request.write_status(core, 0)?;
+                    } else {
+                        tracing::warn!(
+                            "Target wanted to write to file handle {}, but probe-rs does not support this operation yet. Continuing...",
+                            request.file_handle()
+                        );
+                    }
+                    Ok(None) // Continue running
+                }
+                SemihostingCommand::WriteConsole(request) => {
+                    std::io::stdout()
+                        .write_all(request.read(core)?.as_bytes())
+                        .unwrap();
                     Ok(None) // Continue running
                 }
             }

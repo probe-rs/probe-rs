@@ -85,7 +85,7 @@ pub mod integration;
 mod memory;
 pub mod probe;
 pub mod rtt;
-mod semihosting;
+pub mod semihosting;
 mod session;
 #[cfg(test)]
 mod test;
@@ -98,9 +98,6 @@ pub use crate::core::{
 };
 pub use crate::error::Error;
 pub use crate::memory::MemoryInterface;
-pub use crate::semihosting::{
-    ExitErrorDetails, GetCommandLineRequest, SemihostingCommand, UnknownCommandDetails,
-};
 pub use crate::session::{Permissions, Session};
 
 #[cfg(feature = "debug")]

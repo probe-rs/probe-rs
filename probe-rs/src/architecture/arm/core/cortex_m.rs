@@ -5,7 +5,8 @@ use crate::{
     core::RegisterId,
     memory_mapped_bitfield_register,
     semihosting::decode_semihosting_syscall,
-    CoreInterface, Error, MemoryMappedRegister, SemihostingCommand,
+    semihosting::SemihostingCommand,
+    CoreInterface, Error, MemoryMappedRegister,
 };
 use std::time::{Duration, Instant};
 

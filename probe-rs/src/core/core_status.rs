@@ -1,4 +1,4 @@
-use crate::SemihostingCommand;
+use crate::semihosting::SemihostingCommand;
 
 /// The status of the core.
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]

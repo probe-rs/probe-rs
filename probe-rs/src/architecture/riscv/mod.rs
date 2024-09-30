@@ -9,8 +9,9 @@ use crate::{
     memory_mapped_bitfield_register,
     probe::DebugProbeError,
     semihosting::decode_semihosting_syscall,
+    semihosting::SemihostingCommand,
     CoreInterface, CoreRegister, CoreStatus, CoreType, Error, HaltReason, InstructionSet,
-    MemoryInterface, MemoryMappedRegister, SemihostingCommand,
+    MemoryInterface, MemoryMappedRegister,
 };
 use bitfield::bitfield;
 use communication_interface::{AbstractCommandErrorKind, RiscvCommunicationInterface, RiscvError};

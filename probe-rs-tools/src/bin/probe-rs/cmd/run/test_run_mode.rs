@@ -1,8 +1,10 @@
 use crate::cmd::run::{print_stacktrace, OutputStream, ReturnReason, RunLoop, RunMode};
 use anyhow::Result;
 use libtest_mimic::{Arguments, Failed, FormatSetting, Trial};
-use probe_rs::{BreakpointCause, Core, HaltReason, SemihostingCommand, Session};
+use probe_rs::{semihosting::SemihostingCommand, BreakpointCause, Core, HaltReason, Session};
 use serde::Deserialize;
+use std::io::Write as _;
+use std::num::NonZeroU32;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -156,6 +158,36 @@ impl TestRunMode {
 
                     Ok(Some(list))
                 }
+                SemihostingCommand::Open(request) => {
+                    let path = request.path(core)?;
+                    if path == ":tt" {
+                        request.respond_with_handle(core, NonZeroU32::new(1).unwrap())?;
+                    } else {
+                        tracing::warn!(
+                            "Target wanted to open file {path}, but probe-rs does not support this operation yet. Continuing..."
+                        );
+                    }
+                    Ok(None) // Continue running
+                }
+                SemihostingCommand::Write(request) => {
+                    if request.file_handle() == 0 {
+                        std::io::stdout().write_all(&request.read(core)?).unwrap();
+
+                        request.write_status(core, 0)?;
+                    } else {
+                        tracing::warn!(
+                            "Target wanted to write to file handle {}, but probe-rs does not support this operation yet. Continuing...",
+                            request.file_handle()
+                        );
+                    }
+                    Ok(None) // Continue running
+                }
+                SemihostingCommand::WriteConsole(request) => {
+                    std::io::stdout()
+                        .write_all(request.read(core)?.as_bytes())
+                        .unwrap();
+                    Ok(None) // Continue running
+                }
                 other => anyhow::bail!(
                     "Unexpected semihosting command {:?} cmdline_requested: {:?}",
                     other,
@@ -223,8 +255,45 @@ impl TestRunMode {
                     Ok(Some(TestOutcome::Panic))
                 }
 
-                SemihostingCommand::WriteConsole(string) => {
-                    std::io::stdout().write_all(string.as_bytes()).unwrap();
+                SemihostingCommand::Open(request) => {
+                    let path = request.path(core)?;
+                    if path == ":tt" {
+                        request.respond_with_handle(core, NonZeroU32::new(1).unwrap())?;
+                    } else {
+                        tracing::warn!(
+                            "Target wanted to open file {path}, but probe-rs does not support this operation yet. Continuing..."
+                        );
+                    }
+                    Ok(None) // Continue running
+                }
+                SemihostingCommand::Close(request) => {
+                    let handle = request.file_handle(core)?;
+                    if handle == 1 {
+                        request.success(core)?;
+                    } else {
+                        tracing::warn!(
+                            "Target wanted to close file handle {handle}, but probe-rs does not support this operation yet. Continuing..."
+                        );
+                    }
+                    Ok(None) // Continue running
+                }
+                SemihostingCommand::Write(request) => {
+                    if request.file_handle() == 1 {
+                        std::io::stdout().write_all(&request.read(core)?).unwrap();
+
+                        request.write_status(core, 0)?;
+                    } else {
+                        tracing::warn!(
+                            "Target wanted to write to file handle {}, but probe-rs does not support this operation yet. Continuing...",
+                            request.file_handle()
+                        );
+                    }
+                    Ok(None) // Continue running
+                }
+                SemihostingCommand::WriteConsole(request) => {
+                    std::io::stdout()
+                        .write_all(request.read(core)?.as_bytes())
+                        .unwrap();
                     Ok(None) // Continue running
                 }
                 other => {

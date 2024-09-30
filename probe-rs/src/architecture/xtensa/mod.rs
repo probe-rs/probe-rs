@@ -20,8 +20,8 @@ use crate::{
     },
     memory::CoreMemoryInterface,
     semihosting::decode_semihosting_syscall,
+    semihosting::SemihostingCommand,
     CoreInformation, CoreInterface, CoreRegister, CoreStatus, Error, HaltReason, MemoryInterface,
-    SemihostingCommand,
 };
 
 pub(crate) mod arch;
