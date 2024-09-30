@@ -349,11 +349,15 @@ impl RunLoop {
             // this is important so we do one last poll after halt, so we flush all messages
             // the core printed before halting, such as a panic message.
             let mut return_reason = None;
+            let mut was_halted = false;
             match core.status()? {
                 probe_rs::CoreStatus::Halted(reason) => match predicate(reason, core) {
                     Ok(Some(r)) => return_reason = Some(Ok(ReturnReason::Predicate(r))),
                     Err(e) => return_reason = Some(Err(e)),
-                    Ok(None) => core.run()?,
+                    Ok(None) => {
+                        was_halted = true;
+                        core.run()?
+                    }
                 },
                 probe_rs::CoreStatus::Running
                 | probe_rs::CoreStatus::Sleeping
@@ -387,9 +391,12 @@ impl RunLoop {
             // Poll RTT with a frequency of 10 Hz if we do not receive any new data.
             // Once we receive new data, we bump the frequency to 1kHz.
             //
+            // We also poll at 1kHz if the core was halted, to speed up reading strings
+            // from semihosting. The core is not expected to be halted for other reasons.
+            //
             // If the polling frequency is too high, the USB connection to the probe
             // can become unstable. Hence we only pull as little as necessary.
-            if had_rtt_data {
+            if had_rtt_data || was_halted {
                 thread::sleep(Duration::from_millis(1));
             } else {
                 thread::sleep(Duration::from_millis(100));
