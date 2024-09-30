@@ -223,6 +223,10 @@ impl TestRunMode {
                     Ok(Some(TestOutcome::Panic))
                 }
 
+                SemihostingCommand::WriteConsole(string) => {
+                    std::io::stdout().write_all(string.as_bytes()).unwrap();
+                    Ok(None) // Continue running
+                }
                 other => {
                     // Invalid sequence of semihosting calls => Abort testing altogether
                     anyhow::bail!(

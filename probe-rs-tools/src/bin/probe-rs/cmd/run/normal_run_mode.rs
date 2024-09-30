@@ -50,6 +50,10 @@ impl RunMode for NormalRunMode {
                     tracing::warn!("Target wanted to run semihosting operation SYS_GET_CMDLINE, but probe-rs does not support this operation yet. Continuing...");
                     Ok(None) // Continue running
                 }
+                SemihostingCommand::WriteConsole(string) => {
+                    std::io::stdout().write_all(string.as_bytes()).unwrap();
+                    Ok(None) // Continue running
+                }
             }
         };
 

@@ -184,7 +184,7 @@ impl<'probe> Xtensa<'probe> {
         };
 
         // We only want to decode the semihosting command once, since answering it might change some of the registers
-        if let Some(command) = self.state.semihosting_command {
+        if let Some(command) = self.state.semihosting_command.clone() {
             return Ok(Some(command));
         }
 
@@ -206,7 +206,7 @@ impl<'probe> Xtensa<'probe> {
         } else {
             None
         };
-        self.state.semihosting_command = command;
+        self.state.semihosting_command = command.clone();
 
         Ok(command)
     }

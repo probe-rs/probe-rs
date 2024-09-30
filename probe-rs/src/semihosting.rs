@@ -1,7 +1,7 @@
 use crate::{CoreInterface, Error, RegisterValue};
 
 /// Indicates the operation the target would like the debugger to perform.
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum SemihostingCommand {
     /// The target indicates that it completed successfully and no-longer wishes
     /// to run.
@@ -13,6 +13,9 @@ pub enum SemihostingCommand {
 
     /// The target indicates that it would like to read the command line arguments.
     GetCommandLine(GetCommandLineRequest),
+
+    /// The target indicated that it would like to write to the console.
+    WriteConsole(String),
 
     /// The target indicated that it would like to run a semihosting operation which we don't support yet.
     Unknown(UnknownCommandDetails),
@@ -166,6 +169,9 @@ pub fn decode_semihosting_syscall(
     const SYS_EXIT: u32 = 0x18;
     const SYS_EXIT_EXTENDED: u32 = 0x20;
     const SYS_EXIT_ADP_STOPPED_APPLICATIONEXIT: u32 = 0x20026;
+    const SYS_WRITEC: u32 = 0x03;
+    const SYS_WRITE0: u32 = 0x04;
+
     Ok(match (operation, parameter) {
         (SYS_EXIT, SYS_EXIT_ADP_STOPPED_APPLICATIONEXIT) => SemihostingCommand::ExitSuccess,
         (SYS_EXIT, reason) => SemihostingCommand::ExitError(ExitErrorDetails {
@@ -206,6 +212,39 @@ pub fn decode_semihosting_syscall(
                 block_address,
             )?))
         }
+
+        (SYS_WRITEC, pointer) => {
+            // Parameter points to a byte in memory.
+            let mut buf = 0;
+            core.read_8(pointer as u64, std::slice::from_mut(&mut buf))?;
+
+            let c = buf as u8 as char;
+            SemihostingCommand::WriteConsole(String::from(c))
+            // no response is given
+        }
+
+        (SYS_WRITE0, pointer) => {
+            // no response is given
+            // Parameter points to a byte in memory.
+            let mut buf = [0; 128];
+            let mut from = pointer;
+
+            let mut bytes = Vec::new();
+            loop {
+                core.read(from as u64, &mut buf)?;
+                if let Some(end) = buf.iter().position(|&x| x == 0) {
+                    bytes.extend_from_slice(&buf[..end]);
+                    break;
+                }
+
+                bytes.extend_from_slice(&buf);
+                from += buf.len() as u32;
+            }
+
+            SemihostingCommand::WriteConsole(String::from_utf8_lossy(&bytes).to_string())
+            // no response is given
+        }
+
         _ => {
             // signal to target: status = failure, in case the application does not answer this request
             // It is not guaranteed that a value of -1 will be treated as an error by the target, but it is a common value to indicate an error.
