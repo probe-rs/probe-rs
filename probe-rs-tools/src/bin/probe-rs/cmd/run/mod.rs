@@ -616,6 +616,6 @@ impl SemihostingPrinter {
             _ => {}
         };
 
-        Ok(()) // Continue running
+        Ok(())
     }
 }

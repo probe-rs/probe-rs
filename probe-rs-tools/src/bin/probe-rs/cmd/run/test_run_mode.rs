@@ -5,8 +5,6 @@ use anyhow::Result;
 use libtest_mimic::{Arguments, Failed, FormatSetting, Trial};
 use probe_rs::{semihosting::SemihostingCommand, BreakpointCause, Core, HaltReason, Session};
 use serde::Deserialize;
-use std::io::Write as _;
-use std::num::NonZeroU32;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -129,6 +127,7 @@ impl TestRunMode {
 
         let mut cmdline_requested = false;
 
+        let mut printer = SemihostingPrinter::new();
         // When the target first invokes SYS_GET_CMDLINE (0x15), we answer "list"
         // Then, we wait until the target invokes SEMIHOSTING_USER_LIST (0x100) with the json containing all tests
         let halt_handler = |halt_reason: HaltReason, core: &mut Core| {
@@ -160,35 +159,12 @@ impl TestRunMode {
 
                     Ok(Some(list))
                 }
-                SemihostingCommand::Open(request) => {
-                    let path = request.path(core)?;
-                    if path == ":tt" {
-                        request.respond_with_handle(core, NonZeroU32::new(1).unwrap())?;
-                    } else {
-                        tracing::warn!(
-                            "Target wanted to open file {path}, but probe-rs does not support this operation yet. Continuing..."
-                        );
-                    }
-                    Ok(None) // Continue running
-                }
-                SemihostingCommand::Write(request) => {
-                    if request.file_handle() == 0 {
-                        std::io::stdout().write_all(&request.read(core)?).unwrap();
-
-                        request.write_status(core, 0)?;
-                    } else {
-                        tracing::warn!(
-                            "Target wanted to write to file handle {}, but probe-rs does not support this operation yet. Continuing...",
-                            request.file_handle()
-                        );
-                    }
-                    Ok(None) // Continue running
-                }
-                SemihostingCommand::WriteConsole(request) => {
-                    std::io::stdout()
-                        .write_all(request.read(core)?.as_bytes())
-                        .unwrap();
-                    Ok(None) // Continue running
+                other @ (SemihostingCommand::Open(_)
+                | SemihostingCommand::Close(_)
+                | SemihostingCommand::WriteConsole(_)
+                | SemihostingCommand::Write(_)) => {
+                    printer.handle(other, core)?;
+                    Ok(None)
                 }
                 other => anyhow::bail!(
                     "Unexpected semihosting command {:?} cmdline_requested: {:?}",
