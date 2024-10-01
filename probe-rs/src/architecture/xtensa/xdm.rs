@@ -650,13 +650,9 @@ impl<'probe> Xdm<'probe> {
         // checking their results.
         if !matches!(
             self.state.last_instruction,
-            Some(
-                Instruction::Lddr32P(_)
-                    | Instruction::Sddr32P(_)
-                    | Instruction::Rsr(_, _)
-                    | Instruction::Wsr(_, _)
-            )
+            Some(Instruction::Rsr(_, _) | Instruction::Wsr(_, _))
         ) {
+            // TODO: only wait for Lddr32P and Sddr32P if needed - external memory/flash access
             self.schedule_wait_for_exec_done();
         }
     }
