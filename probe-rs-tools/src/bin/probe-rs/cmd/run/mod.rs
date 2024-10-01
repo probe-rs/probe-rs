@@ -97,6 +97,9 @@ impl Cmd {
         let (mut session, probe_options) =
             self.shared_options.probe_options.simple_attach(lister)?;
 
+        // Resume cores now to prevent halting while processing elf
+        session.resume_all_cores()?;
+
         let rtt_scan_regions = match self.shared_options.rtt_scan_memory {
             true => session.target().rtt_scan_regions.clone(),
             false => ScanRegion::Ranges(vec![]),
