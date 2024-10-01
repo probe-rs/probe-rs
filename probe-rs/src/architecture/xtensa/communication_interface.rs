@@ -616,11 +616,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
 
             let mut aligned_reads = vec![];
             if to_read > 0 {
-                let words = if to_read % 4 == 0 {
-                    to_read / 4
-                } else {
-                    to_read / 4 + 1
-                };
+                let words = to_read.div_ceil(4);
 
                 for _ in 0..words - 1 {
                     aligned_reads.push(this.xdm.schedule_read_ddr_and_execute());
