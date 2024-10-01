@@ -591,13 +591,17 @@ impl SemihostingPrinter {
             SemihostingCommand::Write(request) => match request.file_handle() {
                 handle if handle == Self::STDOUT => {
                     if self.stdout_open {
-                        std::io::stdout().write_all(&request.read(core)?).unwrap();
+                        let bytes = request.read(core)?;
+                        let str = String::from_utf8_lossy(&bytes);
+                        std::io::stdout().write_all(str.as_bytes()).unwrap();
                         request.write_status(core, 0)?;
                     }
                 }
                 handle if handle == Self::STDERR => {
                     if self.stderr_open {
-                        std::io::stderr().write_all(&request.read(core)?).unwrap();
+                        let bytes = request.read(core)?;
+                        let str = String::from_utf8_lossy(&bytes);
+                        std::io::stderr().write_all(str.as_bytes()).unwrap();
                         request.write_status(core, 0)?;
                     }
                 }
