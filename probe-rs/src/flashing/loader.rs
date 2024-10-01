@@ -266,7 +266,7 @@ impl ImageLoader for IdfLoader {
             self.0.bootloader.as_deref(),
             self.0.partition_table.as_deref(),
             None,
-            None,
+            self.0.target_app_partition.clone(),
             {
                 let mut settings = FlashSettings::default();
 
