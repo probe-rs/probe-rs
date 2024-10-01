@@ -353,12 +353,11 @@ impl ProtocolHandler {
 
     /// Adds a single command to the output buffer and writes it to the USB EP if the buffer reaches a limit of `OUT_BUFFER_SIZE`.
     fn add_raw_command(&mut self, command: Command) -> Result<(), DebugProbeError> {
-        self.output_buffer.push(command);
-
         // If we reach a maximal size of the output buffer, we flush.
         if self.output_buffer.len() == OUT_BUFFER_SIZE {
             self.send_buffer()?;
         }
+        self.output_buffer.push(command);
 
         Ok(())
     }
