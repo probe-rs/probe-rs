@@ -34,6 +34,7 @@ pub struct Cmd {
 impl Cmd {
     pub fn run(self, lister: &Lister) -> anyhow::Result<()> {
         let (mut session, _probe_options) = self.probe_options.simple_attach(lister)?;
+
         let mut core = session.core(self.shared.core)?;
         let words = self.words as usize;
 
@@ -63,6 +64,9 @@ impl Cmd {
                 println!();
             }
         }
+        std::mem::drop(core);
+
+        session.resume_all_cores()?;
 
         Ok(())
     }

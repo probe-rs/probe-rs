@@ -778,6 +778,24 @@ impl Session {
             })
         })
     }
+
+    /// Resume all cores
+    pub fn resume_all_cores(&mut self) -> Result<(), Error> {
+        // Resume cores
+        for core_id in 0..self.cores.len() {
+            match self.core(core_id) {
+                Ok(mut core) => {
+                    if core.core_halted()? {
+                        core.run()?;
+                    }
+                }
+                Err(Error::CoreDisabled(i)) => tracing::debug!("Core {i} is disabled"),
+                Err(error) => return Err(error),
+            }
+        }
+
+        Ok(())
+    }
 }
 
 // This test ensures that [Session] is fully [Send] + [Sync].
