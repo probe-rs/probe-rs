@@ -3,14 +3,78 @@
 #[macro_use]
 mod register_generation;
 
-use super::{
-    communication_interface::RegisterParseError, ArmError, DapAccess, DapError, DpAddress, Register,
-};
+use super::{ArmError, DapAccess, DapError, RegisterParseError};
 use bitfield::bitfield;
 use jep106::JEP106Code;
 
 use crate::probe::DebugProbeError;
 use std::fmt::Display;
+
+/// Debug port address.
+#[derive(Debug, Eq, PartialEq, PartialOrd, Ord, Clone, Copy, Hash, Default)]
+pub enum DpAddress {
+    /// Access the single DP on the bus, assuming there is only one.
+    /// Will cause corruption if multiple are present.
+    #[default]
+    Default,
+    /// Select a particular DP on a SWDv2 multidrop bus. The contained `u32` is
+    /// the `TARGETSEL` value to select it.
+    Multidrop(u32),
+}
+
+/// A Debug port register address and its bank.
+#[derive(Debug, Eq, PartialEq, Clone, Copy)]
+pub struct DpRegisterAddress {
+    /// The register address.
+    pub address: u8,
+    /// The register bank.
+    pub bank: u8,
+}
+
+/// A trait to be implemented on Debug Port register types for typed device access.
+pub trait DpRegister:
+    Clone + TryFrom<u32, Error = RegisterParseError> + Into<u32> + Sized + std::fmt::Debug
+{
+    /// The version of the debug port that is required to read this register.
+    const VERSION: DebugPortVersion;
+
+    /// The address of the register.
+    const ADDRESS: DpRegisterAddress;
+
+    /// The name of the register as string.
+    const NAME: &'static str;
+}
+
+macro_rules! impl_dpregister {
+    ($t:tt, $v:expr, $addr:expr, $name:expr) => {
+        impl_dpregister!($t, $v, $addr, 0x0, $name);
+    };
+    ($t:tt, $v:expr, $addr:expr, $bank:expr, $name:expr) => {
+        impl TryFrom<u32> for $t {
+            type Error = RegisterParseError;
+
+            fn try_from(raw: u32) -> Result<Self, Self::Error> {
+                // TODO: This is not super useful
+                Ok($t(raw))
+            }
+        }
+
+        impl From<$t> for u32 {
+            fn from(raw: $t) -> Self {
+                raw.0
+            }
+        }
+
+        impl DpRegister for $t {
+            const VERSION: DebugPortVersion = $v;
+            const ADDRESS: DpRegisterAddress = DpRegisterAddress {
+                address: $addr,
+                bank: $bank,
+            };
+            const NAME: &'static str = $name;
+        }
+    };
+}
 
 /// An error occurred when interacting with the debug port.
 #[derive(thiserror::Error, Debug)]
@@ -71,9 +135,9 @@ impl<T: DapAccess> DpAccess for T {
     #[tracing::instrument(skip(self))]
     fn read_dp_register<R: DpRegister>(&mut self, dp: DpAddress) -> Result<R, ArmError> {
         tracing::debug!("Reading DP register {}", R::NAME);
-        let result = self.read_raw_dp_register(dp, R::ADDRESS)?;
-        tracing::debug!("Read    DP register {}, value=0x{:08x}", R::NAME, result);
-        Ok(result.try_into()?)
+        let result = self.read_raw_dp_register(dp, R::ADDRESS)?.try_into()?;
+        tracing::debug!("Read    DP register {}, value=0x{:08x?}", R::NAME, result);
+        Ok(result)
     }
 
     #[tracing::instrument(skip(self))]
@@ -89,15 +153,11 @@ impl<T: DapAccess> DpAccess for T {
     }
 }
 
-/// A marker trait to be implemented on debug port register types for typed access.
-pub trait DpRegister: Register {
-    /// The version of the debug port that is required to read this register.
-    const VERSION: DebugPortVersion;
-}
-
 bitfield! {
     /// ABORT, Abort register (see ADI v5.2 B2.2.1)
-    #[derive(Clone, Default)]
+    ///
+    /// Only for write operations.
+    #[derive(Copy, Clone, Default)]
     pub struct Abort(u32);
     impl Debug;
     /// To clear the CTRL/STAT.STICKYORUN overrun error bit to `0b0`, write `0b1` to this bit.
@@ -111,29 +171,7 @@ bitfield! {
     /// To generate a DAP abort, which aborts the current AP transaction, write `0b1` to this bit. Do this write only if the debugger has received WAIT responses over an extended period. In DPv0, this bit is SBO.
     pub _, set_dapabort: 0;
 }
-
-impl TryFrom<u32> for Abort {
-    type Error = RegisterParseError;
-
-    fn try_from(raw: u32) -> Result<Self, Self::Error> {
-        Ok(Abort(raw))
-    }
-}
-
-impl From<Abort> for u32 {
-    fn from(raw: Abort) -> Self {
-        raw.0
-    }
-}
-
-impl DpRegister for Abort {
-    const VERSION: DebugPortVersion = DebugPortVersion::DPv1;
-}
-
-impl Register for Abort {
-    const ADDRESS: u8 = 0x0;
-    const NAME: &'static str = "ABORT";
-}
+impl_dpregister!(Abort, DebugPortVersion::DPv1, 0x0, "ABORT");
 
 bitfield! {
     /// CTRL/STAT, Control/Status register (see ADI v5.2 B2.2.2)
@@ -292,34 +330,12 @@ bitfield! {
     /// After a powerup reset, this bit is 0b0.
     pub orun_detect, set_orun_detect: 0;
 }
-
-impl TryFrom<u32> for Ctrl {
-    type Error = RegisterParseError;
-
-    fn try_from(raw: u32) -> Result<Self, Self::Error> {
-        Ok(Ctrl(raw))
-    }
-}
-
-impl From<Ctrl> for u32 {
-    fn from(raw: Ctrl) -> Self {
-        raw.0
-    }
-}
-
-impl DpRegister for Ctrl {
-    const VERSION: DebugPortVersion = DebugPortVersion::DPv1;
-}
-
-impl Register for Ctrl {
-    const ADDRESS: u8 = 0x04;
-    const NAME: &'static str = "CTRL/STAT";
-}
+impl_dpregister!(Ctrl, DebugPortVersion::DPv1, 0x4, "CTRL/STAT");
 
 bitfield! {
     /// SELECT, AP Select register (see ADI v5.2 B2.2.9)
-    #[derive(Clone)]
-    pub struct Select(u32);
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    pub struct SelectV1(u32);
     impl Debug;
     /// Selects the AP with the ID number APSEL. If there is no AP with the ID APSEL, all AP transactions return zero on reads and are ignored on writes. See Register maps, and accesses to reserved addresses on page B2-52.
     /// After a powerup reset, the value of this field is UNKNOWN.
@@ -350,34 +366,45 @@ bitfield! {
     /// Some previous ADI revisions have described DPBANKSEL as a single-bit field called CTRSEL, defined only for SW-DP. From issue B of this document, DPBANKSEL is redefined. The new definition is backwards-compatible.
     pub u8, dp_bank_sel, set_dp_bank_sel: 3, 0;
 }
+impl_dpregister!(SelectV1, DebugPortVersion::DPv1, 0x8, "SELECT");
 
-impl TryFrom<u32> for Select {
-    type Error = RegisterParseError;
-
-    fn try_from(raw: u32) -> Result<Self, Self::Error> {
-        Ok(Select(raw))
-    }
+bitfield! {
+    /// SELECT, AP Select register (see ADI v5.2 B2.2.9)
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    pub struct SelectV3(u32);
+    impl Debug;
+    /// Address output bits[63:4], formed by concatenating bits[31:0] of SELECT1 with bits[31:4] of SELECT.
+    /// The ADDR field selects a four-word bank of system locations to access.
+    /// - Bits[3:2] of the address, that are used to select a specific register in a bank, are provided with APACC transactions.
+    /// - Bits[1:0] are always 0b00.
+    ///
+    /// After a powerup reset or an SWD line reset, the value of this field is UNKNOWN
+    pub u32, addr, set_addr: 31, 4;
+    /// Debug Port address bank select.
+    pub u8, dp_bank_sel, set_dp_bank_sel: 3, 0;
 }
+impl_dpregister!(SelectV3, DebugPortVersion::DPv3, 0x8, "SELECT");
 
-impl From<Select> for u32 {
-    fn from(raw: Select) -> Self {
-        raw.0
-    }
+bitfield! {
+    /// SELECT1, AP Select register (see ADI v5.2 B2.2.9)
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    pub struct Select1(u32);
+    impl Debug;
+    /// Address output bits[63:4], formed by concatenating bits[31:0] of SELECT1 with bits[31:4] of SELECT.
+    /// The ADDR field selects a four-word bank of system locations to access.
+    /// - Bits[3:2] of the address, that are used to select a specific register in a bank, are provided with APACC transactions.
+    /// - Bits[1:0] are always 0b00.
+    ///
+    /// After a powerup reset or an SWD line reset, the value of this field is UNKNOWN
+    pub u32, addr, set_addr: 31, 0;
 }
-
-impl DpRegister for Select {
-    const VERSION: DebugPortVersion = DebugPortVersion::DPv1;
-}
-
-impl Register for Select {
-    const ADDRESS: u8 = 0x8;
-    const NAME: &'static str = "SELECT";
-}
+impl_dpregister!(Select1, DebugPortVersion::DPv3, 0x4, 0x5, "SELECT1");
 
 bitfield! {
     /// DPIDR, Debug Port Identification register (see ADI v5.2 B2.2.5)
     ///
     /// DPIDR provides information about the Debug Port.
+    /// Only for read operations.
     #[derive(Clone)]
     pub struct DPIDR(u32);
     impl Debug;
@@ -416,34 +443,13 @@ bitfield! {
     /// The JEP106 ID (see [`DPIDR::version`]).
     pub u8, jep_id, _: 7, 1;
 }
-
-impl TryFrom<u32> for DPIDR {
-    type Error = RegisterParseError;
-
-    fn try_from(raw: u32) -> Result<Self, Self::Error> {
-        Ok(Self(raw))
-    }
-}
-
-impl From<DPIDR> for u32 {
-    fn from(raw: DPIDR) -> Self {
-        raw.0
-    }
-}
-
-impl DpRegister for DPIDR {
-    const VERSION: DebugPortVersion = DebugPortVersion::DPv1;
-}
-
-impl Register for DPIDR {
-    const ADDRESS: u8 = 0x0;
-    const NAME: &'static str = "DPIDR";
-}
+impl_dpregister!(DPIDR, DebugPortVersion::DPv1, 0x0, "DPIDR");
 
 bitfield! {
     /// DPIDR1, Debug Port Identification register (see ADI v6 B2.2.7)
     ///
     /// DPIDR1 provides information about the Debug Port.
+    /// Only for read operations.
     #[derive(Clone)]
     pub struct DPIDR1(u32);
     impl Debug;
@@ -457,28 +463,7 @@ bitfield! {
     /// Possible values are 12, 20, 32, 40, 48 and 52 bits.
     pub u8, asize, _: 6, 0;
 }
-impl TryFrom<u32> for DPIDR1 {
-    type Error = RegisterParseError;
-
-    fn try_from(raw: u32) -> Result<Self, Self::Error> {
-        Ok(Self(raw))
-    }
-}
-
-impl From<DPIDR1> for u32 {
-    fn from(raw: DPIDR1) -> Self {
-        raw.0
-    }
-}
-
-impl DpRegister for DPIDR1 {
-    const VERSION: DebugPortVersion = DebugPortVersion::DPv3;
-}
-
-impl Register for DPIDR1 {
-    const ADDRESS: u8 = 0x10;
-    const NAME: &'static str = "DPIDR1";
-}
+impl_dpregister!(DPIDR1, DebugPortVersion::DPv3, 0x0, 0x1, "DPIDR1");
 
 bitfield! {
     /// TARGETID, Target Identification register (see ADI v5.2 B2.2.10)
@@ -510,34 +495,14 @@ bitfield! {
     /// - The JEP106 identification code, TARGETID `bits[7:1]`, equals `bits[6:0]` of the final number of the JEDEC code.
     pub u16, tdesigner, _: 11, 1;
 }
-
-impl TryFrom<u32> for TARGETID {
-    type Error = RegisterParseError;
-
-    fn try_from(raw: u32) -> Result<Self, Self::Error> {
-        Ok(Self(raw))
-    }
-}
-
-impl From<TARGETID> for u32 {
-    fn from(raw: TARGETID) -> Self {
-        raw.0
-    }
-}
-
-impl DpRegister for TARGETID {
-    const VERSION: DebugPortVersion = DebugPortVersion::DPv2;
-}
-
-impl Register for TARGETID {
-    const ADDRESS: u8 = 0x24;
-    const NAME: &'static str = "TARGETID";
-}
+impl_dpregister!(TARGETID, DebugPortVersion::DPv2, 0x4, 0x2, "TARGETID");
 
 bitfield! {
     /// DLPIDR, Data Link Protocol Identification register (see ADI v5.2 B2.2.4)
     ///
     /// DLPIDR provides protocol version information.
+    ///
+    /// Only for read operations.
     #[derive(Clone)]
     pub struct DLPIDR(u32);
     impl Debug;
@@ -546,32 +511,12 @@ bitfield! {
     /// Implemented SWD protocol version
     pub u8, protsvn, _: 3, 0;
 }
-
-impl TryFrom<u32> for DLPIDR {
-    type Error = RegisterParseError;
-
-    fn try_from(raw: u32) -> Result<Self, Self::Error> {
-        Ok(Self(raw))
-    }
-}
-
-impl From<DLPIDR> for u32 {
-    fn from(raw: DLPIDR) -> Self {
-        raw.0
-    }
-}
-
-impl DpRegister for DLPIDR {
-    const VERSION: DebugPortVersion = DebugPortVersion::DPv2;
-}
-
-impl Register for DLPIDR {
-    const ADDRESS: u8 = 0x34;
-    const NAME: &'static str = "DLPIDR";
-}
+impl_dpregister!(DLPIDR, DebugPortVersion::DPv2, 0x4, 0x3, "DLPIDR");
 
 bitfield! {
     /// BASEPTR0, Initial system address for the first component in the system (see ADI v6.0 B2.2.2)
+    ///
+    /// Only for read operations.
     #[derive(Clone)]
     pub struct BASEPTR0(u32);
     impl Debug;
@@ -580,61 +525,19 @@ bitfield! {
     /// True if `ptr` specifies a valid base address.
     pub valid, _: 0;
 }
-
-impl TryFrom<u32> for BASEPTR0 {
-    type Error = RegisterParseError;
-
-    fn try_from(raw: u32) -> Result<Self, Self::Error> {
-        Ok(Self(raw))
-    }
-}
-
-impl From<BASEPTR0> for u32 {
-    fn from(raw: BASEPTR0) -> Self {
-        raw.0
-    }
-}
-
-impl DpRegister for BASEPTR0 {
-    const VERSION: DebugPortVersion = DebugPortVersion::DPv3;
-}
-
-impl Register for BASEPTR0 {
-    const ADDRESS: u8 = 0x20;
-    const NAME: &'static str = "BASEPTR0";
-}
+impl_dpregister!(BASEPTR0, DebugPortVersion::DPv3, 0x0, 0x2, "BASEPTR0");
 
 bitfield! {
     /// BASEPTR1, Initial system address for the first component in the system (see ADI v6.0 B2.2.2)
+    ///
+    /// Only for read operations.
     #[derive(Clone)]
     pub struct BASEPTR1(u32);
     impl Debug;
     /// Pointer most significant bits (bits [63:32] of the full address).
     pub u32, ptr, _: 31, 0;
 }
-
-impl TryFrom<u32> for BASEPTR1 {
-    type Error = RegisterParseError;
-
-    fn try_from(raw: u32) -> Result<Self, Self::Error> {
-        Ok(Self(raw))
-    }
-}
-
-impl From<BASEPTR1> for u32 {
-    fn from(raw: BASEPTR1) -> Self {
-        raw.0
-    }
-}
-
-impl DpRegister for BASEPTR1 {
-    const VERSION: DebugPortVersion = DebugPortVersion::DPv3;
-}
-
-impl Register for BASEPTR1 {
-    const ADDRESS: u8 = 0x30;
-    const NAME: &'static str = "BASEPTR1";
-}
+impl_dpregister!(BASEPTR1, DebugPortVersion::DPv3, 0x0, 0x3, "BASEPTR1");
 
 /// The ID of a debug port. Can be used to detect and select devices in a multidrop setup.
 #[derive(Debug)]
@@ -682,30 +585,7 @@ impl From<DPIDR> for DebugPortId {
 /// The second access to either the AP or the DP stalls until the result of the original AP read is available.
 #[derive(Debug, Clone)]
 pub struct RdBuff(pub u32);
-
-impl Register for RdBuff {
-    const ADDRESS: u8 = 0xc;
-    const NAME: &'static str = "RDBUFF";
-}
-
-impl TryFrom<u32> for RdBuff {
-    type Error = RegisterParseError;
-
-    fn try_from(val: u32) -> Result<Self, Self::Error> {
-        Ok(RdBuff(val))
-    }
-}
-
-impl From<RdBuff> for u32 {
-    fn from(register: RdBuff) -> Self {
-        let RdBuff(val) = register;
-        val
-    }
-}
-
-impl DpRegister for RdBuff {
-    const VERSION: DebugPortVersion = DebugPortVersion::DPv1;
-}
+impl_dpregister!(RdBuff, DebugPortVersion::DPv1, 0x0C, "RDBUFF");
 
 /// Specifies if pushed-find operations are implemented or not.
 #[derive(Debug, PartialEq, Eq)]

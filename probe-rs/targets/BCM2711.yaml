@@ -8,28 +8,28 @@ variants:
   - name: core0
     type: armv8a
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
       psel: 0x0
       debug_base: 0x80410000
       cti_base: 0x80420000
   - name: core1
     type: armv8a
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
       psel: 0x0
       debug_base: 0x80510000
       cti_base: 0x80520000
   - name: core2
     type: armv8a
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
       psel: 0x0
       debug_base: 0x80610000
       cti_base: 0x80620000
   - name: core3
     type: armv8a
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
       psel: 0x0
       debug_base: 0x80710000
       cti_base: 0x80720000

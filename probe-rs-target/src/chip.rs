@@ -64,7 +64,6 @@ pub struct Chip {
     #[serde(default)]
     pub documentation: HashMap<String, url::Url>,
     /// The cores available on the chip.
-    #[serde(default)]
     pub cores: Vec<Core>,
     /// The memory regions available on the chip.
     pub memory_map: Vec<MemoryRegion>,
@@ -151,11 +150,27 @@ pub enum CoreAccessOptions {
     Xtensa(XtensaCoreAccessOptions),
 }
 
+/// An access port Address
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ApAddress {
+    /// Address version 1
+    #[serde(rename = "v1")]
+    V1(u8),
+    /// Address version 2
+    #[serde(rename = "v2")]
+    V2(Vec<u64>),
+}
+impl Default for ApAddress {
+    fn default() -> Self {
+        ApAddress::V1(0)
+    }
+}
+
 /// The data required to access an ARM core
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ArmCoreAccessOptions {
     /// The access port number to access the core
-    pub ap: u8,
+    pub ap: ApAddress,
     /// The port select number to access the core
     #[serde(serialize_with = "hex_u_int")]
     pub psel: u32,

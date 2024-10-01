@@ -13,11 +13,11 @@ variants:
   - name: main
     type: xtensa
     core_access_options: !Xtensa
-      jtag_tap: 0
+      jtag_tap: !v1 0
   - name: app
     type: xtensa
     core_access_options: !Xtensa
-      jtag_tap: 1
+      jtag_tap: !v1 1
   memory_map:
   - !Nvm
     range:

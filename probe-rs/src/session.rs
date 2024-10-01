@@ -3,9 +3,10 @@ use crate::{
         arm::{
             communication_interface::ArmProbeInterface,
             component::{get_arm_components, TraceSink},
+            dp::DpAddress,
             memory::CoresightComponent,
             sequences::{ArmDebugSequence, DefaultArmSequence},
-            ArmError, DpAddress, SwoReader,
+            ArmError, SwoReader,
         },
         riscv::communication_interface::{
             RiscvCommunicationInterface, RiscvDebugInterfaceState, RiscvError,
