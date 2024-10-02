@@ -7,8 +7,8 @@ use bitvec::prelude::*;
 use probe_rs_target::ScanChainElement;
 
 use crate::probe::{
-    BatchExecutionError, ChainParams, DebugProbe, DebugProbeError, DeferredResultSet, JTAGAccess,
-    JtagChainItem, JtagCommand, JtagCommandQueue,
+    BatchExecutionError, ChainParams, CommandResult, DebugProbe, DebugProbeError,
+    DeferredResultSet, JTAGAccess, JtagChainItem, JtagCommand, JtagCommandQueue,
 };
 
 pub(crate) fn bits_to_byte(bits: impl IntoIterator<Item = bool>) -> u32 {
@@ -808,6 +808,10 @@ impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
                     Ok(response) => responses.push(idx, response),
                     Err(e) => return Err(BatchExecutionError::new(e, responses)),
                 }
+            } else {
+                // Add a response so that the number of successfully processed commands is correct.
+                // This is important in case we need to retry part of the batch.
+                responses.push(idx, CommandResult::None);
             }
 
             bitstream = &bitstream[bits..];
