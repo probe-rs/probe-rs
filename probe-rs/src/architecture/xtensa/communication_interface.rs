@@ -2,8 +2,11 @@
 
 use std::{
     collections::HashMap,
+    ops::Range,
     time::{Duration, Instant},
 };
+
+use probe_rs_target::MemoryRange;
 
 use crate::{
     architecture::xtensa::{
@@ -101,6 +104,9 @@ pub(super) struct XtensaInterfaceState {
 
     /// The interrupt level at which debug exceptions are generated. CPU-specific configuration value.
     debug_level: DebugLevel,
+
+    /// The address range for which we should wait after memory instructions.
+    memory_instruction_wait_range: Range<u64>,
 }
 
 impl Default for XtensaInterfaceState {
@@ -112,6 +118,7 @@ impl Default for XtensaInterfaceState {
             // FIXME: these are per-chip configuration parameters
             hw_breakpoint_num: 2,
             debug_level: DebugLevel::L6,
+            memory_instruction_wait_range: 0..0,
         }
     }
 }
@@ -148,6 +155,14 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
             xdm,
             state: interface_state,
         }
+    }
+
+    /// Whether to schedule a wait after memory instructions.
+    ///
+    /// NOTE: This is overly restrictive as we only need to wait for certain
+    /// address ranges, but we don't yet have a way to specify that.
+    pub fn wait_for_memory_instructions_in_range(&mut self, range: Range<u64>) {
+        self.state.memory_instruction_wait_range = range;
     }
 
     /// Read the targets IDCODE.
@@ -582,7 +597,13 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
             return Ok(());
         }
 
-        self.fast_halted_access(move |this| {
+        let old_wait = self.xdm.wait_for_memory_instructions(
+            self.state
+                .memory_instruction_wait_range
+                .intersects_range(&(address..address + dst.len() as u64)),
+        );
+
+        let result = self.fast_halted_access(move |this| {
             let mut dst = &mut dst[..];
             // Write aligned address to the scratch register
             let key = this.save_register(CpuRegister::A3)?;
@@ -651,7 +672,11 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
             }
 
             Ok(())
-        })
+        });
+
+        self.xdm.wait_for_memory_instructions(old_wait);
+
+        result
     }
 
     fn write_memory_unaligned8(&mut self, address: u32, data: &[u8]) -> Result<(), XtensaError> {
@@ -699,7 +724,13 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
             return Ok(());
         }
 
-        self.fast_halted_access(move |this| {
+        let old_wait = self.xdm.wait_for_memory_instructions(
+            self.state
+                .memory_instruction_wait_range
+                .intersects_range(&(address..address + data.len() as u64)),
+        );
+
+        let result = self.fast_halted_access(move |this| {
             let key = this.save_register(CpuRegister::A3)?;
 
             let address = address as u32;
@@ -747,7 +778,11 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
             // TODO: implement cache flushing on CPUs that need it.
 
             Ok(())
-        })
+        });
+
+        self.xdm.wait_for_memory_instructions(old_wait);
+
+        result
     }
 
     pub(crate) fn reset_and_halt(&mut self, timeout: Duration) -> Result<(), XtensaError> {
