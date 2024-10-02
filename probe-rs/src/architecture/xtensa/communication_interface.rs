@@ -106,7 +106,7 @@ pub(super) struct XtensaInterfaceState {
     debug_level: DebugLevel,
 
     /// The address range for which we should not use LDDR32.P/SDDR32.P instructions.
-    slow_memory_access_range: Range<u64>,
+    slow_memory_access_ranges: Vec<Range<u64>>,
 }
 
 impl Default for XtensaInterfaceState {
@@ -118,7 +118,7 @@ impl Default for XtensaInterfaceState {
             // FIXME: these are per-chip configuration parameters
             hw_breakpoint_num: 2,
             debug_level: DebugLevel::L6,
-            slow_memory_access_range: 0..0,
+            slow_memory_access_ranges: vec![],
         }
     }
 }
@@ -158,8 +158,8 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
     }
 
     /// Set the range of addresses for which we should not use LDDR32.P/SDDR32.P instructions.
-    pub fn set_slow_memory_access_range(&mut self, range: Range<u64>) {
-        self.state.slow_memory_access_range = range;
+    pub fn add_slow_memory_access_range(&mut self, range: Range<u64>) {
+        self.state.slow_memory_access_ranges.push(range);
     }
 
     /// Read the targets IDCODE.
@@ -588,22 +588,27 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         Ok(())
     }
 
+    fn memory_access_for(&self, address: u64, len: usize) -> Box<dyn MemoryAccess> {
+        let use_slow_access = self
+            .state
+            .slow_memory_access_ranges
+            .iter()
+            .any(|r| r.intersects_range(&(address..address + len as u64)));
+
+        if use_slow_access {
+            Box::new(SlowMemoryAccess::new())
+        } else {
+            Box::new(FastMemoryAccess::new())
+        }
+    }
+
     fn read_memory(&mut self, address: u64, dst: &mut [u8]) -> Result<(), XtensaError> {
         tracing::debug!("Reading {} bytes from address {:08x}", dst.len(), address);
         if dst.is_empty() {
             return Ok(());
         }
 
-        let slow_access = self
-            .state
-            .slow_memory_access_range
-            .intersects_range(&(address..address + dst.len() as u64));
-
-        let mut memory_access: Box<dyn MemoryAccess> = if slow_access {
-            Box::new(SlowMemoryAccess::new())
-        } else {
-            Box::new(FastMemoryAccess::new())
-        };
+        let mut memory_access = self.memory_access_for(address, dst.len());
 
         let result = self.fast_halted_access(|this| {
             memory_access.save_scratch_registers(this)?;
@@ -690,16 +695,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
             return Ok(());
         }
 
-        let slow_access = self
-            .state
-            .slow_memory_access_range
-            .intersects_range(&(address..address + data.len() as u64));
-
-        let mut memory_access: Box<dyn MemoryAccess> = if slow_access {
-            Box::new(SlowMemoryAccess::new())
-        } else {
-            Box::new(FastMemoryAccess::new())
-        };
+        let mut memory_access = self.memory_access_for(address, data.len());
 
         let result = self.fast_halted_access(|this| {
             memory_access.save_scratch_registers(this)?;

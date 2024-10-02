@@ -177,6 +177,9 @@ impl<'probe> Xdm<'probe> {
 
     #[tracing::instrument(skip(self))]
     pub(crate) fn enter_debug_mode(&mut self) -> Result<(), XtensaError> {
+        self.state.queue = JtagCommandQueue::new();
+        self.state.jtag_results = DeferredResultSet::new();
+
         self.probe.tap_reset()?;
 
         let mut pwr_control = PowerControl(0);

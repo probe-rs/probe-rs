@@ -38,8 +38,8 @@ impl ESP32S3 {
 
 impl XtensaDebugSequence for ESP32S3 {
     fn on_connect(&self, core: &mut XtensaCommunicationInterface) -> Result<(), crate::Error> {
-        // FIXME: It's unclear why only the S3 needs this, and why ESP32 and S2 work without it.
-        core.set_slow_memory_access_range(0x3C00_0000..0x3E00_0000);
+        // External memory bus
+        core.add_slow_memory_access_range(0x3C00_0000..0x3E00_0000);
 
         tracing::info!("Disabling ESP32-S3 watchdogs...");
 
