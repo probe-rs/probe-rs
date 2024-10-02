@@ -1273,7 +1273,7 @@ impl MemoryAccess for SlowMemoryAccess {
         &mut self,
         interface: &mut XtensaCommunicationInterface,
     ) -> Result<DeferredResultIndex, XtensaError> {
-        interface.schedule_write_cpu_register(CpuRegister::A3, self.current_address as u32)?;
+        interface.schedule_write_cpu_register(CpuRegister::A3, self.current_address)?;
         self.current_address += 4;
 
         interface
@@ -1296,7 +1296,7 @@ impl MemoryAccess for SlowMemoryAccess {
         data: u32,
     ) -> Result<(), XtensaError> {
         // Store address and data
-        interface.schedule_write_cpu_register(CpuRegister::A3, self.current_address as u32)?;
+        interface.schedule_write_cpu_register(CpuRegister::A3, self.current_address)?;
         interface.schedule_write_cpu_register(CpuRegister::A4, data)?;
 
         // Increment address
