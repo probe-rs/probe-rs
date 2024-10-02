@@ -2,15 +2,15 @@
 
 use super::{Chip, ChipFamily, ChipInfo, Core, Target, TargetDescriptionSource};
 use crate::config::CoreType;
-use once_cell::sync::Lazy;
 use parking_lot::{RwLock, RwLockReadGuard};
 use probe_rs_target::{CoreAccessOptions, RiscvCoreAccessOptions};
 use std::collections::HashMap;
 use std::io::Read;
 use std::ops::Deref;
+use std::sync::LazyLock;
 
-static REGISTRY: Lazy<RwLock<Registry>> =
-    Lazy::new(|| RwLock::new(Registry::from_builtin_families()));
+static REGISTRY: LazyLock<RwLock<Registry>> =
+    LazyLock::new(|| RwLock::new(Registry::from_builtin_families()));
 
 /// Error type for all errors which occur when working
 /// with the internal registry of targets.

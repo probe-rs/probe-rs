@@ -9,19 +9,18 @@ use capstone::{
     arch::arm::ArchMode as armArchMode, arch::arm64::ArchMode as aarch64ArchMode,
     arch::riscv::ArchMode as riscvArchMode, prelude::*, Endian,
 };
-use once_cell::sync::Lazy;
 use probe_rs::{
     debug::{ColumnType, ObjectRef, SourceLocation},
     CoreType, InstructionSet, MemoryInterface,
 };
-use std::{fmt::Write, time::Duration};
+use std::{fmt::Write, sync::LazyLock, time::Duration};
 use typed_path::TypedPathBuf;
 
 use super::dap_types::{Breakpoint, InstructionBreakpoint, MemoryAddress};
 
 // Source file mapping for rustlib, e.g. Some(("/rustc/<hash>", "<sysroot>/lib/rustlib/src/rust"))
 // This can be None if rustc is not found or gives bad output
-static RUSTLIB_SOURCE_MAP: Lazy<Option<(TypedPathBuf, TypedPathBuf)>> = Lazy::new(|| {
+static RUSTLIB_SOURCE_MAP: LazyLock<Option<(TypedPathBuf, TypedPathBuf)>> = LazyLock::new(|| {
     let rustc = rustc_binary();
 
     // Call rustc --version --verbose to get hash
