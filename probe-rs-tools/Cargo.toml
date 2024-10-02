@@ -19,7 +19,6 @@ anyhow = { workspace = true }
 base64 = "0.22"
 docsplay = { workspace = true }
 jep106 = "0.2"
-once_cell = "1"
 num-traits = "0.2"
 scroll = "0.12"
 serde = { version = "1", features = ["derive"] }

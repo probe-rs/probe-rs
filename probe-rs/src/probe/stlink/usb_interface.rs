@@ -1,6 +1,5 @@
 use nusb::DeviceInfo;
-use once_cell::sync::Lazy;
-use std::time::Duration;
+use std::{sync::LazyLock, time::Duration};
 
 use crate::probe::{stlink::StlinkError, usb_util::InterfaceExt};
 
@@ -18,7 +17,7 @@ pub const USB_VID: u16 = 0x0483;
 pub const TIMEOUT: Duration = Duration::from_millis(1000);
 
 /// Map of USB PID to firmware version name and device endpoints.
-pub static USB_PID_EP_MAP: Lazy<HashMap<u16, StLinkInfo>> = Lazy::new(|| {
+pub static USB_PID_EP_MAP: LazyLock<HashMap<u16, StLinkInfo>> = LazyLock::new(|| {
     let mut m = HashMap::new();
     m.insert(0x3748, StLinkInfo::new("V2", 0x02, 0x81, 0x83));
     m.insert(0x374b, StLinkInfo::new("V2-1", 0x01, 0x81, 0x82));
