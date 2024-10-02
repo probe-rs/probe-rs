@@ -105,8 +105,8 @@ pub(super) struct XtensaInterfaceState {
     /// The interrupt level at which debug exceptions are generated. CPU-specific configuration value.
     debug_level: DebugLevel,
 
-    /// The address range for which we should wait after memory instructions.
-    memory_instruction_wait_range: Range<u64>,
+    /// The address range for which we should not use LDDR32.P/SDDR32.P instructions.
+    slow_memory_access_range: Range<u64>,
 }
 
 impl Default for XtensaInterfaceState {
@@ -118,7 +118,7 @@ impl Default for XtensaInterfaceState {
             // FIXME: these are per-chip configuration parameters
             hw_breakpoint_num: 2,
             debug_level: DebugLevel::L6,
-            memory_instruction_wait_range: 0..0,
+            slow_memory_access_range: 0..0,
         }
     }
 }
@@ -157,12 +157,9 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         }
     }
 
-    /// Whether to schedule a wait after memory instructions.
-    ///
-    /// NOTE: This is overly restrictive as we only need to wait for certain
-    /// address ranges, but we don't yet have a way to specify that.
-    pub fn wait_for_memory_instructions_in_range(&mut self, range: Range<u64>) {
-        self.state.memory_instruction_wait_range = range;
+    /// Set the range of addresses for which we should not use LDDR32.P/SDDR32.P instructions.
+    pub fn set_slow_memory_access_range(&mut self, range: Range<u64>) {
+        self.state.slow_memory_access_range = range;
     }
 
     /// Read the targets IDCODE.
@@ -597,94 +594,132 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
             return Ok(());
         }
 
-        let old_wait = self.xdm.wait_for_memory_instructions(
-            self.state
-                .memory_instruction_wait_range
-                .intersects_range(&(address..address + dst.len() as u64)),
-        );
+        let slow_access = self
+            .state
+            .slow_memory_access_range
+            .intersects_range(&(address..address + dst.len() as u64));
 
-        let result = self.fast_halted_access(move |this| {
-            let mut dst = &mut dst[..];
-            // Write aligned address to the scratch register
-            let key = this.save_register(CpuRegister::A3)?;
-            this.schedule_write_cpu_register(CpuRegister::A3, address as u32 & !0x3)?;
+        let mut memory_access: Box<dyn MemoryAccess> = if slow_access {
+            Box::new(SlowMemoryAccess::new())
+        } else {
+            Box::new(FastMemoryAccess::new())
+        };
 
-            // Read from address in the scratch register
-            this.xdm
-                .schedule_execute_instruction(Instruction::Lddr32P(CpuRegister::A3));
-
-            let mut to_read = dst.len();
-
-            // Let's assume we can just do 32b reads, so let's do some pre-massaging on unaligned reads
-            let first_read = if address % 4 != 0 {
-                let offset = address as usize % 4;
-
-                // Avoid executing another read if we only have to read a single word
-                let first_read = if offset + to_read <= 4 {
-                    this.xdm.schedule_read_ddr()
-                } else {
-                    this.xdm.schedule_read_ddr_and_execute()
-                };
-
-                let bytes_to_copy = (4 - offset).min(to_read);
-
-                to_read -= bytes_to_copy;
-
-                Some((first_read, offset, bytes_to_copy))
-            } else {
-                None
-            };
-
-            let mut aligned_reads = vec![];
-            if to_read > 0 {
-                let words = to_read.div_ceil(4);
-
-                for _ in 0..words - 1 {
-                    aligned_reads.push(this.xdm.schedule_read_ddr_and_execute());
-                }
-                aligned_reads.push(this.xdm.schedule_read_ddr());
-            };
-
-            this.restore_register(key)?;
-
-            if let Some((read, offset, bytes_to_copy)) = first_read {
-                let word = this
-                    .xdm
-                    .read_deferred_result(read)?
-                    .into_u32()
-                    .to_le_bytes();
-
-                dst[..bytes_to_copy].copy_from_slice(&word[offset..][..bytes_to_copy]);
-                dst = &mut dst[bytes_to_copy..];
-            }
-
-            for read in aligned_reads {
-                let word = this
-                    .xdm
-                    .read_deferred_result(read)?
-                    .into_u32()
-                    .to_le_bytes();
-
-                let bytes = dst.len().min(4);
-
-                dst[..bytes].copy_from_slice(&word[..bytes]);
-                dst = &mut dst[bytes..];
-            }
-
-            Ok(())
+        let result = self.fast_halted_access(|this| {
+            memory_access.save_scratch_registers(this)?;
+            let result = this.read_memory_impl(memory_access.as_mut(), address, dst);
+            memory_access.restore_scratch_registers(this)?;
+            result
         });
-
-        self.xdm.wait_for_memory_instructions(old_wait);
 
         result
     }
 
-    fn write_memory_unaligned8(&mut self, address: u32, data: &[u8]) -> Result<(), XtensaError> {
+    fn read_memory_impl(
+        &mut self,
+        memory_access: &mut dyn MemoryAccess,
+        address: u64,
+        mut dst: &mut [u8],
+    ) -> Result<(), XtensaError> {
+        memory_access.load_initial_address_for_read(self, address as u32 & !0x3)?;
+
+        let mut to_read = dst.len();
+
+        // Let's assume we can just do 32b reads, so let's do some pre-massaging on unaligned reads
+        let first_read = if address % 4 != 0 {
+            let offset = address as usize % 4;
+
+            // Avoid executing another read if we only have to read a single word
+            let first_read = if offset + to_read <= 4 {
+                memory_access.read_one(self)?
+            } else {
+                memory_access.read_one_and_continue(self)?
+            };
+
+            let bytes_to_copy = (4 - offset).min(to_read);
+
+            to_read -= bytes_to_copy;
+
+            Some((first_read, offset, bytes_to_copy))
+        } else {
+            None
+        };
+
+        let mut aligned_reads = vec![];
+        if to_read > 0 {
+            let words = to_read.div_ceil(4);
+
+            for _ in 0..words - 1 {
+                aligned_reads.push(memory_access.read_one_and_continue(self)?);
+            }
+            aligned_reads.push(memory_access.read_one(self)?);
+        };
+
+        memory_access.restore_scratch_registers(self)?;
+
+        if let Some((read, offset, bytes_to_copy)) = first_read {
+            let word = self
+                .xdm
+                .read_deferred_result(read)?
+                .into_u32()
+                .to_le_bytes();
+
+            dst[..bytes_to_copy].copy_from_slice(&word[offset..][..bytes_to_copy]);
+            dst = &mut dst[bytes_to_copy..];
+        }
+
+        for read in aligned_reads {
+            let word = self
+                .xdm
+                .read_deferred_result(read)?
+                .into_u32()
+                .to_le_bytes();
+
+            let bytes = dst.len().min(4);
+
+            dst[..bytes].copy_from_slice(&word[..bytes]);
+            dst = &mut dst[bytes..];
+        }
+
+        Ok(())
+    }
+
+    pub(crate) fn write_memory(&mut self, address: u64, data: &[u8]) -> Result<(), XtensaError> {
+        tracing::debug!("Writing {} bytes to address {:08x}", data.len(), address);
         if data.is_empty() {
             return Ok(());
         }
 
-        let key = self.save_register(CpuRegister::A3)?;
+        let slow_access = self
+            .state
+            .slow_memory_access_range
+            .intersects_range(&(address..address + data.len() as u64));
+
+        let mut memory_access: Box<dyn MemoryAccess> = if slow_access {
+            Box::new(SlowMemoryAccess::new())
+        } else {
+            Box::new(FastMemoryAccess::new())
+        };
+
+        let result = self.fast_halted_access(|this| {
+            memory_access.save_scratch_registers(this)?;
+            let result = this.write_memory_impl(memory_access.as_mut(), address, data);
+            memory_access.restore_scratch_registers(this)?;
+            result
+        });
+
+        result
+    }
+
+    fn write_memory_unaligned8(
+        &mut self,
+        memory_access: &mut dyn MemoryAccess,
+        address: u32,
+        data: &[u8],
+    ) -> Result<(), XtensaError> {
+        if data.is_empty() {
+            return Ok(());
+        }
 
         let offset = address as usize % 4;
         let aligned_address = address & !0x3;
@@ -700,7 +735,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         } else {
             // Read the aligned word
             let mut word = [0; 4];
-            self.read_memory(aligned_address as u64, &mut word)?;
+            self.read_memory_impl(memory_access, aligned_address as u64, &mut word)?;
 
             // Replace the written bytes. This will also panic if the input is crossing a word boundary
             word[offset..][..data.len()].copy_from_slice(data);
@@ -709,80 +744,53 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         };
 
         // Write the word back
-        self.schedule_write_register_untyped(CpuRegister::A3, aligned_address)?;
-        self.xdm.schedule_write_ddr(u32::from_le_bytes(data));
-        self.xdm
-            .schedule_execute_instruction(Instruction::Sddr32P(CpuRegister::A3));
-        self.restore_register(key)?;
-
-        Ok(())
+        memory_access.load_initial_address_for_write(self, aligned_address)?;
+        memory_access.write_one(self, u32::from_le_bytes(data))
     }
 
-    pub(crate) fn write_memory(&mut self, address: u64, data: &[u8]) -> Result<(), XtensaError> {
-        tracing::debug!("Writing {} bytes to address {:08x}", data.len(), address);
-        if data.is_empty() {
-            return Ok(());
+    fn write_memory_impl(
+        &mut self,
+        memory_access: &mut dyn MemoryAccess,
+        address: u64,
+        mut buffer: &[u8],
+    ) -> Result<(), XtensaError> {
+        let mut addr = address as u32;
+
+        // We store the unaligned head of the data separately
+        if addr % 4 != 0 {
+            let unaligned_bytes = (4 - (addr % 4) as usize).min(buffer.len());
+
+            self.write_memory_unaligned8(memory_access, addr, &buffer[..unaligned_bytes])?;
+
+            buffer = &buffer[unaligned_bytes..];
+            addr += unaligned_bytes as u32;
         }
 
-        let old_wait = self.xdm.wait_for_memory_instructions(
-            self.state
-                .memory_instruction_wait_range
-                .intersects_range(&(address..address + data.len() as u64)),
-        );
+        if buffer.len() > 4 {
+            memory_access.load_initial_address_for_write(self, addr)?;
 
-        let result = self.fast_halted_access(move |this| {
-            let key = this.save_register(CpuRegister::A3)?;
+            let mut chunks = buffer.chunks_exact(4);
+            for chunk in chunks.by_ref() {
+                let mut word = [0; 4];
+                word[..].copy_from_slice(chunk);
+                let word = u32::from_le_bytes(word);
 
-            let address = address as u32;
+                memory_access.write_one(self, word)?;
 
-            let mut addr = address;
-            let mut buffer = data;
-
-            // We store the unaligned head of the data separately
-            if addr % 4 != 0 {
-                let unaligned_bytes = (4 - (addr % 4) as usize).min(buffer.len());
-
-                this.write_memory_unaligned8(addr, &buffer[..unaligned_bytes])?;
-
-                buffer = &buffer[unaligned_bytes..];
-                addr += unaligned_bytes as u32;
+                addr += 4;
             }
 
-            if buffer.len() > 4 {
-                // Prepare store instruction
-                this.schedule_write_register_untyped(CpuRegister::A3, addr)?;
+            buffer = chunks.remainder();
+        }
 
-                this.xdm
-                    .schedule_write_instruction(Instruction::Sddr32P(CpuRegister::A3));
+        // We store the narrow tail of the data separately
+        if !buffer.is_empty() {
+            self.write_memory_unaligned8(memory_access, addr, buffer)?;
+        }
 
-                while buffer.len() > 4 {
-                    let mut word = [0; 4];
-                    word[..].copy_from_slice(&buffer[..4]);
-                    let word = u32::from_le_bytes(word);
+        // TODO: implement cache flushing on CPUs that need it.
 
-                    // Write data to DDR and store
-                    this.xdm.schedule_write_ddr_and_execute(word);
-
-                    buffer = &buffer[4..];
-                    addr += 4;
-                }
-            }
-
-            // We store the narrow tail of the data separately
-            if !buffer.is_empty() {
-                this.write_memory_unaligned8(addr, buffer)?;
-            }
-
-            this.restore_register(key)?;
-
-            // TODO: implement cache flushing on CPUs that need it.
-
-            Ok(())
-        });
-
-        self.xdm.wait_for_memory_instructions(old_wait);
-
-        result
+        Ok(())
     }
 
     pub(crate) fn reset_and_halt(&mut self, timeout: Duration) -> Result<(), XtensaError> {
@@ -1088,3 +1096,217 @@ u32_register!(ICountLevel, SpecialRegister::ICountLevel);
 #[derive(Copy, Clone, Debug)]
 pub struct ProgramCounter(pub u32);
 u32_register!(ProgramCounter, Register::CurrentPc);
+
+trait MemoryAccess {
+    fn save_scratch_registers(
+        &mut self,
+        interface: &mut XtensaCommunicationInterface,
+    ) -> Result<(), XtensaError>;
+
+    fn restore_scratch_registers(
+        &mut self,
+        interface: &mut XtensaCommunicationInterface,
+    ) -> Result<(), XtensaError>;
+
+    fn load_initial_address_for_read(
+        &mut self,
+        interface: &mut XtensaCommunicationInterface,
+        address: u32,
+    ) -> Result<(), XtensaError>;
+    fn load_initial_address_for_write(
+        &mut self,
+        interface: &mut XtensaCommunicationInterface,
+        address: u32,
+    ) -> Result<(), XtensaError>;
+
+    fn read_one(
+        &mut self,
+        interface: &mut XtensaCommunicationInterface,
+    ) -> Result<DeferredResultIndex, XtensaError>;
+
+    fn read_one_and_continue(
+        &mut self,
+        interface: &mut XtensaCommunicationInterface,
+    ) -> Result<DeferredResultIndex, XtensaError>;
+
+    fn write_one(
+        &mut self,
+        interface: &mut XtensaCommunicationInterface,
+        data: u32,
+    ) -> Result<(), XtensaError>;
+}
+
+/// Memory access using LDDR32.P and SDDR32.P instructions.
+struct FastMemoryAccess {
+    a3: Option<Register>,
+}
+impl FastMemoryAccess {
+    fn new() -> Self {
+        Self { a3: None }
+    }
+}
+impl MemoryAccess for FastMemoryAccess {
+    fn save_scratch_registers(
+        &mut self,
+        interface: &mut XtensaCommunicationInterface,
+    ) -> Result<(), XtensaError> {
+        self.a3 = interface.save_register(CpuRegister::A3)?;
+        Ok(())
+    }
+
+    fn restore_scratch_registers(
+        &mut self,
+        interface: &mut XtensaCommunicationInterface,
+    ) -> Result<(), XtensaError> {
+        interface.restore_register(self.a3.take())
+    }
+
+    fn load_initial_address_for_read(
+        &mut self,
+        interface: &mut XtensaCommunicationInterface,
+        address: u32,
+    ) -> Result<(), XtensaError> {
+        // Write aligned address to the scratch register
+        interface.schedule_write_cpu_register(CpuRegister::A3, address)?;
+
+        // Read from address in the scratch register
+        interface
+            .xdm
+            .schedule_execute_instruction(Instruction::Lddr32P(CpuRegister::A3));
+
+        Ok(())
+    }
+
+    fn load_initial_address_for_write(
+        &mut self,
+        interface: &mut XtensaCommunicationInterface,
+        address: u32,
+    ) -> Result<(), XtensaError> {
+        interface.schedule_write_cpu_register(CpuRegister::A3, address)?;
+        interface
+            .xdm
+            .schedule_write_instruction(Instruction::Sddr32P(CpuRegister::A3));
+
+        Ok(())
+    }
+
+    fn write_one(
+        &mut self,
+        interface: &mut XtensaCommunicationInterface,
+        data: u32,
+    ) -> Result<(), XtensaError> {
+        interface.xdm.schedule_write_ddr_and_execute(data);
+        Ok(())
+    }
+
+    fn read_one(
+        &mut self,
+        interface: &mut XtensaCommunicationInterface,
+    ) -> Result<DeferredResultIndex, XtensaError> {
+        Ok(interface.xdm.schedule_read_ddr())
+    }
+
+    fn read_one_and_continue(
+        &mut self,
+        interface: &mut XtensaCommunicationInterface,
+    ) -> Result<DeferredResultIndex, XtensaError> {
+        Ok(interface.xdm.schedule_read_ddr_and_execute())
+    }
+}
+
+/// Memory access without LDDR32.P and SDDR32.P instructions.
+struct SlowMemoryAccess {
+    a3: Option<Register>,
+    a4: Option<Register>,
+    current_address: u32,
+}
+impl SlowMemoryAccess {
+    fn new() -> Self {
+        Self {
+            a3: None,
+            a4: None,
+            current_address: 0,
+        }
+    }
+}
+
+impl MemoryAccess for SlowMemoryAccess {
+    fn save_scratch_registers(
+        &mut self,
+        interface: &mut XtensaCommunicationInterface,
+    ) -> Result<(), XtensaError> {
+        self.a3 = interface.save_register(CpuRegister::A3)?;
+        self.a4 = interface.save_register(CpuRegister::A4)?;
+        Ok(())
+    }
+
+    fn restore_scratch_registers(
+        &mut self,
+        interface: &mut XtensaCommunicationInterface,
+    ) -> Result<(), XtensaError> {
+        interface.restore_register(self.a4.take())?;
+        interface.restore_register(self.a3.take())?;
+        Ok(())
+    }
+
+    fn load_initial_address_for_read(
+        &mut self,
+        _interface: &mut XtensaCommunicationInterface,
+        address: u32,
+    ) -> Result<(), XtensaError> {
+        self.current_address = address;
+
+        Ok(())
+    }
+
+    fn load_initial_address_for_write(
+        &mut self,
+        _interface: &mut XtensaCommunicationInterface,
+        address: u32,
+    ) -> Result<(), XtensaError> {
+        self.current_address = address;
+
+        Ok(())
+    }
+
+    fn read_one(
+        &mut self,
+        interface: &mut XtensaCommunicationInterface,
+    ) -> Result<DeferredResultIndex, XtensaError> {
+        interface.schedule_write_cpu_register(CpuRegister::A3, self.current_address as u32)?;
+        self.current_address += 4;
+
+        interface
+            .xdm
+            .schedule_execute_instruction(Instruction::L32I(CpuRegister::A3, CpuRegister::A4, 0));
+
+        Ok(interface.schedule_read_cpu_register(CpuRegister::A4))
+    }
+
+    fn read_one_and_continue(
+        &mut self,
+        interface: &mut XtensaCommunicationInterface,
+    ) -> Result<DeferredResultIndex, XtensaError> {
+        self.read_one(interface)
+    }
+
+    fn write_one(
+        &mut self,
+        interface: &mut XtensaCommunicationInterface,
+        data: u32,
+    ) -> Result<(), XtensaError> {
+        // Store address and data
+        interface.schedule_write_cpu_register(CpuRegister::A3, self.current_address as u32)?;
+        interface.schedule_write_cpu_register(CpuRegister::A4, data)?;
+
+        // Increment address
+        self.current_address += 4;
+
+        // Store A4 into address A3
+        interface
+            .xdm
+            .schedule_execute_instruction(Instruction::S32I(CpuRegister::A3, CpuRegister::A4, 0));
+
+        Ok(())
+    }
+}

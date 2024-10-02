@@ -154,9 +154,6 @@ pub struct XdmState {
     /// complete correctly, or to - ironically - increase performance. We store their otherwise
     /// ignored handles in this vector and drop them when we're done with the batch.
     status_idxs: Vec<DeferredResultIndex>,
-
-    /// HACK: Schedule wait for memory instructions to complete.
-    wait_for_memory_instructions: bool,
 }
 
 /// The lower level functions of the Xtensa Debug Module.
@@ -651,13 +648,13 @@ impl<'probe> Xdm<'probe> {
         // Assume some instructions complete practically instantly and don't waste bandwidth
         // checking their results.
         if let Some(last_instruction) = self.state.last_instruction {
-            let wait = match last_instruction {
-                Instruction::Rsr(_, _) | Instruction::Wsr(_, _) => false,
-                Instruction::Lddr32P(_) | Instruction::Sddr32P(_) => {
-                    self.state.wait_for_memory_instructions
-                }
-                _ => true,
-            };
+            let wait = !matches!(
+                last_instruction,
+                Instruction::Rsr(_, _)
+                    | Instruction::Wsr(_, _)
+                    | Instruction::Lddr32P(_)
+                    | Instruction::Sddr32P(_)
+            );
 
             if wait {
                 self.schedule_wait_for_exec_done();
@@ -692,10 +689,6 @@ impl<'probe> Xdm<'probe> {
         })?;
 
         Ok(())
-    }
-
-    pub(crate) fn wait_for_memory_instructions(&mut self, wait: bool) -> bool {
-        std::mem::replace(&mut self.state.wait_for_memory_instructions, wait)
     }
 }
 
