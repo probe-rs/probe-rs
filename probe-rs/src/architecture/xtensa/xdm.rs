@@ -734,13 +734,16 @@ fn transform_instruction_status(
             Error::ExecExeception,
         )));
     }
-    if !status.exec_busy() && !status.exec_done() {
-        return Err(ProbeRsError::Xtensa(XtensaError::XdmError(
-            Error::InstructionIgnored,
-        )));
+    if status.exec_busy() {
+        return Err(ProbeRsError::Xtensa(XtensaError::XdmError(Error::ExecBusy)));
+    }
+    if status.exec_done() {
+        return Ok(CommandResult::None);
     }
 
-    Ok(CommandResult::None)
+    Err(ProbeRsError::Xtensa(XtensaError::XdmError(
+        Error::InstructionIgnored,
+    )))
 }
 
 bitfield::bitfield! {
