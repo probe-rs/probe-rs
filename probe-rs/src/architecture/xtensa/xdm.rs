@@ -292,6 +292,7 @@ impl<'probe> Xdm<'probe> {
             let mut status = DebugStatus(0);
 
             status.set_exec_exception(true);
+            status.set_exec_overrun(true);
 
             status
         })?;
@@ -346,6 +347,7 @@ impl<'probe> Xdm<'probe> {
                     return Ok(());
                 }
                 Err(e) => {
+                    let mut to_consume = e.results.len();
                     match e.error {
                         ProbeRsError::Xtensa(XtensaError::XdmError(Error::Xdm {
                             source: DebugRegisterError::Busy,
@@ -355,11 +357,8 @@ impl<'probe> Xdm<'probe> {
                             // retry, but we should probably add some no-ops later.
                         }
                         ProbeRsError::Xtensa(XtensaError::XdmError(Error::ExecBusy)) => {
-                            // The instruction is still executing. We don't do anything except clear the
-                            // error and retry.
-                            // While this is recursive, this register read-write does not involve
-                            // instructions so we can't end up with an unbounded recursion here.
-                            self.clear_exec_exception()?;
+                            // The instruction is still executing. Retry the Debug Status read.
+                            to_consume -= 1;
                         }
                         ProbeRsError::Probe(error) => return Err(error.into()),
                         ProbeRsError::Xtensa(error) => return Err(error),
@@ -367,7 +366,7 @@ impl<'probe> Xdm<'probe> {
                     }
 
                     // queue up the remaining commands when we retry
-                    queue.consume(e.results.len());
+                    queue.consume(to_consume);
                     self.state.jtag_results.merge_from(e.results);
                 }
             }
