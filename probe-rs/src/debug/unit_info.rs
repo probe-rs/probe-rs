@@ -206,10 +206,6 @@ impl UnitInfo {
         let attributes_entry = if let Ok(Some(specification)) =
             tree_node.attr(gimli::DW_AT_specification)
         {
-            println!(
-                "Handling specification entry for var {:?}",
-                tree_node.offset()
-            );
             match specification.value() {
                 gimli::AttributeValue::UnitRef(unit_ref) => {
                     // The abstract origin is a reference to another DIE, so we need to resolve that,
@@ -1609,9 +1605,6 @@ impl UnitInfo {
             });
 
         if child_variable.memory_location == VariableLocation::Unknown {
-            if child_variable.name == VariableName::Named("CORE_PERIPHERALS".to_string()) {
-                println!("Trying to extract location for CORE_PERIPHERALS");
-            }
             // Any expected errors should be handled by one of the variants in the Ok() result.
             let expression_result = match self.extract_location(
                 debug_info,
@@ -1631,13 +1624,6 @@ impl UnitInfo {
                     return Ok(());
                 }
             };
-
-            if child_variable.name == VariableName::Named("CORE_PERIPHERALS".to_string()) {
-                println!(
-                    "Trying to extract location for CORE_PERIPHERALS: {:?}",
-                    expression_result
-                );
-            }
 
             match expression_result {
                 ExpressionResult::Value(value_from_expression @ VariableValue::Valid(_)) => {
@@ -1665,10 +1651,6 @@ impl UnitInfo {
                 }
 
                 ExpressionResult::Location(location_from_expression) => {
-                    if child_variable.name == VariableName::Named("CORE_PERIPHERALS".to_string()) {
-                        println!("CORE_PERIPHERALS location: {:?}", location_from_expression);
-                    }
-
                     child_variable.memory_location = location_from_expression;
                 }
             }
@@ -2233,7 +2215,7 @@ impl UnitInfo {
     }
 }
 
-pub(crate) fn extract_name(
+fn extract_name(
     debug_info: &DebugInfo,
     entry: &gimli::DebuggingInformationEntry<GimliReader>,
 ) -> Result<Option<String>, gimli::Error> {
