@@ -71,13 +71,6 @@ impl Instruction {
         vec.extend_from_slice(&narrow.to_le_bytes()[..bytes]);
     }
 
-    /// Returns the instruction encoded as a Little Endian sequence of bytes.
-    pub fn to_bytes(self) -> Vec<u8> {
-        let mut bytes = Vec::new();
-        self.encode_into_vec(&mut bytes);
-        bytes
-    }
-
     pub const fn encode(self) -> InstructionEncoding {
         let narrow = self.encode_bytes().1;
         InstructionEncoding::Narrow(narrow)

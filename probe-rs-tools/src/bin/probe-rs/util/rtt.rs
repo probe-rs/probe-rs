@@ -7,12 +7,7 @@ use probe_rs::{Core, MemoryInterface};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::{
-    fmt,
-    fmt::Write,
-    io::{Read, Seek},
-    path::Path,
-};
+use std::{fmt, fmt::Write, path::Path};
 use time::{macros::format_description, OffsetDateTime, UtcOffset};
 
 pub(crate) mod client;
@@ -527,20 +522,6 @@ impl RttActiveTarget {
             active_up_channels,
             active_down_channels,
         })
-    }
-
-    pub fn get_rtt_symbol<T: Read + Seek>(file: &mut T) -> Option<u64> {
-        let mut buffer = Vec::new();
-        if file.read_to_end(&mut buffer).is_ok() {
-            if let Ok(rtt) = Self::get_rtt_symbol_from_bytes(buffer.as_slice()) {
-                return Some(rtt);
-            }
-        }
-
-        tracing::warn!(
-            "No RTT header info was present in the ELF file. Does your firmware run RTT?"
-        );
-        None
     }
 
     pub fn get_rtt_symbol_from_bytes(buffer: &[u8]) -> Result<u64, RttSymbolError> {
