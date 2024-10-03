@@ -287,19 +287,6 @@ impl<'probe> Xdm<'probe> {
         Ok(())
     }
 
-    pub fn clear_exec_exception(&mut self) -> Result<(), XtensaError> {
-        self.write_nexus_register({
-            let mut status = DebugStatus(0);
-
-            status.set_exec_exception(true);
-            status.set_exec_overrun(true);
-
-            status
-        })?;
-
-        Ok(())
-    }
-
     fn power_status(&mut self, clear: PowerStatus) -> Result<PowerStatus, XtensaError> {
         let bits = self.pwr_write(PowerDevice::PowerStat, clear.0)?;
         Ok(PowerStatus(bits))

@@ -45,7 +45,9 @@ impl super::MemoryApType for AmbaApb2Apb3 {
 
     fn status<P: ApAccess + ?Sized>(&mut self, probe: &mut P) -> Result<CSW, ArmError> {
         #[allow(clippy::assertions_on_constants)]
-        const { assert!(super::registers::CSW::ADDRESS == CSW::ADDRESS) };
+        const {
+            assert!(super::registers::CSW::ADDRESS == CSW::ADDRESS)
+        };
         self.csw = probe.read_ap_register(self)?;
         Ok(self.csw)
     }
