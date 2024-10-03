@@ -14,6 +14,7 @@ use gimli::{
 };
 
 /// The result of `UnitInfo::evaluate_expression()` can be the value of a variable, or a memory location.
+#[derive(Debug)]
 pub(crate) enum ExpressionResult {
     Value(VariableValue),
     Location(VariableLocation),
@@ -198,6 +199,41 @@ impl UnitInfo {
             Some(tree_node)
         };
 
+        let specification_entry;
+
+        // We need to determine if we are working with a variable definition which refers to a declaration,
+        // and use that node for the attributes we need
+        let attributes_entry = if let Ok(Some(specification)) =
+            tree_node.attr(gimli::DW_AT_specification)
+        {
+            match specification.value() {
+                gimli::AttributeValue::UnitRef(unit_ref) => {
+                    // The abstract origin is a reference to another DIE, so we need to resolve that,
+                    // but first we need to process the (optional) memory location using the current DIE.
+                    self.process_memory_location(
+                        debug_info,
+                        tree_node,
+                        parent_variable,
+                        child_variable,
+                        memory,
+                        frame_info,
+                    )?;
+
+                    specification_entry = self.unit.entry(unit_ref)?;
+
+                    Some(&specification_entry)
+                }
+                other_attribute_value => {
+                    child_variable.set_value(VariableValue::Error(format!(
+                        "Unimplemented: Attribute Value for DW_AT_specification {other_attribute_value:?}"
+                    )));
+                    None
+                }
+            }
+        } else {
+            attributes_entry
+        };
+
         // For variable attribute resolution, we need to resolve a few attributes in advance of looping through all the other ones.
         // Try to exact the name first, for easier debugging
         if let Some(entry) = attributes_entry.as_ref() {
@@ -334,6 +370,14 @@ impl UnitInfo {
                             )));
                         }
                     },
+                    gimli::DW_AT_linkage_name => {
+                        let value = attr.value();
+                        let raw_str = debug_info.dwarf.attr_string(&self.unit, value).ok();
+
+                        let linkage_name = raw_str.and_then(|r| String::from_utf8(r.to_vec()).ok());
+
+                        child_variable.linkage_name = linkage_name;
+                    }
                     gimli::DW_AT_accessibility => {
                         // Silently ignore these for now.
                         // TODO: Add flag for public/private/protected for `Variable`, once we have a use case.
@@ -355,9 +399,6 @@ impl UnitInfo {
                     }
                     gimli::DW_AT_abstract_origin => {
                         // Processed before looping through all attributes
-                    }
-                    gimli::DW_AT_linkage_name => {
-                        // Unused attribute of, for example, inlined DW_TAG_subroutine
                     }
                     gimli::DW_AT_address_class => {
                         // Processed by `extract_type()`
@@ -1602,10 +1643,11 @@ impl UnitInfo {
                 }
 
                 ExpressionResult::Location(
-                    VariableLocation::Error(error_message)
-                    | VariableLocation::Unsupported(error_message),
+                    ref location @ VariableLocation::Error(ref error_message)
+                    | ref location @ VariableLocation::Unsupported(ref error_message),
                 ) => {
                     child_variable.set_value(VariableValue::Error(error_message.clone()));
+                    child_variable.memory_location = location.clone();
                 }
 
                 ExpressionResult::Location(location_from_expression) => {
@@ -2177,10 +2219,8 @@ fn extract_name(
     debug_info: &DebugInfo,
     entry: &gimli::DebuggingInformationEntry<GimliReader>,
 ) -> Result<Option<String>, gimli::Error> {
-    let attr = match entry.attr(gimli::DW_AT_name) {
-        Ok(Some(attr)) => attr.value(),
-        Ok(None) => return Ok(None),
-        Err(error) => return Err(error),
+    let Some(attr) = entry.attr_value(gimli::DW_AT_name)? else {
+        return Ok(None);
     };
 
     let name = match attr {

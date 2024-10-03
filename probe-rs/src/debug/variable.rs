@@ -466,6 +466,11 @@ pub struct Variable {
     pub parent_key: ObjectRef,
     /// The variable name refers to the name of any of the types of values described in the [VariableCache]
     pub name: VariableName,
+
+    /// Linkage name of the variable. Multiple variables with the same name could exist,
+    /// this is used to distinguish between them.
+    pub(crate) linkage_name: Option<String>,
+
     /// Use `Variable::set_value()` and `Variable::get_value()` to correctly process this `value`
     pub(super) value: VariableValue,
     /// The source location of the declaration of this variable, if available.
@@ -502,6 +507,7 @@ impl Variable {
             variable_key: Default::default(),
             parent_key: Default::default(),
             name: Default::default(),
+            linkage_name: None,
             value: Default::default(),
             source_location: Default::default(),
             type_name: Default::default(),
@@ -537,7 +543,8 @@ impl Variable {
 
             // If the value is invalid, then make sure we don't propagate invalid memory location
             // values.
-            self.memory_location = VariableLocation::Unavailable;
+            self.memory_location =
+                VariableLocation::Error("Failed to resolve variable value".to_string());
         }
     }
 
