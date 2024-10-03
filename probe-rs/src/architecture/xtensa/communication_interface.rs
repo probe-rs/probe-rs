@@ -462,7 +462,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
     ) -> Result<Option<Register>, XtensaError> {
         let register = register.into();
 
-        tracing::Span::current().record("register", &format!("{register:?}"));
+        tracing::Span::current().record("register", format!("{register:?}"));
 
         if matches!(
             register,
