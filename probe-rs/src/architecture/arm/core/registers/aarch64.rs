@@ -1,8 +1,9 @@
+use std::sync::LazyLock;
+
 use crate::{
     core::{RegisterDataType, RegisterRole, UnwindRule},
     CoreRegister, CoreRegisters, RegisterId,
 };
-use once_cell::sync::Lazy;
 
 pub(crate) const PC: CoreRegister = CoreRegister {
     roles: &[RegisterRole::Core("PC"), RegisterRole::ProgramCounter],
@@ -32,8 +33,8 @@ pub(crate) const RA: CoreRegister = CoreRegister {
     unwind_rule: UnwindRule::Clear,
 };
 
-pub(crate) static AARCH64_CORE_REGSISTERS: Lazy<CoreRegisters> =
-    Lazy::new(|| CoreRegisters::new(AARCH64_CORE_REGSISTERS_SET.iter().collect()));
+pub(crate) static AARCH64_CORE_REGSISTERS: LazyLock<CoreRegisters> =
+    LazyLock::new(|| CoreRegisters::new(AARCH64_CORE_REGSISTERS_SET.iter().collect()));
 
 pub static AARCH64_CORE_REGSISTERS_SET: &[CoreRegister] = &[
     CoreRegister {

@@ -1,11 +1,12 @@
+use std::sync::LazyLock;
+
 use super::cortex_m::ARM32_COMMON_REGS_SET;
 use crate::{
     core::{RegisterDataType, RegisterRole, UnwindRule},
     CoreRegister, CoreRegisters, RegisterId,
 };
-use once_cell::sync::Lazy;
 
-pub(crate) static AARCH32_CORE_REGSISTERS: Lazy<CoreRegisters> = Lazy::new(|| {
+pub(crate) static AARCH32_CORE_REGSISTERS: LazyLock<CoreRegisters> = LazyLock::new(|| {
     CoreRegisters::new(
         ARM32_COMMON_REGS_SET
             .iter()
@@ -14,26 +15,28 @@ pub(crate) static AARCH32_CORE_REGSISTERS: Lazy<CoreRegisters> = Lazy::new(|| {
     )
 });
 
-pub(crate) static AARCH32_WITH_FP_16_CORE_REGSISTERS: Lazy<CoreRegisters> = Lazy::new(|| {
-    CoreRegisters::new(
-        ARM32_COMMON_REGS_SET
-            .iter()
-            .chain(AARCH32_COMMON_REGS_SET)
-            .chain(AARCH32_FP_16_REGS_SET)
-            .collect(),
-    )
-});
+pub(crate) static AARCH32_WITH_FP_16_CORE_REGSISTERS: LazyLock<CoreRegisters> =
+    LazyLock::new(|| {
+        CoreRegisters::new(
+            ARM32_COMMON_REGS_SET
+                .iter()
+                .chain(AARCH32_COMMON_REGS_SET)
+                .chain(AARCH32_FP_16_REGS_SET)
+                .collect(),
+        )
+    });
 
-pub(crate) static AARCH32_WITH_FP_32_CORE_REGSISTERS: Lazy<CoreRegisters> = Lazy::new(|| {
-    CoreRegisters::new(
-        ARM32_COMMON_REGS_SET
-            .iter()
-            .chain(AARCH32_COMMON_REGS_SET)
-            .chain(AARCH32_FP_16_REGS_SET)
-            .chain(AARCH32_FP_32_REGS_SET)
-            .collect(),
-    )
-});
+pub(crate) static AARCH32_WITH_FP_32_CORE_REGSISTERS: LazyLock<CoreRegisters> =
+    LazyLock::new(|| {
+        CoreRegisters::new(
+            ARM32_COMMON_REGS_SET
+                .iter()
+                .chain(AARCH32_COMMON_REGS_SET)
+                .chain(AARCH32_FP_16_REGS_SET)
+                .chain(AARCH32_FP_32_REGS_SET)
+                .collect(),
+        )
+    });
 
 static AARCH32_COMMON_REGS_SET: &[CoreRegister] = &[CoreRegister {
     roles: &[RegisterRole::Core("CPSR"), RegisterRole::ProcessorStatus],

@@ -1,8 +1,7 @@
 //! Vendor support modules.
 
-use std::ops::Deref;
+use std::{ops::Deref, sync::LazyLock};
 
-use once_cell::sync::Lazy;
 use parking_lot::{RwLock, RwLockReadGuard};
 use probe_rs_target::Chip;
 
@@ -62,7 +61,7 @@ pub trait Vendor: Send + Sync + std::fmt::Display {
     }
 }
 
-static VENDORS: Lazy<RwLock<Vec<Box<dyn Vendor>>>> = Lazy::new(|| {
+static VENDORS: LazyLock<RwLock<Vec<Box<dyn Vendor>>>> = LazyLock::new(|| {
     let vendors: Vec<Box<dyn Vendor>> = vec![
         Box::new(microchip::Microchip),
         Box::new(infineon::Infineon),

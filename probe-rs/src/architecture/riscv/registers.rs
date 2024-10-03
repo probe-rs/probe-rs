@@ -1,8 +1,9 @@
+use std::sync::LazyLock;
+
 use crate::{
     core::{CoreRegister, RegisterDataType, RegisterId, RegisterRole, UnwindRule},
     CoreRegisters,
 };
-use once_cell::sync::Lazy;
 
 /// The program counter register.
 pub const PC: CoreRegister = CoreRegister {
@@ -46,8 +47,8 @@ pub const S1: CoreRegister = CoreRegister {
     unwind_rule: UnwindRule::Clear,
 };
 
-pub(crate) static RISCV_CORE_REGSISTERS: Lazy<CoreRegisters> =
-    Lazy::new(|| CoreRegisters::new(RISCV_REGISTERS_SET.iter().collect()));
+pub(crate) static RISCV_CORE_REGSISTERS: LazyLock<CoreRegisters> =
+    LazyLock::new(|| CoreRegisters::new(RISCV_REGISTERS_SET.iter().collect()));
 
 static RISCV_REGISTERS_SET: &[CoreRegister] = &[
     CoreRegister {

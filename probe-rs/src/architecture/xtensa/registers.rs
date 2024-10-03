@@ -1,8 +1,9 @@
+use std::sync::LazyLock;
+
 use crate::{
     core::{RegisterDataType, UnwindRule},
     CoreRegister, CoreRegisters, RegisterRole,
 };
-use once_cell::sync::Lazy;
 
 /// The program counter register.
 pub const PC: CoreRegister = CoreRegister {
@@ -44,8 +45,8 @@ pub const FP: CoreRegister = CoreRegister {
     unwind_rule: UnwindRule::Clear,
 };
 
-pub(crate) static XTENSA_CORE_REGSISTERS: Lazy<CoreRegisters> =
-    Lazy::new(|| CoreRegisters::new(XTENSA_REGISTERS_SET.iter().collect()));
+pub(crate) static XTENSA_CORE_REGSISTERS: LazyLock<CoreRegisters> =
+    LazyLock::new(|| CoreRegisters::new(XTENSA_REGISTERS_SET.iter().collect()));
 
 static XTENSA_REGISTERS_SET: &[CoreRegister] = &[
     RA,

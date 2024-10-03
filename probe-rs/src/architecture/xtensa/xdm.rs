@@ -177,6 +177,9 @@ impl<'probe> Xdm<'probe> {
 
     #[tracing::instrument(skip(self))]
     pub(crate) fn enter_debug_mode(&mut self) -> Result<(), XtensaError> {
+        self.state.queue = JtagCommandQueue::new();
+        self.state.jtag_results = DeferredResultSet::new();
+
         self.probe.tap_reset()?;
 
         let mut pwr_control = PowerControl(0);
@@ -289,6 +292,7 @@ impl<'probe> Xdm<'probe> {
             let mut status = DebugStatus(0);
 
             status.set_exec_exception(true);
+            status.set_exec_overrun(true);
 
             status
         })?;
@@ -343,6 +347,7 @@ impl<'probe> Xdm<'probe> {
                     return Ok(());
                 }
                 Err(e) => {
+                    let mut to_consume = e.results.len();
                     match e.error {
                         ProbeRsError::Xtensa(XtensaError::XdmError(Error::Xdm {
                             source: DebugRegisterError::Busy,
@@ -352,11 +357,8 @@ impl<'probe> Xdm<'probe> {
                             // retry, but we should probably add some no-ops later.
                         }
                         ProbeRsError::Xtensa(XtensaError::XdmError(Error::ExecBusy)) => {
-                            // The instruction is still executing. We don't do anything except clear the
-                            // error and retry.
-                            // While this is recursive, this register read-write does not involve
-                            // instructions so we can't end up with an unbounded recursion here.
-                            self.clear_exec_exception()?;
+                            // The instruction is still executing. Retry the Debug Status read.
+                            to_consume -= 1;
                         }
                         ProbeRsError::Probe(error) => return Err(error.into()),
                         ProbeRsError::Xtensa(error) => return Err(error),
@@ -364,7 +366,7 @@ impl<'probe> Xdm<'probe> {
                     }
 
                     // queue up the remaining commands when we retry
-                    queue.consume(e.results.len());
+                    queue.consume(to_consume);
                     self.state.jtag_results.merge_from(e.results);
                 }
             }
@@ -648,16 +650,18 @@ impl<'probe> Xdm<'probe> {
     fn schedule_wait_for_last_instruction(&mut self) {
         // Assume some instructions complete practically instantly and don't waste bandwidth
         // checking their results.
-        if !matches!(
-            self.state.last_instruction,
-            Some(
-                Instruction::Lddr32P(_)
-                    | Instruction::Sddr32P(_)
-                    | Instruction::Rsr(_, _)
+        if let Some(last_instruction) = self.state.last_instruction {
+            let wait = !matches!(
+                last_instruction,
+                Instruction::Rsr(_, _)
                     | Instruction::Wsr(_, _)
-            )
-        ) {
-            self.schedule_wait_for_exec_done();
+                    | Instruction::Lddr32P(_)
+                    | Instruction::Sddr32P(_)
+            );
+
+            if wait {
+                self.schedule_wait_for_exec_done();
+            }
         }
     }
 
@@ -725,13 +729,16 @@ fn transform_instruction_status(
             Error::ExecExeception,
         )));
     }
-    if !status.exec_busy() && !status.exec_done() {
-        return Err(ProbeRsError::Xtensa(XtensaError::XdmError(
-            Error::InstructionIgnored,
-        )));
+    if status.exec_busy() {
+        return Err(ProbeRsError::Xtensa(XtensaError::XdmError(Error::ExecBusy)));
+    }
+    if status.exec_done() {
+        return Ok(CommandResult::None);
     }
 
-    Ok(CommandResult::None)
+    Err(ProbeRsError::Xtensa(XtensaError::XdmError(
+        Error::InstructionIgnored,
+    )))
 }
 
 bitfield::bitfield! {
