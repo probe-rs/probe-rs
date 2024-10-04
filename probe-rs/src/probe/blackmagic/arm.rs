@@ -14,19 +14,18 @@ use crate::probe::blackmagic::{Align, BlackMagicProbe, ProtocolVersion, RemoteCo
 use crate::probe::{DebugProbeError, Probe};
 use crate::{Error as ProbeRsError, MemoryInterface};
 use std::collections::BTreeSet;
-use std::io::{Read, Write};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use zerocopy::AsBytes;
 
 #[derive(Debug)]
-pub(crate) struct UninitializedBlackMagicArmProbe<R: Read, W: Write> {
-    probe: Box<BlackMagicProbe<R, W>>,
+pub(crate) struct UninitializedBlackMagicArmProbe {
+    probe: Box<BlackMagicProbe>,
 }
 
 #[derive(Debug)]
-pub(crate) struct BlackMagicProbeArmDebug<R: Read, W: Write> {
-    probe: Box<BlackMagicProbe<R, W>>,
+pub(crate) struct BlackMagicProbeArmDebug {
+    probe: Box<BlackMagicProbe>,
 
     /// Information about the APs of the target.
     /// APs are identified by a number, starting from zero.
@@ -34,25 +33,21 @@ pub(crate) struct BlackMagicProbeArmDebug<R: Read, W: Write> {
 }
 
 #[derive(Debug)]
-pub(crate) struct BlackMagicProbeMemoryInterface<'probe, R: Read, W: Write> {
-    probe: &'probe mut BlackMagicProbeArmDebug<R, W>,
+pub(crate) struct BlackMagicProbeMemoryInterface<'probe> {
+    probe: &'probe mut BlackMagicProbeArmDebug,
     current_ap: MemoryAp,
     index: u8,
     apsel: u8,
     csw: u32,
 }
 
-impl<R: Read + Send + core::fmt::Debug + 'static, W: Write + Send + core::fmt::Debug + 'static>
-    UninitializedBlackMagicArmProbe<R, W>
-{
-    pub fn new(probe: Box<BlackMagicProbe<R, W>>) -> Self {
+impl UninitializedBlackMagicArmProbe {
+    pub fn new(probe: Box<BlackMagicProbe>) -> Self {
         Self { probe }
     }
 }
 
-impl<R: Read + Send + core::fmt::Debug + 'static, W: Write + Send + core::fmt::Debug + 'static>
-    UninitializedArmProbe for UninitializedBlackMagicArmProbe<R, W>
-{
+impl UninitializedArmProbe for UninitializedBlackMagicArmProbe {
     #[tracing::instrument(level = "trace", skip(self, sequence))]
     fn initialize(
         mut self: Box<Self>,
@@ -84,9 +79,7 @@ impl<R: Read + Send + core::fmt::Debug + 'static, W: Write + Send + core::fmt::D
     }
 }
 
-impl<R: Read + Send + core::fmt::Debug + 'static, W: Write + Send + core::fmt::Debug + 'static>
-    SwdSequence for UninitializedBlackMagicArmProbe<R, W>
-{
+impl SwdSequence for UninitializedBlackMagicArmProbe {
     fn swj_sequence(
         &mut self,
         bit_len: u8,
@@ -105,13 +98,11 @@ impl<R: Read + Send + core::fmt::Debug + 'static, W: Write + Send + core::fmt::D
     }
 }
 
-impl<R: Read + Send + core::fmt::Debug + 'static, W: Write + Send + core::fmt::Debug + 'static>
-    BlackMagicProbeArmDebug<R, W>
-{
+impl BlackMagicProbeArmDebug {
     fn new(
-        probe: Box<BlackMagicProbe<R, W>>,
+        probe: Box<BlackMagicProbe>,
         dp: DpAddress,
-    ) -> Result<Self, (Box<UninitializedBlackMagicArmProbe<R, W>>, ArmError)> {
+    ) -> Result<Self, (Box<UninitializedBlackMagicArmProbe>, ArmError)> {
         let mut interface = Self {
             probe,
             access_ports: BTreeSet::new(),
@@ -192,9 +183,7 @@ impl<R: Read + Send + core::fmt::Debug + 'static, W: Write + Send + core::fmt::D
     }
 }
 
-impl<R: Read + Send + core::fmt::Debug + 'static, W: Write + Send + core::fmt::Debug + 'static>
-    ArmProbeInterface for BlackMagicProbeArmDebug<R, W>
-{
+impl ArmProbeInterface for BlackMagicProbeArmDebug {
     fn access_ports(
         &mut self,
         dp: DpAddress,
@@ -366,9 +355,7 @@ impl<R: Read + Send + core::fmt::Debug + 'static, W: Write + Send + core::fmt::D
     }
 }
 
-impl<R: Read + Send + core::fmt::Debug + 'static, W: Write + Send + core::fmt::Debug + 'static>
-    SwoAccess for BlackMagicProbeArmDebug<R, W>
-{
+impl SwoAccess for BlackMagicProbeArmDebug {
     fn enable_swo(&mut self, config: &crate::architecture::arm::SwoConfig) -> Result<(), ArmError> {
         println!("Enabling SWO: {:?}", config);
         unimplemented!()
@@ -385,9 +372,7 @@ impl<R: Read + Send + core::fmt::Debug + 'static, W: Write + Send + core::fmt::D
     }
 }
 
-impl<R: Read + Send + core::fmt::Debug + 'static, W: Write + Send + core::fmt::Debug + 'static>
-    SwdSequence for BlackMagicProbeArmDebug<R, W>
-{
+impl SwdSequence for BlackMagicProbeArmDebug {
     fn swj_sequence(
         &mut self,
         bit_len: u8,
@@ -427,9 +412,7 @@ fn ap_to_bmp(ap: &FullyQualifiedApAddress) -> Result<(u8, u8), ArmError> {
     Ok((dp_to_bmp(ap.dp())?, apsel))
 }
 
-impl<R: Read + Send + core::fmt::Debug + 'static, W: Write + Send + core::fmt::Debug + 'static>
-    DapAccess for BlackMagicProbeArmDebug<R, W>
-{
+impl DapAccess for BlackMagicProbeArmDebug {
     fn read_raw_dp_register(&mut self, dp: DpAddress, addr: u8) -> Result<u32, ArmError> {
         let index = dp_to_bmp(dp)?;
         let command = match self.probe.remote_protocol {
@@ -584,9 +567,7 @@ impl<R: Read + Send + core::fmt::Debug + 'static, W: Write + Send + core::fmt::D
     }
 }
 
-impl<R: Read + Send + core::fmt::Debug + 'static, W: Write + Send + core::fmt::Debug + 'static>
-    ArmMemoryInterface for BlackMagicProbeMemoryInterface<'_, R, W>
-{
+impl ArmMemoryInterface for BlackMagicProbeMemoryInterface<'_> {
     fn ap(&mut self) -> &mut MemoryAp {
         &mut self.current_ap
     }
@@ -625,9 +606,7 @@ impl<R: Read + Send + core::fmt::Debug + 'static, W: Write + Send + core::fmt::D
     }
 }
 
-impl<R: Read + Send + core::fmt::Debug + 'static, W: Write + Send + core::fmt::Debug + 'static>
-    SwdSequence for BlackMagicProbeMemoryInterface<'_, R, W>
-{
+impl SwdSequence for BlackMagicProbeMemoryInterface<'_> {
     fn swj_sequence(
         &mut self,
         bit_len: u8,
@@ -646,9 +625,7 @@ impl<R: Read + Send + core::fmt::Debug + 'static, W: Write + Send + core::fmt::D
     }
 }
 
-impl<R: Read + Send + core::fmt::Debug + 'static, W: Write + Send + core::fmt::Debug + 'static>
-    BlackMagicProbeMemoryInterface<'_, R, W>
-{
+impl BlackMagicProbeMemoryInterface<'_> {
     fn read_slice(&mut self, offset: u64, data: &mut [u8]) -> Result<(), ArmError> {
         // Leave enough room for '&K' plus '#' plus an optional NULL.
         if data.len() * 2 + 4 >= super::BLACK_MAGIC_REMOTE_SIZE_MAX {
@@ -791,9 +768,7 @@ impl<R: Read + Send + core::fmt::Debug + 'static, W: Write + Send + core::fmt::D
     }
 }
 
-impl<R: Read + Send + core::fmt::Debug + 'static, W: Write + Send + core::fmt::Debug + 'static>
-    MemoryInterface<ArmError> for BlackMagicProbeMemoryInterface<'_, R, W>
-{
+impl MemoryInterface<ArmError> for BlackMagicProbeMemoryInterface<'_> {
     fn supports_native_64bit_access(&mut self) -> bool {
         self.probe.probe.remote_protocol == ProtocolVersion::V4
     }
