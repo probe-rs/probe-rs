@@ -275,47 +275,40 @@ impl<'a> RemoteCommand<'a> {
     }
 }
 
-impl<'a> core::fmt::Display for RemoteCommand<'a> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl<'a> std::string::ToString for RemoteCommand<'a> {
+    fn to_string(&self) -> String {
         match self {
-            RemoteCommand::Handshake(_) => write!(f, "+#!GA#"),
-            RemoteCommand::GetVoltage => write!(f, " !GV#"),
-            RemoteCommand::GetSpeedKhz => write!(f, "!Gf#"),
+            RemoteCommand::Handshake(_) => format!("+#!GA#"),
+            RemoteCommand::GetVoltage => format!(" !GV#"),
+            RemoteCommand::GetSpeedKhz => format!("!Gf#"),
             RemoteCommand::SetSpeedKhz(speed) => {
-                write!(f, "!GF{:08x}#", speed)
+                format!("!GF{:08x}#", speed)
             }
-            RemoteCommand::HighLevelCheck => write!(f, "!HC#"),
-            RemoteCommand::SetNrst(set) => write!(f, "!GZ{}#", if *set { '1' } else { '0' }),
-            RemoteCommand::SetPower(set) => write!(f, "!GP{}#", if *set { '1' } else { '0' }),
+            RemoteCommand::HighLevelCheck => format!("!HC#"),
+            RemoteCommand::SetNrst(set) => format!("!GZ{}#", if *set { '1' } else { '0' }),
+            RemoteCommand::SetPower(set) => format!("!GP{}#", if *set { '1' } else { '0' }),
             RemoteCommand::TargetClockOutput { enable } => {
-                write!(f, "!GE{}#", if *enable { '1' } else { '0' })
+                format!("!GE{}#", if *enable { '1' } else { '0' })
             }
-            RemoteCommand::SpeedKhz => write!(f, "!Gf#"),
+            RemoteCommand::SpeedKhz => format!("!Gf#"),
             RemoteCommand::RawAccessV0P { rnw, addr, value } => {
-                write!(f, "!HL{:02x}{:04x}{:08x}#", rnw, addr, value)
+                format!("!HL{:02x}{:04x}{:08x}#", rnw, addr, value)
             }
             RemoteCommand::ReadDpV0P { addr } => {
-                write!(f, "!Hdff{:04x}#", addr)
+                format!("!Hdff{:04x}#", addr)
             }
             RemoteCommand::ReadApV0P { apsel, addr } => {
-                write!(f, "!Ha{:02x}{:04x}#", apsel, 0x100 | *addr as u16)
+                format!("!Ha{:02x}{:04x}#", apsel, 0x100 | *addr as u16)
             }
             RemoteCommand::WriteApV0P { apsel, addr, value } => {
-                write!(
-                    f,
-                    "!HA{:02x}{:04x}{:08x}#",
-                    apsel,
-                    0x100 | *addr as u16,
-                    value
-                )
+                format!("!HA{:02x}{:04x}{:08x}#", apsel, 0x100 | *addr as u16, value)
             }
             RemoteCommand::MemReadV0P {
                 apsel,
                 csw,
                 offset,
                 data,
-            } => write!(
-                f,
+            } => format!(
                 "!HM{:02x}{:08x}{:08x}{:08x}#",
                 apsel,
                 csw,
@@ -329,19 +322,19 @@ impl<'a> core::fmt::Display for RemoteCommand<'a> {
                 offset,
                 data,
             } => {
-                write!(
-                    f,
+                let mut s = format!(
                     "!Hm{:02x}{:08x}{:02x}{:08x}{:08x}",
                     apsel,
                     csw,
                     *align as u8,
                     offset,
-                    data.len()
-                )?;
+                    data.len(),
+                );
                 for b in data.iter() {
-                    write!(f, "{:02x}", b)?;
+                    s.push_str(&format!("{:02x}", b));
                 }
-                write!(f, "#")
+                s.push('#');
+                s
             }
 
             RemoteCommand::RawAccessV1 {
@@ -350,27 +343,20 @@ impl<'a> core::fmt::Display for RemoteCommand<'a> {
                 addr,
                 value,
             } => {
-                write!(f, "!HL{:02x}{:02x}{:04x}{:08x}#", index, rnw, addr, value)
+                format!("!HL{:02x}{:02x}{:04x}{:08x}#", index, rnw, addr, value)
             }
             RemoteCommand::ReadDpV1 { index, addr } => {
-                write!(f, "!Hd{:02x}ff{:04x}#", index, addr)
+                format!("!Hd{:02x}ff{:04x}#", index, addr)
             }
             RemoteCommand::ReadApV1 { index, apsel, addr } => {
-                write!(
-                    f,
-                    "!Ha{:02x}{:02x}{:04x}#",
-                    index,
-                    apsel,
-                    0x100 | *addr as u16
-                )
+                format!("!Ha{:02x}{:02x}{:04x}#", index, apsel, 0x100 | *addr as u16)
             }
             RemoteCommand::WriteApV1 {
                 index,
                 apsel,
                 addr,
                 value,
-            } => write!(
-                f,
+            } => format!(
                 "!HA{:02x}{:02x}{:04x}{:08x}#",
                 index,
                 apsel,
@@ -383,8 +369,7 @@ impl<'a> core::fmt::Display for RemoteCommand<'a> {
                 csw,
                 offset,
                 data,
-            } => write!(
-                f,
+            } => format!(
                 "!HM{:02x}{:02x}{:08x}{:08x}{:08x}#",
                 index,
                 apsel,
@@ -400,8 +385,7 @@ impl<'a> core::fmt::Display for RemoteCommand<'a> {
                 offset,
                 data,
             } => {
-                write!(
-                    f,
+                let mut s = format!(
                     "!Hm{:02x}{:02x}{:08x}{:02x}{:08x}{:08x}",
                     index,
                     apsel,
@@ -409,11 +393,12 @@ impl<'a> core::fmt::Display for RemoteCommand<'a> {
                     *align as u8,
                     offset,
                     data.len()
-                )?;
+                );
                 for b in data.iter() {
-                    write!(f, "{:02x}", b)?;
+                    s.push_str(&format!("{:02x}", b));
                 }
-                write!(f, "#")
+                s.push('#');
+                s
             }
 
             RemoteCommand::RawAccessV3 {
@@ -422,27 +407,20 @@ impl<'a> core::fmt::Display for RemoteCommand<'a> {
                 addr,
                 value,
             } => {
-                write!(f, "!AR{:02x}{:02x}{:04x}{:08x}#", index, rnw, addr, value)
+                format!("!AR{:02x}{:02x}{:04x}{:08x}#", index, rnw, addr, value)
             }
             RemoteCommand::ReadDpV3 { index, addr } => {
-                write!(f, "!Ad{:02x}ff{:04x}#", index, addr)
+                format!("!Ad{:02x}ff{:04x}#", index, addr)
             }
             RemoteCommand::ReadApV3 { index, apsel, addr } => {
-                write!(
-                    f,
-                    "!Aa{:02x}{:02x}{:04x}#",
-                    index,
-                    apsel,
-                    0x100 | *addr as u16
-                )
+                format!("!Aa{:02x}{:02x}{:04x}#", index, apsel, 0x100 | *addr as u16)
             }
             RemoteCommand::WriteApV3 {
                 index,
                 apsel,
                 addr,
                 value,
-            } => write!(
-                f,
+            } => format!(
                 "!AA{:02x}{:02x}{:04x}{:08x}#",
                 index,
                 apsel,
@@ -455,8 +433,7 @@ impl<'a> core::fmt::Display for RemoteCommand<'a> {
                 csw,
                 offset,
                 data,
-            } => write!(
-                f,
+            } => format!(
                 "!Am{:02x}{:02x}{:08x}{:08x}{:08x}#",
                 index,
                 apsel,
@@ -472,8 +449,7 @@ impl<'a> core::fmt::Display for RemoteCommand<'a> {
                 offset,
                 data,
             } => {
-                write!(
-                    f,
+                let mut s = format!(
                     "!AM{:02x}{:02x}{:08x}{:02x}{:08x}{:08x}",
                     index,
                     apsel,
@@ -481,11 +457,12 @@ impl<'a> core::fmt::Display for RemoteCommand<'a> {
                     *align as u8,
                     offset,
                     data.len()
-                )?;
+                );
                 for b in data.iter() {
-                    write!(f, "{:02x}", b)?;
+                    s.push_str(&format!("{:02x}", b));
                 }
-                write!(f, "#")
+                s.push('#');
+                s
             }
 
             RemoteCommand::MemReadV4 {
@@ -494,8 +471,7 @@ impl<'a> core::fmt::Display for RemoteCommand<'a> {
                 csw,
                 offset,
                 data,
-            } => write!(
-                f,
+            } => format!(
                 "!Am{:02x}{:02x}{:08x}{:016x}{:08x}#",
                 index,
                 apsel,
@@ -511,8 +487,7 @@ impl<'a> core::fmt::Display for RemoteCommand<'a> {
                 offset,
                 data,
             } => {
-                write!(
-                    f,
+                let mut s = format!(
                     "!AM{:02x}{:02x}{:08x}{:02x}{:016x}{:08x}",
                     index,
                     apsel,
@@ -520,26 +495,25 @@ impl<'a> core::fmt::Display for RemoteCommand<'a> {
                     *align as u8,
                     offset,
                     data.len()
-                )?;
+                );
                 for b in data.iter() {
-                    write!(f, "{:02x}", b)?;
+                    s.push_str(&format!("{:02x}", b));
                 }
-                write!(f, "#")
+                s.push('#');
+                s
             }
 
-            RemoteCommand::JtagNext { tms, tdi } => write!(
-                f,
+            RemoteCommand::JtagNext { tms, tdi } => format!(
                 "!JN{}{}#",
                 if *tms { '1' } else { '0' },
                 if *tdi { '1' } else { '0' }
             ),
-            RemoteCommand::JtagInit => write!(f, "+#!JS#"),
-            RemoteCommand::JtagReset => write!(f, "+#!JR#"),
+            RemoteCommand::JtagInit => format!("+#!JS#"),
+            RemoteCommand::JtagReset => format!("+#!JR#"),
             RemoteCommand::JtagTms { bits, length } => {
-                write!(f, "!JT{:02x}{:x}#", *length, *bits)
+                format!("!JT{:02x}{:x}#", *length, *bits)
             }
-            RemoteCommand::JtagTdi { bits, length, tms } => write!(
-                f,
+            RemoteCommand::JtagTdi { bits, length, tms } => format!(
                 "!J{}{:02x}{:x}#",
                 if *tms { 'D' } else { 'd' },
                 *length,
@@ -553,29 +527,28 @@ impl<'a> core::fmt::Display for RemoteCommand<'a> {
                 ir_prescan,
                 ir_postscan,
                 current_ir,
-            } => write!(
-                f,
+            } => format!(
                 "!HJ{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:08x}#",
                 *index, *dr_prescan, *dr_postscan, *ir_len, *ir_prescan, *ir_postscan, *current_ir
             ),
-            RemoteCommand::SwdInit => write!(f, "!SS#"),
+            RemoteCommand::SwdInit => format!("!SS#"),
             RemoteCommand::SwdIn { length: bits } => {
-                write!(f, "!Si{:02x}#", *bits)
+                format!("!Si{:02x}#", *bits)
             }
             RemoteCommand::SwdInParity { length } => {
-                write!(f, "!SI{:02x}#", *length)
+                format!("!SI{:02x}#", *length)
             }
             RemoteCommand::SwdOut { value, length } => {
-                write!(f, "!So{:02x}{:x}#", *length, *value)
+                format!("!So{:02x}{:x}#", *length, *value)
             }
             RemoteCommand::SwdOutParity { value, length } => {
-                write!(f, "!SO{:02x}{:x}#", *length, *value)
+                format!("!SO{:02x}{:x}#", *length, *value)
             }
             RemoteCommand::TargetReset(reset) => {
-                write!(f, "!GZ{}#", if *reset { '1' } else { '0' })
+                format!("!GZ{}#", if *reset { '1' } else { '0' })
             }
             RemoteCommand::GetAccelerators => {
-                write!(f, "!HA#")
+                format!("!HA#")
             }
         }
     }
@@ -621,9 +594,9 @@ impl From<bool> for SwdDirection {
 }
 
 /// A Black Magic Probe.
-pub struct BlackMagicProbe<R: Read, W: Write> {
-    reader: BufReader<R>,
-    writer: BufWriter<W>,
+pub struct BlackMagicProbe {
+    reader: BufReader<Box<dyn Read + Send>>,
+    writer: BufWriter<Box<dyn Write + Send>>,
     protocol: Option<WireProtocol>,
     version: String,
     remote_protocol: ProtocolVersion,
@@ -635,7 +608,7 @@ pub struct BlackMagicProbe<R: Read, W: Write> {
     swd_direction: SwdDirection,
 }
 
-impl<R: Read, W: Write> core::fmt::Debug for BlackMagicProbe<R, W> {
+impl core::fmt::Debug for BlackMagicProbe {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         write!(
             f,
@@ -657,8 +630,11 @@ impl core::fmt::Debug for BlackMagicProbeFactory {
     }
 }
 
-impl<R: Read, W: Write> BlackMagicProbe<R, W> {
-    fn new(reader: R, writer: W) -> Result<Self, DebugProbeError> {
+impl BlackMagicProbe {
+    fn new(
+        reader: Box<dyn Read + Send>,
+        writer: Box<dyn Write + Send>,
+    ) -> Result<Self, DebugProbeError> {
         let mut reader = BufReader::new(reader);
         let mut writer = BufWriter::new(writer);
 
@@ -731,9 +707,13 @@ impl<R: Read, W: Write> BlackMagicProbe<R, W> {
         Self::recv(&mut self.reader, command.response_buffer(), should_decode)
     }
 
-    fn send(writer: &mut BufWriter<W>, command: &RemoteCommand) -> Result<(), RemoteError> {
-        tracing::debug!(" > {}", command);
-        write!(writer, "{}", command).map_err(RemoteError::ProbeError)?;
+    fn send(
+        writer: &mut BufWriter<Box<dyn Write + Send>>,
+        command: &RemoteCommand,
+    ) -> Result<(), RemoteError> {
+        let s = command.to_string();
+        tracing::debug!(" > {}", s);
+        write!(writer, "{}", s).map_err(RemoteError::ProbeError)?;
         writer.flush().map_err(RemoteError::ProbeError)
     }
 
@@ -765,7 +745,7 @@ impl<R: Read, W: Write> BlackMagicProbe<R, W> {
         Ok(val)
     }
 
-    fn recv_u64(reader: &mut BufReader<R>) -> Result<u64, RemoteError> {
+    fn recv_u64(reader: &mut BufReader<Box<dyn Read + Send>>) -> Result<u64, RemoteError> {
         let mut response_buffer = [0u8; 16];
         let mut response_len = 0;
         for dest in response_buffer.iter_mut() {
@@ -785,7 +765,7 @@ impl<R: Read, W: Write> BlackMagicProbe<R, W> {
     }
 
     fn recv(
-        reader: &mut BufReader<R>,
+        reader: &mut BufReader<Box<dyn Read + Send>>,
         buffer: Option<&mut [u8]>,
         decode_hex: bool,
     ) -> Result<RemoteResponse, RemoteError> {
@@ -1040,9 +1020,7 @@ impl<R: Read, W: Write> BlackMagicProbe<R, W> {
     }
 }
 
-impl<R: Read + Send + core::fmt::Debug + 'static, W: Write + Send + core::fmt::Debug + 'static>
-    DebugProbe for BlackMagicProbe<R, W>
-{
+impl DebugProbe for BlackMagicProbe {
     fn get_name(&self) -> &str {
         "Black Magic probe"
     }
@@ -1219,14 +1197,9 @@ impl<R: Read + Send + core::fmt::Debug + 'static, W: Write + Send + core::fmt::D
     }
 }
 
-impl<R: Read + Send + core::fmt::Debug + 'static, W: Write + Send + core::fmt::Debug + 'static>
-    DapProbe for BlackMagicProbe<R, W>
-{
-}
+impl DapProbe for BlackMagicProbe {}
 
-impl<R: Read + Send + core::fmt::Debug + 'static, W: Write + Send + core::fmt::Debug + 'static>
-    RawProtocolIo for BlackMagicProbe<R, W>
-{
+impl RawProtocolIo for BlackMagicProbe {
     fn jtag_shift_tms<M>(&mut self, tms: M, _tdi: bool) -> Result<(), DebugProbeError>
     where
         M: IntoIterator<Item = bool>,
@@ -1324,9 +1297,7 @@ impl<R: Read + Send + core::fmt::Debug + 'static, W: Write + Send + core::fmt::D
     }
 }
 
-impl<R: Read + Send + core::fmt::Debug + 'static, W: Write + Send + core::fmt::Debug + 'static>
-    RawJtagIo for BlackMagicProbe<R, W>
-{
+impl RawJtagIo for BlackMagicProbe {
     fn shift_bit(
         &mut self,
         tms: bool,
@@ -1450,7 +1421,7 @@ impl ProbeFactory for BlackMagicProbeFactory {
                 let writer = reader.try_clone().map_err(|e| {
                     DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::Usb(e))
                 })?;
-                return BlackMagicProbe::new(reader, writer)
+                return BlackMagicProbe::new(Box::new(reader), Box::new(writer))
                     .map(|p| Box::new(p) as Box<dyn DebugProbe>);
             }
         }
@@ -1494,7 +1465,7 @@ impl ProbeFactory for BlackMagicProbeFactory {
             let writer = reader.try_clone().map_err(|_| {
                 DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen)
             })?;
-            return BlackMagicProbe::new(reader, writer)
+            return BlackMagicProbe::new(Box::new(reader), Box::new(writer))
                 .map(|p| Box::new(p) as Box<dyn DebugProbe>);
         }
 
