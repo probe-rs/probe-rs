@@ -10,7 +10,7 @@ use crate::architecture::arm::{
 use crate::architecture::arm::{
     ArmChipInfo, ArmError, DapAccess, DpAddress, FullyQualifiedApAddress, RawDapAccess, SwoAccess,
 };
-use crate::probe::blackmagic::{BlackMagicProbe, ProtocolVersion, RemoteCommand};
+use crate::probe::blackmagic::{Align, BlackMagicProbe, ProtocolVersion, RemoteCommand};
 use crate::probe::{DebugProbeError, Probe};
 use crate::{Error as ProbeRsError, MemoryInterface};
 use std::collections::BTreeSet;
@@ -711,7 +711,7 @@ impl<R: Read + Send + core::fmt::Debug + 'static, W: Write + Send + core::fmt::D
         Ok(())
     }
 
-    fn write_slice(&mut self, align: u8, offset: u64, data: &[u8]) -> Result<(), ArmError> {
+    fn write_slice(&mut self, align: Align, offset: u64, data: &[u8]) -> Result<(), ArmError> {
         // Leave enough room for the memory message overhead
         if data.len() * 2 + 40 >= super::BLACK_MAGIC_REMOTE_SIZE_MAX {
             return Err(ArmError::OutOfBounds);
@@ -778,7 +778,7 @@ impl<R: Read + Send + core::fmt::Debug + 'static, W: Write + Send + core::fmt::D
         }
     }
 
-    fn write(&mut self, align: u8, offset: u64, data: &[u8]) -> Result<(), ArmError> {
+    fn write(&mut self, align: Align, offset: u64, data: &[u8]) -> Result<(), ArmError> {
         let chunk_size = super::BLACK_MAGIC_REMOTE_SIZE_MAX / 2 - 40;
         for (chunk_index, chunk) in data.chunks(chunk_size).enumerate() {
             self.write_slice(
@@ -815,19 +815,19 @@ impl<R: Read + Send + core::fmt::Debug + 'static, W: Write + Send + core::fmt::D
     }
 
     fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), ArmError> {
-        self.write(3, address, data.as_bytes())
+        self.write(Align::U64, address, data.as_bytes())
     }
 
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), ArmError> {
-        self.write(2, address, data.as_bytes())
+        self.write(Align::U32, address, data.as_bytes())
     }
 
     fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), ArmError> {
-        self.write(1, address, data.as_bytes())
+        self.write(Align::U16, address, data.as_bytes())
     }
 
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), ArmError> {
-        self.write(0, address, data.as_bytes())
+        self.write(Align::U8, address, data.as_bytes())
     }
 
     fn supports_8bit_transfers(&self) -> Result<bool, ArmError> {

@@ -50,6 +50,14 @@ enum ProtocolVersion {
     V4,
 }
 
+#[derive(Debug, Copy, Clone)]
+pub(crate) enum Align {
+    U8 = 0,
+    U16 = 1,
+    U32 = 2,
+    U64 = 3,
+}
+
 impl core::fmt::Display for ProtocolVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
@@ -109,7 +117,7 @@ enum RemoteCommand<'a> {
     MemWriteV0P {
         apsel: u8,
         csw: u32,
-        align: u8,
+        align: Align,
         offset: u32,
         data: &'a [u8],
     },
@@ -145,7 +153,7 @@ enum RemoteCommand<'a> {
         index: u8,
         apsel: u8,
         csw: u32,
-        align: u8,
+        align: Align,
         offset: u32,
         data: &'a [u8],
     },
@@ -181,7 +189,7 @@ enum RemoteCommand<'a> {
         index: u8,
         apsel: u8,
         csw: u32,
-        align: u8,
+        align: Align,
         offset: u32,
         data: &'a [u8],
     },
@@ -196,7 +204,7 @@ enum RemoteCommand<'a> {
         index: u8,
         apsel: u8,
         csw: u32,
-        align: u8,
+        align: Align,
         offset: u64,
         data: &'a [u8],
     },
@@ -326,7 +334,7 @@ impl<'a> core::fmt::Display for RemoteCommand<'a> {
                     "!Hm{:02x}{:08x}{:02x}{:08x}{:08x}",
                     apsel,
                     csw,
-                    align,
+                    *align as u8,
                     offset,
                     data.len()
                 )?;
@@ -398,7 +406,7 @@ impl<'a> core::fmt::Display for RemoteCommand<'a> {
                     index,
                     apsel,
                     csw,
-                    align,
+                    *align as u8,
                     offset,
                     data.len()
                 )?;
@@ -470,7 +478,7 @@ impl<'a> core::fmt::Display for RemoteCommand<'a> {
                     index,
                     apsel,
                     csw,
-                    align,
+                    *align as u8,
                     offset,
                     data.len()
                 )?;
@@ -509,7 +517,7 @@ impl<'a> core::fmt::Display for RemoteCommand<'a> {
                     index,
                     apsel,
                     csw,
-                    align,
+                    *align as u8,
                     offset,
                     data.len()
                 )?;
