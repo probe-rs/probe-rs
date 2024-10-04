@@ -84,7 +84,7 @@ impl<'iface> SwdSequence for MemoryAccessPortInterface<'iface> {
 }
 impl<'iface> MemoryInterface<ArmError> for MemoryAccessPortInterface<'iface> {
     fn supports_native_64bit_access(&mut self) -> bool {
-        todo!()
+        false
     }
 
     fn read_64(&mut self, _address: u64, _data: &mut [u64]) -> Result<(), ArmError> {
