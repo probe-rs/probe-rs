@@ -242,11 +242,13 @@ impl AccessPortType for AccessPort {
 pub(crate) fn valid_access_ports<AP>(
     debug_port: &mut AP,
     dp: DpAddress,
+    restrict_to_aps: &[u8],
 ) -> Vec<FullyQualifiedApAddress>
 where
     AP: DapAccess,
 {
     (0..=255)
+        .filter(|ap| restrict_to_aps.contains(ap) || restrict_to_aps.is_empty())
         .map_while(|ap| {
             let ap = FullyQualifiedApAddress::v1_with_dp(dp, ap);
             access_port_is_valid(debug_port, &ap).map(|_| ap)

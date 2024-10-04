@@ -490,7 +490,9 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
             tracing::trace!("Searching valid APs");
 
             let ap_span = tracing::debug_span!("AP discovery").entered();
-            let access_ports = valid_access_ports(self, dp);
+            let maybe_restricted_aps_for_target = sequence.valid_access_ports();
+            let access_ports =
+                valid_access_ports(self, dp, maybe_restricted_aps_for_target.unwrap_or(&[]));
             let state = self.state.dps.get_mut(&dp).unwrap();
             state.access_ports = access_ports.into_iter().collect();
 
