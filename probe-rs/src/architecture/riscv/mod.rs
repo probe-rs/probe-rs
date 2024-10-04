@@ -616,7 +616,7 @@ impl<'state> CoreInterface for Riscv32<'state> {
     }
 
     fn debug_core_stop(&mut self) -> Result<(), Error> {
-        self.debug_on_sw_breakpoint(false)?;
+        self.interface.disable_debug_module()?;
         Ok(())
     }
 }

@@ -721,12 +721,6 @@ impl<O: Operation> ActiveFlasher<'_, O> {
             }
         }
 
-        // Ensure RISC-V `ebreak` instructions enter debug mode,
-        // this is necessary for soft breakpoints to work.
-        self.core
-            .debug_on_sw_breakpoint(true)
-            .map_err(FlashError::Core)?;
-
         // Resume target operation.
         self.core.run().map_err(FlashError::Run)?;
 
