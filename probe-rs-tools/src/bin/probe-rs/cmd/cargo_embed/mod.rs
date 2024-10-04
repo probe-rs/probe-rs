@@ -46,6 +46,12 @@ struct CliOptions {
     /// Name of the configuration profile to use.
     #[arg()]
     config: Option<String>,
+    /// Path of a configuration file outside the default path.
+    ///
+    /// When this is set, the default path is still considered, but the given file is considered
+    /// with the highest priority.
+    #[arg(long)]
+    config_file: Option<String>,
     #[arg(long)]
     chip: Option<String>,
     ///  Use this flag to select a specific probe in the list.
@@ -118,7 +124,16 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
 
     // Get the config.
     let config_name = opt.config.as_deref().unwrap_or("default");
-    let configs = config::Configs::new(work_dir.clone());
+    let mut configs = config::Configs::new(work_dir.clone());
+    if let Some(config_file) = opt.config_file {
+        let config_file = PathBuf::from(config_file);
+        if !config_file.exists() {
+            // There is a subtle TOC/TOU in here, but this is not a security feature, merely a way
+            // to ease debugging for users who mistype their file name.
+            return Err(anyhow!("Specified config file does not exist."));
+        }
+        configs.merge(config_file)?;
+    }
     let config = configs.select_defined(config_name)?;
 
     let _log_guard = setup_logging(None, config.general.log_level);
