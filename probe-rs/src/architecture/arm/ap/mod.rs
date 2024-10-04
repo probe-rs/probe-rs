@@ -242,16 +242,14 @@ impl AccessPortType for AccessPort {
 pub(crate) fn valid_access_ports<AP>(
     debug_port: &mut AP,
     dp: DpAddress,
-) -> Vec<FullyQualifiedApAddress>
+) -> impl Iterator<Item = FullyQualifiedApAddress> + '_
 where
     AP: DapAccess,
 {
-    (0..=255)
-        .map_while(|ap| {
-            let ap = FullyQualifiedApAddress::v1_with_dp(dp, ap);
-            access_port_is_valid(debug_port, &ap).map(|_| ap)
-        })
-        .collect()
+    (0..=255).map_while(move |ap| {
+        let ap = FullyQualifiedApAddress::v1_with_dp(dp, ap);
+        access_port_is_valid(debug_port, &ap).map(|_| ap)
+    })
 }
 
 /// Tries to find the first AP with the given idr value, returns `None` if there isn't any
