@@ -189,7 +189,7 @@ fn test_memory_access(_dut: &DutDefinition, core: &mut Core) -> TestResult {
 
 #[smoke_tester_macros::test(core)]
 fn test_hw_breakpoints(_definition: &DutDefinition, core: &mut Core) -> TestResult {
-    println!("Testing HW breakpoints");
+    eprintln!("Testing HW breakpoints");
 
     let memory_regions: Vec<_> = core
         .memory_regions()

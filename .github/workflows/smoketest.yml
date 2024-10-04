@@ -76,7 +76,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runner: ["smoke-test", "smoke-tester-2"]
+        runner: ["smoke-test", "smoke-tester-2", "probe-rs-tester-0"]
 
     needs: build-smoke-tester
 
