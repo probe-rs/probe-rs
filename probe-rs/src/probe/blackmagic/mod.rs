@@ -20,7 +20,7 @@ use crate::{
 };
 use bitvec::{order::Lsb0, vec::BitVec};
 use probe_rs_target::ScanChainElement;
-use serialport::{available_ports, SerialPortType, UsbPortInfo};
+use serialport::{available_ports, SerialPortType};
 
 use super::{
     arm_debug_interface::{ProbeStatistics, RawProtocolIo, SwdSettings},
@@ -38,6 +38,7 @@ mod arm;
 use arm::UninitializedBlackMagicArmProbe;
 
 /// A factory for creating [`BlackMagicProbe`] instances.
+#[derive(Debug)]
 pub struct BlackMagicProbeFactory;
 
 #[derive(PartialEq)]
@@ -620,13 +621,7 @@ impl core::fmt::Debug for BlackMagicProbe {
 
 impl core::fmt::Display for BlackMagicProbeFactory {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        write!(f, "Black Magic Probe Factory")
-    }
-}
-
-impl core::fmt::Debug for BlackMagicProbeFactory {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        write!(f, "Black Magic Probe Factory")
+        write!(f, "Black Magic Probe")
     }
 }
 
@@ -1377,26 +1372,107 @@ impl RawJtagIo for BlackMagicProbe {
 /// Determine if a given serial port is a Black Magic Probe GDB interface.
 /// The BMP has at least two serial ports, and we want to make sure we get
 /// the correct one.
-fn is_blac_kmagic_probe_hardware(info: &UsbPortInfo, port_name: &str) -> bool {
-    if info.vid != BLACK_MAGIC_PROBE_VID {
-        return false;
+fn black_magic_debug_port_info(
+    port_type: SerialPortType,
+    port_name: &str,
+) -> Option<DebugProbeInfo> {
+    // Only accept /dev/cu.* values on macos, to avoid having two
+    // copies of the port (both /dev/tty.* and /dev/cu.*)
+    if cfg!(target_os = "macos") && !port_name.contains("/cu.") {
+        return None;
     }
-    if info.pid != BLACK_MAGIC_PROBE_PID {
-        return false;
+
+    let (vendor_id, product_id, serial_number, hid_interface, identifier) = match port_type {
+        SerialPortType::UsbPort(info) => (
+            info.vid,
+            info.pid,
+            info.serial_number.map(|s| s.to_string()),
+            info.interface,
+            info.product
+                .unwrap_or_else(|| "Black Magic Probe".to_string()),
+        ),
+        //    As of the date of this commit, serialport-rs 0.2.2 does not
+        // support fetching USB information on Linux without libudev.
+        // Because libudev makes it hard to cross-compile, we want to
+        // avoid pulling it in as a dependency.
+        //    To work around this, manually look up information if we're
+        // running on Linux by grabbing information out of /sys/. This is
+        // the same approach as used by pySerial, so it is a well-trodden path.
+        //    This code has been merged into serialport-rs [1] and is pending
+        // a new release, so this special case can go away once it's released.
+        //
+        // [1]: https://github.com/serialport/serialport-rs/pull/220
+        #[cfg(target_os = "linux")]
+        SerialPortType::Unknown => {
+            use std::{
+                fs::File,
+                path::{Path, PathBuf},
+            };
+
+            let port_name = port_name.split('/').last()?;
+            let device_path = PathBuf::from(format!("/sys/class/tty/{}/device", port_name))
+                .canonicalize()
+                .ok()?;
+            let subsystem = device_path.join("subsystem").canonicalize().ok()?;
+            let subsystem = subsystem.file_name()?.to_string_lossy();
+
+            let usb_interface_path = if subsystem == "usb-serial" {
+                device_path.parent()?
+            } else if subsystem == "usb" {
+                &device_path
+            } else {
+                return None;
+            };
+            let usb_device_path = usb_interface_path.parent()?;
+
+            fn read_file_to_string(dir: &Path, file: &str) -> Option<String> {
+                let dir = dir.join(file);
+                let mut f = File::open(dir).ok()?;
+                let mut s = String::new();
+                f.read_to_string(&mut s).ok()?;
+                Some(s.trim().to_owned())
+            }
+
+            fn read_file_to_u16(dir: &Path, file: &str) -> Option<u16> {
+                u16::from_str_radix(&read_file_to_string(dir, file)?, 16).ok()
+            }
+
+            fn read_file_to_u8(dir: &Path, file: &str) -> Option<u8> {
+                u8::from_str_radix(&read_file_to_string(dir, file)?, 16).ok()
+            }
+
+            let vid = read_file_to_u16(&usb_device_path, &"idVendor")?;
+            let pid = read_file_to_u16(&usb_device_path, &"idProduct")?;
+            let interface_number = read_file_to_u8(&usb_interface_path, &"bInterfaceNumber");
+            let serial_number = read_file_to_string(&usb_device_path, &"serial");
+            let product_name = read_file_to_string(&usb_device_path, &"product")
+                .unwrap_or_else(|| "Black Magic Probe".to_string());
+            (vid, pid, serial_number, interface_number, product_name)
+        }
+        _ => return None,
+    };
+
+    if vendor_id != BLACK_MAGIC_PROBE_VID {
+        return None;
+    }
+    if product_id != BLACK_MAGIC_PROBE_PID {
+        return None;
     }
 
     // Mac specifies the interface as the CDC Data interface, whereas Linux and
     // Windows use the CDC Communications interface. Accept either one here.
-    if info.interface != Some(0) && info.interface != Some(1) {
-        return false;
+    if hid_interface != Some(0) && hid_interface != Some(1) {
+        return None;
     }
 
-    // Only accept /dev/cu.* values on macos, to avoid having two
-    // copies of the port (both /dev/tty.* and /dev/cu.*)
-    if cfg!(target_os = "macos") && !port_name.contains("/cu.") {
-        return false;
-    }
-    true
+    Some(DebugProbeInfo {
+        identifier,
+        vendor_id,
+        product_id,
+        serial_number,
+        probe_factory: &BlackMagicProbeFactory,
+        hid_interface,
+    })
 }
 
 impl ProbeFactory for BlackMagicProbeFactory {
@@ -1434,13 +1510,12 @@ impl ProbeFactory for BlackMagicProbeFactory {
         };
 
         for port_description in ports {
-            let SerialPortType::UsbPort(info) = port_description.port_type else {
+            let Some(info) = black_magic_debug_port_info(
+                port_description.port_type,
+                &port_description.port_name,
+            ) else {
                 continue;
             };
-
-            if !is_blac_kmagic_probe_hardware(&info, &port_description.port_name) {
-                continue;
-            }
 
             if selector.serial_number != info.serial_number {
                 continue;
@@ -1480,22 +1555,10 @@ impl ProbeFactory for BlackMagicProbeFactory {
             return probes;
         };
         for port in ports {
-            let SerialPortType::UsbPort(info) = port.port_type else {
+            let Some(info) = black_magic_debug_port_info(port.port_type, &port.port_name) else {
                 continue;
             };
-            if !is_blac_kmagic_probe_hardware(&info, &port.port_name) {
-                continue;
-            }
-            probes.push(DebugProbeInfo {
-                identifier: info
-                    .product
-                    .unwrap_or_else(|| "Black Magic Probe".to_string()),
-                vendor_id: info.vid,
-                product_id: info.pid,
-                serial_number: info.serial_number.map(|s| s.to_string()),
-                probe_factory: &BlackMagicProbeFactory,
-                hid_interface: info.interface,
-            });
+            probes.push(info);
         }
         probes
     }
