@@ -266,7 +266,7 @@ fn walk_files(path: &Path, callback: &mut impl FnMut(&Path) -> Result<()>) -> Re
 }
 
 fn has_extension(path: &Path, ext: &str) -> bool {
-    path.extension().map_or(false, |e| e == ext)
+    path.extension().is_some_and(|e| e == ext)
 }
 
 pub fn visit_file(path: &Path, families: &mut Vec<ChipFamily>) -> Result<()> {

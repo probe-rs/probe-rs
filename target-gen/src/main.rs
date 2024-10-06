@@ -176,7 +176,7 @@ async fn main() -> Result<()> {
                 for entry in entries {
                     let entry = entry.context("Failed to read directory entry.")?;
                     let path = entry.path();
-                    if path.extension().map_or(false, |ext| ext == "yaml") {
+                    if path.extension().is_some_and(|ext| ext == "yaml") {
                         refresh_yaml(&path)?;
                     }
                 }

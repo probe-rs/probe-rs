@@ -690,7 +690,7 @@ impl Variable {
                 name.starts_with("__")
                     && name
                         .find(char::is_numeric)
-                        .map_or(false, |zero_based_position| zero_based_position == 2)
+                        .is_some_and(|zero_based_position| zero_based_position == 2)
             }
             // Other kind of variables are never indexed
             _ => false,

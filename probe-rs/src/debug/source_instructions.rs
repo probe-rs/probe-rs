@@ -215,7 +215,7 @@ fn match_file_line_column(
                     && NonZeroU64::new(line) == instruction_location.line
                     && column
                         .map(ColumnType::Column)
-                        .map_or(false, |col| col == instruction_location.column)
+                        .is_some_and(|col| col == instruction_location.column)
             })?;
 
     let source_location =
