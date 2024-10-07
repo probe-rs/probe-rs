@@ -138,12 +138,12 @@ impl RttControlBlockHeader {
     pub fn try_from_header(is_64_bit: bool, mem: &[u8]) -> Option<Self> {
         if is_64_bit {
             RttControlBlockHeaderInner::<u64>::read_from_prefix(mem)
+                .map(|(header, _)| Self::Header64(header))
                 .ok()
-                .map(|(a, _b)| Self::Header64(a))
         } else {
             RttControlBlockHeaderInner::<u32>::read_from_prefix(mem)
+                .map(|(header, _)| Self::Header32(header))
                 .ok()
-                .map(|(a, _b)| Self::Header32(a))
         }
     }
 
