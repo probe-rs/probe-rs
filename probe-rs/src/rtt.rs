@@ -53,7 +53,7 @@ use std::ops::Range;
 use std::thread;
 use std::time::Instant;
 use std::{borrow::Cow, time::Duration};
-use zerocopy::{FromBytes, FromZeroes};
+use zerocopy::FromBytes;
 
 /// The RTT interface.
 ///
@@ -112,7 +112,7 @@ pub struct Rtt {
 }
 
 #[repr(C)]
-#[derive(FromZeroes, FromBytes)]
+#[derive(FromBytes)]
 struct RttControlBlockHeaderInner<T> {
     id: [u8; 16],
     max_up_channels: T,
@@ -137,9 +137,13 @@ enum RttControlBlockHeader {
 impl RttControlBlockHeader {
     pub fn try_from_header(is_64_bit: bool, mem: &[u8]) -> Option<Self> {
         if is_64_bit {
-            RttControlBlockHeaderInner::<u64>::read_from_prefix(mem).map(Self::Header64)
+            RttControlBlockHeaderInner::<u64>::read_from_prefix(mem)
+                .map(|(header, _)| Self::Header64(header))
+                .ok()
         } else {
-            RttControlBlockHeaderInner::<u32>::read_from_prefix(mem).map(Self::Header32)
+            RttControlBlockHeaderInner::<u32>::read_from_prefix(mem)
+                .map(|(header, _)| Self::Header32(header))
+                .ok()
         }
     }
 
@@ -192,18 +196,22 @@ impl RttControlBlockHeader {
 
     pub fn parse_channel_buffers(&self, mem: &[u8]) -> Result<Vec<RttChannelBuffer>, Error> {
         let buffers = match self {
-            RttControlBlockHeader::Header32(_) => RttChannelBufferInner::<u32>::slice_from(mem)
-                .ok_or(Error::ControlBlockNotFound)?
-                .iter()
-                .copied()
-                .map(RttChannelBuffer::from)
-                .collect::<Vec<RttChannelBuffer>>(),
-            RttControlBlockHeader::Header64(_) => RttChannelBufferInner::<u64>::slice_from(mem)
-                .ok_or(Error::ControlBlockNotFound)?
-                .iter()
-                .copied()
-                .map(RttChannelBuffer::from)
-                .collect::<Vec<RttChannelBuffer>>(),
+            RttControlBlockHeader::Header32(_) => {
+                <[RttChannelBufferInner<u32>]>::ref_from_bytes(mem)
+                    .map_err(|_| Error::ControlBlockNotFound)?
+                    .iter()
+                    .cloned()
+                    .map(RttChannelBuffer::from)
+                    .collect::<Vec<RttChannelBuffer>>()
+            }
+            RttControlBlockHeader::Header64(_) => {
+                <[RttChannelBufferInner<u64>]>::ref_from_bytes(mem)
+                    .map_err(|_| Error::ControlBlockNotFound)?
+                    .iter()
+                    .cloned()
+                    .map(RttChannelBuffer::from)
+                    .collect::<Vec<RttChannelBuffer>>()
+            }
         };
 
         Ok(buffers)
@@ -303,21 +311,25 @@ impl Rtt {
 
         let mut offset = up_channels_start as u64;
         for (i, b) in up_channels_buffer.into_iter().enumerate() {
+            let buffer_size = b.size() as u64;
+
             if let Some(chan) = Channel::from(core, i, ptr + offset, b)? {
                 up_channels.push(UpChannel(chan));
             } else {
                 tracing::warn!("Buffer for up channel {i} not initialized");
             }
-            offset += b.size() as u64;
+            offset += buffer_size;
         }
 
         for (i, b) in down_channels_buffer.into_iter().enumerate() {
+            let buffer_size = b.size() as u64;
+
             if let Some(chan) = Channel::from(core, i, ptr + offset, b)? {
                 down_channels.push(DownChannel(chan));
             } else {
                 tracing::warn!("Buffer for down channel {i} not initialized");
             }
-            offset += b.size() as u64;
+            offset += buffer_size;
         }
 
         Ok(Some(Rtt {
