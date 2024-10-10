@@ -135,20 +135,20 @@ impl ArmDebugSequence for MIMXRT10xx {
     }
 }
 
-/// Debug sequences for MIMXRT11xx MCUs.
+/// Debug sequences for MIMXRT117x MCUs.
 ///
 /// Currently only supports the Cortex M7. In fact, if you try to interact with the Cortex M4,
 /// you'll have a bad time: its access port doesn't appear until it's released from reset!
 /// For the time being, you can only do things through the CM7.
 #[derive(Debug)]
-pub struct MIMXRT11xx {
+pub struct MIMXRT117x {
     /// Given the reset we're performing, we won't be able to perform
     /// a normal vector catch. (The boot ROM doesn't care about us.)
     /// We'll simulate that behavior for the user.
     simulate_reset_catch: AtomicBool,
 }
 
-impl MIMXRT11xx {
+impl MIMXRT117x {
     /// System reset controller base address.
     const SRC: u64 = 0x40C0_4000;
     /// SRC reset mode register.
@@ -160,7 +160,7 @@ impl MIMXRT11xx {
         }
     }
 
-    /// Create a sequence handle for the MIMXRT10xx.
+    /// Create a sequence handle for the MIMXRT117x.
     pub fn create() -> Arc<dyn ArmDebugSequence> {
         Arc::new(Self::new())
     }
@@ -356,7 +356,7 @@ impl MIMXRT11xx {
     }
 }
 
-impl ArmDebugSequence for MIMXRT11xx {
+impl ArmDebugSequence for MIMXRT117x {
     fn reset_catch_set(
         &self,
         _: &mut dyn ArmMemoryInterface,
@@ -473,6 +473,32 @@ impl ArmDebugSequence for MIMXRT11xx {
         }
 
         Ok(())
+    }
+}
+
+/// Debug sequences for MIMXRT118x MCUs.
+///
+/// Currently only supports the Cortex M33. In fact, if you try to interact with the Cortex M7,
+/// you'll have a bad time: its access port doesn't appear until it's released from reset!
+/// For the time being, you can only do things through the CM33.
+#[derive(Debug)]
+pub struct MIMXRT118x(());
+
+impl MIMXRT118x {
+    fn new() -> Self {
+        Self(())
+    }
+
+    /// Create a sequence handle for the MIMXRT117x.
+    pub fn create() -> Arc<dyn ArmDebugSequence> {
+        Arc::new(Self::new())
+    }
+}
+
+impl ArmDebugSequence for MIMXRT118x {
+    fn allowed_access_ports(&self) -> Vec<u8> {
+        // AP5 locks the whole DP if you try to read its IDR.
+        vec![0, 1, 3, 4, 6]
     }
 }
 

@@ -1,0 +1,15 @@
+name: MIMXRT1180
+manufacturer:
+  id: 0x15
+  cc: 0x0
+generated_from_pack: true
+pack_file_release: 19.0.0
+variants:
+- name: MIMXRT1189CVM8B
+  cores:
+  - name: cm33
+    type: armv8m
+    core_access_options: !Arm
+      ap: 3
+      psel: 0x0
+  memory_map:
