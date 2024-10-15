@@ -60,7 +60,7 @@ jobs:
     runs-on: ["self-hosted", "linux", "ARM64", "${{ matrix.runner }}"]
     strategy:
       matrix:
-        runner: ["smoke-test", "smoke-tester-2"]
+        runner: ["smoke-test", "smoke-tester-0", "smoke-tester-2"]
 
     needs: build
 
