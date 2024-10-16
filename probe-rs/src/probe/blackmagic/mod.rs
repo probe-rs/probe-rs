@@ -276,22 +276,25 @@ impl<'a> RemoteCommand<'a> {
     }
 }
 
+// Implement `ToString` instead of `Display` as this is for generating
+// strings to send over the network, and is not meant for human consumption.
+#[allow(clippy::to_string_trait_impl)]
 impl<'a> std::string::ToString for RemoteCommand<'a> {
     fn to_string(&self) -> String {
         match self {
-            RemoteCommand::Handshake(_) => format!("+#!GA#"),
-            RemoteCommand::GetVoltage => format!(" !GV#"),
-            RemoteCommand::GetSpeedKhz => format!("!Gf#"),
+            RemoteCommand::Handshake(_) => "+#!GA#".to_string(),
+            RemoteCommand::GetVoltage => " !GV#".to_string(),
+            RemoteCommand::GetSpeedKhz => "!Gf#".to_string(),
             RemoteCommand::SetSpeedKhz(speed) => {
                 format!("!GF{:08x}#", speed)
             }
-            RemoteCommand::HighLevelCheck => format!("!HC#"),
+            RemoteCommand::HighLevelCheck => "!HC#".to_string(),
             RemoteCommand::SetNrst(set) => format!("!GZ{}#", if *set { '1' } else { '0' }),
             RemoteCommand::SetPower(set) => format!("!GP{}#", if *set { '1' } else { '0' }),
             RemoteCommand::TargetClockOutput { enable } => {
                 format!("!GE{}#", if *enable { '1' } else { '0' })
             }
-            RemoteCommand::SpeedKhz => format!("!Gf#"),
+            RemoteCommand::SpeedKhz => "!Gf#".to_string(),
             RemoteCommand::RawAccessV0P { rnw, addr, value } => {
                 format!("!HL{:02x}{:04x}{:08x}#", rnw, addr, value)
             }
@@ -509,8 +512,8 @@ impl<'a> std::string::ToString for RemoteCommand<'a> {
                 if *tms { '1' } else { '0' },
                 if *tdi { '1' } else { '0' }
             ),
-            RemoteCommand::JtagInit => format!("+#!JS#"),
-            RemoteCommand::JtagReset => format!("+#!JR#"),
+            RemoteCommand::JtagInit => "+#!JS#".to_string(),
+            RemoteCommand::JtagReset => "+#!JR#".to_string(),
             RemoteCommand::JtagTms { bits, length } => {
                 format!("!JT{:02x}{:x}#", *length, *bits)
             }
@@ -532,7 +535,7 @@ impl<'a> std::string::ToString for RemoteCommand<'a> {
                 "!HJ{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:08x}#",
                 *index, *dr_prescan, *dr_postscan, *ir_len, *ir_prescan, *ir_postscan, *current_ir
             ),
-            RemoteCommand::SwdInit => format!("!SS#"),
+            RemoteCommand::SwdInit => "!SS#".to_string(),
             RemoteCommand::SwdIn { length: bits } => {
                 format!("!Si{:02x}#", *bits)
             }
@@ -548,9 +551,7 @@ impl<'a> std::string::ToString for RemoteCommand<'a> {
             RemoteCommand::TargetReset(reset) => {
                 format!("!GZ{}#", if *reset { '1' } else { '0' })
             }
-            RemoteCommand::GetAccelerators => {
-                format!("!HA#")
-            }
+            RemoteCommand::GetAccelerators => "!HA#".to_string(),
         }
     }
 }
@@ -1441,11 +1442,11 @@ fn black_magic_debug_port_info(
                 u8::from_str_radix(&read_file_to_string(dir, file)?, 16).ok()
             }
 
-            let vid = read_file_to_u16(&usb_device_path, &"idVendor")?;
-            let pid = read_file_to_u16(&usb_device_path, &"idProduct")?;
-            let interface_number = read_file_to_u8(&usb_interface_path, &"bInterfaceNumber");
-            let serial_number = read_file_to_string(&usb_device_path, &"serial");
-            let product_name = read_file_to_string(&usb_device_path, &"product")
+            let vid = read_file_to_u16(usb_device_path, "idVendor")?;
+            let pid = read_file_to_u16(usb_device_path, "idProduct")?;
+            let interface_number = read_file_to_u8(usb_interface_path, "bInterfaceNumber");
+            let serial_number = read_file_to_string(usb_device_path, "serial");
+            let product_name = read_file_to_string(usb_device_path, "product")
                 .unwrap_or_else(|| "Black Magic Probe".to_string());
             (vid, pid, serial_number, interface_number, product_name)
         }
