@@ -187,9 +187,20 @@ impl DutDefinition {
 
         let target = lookup_unique_target(&raw_definition.chip)?;
 
-        let flash_test_binary = raw_definition.flash_test_binary.map(PathBuf::from);
+        let flash_test_binary = match &raw_definition.flash_test_binary {
+            Some(path) => {
+                let mut path = PathBuf::from(path);
+                if !path.is_absolute() {
+                    path = source_file
+                        .parent()
+                        .expect("Source file should have a parent")
+                        .join(path);
+                }
 
-        let flash_test_binary = flash_test_binary.filter(|path| path.is_absolute());
+                Some(path)
+            }
+            None => None,
+        };
 
         Ok(Self {
             chip: target,
