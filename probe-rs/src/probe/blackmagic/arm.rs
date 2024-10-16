@@ -16,7 +16,7 @@ use crate::{Error as ProbeRsError, MemoryInterface};
 use std::collections::BTreeSet;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use zerocopy::AsBytes;
+use zerocopy::IntoBytes;
 
 #[derive(Debug)]
 pub(crate) struct UninitializedBlackMagicArmProbe {
@@ -774,19 +774,19 @@ impl MemoryInterface<ArmError> for BlackMagicProbeMemoryInterface<'_> {
     }
 
     fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), ArmError> {
-        self.read(address, data.as_bytes_mut())
+        self.read(address, data.as_mut_bytes())
     }
 
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError> {
-        self.read(address, data.as_bytes_mut())
+        self.read(address, data.as_mut_bytes())
     }
 
     fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), ArmError> {
-        self.read(address, data.as_bytes_mut())
+        self.read(address, data.as_mut_bytes())
     }
 
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError> {
-        self.read(address, data.as_bytes_mut())
+        self.read(address, data.as_mut_bytes())
     }
 
     fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), ArmError> {
