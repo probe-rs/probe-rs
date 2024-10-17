@@ -1,6 +1,6 @@
 use crate::{
     architecture::arm::{
-        ap::valid_access_ports,
+        ap::valid_access_ports_allowlist,
         dp::{
             Abort, Ctrl, DebugPortError, DebugPortId, DebugPortVersion, DpAccess, Select, BASEPTR0,
             BASEPTR1, DPIDR, DPIDR1,
@@ -490,7 +490,8 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
             tracing::trace!("Searching valid APs");
 
             let ap_span = tracing::debug_span!("AP discovery").entered();
-            let access_ports = valid_access_ports(self, dp);
+            let allowed_aps = sequence.allowed_access_ports();
+            let access_ports = valid_access_ports_allowlist(self, dp, allowed_aps);
             let state = self.state.dps.get_mut(&dp).unwrap();
             state.access_ports = access_ports.into_iter().collect();
 

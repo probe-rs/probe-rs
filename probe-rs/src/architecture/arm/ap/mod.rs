@@ -239,14 +239,31 @@ impl AccessPortType for AccessPort {
 /// Return a Vec of all valid access ports found that the target connected to the debug_probe.
 /// Can fail silently under the hood testing an ap that doesn't exist and would require cleanup.
 #[tracing::instrument(skip(debug_port))]
-pub(crate) fn valid_access_ports<AP>(
-    debug_port: &mut AP,
+pub(crate) fn valid_access_ports<DP>(
+    debug_port: &mut DP,
     dp: DpAddress,
 ) -> Vec<FullyQualifiedApAddress>
 where
-    AP: DapAccess,
+    DP: DapAccess,
 {
-    (0..=255)
+    valid_access_ports_allowlist(debug_port, dp, 0..=255)
+}
+
+/// Return a Vec of all valid access ports found that the target connected to the debug_probe.
+/// The search is limited to `allowed_aps`.
+///
+/// Can fail silently under the hood testing an ap that doesn't exist and would require cleanup.
+#[tracing::instrument(skip(debug_port, allowed_aps))]
+pub(crate) fn valid_access_ports_allowlist<DP>(
+    debug_port: &mut DP,
+    dp: DpAddress,
+    allowed_aps: impl IntoIterator<Item = u8>,
+) -> Vec<FullyQualifiedApAddress>
+where
+    DP: DapAccess,
+{
+    allowed_aps
+        .into_iter()
         .map_while(|ap| {
             let ap = FullyQualifiedApAddress::v1_with_dp(dp, ap);
             access_port_is_valid(debug_port, &ap).map(|_| ap)

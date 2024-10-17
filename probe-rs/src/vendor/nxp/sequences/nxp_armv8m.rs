@@ -711,3 +711,29 @@ impl ArmDebugSequence for MIMXRT5xxS {
     // "ResetHardware" intentionally omitted because the default implementation
     // seems equivalent to the one in the CMSIS-Pack.
 }
+
+/// Debug sequences for MIMXRT118x MCUs.
+///
+/// Currently only supports the Cortex M33. In fact, if you try to interact with the Cortex M7,
+/// you'll have a bad time: its access port doesn't appear until it's released from reset!
+/// For the time being, you can only do things through the CM33.
+#[derive(Debug)]
+pub struct MIMXRT118x(());
+
+impl MIMXRT118x {
+    fn new() -> Self {
+        Self(())
+    }
+
+    /// Create a sequence handle for the MIMXRT117x.
+    pub fn create() -> Arc<dyn ArmDebugSequence> {
+        Arc::new(Self::new())
+    }
+}
+
+impl ArmDebugSequence for MIMXRT118x {
+    fn allowed_access_ports(&self) -> Vec<u8> {
+        // AP5 locks the whole DP if you try to read its IDR.
+        vec![0, 1, 3, 4, 6]
+    }
+}

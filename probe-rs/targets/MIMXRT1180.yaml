@@ -1,0 +1,46 @@
+name: MIMXRT1180
+manufacturer:
+  id: 0x15
+  cc: 0x0
+generated_from_pack: true
+pack_file_release: 19.0.0
+variants:
+- name: MIMXRT1189CVM8B
+  cores:
+  - name: cm33
+    type: armv8m
+    core_access_options: !Arm
+      ap: 3
+      psel: 0x0
+  memory_map:
+  - !Ram
+    name: DTCM
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+      - cm33
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0ffc0000
+      end: 0x10000000
+    cores:
+      - cm33
+  - !Ram
+    name: OCRAM1
+    range:
+      # Note: The reference manual's memory map may start this region at
+      # 0x2848_0000, but there is a note outside the table saying that the first
+      # 16k cannot be safely used.
+      start: 0x20484000
+      end: 0x20500000
+    cores:
+      - cm33
+  - !Ram
+    name: OCRAM2
+    range:
+      start: 0x20500000
+      end: 0x20540000
+    cores:
+      - cm33
