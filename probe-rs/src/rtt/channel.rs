@@ -518,6 +518,7 @@ fn read_c_string(core: &mut Core, ptr: u64) -> Result<Option<String>, Error> {
         .find_map(|r| r.contains(ptr).then_some(r.address_range()))
     else {
         // If the pointer is not within any valid range, return None.
+        tracing::warn!("RTT channel name points to unrecognized memory. Bad target description?");
         return Ok(None);
     };
 
