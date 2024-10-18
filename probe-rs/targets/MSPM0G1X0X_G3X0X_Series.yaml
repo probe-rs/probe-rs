@@ -1,0 +1,1224 @@
+name: MSPM0G1X0X_G3X0X Series
+generated_from_pack: true
+pack_file_release: 1.3.1
+variants:
+- name: MSPM0G1105
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x8000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IROM2
+    range:
+      start: 0x400000
+      end: 0x408000
+    cores:
+    - main
+    access:
+      write: false
+  - !Generic
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Generic
+    name: IRAM_Parity
+    range:
+      start: 0x20100000
+      end: 0x20104000
+    cores:
+    - main
+  - !Ram
+    name: IRAM_No_Parity
+    range:
+      start: 0x20200000
+      end: 0x20204000
+    cores:
+    - main
+  - !Generic
+    name: IRAM_Parity_Code
+    range:
+      start: 0x20300000
+      end: 0x20304000
+    cores:
+    - main
+  - !Generic
+    name: NonMain_ECC
+    range:
+      start: 0x41c00000
+      end: 0x41c00200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Generic
+    name: NonMain_noECC
+    range:
+      start: 0x41c10000
+      end: 0x41c10200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Generic
+    name: Factory_ECC
+    range:
+      start: 0x41c40000
+      end: 0x41c40080
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Generic
+    name: Factory_noECC
+    range:
+      start: 0x41c50000
+      end: 0x41c50080
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  flash_algorithms:
+  - mspm0g1x0x_g3x0x_main_128kb
+  - mspm0g1x0x_g3x0x_nonmain
+- name: MSPM0G1106
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IROM2
+    range:
+      start: 0x400000
+      end: 0x410000
+    cores:
+    - main
+    access:
+      write: false
+  - !Generic
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Generic
+    name: IRAM_Parity
+    range:
+      start: 0x20100000
+      end: 0x20108000
+    cores:
+    - main
+  - !Ram
+    name: IRAM_No_Parity
+    range:
+      start: 0x20200000
+      end: 0x20208000
+    cores:
+    - main
+  - !Generic
+    name: IRAM_Parity_Code
+    range:
+      start: 0x20300000
+      end: 0x20308000
+    cores:
+    - main
+  - !Generic
+    name: NonMain_ECC
+    range:
+      start: 0x41c00000
+      end: 0x41c00200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Generic
+    name: NonMain_noECC
+    range:
+      start: 0x41c10000
+      end: 0x41c10200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Generic
+    name: Factory_ECC
+    range:
+      start: 0x41c40000
+      end: 0x41c40080
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Generic
+    name: Factory_noECC
+    range:
+      start: 0x41c50000
+      end: 0x41c50080
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  flash_algorithms:
+  - mspm0g1x0x_g3x0x_main_128kb
+  - mspm0g1x0x_g3x0x_nonmain
+- name: MSPM0G1107
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IROM2
+    range:
+      start: 0x400000
+      end: 0x420000
+    cores:
+    - main
+    access:
+      write: false
+  - !Generic
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Generic
+    name: IRAM_Parity
+    range:
+      start: 0x20100000
+      end: 0x20108000
+    cores:
+    - main
+  - !Ram
+    name: IRAM_No_Parity
+    range:
+      start: 0x20200000
+      end: 0x20208000
+    cores:
+    - main
+  - !Generic
+    name: IRAM_Parity_Code
+    range:
+      start: 0x20300000
+      end: 0x20308000
+    cores:
+    - main
+  - !Generic
+    name: NonMain_ECC
+    range:
+      start: 0x41c00000
+      end: 0x41c00200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Generic
+    name: NonMain_noECC
+    range:
+      start: 0x41c10000
+      end: 0x41c10200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Generic
+    name: Factory_ECC
+    range:
+      start: 0x41c40000
+      end: 0x41c40080
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Generic
+    name: Factory_noECC
+    range:
+      start: 0x41c50000
+      end: 0x41c50080
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  flash_algorithms:
+  - mspm0g1x0x_g3x0x_main_128kb
+  - mspm0g1x0x_g3x0x_nonmain
+- name: MSPM0G1505
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x8000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IROM2
+    range:
+      start: 0x400000
+      end: 0x408000
+    cores:
+    - main
+    access:
+      write: false
+  - !Generic
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Generic
+    name: IRAM_Parity
+    range:
+      start: 0x20100000
+      end: 0x20104000
+    cores:
+    - main
+  - !Ram
+    name: IRAM_No_Parity
+    range:
+      start: 0x20200000
+      end: 0x20204000
+    cores:
+    - main
+  - !Generic
+    name: IRAM_Parity_Code
+    range:
+      start: 0x20300000
+      end: 0x20304000
+    cores:
+    - main
+  - !Generic
+    name: NonMain_ECC
+    range:
+      start: 0x41c00000
+      end: 0x41c00200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Generic
+    name: NonMain_noECC
+    range:
+      start: 0x41c10000
+      end: 0x41c10200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Generic
+    name: Factory_ECC
+    range:
+      start: 0x41c40000
+      end: 0x41c40080
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Generic
+    name: Factory_noECC
+    range:
+      start: 0x41c50000
+      end: 0x41c50080
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  flash_algorithms:
+  - mspm0g1x0x_g3x0x_main_128kb
+  - mspm0g1x0x_g3x0x_nonmain
+- name: MSPM0G1506
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IROM2
+    range:
+      start: 0x400000
+      end: 0x410000
+    cores:
+    - main
+    access:
+      write: false
+  - !Generic
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Generic
+    name: IRAM_Parity
+    range:
+      start: 0x20100000
+      end: 0x20108000
+    cores:
+    - main
+  - !Ram
+    name: IRAM_No_Parity
+    range:
+      start: 0x20200000
+      end: 0x20208000
+    cores:
+    - main
+  - !Generic
+    name: IRAM_Parity_Code
+    range:
+      start: 0x20300000
+      end: 0x20308000
+    cores:
+    - main
+  - !Generic
+    name: NonMain_ECC
+    range:
+      start: 0x41c00000
+      end: 0x41c00200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Generic
+    name: NonMain_noECC
+    range:
+      start: 0x41c10000
+      end: 0x41c10200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Generic
+    name: Factory_ECC
+    range:
+      start: 0x41c40000
+      end: 0x41c40080
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Generic
+    name: Factory_noECC
+    range:
+      start: 0x41c50000
+      end: 0x41c50080
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  flash_algorithms:
+  - mspm0g1x0x_g3x0x_main_128kb
+  - mspm0g1x0x_g3x0x_nonmain
+- name: MSPM0G1507
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IROM2
+    range:
+      start: 0x400000
+      end: 0x420000
+    cores:
+    - main
+    access:
+      write: false
+  - !Generic
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Generic
+    name: IRAM_Parity
+    range:
+      start: 0x20100000
+      end: 0x20108000
+    cores:
+    - main
+  - !Ram
+    name: IRAM_No_Parity
+    range:
+      start: 0x20200000
+      end: 0x20208000
+    cores:
+    - main
+  - !Generic
+    name: IRAM_Parity_Code
+    range:
+      start: 0x20300000
+      end: 0x20308000
+    cores:
+    - main
+  - !Generic
+    name: NonMain_ECC
+    range:
+      start: 0x41c00000
+      end: 0x41c00200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Generic
+    name: NonMain_noECC
+    range:
+      start: 0x41c10000
+      end: 0x41c10200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Generic
+    name: Factory_ECC
+    range:
+      start: 0x41c40000
+      end: 0x41c40080
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Generic
+    name: Factory_noECC
+    range:
+      start: 0x41c50000
+      end: 0x41c50080
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  flash_algorithms:
+  - mspm0g1x0x_g3x0x_main_128kb
+  - mspm0g1x0x_g3x0x_nonmain
+- name: MSPM0G3105
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x8000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IROM2
+    range:
+      start: 0x400000
+      end: 0x408000
+    cores:
+    - main
+    access:
+      write: false
+  - !Generic
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Generic
+    name: IRAM_Parity
+    range:
+      start: 0x20100000
+      end: 0x20104000
+    cores:
+    - main
+  - !Ram
+    name: IRAM_No_Parity
+    range:
+      start: 0x20200000
+      end: 0x20204000
+    cores:
+    - main
+  - !Generic
+    name: IRAM_Parity_Code
+    range:
+      start: 0x20300000
+      end: 0x20304000
+    cores:
+    - main
+  - !Generic
+    name: NonMain_ECC
+    range:
+      start: 0x41c00000
+      end: 0x41c00200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Generic
+    name: NonMain_noECC
+    range:
+      start: 0x41c10000
+      end: 0x41c10200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Generic
+    name: Factory_ECC
+    range:
+      start: 0x41c40000
+      end: 0x41c40080
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Generic
+    name: Factory_noECC
+    range:
+      start: 0x41c50000
+      end: 0x41c50080
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  flash_algorithms:
+  - mspm0g1x0x_g3x0x_main_128kb
+  - mspm0g1x0x_g3x0x_nonmain
+- name: MSPM0G3106
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IROM2
+    range:
+      start: 0x400000
+      end: 0x410000
+    cores:
+    - main
+    access:
+      write: false
+  - !Generic
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Generic
+    name: IRAM_Parity
+    range:
+      start: 0x20100000
+      end: 0x20108000
+    cores:
+    - main
+  - !Ram
+    name: IRAM_No_Parity
+    range:
+      start: 0x20200000
+      end: 0x20208000
+    cores:
+    - main
+  - !Generic
+    name: IRAM_Parity_Code
+    range:
+      start: 0x20300000
+      end: 0x20308000
+    cores:
+    - main
+  - !Generic
+    name: NonMain_ECC
+    range:
+      start: 0x41c00000
+      end: 0x41c00200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Generic
+    name: NonMain_noECC
+    range:
+      start: 0x41c10000
+      end: 0x41c10200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Generic
+    name: Factory_ECC
+    range:
+      start: 0x41c40000
+      end: 0x41c40080
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Generic
+    name: Factory_noECC
+    range:
+      start: 0x41c50000
+      end: 0x41c50080
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  flash_algorithms:
+  - mspm0g1x0x_g3x0x_main_128kb
+  - mspm0g1x0x_g3x0x_nonmain
+- name: MSPM0G3107
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IROM2
+    range:
+      start: 0x400000
+      end: 0x420000
+    cores:
+    - main
+    access:
+      write: false
+  - !Generic
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Generic
+    name: IRAM_Parity
+    range:
+      start: 0x20100000
+      end: 0x20108000
+    cores:
+    - main
+  - !Ram
+    name: IRAM_No_Parity
+    range:
+      start: 0x20200000
+      end: 0x20208000
+    cores:
+    - main
+  - !Generic
+    name: IRAM_Parity_Code
+    range:
+      start: 0x20300000
+      end: 0x20308000
+    cores:
+    - main
+  - !Generic
+    name: NonMain_ECC
+    range:
+      start: 0x41c00000
+      end: 0x41c00200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Generic
+    name: NonMain_noECC
+    range:
+      start: 0x41c10000
+      end: 0x41c10200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Generic
+    name: Factory_ECC
+    range:
+      start: 0x41c40000
+      end: 0x41c40080
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Generic
+    name: Factory_noECC
+    range:
+      start: 0x41c50000
+      end: 0x41c50080
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  flash_algorithms:
+  - mspm0g1x0x_g3x0x_main_128kb
+  - mspm0g1x0x_g3x0x_nonmain
+- name: MSPM0G3505
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x8000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IROM2
+    range:
+      start: 0x400000
+      end: 0x408000
+    cores:
+    - main
+    access:
+      write: false
+  - !Generic
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Generic
+    name: IRAM_Parity
+    range:
+      start: 0x20100000
+      end: 0x20104000
+    cores:
+    - main
+  - !Ram
+    name: IRAM_No_Parity
+    range:
+      start: 0x20200000
+      end: 0x20204000
+    cores:
+    - main
+  - !Generic
+    name: IRAM_Parity_Code
+    range:
+      start: 0x20300000
+      end: 0x20304000
+    cores:
+    - main
+  - !Generic
+    name: NonMain_ECC
+    range:
+      start: 0x41c00000
+      end: 0x41c00200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Generic
+    name: NonMain_noECC
+    range:
+      start: 0x41c10000
+      end: 0x41c10200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Generic
+    name: Factory_ECC
+    range:
+      start: 0x41c40000
+      end: 0x41c40080
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Generic
+    name: Factory_noECC
+    range:
+      start: 0x41c50000
+      end: 0x41c50080
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  flash_algorithms:
+  - mspm0g1x0x_g3x0x_main_128kb
+  - mspm0g1x0x_g3x0x_nonmain
+- name: MSPM0G3506
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IROM2
+    range:
+      start: 0x400000
+      end: 0x410000
+    cores:
+    - main
+    access:
+      write: false
+  - !Generic
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Generic
+    name: IRAM_Parity
+    range:
+      start: 0x20100000
+      end: 0x20108000
+    cores:
+    - main
+  - !Ram
+    name: IRAM_No_Parity
+    range:
+      start: 0x20200000
+      end: 0x20208000
+    cores:
+    - main
+  - !Generic
+    name: IRAM_Parity_Code
+    range:
+      start: 0x20300000
+      end: 0x20308000
+    cores:
+    - main
+  - !Generic
+    name: NonMain_ECC
+    range:
+      start: 0x41c00000
+      end: 0x41c00200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Generic
+    name: NonMain_noECC
+    range:
+      start: 0x41c10000
+      end: 0x41c10200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Generic
+    name: Factory_ECC
+    range:
+      start: 0x41c40000
+      end: 0x41c40080
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Generic
+    name: Factory_noECC
+    range:
+      start: 0x41c50000
+      end: 0x41c50080
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  flash_algorithms:
+  - mspm0g1x0x_g3x0x_main_128kb
+  - mspm0g1x0x_g3x0x_nonmain
+- name: MSPM0G3507
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IROM2
+    range:
+      start: 0x400000
+      end: 0x420000
+    cores:
+    - main
+    access:
+      write: false
+  - !Generic
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Generic
+    name: IRAM_Parity
+    range:
+      start: 0x20100000
+      end: 0x20108000
+    cores:
+    - main
+  - !Ram
+    name: IRAM_No_Parity
+    range:
+      start: 0x20200000
+      end: 0x20208000
+    cores:
+    - main
+  - !Generic
+    name: IRAM_Parity_Code
+    range:
+      start: 0x20300000
+      end: 0x20308000
+    cores:
+    - main
+  - !Generic
+    name: NonMain_ECC
+    range:
+      start: 0x41c00000
+      end: 0x41c00200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Generic
+    name: NonMain_noECC
+    range:
+      start: 0x41c10000
+      end: 0x41c10200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Generic
+    name: Factory_ECC
+    range:
+      start: 0x41c40000
+      end: 0x41c40080
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Generic
+    name: Factory_noECC
+    range:
+      start: 0x41c50000
+      end: 0x41c50080
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  flash_algorithms:
+  - mspm0g1x0x_g3x0x_main_128kb
+  - mspm0g1x0x_g3x0x_nonmain
+flash_algorithms:
+- name: mspm0g1x0x_g3x0x_main_128kb
+  description: MSPM0G MAIN 128KB
+  default: true
+  instructions: ELUTSAFoByKRQwFgEUxhaCBoAyKQQyBgESAABAhAASEKBZBCBdAJBIhCBNEA8AT5AeAA8O34YGgPIYhDYGAA8Of4BUgBaAQikUMBYAAgEL0AE0BAAAELQBDtAOAAIHBH+LUERhFIAGgRSQFAoAoRSgJAikIX0gEgQgIPTjBGIUYA8Kj4BCDHQwAlKEbABwvRAC8J0EAiMEYhRgDwX/h/HADwDPjy5wElKEb4vRgAxEH/DwAA/+8/AADQDEAESAFoyQf80ABoAiEBQEgIcEfARtDjDECAtQNIAPBM+AEhSECAvcBGANAMQPi1FEYNRgZGFUgAaBVJAUCwChVKAkABIIpCINIALR7QByEpQBvRASERTwAgAC0W0MkHFNABIEICDEgxRgDwVvg4aEAH/NQJSDFGIkYA8Dz4CDYINAg9//e9/wFG5ef4vRgAxEH/DwAA/+8/AADQDEDQ4wxAELUCIxNDESISAoQYY2AhYgEhgVAQvcBGELUMSQAiCmBKYNNDC2QRIQkCQxhSJFxgGmIBIkJQBklAGAFoyQf80ABoAiEBQEgIEL3ARtDhDEDQEwAAcLURIxsCxBgBJWVgBE5mYiFiEWghY1FoYWPFUHC9wEb/AQAAELUNS8AYASOcAqJCDNBcAqJCENGJAgkNHykI2f8pCtgAHSA5yQgC4EAwSQTJDotAAWiZQwFgEL3QEQAAASCBAgZKE2iLQxNgAAVRaIFDUWADSAFoiQP81HBHwEYAAQtABAILQAEgAAQESQpogkMKYANIAWjJBvzUcEfARgQBC0AEAgtAAAAAAA==
+  load_address: 0x20200020
+  pc_init: 0x1
+  pc_uninit: 0x5d
+  pc_program_page: 0xe9
+  pc_erase_sector: 0x61
+  pc_erase_all: 0xd5
+  data_section_offset: 0x258
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x20000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 500
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x400
+      address: 0x0
+- name: mspm0g1x0x_g3x0x_nonmain
+  description: MSPM0G NON-MAIN
+  instructions: ELUYSAFoByKRQwFgFkgXSQFgF0whaAMgwEMiHxNoA0ATYBEgAAQIQAEhCgWQQgXQCQSIQgTRAPB/+gHgAPBe+iBoDyGIQyBgAPBY+glIAWgEIpFDAWAISQIgCGAAIMJDSmAQvQATQEAACERAAQAAJgQBC0AQ7QDgABFEQPC1hbABIYhDAigA0PTgAJGIAgSQACHIQwGQek17TAbgAplIHAQpAUZ4TADT2+ACkRgjdUgBnzlGIkYA8LX5JkYERhYjcEg5RnFKAPCt+SBDANHL4GpMIEYxRgSaAPDy+UAiIEYxRgDwz/k0RihowAcI0ShowAcF0ShowAcC0ShowAfz0ChogAdN1EAiXEghRgDwuvkoaMAHCNEoaMAHBdEoaMAHAtEoaMAH89AoaIAHOdRAIlJIIUYA8Kb5KGjABwjRKGjABwXRKGjABwLRKGjAB/PQKGiAByXUQCJISCFGAPCS+ShowAcI0ShowAcF0ShowAcC0ShowAfz0ChogAcR1EAiPkghRgDwfvkoaMAHCNEoaMAHBdEoaMAHAtEoaMAH89AoaGAnOk5+RDRIIUYEmgDwh/koaEAHCNUoaEAHBdUoaEAHAtUoaEAH89QsSCFGMkYA8GT5KGjABwjRKGjABwXRKGjABwLRKGjAB/PQKGgCIQg/BNAIQAg0CDYAKNTRWCckTHxEIU4DkRxIMUYEmgDwV/koaEAHCNUoaEAHBdUoaEAHAtUoaEAH89QUSDFGIkYA8DT5KGjABwjRKGjABwXRKGjABwLRKGjAB/PQKGgIPwOZANEi5whACDYINAAo09Ec5wCYBbDwvQKYACgAmAHQBbDwvQAgBbDwvcBGANAMQNDjDEAAAERAAADAQQABwEG+AwAA4gQAAPC1gbAERkAKOUmIQmvRASCCAjhOMEYhRgDwBvlAIjBGIUYA8OP4NE84aMAHCNE4aMAHBdE4aMAHAtE4aMAH89A4aAAlgAdP1EAiMEYhRgDwzfg4aMAHCNE4aMAHBdE4aMAHAtE4aMAH89A4aIAHO9RAIjBGIUYA8Ln4OGjABwjROGjABwXROGjABwLROGjAB/PQOGiAByfUQCIwRiFGAPCl+DhowAcI0ThowAcF0ThowAcC0ThowAfz0DhogAcT1EAiMEYhRgDwkfg4aMAHCNE4aMAHBdE4aMAHAtE4aMAH89A4aADgASUoRgGw8L3ARgDgIAAA0AxA0OMMQPC1gbAURg1GBkZBCgEgHEqRQjPRAC0x0AchKUAu0RpPASCCAhdIMUYA8ID4OGhABwjVOGhABwXVOGhABwLVOGhAB/PUD0gxRiJGAPBd+DhowAcI0ThowAcF0ThowAcC0ThowAfz0DloCD0AIAAtBdACIhFACDYINAAp0dEBsPC9AOAgAADQDEDQ4wxAACBwR3C1FkwBUQAZACsk0AMkGUYhQF0eAy0B0gAkDuCjQwAkFUYuaEZgbmhGYK5oRmDuaEZgEDUkHaNC89EAKQvQowDUWERgASkG0JoYU2hDYAIpAdCRaEFggGhwvcBGBBEAABC1AiMTQxEiEgKEGGNgIWIBIYFQEL3ARnC1ESMbAsQYASVlYAROZmIhYhFoIWNRaGFjxVBwvcBG/wEAABC1DUvAGAEjnAKiQgzQXAKiQhDRiQIJDR8pCNn/KQrYAB0gOckIAuBAMEkEyQ6LQAFomUMBYBC90BEAAAEggQILShNoi0MTYAEFU2iLQ1NgQAQISQpoAkII0ApoAkIF0ApoAkIC0ApoAkLz0XBHwEYAAQtABAILQAEgAAQISQpogkMKYAdIAWjJBgjVAWjJBgXVAWjJBgLVAWjJBvPUcEcEAQtABAILQAEAAAC7qruqu6q7qv///////////////////////7uqu6q7qv//////////////////////////////////////////////////////////////////////////w9p5GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAWAhUCAQMCA6gS//////////////////////////////////////////////////////////////////////////////////////////9IABb0fQ8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+  load_address: 0x20200020
+  pc_init: 0x1
+  pc_uninit: 0x7d
+  pc_program_page: 0x395
+  pc_erase_sector: 0x299
+  pc_erase_all: 0x421
+  data_section_offset: 0x848
+  flash_properties:
+    address_range:
+      start: 0x41c00000
+      end: 0x41c00200
+    page_size: 0x100
+    erased_byte_value: 0xff
+    program_page_timeout: 500
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x200
+      address: 0x0
