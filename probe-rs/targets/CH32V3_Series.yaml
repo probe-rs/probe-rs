@@ -22,6 +22,28 @@ variants:
     - main
   flash_algorithms:
   - ch32v3-flash-algo
+- name: CH32V305
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+  memory_map:
+  - !Nvm
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - ch32v3-flash-algo
 flash_algorithms:
 - name: ch32v3-flash-algo
   description: Flash algorithm for the ch32v3xx series
