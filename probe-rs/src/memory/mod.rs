@@ -290,9 +290,6 @@ where
             }
         }
 
-        // If we do not have 32 bit aligned access we first check that we can do 8 bit aligned access on this platform.
-        // If we cannot we throw an error.
-        // If we can we read the first n < 4 bytes up until the word aligned address that comes next.
         if start_extra_count != 0 {
             // We first do an 8 bit write of the first < 4 bytes up until the 4 byte aligned boundary.
             self.write_8(address, &data[..start_extra_count])?;
