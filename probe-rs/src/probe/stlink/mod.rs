@@ -1005,6 +1005,11 @@ impl<D: StLinkUsb> StLink<D> {
         data: &[u8],
         apsel: u8,
     ) -> Result<(), DebugProbeError> {
+        // Do not attempt to write if there is no data.
+        if data.is_empty() {
+            return Ok(());
+        }
+
         self.select_ap(apsel)?;
 
         tracing::trace!("write_mem_32bit");
@@ -1045,6 +1050,11 @@ impl<D: StLinkUsb> StLink<D> {
         data: &[u8],
         apsel: u8,
     ) -> Result<(), DebugProbeError> {
+        // Do not attempt to write if there is no data.
+        if data.is_empty() {
+            return Ok(());
+        }
+
         self.select_ap(apsel)?;
 
         tracing::trace!("write_mem_16bit");
@@ -1080,6 +1090,11 @@ impl<D: StLinkUsb> StLink<D> {
         data: &[u8],
         apsel: u8,
     ) -> Result<(), DebugProbeError> {
+        // Do not attempt to write if there is no data. Doing so would result in endless retry.
+        if data.is_empty() {
+            return Ok(());
+        }
+
         self.select_ap(apsel)?;
 
         tracing::trace!("write_mem_8bit");
