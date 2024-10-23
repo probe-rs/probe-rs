@@ -291,6 +291,12 @@ impl ShellExt for PowerShell {
 }
 
 fn write_script(path: &Path, script: &str) -> Result<()> {
+    if let Some(parent) = path.parent() {
+        if !parent.exists() {
+            std::fs::create_dir_all(parent).context("Failed to create directory")?;
+        }
+    }
+
     let res = std::fs::write(path, script);
     if res.is_err() {
         println!("{script}");
