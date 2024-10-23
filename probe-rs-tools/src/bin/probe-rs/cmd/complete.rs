@@ -249,7 +249,24 @@ impl ShellExt for Zsh {
         };
 
         let path = dir.home_dir().join(".zfunc/").join(file_name);
-        write_script(&path, script)
+        write_script(&path, script)?;
+        use std::io::Write;
+
+        // Check if .zfunc is in FPATH
+        if let Ok(fpath) = std::env::var("FPATH") {
+            if !fpath.split(':').any(|p| p == path.to_str().unwrap()) {
+                let zshrc_path = dir.home_dir().join(".zshrc");
+                let export_cmd = "\n# Add .zfunc to FPATH for autocompletion\nexport FPATH=\"$HOME/.zfunc:$FPATH\"\n";
+                std::fs::OpenOptions::new()
+                    .append(true)
+                    .open(&zshrc_path)
+                    .and_then(|mut file| writeln!(file, "{}", export_cmd))
+                    .context("Failed to update .zshrc with FPATH")?;
+                eprintln!("Added .zfunc to FPATH in .zshrc. Please reload your zsh.");
+            }
+        }
+
+        Ok(())
     }
 }
 
