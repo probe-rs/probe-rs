@@ -301,5 +301,5 @@ fn write_script(path: &Path, script: &str) -> Result<()> {
         );
     }
 
-    res.context("Writing th script failed")
+    res.context("Writing the script failed")
 }
