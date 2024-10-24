@@ -260,12 +260,20 @@ impl ShellExt for Zsh {
 # Add .zfunc to FPATH for autocompletion
 export FPATH="$HOME/.zfunc:$FPATH"
 "#;
-                std::fs::OpenOptions::new()
+                let result = std::fs::OpenOptions::new()
                     .append(true)
                     .open(&zshrc_path)
                     .and_then(|mut file| writeln!(file, "{}", export_cmd))
-                    .context("Failed to update .zshrc with FPATH")?;
-                eprintln!("Added .zfunc to FPATH in .zshrc. Please reload your zsh.");
+                    .context("Failed to update .zshrc with FPATH");
+
+                match result {
+                    Ok(_) => eprintln!("Added .zfunc to FPATH in .zshrc. Please reload your zsh."),
+                    Err(e) => {
+                        eprintln!("Error: {}", e);
+                        eprintln!("Please add the following line to your .zshrc manually:");
+                        eprintln!("{}", export_cmd);
+                    }
+                }
             }
         }
 
