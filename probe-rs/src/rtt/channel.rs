@@ -456,7 +456,7 @@ impl DownChannel {
                 break;
             }
 
-            core.write_8(self.0.info.buffer_start_pointer() + write, &buf[..count])?;
+            core.write(self.0.info.buffer_start_pointer() + write, &buf[..count])?;
 
             total += count;
             write += count as u64;

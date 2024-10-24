@@ -72,6 +72,40 @@ fn test_register_write(tracker: &TestTracker, core: &mut Core) -> TestResult {
     Ok(())
 }
 
+fn test_write_read(
+    scenario: &str,
+    tracker: &TestTracker,
+    core: &mut Core,
+    address: u64,
+    data: &[u8],
+) -> TestResult {
+    println_test_status!(
+        tracker,
+        blue,
+        "Testing:  write and read at address {:#010X}: {scenario}",
+        address
+    );
+
+    core.write(address, data)
+        .into_diagnostic()
+        .wrap_err_with(|| format!("write to address {:#010X}", address))?;
+
+    let mut read_data = vec![0; data.len()];
+    core.read(address, &mut read_data)
+        .into_diagnostic()
+        .wrap_err_with(|| format!("read from address {:#010X}", address))?;
+
+    assert_eq!(
+        data,
+        &read_data[..],
+        "Error reading back {} bytes from address {:#010X}",
+        data.len(),
+        address
+    );
+
+    Ok(())
+}
+
 #[distributed_slice(CORE_TESTS)]
 fn test_memory_access(tracker: &TestTracker, core: &mut Core) -> TestResult {
     let memory_regions = core
@@ -150,6 +184,22 @@ fn test_memory_access(tracker: &TestTracker, core: &mut Core) -> TestResult {
             "Error reading back 1 byte from address {:#010X}",
             address
         );
+
+        test_write_read("1 byte at RAM start", tracker, core, ram_start, &[0x56])?;
+        test_write_read(
+            "4 bytes at RAM start",
+            tracker,
+            core,
+            ram_start,
+            &[0x12, 0x34, 0x56, 0x78],
+        )?;
+        test_write_read(
+            "4 bytes at RAM end",
+            tracker,
+            core,
+            ram_start + ram_size - 4,
+            &[0x12, 0x34, 0x56, 0x78],
+        )?;
     }
 
     Ok(())
