@@ -1392,64 +1392,6 @@ fn black_magic_debug_port_info(
             info.product
                 .unwrap_or_else(|| "Black Magic Probe".to_string()),
         ),
-        //    As of the date of this commit, serialport-rs 0.2.2 does not
-        // support fetching USB information on Linux without libudev.
-        // Because libudev makes it hard to cross-compile, we want to
-        // avoid pulling it in as a dependency.
-        //    To work around this, manually look up information if we're
-        // running on Linux by grabbing information out of /sys/. This is
-        // the same approach as used by pySerial, so it is a well-trodden path.
-        //    This code has been merged into serialport-rs [1] and is pending
-        // a new release, so this special case can go away once it's released.
-        //
-        // [1]: https://github.com/serialport/serialport-rs/pull/220
-        #[cfg(target_os = "linux")]
-        SerialPortType::Unknown => {
-            use std::{
-                fs::File,
-                path::{Path, PathBuf},
-            };
-
-            let port_name = port_name.split('/').last()?;
-            let device_path = PathBuf::from(format!("/sys/class/tty/{}/device", port_name))
-                .canonicalize()
-                .ok()?;
-            let subsystem = device_path.join("subsystem").canonicalize().ok()?;
-            let subsystem = subsystem.file_name()?.to_string_lossy();
-
-            let usb_interface_path = if subsystem == "usb-serial" {
-                device_path.parent()?
-            } else if subsystem == "usb" {
-                &device_path
-            } else {
-                return None;
-            };
-            let usb_device_path = usb_interface_path.parent()?;
-
-            fn read_file_to_string(dir: &Path, file: &str) -> Option<String> {
-                let dir = dir.join(file);
-                let mut f = File::open(dir).ok()?;
-                let mut s = String::new();
-                f.read_to_string(&mut s).ok()?;
-                Some(s.trim().to_owned())
-            }
-
-            fn read_file_to_u16(dir: &Path, file: &str) -> Option<u16> {
-                u16::from_str_radix(&read_file_to_string(dir, file)?, 16).ok()
-            }
-
-            fn read_file_to_u8(dir: &Path, file: &str) -> Option<u8> {
-                u8::from_str_radix(&read_file_to_string(dir, file)?, 16).ok()
-            }
-
-            let vid = read_file_to_u16(usb_device_path, "idVendor")?;
-            let pid = read_file_to_u16(usb_device_path, "idProduct")?;
-            let interface_number = read_file_to_u8(usb_interface_path, "bInterfaceNumber");
-            let serial_number = read_file_to_string(usb_device_path, "serial");
-            let product_name = read_file_to_string(usb_device_path, "product")
-                .unwrap_or_else(|| "Black Magic Probe".to_string());
-            (vid, pid, serial_number, interface_number, product_name)
-        }
         _ => return None,
     };
 
