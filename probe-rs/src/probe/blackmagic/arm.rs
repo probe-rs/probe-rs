@@ -1,14 +1,15 @@
 use crate::architecture::arm::ap::memory_ap::registers::{AddressIncrement, CSW};
 use crate::architecture::arm::ap::memory_ap::{DataSize, MemoryAp, MemoryApType};
 use crate::architecture::arm::ap::valid_access_ports;
-use crate::architecture::arm::communication_interface::SwdSequence;
+use crate::architecture::arm::communication_interface::{Initialized, SwdSequence};
 use crate::architecture::arm::dp::{Abort, Ctrl, DebugPortError, DpAccess, Select};
 use crate::architecture::arm::memory::{ArmMemoryInterface, Component};
 use crate::architecture::arm::{
     communication_interface::UninitializedArmProbe, sequences::ArmDebugSequence, ArmProbeInterface,
 };
 use crate::architecture::arm::{
-    ArmChipInfo, ArmError, DapAccess, DpAddress, FullyQualifiedApAddress, RawDapAccess, SwoAccess,
+    ArmChipInfo, ArmCommunicationInterface, ArmError, DapAccess, DpAddress,
+    FullyQualifiedApAddress, RawDapAccess, SwoAccess,
 };
 use crate::probe::blackmagic::{Align, BlackMagicProbe, ProtocolVersion, RemoteCommand};
 use crate::probe::{DebugProbeError, Probe};
@@ -80,11 +81,7 @@ impl UninitializedArmProbe for UninitializedBlackMagicArmProbe {
 }
 
 impl SwdSequence for UninitializedBlackMagicArmProbe {
-    fn swj_sequence(
-        &mut self,
-        bit_len: u8,
-        bits: u64,
-    ) -> Result<(), crate::probe::DebugProbeError> {
+    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
         self.probe.swj_sequence(bit_len, bits)
     }
 
@@ -93,7 +90,7 @@ impl SwdSequence for UninitializedBlackMagicArmProbe {
         pin_out: u32,
         pin_select: u32,
         pin_wait: u32,
-    ) -> Result<u32, crate::probe::DebugProbeError> {
+    ) -> Result<u32, DebugProbeError> {
         self.probe.swj_pins(pin_out, pin_select, pin_wait)
     }
 }
@@ -200,7 +197,7 @@ impl ArmProbeInterface for BlackMagicProbeArmDebug {
     }
 
     fn current_debug_port(&self) -> DpAddress {
-        todo!()
+        DpAddress::Default
     }
 
     fn memory_interface(
@@ -373,11 +370,7 @@ impl SwoAccess for BlackMagicProbeArmDebug {
 }
 
 impl SwdSequence for BlackMagicProbeArmDebug {
-    fn swj_sequence(
-        &mut self,
-        bit_len: u8,
-        bits: u64,
-    ) -> Result<(), crate::probe::DebugProbeError> {
+    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
         self.probe.swj_sequence(bit_len, bits)
     }
 
@@ -386,7 +379,7 @@ impl SwdSequence for BlackMagicProbeArmDebug {
         pin_out: u32,
         pin_select: u32,
         pin_wait: u32,
-    ) -> Result<u32, crate::probe::DebugProbeError> {
+    ) -> Result<u32, DebugProbeError> {
         self.probe.swj_pins(pin_out, pin_select, pin_wait)
     }
 }
@@ -394,9 +387,7 @@ impl SwdSequence for BlackMagicProbeArmDebug {
 fn dp_to_bmp(dp: DpAddress) -> Result<u8, ArmError> {
     match dp {
         DpAddress::Default => Ok(0),
-        DpAddress::Multidrop(val) => val
-            .try_into()
-            .map_err(|_| ArmError::NotImplemented("multidrop value is out of range")),
+        DpAddress::Multidrop(val) => val.try_into().map_err(|_| ArmError::OutOfBounds),
     }
 }
 
@@ -578,12 +569,7 @@ impl ArmMemoryInterface for BlackMagicProbeMemoryInterface<'_> {
 
     fn get_arm_communication_interface(
         &mut self,
-    ) -> Result<
-        &mut crate::architecture::arm::ArmCommunicationInterface<
-            crate::architecture::arm::communication_interface::Initialized,
-        >,
-        crate::probe::DebugProbeError,
-    > {
+    ) -> Result<&mut ArmCommunicationInterface<Initialized>, DebugProbeError> {
         Err(DebugProbeError::InterfaceNotAvailable {
             interface_name: "ARM",
         })
@@ -591,15 +577,7 @@ impl ArmMemoryInterface for BlackMagicProbeMemoryInterface<'_> {
 
     fn try_as_parts(
         &mut self,
-    ) -> Result<
-        (
-            &mut crate::architecture::arm::ArmCommunicationInterface<
-                crate::architecture::arm::communication_interface::Initialized,
-            >,
-            &mut MemoryAp,
-        ),
-        crate::probe::DebugProbeError,
-    > {
+    ) -> Result<(&mut ArmCommunicationInterface<Initialized>, &mut MemoryAp), DebugProbeError> {
         Err(DebugProbeError::InterfaceNotAvailable {
             interface_name: "ARM",
         })
@@ -607,11 +585,7 @@ impl ArmMemoryInterface for BlackMagicProbeMemoryInterface<'_> {
 }
 
 impl SwdSequence for BlackMagicProbeMemoryInterface<'_> {
-    fn swj_sequence(
-        &mut self,
-        bit_len: u8,
-        bits: u64,
-    ) -> Result<(), crate::probe::DebugProbeError> {
+    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
         self.probe.swj_sequence(bit_len, bits)
     }
 
@@ -620,14 +594,17 @@ impl SwdSequence for BlackMagicProbeMemoryInterface<'_> {
         pin_out: u32,
         pin_select: u32,
         pin_wait: u32,
-    ) -> Result<u32, crate::probe::DebugProbeError> {
+    ) -> Result<u32, DebugProbeError> {
         self.probe.swj_pins(pin_out, pin_select, pin_wait)
     }
 }
 
 impl BlackMagicProbeMemoryInterface<'_> {
     fn read_slice(&mut self, offset: u64, data: &mut [u8]) -> Result<(), ArmError> {
-        // Leave enough room for '&K' plus '#' plus an optional NULL.
+        // When responding, the probe will prefix the response with b"&K", and will
+        // suffix the response with b"#\0". Each byte is encoded as a hex pair.
+        // Ensure the buffer passed to us can accommodate these extra four bytes
+        // as well as the double-width encoded bytes.
         if data.len() * 2 + 4 >= super::BLACK_MAGIC_REMOTE_SIZE_MAX {
             return Err(ArmError::OutOfBounds);
         }

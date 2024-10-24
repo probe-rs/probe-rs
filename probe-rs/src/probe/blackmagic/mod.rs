@@ -1113,10 +1113,6 @@ impl DebugProbe for BlackMagicProbe {
     }
 
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
-        // if self.protocol == Some(protocol) {
-        //     return Ok(());
-        // }
-
         self.protocol = Some(protocol);
 
         tracing::debug!("Switching to protocol {}", protocol);
