@@ -328,8 +328,8 @@ fn write_script(path: &Path, script: &str) -> Result<()> {
     let res = std::fs::write(path, script);
     if res.is_err() {
         println!("{script}");
-        println!("Writing the autocompletion script failed");
-        println!(
+        eprintln!("Writing the autocompletion script failed");
+        eprintln!(
             "Please write the above script to {} manually",
             path.display()
         );
