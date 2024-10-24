@@ -353,19 +353,19 @@ impl ArmProbeInterface for BlackMagicProbeArmDebug {
 }
 
 impl SwoAccess for BlackMagicProbeArmDebug {
-    fn enable_swo(&mut self, config: &crate::architecture::arm::SwoConfig) -> Result<(), ArmError> {
-        println!("Enabling SWO: {:?}", config);
-        unimplemented!()
+    fn enable_swo(
+        &mut self,
+        _config: &crate::architecture::arm::SwoConfig,
+    ) -> Result<(), ArmError> {
+        Err(ArmError::NotImplemented("swo not implemented"))
     }
 
     fn disable_swo(&mut self) -> Result<(), ArmError> {
-        println!("Disabling SWO");
-        unimplemented!()
+        Err(ArmError::NotImplemented("swo not implemented"))
     }
 
-    fn read_swo_timeout(&mut self, timeout: std::time::Duration) -> Result<Vec<u8>, ArmError> {
-        println!("Setting read swo timeout: {:?}", timeout);
-        unimplemented!()
+    fn read_swo_timeout(&mut self, _timeout: std::time::Duration) -> Result<Vec<u8>, ArmError> {
+        Err(ArmError::NotImplemented("swo not implemented"))
     }
 }
 
