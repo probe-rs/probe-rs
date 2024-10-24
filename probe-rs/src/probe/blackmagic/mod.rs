@@ -562,6 +562,7 @@ enum RemoteError {
     Error(u64),
     Unsupported(u64),
     ProbeError(std::io::Error),
+    UnsupportedVersion(u64),
 }
 
 impl core::fmt::Display for RemoteError {
@@ -571,6 +572,7 @@ impl core::fmt::Display for RemoteError {
             Self::Error(e) => write!(f, "Remote error with result {:016x}", *e),
             Self::Unsupported(e) => write!(f, "Remote command unsupported with result {:016x}", *e),
             Self::ProbeError(e) => write!(f, "Probe error {}", e),
+            Self::UnsupportedVersion(e) => write!(f, "Only versions 0-4 are supported, not {}", e),
         }
     }
 }
@@ -657,9 +659,11 @@ impl BlackMagicProbe {
                 2 => ProtocolVersion::V2,
                 3 => ProtocolVersion::V3,
                 4 => ProtocolVersion::V4,
-                _ => {
+                version => {
                     return Err(DebugProbeError::ProbeCouldNotBeCreated(
-                        ProbeCreationError::Other("Unrecognized probe version response"),
+                        ProbeCreationError::ProbeSpecific(
+                            RemoteError::UnsupportedVersion(version).into(),
+                        ),
                     ))
                 }
             }
