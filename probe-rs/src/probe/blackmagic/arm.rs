@@ -666,8 +666,11 @@ impl BlackMagicProbeMemoryInterface<'_> {
     }
 
     fn write_slice(&mut self, align: Align, offset: u64, data: &[u8]) -> Result<(), ArmError> {
-        // Leave enough room for the memory message overhead
-        if data.len() * 2 + 40 >= super::BLACK_MAGIC_REMOTE_SIZE_MAX {
+        // The Black Magic Probe as a 1024-byte buffer. The largest possible message is
+        // b"!AM{:02x}{:02x}{:08x}{:02x}{:016x}{:08x}{DATA}#", which is 42 bytes long,
+        // plus widening the actual data. Ensure the message getting sent to the device
+        // doesn't exceed this.
+        if data.len() * 2 + 42 >= super::BLACK_MAGIC_REMOTE_SIZE_MAX {
             return Err(ArmError::OutOfBounds);
         }
         let command = match self.probe.probe.remote_protocol {
@@ -733,7 +736,7 @@ impl BlackMagicProbeMemoryInterface<'_> {
     }
 
     fn write(&mut self, align: Align, offset: u64, data: &[u8]) -> Result<(), ArmError> {
-        let chunk_size = super::BLACK_MAGIC_REMOTE_SIZE_MAX / 2 - 40;
+        let chunk_size = super::BLACK_MAGIC_REMOTE_SIZE_MAX / 2 - 42;
         for (chunk_index, chunk) in data.chunks(chunk_size).enumerate() {
             self.write_slice(
                 align,
