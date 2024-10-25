@@ -31,6 +31,7 @@ impl AmbaAhb5 {
         let me = Self { address, csw, cfg };
         let csw = CSW {
             DbgSwEnable: true,
+            HNONSEC: !csw.SPIDEN,
             MasterType: true,
             Privileged: true,
             Data: true,
