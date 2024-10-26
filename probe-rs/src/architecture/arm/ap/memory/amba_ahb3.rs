@@ -37,6 +37,7 @@ impl AmbaAhb3 {
             MasterType: true,
             Cacheable: true,
             Privileged: true,
+            HNONSEC: false,
             Data: true,
             AddrInc: AddressIncrement::Single,
             ..me.csw
