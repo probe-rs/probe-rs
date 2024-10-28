@@ -277,11 +277,10 @@ where
         assert!(end_extra_count < 4);
         assert!(inbetween_count % 4 == 0);
 
-        // If we do not have 32 bit aligned access we first check that we can do 8 bit aligned access on this platform.
-        // If we cannot we throw an error.
-        // If we can we read the first n < 4 bytes up until the word aligned address that comes next.
-        if address % 4 != 0 || len % 4 != 0 {
-            // If we do not support 8 bit transfers we have to bail because we can only do 32 bit word aligned transers.
+        if start_extra_count != 0 || end_extra_count != 0 {
+            // If we do not support 8 bit transfers we have to bail
+            // because we have to do unaligned writes but can only do
+            // 32 bit word aligned transers.
             if !self.supports_8bit_transfers()? {
                 return Err(MemoryNotAlignedError {
                     address,
@@ -289,7 +288,9 @@ where
                 }
                 .into());
             }
+        }
 
+        if start_extra_count != 0 {
             // We first do an 8 bit write of the first < 4 bytes up until the 4 byte aligned boundary.
             self.write_8(address, &data[..start_extra_count])?;
 
