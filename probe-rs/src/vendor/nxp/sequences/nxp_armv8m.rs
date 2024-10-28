@@ -21,6 +21,9 @@ use crate::{
     core::MemoryMappedRegister,
 };
 
+/// OL23D0 debug sequences.
+pub mod ol23d0;
+
 /// Start the debug port, and return if the device was (true) or wasn't (false)
 /// powered down.
 ///
