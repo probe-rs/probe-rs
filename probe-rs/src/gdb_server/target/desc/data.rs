@@ -114,7 +114,7 @@ impl TargetDescription {
                 let _ = write!(
                     target_description,
                     "<reg name='{}' bitsize='{}' type='{}'/>",
-                    reg.name, reg.size, reg._type
+                    reg.name.to_lowercase(), reg.size, reg._type
                 );
             }
 
