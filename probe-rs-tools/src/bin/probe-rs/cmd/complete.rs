@@ -67,7 +67,7 @@ impl Cmd {
                 Zsh.install(&file_name, &script)?;
             }
             Shell::Bash => {
-                Zsh.install(&file_name, &script)?;
+                Bash.install(&file_name, &script)?;
             }
             Shell::PowerShell => {
                 PowerShell.install(&file_name, &script)?;
