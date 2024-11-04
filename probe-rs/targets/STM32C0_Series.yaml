@@ -1,9 +1,11 @@
+# MANUAL EDIT: stm32c0x_64 flash algorithm region modified
+---
 name: STM32C0 Series
 manufacturer:
   id: 0x20
   cc: 0x0
 generated_from_pack: true
-pack_file_release: 1.0.0
+pack_file_release: 2.0.0
 variants:
 - name: STM32C011D6Yx
   cores:
@@ -14,7 +16,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: BANK_1
+    name: Flash
     range:
       start: 0x8000000
       end: 0x8008000
@@ -41,7 +43,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: BANK_1
+    name: Flash
     range:
       start: 0x8000000
       end: 0x8004000
@@ -68,7 +70,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: BANK_1
+    name: Flash
     range:
       start: 0x8000000
       end: 0x8004000
@@ -95,7 +97,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: BANK_1
+    name: Flash
     range:
       start: 0x8000000
       end: 0x8008000
@@ -122,7 +124,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: BANK_1
+    name: Flash
     range:
       start: 0x8000000
       end: 0x8008000
@@ -149,7 +151,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: BANK_1
+    name: Flash
     range:
       start: 0x8000000
       end: 0x8004000
@@ -176,7 +178,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: BANK_1
+    name: Flash
     range:
       start: 0x8000000
       end: 0x8008000
@@ -203,7 +205,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: BANK_1
+    name: Flash
     range:
       start: 0x8000000
       end: 0x8004000
@@ -230,7 +232,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: BANK_1
+    name: Flash
     range:
       start: 0x8000000
       end: 0x8004000
@@ -257,7 +259,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: BANK_1
+    name: Flash
     range:
       start: 0x8000000
       end: 0x8008000
@@ -284,7 +286,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: BANK_1
+    name: Flash
     range:
       start: 0x8000000
       end: 0x8008000
@@ -311,7 +313,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: BANK_1
+    name: Flash
     range:
       start: 0x8000000
       end: 0x8004000
@@ -338,7 +340,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: BANK_1
+    name: Flash
     range:
       start: 0x8000000
       end: 0x8008000
@@ -365,7 +367,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: BANK_1
+    name: Flash
     range:
       start: 0x8000000
       end: 0x8004000
@@ -392,7 +394,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: BANK_1
+    name: Flash
     range:
       start: 0x8000000
       end: 0x8008000
@@ -419,7 +421,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: BANK_1
+    name: Flash
     range:
       start: 0x8000000
       end: 0x8004000
@@ -446,7 +448,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: BANK_1
+    name: Flash
     range:
       start: 0x8000000
       end: 0x8004000
@@ -473,7 +475,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: BANK_1
+    name: Flash
     range:
       start: 0x8000000
       end: 0x8008000
@@ -500,7 +502,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: BANK_1
+    name: Flash
     range:
       start: 0x8000000
       end: 0x8008000
@@ -518,6 +520,816 @@ variants:
     - main
   flash_algorithms:
   - stm32c0x_32
+- name: STM32C071C8Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_64
+- name: STM32C071C8TxN
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_64
+- name: STM32C071C8Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_64
+- name: STM32C071C8UxN
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_64
+- name: STM32C071CBTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_64
+- name: STM32C071CBTxN
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_64
+- name: STM32C071CBUx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_64
+- name: STM32C071CBUxN
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_64
+- name: STM32C071F8Px
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_64
+- name: STM32C071F8PxN
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_64
+- name: STM32C071FBPx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_64
+- name: STM32C071FBPxN
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_64
+- name: STM32C071FBYx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_64
+- name: STM32C071G8Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_64
+- name: STM32C071G8UxN
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_64
+- name: STM32C071GBUx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_64
+- name: STM32C071GBUxN
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_64
+- name: STM32C071K8Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_64
+- name: STM32C071K8TxN
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_64
+- name: STM32C071K8Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_64
+- name: STM32C071K8UxN
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_64
+- name: STM32C071KBTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_64
+- name: STM32C071KBTxN
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_64
+- name: STM32C071KBUx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_64
+- name: STM32C071KBUxN
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_64
+- name: STM32C071R8Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_64
+- name: STM32C071R8TxN
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_64
+- name: STM32C071RBIxN
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_64
+- name: STM32C071RBTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_64
+- name: STM32C071RBTxN
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20006000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_64
 flash_algorithms:
 - name: stm32c0x_32
   description: STM32C0x_32
@@ -534,6 +1346,28 @@ flash_algorithms:
       start: 0x8000000
       end: 0x8008000
     page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 400
+    erase_sector_timeout: 400
+    sectors:
+    - size: 0x800
+      address: 0x0
+- name: stm32c0x_64
+  description: STM32C0x_64
+  default: true
+  instructions: 7/MQgHK2EUgRSYFggWnJAwTVwWgAKRLUACBwRw1JDkoKYA5KCmAGIkpgDUqKYA1JDUpKYH8iCmDBaAAp7NULSQFgC0kBYAAgcEfARgggAkD6wwAAADAAQKqqAABVVQAA/w8AAAAsAED/AQAAIwFnRauJ780BIMAHAkkKaAJDCmAAIHBHFCACQAEgcEcQte/zEIBytgEgAgQVSQtoE0II0AtoE0IF0AtoE0IC0AtoE0Lz0UxoBCMcQ0xgTGgUQ0xgDGgUQgjQDGgUQgXQDGgUQgLQDGgUQvPRDGgGShRCAdAKYBC9SGiYQ0hgACAQvcBGECACQPrDAABwte/zEIFythtJCh8bSxNg/yTkAA1opUMNYB8k5AYAGQAKDGgEQwIlLEMMYAEgBAQOaCZDDmAWaCZCCNAWaCZCBdAWaCZCAtAWaCZC89EWaB5CAdATYHC9CGioQwhgASDABgJoACBSHADQcL0UOQpoIkMKYHC9wEYUIAJA+sMAAPC1jrATRgVG7/MQgHK2zh0BIACQBARbSQhoIEII0AhoIEIF0AhoIEIC0AhoIELz0VVICGBIaACaEENIYAcghkMGqIAwAZAF4Ag+CDUIaMAHANCB4AAuANGD4AguEdMYaChgWGhoYAgzCGggQuzQCGggQunQCGggQubQCGggQvPR4ucYeAOQBpABLgHRWxwg4Fh4B5ACLgHRmxwa4Jh4CJADLgHR2xwU4Nh4CZAELgHRGx0O4Bh5CpAFLgHRWx0I4Fh5C5AGLgHRmx0C4Jh5DJDbHQWTBJUIIIMbAyAEKwKQAdIAJw7gHUaFQ7AABq84GAAn/yICYEJggmDCYBAwPx29QvbRApgDQA7QuBmAAAat/yIqUAErB9AGrUUZamACKwLQBqvAGIJgCGggQgjQCGggQgXQCGggQgLQCGggQvPRBJ0DmChgAZgAaGhgACYFmwhowAcA0X3nDEgIYACYDrDwvUpoASOaQ0pg2gYSaAAgUhwE0BsEEDkKaJpDCmAOsPC9wEYQIAJA/wEAAPrDAAAAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x75
+  pc_program_page: 0x179
+  pc_erase_sector: 0xf9
+  pc_erase_all: 0x8d
+  data_section_offset: 0x308
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      # MANUAL EDIT: extended region from 64KB to 128KB
+      end: 0x8020000
+    page_size: 0x800
     erased_byte_value: 0xff
     program_page_timeout: 400
     erase_sector_timeout: 400
