@@ -1,5 +1,9 @@
 use super::FlashError;
-use crate::{architecture::riscv, core::Architecture, Target};
+use crate::{
+    architecture::{arm, riscv},
+    core::Architecture,
+    Target,
+};
 use probe_rs_target::{
     FlashProperties, MemoryRegion, PageInfo, RamRegion, RawFlashAlgorithm, RegionMergeIterator,
     SectorInfo, TransferEncoding,
@@ -174,16 +178,7 @@ impl FlashAlgorithm {
     // Header for RISC-V Flash Algorithms
     const RISCV_FLASH_BLOB_HEADER: [u32; 2] = [riscv::assembly::EBREAK, riscv::assembly::EBREAK];
 
-    const ARM_FLASH_BLOB_HEADER: [u32; 8] = [
-        0xE00A_BE00,
-        0x062D_780D,
-        0x2408_4068,
-        0xD300_0040,
-        0x1E64_4058,
-        0x1C49_D1FA,
-        0x2A00_1E52,
-        0x0477_0D1F,
-    ];
+    const ARM_FLASH_BLOB_HEADER: [u32; 1] = [arm::assembly::BRKPT];
 
     const XTENSA_FLASH_BLOB_HEADER: [u32; 0] = [];
 
