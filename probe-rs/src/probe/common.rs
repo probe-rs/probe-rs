@@ -232,6 +232,10 @@ pub(crate) fn extract_ir_lengths(
                 Ok(starts_to_lengths(&exp_starts, ir.len()))
             }
         }
+    } else if n_taps == 1 {
+        // If there's only one TAP, this is easy.
+        tracing::info!("Only one TAP detected, IR length {}", ir.len());
+        Ok(vec![ir.len()])
     } else if n_taps == starts.len() {
         // If the number of possible starts matches the number of TAPs,
         // we can unambiguously find all lengths.
