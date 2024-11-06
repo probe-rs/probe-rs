@@ -232,10 +232,6 @@ pub(crate) fn extract_ir_lengths(
                 Ok(starts_to_lengths(&exp_starts, ir.len()))
             }
         }
-    } else if n_taps == 1 {
-        // If there's only one TAP, this is easy.
-        tracing::info!("Only one TAP detected, IR length {}", ir.len());
-        Ok(vec![ir.len()])
     } else if n_taps == starts.len() {
         // If the number of possible starts matches the number of TAPs,
         // we can unambiguously find all lengths.
@@ -243,6 +239,28 @@ pub(crate) fn extract_ir_lengths(
         tracing::info!("IR lengths are unambiguous: {irlens:?}");
         Ok(irlens)
     } else {
+        if n_taps < starts.len() {
+            // We have more possible starts than TAPs. This may be because some devices start the
+            // IR scan with 101xx. Try to merge length 2 IRs with their neighbours.
+            let mut irlens = starts_to_lengths(&starts, ir.len()).into_iter();
+            let mut merged = Vec::new();
+            while let Some(len) = irlens.next() {
+                if len == 2 {
+                    if let Some(next) = irlens.next() {
+                        merged.push(len + next);
+                        continue;
+                    }
+                }
+                merged.push(len);
+            }
+
+            // Only succeed if we end up with the expected number of IRs.
+            if merged.len() == n_taps {
+                tracing::info!("IR lengths after merging 101xx prefixes: {merged:?}");
+                return Ok(merged);
+            }
+        }
+
         tracing::error!("IR lengths are ambiguous and must be explicitly configured.");
         Err(ScanChainError::InvalidIR)
     }
