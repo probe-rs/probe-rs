@@ -885,6 +885,19 @@ mod tests {
     }
 
     #[test]
+    fn extract_ir_lengths_with_two_taps_101() {
+        // Slightly contrived example where the IR scan starts with 101xx. In known real devices
+        // the 101 TAP is 5 bits long, but this is an edge case that the algorithm should handle.
+        let ir = &bitvec![u8, Lsb0; 1,0,1,0,1,0,0,0,0];
+        let n_taps = 2;
+        let expected = None;
+
+        let ir_lengths = extract_ir_lengths(ir, n_taps, expected).unwrap();
+
+        assert_eq!(ir_lengths, vec![4, 5]);
+    }
+
+    #[test]
     fn extract_id_codes_one_tap() {
         let mut dr = bitvec![u8, Lsb0; 0; 32];
         dr[0..32].store_le(ARM_TAP.0);
