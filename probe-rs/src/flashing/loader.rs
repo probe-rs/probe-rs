@@ -758,7 +758,7 @@ impl FlashLoader {
         let algorithms = target
             .flash_algorithms
             .iter()
-            // filter for algorithims that contiain adress range
+            // filter for algorithms that contain address range
             .filter(|&fa| {
                 fa.flash_properties
                     .address_range
