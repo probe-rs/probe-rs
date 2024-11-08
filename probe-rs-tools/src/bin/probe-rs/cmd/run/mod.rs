@@ -351,6 +351,13 @@ impl RunLoop {
             }
         };
 
+        // Sometimes semihosting operations may be executed
+        // slowly and may inadvertently trigger the timeout.
+        // We extend the timeout with the time we slept before the last Halted status, and
+        // the duration we spent in the predicate.
+        let mut deadline = timeout.map(|t| start + t);
+        let mut last_poll = Instant::now();
+
         let return_reason = loop {
             // check for halt first, poll rtt after.
             // this is important so we do one last poll after halt, so we flush all messages
@@ -358,14 +365,22 @@ impl RunLoop {
             let mut return_reason = None;
             let mut was_halted = false;
             match core.status()? {
-                probe_rs::CoreStatus::Halted(reason) => match predicate(reason, core) {
-                    Ok(Some(r)) => return_reason = Some(Ok(ReturnReason::Predicate(r))),
-                    Err(e) => return_reason = Some(Err(e)),
-                    Ok(None) => {
-                        was_halted = true;
-                        core.run()?
+                probe_rs::CoreStatus::Halted(reason) => {
+                    let result = predicate(reason, core);
+
+                    if let Some(deadline) = deadline.as_mut() {
+                        *deadline += last_poll.elapsed();
                     }
-                },
+
+                    match result {
+                        Ok(Some(r)) => return_reason = Some(Ok(ReturnReason::Predicate(r))),
+                        Err(e) => return_reason = Some(Err(e)),
+                        Ok(None) => {
+                            was_halted = true;
+                            core.run()?
+                        }
+                    }
+                }
                 probe_rs::CoreStatus::Running
                 | probe_rs::CoreStatus::Sleeping
                 | probe_rs::CoreStatus::Unknown => {
@@ -384,8 +399,8 @@ impl RunLoop {
                     return_reason = Some(Ok(ReturnReason::User));
                 }
 
-                if let Some(timeout) = timeout {
-                    if start.elapsed() >= timeout {
+                if let Some(deadline) = deadline {
+                    if Instant::now() >= deadline {
                         return_reason = Some(Ok(ReturnReason::Timeout));
                     }
                 }
@@ -395,6 +410,7 @@ impl RunLoop {
                 break reason;
             }
 
+            last_poll = Instant::now();
             // Poll RTT with a frequency of 10 Hz if we do not receive any new data.
             // Once we receive new data, we bump the frequency to 1kHz.
             //
