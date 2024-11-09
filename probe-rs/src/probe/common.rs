@@ -398,12 +398,24 @@ pub(crate) struct JtagDriverState {
     pub state: JtagState,
     // The maximum IR address
     pub max_ir_address: u32,
-    pub expected_scan_chain: Option<Vec<ScanChainElement>>,
+    pub expected_scan_chain: Option<Vec<JtagChainItem>>,
     pub scan_chain: Vec<JtagChainItem>,
     pub chain_params: ChainParams,
     /// Idle cycles necessary between consecutive
     /// accesses to the DMI register
     pub jtag_idle_cycles: usize,
+}
+impl JtagDriverState {
+    pub(crate) fn set_expected_scan_chain(&mut self, scan_chain: Vec<ScanChainElement>) {
+        tracing::info!("Setting scan chain to {:?}", scan_chain);
+        self.expected_scan_chain = Some(scan_chain.into_iter().map(JtagChainItem::from).collect());
+    }
+
+    pub(crate) fn scan_chain(&self) -> &[JtagChainItem] {
+        self.expected_scan_chain
+            .as_deref()
+            .unwrap_or(self.scan_chain.as_slice())
+    }
 }
 
 impl Default for JtagDriverState {
@@ -701,13 +713,7 @@ impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
             self.state()
                 .expected_scan_chain
                 .as_ref()
-                .map(|chain| {
-                    chain
-                        .iter()
-                        .filter_map(|s| s.ir_len)
-                        .map(|s| s as usize)
-                        .collect::<Vec<usize>>()
-                })
+                .map(|chain| chain.iter().map(|s| s.irlen).collect::<Vec<usize>>())
                 .as_deref(),
         )?;
 
@@ -717,7 +723,11 @@ impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
         let chain = idcodes
             .into_iter()
             .zip(ir_lens)
-            .map(|(idcode, irlen)| JtagChainItem { irlen, idcode })
+            .map(|(idcode, irlen)| JtagChainItem {
+                irlen,
+                idcode,
+                name: None,
+            })
             .collect::<Vec<_>>();
 
         self.state_mut().scan_chain = chain;

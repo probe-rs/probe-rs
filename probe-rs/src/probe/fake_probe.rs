@@ -20,7 +20,7 @@ use crate::{
         ArmError, ArmProbeInterface, DapAccess, DpAddress, FullyQualifiedApAddress, PortType,
         RawDapAccess, SwoAccess,
     },
-    probe::{DebugProbe, DebugProbeError, Probe, WireProtocol},
+    probe::{DebugProbe, DebugProbeError, JtagChainItem, Probe, WireProtocol},
     Error, MemoryInterface, MemoryMappedRegister,
 };
 
@@ -29,7 +29,7 @@ use crate::{
 pub struct FakeProbe {
     protocol: WireProtocol,
     speed: u32,
-    scan_chain: Option<Vec<ScanChainElement>>,
+    scan_chain: Option<Vec<JtagChainItem>>,
 
     dap_register_read_handler: Option<Box<dyn Fn(PortType, u8) -> Result<u32, ArmError> + Send>>,
 
@@ -335,11 +335,11 @@ impl DebugProbe for FakeProbe {
     }
 
     fn set_scan_chain(&mut self, scan_chain: Vec<ScanChainElement>) -> Result<(), DebugProbeError> {
-        self.scan_chain = Some(scan_chain);
+        self.scan_chain = Some(scan_chain.into_iter().map(JtagChainItem::from).collect());
         Ok(())
     }
 
-    fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
+    fn scan_chain(&self) -> Result<&[JtagChainItem], DebugProbeError> {
         match &self.scan_chain {
             Some(chain) => Ok(chain),
             None => Err(DebugProbeError::Other(

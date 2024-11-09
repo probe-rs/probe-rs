@@ -36,6 +36,7 @@ use crate::probe::jlink::config::JlinkConfig;
 use crate::probe::jlink::connection::JlinkConnection;
 use crate::probe::usb_util::InterfaceExt;
 use crate::probe::JTAGAccess;
+use crate::probe::JtagChainItem;
 use crate::{
     architecture::{
         arm::{
@@ -965,7 +966,7 @@ impl DebugProbe for JLink {
     }
 
     fn set_scan_chain(&mut self, scan_chain: Vec<ScanChainElement>) -> Result<(), DebugProbeError> {
-        self.jtag_state.expected_scan_chain = Some(scan_chain);
+        self.jtag_state.set_expected_scan_chain(scan_chain);
         Ok(())
     }
 
@@ -1062,15 +1063,9 @@ impl DebugProbe for JLink {
         self.select_target(index)
     }
 
-    fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
+    fn scan_chain(&self) -> Result<&[JtagChainItem], DebugProbeError> {
         match self.active_protocol() {
-            Some(WireProtocol::Jtag) => {
-                if let Some(ref scan_chain) = self.jtag_state.expected_scan_chain {
-                    Ok(scan_chain)
-                } else {
-                    Ok(&[])
-                }
-            }
+            Some(WireProtocol::Jtag) => Ok(self.jtag_state.scan_chain()),
             _ => Err(DebugProbeError::InterfaceNotAvailable {
                 interface_name: "JTAG",
             }),

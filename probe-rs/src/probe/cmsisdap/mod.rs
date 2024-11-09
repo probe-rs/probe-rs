@@ -96,7 +96,8 @@ pub struct CmsisDap {
 
     /// Speed in kHz
     speed_khz: u32,
-    scan_chain: Option<Vec<ScanChainElement>>,
+    scan_chain: Vec<JtagChainItem>,
+    expected_scan_chain: Option<Vec<JtagChainItem>>,
 
     batch: Vec<BatchCommand>,
 }
@@ -150,7 +151,8 @@ impl CmsisDap {
             swo_streaming: false,
             connected: false,
             speed_khz: 1_000,
-            scan_chain: None,
+            scan_chain: Vec::new(),
+            expected_scan_chain: None,
             batch: Vec::new(),
         })
     }
@@ -236,7 +238,11 @@ impl CmsisDap {
         Ok(idcodes
             .into_iter()
             .zip(ir_lens)
-            .map(|(idcode, irlen)| JtagChainItem { irlen, idcode })
+            .map(|(idcode, irlen)| JtagChainItem {
+                irlen,
+                idcode,
+                name: None,
+            })
             .collect())
     }
 
@@ -805,18 +811,18 @@ impl DebugProbe for CmsisDap {
 
     fn set_scan_chain(&mut self, scan_chain: Vec<ScanChainElement>) -> Result<(), DebugProbeError> {
         tracing::info!("Setting scan chain to {:?}", scan_chain);
-        self.scan_chain = Some(scan_chain);
+        self.expected_scan_chain = Some(scan_chain.into_iter().map(JtagChainItem::from).collect());
         Ok(())
     }
 
     /// Returns the JTAG scan chain
-    fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
+    fn scan_chain(&self) -> Result<&[JtagChainItem], DebugProbeError> {
         match self.active_protocol() {
             Some(WireProtocol::Jtag) => {
-                if let Some(ref chain) = self.scan_chain {
+                if let Some(ref chain) = self.expected_scan_chain {
                     Ok(chain.as_slice())
                 } else {
-                    Ok(&[])
+                    Ok(self.scan_chain.as_slice())
                 }
             }
             _ => Err(DebugProbeError::InterfaceNotAvailable {
@@ -1083,25 +1089,21 @@ impl RawDapAccess for CmsisDap {
 
     fn configure_jtag(&mut self, skip_scan: bool) -> Result<(), DebugProbeError> {
         let ir_lengths = if skip_scan {
-            self.scan_chain
+            self.expected_scan_chain
                 .as_ref()
-                .map(|chain| chain.iter().filter_map(|s| s.ir_len).collect::<Vec<u8>>())
+                .map(|chain| chain.iter().map(|s| s.irlen as u8).collect::<Vec<u8>>())
                 .unwrap_or_default()
         } else {
             let chain = self.jtag_scan(
-                self.scan_chain
+                self.expected_scan_chain
                     .as_ref()
-                    .map(|chain| {
-                        chain
-                            .iter()
-                            .filter_map(|s| s.ir_len)
-                            .map(|s| s as usize)
-                            .collect::<Vec<usize>>()
-                    })
+                    .map(|chain| chain.iter().map(|s| s.irlen).collect::<Vec<usize>>())
                     .as_deref(),
             )?;
+            self.scan_chain = chain.clone();
             chain.iter().map(|item| item.irlen as u8).collect()
         };
+
         tracing::info!("Configuring JTAG with ir lengths: {:?}", ir_lengths);
         self.send_jtag_configure(JtagConfigureRequest::new(ir_lengths)?)?;
 

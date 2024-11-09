@@ -13,7 +13,7 @@ use crate::{
     probe::{
         arm_debug_interface::{ProbeStatistics, RawProtocolIo, SwdSettings},
         common::{JtagDriverState, RawJtagIo},
-        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, JTAGAccess,
+        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, JTAGAccess, JtagChainItem,
         ProbeCreationError, ProbeFactory, ScanChainElement, WireProtocol,
     },
 };
@@ -330,17 +330,12 @@ impl DebugProbe for FtdiProbe {
     }
 
     fn set_scan_chain(&mut self, scan_chain: Vec<ScanChainElement>) -> Result<(), DebugProbeError> {
-        tracing::info!("Setting scan chain to {:?}", scan_chain);
-        self.jtag_state.expected_scan_chain = Some(scan_chain);
+        self.jtag_state.set_expected_scan_chain(scan_chain);
         Ok(())
     }
 
-    fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
-        if let Some(ref scan_chain) = self.jtag_state.expected_scan_chain {
-            Ok(scan_chain)
-        } else {
-            Ok(&[])
-        }
+    fn scan_chain(&self) -> Result<&[JtagChainItem], DebugProbeError> {
+        Ok(self.jtag_state.scan_chain())
     }
 
     fn attach(&mut self) -> Result<(), DebugProbeError> {

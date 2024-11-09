@@ -19,8 +19,8 @@ use crate::{
         FullyQualifiedApAddress, Pins, SwoAccess, SwoConfig, SwoMode,
     },
     probe::{
-        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeError,
-        ProbeFactory, WireProtocol,
+        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, JtagChainItem, Probe,
+        ProbeError, ProbeFactory, WireProtocol,
     },
     Error as ProbeRsError, MemoryInterface,
 };
@@ -96,7 +96,7 @@ pub struct StLink<D: StLinkUsb> {
     swd_speed_khz: u32,
     jtag_speed_khz: u32,
     swo_enabled: bool,
-    scan_chain: Option<Vec<ScanChainElement>>,
+    scan_chain: Option<Vec<JtagChainItem>>,
 
     /// List of opened APs
     opened_aps: Vec<u8>,
@@ -167,11 +167,11 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
 
     fn set_scan_chain(&mut self, scan_chain: Vec<ScanChainElement>) -> Result<(), DebugProbeError> {
         tracing::info!("Setting scan chain to {:?}", scan_chain);
-        self.scan_chain = Some(scan_chain);
+        self.scan_chain = Some(scan_chain.into_iter().map(JtagChainItem::from).collect());
         Ok(())
     }
 
-    fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
+    fn scan_chain(&self) -> Result<&[JtagChainItem], DebugProbeError> {
         match self.active_protocol() {
             Some(WireProtocol::Jtag) => {
                 if let Some(ref scan_chain) = self.scan_chain {
