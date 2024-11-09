@@ -1,0 +1,1 @@
+Device autodetection now scans through all JTAG TAPs.
