@@ -1,4 +1,7 @@
 name: Tiva C Series
+manufacturer:
+  id: 0x17
+  cc: 0x0
 generated_from_pack: true
 pack_file_release: 1.1.0
 variants:

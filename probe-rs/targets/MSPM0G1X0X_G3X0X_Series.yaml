@@ -1,4 +1,7 @@
 name: MSPM0G1X0X_G3X0X Series
+manufacturer:
+  id: 0x17
+  cc: 0x0
 generated_from_pack: true
 pack_file_release: 1.3.1
 variants:

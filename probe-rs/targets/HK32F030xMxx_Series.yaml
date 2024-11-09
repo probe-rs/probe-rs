@@ -1,4 +1,7 @@
 name: HK32F030xMxx Series
+manufacturer:
+  id: 0x68
+  cc: 0xB
 generated_from_pack: true
 pack_file_release: 1.0.17
 variants:
