@@ -16,7 +16,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8008000
@@ -43,7 +43,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8004000
@@ -70,7 +70,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8004000
@@ -97,7 +97,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8008000
@@ -124,7 +124,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8008000
@@ -151,7 +151,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8004000
@@ -178,7 +178,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8008000
@@ -205,7 +205,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8004000
@@ -232,7 +232,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8004000
@@ -259,7 +259,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8008000
@@ -286,7 +286,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8008000
@@ -313,7 +313,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8004000
@@ -340,7 +340,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8008000
@@ -367,7 +367,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8004000
@@ -394,7 +394,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8008000
@@ -421,7 +421,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8004000
@@ -448,7 +448,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8004000
@@ -475,7 +475,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8008000
@@ -502,7 +502,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8008000
@@ -529,7 +529,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8010000
@@ -556,7 +556,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8010000
@@ -583,7 +583,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8010000
@@ -610,7 +610,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8010000
@@ -637,7 +637,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -664,7 +664,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -691,7 +691,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -718,7 +718,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -745,7 +745,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8010000
@@ -772,7 +772,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8010000
@@ -799,7 +799,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -826,7 +826,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -853,7 +853,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -880,7 +880,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8010000
@@ -907,7 +907,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8010000
@@ -934,7 +934,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -961,7 +961,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -988,7 +988,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8010000
@@ -1015,7 +1015,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8010000
@@ -1042,7 +1042,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8010000
@@ -1069,7 +1069,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8010000
@@ -1096,7 +1096,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -1123,7 +1123,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -1150,7 +1150,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -1177,7 +1177,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -1204,7 +1204,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8010000
@@ -1231,7 +1231,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8010000
@@ -1258,7 +1258,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -1285,7 +1285,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
@@ -1312,7 +1312,7 @@ variants:
       psel: 0x0
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8020000
