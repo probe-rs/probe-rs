@@ -37,6 +37,7 @@ variants:
       range:
         start: 0x40000000
         end: 0x44000000
+      is_alias: true
       access:
         boot: false
       cores:
@@ -51,7 +52,8 @@ variants:
       cores:
         - cpu0
         - cpu1
-  flash_algorithms: []
+  flash_algorithms:
+    - esp32p4-flashloader
   jtag:
     scan_chain:
       - name: lpcpu
@@ -59,4 +61,33 @@ variants:
       - name: hp
         ir_len: 5
   default_binary_format: idf
-flash_algorithms: []
+flash_algorithms:
+  - name: esp32p4-flashloader
+    description: ''
+    default: true
+    load_address: 0x4FF10000
+    transfer_encoding: miniz
+    data_load_address: 0x4FFB0000
+    stack_overflow_check: false
+    cores:
+      - cpu0
+    instructions: QREGxpcAAADngOAEAUWyQEEBgoAXAwAAZwDDBxcDAABnAEMJFwMAAGcAowoXAwAAZwDDDRcDAABnAKMSFwMAAGcAQxUJxhcDz/9nACMRAUWCgEERBsYBRYFFlwDP/+eA4Bg3BfpPIyIFALe1+k8jqgWufVYjrMWuI64FriOgBbC3BcGquRUMwQFFskBBAYKAtwX6T4xBNwbBqjkWY5fFAEGBFwPP/2cA4woTBXDBgoA3BfpPCEG3BcGquRVjFrUAFwPP/2cAwwYTBXDBgoC3BvpPlEIuh7cFwaqTh+X+kwVwwWOX9gCTdjYAkwUwwZnCLoWCgLcF8U+ThuUysoU6hhcDAABnAIMNQREGxiLEJsK3BvpPlEKuhCqENwXBqpMF5f4TBXDBY5e2ApN1NgATBTDBjeE3BfFPkwYlNSKFsoUmhpcAAADngGAJMzWgAH0VZY0ilbJAIkSSREEBgoC3BvpPmEKuhrcFwaqTh+X+kwVwwWMX9wATdzYAkwUwwRnDLoWCgLKFNoYXAwAAZwDD60ERBsY3BvpPFEKqhTcFwaoTB+X+EwVwwWOV5gIBRYlGIyAGAGOf1QAFRSrEA0WBAAWJAckoAJVFlwDP/+eAQPp11bJAQQGCgDlxBt4i3CbaSthO1lLUVtJa0F7OYsxmyje3+k+DJ4evNomuimOFpwSRRpMFQMFjZtYQg8UKAIPGGgCDxzoAg8QqAJEKcRbiB8IEogbVjcWP3Y23tvpPI6ymriOuBq4joLawNwX6TyMiBQAjqgauAyUHsHHBqoxjY8UAsoyzBZVBt7v6TyOgu7CFRI1JY2OmAIVJIWw3NfpPEwtFrzcK+k8RCmOEDAhjUpAIZsYDpUuvMwWsQCrIA6dLr1qXcAAcCFKF1oXahk6IlwDP/+eAgOWyRWP1vACTBGDBIaiqhEJFA6ZLr7OMvECumjKVI6qrrpnEA6VLryFm4xXF+hmgA6ZLr4Oly68DpYuvLpUjqguuM4TFANqFApkjrouu41MF+BMFBYCTBQWGCagThQSDk9X0QemNGaCTBVDBLoXyUGJU0lRCWbJZIlqSWgJb8ktiTNJMIWGCgAXCQREGxpcAz//ngADikwUFgJOFBYZ9hW2NskBBAYKAAUWCgC1xFAIjrhYAgM7EyiOoJgEjpjYBsomuhCqJAUUTBgXwAcoTBhUAowWhEKqFMoX9t6MFsQBjiQkEEwUAEE6EY+SpABMEABCTBbEASoUihpcAAADngEDKY0oFAjOFhACziYlAkwWxACKGGcqDxgQAA8cFAIUEhQV9FuOI5v45oCKZqoTjmwn6AUURoH1VDAKDoMUBgE3ESQOpBQGDqcUAFWGCgA==
+    pc_init: 0x0
+    pc_uninit: 0x3c
+    pc_program_page: 0x24
+    pc_erase_sector: 0x14
+    pc_erase_all: 0x1c
+    pc_verify: 0x2c
+    pc_read: 0x34
+    data_section_offset: 0x4ff103f4
+    flash_properties:
+      address_range:
+        start: 0x0
+        end: 0x4000000
+      page_size: 0x4000
+      erased_byte_value: 0xff
+      program_page_timeout: 1000
+      erase_sector_timeout: 2000
+      sectors:
+      - size: 0x10000
+        address: 0x0
