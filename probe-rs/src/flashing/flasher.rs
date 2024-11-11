@@ -86,6 +86,7 @@ impl<'session> Flasher<'session> {
     fn ensure_loaded(&mut self) -> Result<(), FlashError> {
         if !self.loaded {
             self.load()?;
+            self.loaded = true;
         }
 
         Ok(())
