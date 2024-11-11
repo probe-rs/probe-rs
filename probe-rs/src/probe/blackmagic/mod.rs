@@ -25,7 +25,7 @@ use serialport::{available_ports, SerialPortType};
 use super::{
     arm_debug_interface::{ProbeStatistics, RawProtocolIo, SwdSettings},
     common::{JtagDriverState, RawJtagIo},
-    DebugProbeError, ProbeCreationError, ProbeError, WireProtocol,
+    DebugProbeError, DebugProbeSerial, ProbeCreationError, ProbeError, WireProtocol,
 };
 
 const BLACK_MAGIC_PROBE_VID: u16 = 0x1d50;
@@ -1387,7 +1387,7 @@ fn black_magic_debug_port_info(
         SerialPortType::UsbPort(info) => (
             info.vid,
             info.pid,
-            info.serial_number.map(|s| s.to_string()),
+            info.serial_number.map(|s| DebugProbeSerial(s.to_string())),
             info.interface,
             info.product
                 .unwrap_or_else(|| "Black Magic Probe".to_string()),
@@ -1435,7 +1435,7 @@ impl ProbeFactory for BlackMagicProbeFactory {
         // If the serial number is a valid "address:port" string, attempt to
         // connect to it via TCP.
         if let Some(serial_number) = &selector.serial_number {
-            if let Ok(connection) = std::net::TcpStream::connect(serial_number) {
+            if let Ok(connection) = std::net::TcpStream::connect(serial_number.0.clone()) {
                 let reader = connection;
                 let writer = reader.try_clone().map_err(|e| {
                     DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::Usb(e))

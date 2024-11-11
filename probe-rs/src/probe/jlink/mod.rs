@@ -52,6 +52,8 @@ use crate::{
     },
 };
 
+use super::DebugProbeSerial;
+
 const SWO_BUFFER_SIZE: u16 = 128;
 const TIMEOUT_DEFAULT: Duration = Duration::from_millis(500);
 
@@ -281,13 +283,17 @@ fn requires_connection_handle(selector: &DebugProbeSelector) -> bool {
     // As some other devices can't handle the registration command, we only enable it for known
     // devices.
     let devices = [
-        (0x1366, 0x0101, Some("000000123456")), // Blue J-Link PRO clone
+        (
+            0x1366,
+            0x0101,
+            Some(DebugProbeSerial("000000123456".to_owned())),
+        ), // Blue J-Link PRO clone
     ];
 
     devices.contains(&(
         selector.vendor_id,
         selector.product_id,
-        selector.serial_number.as_deref(),
+        selector.serial_number.to_owned(),
     ))
 }
 

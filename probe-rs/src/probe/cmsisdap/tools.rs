@@ -40,7 +40,7 @@ pub fn list_cmsisdap_devices() -> Vec<DebugProbeInfo> {
                 if !probes.iter().any(|p| {
                     p.vendor_id == info.vendor_id
                         && p.product_id == info.product_id
-                        && serial_eq_case_insensitive(&p.serial_number, &info.serial_number)
+                        && p.serial_number == info.serial_number
                 }) {
                     tracing::trace!("Adding new HID-only probe {:?}", info);
                     probes.push(info)
@@ -270,7 +270,7 @@ pub fn open_device_from_selector(
     // If nusb failed or the device didn't support v2, try using hidapi to open in v1 mode.
     let vid = selector.vendor_id;
     let pid = selector.product_id;
-    let sn = selector.serial_number.as_deref();
+    let sn = &selector.serial_number;
 
     tracing::debug!(
         "Attempting to open {:04x}:{:04x} in CMSIS-DAP v1 mode",
@@ -292,7 +292,7 @@ pub fn open_device_from_selector(
             let mut device_match = info.vendor_id() == vid && info.product_id() == pid;
 
             if let Some(sn) = sn {
-                device_match &= Some(sn) == info.serial_number();
+                device_match &= sn == info.serial_number();
             }
 
             if let Some(hid_interface) =
@@ -343,12 +343,4 @@ fn is_known_cmsis_dap_dev(device: &DeviceInfo) -> bool {
     KNOWN_DAPS
         .iter()
         .any(|&(vid, pid)| device.vendor_id() == vid && device.product_id() == pid)
-}
-
-fn serial_eq_case_insensitive(a: &Option<String>, b: &Option<String>) -> bool {
-    match (a, b) {
-        (Some(a), Some(b)) => a.eq_ignore_ascii_case(b),
-        (None, None) => true,
-        _ => false,
-    }
 }

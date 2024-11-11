@@ -253,7 +253,8 @@ fn list_probes(mut stream: impl std::io::Write, probes: &[DebugProbeInfo]) {
             probe.identifier,
             probe
                 .serial_number
-                .as_deref()
+                .as_ref()
+                .map(|s| s.0.as_str())
                 .unwrap_or("(no serial number)")
         )
         .unwrap();

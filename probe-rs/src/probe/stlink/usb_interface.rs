@@ -93,7 +93,7 @@ fn selector_matches(selector: &DebugProbeSelector, info: &DeviceInfo) -> bool {
         && selector
             .serial_number
             .as_ref()
-            .map(|s| read_serial_number(info).as_ref() == Some(s))
+            .map(|s| s == read_serial_number(info).as_ref())
             .unwrap_or(true);
 
     res

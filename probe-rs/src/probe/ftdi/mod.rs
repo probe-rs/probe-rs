@@ -31,6 +31,8 @@ mod ftdaye;
 use command_compacter::Command;
 use ftdaye::{error::FtdiError, ChipType};
 
+use super::DebugProbeSerial;
+
 #[derive(Debug)]
 struct JtagAdapter {
     device: ftdaye::Device,
@@ -639,7 +641,9 @@ fn get_device_info(device: &DeviceInfo) -> Option<DebugProbeInfo> {
             identifier: device.product_string().unwrap_or("FTDI").to_string(),
             vendor_id: device.vendor_id(),
             product_id: device.product_id(),
-            serial_number: device.serial_number().map(|s| s.to_string()),
+            serial_number: device
+                .serial_number()
+                .map(|s| DebugProbeSerial(s.to_string())),
             probe_factory: &FtdiProbeFactory,
             hid_interface: None,
         })

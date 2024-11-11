@@ -10,7 +10,7 @@ use probe_rs::flashing::FormatKind;
 use probe_rs::gdb_server::GdbInstanceConfiguration;
 use probe_rs::probe::list::Lister;
 use probe_rs::rtt::ScanRegion;
-use probe_rs::{probe::DebugProbeSelector, Session};
+use probe_rs::{probe::DebugProbeSelector, probe::DebugProbeSerial, Session};
 use std::ffi::OsString;
 use std::time::Instant;
 use std::{fs, thread};
@@ -179,7 +179,11 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
             (Some(vid), Some(pid)) => Some(DebugProbeSelector {
                 vendor_id: u16::from_str_radix(vid, 16)?,
                 product_id: u16::from_str_radix(pid, 16)?,
-                serial_number: config.probe.serial.clone(),
+                serial_number: config
+                    .probe
+                    .serial
+                    .as_ref()
+                    .map(|s| DebugProbeSerial(s.clone())),
             }),
             (vid, pid) => {
                 if vid.is_some() {

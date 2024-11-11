@@ -793,6 +793,63 @@ impl PartialEq for dyn ProbeFactory {
     }
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct DebugProbeSerial(pub String);
+
+impl PartialEq<str> for DebugProbeSerial {
+    fn eq(&self, other: &str) -> bool {
+        self.0.eq_ignore_ascii_case(other)
+    }
+}
+
+impl PartialEq<String> for DebugProbeSerial {
+    fn eq(&self, other: &String) -> bool {
+        self.eq(other.as_str())
+    }
+}
+
+impl PartialEq for DebugProbeSerial {
+    fn eq(&self, other: &Self) -> bool {
+        self.eq(&other.0)
+    }
+}
+
+impl PartialEq<Option<String>> for DebugProbeSerial {
+    fn eq(&self, other: &Option<String>) -> bool {
+        if let Some(other) = other {
+            self.eq(other)
+        } else {
+            false
+        }
+    }
+}
+
+impl PartialEq<Option<&String>> for &DebugProbeSerial {
+    fn eq(&self, other: &Option<&String>) -> bool {
+        if let Some(other) = other {
+            self.eq(other)
+        } else {
+            false
+        }
+    }
+}
+
+impl PartialEq<Option<&str>> for &DebugProbeSerial {
+    fn eq(&self, other: &Option<&str>) -> bool {
+        if let Some(other) = other {
+            self.eq(other)
+        } else {
+            false
+        }
+    }
+}
+
+impl std::fmt::Display for DebugProbeSerial {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 /// Gathers some information about a debug probe which was found during a scan.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DebugProbeInfo {
@@ -803,7 +860,7 @@ pub struct DebugProbeInfo {
     /// The USB product ID of the debug probe.
     pub product_id: u16,
     /// The serial number of the debug probe.
-    pub serial_number: Option<String>,
+    pub serial_number: Option<DebugProbeSerial>,
 
     /// The USB HID interface which should be used.
     /// This is necessary for composite HID devices.
@@ -821,7 +878,10 @@ impl std::fmt::Display for DebugProbeInfo {
             self.identifier,
             self.vendor_id,
             self.product_id,
-            self.serial_number.as_deref().unwrap_or(""),
+            self.serial_number
+                .as_ref()
+                .map(|s| s.0.as_str())
+                .unwrap_or(""),
             self.probe_factory,
         )
     }
@@ -837,6 +897,7 @@ impl DebugProbeInfo {
         probe_factory: &'static dyn ProbeFactory,
         hid_interface: Option<u8>,
     ) -> Self {
+        let serial_number = serial_number.map(|s| DebugProbeSerial(s));
         Self {
             identifier: identifier.into(),
             vendor_id,
@@ -903,7 +964,7 @@ pub struct DebugProbeSelector {
     /// The the USB product id of the debug probe to be used.
     pub product_id: u16,
     /// The the serial number of the debug probe to be used.
-    pub serial_number: Option<String>,
+    pub serial_number: Option<DebugProbeSerial>,
 }
 
 impl DebugProbeSelector {
@@ -913,7 +974,7 @@ impl DebugProbeSelector {
             && self
                 .serial_number
                 .as_ref()
-                .map(|s| info.serial_number() == Some(s))
+                .map(|s| s == info.serial_number())
                 .unwrap_or(true)
     }
 }
@@ -928,7 +989,7 @@ impl TryFrom<&str> for DebugProbeSelector {
 
         let vendor_id = split.next().unwrap(); // First split is always successful
         let product_id = split.next().ok_or(DebugProbeSelectorParseError::Format)?;
-        let serial_number = split.next().map(|s| s.to_string());
+        let serial_number = split.next().map(|s| DebugProbeSerial(s.to_string()));
 
         Ok(DebugProbeSelector {
             vendor_id: u16::from_str_radix(vendor_id, 16)?,
@@ -1416,7 +1477,7 @@ mod test {
         assert_eq!(selector.product_id, 0x1001);
         assert_eq!(
             selector.serial_number,
-            Some("DC:DA:0C:D3:FE:D8".to_string())
+            Some(DebugProbeSerial("DC:DA:0C:D3:FE:D8".to_string()))
         );
     }
 }
