@@ -41,6 +41,10 @@ pub struct TestOptions {
     #[clap(long = "exact", help_heading = "TEST OPTIONS")]
     pub exact: bool,
 
+    /// If set, list or run only *ignored* tests.
+    #[clap(long = "ignored", help_heading = "TEST OPTIONS")]
+    pub ignored: bool,
+
     /// A list of filters. Tests whose names contain parts of any of these
     /// filters are skipped.
     #[clap(
@@ -85,6 +89,7 @@ impl TestRunMode {
                 test_threads: Some(1), // Avoid parallel execution
                 list: test_options.list,
                 exact: test_options.exact,
+                ignored: test_options.ignored,
                 format: test_options.format,
                 skip: test_options.skip_test.clone(),
                 filter: if test_options.filter.is_empty() {
