@@ -1,3 +1,5 @@
+# Manual edit: removed flash algorithms where load address is outside of RAM
+---
 name: STM32WL Series
 manufacturer:
   id: 0x20

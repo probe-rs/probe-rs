@@ -1,3 +1,5 @@
+# Manual edit: removed flash algorithms where load address is outside of defined RAM
+---
 name: STM32WBA Series
 manufacturer:
   id: 0x20
