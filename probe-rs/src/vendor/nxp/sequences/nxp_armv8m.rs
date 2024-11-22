@@ -10,10 +10,7 @@ use crate::{
     architecture::arm::{
         ap::{memory_ap::MemoryApType, AccessPortType, ApAccess, GenericAp, IDR},
         communication_interface::{FlushableArmAccess, Initialized},
-        core::{
-            armv8m::{Aircr, Demcr, Dhcsr},
-            cortex_m,
-        },
+        core::armv8m::{Aircr, Demcr, Dhcsr},
         dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
         memory::ArmMemoryInterface,
         sequences::ArmDebugSequence,
@@ -786,14 +783,6 @@ impl ArmDebugSequence for MIMXRT118x {
                 Err(err) => return Err(err),
             };
             if dhcsr.s_reset_st() {
-                if dhcsr.s_halt() {
-                    // NXP's flash algos use the stack. Default limit on stack
-                    // makes the very first instruction (`push`) crash.
-                    // TODO: This should go the flash algo code maybe?
-                    tracing::trace!("Core is halted, zeroing MSPLIM_S register..");
-                    cortex_m::write_core_reg(interface, 0x1c.into(), 0_u32)?;
-                    tracing::trace!("MSPLIM_S zeroed.");
-                }
                 tracing::trace!("System reset was successful");
                 return Ok(());
             }
