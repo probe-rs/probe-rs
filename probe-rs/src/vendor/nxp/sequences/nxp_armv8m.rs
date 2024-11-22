@@ -8,7 +8,7 @@ use std::{
 
 use crate::{
     architecture::arm::{
-        ap::{memory_ap::MemoryApType, AccessPortType, ApAccess, GenericAp, IDR},
+        ap::{memory_ap::MemoryApType, AccessPortError, AccessPortType, ApAccess, GenericAp, IDR},
         communication_interface::{FlushableArmAccess, Initialized},
         core::armv8m::{Aircr, Demcr, Dhcsr},
         dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
@@ -777,7 +777,7 @@ impl ArmDebugSequence for MIMXRT118x {
                 // register read errors while the target is
                 // resetting.
                 Err(ArmError::AccessPort {
-                    source: crate::architecture::arm::ap::AccessPortError::RegisterRead { .. },
+                    source: AccessPortError::RegisterRead { .. },
                     ..
                 }) => continue,
                 Err(err) => return Err(err),
