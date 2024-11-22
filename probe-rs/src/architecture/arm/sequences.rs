@@ -373,6 +373,9 @@ fn cortex_m_reset_catch_set(core: &mut dyn ArmMemoryInterface) -> Result<(), Arm
 fn cortex_m_reset_system(interface: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
     use crate::architecture::arm::core::armv7m::{Aircr, Dhcsr};
 
+    // Dummy read in order to clear up sticky bits
+    let _ = interface.read_word_32(Dhcsr::get_mmio_address())?;
+
     let mut aircr = Aircr(0);
     aircr.vectkey();
     aircr.set_sysresetreq(true);
@@ -394,7 +397,7 @@ fn cortex_m_reset_system(interface: &mut dyn ArmMemoryInterface) -> Result<(), A
             }) => continue,
             Err(err) => return Err(err),
         };
-        if !dhcsr.s_reset_st() {
+        if dhcsr.s_reset_st() {
             return Ok(());
         }
     }
