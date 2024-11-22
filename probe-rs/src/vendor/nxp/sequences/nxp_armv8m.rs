@@ -1,5 +1,6 @@
 //! Sequences for NXP chips that use ARMv8-M cores.
 
+use bitfield::bitfield;
 use std::{
     sync::Arc,
     thread,
@@ -718,6 +719,25 @@ impl ArmDebugSequence for MIMXRT5xxS {
 #[derive(Debug)]
 pub struct MIMXRT118x(());
 
+bitfield! {
+    /// SRC Reset Mask Register
+    ///
+    /// In probe-rs context used only to unmask AIRCR.SYSRESETREQ as a reset source
+    ///
+    /// Reference:
+    /// `27.6.1.5` in `i.MX RT1180 Reference Manual, Rev. 6, 09/2024`
+    #[derive(Copy, Clone)]
+    pub struct Srmask(u32);
+    impl Debug;
+    /// Masks CM33 reset source
+    ///
+    /// `false` - the reset source is unmasked and active
+    /// `true` - the reset source is masked and ignored
+    ///
+    /// Default value is `true`
+    pub _, set_cm33_reset_mask : 8;
+}
+
 impl MIMXRT118x {
     fn new() -> Self {
         Self(())
@@ -737,10 +757,10 @@ impl MIMXRT118x {
         interface: &mut dyn ArmMemoryInterface,
     ) -> Result<(), ArmError> {
         const SRC_SRMASK: u64 = 0x54460018;
-        let mut srmask = interface.read_word_32(SRC_SRMASK)?;
-        tracing::trace!("SRC.SRMASK: {srmask:#010X}. Clearing the CM33_RESET_MASK mask...");
-        srmask &= !(0b1 << 8);
-        interface.write_word_32(SRC_SRMASK, srmask)?;
+        let mut srmask = Srmask(interface.read_word_32(SRC_SRMASK)?);
+        srmask.set_cm33_reset_mask(false);
+        tracing::trace!("Clearing the SRC.SRMASK.CM33_RESET_MASK mask...");
+        interface.write_word_32(SRC_SRMASK, srmask.0)?;
         interface.flush()
     }
 }
