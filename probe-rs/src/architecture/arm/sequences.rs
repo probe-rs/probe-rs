@@ -1000,6 +1000,8 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
 
     /// This ARM sequence is called if an image was flashed to RAM directly.
     /// It will perform the necessary preparation to run that image.
+    ///
+    /// Core should be already `reset_and_halt`ed right before this call.
     fn prepare_running_on_ram(
         &self,
         vector_table_offset: u64,
@@ -1025,8 +1027,6 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
             CoreType::Armv6m | CoreType::Armv7m | CoreType::Armv7em | CoreType::Armv8m => {
                 tracing::debug!("RAM flash start for Cortex-M single core target");
                 let mut core = session.core(0)?;
-                // Ensure the core is halted in any case.
-                core.halt(Duration::from_millis(100))?;
                 // See ARMv7-M Architecture Reference Manual Chapter B1.5 for more details. The
                 // process appears to be the same for the other Cortex-M architectures as well.
                 let vtor = Vtor(vector_table_offset as u32);

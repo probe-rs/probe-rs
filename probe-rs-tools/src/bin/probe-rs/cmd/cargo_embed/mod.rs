@@ -6,7 +6,7 @@ use anyhow::{anyhow, Context, Result};
 use clap::Parser;
 use colored::Colorize;
 use parking_lot::FairMutex;
-use probe_rs::flashing::FormatKind;
+use probe_rs::flashing::{FlashCommitInfo, FormatKind};
 use probe_rs::gdb_server::GdbInstanceConfiguration;
 use probe_rs::probe::list::Lister;
 use probe_rs::rtt::ScanRegion;
@@ -262,7 +262,6 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
     let core_id = rtt_client.core_id();
 
     let mut should_clear_rtt_header = true;
-    let mut ram_flash = false;
     if config.flashing.enabled {
         let download_options = BinaryDownloadOptions {
             disable_progressbars: opt.disable_progressbars,
@@ -284,7 +283,7 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
             tracing::debug!("RTT ScanRegion::Exact address is within region to be flashed")
         }
 
-        let flash_info = run_flash_download(
+        let flash_commit_info = run_flash_download(
             &mut session,
             &path,
             &download_options,
@@ -293,18 +292,22 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
             config.flashing.do_chip_erase,
         )?;
 
-        if flash_info.entry_point_in_ram {
-            session.prepare_running_on_ram(flash_info.entry_point.unwrap())?;
-            session.core(core_id)?.run()?;
+        match flash_commit_info {
+            FlashCommitInfo::BootFromRam { entry_point } => {
+                // core should be already reset and halt by this point.
+                session.prepare_running_on_ram(entry_point)?;
+            }
+            FlashCommitInfo::Other => {
+                // reset the core to leave it in a consistent state after flashing
+                session
+                    .core(core_id)?
+                    .reset_and_halt(Duration::from_millis(100))?;
+            }
         }
-        ram_flash = flash_info.entry_point_in_ram;
-    }
-
-    if ram_flash {
-        session.core(core_id)?.run()?;
-    } else if config.reset.enabled || config.flashing.enabled {
-        let mut core = session.core(core_id)?;
-        core.reset_and_halt(Duration::from_millis(500))?;
+    } else if config.reset.enabled {
+        session
+            .core(core_id)?
+            .reset_and_halt(Duration::from_millis(100))?;
     }
 
     let session = Arc::new(FairMutex::new(session));

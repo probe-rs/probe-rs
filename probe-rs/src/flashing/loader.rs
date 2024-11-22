@@ -287,13 +287,17 @@ impl ImageLoader for IdfLoader {
     }
 }
 
-/// Information about the flashing process result.
+/// Status of the successful [`FlashLoader::commit`] operation
 #[derive(Debug, Default)]
-pub struct FlashCommitInfo {
-    /// This will be [true] if the entry point of the application is inside a RAM region.
-    pub entry_point_in_ram: bool,
-    /// This will have hold the address of the entry point if the entry point is in RAM.
-    pub entry_point: Option<u64>,
+pub enum FlashCommitInfo {
+    /// Relevant for the [`FlashLoader::commit`] caller in order to prepare the chip for booting from RAM
+    BootFromRam {
+        /// Entry point of the program loaded to RAM
+        entry_point: u64,
+    },
+    /// Core will not be booting from RAM (dry run, boot from flash or just commiting some memory etc.)
+    #[default]
+    Other,
 }
 
 /// `FlashLoader` is a struct which manages the flashing of any chunks of data onto any sections of flash.
@@ -413,12 +417,8 @@ impl FlashLoader {
     }
 
     /// Verifies data on the device.
-    pub fn verify(
-        &self,
-        session: &mut Session,
-        commit_info: &mut FlashCommitInfo,
-    ) -> Result<(), FlashError> {
-        let algos = self.prepare_plan(session, commit_info)?;
+    pub fn verify(&self, session: &mut Session) -> Result<(), FlashError> {
+        let algos = self.prepare_plan(session)?;
 
         let progress = FlashProgress::new(|_| {});
 
@@ -457,7 +457,7 @@ impl FlashLoader {
         tracing::debug!("Committing FlashLoader!");
         let mut commit_info = FlashCommitInfo::default();
 
-        let algos = self.prepare_plan(session, &mut commit_info)?;
+        let algos = self.prepare_plan(session)?;
 
         if options.dry_run {
             tracing::info!("Skipping programming, dry run!");
@@ -587,12 +587,22 @@ impl FlashLoader {
             // If this is a RAM only flash, the core might still be running. This can be
             // problematic if the instruction RAM is flashed while an application is running, so
             // the core is halted here in any case.
+            //
+            // Additionally, if entry point is detected in the given RAM region, core should be
+            // reset & halted
             if !core.core_halted().map_err(FlashError::Core)? {
-                core.halt(Duration::from_millis(500))
-                    .inspect_err(|_| {
-                        tracing::warn!("Failed to halt core {region_core_index} for RAM flashing.")
-                    })
-                    .map_err(FlashError::Core)?;
+                match self.entry_point {
+                    Some(entry_point) if region.range.contains(&entry_point) => {
+                        commit_info = FlashCommitInfo::BootFromRam { entry_point };
+                        tracing::debug!("     -- action: core is not halted and entry point in RAM that is being written, resetting and halting");
+                        core.reset_and_halt(Duration::from_millis(500))
+                    }
+                    _ => {
+                        tracing::debug!("     -- action: core is not halted and RAM is being written, halting");
+                        core.halt(Duration::from_millis(500))
+                    },
+                }
+                .map_err(FlashError::Core)?;
             }
 
             for (address, data) in ranges_in_region {
@@ -617,7 +627,6 @@ impl FlashLoader {
     fn prepare_plan(
         &self,
         session: &mut Session,
-        commit_info: &mut FlashCommitInfo,
     ) -> Result<HashMap<(String, usize), Vec<NvmRegion>>, FlashError> {
         tracing::debug!("Contents of builder:");
         for (&address, data) in &self.builder.data {
@@ -627,14 +636,6 @@ impl FlashLoader {
                 address + data.len() as u64,
                 data.len()
             );
-        }
-        if let Some(entry_point) = self.entry_point {
-            if let Some(MemoryRegion::Ram(_)) =
-                Self::get_region_for_address(&self.memory_map, entry_point)
-            {
-                commit_info.entry_point_in_ram = true;
-                commit_info.entry_point = self.entry_point;
-            }
         }
 
         tracing::debug!("Flash algorithms:");

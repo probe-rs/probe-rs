@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use probe_rs::flashing::{FlashCommitInfo, FlashError};
+use probe_rs::flashing::FlashError;
 use probe_rs::probe::list::Lister;
 
 use crate::util::common_options::ProbeOptions;
@@ -24,9 +24,8 @@ impl Cmd {
         let (mut session, _probe_options) = self.probe_options.simple_attach(lister)?;
 
         let loader = build_loader(&mut session, &self.path, self.format_options, None)?;
-        let mut commit_info = FlashCommitInfo::default();
 
-        match loader.verify(&mut session, &mut commit_info) {
+        match loader.verify(&mut session) {
             Ok(()) => {
                 println!("Verification successful")
             }
