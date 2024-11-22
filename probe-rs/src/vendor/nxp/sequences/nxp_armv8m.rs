@@ -789,7 +789,7 @@ impl ArmDebugSequence for MIMXRT118x {
         thread::sleep(Duration::from_millis(50));
 
         let start = Instant::now();
-        while start.elapsed() < Duration::from_millis(5000) {
+        while start.elapsed() < Duration::from_millis(500) {
             let dhcsr = match interface.read_word_32(Dhcsr::get_mmio_address()) {
                 Ok(val) => Dhcsr(val),
                 // Some combinations of debug probe and target (in
