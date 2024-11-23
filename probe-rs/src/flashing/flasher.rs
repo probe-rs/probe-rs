@@ -651,7 +651,13 @@ impl<O: Operation> ActiveFlasher<'_, O> {
         duration: Duration,
     ) -> Result<u32, FlashError> {
         self.call_function(registers, init)?;
-        self.wait_for_completion(duration)
+        let r = self.wait_for_completion(duration);
+
+        if r.is_err() {
+            tracing::debug!("Routine call failed: {:?}", r);
+        }
+
+        r
     }
 
     fn call_function(&mut self, registers: &Registers, init: bool) -> Result<(), FlashError> {
@@ -776,14 +782,19 @@ impl<O: Operation> ActiveFlasher<'_, O> {
 
         self.check_for_stack_overflow()?;
 
-        self.core
+        let r = self
+            .core
             .read_core_reg::<u32>(regs.result_register(0))
             .map_err(|error| {
                 FlashError::Core(Error::ReadRegister {
                     register: regs.result_register(0).to_string(),
                     source: Box::new(error),
                 })
-            })
+            })?;
+
+        tracing::debug!("Routine returned {:x}.", r);
+
+        Ok(r)
     }
 
     fn read_rtt(&mut self) -> Result<(), FlashError> {

@@ -1571,9 +1571,15 @@ impl<'state> RiscvCommunicationInterface<'state> {
         address: u32,
         data: &mut [V],
     ) -> Result<(), crate::Error> {
-        tracing::debug!("read_32 from {:#08x}", address);
+        let access_method = self.state.memory_access_method(V::WIDTH);
+        tracing::debug!(
+            "read_multiple({:?}) from {:#08x} using {:?}",
+            V::WIDTH,
+            address,
+            access_method
+        );
 
-        match self.state.memory_access_method(RiscvBusAccess::A32) {
+        match access_method {
             MemoryAccessMethod::ProgramBuffer => {
                 self.perform_memory_read_multiple_progbuf(address, data)?;
             }
@@ -2166,6 +2172,8 @@ impl MemoryInterface for RiscvCommunicationInterface<'_> {
 
     fn read(&mut self, address: u64, data: &mut [u8]) -> Result<(), crate::Error> {
         let address = valid_32bit_address(address)?;
+        tracing::debug!("read from {:#08x}", address);
+
         self.read_multiple(address, data)
     }
 
