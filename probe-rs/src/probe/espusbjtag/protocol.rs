@@ -210,7 +210,7 @@ impl ProtocolHandler {
 
         tracing::debug!("Succesfully attached to ESP USB JTAG.");
 
-        Ok(Self {
+        let mut this = Self {
             device_handle: iface,
             command_queue: None,
             output_buffer: Vec::with_capacity(OUT_BUFFER_SIZE),
@@ -222,7 +222,34 @@ impl ProtocolHandler {
             base_speed_khz,
             div_min,
             div_max,
-        })
+        };
+
+        // We need to flush the device's response buffer, but we don't always succeed in doing so.
+        // This nonsense if supposed to help us recover from some errors.
+        let flush_ep = |this: &mut Self| {
+            let mut incoming = [0; IN_EP_BUFFER_SIZE];
+            this.device_handle
+                .read_bulk(this.ep_in, &mut incoming, Duration::from_millis(100))
+                .is_ok()
+        };
+
+        if flush_ep(&mut this) {
+            while flush_ep(&mut this) {}
+        } else {
+            // Just returning here would end us up with Invalid IDCODE.
+            for _ in 0..16 {
+                this.shift_bit(true, true, false).unwrap();
+            }
+
+            this.flush().unwrap();
+            this.response.clear();
+
+            if flush_ep(&mut this) {
+                while flush_ep(&mut this) {}
+            }
+        }
+
+        Ok(this)
     }
 
     /// Put a bit on TDI and possibly read one from TDO.
