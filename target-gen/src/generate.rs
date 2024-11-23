@@ -165,6 +165,7 @@ where
             part: None,
             svd: None,
             documentation: HashMap::new(),
+            package_variants: vec![],
             cores,
             memory_map,
             flash_algorithms: flash_algorithm_names,

@@ -5,7 +5,12 @@ manufacturer:
 generated_from_pack: true
 pack_file_release: 2.2.1
 variants:
-- name: STM32U535CBTx
+- name: STM32U535CB
+  package_variants:
+  - STM32U535CBTx
+  - STM32U535CBUx
+  - STM32U535CBTxQ
+  - STM32U535CBUxQ
   cores:
   - name: main
     type: armv8m
@@ -53,7 +58,268 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U535CBTxQ
+- name: STM32U535CC
+  package_variants:
+  - STM32U535CCTx
+  - STM32U535CCUx
+  - STM32U535CCTxQ
+  - STM32U535CCUxQ
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8020000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20030000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
+  - mx25lm51245g_stm32u575i-eval
+  - mx25lm51245g_stm32u585i_iot02a
+  - mx25lm51245g_stm32u599j-dk
+- name: STM32U535CE
+  package_variants:
+  - STM32U535CEUx
+  - STM32U535CETx
+  - STM32U535CEUxQ
+  - STM32U535CETxQ
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20030000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
+  - mx25lm51245g_stm32u575i-eval
+  - mx25lm51245g_stm32u585i_iot02a
+  - mx25lm51245g_stm32u599j-dk
+- name: STM32U535JE
+  package_variants:
+  - STM32U535JEYxQ
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20030000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
+  - mx25lm51245g_stm32u575i-eval
+  - mx25lm51245g_stm32u585i_iot02a
+  - mx25lm51245g_stm32u599j-dk
+- name: STM32U535NC
+  package_variants:
+  - STM32U535NCYxQ
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8020000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20030000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
+  - mx25lm51245g_stm32u575i-eval
+  - mx25lm51245g_stm32u585i_iot02a
+  - mx25lm51245g_stm32u599j-dk
+- name: STM32U535NE
+  package_variants:
+  - STM32U535NEYxQ
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20030000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
+  - mx25lm51245g_stm32u575i-eval
+  - mx25lm51245g_stm32u585i_iot02a
+  - mx25lm51245g_stm32u599j-dk
+- name: STM32U535RB
+  package_variants:
+  - STM32U535RBTx
+  - STM32U535RBIx
+  - STM32U535RBTxQ
+  - STM32U535RBIxQ
   cores:
   - name: main
     type: armv8m
@@ -101,103 +367,12 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U535CBUx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8010000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U535CBUxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8010000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U535CCTx
+- name: STM32U535RC
+  package_variants:
+  - STM32U535RCTx
+  - STM32U535RCIx
+  - STM32U535RCTxQ
+  - STM32U535RCIxQ
   cores:
   - name: main
     type: armv8m
@@ -245,7 +420,65 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U535CCTxQ
+- name: STM32U535RE
+  package_variants:
+  - STM32U535RETx
+  - STM32U535REIx
+  - STM32U535RETxQ
+  - STM32U535REIxQ
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20030000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
+  - mx25lm51245g_stm32u575i-eval
+  - mx25lm51245g_stm32u585i_iot02a
+  - mx25lm51245g_stm32u599j-dk
+- name: STM32U535VC
+  package_variants:
+  - STM32U535VCTx
+  - STM32U535VCIx
+  - STM32U535VCTxQ
+  - STM32U535VCIxQ
   cores:
   - name: main
     type: armv8m
@@ -293,103 +526,12 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U535CCUx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8020000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U535CCUxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8020000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U535CETx
+- name: STM32U535VE
+  package_variants:
+  - STM32U535VETx
+  - STM32U535VEIx
+  - STM32U535VETxQ
+  - STM32U535VEIxQ
   cores:
   - name: main
     type: armv8m
@@ -437,7 +579,12 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U535CETxQ
+- name: STM32U545CE
+  package_variants:
+  - STM32U545CEUx
+  - STM32U545CETx
+  - STM32U545CEUxQ
+  - STM32U545CETxQ
   cores:
   - name: main
     type: armv8m
@@ -485,7 +632,9 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U535CEUx
+- name: STM32U545JE
+  package_variants:
+  - STM32U545JEYxQ
   cores:
   - name: main
     type: armv8m
@@ -533,7 +682,9 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U535CEUxQ
+- name: STM32U545NE
+  package_variants:
+  - STM32U545NEYxQ
   cores:
   - name: main
     type: armv8m
@@ -581,7 +732,12 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U535JEYxQ
+- name: STM32U545RE
+  package_variants:
+  - STM32U545RETx
+  - STM32U545REIx
+  - STM32U545RETxQ
+  - STM32U545REIxQ
   cores:
   - name: main
     type: armv8m
@@ -629,55 +785,12 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U535NCYxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8020000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U535NEYxQ
+- name: STM32U545VE
+  package_variants:
+  - STM32U545VETx
+  - STM32U545VEIx
+  - STM32U545VETxQ
+  - STM32U545VEIxQ
   cores:
   - name: main
     type: armv8m
@@ -725,1639 +838,10 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U535RBIx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8010000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U535RBIxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8010000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U535RBTx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8010000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U535RBTxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8010000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U535RCIx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8020000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U535RCIxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8020000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U535RCTx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8020000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U535RCTxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8020000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U535REIx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8040000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U535REIxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8040000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U535RETx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8040000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U535RETxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8040000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U535VCIx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8020000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U535VCIxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8020000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U535VCTx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8020000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U535VCTxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8020000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U535VEIx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8040000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U535VEIxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8040000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U535VETx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8040000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U535VETxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8040000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U545CETx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8040000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U545CETxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8040000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U545CEUx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8040000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U545CEUxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8040000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U545JEYxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8040000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U545NEYxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8040000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U545REIx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8040000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U545REIxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8040000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U545RETx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8040000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U545RETxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8040000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U545VEIx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8040000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U545VEIxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8040000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U545VETx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8040000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U545VETxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8040000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U575AGIx
+- name: STM32U575AG
+  package_variants:
+  - STM32U575AGIx
+  - STM32U575AGIxQ
   cores:
   - name: main
     type: armv8m
@@ -2412,7 +896,70 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U575AGIxQ
+- name: STM32U575AI
+  package_variants:
+  - STM32U575AIIx
+  - STM32U575AIIxQ
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20030000
+      end: 0x20040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x20040000
+      end: 0x200c0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
+  - mx25lm51245g_stm32u575i-eval
+  - mx25lm51245g_stm32u585i_iot02a
+  - mx25lm51245g_stm32u599j-dk
+- name: STM32U575CG
+  package_variants:
+  - STM32U575CGTx
+  - STM32U575CGTxQ
+  - STM32U575CGUx
+  - STM32U575CGUxQ
   cores:
   - name: main
     type: armv8m
@@ -2467,7 +1014,12 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U575AIIx
+- name: STM32U575CI
+  package_variants:
+  - STM32U575CITx
+  - STM32U575CITxQ
+  - STM32U575CIUx
+  - STM32U575CIUxQ
   cores:
   - name: main
     type: armv8m
@@ -2522,62 +1074,9 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U575AIIxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20040000
-      end: 0x200c0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U575CGTx
+- name: STM32U575OG
+  package_variants:
+  - STM32U575OGYxQ
   cores:
   - name: main
     type: armv8m
@@ -2632,7 +1131,67 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U575CGTxQ
+- name: STM32U575OI
+  package_variants:
+  - STM32U575OIYxQ
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20030000
+      end: 0x20040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x20040000
+      end: 0x200c0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
+  - mx25lm51245g_stm32u575i-eval
+  - mx25lm51245g_stm32u585i_iot02a
+  - mx25lm51245g_stm32u599j-dk
+- name: STM32U575QG
+  package_variants:
+  - STM32U575QGIx
+  - STM32U575QGIxQ
   cores:
   - name: main
     type: armv8m
@@ -2687,7 +1246,68 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U575CGUx
+- name: STM32U575QI
+  package_variants:
+  - STM32U575QIIx
+  - STM32U575QIIxQ
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20030000
+      end: 0x20040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x20040000
+      end: 0x200c0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
+  - mx25lm51245g_stm32u575i-eval
+  - mx25lm51245g_stm32u585i_iot02a
+  - mx25lm51245g_stm32u599j-dk
+- name: STM32U575RG
+  package_variants:
+  - STM32U575RGTx
+  - STM32U575RGTxQ
   cores:
   - name: main
     type: armv8m
@@ -2742,7 +1362,68 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U575CGUxQ
+- name: STM32U575RI
+  package_variants:
+  - STM32U575RITx
+  - STM32U575RITxQ
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20030000
+      end: 0x20040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x20040000
+      end: 0x200c0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
+  - mx25lm51245g_stm32u575i-eval
+  - mx25lm51245g_stm32u585i_iot02a
+  - mx25lm51245g_stm32u599j-dk
+- name: STM32U575VG
+  package_variants:
+  - STM32U575VGTx
+  - STM32U575VGTxQ
   cores:
   - name: main
     type: armv8m
@@ -2797,7 +1478,10 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U575CITx
+- name: STM32U575VI
+  package_variants:
+  - STM32U575VITx
+  - STM32U575VITxQ
   cores:
   - name: main
     type: armv8m
@@ -2852,172 +1536,10 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U575CITxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20040000
-      end: 0x200c0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U575CIUx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20040000
-      end: 0x200c0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U575CIUxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20040000
-      end: 0x200c0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U575OGYxQ
+- name: STM32U575ZG
+  package_variants:
+  - STM32U575ZGTx
+  - STM32U575ZGTxQ
   cores:
   - name: main
     type: armv8m
@@ -3072,7 +1594,10 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U575OIYxQ
+- name: STM32U575ZI
+  package_variants:
+  - STM32U575ZITx
+  - STM32U575ZITxQ
   cores:
   - name: main
     type: armv8m
@@ -3127,117 +1652,10 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U575QGIx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8080000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20040000
-      end: 0x200c0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U575QGIxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8080000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20040000
-      end: 0x200c0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U575QIIx
+- name: STM32U585AI
+  package_variants:
+  - STM32U585AIIx
+  - STM32U585AIIxQ
   cores:
   - name: main
     type: armv8m
@@ -3292,7 +1710,12 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U575QIIxQ
+- name: STM32U585CI
+  package_variants:
+  - STM32U585CITx
+  - STM32U585CITxQ
+  - STM32U585CIUx
+  - STM32U585CIUxQ
   cores:
   - name: main
     type: armv8m
@@ -3347,117 +1770,9 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U575RGTx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8080000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20040000
-      end: 0x200c0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U575RGTxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8080000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20040000
-      end: 0x200c0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U575RITx
+- name: STM32U585OI
+  package_variants:
+  - STM32U585OIYxQ
   cores:
   - name: main
     type: armv8m
@@ -3512,7 +1827,10 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U575RITxQ
+- name: STM32U585QI
+  package_variants:
+  - STM32U585QIIx
+  - STM32U585QIIxQ
   cores:
   - name: main
     type: armv8m
@@ -3567,117 +1885,10 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U575VGTx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8080000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20040000
-      end: 0x200c0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U575VGTxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8080000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20040000
-      end: 0x200c0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U575VITx
+- name: STM32U585RI
+  package_variants:
+  - STM32U585RITx
+  - STM32U585RITxQ
   cores:
   - name: main
     type: armv8m
@@ -3732,7 +1943,10 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U575VITxQ
+- name: STM32U585VI
+  package_variants:
+  - STM32U585VITx
+  - STM32U585VITxQ
   cores:
   - name: main
     type: armv8m
@@ -3787,117 +2001,10 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U575ZGTx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8080000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20040000
-      end: 0x200c0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U575ZGTxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8080000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20040000
-      end: 0x200c0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U575ZITx
+- name: STM32U585ZI
+  package_variants:
+  - STM32U585ZITx
+  - STM32U585ZITxQ
   cores:
   - name: main
     type: armv8m
@@ -3952,887 +2059,10 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U575ZITxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20040000
-      end: 0x200c0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U585AIIx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20040000
-      end: 0x200c0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U585AIIxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20040000
-      end: 0x200c0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U585CITx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20040000
-      end: 0x200c0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U585CITxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20040000
-      end: 0x200c0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U585CIUx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20040000
-      end: 0x200c0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U585CIUxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20040000
-      end: 0x200c0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U585OIYxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20040000
-      end: 0x200c0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U585QIIx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20040000
-      end: 0x200c0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U585QIIxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20040000
-      end: 0x200c0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U585RITx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20040000
-      end: 0x200c0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U585RITxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20040000
-      end: 0x200c0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U585VITx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20040000
-      end: 0x200c0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U585VITxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20040000
-      end: 0x200c0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U585ZITx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20040000
-      end: 0x200c0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U585ZITxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x20040000
-      end: 0x200c0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U595AIHx
+- name: STM32U595AI
+  package_variants:
+  - STM32U595AIHx
+  - STM32U595AIHxQ
   cores:
   - name: main
     type: armv8m
@@ -4894,69 +2124,10 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U595AIHxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200c0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x200c0000
-      end: 0x200d0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x200d0000
-      end: 0x201a0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM5
-    range:
-      start: 0x201a0000
-      end: 0x20270000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U595AJHx
+- name: STM32U595AJ
+  package_variants:
+  - STM32U595AJHx
+  - STM32U595AJHxQ
   cores:
   - name: main
     type: armv8m
@@ -5018,69 +2189,10 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U595AJHxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8200000
-      end: 0x8400000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200c0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x200c0000
-      end: 0x200d0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x200d0000
-      end: 0x201a0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM5
-    range:
-      start: 0x201a0000
-      end: 0x20270000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U595QIIx
+- name: STM32U595QI
+  package_variants:
+  - STM32U595QIIx
+  - STM32U595QIIxQ
   cores:
   - name: main
     type: armv8m
@@ -5142,69 +2254,10 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U595QIIxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200c0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x200c0000
-      end: 0x200d0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x200d0000
-      end: 0x201a0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM5
-    range:
-      start: 0x201a0000
-      end: 0x20270000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U595QJIx
+- name: STM32U595QJ
+  package_variants:
+  - STM32U595QJIx
+  - STM32U595QJIxQ
   cores:
   - name: main
     type: armv8m
@@ -5266,69 +2319,12 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U595QJIxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8200000
-      end: 0x8400000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200c0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x200c0000
-      end: 0x200d0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x200d0000
-      end: 0x201a0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM5
-    range:
-      start: 0x201a0000
-      end: 0x20270000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U595RITx
+- name: STM32U595RI
+  package_variants:
+  - STM32U595RITx
+  - STM32U595RITxQ
+  - STM32U595RIHx
+  - STM32U595RIHxQ
   cores:
   - name: main
     type: armv8m
@@ -5390,69 +2386,10 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U595RITxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200c0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x200c0000
-      end: 0x200d0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x200d0000
-      end: 0x201a0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM5
-    range:
-      start: 0x201a0000
-      end: 0x20270000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U595RJTx
+- name: STM32U595RJ
+  package_variants:
+  - STM32U595RJTx
+  - STM32U595RJTxQ
   cores:
   - name: main
     type: armv8m
@@ -5514,69 +2451,10 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U595RJTxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8200000
-      end: 0x8400000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200c0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x200c0000
-      end: 0x200d0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x200d0000
-      end: 0x201a0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM5
-    range:
-      start: 0x201a0000
-      end: 0x20270000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U595VITx
+- name: STM32U595VI
+  package_variants:
+  - STM32U595VITx
+  - STM32U595VITxQ
   cores:
   - name: main
     type: armv8m
@@ -5638,69 +2516,10 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U595VITxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200c0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x200c0000
-      end: 0x200d0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x200d0000
-      end: 0x201a0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM5
-    range:
-      start: 0x201a0000
-      end: 0x20270000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U595VJTx
+- name: STM32U595VJ
+  package_variants:
+  - STM32U595VJTx
+  - STM32U595VJTxQ
   cores:
   - name: main
     type: armv8m
@@ -5762,131 +2581,11 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U595VJTxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8200000
-      end: 0x8400000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200c0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x200c0000
-      end: 0x200d0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x200d0000
-      end: 0x201a0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM5
-    range:
-      start: 0x201a0000
-      end: 0x20270000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U595ZITx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200c0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x200c0000
-      end: 0x200d0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x200d0000
-      end: 0x201a0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM5
-    range:
-      start: 0x201a0000
-      end: 0x20270000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U595ZITxQ
+- name: STM32U595ZI
+  package_variants:
+  - STM32U595ZITx
+  - STM32U595ZITxQ
+  - STM32U595ZIYxQ
   cores:
   - name: main
     type: armv8m
@@ -5993,7 +2692,139 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U595ZIYxQ
+- name: STM32U595ZJ
+  package_variants:
+  - STM32U595ZJTx
+  - STM32U595ZJTxQ
+  - STM32U595ZJYxQ
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8200000
+      end: 0x8400000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x200c0000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x200c0000
+      end: 0x200d0000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x200d0000
+      end: 0x201a0000
+    cores:
+    - main
+  - !Ram
+    name: SRAM5
+    range:
+      start: 0x201a0000
+      end: 0x20270000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
+  - mx25lm51245g_stm32u575i-eval
+  - mx25lm51245g_stm32u585i_iot02a
+  - mx25lm51245g_stm32u599j-dk
+- name: STM32U599BJ
+  package_variants:
+  - STM32U599BJYxQ
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8200000
+      end: 0x8400000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x200c0000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x200c0000
+      end: 0x200d0000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x200d0000
+      end: 0x201a0000
+    cores:
+    - main
+  - !Ram
+    name: SRAM5
+    range:
+      start: 0x201a0000
+      end: 0x20270000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32u59x_4m_0800
+  - stm32u59x_4m_0c00
+  - mx25lm51245g_stm32u575i-eval
+  - mx25lm51245g_stm32u585i_iot02a
+  - mx25lm51245g_stm32u599j-dk
+- name: STM32U599NI
+  package_variants:
+  - STM32U599NIHxQ
   cores:
   - name: main
     type: armv8m
@@ -6055,7 +2886,9 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U595ZJTx
+- name: STM32U599NJ
+  package_variants:
+  - STM32U599NJHxQ
   cores:
   - name: main
     type: armv8m
@@ -6117,193 +2950,9 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U595ZJTxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8200000
-      end: 0x8400000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200c0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x200c0000
-      end: 0x200d0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x200d0000
-      end: 0x201a0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM5
-    range:
-      start: 0x201a0000
-      end: 0x20270000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U595ZJYxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8200000
-      end: 0x8400000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200c0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x200c0000
-      end: 0x200d0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x200d0000
-      end: 0x201a0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM5
-    range:
-      start: 0x201a0000
-      end: 0x20270000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U599BJYxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8200000
-      end: 0x8400000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200c0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x200c0000
-      end: 0x200d0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x200d0000
-      end: 0x201a0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM5
-    range:
-      start: 0x201a0000
-      end: 0x20270000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U599NIHxQ
+- name: STM32U599VI
+  package_variants:
+  - STM32U599VITxQ
   cores:
   - name: main
     type: armv8m
@@ -6365,7 +3014,10 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U599NJHxQ
+- name: STM32U599VJ
+  package_variants:
+  - STM32U599VJTxQ
+  - STM32U599VJTx
   cores:
   - name: main
     type: armv8m
@@ -6427,7 +3079,10 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U599VITxQ
+- name: STM32U599ZI
+  package_variants:
+  - STM32U599ZITxQ
+  - STM32U599ZIYxQ
   cores:
   - name: main
     type: armv8m
@@ -6489,7 +3144,10 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U599VJTx
+- name: STM32U599ZJ
+  package_variants:
+  - STM32U599ZJTxQ
+  - STM32U599ZJYxQ
   cores:
   - name: main
     type: armv8m
@@ -6551,7 +3209,10 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U599VJTxQ
+- name: STM32U5A5AJ
+  package_variants:
+  - STM32U5A5AJHx
+  - STM32U5A5AJHxQ
   cores:
   - name: main
     type: armv8m
@@ -6613,131 +3274,10 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U599ZITxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200c0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x200c0000
-      end: 0x200d0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x200d0000
-      end: 0x201a0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM5
-    range:
-      start: 0x201a0000
-      end: 0x20270000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U599ZIYxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200c0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x200c0000
-      end: 0x200d0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x200d0000
-      end: 0x201a0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM5
-    range:
-      start: 0x201a0000
-      end: 0x20270000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U599ZJTxQ
+- name: STM32U5A5QJ
+  package_variants:
+  - STM32U5A5QJIx
+  - STM32U5A5QJIxQ
   cores:
   - name: main
     type: armv8m
@@ -6799,7 +3339,10 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U599ZJYxQ
+- name: STM32U5A5RJ
+  package_variants:
+  - STM32U5A5RJTx
+  - STM32U5A5RJTxQ
   cores:
   - name: main
     type: armv8m
@@ -6861,7 +3404,10 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U5A5AJHx
+- name: STM32U5A5VJ
+  package_variants:
+  - STM32U5A5VJTx
+  - STM32U5A5VJTxQ
   cores:
   - name: main
     type: armv8m
@@ -6923,7 +3469,11 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U5A5AJHxQ
+- name: STM32U5A5ZJ
+  package_variants:
+  - STM32U5A5ZJTx
+  - STM32U5A5ZJTxQ
+  - STM32U5A5ZJYxQ
   cores:
   - name: main
     type: armv8m
@@ -6985,7 +3535,9 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U5A5QJIx
+- name: STM32U5A9BJ
+  package_variants:
+  - STM32U5A9BJYxQ
   cores:
   - name: main
     type: armv8m
@@ -7047,7 +3599,9 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U5A5QJIxQ
+- name: STM32U5A9NJ
+  package_variants:
+  - STM32U5A9NJHxQ
   cores:
   - name: main
     type: armv8m
@@ -7109,7 +3663,9 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U5A5RJTx
+- name: STM32U5A9VJ
+  package_variants:
+  - STM32U5A9VJTxQ
   cores:
   - name: main
     type: armv8m
@@ -7171,7 +3727,10 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U5A5RJTxQ
+- name: STM32U5A9ZJ
+  package_variants:
+  - STM32U5A9ZJTxQ
+  - STM32U5A9ZJYxQ
   cores:
   - name: main
     type: armv8m
@@ -7233,627 +3792,10 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U5A5VJTx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8200000
-      end: 0x8400000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200c0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x200c0000
-      end: 0x200d0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x200d0000
-      end: 0x201a0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM5
-    range:
-      start: 0x201a0000
-      end: 0x20270000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U5A5VJTxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8200000
-      end: 0x8400000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200c0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x200c0000
-      end: 0x200d0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x200d0000
-      end: 0x201a0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM5
-    range:
-      start: 0x201a0000
-      end: 0x20270000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U5A5ZJTx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8200000
-      end: 0x8400000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200c0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x200c0000
-      end: 0x200d0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x200d0000
-      end: 0x201a0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM5
-    range:
-      start: 0x201a0000
-      end: 0x20270000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U5A5ZJTxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8200000
-      end: 0x8400000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200c0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x200c0000
-      end: 0x200d0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x200d0000
-      end: 0x201a0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM5
-    range:
-      start: 0x201a0000
-      end: 0x20270000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U5A5ZJYxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8200000
-      end: 0x8400000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200c0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x200c0000
-      end: 0x200d0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x200d0000
-      end: 0x201a0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM5
-    range:
-      start: 0x201a0000
-      end: 0x20270000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U5A9BJYxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8200000
-      end: 0x8400000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200c0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x200c0000
-      end: 0x200d0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x200d0000
-      end: 0x201a0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM5
-    range:
-      start: 0x201a0000
-      end: 0x20270000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U5A9NJHxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8200000
-      end: 0x8400000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200c0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x200c0000
-      end: 0x200d0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x200d0000
-      end: 0x201a0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM5
-    range:
-      start: 0x201a0000
-      end: 0x20270000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U5A9VJTxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8200000
-      end: 0x8400000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200c0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x200c0000
-      end: 0x200d0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x200d0000
-      end: 0x201a0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM5
-    range:
-      start: 0x201a0000
-      end: 0x20270000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U5A9ZJTxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8200000
-      end: 0x8400000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200c0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x200c0000
-      end: 0x200d0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x200d0000
-      end: 0x201a0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM5
-    range:
-      start: 0x201a0000
-      end: 0x20270000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U5A9ZJYxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8200000
-      end: 0x8400000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200c0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x200c0000
-      end: 0x200d0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x200d0000
-      end: 0x201a0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM5
-    range:
-      start: 0x201a0000
-      end: 0x20270000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u59x_4m_0800
-  - stm32u59x_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U5F7VITx
+- name: STM32U5F7VI
+  package_variants:
+  - STM32U5F7VITxQ
+  - STM32U5F7VITx
   cores:
   - name: main
     type: armv8m
@@ -7922,7 +3864,224 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U5F7VITxQ
+- name: STM32U5F7VJ
+  package_variants:
+  - STM32U5F7VJTxQ
+  - STM32U5F7VJTx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8200000
+      end: 0x8400000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x200c0000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x200c0000
+      end: 0x200d0000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x200d0000
+      end: 0x201a0000
+    cores:
+    - main
+  - !Ram
+    name: SRAM5
+    range:
+      start: 0x201a0000
+      end: 0x20270000
+    cores:
+    - main
+  - !Ram
+    name: SRAM6
+    range:
+      start: 0x20270000
+      end: 0x202f0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32u5fx_4m_0800
+  - stm32u5fx_4m_0c00
+  - mx25lm51245g_stm32u575i-eval
+  - mx25lm51245g_stm32u585i_iot02a
+  - mx25lm51245g_stm32u599j-dk
+- name: STM32U5F9BJ
+  package_variants:
+  - STM32U5F9BJYxQ
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8200000
+      end: 0x8400000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x200c0000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x200c0000
+      end: 0x200d0000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x200d0000
+      end: 0x201a0000
+    cores:
+    - main
+  - !Ram
+    name: SRAM5
+    range:
+      start: 0x201a0000
+      end: 0x20270000
+    cores:
+    - main
+  - !Ram
+    name: SRAM6
+    range:
+      start: 0x20270000
+      end: 0x202f0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32u5fx_4m_0800
+  - stm32u5fx_4m_0c00
+  - mx25lm51245g_stm32u575i-eval
+  - mx25lm51245g_stm32u585i_iot02a
+  - mx25lm51245g_stm32u599j-dk
+- name: STM32U5F9NJ
+  package_variants:
+  - STM32U5F9NJHxQ
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8200000
+      end: 0x8400000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x200c0000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x200c0000
+      end: 0x200d0000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x200d0000
+      end: 0x201a0000
+    cores:
+    - main
+  - !Ram
+    name: SRAM5
+    range:
+      start: 0x201a0000
+      end: 0x20270000
+    cores:
+    - main
+  - !Ram
+    name: SRAM6
+    range:
+      start: 0x20270000
+      end: 0x202f0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32u5fx_4m_0800
+  - stm32u5fx_4m_0c00
+  - mx25lm51245g_stm32u575i-eval
+  - mx25lm51245g_stm32u585i_iot02a
+  - mx25lm51245g_stm32u599j-dk
+- name: STM32U5F9VI
+  package_variants:
+  - STM32U5F9VITxQ
+  - STM32U5F9VITx
   cores:
   - name: main
     type: armv8m
@@ -7991,7 +4150,9 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U5F7VJTx
+- name: STM32U5F9VJ
+  package_variants:
+  - STM32U5F9VJTxQ
   cores:
   - name: main
     type: armv8m
@@ -8060,214 +4221,10 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U5F7VJTxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8200000
-      end: 0x8400000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200c0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x200c0000
-      end: 0x200d0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x200d0000
-      end: 0x201a0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM5
-    range:
-      start: 0x201a0000
-      end: 0x20270000
-    cores:
-    - main
-  - !Ram
-    name: SRAM6
-    range:
-      start: 0x20270000
-      end: 0x202f0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u5fx_4m_0800
-  - stm32u5fx_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U5F9BJYxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8200000
-      end: 0x8400000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200c0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x200c0000
-      end: 0x200d0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x200d0000
-      end: 0x201a0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM5
-    range:
-      start: 0x201a0000
-      end: 0x20270000
-    cores:
-    - main
-  - !Ram
-    name: SRAM6
-    range:
-      start: 0x20270000
-      end: 0x202f0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u5fx_4m_0800
-  - stm32u5fx_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U5F9NJHxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8200000
-      end: 0x8400000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200c0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x200c0000
-      end: 0x200d0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x200d0000
-      end: 0x201a0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM5
-    range:
-      start: 0x201a0000
-      end: 0x20270000
-    cores:
-    - main
-  - !Ram
-    name: SRAM6
-    range:
-      start: 0x20270000
-      end: 0x202f0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u5fx_4m_0800
-  - stm32u5fx_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U5F9VITxQ
+- name: STM32U5F9ZI
+  package_variants:
+  - STM32U5F9ZIJxQ
+  - STM32U5F9ZITxQ
   cores:
   - name: main
     type: armv8m
@@ -8336,7 +4293,10 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U5F9VJTxQ
+- name: STM32U5F9ZJ
+  package_variants:
+  - STM32U5F9ZJJxQ
+  - STM32U5F9ZJTxQ
   cores:
   - name: main
     type: armv8m
@@ -8405,145 +4365,10 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U5F9ZIJxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8200000
-      end: 0x8300000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200c0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x200c0000
-      end: 0x200d0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x200d0000
-      end: 0x201a0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM5
-    range:
-      start: 0x201a0000
-      end: 0x20270000
-    cores:
-    - main
-  - !Ram
-    name: SRAM6
-    range:
-      start: 0x20270000
-      end: 0x202f0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u5fx_2m_0800
-  - stm32u5fx_2m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U5F9ZITxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8200000
-      end: 0x8300000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200c0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x200c0000
-      end: 0x200d0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x200d0000
-      end: 0x201a0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM5
-    range:
-      start: 0x201a0000
-      end: 0x20270000
-    cores:
-    - main
-  - !Ram
-    name: SRAM6
-    range:
-      start: 0x20270000
-      end: 0x202f0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u5fx_2m_0800
-  - stm32u5fx_2m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U5F9ZJJxQ
+- name: STM32U5G7VJ
+  package_variants:
+  - STM32U5G7VJTxQ
+  - STM32U5G7VJTx
   cores:
   - name: main
     type: armv8m
@@ -8612,7 +4437,9 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U5F9ZJTxQ
+- name: STM32U5G9BJ
+  package_variants:
+  - STM32U5G9BJYxQ
   cores:
   - name: main
     type: armv8m
@@ -8681,7 +4508,9 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U5G7VJTx
+- name: STM32U5G9NJ
+  package_variants:
+  - STM32U5G9NJHxQ
   cores:
   - name: main
     type: armv8m
@@ -8750,7 +4579,9 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U5G7VJTxQ
+- name: STM32U5G9VJ
+  package_variants:
+  - STM32U5G9VJTxQ
   cores:
   - name: main
     type: armv8m
@@ -8819,283 +4650,10 @@ variants:
   - mx25lm51245g_stm32u575i-eval
   - mx25lm51245g_stm32u585i_iot02a
   - mx25lm51245g_stm32u599j-dk
-- name: STM32U5G9BJYxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8200000
-      end: 0x8400000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200c0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x200c0000
-      end: 0x200d0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x200d0000
-      end: 0x201a0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM5
-    range:
-      start: 0x201a0000
-      end: 0x20270000
-    cores:
-    - main
-  - !Ram
-    name: SRAM6
-    range:
-      start: 0x20270000
-      end: 0x202f0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u5fx_4m_0800
-  - stm32u5fx_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U5G9NJHxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8200000
-      end: 0x8400000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200c0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x200c0000
-      end: 0x200d0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x200d0000
-      end: 0x201a0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM5
-    range:
-      start: 0x201a0000
-      end: 0x20270000
-    cores:
-    - main
-  - !Ram
-    name: SRAM6
-    range:
-      start: 0x20270000
-      end: 0x202f0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u5fx_4m_0800
-  - stm32u5fx_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U5G9VJTxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8200000
-      end: 0x8400000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200c0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x200c0000
-      end: 0x200d0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x200d0000
-      end: 0x201a0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM5
-    range:
-      start: 0x201a0000
-      end: 0x20270000
-    cores:
-    - main
-  - !Ram
-    name: SRAM6
-    range:
-      start: 0x20270000
-      end: 0x202f0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u5fx_4m_0800
-  - stm32u5fx_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U5G9ZJJxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: 0
-      psel: 0x0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8200000
-      end: 0x8400000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x200c0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x200c0000
-      end: 0x200d0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x200d0000
-      end: 0x201a0000
-    cores:
-    - main
-  - !Ram
-    name: SRAM5
-    range:
-      start: 0x201a0000
-      end: 0x20270000
-    cores:
-    - main
-  - !Ram
-    name: SRAM6
-    range:
-      start: 0x20270000
-      end: 0x202f0000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u5fx_4m_0800
-  - stm32u5fx_4m_0c00
-  - mx25lm51245g_stm32u575i-eval
-  - mx25lm51245g_stm32u585i_iot02a
-  - mx25lm51245g_stm32u599j-dk
-- name: STM32U5G9ZJTxQ
+- name: STM32U5G9ZJ
+  package_variants:
+  - STM32U5G9ZJJxQ
+  - STM32U5G9ZJTxQ
   cores:
   - name: main
     type: armv8m

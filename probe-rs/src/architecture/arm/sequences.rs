@@ -381,7 +381,7 @@ fn cortex_m_reset_system(interface: &mut dyn ArmMemoryInterface) -> Result<(), A
 
     let start = Instant::now();
 
-    loop {
+    while start.elapsed() < Duration::from_millis(500) {
         let dhcsr = match interface.read_word_32(Dhcsr::get_mmio_address()) {
             Ok(val) => Dhcsr(val),
             // Some combinations of debug probe and target (in
@@ -397,10 +397,9 @@ fn cortex_m_reset_system(interface: &mut dyn ArmMemoryInterface) -> Result<(), A
         if !dhcsr.s_reset_st() {
             return Ok(());
         }
-        if start.elapsed() >= Duration::from_millis(500) {
-            return Err(ArmError::Timeout);
-        }
     }
+
+    Err(ArmError::Timeout)
 }
 
 /// A interface to operate debug sequences for ARM targets.
