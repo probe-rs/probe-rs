@@ -63,6 +63,11 @@ pub struct Chip {
     /// Documentation URLs associated with this chip.
     #[serde(default)]
     pub documentation: HashMap<String, url::Url>,
+    /// The package variants available for this chip.
+    ///
+    /// If empty, the chip is assumed to have only one package variant.
+    #[serde(default)]
+    pub package_variants: Vec<String>,
     /// The cores available on the chip.
     #[serde(default)]
     pub cores: Vec<Core>,
@@ -111,6 +116,7 @@ impl Chip {
             part: None,
             svd: None,
             documentation: HashMap::new(),
+            package_variants: vec![],
             cores: vec![Core {
                 name: "main".to_string(),
                 core_type,
@@ -122,6 +128,13 @@ impl Chip {
             jtag: None,
             default_binary_format: None,
         }
+    }
+
+    /// Returns the package variants for this chip.
+    pub fn package_variants(&self) -> impl Iterator<Item = &String> {
+        std::slice::from_ref(&self.name)
+            .iter()
+            .chain(self.package_variants.iter())
     }
 }
 
