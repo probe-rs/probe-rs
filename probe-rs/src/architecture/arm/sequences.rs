@@ -863,6 +863,9 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         interface: &mut dyn DapProbe,
         dp: DpAddress,
     ) -> Result<(), ArmError> {
+        // Time guard for DPIDR register to become readable after line reset
+        const RESET_RECOVERY_TIMEOUT: Duration = Duration::from_secs(1);
+        const RESET_RECOVERY_RETRY_INTERVAL: Duration = Duration::from_millis(5);
         match interface.active_protocol() {
             Some(WireProtocol::Jtag) => {
                 tracing::debug!("JTAG: No special sequence needed to connect to debug port");
@@ -880,32 +883,49 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         }
 
         // Enter SWD Line Reset State, afterwards at least 2 idle cycles (SWDIO/TMS Low)
+        // Guard gives time for the target to recover
+        let guard = Instant::now();
+        let dpidr = loop {
+            swd_line_reset(interface, 3)?;
 
-        swd_line_reset(interface, 3)?;
+            // If multidrop is used, we now have to select a target
+            if let DpAddress::Multidrop(targetsel) = dp {
+                // Deselect other debug ports first?
 
-        // If multidrop is used, we now have to select a target
-        if let DpAddress::Multidrop(targetsel) = dp {
-            // Deselect other debug ports first?
+                tracing::debug!("Writing targetsel {:#x}", targetsel);
+                // TARGETSEL write.
+                // The TARGETSEL write is not ACKed by design. We can't use a normal register write
+                // because many probes don't even send the data phase when NAK.
+                let parity = targetsel.count_ones() % 2;
+                let data = (parity as u64) << 45 | (targetsel as u64) << 13 | 0x1f99;
 
-            tracing::debug!("Writing targetsel {:#x}", targetsel);
-            // TARGETSEL write.
-            // The TARGETSEL write is not ACKed by design. We can't use a normal register write
-            // because many probes don't even send the data phase when NAK.
-            let parity = targetsel.count_ones() % 2;
-            let data = (parity as u64) << 45 | (targetsel as u64) << 13 | 0x1f99;
+                // Should this be a swd_sequence?
+                // Technically we shouldn't drive SWDIO all the time when sending a request.
+                interface
+                    .swj_sequence(6 * 8, data)
+                    .map_err(DebugProbeError::from)?;
+            }
 
-            // Should this be a swd_sequence?
-            // Technically we shouldn't drive SWDIO all the time when sending a request.
-            interface
-                .swj_sequence(6 * 8, data)
-                .map_err(DebugProbeError::from)?;
-        }
+            tracing::debug!("Reading DPIDR to enable SWD interface");
 
-        tracing::debug!("Reading DPIDR to enable SWD interface");
+            // Read DPIDR to enable SWD interface.
+            match interface.raw_read_register(PortType::DebugPort, DPIDR::ADDRESS) {
+                Ok(x) => break x,
+                Err(z) => {
+                    if guard.elapsed() > RESET_RECOVERY_TIMEOUT {
+                        tracing::debug!("DPIDR didn't become readable within guard time");
+                        return Err(z);
+                    }
+                }
+            }
 
-        // Read DPIDR to enable SWD interface.
-        let dpidr = interface.raw_read_register(PortType::DebugPort, DPIDR::ADDRESS)?;
-
+            // Be nice - checking at intervals is plenty
+            std::thread::sleep(RESET_RECOVERY_RETRY_INTERVAL);
+        };
+        tracing::debug!(
+            "DPIDR became readable after {}ms",
+            guard.elapsed().as_millis()
+        );
         tracing::debug!("Result of DPIDR read: {:#x?}", dpidr);
 
         tracing::debug!("Clearing errors using ABORT register");
