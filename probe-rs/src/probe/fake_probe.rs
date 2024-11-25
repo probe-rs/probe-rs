@@ -11,7 +11,7 @@ use probe_rs_target::ScanChainElement;
 use crate::{
     architecture::arm::{
         ap::memory_ap::{mock::MockMemoryAp, MemoryAp},
-        armv8m::Dhcsr,
+        armv8m::{Aircr, Dhcsr},
         communication_interface::{
             ArmDebugState, Initialized, SwdSequence, Uninitialized, UninitializedArmProbe,
         },
@@ -107,6 +107,9 @@ impl MemoryInterface<ArmError> for &mut MockCore {
 
                     *val = dhcsr;
                     println!("Read  DHCSR: {:#x} = {:#x}", address, val);
+
+                    // `S_RESET_ST` gets cleared on read
+                    self.dhcsr.0 &= !(1 << 25);
                 }
 
                 _ => {
@@ -136,7 +139,15 @@ impl MemoryInterface<ArmError> for &mut MockCore {
             let address = address + (i as u64 * 4);
 
             match address {
-                // DHCSR
+                Aircr::ADDRESS_OFFSET => {
+                    let aircr = Aircr(*word);
+                    if aircr.vectkeystat() {
+                        if aircr.sysresetreq() {
+                            // Setting `DHCSR.S_RESET_ST`
+                            self.dhcsr.0 |= 1 << 25;
+                        }
+                    }
+                }
                 Dhcsr::ADDRESS_OFFSET => {
                     let dbg_key = (*word >> 16) & 0xffff;
 
