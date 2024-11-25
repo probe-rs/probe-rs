@@ -207,6 +207,9 @@ impl Session {
             }
         }
         probe.attach_to_unspecified()?;
+        for core in &cores {
+            probe.select_jtag_tap(core.interface_idx())?;
+        }
 
         let interface = probe.try_into_arm_interface().map_err(|(_, err)| err)?;
 
