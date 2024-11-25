@@ -35,7 +35,7 @@ itertools = "0.13"
 addr2line = "0.24"
 bytesize = "1"
 capstone = "0.12"
-cargo_metadata = "0.18"
+cargo_metadata = "0.19"
 clap = { version = "4", features = ["derive", "env"] }
 colored = "2"
 defmt-decoder = { version = "=0.3.11", features = [
