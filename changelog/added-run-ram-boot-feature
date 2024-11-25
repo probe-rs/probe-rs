@@ -1,0 +1,3 @@
+arm: Add RAM boot feature which could also be extended to other architectures. This feature works
+by detecting in whether the entry point of an application is located inside the RAM region. If it
+is, it will execute a special ARM sequence to run the application directly.

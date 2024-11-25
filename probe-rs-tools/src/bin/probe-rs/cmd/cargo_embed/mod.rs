@@ -257,7 +257,12 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
         ScanRegion::Ram,
     )?;
 
+    // FIXME: we should probably figure out in a different way which core we can work with.
+    // It seems arbitrary that we reset the target using the same core we use for polling RTT.
+    let core_id = rtt_client.core_id();
+
     let mut should_clear_rtt_header = true;
+    let mut ram_flash = false;
     if config.flashing.enabled {
         let download_options = BinaryDownloadOptions {
             disable_progressbars: opt.disable_progressbars,
@@ -279,7 +284,7 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
             tracing::debug!("RTT ScanRegion::Exact address is within region to be flashed")
         }
 
-        run_flash_download(
+        let flash_info = run_flash_download(
             &mut session,
             &path,
             &download_options,
@@ -287,13 +292,17 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
             loader,
             config.flashing.do_chip_erase,
         )?;
+
+        if flash_info.entry_point_in_ram {
+            session.prepare_running_on_ram(flash_info.entry_point.unwrap())?;
+            session.core(core_id)?.run()?;
+        }
+        ram_flash = flash_info.entry_point_in_ram;
     }
 
-    // FIXME: we should probably figure out in a different way which core we can work with.
-    // It seems arbitrary that we reset the target using the same core we use for polling RTT.
-    let core_id = rtt_client.core_id();
-
-    if config.reset.enabled || config.flashing.enabled {
+    if ram_flash {
+        session.core(core_id)?.run()?;
+    } else if config.reset.enabled || config.flashing.enabled {
         let mut core = session.core(core_id)?;
         core.reset_and_halt(Duration::from_millis(500))?;
     }

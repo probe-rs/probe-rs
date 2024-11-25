@@ -155,7 +155,7 @@ impl Cmd {
                 tracing::debug!("RTT ScanRegion::Exact address is within region to be flashed")
             }
 
-            run_flash_download(
+            let flash_info = run_flash_download(
                 &mut session,
                 &self.shared_options.path,
                 &self.shared_options.download_options,
@@ -164,10 +164,14 @@ impl Cmd {
                 self.shared_options.chip_erase,
             )?;
 
-            // reset the core to leave it in a consistent state after flashing
-            session
-                .core(core_id)?
-                .reset_and_halt(Duration::from_millis(100))?;
+            if flash_info.entry_point_in_ram {
+                session.prepare_running_on_ram(flash_info.entry_point.unwrap())?;
+            } else {
+                // reset the core to leave it in a consistent state after flashing
+                session
+                    .core(core_id)?
+                    .reset_and_halt(Duration::from_millis(100))?;
+            }
         }
 
         rtt_client.timezone_offset = timestamp_offset;
