@@ -141,11 +141,9 @@ impl MemoryInterface<ArmError> for &mut MockCore {
             match address {
                 Aircr::ADDRESS_OFFSET => {
                     let aircr = Aircr(*word);
-                    if aircr.vectkeystat() {
-                        if aircr.sysresetreq() {
-                            // Setting `DHCSR.S_RESET_ST`
-                            self.dhcsr.0 |= 1 << 25;
-                        }
+                    if aircr.vectkeystat() && aircr.sysresetreq() {
+                        // Setting `DHCSR.S_RESET_ST`
+                        self.dhcsr.0 |= 1 << 25;
                     }
                 }
                 Dhcsr::ADDRESS_OFFSET => {
