@@ -78,7 +78,9 @@ pub struct SharedOptions {
     #[clap(flatten)]
     pub(crate) format_options: FormatOptions,
 
-    /// The default format string to use for decoding defmt logs.
+    /// The format string to use when printing defmt encoded log messages from the target.
+    ///
+    /// See https://defmt.ferrous-systems.com/custom-log-output
     #[clap(long)]
     pub(crate) log_format: Option<String>,
 

@@ -38,9 +38,7 @@ capstone = "0.12"
 cargo_metadata = "0.19"
 clap = { version = "4", features = ["derive", "env"] }
 colored = "2"
-defmt-decoder = { version = "=0.3.11", features = [
-    "unstable",
-] } # pinned because "unstable" has potential for breaking changes
+defmt-decoder = "0.4"
 directories = "5"
 dunce = "1"
 figment = { version = "0.10", features = ["toml", "json", "yaml", "env"] }

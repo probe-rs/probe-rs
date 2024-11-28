@@ -50,6 +50,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "45862d1c77f2228b9e10bc609d5bc203d86ebc9b87ad8d5d5167a6c9abf739d9"
 
 [[package]]
+name = "alterable_logger"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "914a2c81a0e8d57d88d11554612d5e0afe5f942cecbcc239b10a394fd7ce404b"
+dependencies = [
+ "arc-swap",
+ "log",
+ "once_cell",
+]
+
+[[package]]
 name = "ansi-parser"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -122,6 +133,12 @@ checksum = "dde20b3d026af13f561bdd0f15edf01fc734f0dafcedbaf42bba506a9517f223"
 dependencies = [
  "derive_arbitrary",
 ]
+
+[[package]]
+name = "arc-swap"
+version = "1.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "69f7f8c3906b62b754cd5326047894316021dcfe5a194c8ea52bdd94934a3457"
 
 [[package]]
 name = "arrayvec"
@@ -786,10 +803,11 @@ checksum = "da692b8d1080ea3045efaab14434d40468c3d8657e42abddfffca87b428f4c1b"
 
 [[package]]
 name = "defmt-decoder"
-version = "0.3.11"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "16ba54f2192203b57700ba60491f774d4a456d2556d1f3126d3b229508c7cecf"
+checksum = "b88b0957423a8e4f5af3fd9e5651fdec42a94f09a916d3d4d2efe8114759824a"
 dependencies = [
+ "alterable_logger",
  "anyhow",
  "byteorder",
  "colored",
@@ -800,6 +818,7 @@ dependencies = [
  "log",
  "nom",
  "object 0.35.0",
+ "regex",
  "ryu",
  "serde",
  "serde_json",
@@ -818,11 +837,11 @@ dependencies = [
 
 [[package]]
 name = "defmt-parser"
-version = "0.3.4"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff4a5fefe330e8d7f31b16a318f9ce81000d8e35e69b93eae154d16d2278f70f"
+checksum = "3983b127f13995e68c1e29071e5d115cd96f215ccb5e6812e3728cd6f92653b3"
 dependencies = [
- "thiserror 1.0.69",
+ "thiserror 2.0.3",
 ]
 
 [[package]]
