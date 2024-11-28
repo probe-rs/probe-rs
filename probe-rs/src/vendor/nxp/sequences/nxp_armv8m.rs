@@ -1,5 +1,6 @@
 //! Sequences for NXP chips that use ARMv8-M cores.
 
+use bitfield::bitfield;
 use std::{
     sync::Arc,
     thread,
@@ -8,7 +9,7 @@ use std::{
 
 use crate::{
     architecture::arm::{
-        ap::{memory_ap::MemoryApType, AccessPortType, ApAccess, GenericAp, IDR},
+        ap::{memory_ap::MemoryApType, AccessPortError, AccessPortType, ApAccess, GenericAp, IDR},
         communication_interface::{FlushableArmAccess, Initialized},
         core::armv8m::{Aircr, Demcr, Dhcsr},
         dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
@@ -710,4 +711,109 @@ impl ArmDebugSequence for MIMXRT5xxS {
 
     // "ResetHardware" intentionally omitted because the default implementation
     // seems equivalent to the one in the CMSIS-Pack.
+}
+
+/// Debug sequences for MIMXRT118x MCUs.
+///
+/// Currently only supports the Cortex M33.
+#[derive(Debug)]
+pub struct MIMXRT118x(());
+
+bitfield! {
+    /// SRC Reset Mask Register
+    ///
+    /// In probe-rs context used only to unmask AIRCR.SYSRESETREQ as a reset source
+    ///
+    /// Reference:
+    /// `27.6.1.5` in `i.MX RT1180 Reference Manual, Rev. 6, 09/2024`
+    #[derive(Copy, Clone)]
+    pub struct Srmask(u32);
+    impl Debug;
+    /// Masks CM33 reset source
+    ///
+    /// `false` - the reset source is unmasked and active
+    /// `true` - the reset source is masked and ignored
+    ///
+    /// Default value is `true`
+    pub _, set_cm33_reset_mask : 8;
+}
+
+impl MIMXRT118x {
+    fn new() -> Self {
+        Self(())
+    }
+
+    /// Create a sequence handle for the MIMXRT118x.
+    pub fn create() -> Arc<dyn ArmDebugSequence> {
+        Arc::new(Self::new())
+    }
+
+    /// Necessary for AIRCR.SYSRESETREQ to not be a noop
+    /// Reference:
+    /// binaries/Scripts/RT1180_connect_M33_wake_M7.scp:53 in Linkserver
+    /// `27.3.3.2` in `i.MX RT1180 Reference Manual, Rev. 6, 09/2024`
+    fn clear_cm33_reset_mask(
+        &self,
+        interface: &mut dyn ArmMemoryInterface,
+    ) -> Result<(), ArmError> {
+        const SRC_SRMASK: u64 = 0x54460018;
+        let mut srmask = Srmask(interface.read_word_32(SRC_SRMASK)?);
+        srmask.set_cm33_reset_mask(false);
+        tracing::trace!("Clearing the SRC.SRMASK.CM33_RESET_MASK mask...");
+        interface.write_word_32(SRC_SRMASK, srmask.0)?;
+        interface.flush()
+    }
+}
+
+impl ArmDebugSequence for MIMXRT118x {
+    fn reset_system(
+        &self,
+        interface: &mut dyn ArmMemoryInterface,
+        _core_type: crate::CoreType,
+        _: Option<u64>,
+    ) -> Result<(), ArmError> {
+        tracing::trace!("MIMXRT118x reset system");
+
+        self.clear_cm33_reset_mask(interface)?;
+        let mut aircr = Aircr(0);
+        aircr.vectkey();
+        aircr.set_sysresetreq(true);
+        interface.write_word_32(Aircr::get_mmio_address(), aircr.into())?;
+        interface.flush()?;
+        tracing::trace!("Reset requested..");
+        // After SYSRESETREQ, a _short_ sleep seems to be necessary. Otherwise debug interface enters some lock-up state.
+        // NXP's Linkserver sends a vendor CMSIS DAP command to MCU-Link after reset which seems to be just a ~50ms sleep.
+        // Doing the same seems to solve the issue ™️.
+        //
+        // It is pretty much the only reason why we cannot use a vanilla `cortex_m_reset_system`.
+        thread::sleep(Duration::from_millis(50));
+
+        let start = Instant::now();
+        while start.elapsed() < Duration::from_millis(500) {
+            let dhcsr = match interface.read_word_32(Dhcsr::get_mmio_address()) {
+                Ok(val) => Dhcsr(val),
+                // Some combinations of debug probe and target (in
+                // particular, hs-probe and ATSAMD21) result in
+                // register read errors while the target is
+                // resetting.
+                Err(ArmError::AccessPort {
+                    source: AccessPortError::RegisterRead { .. },
+                    ..
+                }) => continue,
+                Err(err) => return Err(err),
+            };
+            if dhcsr.s_reset_st() {
+                tracing::trace!("System reset was successful");
+                return Ok(());
+            }
+        }
+
+        tracing::error!("System reset timed out");
+        Err(ArmError::Timeout)
+    }
+
+    fn allowed_access_ports(&self) -> Vec<u8> {
+        // AP5 locks the whole DP if you try to read its IDR.
+        vec![0, 1, 3, 4, 6]
+    }
 }

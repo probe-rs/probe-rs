@@ -1,0 +1,1 @@
+Added support for Texas Instruments MSPM0C series

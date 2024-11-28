@@ -52,23 +52,23 @@ hidapi = { version = "2", default-features = false, features = [
 ihex = "3.0"
 itertools = "0.13"
 jep106 = "0.2"
-once_cell = "1"
 flate2 = "1.0"
 object = { version = "0.36", default-features = false, features = [
     "elf",
     "read_core",
     "std",
 ] }
-nusb = "0.1.9"
+nusb = "0.1.12"
 futures-lite = { version = "2", default-features = false }
 async-io = "2"
 scroll = "0.12"
-svg = "0.17"
+serialport = { version = "4.6.0", default-features = false, features = ["usbportinfo-interface"] }
+svg = "0.18"
 tracing = "0.1"
 uf2-decode = "0.2"
 espflash = { version = "3", default-features = false }
 parking_lot = "0.12.2"
-zerocopy = { version = "0.7.32", features = ["derive"] }
+zerocopy = { version = "0.8.0", features = ["derive"] }
 
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9"

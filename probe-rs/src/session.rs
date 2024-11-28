@@ -80,7 +80,6 @@ impl fmt::Debug for JtagInterface {
 }
 
 // TODO: this is somewhat messy because I omitted separating the Probe out of the ARM interface.
-#[allow(clippy::large_enum_variant)]
 enum ArchitectureInterface {
     Arm(Box<dyn ArmProbeInterface + 'static>),
     Jtag(Probe, Vec<JtagInterface>),
@@ -777,6 +776,24 @@ impl Session {
                 Err(err) => Err(err),
             })
         })
+    }
+
+    /// Resume all cores
+    pub fn resume_all_cores(&mut self) -> Result<(), Error> {
+        // Resume cores
+        for core_id in 0..self.cores.len() {
+            match self.core(core_id) {
+                Ok(mut core) => {
+                    if core.core_halted()? {
+                        core.run()?;
+                    }
+                }
+                Err(Error::CoreDisabled(i)) => tracing::debug!("Core {i} is disabled"),
+                Err(error) => return Err(error),
+            }
+        }
+
+        Ok(())
     }
 }
 

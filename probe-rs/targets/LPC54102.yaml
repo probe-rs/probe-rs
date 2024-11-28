@@ -1,4 +1,7 @@
 name: LPC54102
+manufacturer:
+  id: 0x15
+  cc: 0x0
 generated_from_pack: true
 pack_file_release: 12.0.1
 variants:

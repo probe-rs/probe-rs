@@ -381,7 +381,7 @@ fn cortex_m_reset_system(interface: &mut dyn ArmMemoryInterface) -> Result<(), A
 
     let start = Instant::now();
 
-    loop {
+    while start.elapsed() < Duration::from_millis(500) {
         let dhcsr = match interface.read_word_32(Dhcsr::get_mmio_address()) {
             Ok(val) => Dhcsr(val),
             // Some combinations of debug probe and target (in
@@ -397,10 +397,9 @@ fn cortex_m_reset_system(interface: &mut dyn ArmMemoryInterface) -> Result<(), A
         if !dhcsr.s_reset_st() {
             return Ok(());
         }
-        if start.elapsed() >= Duration::from_millis(500) {
-            return Err(ArmError::Timeout);
-        }
     }
+
+    Err(ArmError::Timeout)
 }
 
 /// A interface to operate debug sequences for ARM targets.
@@ -471,10 +470,11 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         // TODO: Handle this differently for ST-Link?
         tracing::debug!("Setting up debug port {dp:x?}");
 
-        // Assume that multidrop means SWD version 2 and dormant state.
-        // There could also be chips with SWD version 2 that don't use multidrop,
-        // so this will have to be changed in the future.
-        let has_dormant = matches!(dp, DpAddress::Multidrop(_));
+        // A multidrop address implies SWD version 2 and dormant state.  In
+        // cases where SWD version 2 is used but not multidrop addressing
+        // (ex. ADIv6), the SWD version 1 sequence is attempted before trying
+        // the SWD version 2 sequence.
+        let mut has_dormant = matches!(dp, DpAddress::Multidrop(_));
 
         fn alert_sequence(interface: &mut dyn DapProbe) -> Result<(), ArmError> {
             tracing::trace!("Sending Selection Alert sequence");
@@ -495,7 +495,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
 
         let mut result = Ok(());
         const NUM_RETRIES: usize = 5;
-        for _ in 0..NUM_RETRIES {
+        for retry in 0..NUM_RETRIES {
             // Ensure current debug interface is in reset state.
             swd_line_reset(interface, 0)?;
 
@@ -561,6 +561,12 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
             if result.is_ok() {
                 // Successful connection, we can stop retrying.
                 break;
+            }
+
+            // If two retries have failed, try using SWD version 2 wake from
+            // dormant sequence.
+            if retry >= 1 {
+                has_dormant = true;
             }
         }
 
@@ -864,6 +870,9 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         interface: &mut dyn DapProbe,
         dp: DpAddress,
     ) -> Result<(), ArmError> {
+        // Time guard for DPIDR register to become readable after line reset
+        const RESET_RECOVERY_TIMEOUT: Duration = Duration::from_secs(1);
+        const RESET_RECOVERY_RETRY_INTERVAL: Duration = Duration::from_millis(5);
         match interface.active_protocol() {
             Some(WireProtocol::Jtag) => {
                 tracing::debug!("JTAG: No special sequence needed to connect to debug port");
@@ -881,32 +890,49 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         }
 
         // Enter SWD Line Reset State, afterwards at least 2 idle cycles (SWDIO/TMS Low)
+        // Guard gives time for the target to recover
+        let guard = Instant::now();
+        let dpidr = loop {
+            swd_line_reset(interface, 3)?;
 
-        swd_line_reset(interface, 3)?;
+            // If multidrop is used, we now have to select a target
+            if let DpAddress::Multidrop(targetsel) = dp {
+                // Deselect other debug ports first?
 
-        // If multidrop is used, we now have to select a target
-        if let DpAddress::Multidrop(targetsel) = dp {
-            // Deselect other debug ports first?
+                tracing::debug!("Writing targetsel {:#x}", targetsel);
+                // TARGETSEL write.
+                // The TARGETSEL write is not ACKed by design. We can't use a normal register write
+                // because many probes don't even send the data phase when NAK.
+                let parity = targetsel.count_ones() % 2;
+                let data = (parity as u64) << 45 | (targetsel as u64) << 13 | 0x1f99;
 
-            tracing::debug!("Writing targetsel {:#x}", targetsel);
-            // TARGETSEL write.
-            // The TARGETSEL write is not ACKed by design. We can't use a normal register write
-            // because many probes don't even send the data phase when NAK.
-            let parity = targetsel.count_ones() % 2;
-            let data = (parity as u64) << 45 | (targetsel as u64) << 13 | 0x1f99;
+                // Should this be a swd_sequence?
+                // Technically we shouldn't drive SWDIO all the time when sending a request.
+                interface
+                    .swj_sequence(6 * 8, data)
+                    .map_err(DebugProbeError::from)?;
+            }
 
-            // Should this be a swd_sequence?
-            // Technically we shouldn't drive SWDIO all the time when sending a request.
-            interface
-                .swj_sequence(6 * 8, data)
-                .map_err(DebugProbeError::from)?;
-        }
+            tracing::debug!("Reading DPIDR to enable SWD interface");
 
-        tracing::debug!("Reading DPIDR to enable SWD interface");
+            // Read DPIDR to enable SWD interface.
+            match interface.raw_read_register(PortType::DebugPort, DPIDR::ADDRESS) {
+                Ok(x) => break x,
+                Err(z) => {
+                    if guard.elapsed() > RESET_RECOVERY_TIMEOUT {
+                        tracing::debug!("DPIDR didn't become readable within guard time");
+                        return Err(z);
+                    }
+                }
+            }
 
-        // Read DPIDR to enable SWD interface.
-        let dpidr = interface.raw_read_register(PortType::DebugPort, DPIDR::ADDRESS)?;
-
+            // Be nice - checking at intervals is plenty
+            std::thread::sleep(RESET_RECOVERY_RETRY_INTERVAL);
+        };
+        tracing::debug!(
+            "DPIDR became readable after {}ms",
+            guard.elapsed().as_millis()
+        );
         tracing::debug!("Result of DPIDR read: {:#x?}", dpidr);
 
         tracing::debug!("Clearing errors using ABORT register");
@@ -974,6 +1000,11 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     /// Return the Debug Erase Sequence implementation if it exists
     fn debug_erase_sequence(&self) -> Option<Arc<dyn DebugEraseSequence>> {
         None
+    }
+
+    /// Return the APs that are expected to work.
+    fn allowed_access_ports(&self) -> Vec<u8> {
+        (0..=255).collect()
     }
 }
 

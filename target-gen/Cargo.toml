@@ -19,7 +19,7 @@ probe-rs = { path = "../probe-rs", version = "0.24.0" }
 probe-rs-target = { path = "../probe-rs-target", version = "0.24.0", default-features = false }
 cmsis-pack = "0.7.0"
 jep106 = "0.2.8"
-goblin = { version = "0.8.2", default-features = false, features = [
+goblin = { version = "0.9.0", default-features = false, features = [
     "elf32",
     "elf64",
     "endian_fd",

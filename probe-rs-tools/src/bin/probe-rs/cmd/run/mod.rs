@@ -1,10 +1,12 @@
 mod normal_run_mode;
 use normal_run_mode::*;
 mod test_run_mode;
+use probe_rs::semihosting::SemihostingCommand;
 use test_run_mode::*;
 
 use std::fs::{self, File};
 use std::io::{Read, Write};
+use std::num::NonZeroU32;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -96,6 +98,11 @@ impl Cmd {
 
         let (mut session, probe_options) =
             self.shared_options.probe_options.simple_attach(lister)?;
+
+        if !run_download {
+            // If we don't have to flash, resume cores now to prevent halting while processing elf
+            session.resume_all_cores()?;
+        }
 
         let rtt_scan_regions = match self.shared_options.rtt_scan_memory {
             true => session.target().rtt_scan_regions.clone(),
@@ -349,11 +356,15 @@ impl RunLoop {
             // this is important so we do one last poll after halt, so we flush all messages
             // the core printed before halting, such as a panic message.
             let mut return_reason = None;
+            let mut was_halted = false;
             match core.status()? {
                 probe_rs::CoreStatus::Halted(reason) => match predicate(reason, core) {
                     Ok(Some(r)) => return_reason = Some(Ok(ReturnReason::Predicate(r))),
                     Err(e) => return_reason = Some(Err(e)),
-                    Ok(None) => core.run()?,
+                    Ok(None) => {
+                        was_halted = true;
+                        core.run()?
+                    }
                 },
                 probe_rs::CoreStatus::Running
                 | probe_rs::CoreStatus::Sleeping
@@ -387,9 +398,12 @@ impl RunLoop {
             // Poll RTT with a frequency of 10 Hz if we do not receive any new data.
             // Once we receive new data, we bump the frequency to 1kHz.
             //
+            // We also poll at 1kHz if the core was halted, to speed up reading strings
+            // from semihosting. The core is not expected to be halted for other reasons.
+            //
             // If the polling frequency is too high, the USB connection to the probe
             // can become unstable. Hence we only pull as little as necessary.
-            if had_rtt_data {
+            if had_rtt_data || was_halted {
                 thread::sleep(Duration::from_millis(1));
             } else {
                 thread::sleep(Duration::from_millis(100));
@@ -513,4 +527,104 @@ fn poll_rtt<S: Write + ?Sized>(
     rtt_client.poll(core, &mut out)?;
 
     Ok(out.had_data)
+}
+
+struct SemihostingPrinter {
+    stdout_open: bool,
+    stderr_open: bool,
+}
+
+impl SemihostingPrinter {
+    const STDOUT: u32 = 1;
+    const STDERR: u32 = 2;
+
+    pub fn new() -> Self {
+        Self {
+            stdout_open: false,
+            stderr_open: false,
+        }
+    }
+
+    pub fn handle(
+        &mut self,
+        command: SemihostingCommand,
+        core: &mut Core<'_>,
+    ) -> Result<(), Error> {
+        match command {
+            SemihostingCommand::Open(request) => {
+                let path = request.path(core)?;
+                if path == ":tt" {
+                    match request.mode().as_bytes()[0] {
+                        b'w' => {
+                            self.stdout_open = true;
+                            let fd = NonZeroU32::new(Self::STDOUT).unwrap();
+                            request.respond_with_handle(core, fd)?;
+                        }
+                        b'a' => {
+                            self.stderr_open = true;
+                            let fd = NonZeroU32::new(Self::STDERR).unwrap();
+                            request.respond_with_handle(core, fd)?;
+                        }
+                        other => {
+                            tracing::warn!(
+                                "Target wanted to open file {path} with mode {mode}, but probe-rs does not support this operation yet. Continuing...",
+                                path = path,
+                                mode = other
+                            );
+                        }
+                    };
+                } else {
+                    tracing::warn!(
+                        "Target wanted to open file {path}, but probe-rs does not support this operation yet. Continuing..."
+                    );
+                }
+            }
+            SemihostingCommand::Close(request) => {
+                let handle = request.file_handle(core)?;
+                if handle == Self::STDOUT {
+                    self.stdout_open = false;
+                    request.success(core)?;
+                } else if handle == Self::STDERR {
+                    self.stderr_open = false;
+                    request.success(core)?;
+                } else {
+                    tracing::warn!(
+                        "Target wanted to close file handle {handle}, but probe-rs does not support this operation yet. Continuing..."
+                    );
+                }
+            }
+            SemihostingCommand::Write(request) => match request.file_handle() {
+                handle if handle == Self::STDOUT => {
+                    if self.stdout_open {
+                        let bytes = request.read(core)?;
+                        let str = String::from_utf8_lossy(&bytes);
+                        std::io::stdout().write_all(str.as_bytes()).unwrap();
+                        request.write_status(core, 0)?;
+                    }
+                }
+                handle if handle == Self::STDERR => {
+                    if self.stderr_open {
+                        let bytes = request.read(core)?;
+                        let str = String::from_utf8_lossy(&bytes);
+                        std::io::stderr().write_all(str.as_bytes()).unwrap();
+                        request.write_status(core, 0)?;
+                    }
+                }
+                other => {
+                    tracing::warn!(
+                        "Target wanted to write to file handle {other}, but probe-rs does not support this operation yet. Continuing...",
+                    );
+                }
+            },
+            SemihostingCommand::WriteConsole(request) => {
+                std::io::stdout()
+                    .write_all(request.read(core)?.as_bytes())
+                    .unwrap();
+            }
+
+            _ => {}
+        };
+
+        Ok(())
+    }
 }

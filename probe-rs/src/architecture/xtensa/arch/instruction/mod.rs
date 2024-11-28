@@ -12,6 +12,12 @@ pub enum Instruction {
     /// Note: this is an illegal instruction when the processor is not in On-Chip Debug Mode
     Sddr32P(CpuRegister),
 
+    /// Loads a 32-bit word from `s` to the address in `t`
+    L32I(CpuRegister, CpuRegister, u8),
+
+    /// Stores a 32-bit word from `s` to the address in `t`
+    S32I(CpuRegister, CpuRegister, u8),
+
     /// Reads `SpecialRegister` into `CpuRegister`
     Rsr(SpecialRegister, CpuRegister),
 
@@ -42,6 +48,8 @@ impl Instruction {
         let word = match self {
             Instruction::Lddr32P(src) => 0x0070E0 | (src as u32 & 0x0F) << 8,
             Instruction::Sddr32P(src) => 0x0070F0 | (src as u32 & 0x0F) << 8,
+            Instruction::L32I(s, t, imm) => format::rri8(0x002002, s as u8, t as u8, imm),
+            Instruction::S32I(s, t, imm) => format::rri8(0x006002, s as u8, t as u8, imm),
             Instruction::Rsr(sr, t) => format::rsr(0x030000, sr as u8, t as u8),
             Instruction::Wsr(sr, t) => format::rsr(0x130000, sr as u8, t as u8),
             Instruction::Break(s, t) => {
@@ -61,13 +69,6 @@ impl Instruction {
         let (bytes, narrow) = self.encode_bytes();
 
         vec.extend_from_slice(&narrow.to_le_bytes()[..bytes]);
-    }
-
-    /// Returns the instruction encoded as a Little Endian sequence of bytes.
-    pub fn to_bytes(self) -> Vec<u8> {
-        let mut bytes = Vec::new();
-        self.encode_into_vec(&mut bytes);
-        bytes
     }
 
     pub const fn encode(self) -> InstructionEncoding {

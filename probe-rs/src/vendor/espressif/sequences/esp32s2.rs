@@ -32,6 +32,12 @@ impl ESP32S2 {
     const RTC_WRITE_PROT: u64 = Self::RTC_CNTL_BASE | 0xAC;
     const RTC_WDTCONFIG0: u64 = Self::RTC_CNTL_BASE | 0x94;
 
+    const SWD_BASE: u64 = 0x3f408000;
+    const SWD_WRITE_PROT: u64 = Self::SWD_BASE | 0xB4;
+    const SWD_CONF: u64 = Self::SWD_BASE | 0xB0;
+    const SWD_AUTO_FEED_EN: u32 = 1 << 31;
+    const SWD_WRITE_PROT_KEY: u32 = 0x8f1d312a;
+
     const TIMG0_BASE: u64 = 0x3f41f000;
     const TIMG0_WRITE_PROT: u64 = Self::TIMG0_BASE | 0x64;
     const TIMG0_WDTCONFIG0: u64 = Self::TIMG0_BASE | 0x48;
@@ -111,6 +117,12 @@ impl ESP32S2 {
 impl XtensaDebugSequence for ESP32S2 {
     fn on_connect(&self, core: &mut XtensaCommunicationInterface) -> Result<(), crate::Error> {
         tracing::info!("Disabling ESP32-S2 watchdogs...");
+
+        // disable super wdt
+        core.write_word_32(Self::SWD_WRITE_PROT, Self::SWD_WRITE_PROT_KEY)?; // write protection off
+        let current = core.read_word_32(Self::SWD_CONF)?;
+        core.write_word_32(Self::SWD_CONF, current | Self::SWD_AUTO_FEED_EN)?;
+        core.write_word_32(Self::SWD_WRITE_PROT, 0x0)?; // write protection on
 
         // tg0 wdg
         core.write_word_32(Self::TIMG0_WRITE_PROT, 0x50D83AA1)?; // write protection off

@@ -217,7 +217,7 @@ fn prune_logs(directory: &Path) -> Result<(), anyhow::Error> {
         .filter_map(|entry| {
             let entry = entry.ok()?;
             let path = entry.path();
-            if path.extension().map_or(false, |e| e == "log") {
+            if path.extension().is_some_and(|e| e == "log") {
                 let metadata = fs::metadata(&path).ok()?;
                 let last_modified = metadata.created().ok()?;
                 Some((path, last_modified))

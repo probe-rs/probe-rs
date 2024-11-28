@@ -9,8 +9,9 @@ use crate::{
     memory_mapped_bitfield_register,
     probe::DebugProbeError,
     semihosting::decode_semihosting_syscall,
+    semihosting::SemihostingCommand,
     CoreInterface, CoreRegister, CoreStatus, CoreType, Error, HaltReason, InstructionSet,
-    MemoryInterface, MemoryMappedRegister, SemihostingCommand,
+    MemoryInterface, MemoryMappedRegister,
 };
 use bitfield::bitfield;
 use communication_interface::{AbstractCommandErrorKind, RiscvCommunicationInterface, RiscvError};
@@ -75,8 +76,6 @@ impl<'state> Riscv32<'state> {
 
     /// Check if the current breakpoint is a semihosting call
     fn check_for_semihosting(&mut self) -> Result<Option<SemihostingCommand>, Error> {
-        let pc: u32 = self.read_core_reg(self.program_counter().id)?.try_into()?;
-
         // The Riscv Semihosting Specification, specificies the following sequence of instructions,
         // to trigger a semihosting call:
         // <https://github.com/riscv-software-src/riscv-semihosting/blob/main/riscv-semihosting-spec.adoc>
@@ -86,6 +85,13 @@ impl<'state> Riscv32<'state> {
             0x00100073, // ebreak (Break to debugger)
             0x40705013, // srai x0, x0, 7 (NOP encoding the semihosting call number 7)
         ];
+
+        // We only want to decode the semihosting command once, since answering it might change some of the registers
+        if let Some(command) = self.state.semihosting_command {
+            return Ok(Some(command));
+        }
+
+        let pc: u32 = self.read_core_reg(self.program_counter().id)?.try_into()?;
 
         // Read the actual instructions, starting at the instruction before the ebreak (PC-4)
         let mut actual_instructions = [0u32; 3];
@@ -99,28 +105,14 @@ impl<'state> Riscv32<'state> {
             actual_instructions[2]
         );
 
-        if TRAP_INSTRUCTIONS == actual_instructions {
-            // Trap sequence found -> we're semihosting
-            match self.state.semihosting_command {
-                None => {
-                    // We only want to decode the semihosting command once, since answering it might change some of the registers
-                    let a0: u32 = self
-                        .read_core_reg(self.registers().get_argument_register(0).unwrap().id())?
-                        .try_into()?;
-                    let a1: u32 = self
-                        .read_core_reg(self.registers().get_argument_register(1).unwrap().id())?
-                        .try_into()?;
-
-                    tracing::info!("Semihosting found pc={pc:#x} a0={a0:#x} a1={a1:#x}");
-                    let cmd = decode_semihosting_syscall(self, a0, a1)?;
-                    self.state.semihosting_command = Some(cmd);
-                    Ok(Some(cmd))
-                }
-                Some(command) => Ok(Some(command)),
-            }
+        let command = if TRAP_INSTRUCTIONS == actual_instructions {
+            Some(decode_semihosting_syscall(self)?)
         } else {
-            Ok(None)
-        }
+            None
+        };
+        self.state.semihosting_command = command;
+
+        Ok(command)
     }
 
     fn determine_number_of_hardware_breakpoints(&mut self) -> Result<u32, RiscvError> {
@@ -624,7 +616,7 @@ impl<'state> CoreInterface for Riscv32<'state> {
     }
 
     fn debug_core_stop(&mut self) -> Result<(), Error> {
-        self.debug_on_sw_breakpoint(false)?;
+        self.interface.disable_debug_module()?;
         Ok(())
     }
 }

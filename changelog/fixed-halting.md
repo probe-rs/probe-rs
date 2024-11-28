@@ -1,0 +1,1 @@
+Fix excessive halting in `probe-rs attach` which may leave devices in a non-functional state

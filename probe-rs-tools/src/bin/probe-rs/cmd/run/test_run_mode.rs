@@ -1,7 +1,9 @@
-use crate::cmd::run::{print_stacktrace, OutputStream, ReturnReason, RunLoop, RunMode};
+use crate::cmd::run::{
+    print_stacktrace, OutputStream, ReturnReason, RunLoop, RunMode, SemihostingPrinter,
+};
 use anyhow::Result;
 use libtest_mimic::{Arguments, Failed, FormatSetting, Trial};
-use probe_rs::{BreakpointCause, Core, HaltReason, SemihostingCommand, Session};
+use probe_rs::{semihosting::SemihostingCommand, BreakpointCause, Core, HaltReason, Session};
 use serde::Deserialize;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -125,6 +127,7 @@ impl TestRunMode {
 
         let mut cmdline_requested = false;
 
+        let mut printer = SemihostingPrinter::new();
         // When the target first invokes SYS_GET_CMDLINE (0x15), we answer "list"
         // Then, we wait until the target invokes SEMIHOSTING_USER_LIST (0x100) with the json containing all tests
         let halt_handler = |halt_reason: HaltReason, core: &mut Core| {
@@ -155,6 +158,13 @@ impl TestRunMode {
                     }
 
                     Ok(Some(list))
+                }
+                other @ (SemihostingCommand::Open(_)
+                | SemihostingCommand::Close(_)
+                | SemihostingCommand::WriteConsole(_)
+                | SemihostingCommand::Write(_)) => {
+                    printer.handle(other, core)?;
+                    Ok(None)
                 }
                 other => anyhow::bail!(
                     "Unexpected semihosting command {:?} cmdline_requested: {:?}",
@@ -198,6 +208,7 @@ impl TestRunMode {
         let timeout = timeout.unwrap_or(Duration::from_secs(60)); // TODO: make global timeout configurable: https://github.com/probe-rs/embedded-test/issues/3
         let mut cmdline_requested = false;
 
+        let mut printer = SemihostingPrinter::new();
         // When the target first invokes SYS_GET_CMDLINE (0x15), we answer "run <test_name>
         // Then we wait until the target invokes SYS_EXIT (0x18) or SYS_EXIT_EXTENDED(0x20) with the exit code
         let halt_handler = |halt_reason: HaltReason, core: &mut Core| {
@@ -222,7 +233,13 @@ impl TestRunMode {
                 SemihostingCommand::ExitError(_) if cmdline_requested => {
                     Ok(Some(TestOutcome::Panic))
                 }
-
+                other @ (SemihostingCommand::Open(_)
+                | SemihostingCommand::Close(_)
+                | SemihostingCommand::WriteConsole(_)
+                | SemihostingCommand::Write(_)) => {
+                    printer.handle(other, core)?;
+                    Ok(None)
+                }
                 other => {
                     // Invalid sequence of semihosting calls => Abort testing altogether
                     anyhow::bail!(

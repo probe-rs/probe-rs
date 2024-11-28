@@ -1,11 +1,12 @@
 ---
 source: probe-rs/src/debug/debug_info.rs
+assertion_line: 2036
 expression: static_variables
 ---
 Child Variables:
   name: StaticScopeRoot
   type_name: Unknown
-  value: "<unknown> {\n\texception_table: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t_aTerminalId: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,<unknown>,\n\tchar[1024] = [\n\t\tH,\n\t\te,\n\t\tl,\n\t\tl,\n\t\to,\n\t\t ,\n\t\tH,\n\t\te,\n\t\tl,\n\t\tl,\n\n\t\t... and 1014 more\n\t],\n\tchar[16] = [\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\n\t\t... and 6 more\n\t],\n\t_ActiveTerminal: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\tfoo: Foo_t = Foo_t @ 0x20000000,\n\tconst Foo_t[2] = [\n\t\tFoo_t @ 0x00001684,\n\t\tFoo_t @ 0x0000168C\n\t],\n\tuint8_t[9][6] = [\n\t\tuint8_t[9] = [\n\t\t\t0,\n\t\t\t1,\n\t\t\t2,\n\t\t\t3,\n\t\t\t4,\n\t\t\t5,\n\t\t\t6,\n\t\t\t7,\n\t\t\t8\n\t\t],\n\t\tuint8_t[9] = [\n\t\t\t10,\n\t\t\t11,\n\t\t\t12,\n\t\t\t13,\n\t\t\t14,\n\t\t\t15,\n\t\t\t16,\n\t\t\t17,\n\t\t\t18\n\t\t],\n\t\tuint8_t[9] = [\n\t\t\t20,\n\t\t\t21,\n\t\t\t22,\n\t\t\t23,\n\t\t\t24,\n\t\t\t25,\n\t\t\t26,\n\t\t\t27,\n\t\t\t28\n\t\t],\n\t\tuint8_t[9] = [\n\t\t\t30,\n\t\t\t31,\n\t\t\t32,\n\t\t\t33,\n\t\t\t34,\n\t\t\t35,\n\t\t\t36,\n\t\t\t37,\n\t\t\t38\n\t\t],\n\t\tuint8_t[9] = [\n\t\t\t40,\n\t\t\t41,\n\t\t\t42,\n\t\t\t43,\n\t\t\t44,\n\t\t\t45,\n\t\t\t46,\n\t\t\t47,\n\t\t\t48\n\t\t],\n\t\tuint8_t[9] = [\n\t\t\t50,\n\t\t\t51,\n\t\t\t52,\n\t\t\t53,\n\t\t\t54,\n\t\t\t55,\n\t\t\t56,\n\t\t\t57,\n\t\t\t58\n\t\t]\n\t],\n\tuint16_t[3][2] = [\n\t\tuint16_t[3] = [\n\t\t\t0,\n\t\t\t1,\n\t\t\t2\n\t\t],\n\t\tuint16_t[3] = [\n\t\t\t3,\n\t\t\t4,\n\t\t\t5\n\t\t]\n\t]}"
+  value: "<unknown> {\n\texception_table: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t_aTerminalId: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t_SEGGER_RTT: SEGGER_RTT_CB = SEGGER_RTT_CB @ 0x20002000,\n\tchar[1024] = [\n\t\tH,\n\t\te,\n\t\tl,\n\t\tl,\n\t\to,\n\t\t ,\n\t\tH,\n\t\te,\n\t\tl,\n\t\tl,\n\n\t\t... and 1014 more\n\t],\n\tchar[16] = [\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\n\t\t... and 6 more\n\t],\n\t_ActiveTerminal: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\tfoo: Foo_t = Foo_t @ 0x20000000,\n\tconst Foo_t[2] = [\n\t\tFoo_t @ 0x00001684,\n\t\tFoo_t @ 0x0000168C\n\t],\n\tuint8_t[9][6] = [\n\t\tuint8_t[9] = [\n\t\t\t0,\n\t\t\t1,\n\t\t\t2,\n\t\t\t3,\n\t\t\t4,\n\t\t\t5,\n\t\t\t6,\n\t\t\t7,\n\t\t\t8\n\t\t],\n\t\tuint8_t[9] = [\n\t\t\t10,\n\t\t\t11,\n\t\t\t12,\n\t\t\t13,\n\t\t\t14,\n\t\t\t15,\n\t\t\t16,\n\t\t\t17,\n\t\t\t18\n\t\t],\n\t\tuint8_t[9] = [\n\t\t\t20,\n\t\t\t21,\n\t\t\t22,\n\t\t\t23,\n\t\t\t24,\n\t\t\t25,\n\t\t\t26,\n\t\t\t27,\n\t\t\t28\n\t\t],\n\t\tuint8_t[9] = [\n\t\t\t30,\n\t\t\t31,\n\t\t\t32,\n\t\t\t33,\n\t\t\t34,\n\t\t\t35,\n\t\t\t36,\n\t\t\t37,\n\t\t\t38\n\t\t],\n\t\tuint8_t[9] = [\n\t\t\t40,\n\t\t\t41,\n\t\t\t42,\n\t\t\t43,\n\t\t\t44,\n\t\t\t45,\n\t\t\t46,\n\t\t\t47,\n\t\t\t48\n\t\t],\n\t\tuint8_t[9] = [\n\t\t\t50,\n\t\t\t51,\n\t\t\t52,\n\t\t\t53,\n\t\t\t54,\n\t\t\t55,\n\t\t\t56,\n\t\t\t57,\n\t\t\t58\n\t\t]\n\t],\n\tuint16_t[3][2] = [\n\t\tuint16_t[3] = [\n\t\t\t0,\n\t\t\t1,\n\t\t\t2\n\t\t],\n\t\tuint16_t[3] = [\n\t\t\t3,\n\t\t\t4,\n\t\t\t5\n\t\t]\n\t]}"
   children:
     - name:
         Named: exception_table
@@ -15,9 +16,243 @@ Child Variables:
         Named: _aTerminalId
       type_name: Unknown
       value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
-    - name: Unknown
-      type_name: Unknown
-      value: "Error: This is a bug! Attempted to evaluate a Variable with no type or no memory location"
+    - name:
+        Named: _SEGGER_RTT
+      type_name:
+        Modified:
+          - Typedef: SEGGER_RTT_CB
+          - Struct: "<unnamed struct>"
+      value: SEGGER_RTT_CB @ 0x20002000
+      children:
+        - name:
+            Named: acID
+          type_name:
+            Array:
+              item_type_name:
+                Base: char
+              count: 16
+          value: "char[16] = [\n\tS,\n\tE,\n\tG,\n\tG,\n\tE,\n\tR,\n\t ,\n\tR,\n\tT,\n\tT,\n\t... and 6 more]"
+          children:
+            - name:
+                Named: __0
+              type_name:
+                Base: char
+              value: S
+            - name:
+                Named: __1
+              type_name:
+                Base: char
+              value: E
+            - name:
+                Named: __2
+              type_name:
+                Base: char
+              value: G
+            - name:
+                Named: __3
+              type_name:
+                Base: char
+              value: G
+            - name:
+                Named: __4
+              type_name:
+                Base: char
+              value: E
+            - name:
+                Named: __5
+              type_name:
+                Base: char
+              value: R
+            - name:
+                Named: __6
+              type_name:
+                Base: char
+              value: " "
+            - name:
+                Named: __7
+              type_name:
+                Base: char
+              value: R
+            - name:
+                Named: __8
+              type_name:
+                Base: char
+              value: T
+            - name:
+                Named: __9
+              type_name:
+                Base: char
+              value: T
+            - name:
+                Named: __10
+              type_name:
+                Base: char
+              value: "\u0000"
+            - name:
+                Named: __11
+              type_name:
+                Base: char
+              value: "\u0000"
+            - name:
+                Named: __12
+              type_name:
+                Base: char
+              value: "\u0000"
+            - name:
+                Named: __13
+              type_name:
+                Base: char
+              value: "\u0000"
+            - name:
+                Named: __14
+              type_name:
+                Base: char
+              value: "\u0000"
+            - name:
+                Named: __15
+              type_name:
+                Base: char
+              value: "\u0000"
+        - name:
+            Named: MaxNumUpBuffers
+          type_name:
+            Base: int
+          value: "1"
+        - name:
+            Named: MaxNumDownBuffers
+          type_name:
+            Base: int
+          value: "1"
+        - name:
+            Named: aUp
+          type_name:
+            Array:
+              item_type_name:
+                Modified:
+                  - Typedef: SEGGER_RTT_BUFFER_UP
+                  - Struct: "<unnamed struct>"
+              count: 1
+          value: "SEGGER_RTT_BUFFER_UP[1] = [\n\tSEGGER_RTT_BUFFER_UP @ 0x20002018]"
+          children:
+            - name:
+                Named: __0
+              type_name:
+                Modified:
+                  - Typedef: SEGGER_RTT_BUFFER_UP
+                  - Struct: "<unnamed struct>"
+              value: SEGGER_RTT_BUFFER_UP @ 0x20002018
+              children:
+                - name:
+                    Named: sName
+                  type_name:
+                    Pointer: char
+                  value: char* @ 0x20002018
+                  children:
+                    - name:
+                        Named: "*sName"
+                      type_name:
+                        Modified:
+                          - Const
+                          - Base: char
+                      value: T
+                - name:
+                    Named: pBuffer
+                  type_name:
+                    Pointer: char
+                  value: char* @ 0x2000201C
+                  children:
+                    - name:
+                        Named: "*pBuffer"
+                      type_name:
+                        Base: char
+                      value: H
+                - name:
+                    Named: SizeOfBuffer
+                  type_name:
+                    Base: unsigned int
+                  value: "1024"
+                - name:
+                    Named: WrOff
+                  type_name:
+                    Base: unsigned int
+                  value: "113"
+                - name:
+                    Named: RdOff
+                  type_name:
+                    Modified:
+                      - Volatile
+                      - Base: unsigned int
+                  value: "113"
+                - name:
+                    Named: Flags
+                  type_name:
+                    Base: unsigned int
+                  value: "0"
+        - name:
+            Named: aDown
+          type_name:
+            Array:
+              item_type_name:
+                Modified:
+                  - Typedef: SEGGER_RTT_BUFFER_DOWN
+                  - Struct: "<unnamed struct>"
+              count: 1
+          value: "SEGGER_RTT_BUFFER_DOWN[1] = [\n\tSEGGER_RTT_BUFFER_DOWN @ 0x20002030]"
+          children:
+            - name:
+                Named: __0
+              type_name:
+                Modified:
+                  - Typedef: SEGGER_RTT_BUFFER_DOWN
+                  - Struct: "<unnamed struct>"
+              value: SEGGER_RTT_BUFFER_DOWN @ 0x20002030
+              children:
+                - name:
+                    Named: sName
+                  type_name:
+                    Pointer: char
+                  value: char* @ 0x20002030
+                  children:
+                    - name:
+                        Named: "*sName"
+                      type_name:
+                        Modified:
+                          - Const
+                          - Base: char
+                      value: T
+                - name:
+                    Named: pBuffer
+                  type_name:
+                    Pointer: char
+                  value: char* @ 0x20002034
+                  children:
+                    - name:
+                        Named: "*pBuffer"
+                      type_name:
+                        Base: char
+                      value: "\u0000"
+                - name:
+                    Named: SizeOfBuffer
+                  type_name:
+                    Base: unsigned int
+                  value: "16"
+                - name:
+                    Named: WrOff
+                  type_name:
+                    Modified:
+                      - Volatile
+                      - Base: unsigned int
+                  value: "0"
+                - name:
+                    Named: RdOff
+                  type_name:
+                    Base: unsigned int
+                  value: "0"
+                - name:
+                    Named: Flags
+                  type_name:
+                    Base: unsigned int
+                  value: "0"
     - name:
         Named: _acUpBuffer
       type_name:

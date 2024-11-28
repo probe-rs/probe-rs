@@ -22,6 +22,12 @@ pub struct ESP32S3 {
 }
 
 impl ESP32S3 {
+    const SWD_BASE: u64 = 0x60008000;
+    const SWD_WRITE_PROT: u64 = Self::SWD_BASE | 0xB8;
+    const SWD_CONF: u64 = Self::SWD_BASE | 0xB4;
+    const SWD_AUTO_FEED_EN: u32 = 1 << 31;
+    const SWD_WRITE_PROT_KEY: u32 = 0x8f1d312a;
+
     /// Creates a new debug sequence handle for the ESP32-S3.
     pub fn create() -> Arc<dyn XtensaDebugSequence> {
         Arc::new(Self {
@@ -38,7 +44,16 @@ impl ESP32S3 {
 
 impl XtensaDebugSequence for ESP32S3 {
     fn on_connect(&self, core: &mut XtensaCommunicationInterface) -> Result<(), crate::Error> {
+        // External memory bus
+        core.add_slow_memory_access_range(0x3C00_0000..0x3E00_0000);
+
         tracing::info!("Disabling ESP32-S3 watchdogs...");
+
+        // disable super wdt
+        core.write_word_32(Self::SWD_WRITE_PROT, Self::SWD_WRITE_PROT_KEY)?; // write protection off
+        let current = core.read_word_32(Self::SWD_CONF)?;
+        core.write_word_32(Self::SWD_CONF, current | Self::SWD_AUTO_FEED_EN)?;
+        core.write_word_32(Self::SWD_WRITE_PROT, 0x0)?; // write protection on
 
         // tg0 wdg
         const TIMG0_BASE: u64 = 0x6001f000;

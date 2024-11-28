@@ -46,7 +46,7 @@ jobs:
         if: (matrix.os == 'ubuntu-latest') || (matrix.os == 'ubuntu-20.04')
 
       - name: Cache Dependencies
-        uses: Swatinem/rust-cache@v2.7.3
+        uses: Swatinem/rust-cache@v2.7.5
 
       - name: cargo check for probe-rs, --no-default-features
         run: cargo check -p probe-rs --no-default-features --locked
@@ -85,7 +85,7 @@ jobs:
         run: rustup target add thumbv7m-none-eabi
 
       - name: Cache Dependencies
-        uses: Swatinem/rust-cache@v2.7.3
+        uses: Swatinem/rust-cache@v2.7.5
 
       - name: Run cargo test
         run: cargo test --all-features --locked
@@ -113,7 +113,7 @@ jobs:
           sudo apt install -y libudev-dev
 
       - name: Cache Dependencies
-        uses: Swatinem/rust-cache@v2.7.3
+        uses: Swatinem/rust-cache@v2.7.5
 
       - name: Run cargo clippy
         run: cargo clippy --all-features --all-targets --locked -- -D warnings
@@ -137,7 +137,7 @@ jobs:
           sudo apt install -y libudev-dev
 
       - name: Cache Dependencies
-        uses: Swatinem/rust-cache@v2.7.3
+        uses: Swatinem/rust-cache@v2.7.5
 
       - name: Run cargo doc
         run: cargo doc -p probe-rs --no-deps --all-features --locked

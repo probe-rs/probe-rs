@@ -31,6 +31,7 @@ impl AmbaAhb3 {
         let me = Self { address, csw, cfg };
         let csw = CSW {
             DbgSwEnable: true,
+            HNONSEC: !csw.SPIDEN,
             MasterType: true,
             Cacheable: true,
             Privileged: true,
@@ -48,7 +49,9 @@ impl super::MemoryApType for AmbaAhb3 {
 
     fn status<P: ApAccess + ?Sized>(&mut self, probe: &mut P) -> Result<CSW, ArmError> {
         #[allow(clippy::assertions_on_constants)]
-        const { assert!(super::registers::CSW::ADDRESS == CSW::ADDRESS) };
+        const {
+            assert!(super::registers::CSW::ADDRESS == CSW::ADDRESS)
+        };
         self.csw = probe.read_ap_register(self)?;
         Ok(self.csw)
     }
