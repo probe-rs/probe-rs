@@ -924,34 +924,30 @@ impl DebugInfo {
     }
 
     /// Look up the DIE reference for the given attribute, if it exists.
-    pub(crate) fn resolve_die_reference<'abbrev, 'unit>(
-        &'abbrev self,
+    pub(crate) fn resolve_die_reference<'debug_info, 'unit_info>(
+        &'debug_info self,
         attribute: gimli::DwAt,
-        die: &Die<'abbrev, 'unit>,
-        unit_info: &'unit UnitInfo,
-    ) -> Option<Die<'abbrev, 'unit>>
+        die: &Die,
+        unit_info: &'unit_info UnitInfo,
+    ) -> Option<Die<'debug_info, 'debug_info>>
     where
-        'abbrev: 'unit,
-        'unit: 'abbrev,
+        'unit_info: 'debug_info,
     {
-        die.attr(attribute)
-            .ok()
-            .flatten()
-            .and_then(
-                move |reference_attribute| match reference_attribute.value() {
-                    gimli::AttributeValue::UnitRef(unit_ref) => unit_info.unit.entry(unit_ref).ok(),
-                    gimli::AttributeValue::DebugInfoRef(debug_info_ref) => {
-                        self.get_die_at_offset(debug_info_ref).ok()
-                    }
-                    other_value => {
-                        tracing::warn!(
-                            "Unsupported {:?} value: {other_value:?}",
-                            attribute.static_string(),
-                        );
-                        None
-                    }
-                },
-            )
+        let value = die.attr_value(attribute).ok().flatten()?;
+
+        match value {
+            gimli::AttributeValue::UnitRef(unit_ref) => unit_info.unit.entry(unit_ref).ok(),
+            gimli::AttributeValue::DebugInfoRef(debug_info_ref) => {
+                self.get_die_at_offset(debug_info_ref).ok()
+            }
+            other_value => {
+                tracing::warn!(
+                    "Unsupported {:?} value: {other_value:?}",
+                    attribute.static_string(),
+                );
+                None
+            }
+        }
     }
 }
 

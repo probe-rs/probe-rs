@@ -250,7 +250,7 @@ enum RemoteCommand<'a> {
     },
 }
 
-impl<'a> RemoteCommand<'a> {
+impl RemoteCommand<'_> {
     /// Return the buffer from the payload of the specified value where the
     /// response should be written.
     fn response_buffer(&mut self) -> Option<&mut [u8]> {
@@ -279,7 +279,7 @@ impl<'a> RemoteCommand<'a> {
 // Implement `ToString` instead of `Display` as this is for generating
 // strings to send over the network, and is not meant for human consumption.
 #[allow(clippy::to_string_trait_impl)]
-impl<'a> std::string::ToString for RemoteCommand<'a> {
+impl std::string::ToString for RemoteCommand<'_> {
     fn to_string(&self) -> String {
         match self {
             RemoteCommand::Handshake(_) => "+#!GA#".to_string(),

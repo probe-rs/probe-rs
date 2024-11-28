@@ -282,7 +282,7 @@ impl CmsisDap {
         const BYTES_PER_REQUEST: usize = 16;
         // How many requests are needed to read/write at least MAX_LENGTH bits.
         const REQUESTS: usize =
-            (MAX_LENGTH + (BYTES_PER_REQUEST * 8 - 1)) / (BYTES_PER_REQUEST * 8);
+            MAX_LENGTH.div_ceil(BYTES_PER_REQUEST * 8);
 
         // Completely fill xR with 0s, capture result.
         let mut tdo_bytes: Vec<u8> = Vec::with_capacity(REQUESTS * BYTES_PER_REQUEST);

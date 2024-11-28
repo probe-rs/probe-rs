@@ -88,7 +88,7 @@ mod test {
     /// Helper struct used to format a StackFrame for testing.
     pub struct TestFormatter<'s>(pub &'s StackFrame);
 
-    impl<'s> std::fmt::Display for TestFormatter<'s> {
+    impl std::fmt::Display for TestFormatter<'_> {
         fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
             writeln!(f, "Frame:")?;
             writeln!(f, " function:        {}", self.0.function_name)?;

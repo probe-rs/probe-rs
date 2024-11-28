@@ -457,7 +457,7 @@ impl<'probe> Armv6m<'probe> {
     }
 }
 
-impl<'probe> CoreInterface for Armv6m<'probe> {
+impl CoreInterface for Armv6m<'_> {
     fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
         // Wait until halted state is active again.
         let start = Instant::now();

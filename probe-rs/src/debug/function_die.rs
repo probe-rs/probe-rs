@@ -13,11 +13,11 @@ pub(crate) type Die<'abbrev, 'unit> =
 
 /// Reference to a DIE for a function
 #[derive(Clone)]
-pub(crate) struct FunctionDie<'abbrev, 'unit> {
+pub(crate) struct FunctionDie<'data> {
     /// A reference to the compilation unit this function belongs to.
-    pub(crate) unit_info: &'unit UnitInfo,
+    pub(crate) unit_info: &'data UnitInfo,
     /// The DIE (Debugging Information Entry) for the function.
-    pub(crate) function_die: Die<'abbrev, 'unit>,
+    pub(crate) function_die: Die<'data, 'data>,
     /// The optional specification DIE for the function, if it has one.
     /// - For regular functions, this applies to the `function_die`.
     /// - For inlined functions, this applies to the `abstract_die`.
@@ -25,29 +25,25 @@ pub(crate) struct FunctionDie<'abbrev, 'unit> {
     /// The specification DIE will contain separately declared attributes,
     /// e.g. for the function name.
     /// See DWARF spec, 2.13.2.
-    pub(crate) specification_die: Option<Die<'abbrev, 'unit>>,
+    pub(crate) specification_die: Option<Die<'data, 'data>>,
     /// Only present for inlined functions, where this is a reference
     /// to the declaration of the function.
-    pub(crate) abstract_die: Option<Die<'abbrev, 'unit>>,
+    pub(crate) abstract_die: Option<Die<'data, 'data>>,
     /// The address ranges for which this function is valid.
     pub(crate) ranges: Vec<Range<u64>>,
 }
 
-impl<'abbrev, 'unit> FunctionDie<'abbrev, 'unit> {
+impl<'a> FunctionDie<'a> {
     /// Create a new function DIE reference.
     /// We only return DIE's that are functions, with valid address ranges that represent machine code
     /// relevant to the address/program counter specified.
     /// Other DIE's will return None, and should be ignored.
     pub(crate) fn new(
-        function_die: Die<'abbrev, 'unit>,
-        unit_info: &'unit UnitInfo,
-        debug_info: &'abbrev DebugInfo,
+        function_die: Die<'a, 'a>,
+        unit_info: &'a UnitInfo,
+        debug_info: &'a DebugInfo,
         address: u64,
-    ) -> Result<Option<Self>, DebugError>
-    where
-        'abbrev: 'unit,
-        'unit: 'abbrev,
-    {
+    ) -> Result<Option<Self>, DebugError> {
         let is_inlined_function = match function_die.tag() {
             gimli::DW_TAG_subprogram => false,
             gimli::DW_TAG_inlined_subroutine => true,
