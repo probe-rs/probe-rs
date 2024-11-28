@@ -470,10 +470,11 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         // TODO: Handle this differently for ST-Link?
         tracing::debug!("Setting up debug port {dp:x?}");
 
-        // Assume that multidrop means SWD version 2 and dormant state.
-        // There could also be chips with SWD version 2 that don't use multidrop,
-        // so this will have to be changed in the future.
-        let has_dormant = matches!(dp, DpAddress::Multidrop(_));
+        // A multidrop address implies SWD version 2 and dormant state.  In
+        // cases where SWD version 2 is used but not multidrop addressing
+        // (ex. ADIv6), the SWD version 1 sequence is attempted before trying
+        // the SWD version 2 sequence.
+        let mut has_dormant = matches!(dp, DpAddress::Multidrop(_));
 
         fn alert_sequence(interface: &mut dyn DapProbe) -> Result<(), ArmError> {
             tracing::trace!("Sending Selection Alert sequence");
@@ -494,7 +495,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
 
         let mut result = Ok(());
         const NUM_RETRIES: usize = 5;
-        for _ in 0..NUM_RETRIES {
+        for retry in 0..NUM_RETRIES {
             // Ensure current debug interface is in reset state.
             swd_line_reset(interface, 0)?;
 
@@ -560,6 +561,12 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
             if result.is_ok() {
                 // Successful connection, we can stop retrying.
                 break;
+            }
+
+            // If two retries have failed, try using SWD version 2 wake from
+            // dormant sequence.
+            if retry >= 1 {
+                has_dormant = true;
             }
         }
 
