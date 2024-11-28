@@ -946,7 +946,7 @@ impl<O: Operation> ActiveFlasher<'_, O> {
     }
 }
 
-impl<'probe> ActiveFlasher<'probe, Erase> {
+impl ActiveFlasher<'_, Erase> {
     pub(super) fn erase_all(&mut self) -> Result<(), FlashError> {
         tracing::debug!("Erasing entire chip.");
         let algo = &self.flash_algorithm;
@@ -1019,7 +1019,7 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
     }
 }
 
-impl<'p> ActiveFlasher<'p, Program> {
+impl ActiveFlasher<'_, Program> {
     pub(super) fn program_page(&mut self, page: &FlashPage) -> Result<(), FlashError> {
         let t1 = Instant::now();
 

@@ -20,7 +20,7 @@ where
     Directory(&'a Path),
 }
 
-impl<'a, T> Kind<'a, T>
+impl<T> Kind<'_, T>
 where
     T: std::io::Seek + std::io::Read,
 {

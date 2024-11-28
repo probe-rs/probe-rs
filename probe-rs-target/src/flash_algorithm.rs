@@ -143,7 +143,7 @@ impl Base64 {
         deserializer.deserialize_str(Base64)
     }
 }
-impl<'de> serde::de::Visitor<'de> for Base64 {
+impl serde::de::Visitor<'_> for Base64 {
     type Value = Vec<u8>;
 
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -176,7 +176,7 @@ impl Bytes {
         deserializer.deserialize_bytes(Bytes)
     }
 }
-impl<'de> serde::de::Visitor<'de> for Bytes {
+impl serde::de::Visitor<'_> for Bytes {
     type Value = Vec<u8>;
 
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {

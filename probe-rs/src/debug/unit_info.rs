@@ -67,7 +67,7 @@ impl UnitInfo {
         &'debug_info self,
         debug_info: &'debug_info super::DebugInfo,
         address: u64,
-    ) -> Result<Vec<FunctionDie>, DebugError> {
+    ) -> Result<Vec<FunctionDie<'debug_info>>, DebugError> {
         tracing::trace!("Searching Function DIE for address {:#010x}", address);
 
         let mut entries_cursor = self.unit.entries();
@@ -104,7 +104,7 @@ impl UnitInfo {
         debug_info: &'abbrev DebugInfo,
         address: u64,
         parent_offset: UnitOffset,
-    ) -> Result<Vec<FunctionDie<'abbrev, '_>>, DebugError> {
+    ) -> Result<Vec<FunctionDie<'abbrev>>, DebugError> {
         // If we don't have any entries at our unit offset, return an empty vector.
         // This cursor starts at, and includes the entries for the non-inlined function at 'parent_offset'.
         let Ok(mut cursor) = self.unit.entries_at_offset(parent_offset) else {

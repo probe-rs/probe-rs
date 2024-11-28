@@ -241,7 +241,7 @@ impl<'a> From<&'a mut dyn DapProbe> for SwdSequenceShim<'a> {
     }
 }
 
-impl<'a> SwdSequence for SwdSequenceShim<'a> {
+impl SwdSequence for SwdSequenceShim<'_> {
     fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
         self.0.swj_sequence(bit_len, bits)
     }

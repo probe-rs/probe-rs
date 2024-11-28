@@ -68,7 +68,7 @@ pub struct SwoData<'a> {
     status: SwoStatus,
 }
 
-impl<'a> SwoData<'a> {
+impl SwoData<'_> {
     /// Returns whether the probe-internal buffer overflowed before the last read.
     ///
     /// This indicates that some device data was lost.
@@ -77,13 +77,13 @@ impl<'a> SwoData<'a> {
     }
 }
 
-impl<'a> AsRef<[u8]> for SwoData<'a> {
+impl AsRef<[u8]> for SwoData<'_> {
     fn as_ref(&self) -> &[u8] {
         self.data
     }
 }
 
-impl<'a> Deref for SwoData<'a> {
+impl Deref for SwoData<'_> {
     type Target = [u8];
     fn deref(&self) -> &Self::Target {
         self.data

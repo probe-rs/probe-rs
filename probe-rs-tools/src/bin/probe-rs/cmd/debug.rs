@@ -987,7 +987,7 @@ pub struct CliData<'p> {
 }
 
 impl<'p> CliData<'p> {
-    fn new(core: Core<'p>, debug_info: Option<DebugInfo>) -> Result<CliData, CliError> {
+    fn new(core: Core<'p>, debug_info: Option<DebugInfo>) -> Result<CliData<'p>, CliError> {
         let mut cli_data = CliData {
             core,
             debug_info,

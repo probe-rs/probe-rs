@@ -74,7 +74,7 @@ impl<'probe: 'memory, 'memory: 'reader, 'reader> RomTableIterator<'probe, 'memor
     }
 }
 
-impl<'probe, 'memory, 'reader> Iterator for RomTableIterator<'probe, 'memory, 'reader> {
+impl Iterator for RomTableIterator<'_, '_, '_> {
     type Item = Result<RomTableEntryRaw, RomTableError>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -425,7 +425,7 @@ pub enum Component {
     /// For detailed information about Class 0x1 ROM Tables, see _Chapter D3 Class 0x1 ROM Tables_.
     Class1RomTable(ComponentId, RomTable),
     /// CoreSight component. For general information about CoreSight components, see the CoreSight Architecture Specification.
-
+    ///
     /// A CoreSight component can be a Class 0x9 ROM Table, which can be identified from the DEVARCH.ARCHID having the value 0x0AF7. See also _ROM Table Types on page D2-237_. For detailed information about Class 0x9 ROM Tables, see _Chapter D4 Class 0x9 ROM Tables_.
     CoresightComponent(ComponentId),
     /// Peripheral Test Block.
