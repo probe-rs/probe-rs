@@ -13,68 +13,78 @@ use std::time::Duration;
 /// A interface to operate debug sequences for RISC-V targets.
 ///
 /// Should be implemented on a custom handle for chips that require special sequence code.
+#[async_trait::async_trait(?Send)]
 pub trait RiscvDebugSequence: Send + Sync + Debug {
     /// Executed when the probe establishes a connection to the target.
-    fn on_connect(&self, _interface: &mut RiscvCommunicationInterface) -> Result<(), crate::Error> {
+    async fn on_connect(
+        &self,
+        _interface: &mut RiscvCommunicationInterface,
+    ) -> Result<(), crate::Error> {
         Ok(())
     }
 
     /// Executed when the target is halted.
-    fn on_halt(&self, _interface: &mut RiscvCommunicationInterface) -> Result<(), crate::Error> {
+    async fn on_halt(
+        &self,
+        _interface: &mut RiscvCommunicationInterface,
+    ) -> Result<(), crate::Error> {
         Ok(())
     }
 
     /// Detects the flash size of the target.
-    fn detect_flash_size(&self, _session: &mut Session) -> Result<Option<usize>, crate::Error> {
+    async fn detect_flash_size(
+        &self,
+        _session: &mut Session,
+    ) -> Result<Option<usize>, crate::Error> {
         Ok(None)
     }
 
     /// Configure the target to stop code execution after a reset. After this, the core will halt when it comes
     /// out of reset.
-    fn reset_catch_set(
+    async fn reset_catch_set(
         &self,
-        interface: &mut RiscvCommunicationInterface,
+        interface: &mut RiscvCommunicationInterface<'_>,
     ) -> Result<(), RiscvError> {
-        if !interface.supports_reset_halt_req()? {
+        if !interface.supports_reset_halt_req().await? {
             return Err(RiscvError::ResetHaltRequestNotSupported);
         }
 
-        let mut dmcontrol: Dmcontrol = interface.read_dm_register()?;
+        let mut dmcontrol: Dmcontrol = interface.read_dm_register().await?;
 
         dmcontrol.set_dmactive(true);
         dmcontrol.set_resethaltreq(true);
 
-        interface.write_dm_register(dmcontrol)?;
+        interface.write_dm_register(dmcontrol).await?;
 
         Ok(())
     }
 
     /// Free hardware resources allocated by ResetCatchSet.
-    fn reset_catch_clear(
+    async fn reset_catch_clear(
         &self,
-        interface: &mut RiscvCommunicationInterface,
+        interface: &mut RiscvCommunicationInterface<'_>,
     ) -> Result<(), RiscvError> {
-        if !interface.supports_reset_halt_req()? {
+        if !interface.supports_reset_halt_req().await? {
             return Err(RiscvError::ResetHaltRequestNotSupported);
         }
 
-        let mut dmcontrol: Dmcontrol = interface.read_dm_register()?;
+        let mut dmcontrol: Dmcontrol = interface.read_dm_register().await?;
 
         dmcontrol.set_dmactive(true);
         dmcontrol.set_clrresethaltreq(true);
 
-        interface.write_dm_register(dmcontrol)?;
+        interface.write_dm_register(dmcontrol).await?;
 
         Ok(())
     }
 
     /// Executes a system-wide reset without debug domain (or warm-reset that preserves debug connection) via software mechanisms.
-    fn reset_system_and_halt(
+    async fn reset_system_and_halt(
         &self,
-        interface: &mut RiscvCommunicationInterface,
+        interface: &mut RiscvCommunicationInterface<'_>,
         timeout: Duration,
     ) -> Result<(), crate::Error> {
-        interface.reset_hart_and_halt(timeout)?;
+        interface.reset_hart_and_halt(timeout).await?;
         Ok(())
     }
 
@@ -82,7 +92,7 @@ pub trait RiscvDebugSequence: Send + Sync + Debug {
     ///
     /// Returns `Ok(Some(command))` if the command was not fully handled, `Ok(None)`
     /// if the command was fully handled.
-    fn on_unknown_semihosting_command(
+    async fn on_unknown_semihosting_command(
         &self,
         _interface: &mut Riscv32,
         details: UnknownCommandDetails,

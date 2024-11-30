@@ -1,11 +1,8 @@
 //! Sequences for NXP chips that use ARMv8-M cores.
 
 use bitfield::bitfield;
-use std::{
-    sync::Arc,
-    thread,
-    time::{Duration, Instant},
-};
+use std::{sync::Arc, thread, time::Duration};
+use web_time::Instant;
 
 use crate::{
     architecture::arm::{
@@ -27,14 +24,14 @@ pub mod ol23d0;
 ///
 /// Note that this routine only supports SWD protocols. See the inline TODOs to
 /// understand where JTAG support should go.
-fn debug_port_start(
+async fn debug_port_start(
     interface: &mut dyn DapAccess,
     dp: DpAddress,
     select: SelectV1,
 ) -> Result<bool, ArmError> {
-    interface.write_dp_register(dp, select)?;
+    interface.write_dp_register(dp, select).await?;
 
-    let ctrl = interface.read_dp_register::<Ctrl>(dp)?;
+    let ctrl = interface.read_dp_register::<Ctrl>(dp).await?;
 
     let powered_down = !(ctrl.csyspwrupack() && ctrl.cdbgpwrupack());
 
@@ -43,12 +40,12 @@ fn debug_port_start(
         ctrl.set_cdbgpwrupreq(true);
         ctrl.set_csyspwrupreq(true);
 
-        interface.write_dp_register(dp, ctrl)?;
+        interface.write_dp_register(dp, ctrl).await?;
 
         let start = Instant::now();
 
         loop {
-            let ctrl = interface.read_dp_register::<Ctrl>(dp)?;
+            let ctrl = interface.read_dp_register::<Ctrl>(dp).await?;
             if ctrl.csyspwrupack() && ctrl.cdbgpwrupack() {
                 break;
             }
@@ -69,7 +66,7 @@ fn debug_port_start(
 
         ctrl.set_mask_lane(0b1111);
 
-        interface.write_dp_register(dp, ctrl)?;
+        interface.write_dp_register(dp, ctrl).await?;
 
         let mut abort = Abort(0);
 
@@ -78,7 +75,7 @@ fn debug_port_start(
         abort.set_stkerrclr(true);
         abort.set_stkcmpclr(true);
 
-        interface.write_dp_register(dp, abort)?;
+        interface.write_dp_register(dp, abort).await?;
     }
 
     Ok(powered_down)
@@ -95,15 +92,16 @@ impl LPC55Sxx {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl ArmDebugSequence for LPC55Sxx {
-    fn debug_port_start(
+    async fn debug_port_start(
         &self,
         interface: &mut dyn DapAccess,
         dp: DpAddress,
     ) -> Result<(), ArmError> {
         tracing::info!("debug_port_start");
 
-        let _powered_down = self::debug_port_start(interface, dp, SelectV1(0))?;
+        let _powered_down = self::debug_port_start(interface, dp, SelectV1(0)).await?;
 
         // Per 51.6.2 and 51.6.3 there is no need to issue a debug mailbox
         // command if we're attaching to a valid target. In fact, running
@@ -116,7 +114,7 @@ impl ArmDebugSequence for LPC55Sxx {
         Ok(())
     }
 
-    fn reset_catch_set(
+    async fn reset_catch_set(
         &self,
         interface: &mut dyn ArmMemoryInterface,
         _core_type: crate::CoreType,
@@ -124,32 +122,34 @@ impl ArmDebugSequence for LPC55Sxx {
     ) -> Result<(), ArmError> {
         let mut reset_vector: u32 = 0xffff_ffff;
         let mut reset_vector_addr = 0x0000_0004;
-        let mut demcr = Demcr(interface.read_word_32(Demcr::get_mmio_address())?);
+        let mut demcr = Demcr(interface.read_word_32(Demcr::get_mmio_address()).await?);
 
         demcr.set_vc_corereset(false);
 
-        interface.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
+        interface
+            .write_word_32(Demcr::get_mmio_address(), demcr.into())
+            .await?;
 
         // Write some stuff
-        interface.write_word_32(0x40034010, 0x00000000)?; // Program Flash Word Start Address to 0x0 to read reset vector (STARTA)
-        interface.write_word_32(0x40034014, 0x00000000)?; // Program Flash Word Stop Address to 0x0 to read reset vector (STOPA)
-        interface.write_word_32(0x40034080, 0x00000000)?; // DATAW0: Prepare for read
-        interface.write_word_32(0x40034084, 0x00000000)?; // DATAW1: Prepare for read
-        interface.write_word_32(0x40034088, 0x00000000)?; // DATAW2: Prepare for read
-        interface.write_word_32(0x4003408C, 0x00000000)?; // DATAW3: Prepare for read
-        interface.write_word_32(0x40034090, 0x00000000)?; // DATAW4: Prepare for read
-        interface.write_word_32(0x40034094, 0x00000000)?; // DATAW5: Prepare for read
-        interface.write_word_32(0x40034098, 0x00000000)?; // DATAW6: Prepare for read
-        interface.write_word_32(0x4003409C, 0x00000000)?; // DATAW7: Prepare for read
+        interface.write_word_32(0x40034010, 0x00000000).await?; // Program Flash Word Start Address to 0x0 to read reset vector (STARTA)
+        interface.write_word_32(0x40034014, 0x00000000).await?; // Program Flash Word Stop Address to 0x0 to read reset vector (STOPA)
+        interface.write_word_32(0x40034080, 0x00000000).await?; // DATAW0: Prepare for read
+        interface.write_word_32(0x40034084, 0x00000000).await?; // DATAW1: Prepare for read
+        interface.write_word_32(0x40034088, 0x00000000).await?; // DATAW2: Prepare for read
+        interface.write_word_32(0x4003408C, 0x00000000).await?; // DATAW3: Prepare for read
+        interface.write_word_32(0x40034090, 0x00000000).await?; // DATAW4: Prepare for read
+        interface.write_word_32(0x40034094, 0x00000000).await?; // DATAW5: Prepare for read
+        interface.write_word_32(0x40034098, 0x00000000).await?; // DATAW6: Prepare for read
+        interface.write_word_32(0x4003409C, 0x00000000).await?; // DATAW7: Prepare for read
 
-        interface.write_word_32(0x40034FE8, 0x0000000F)?; // Clear FLASH Controller Status (INT_CLR_STATUS)
-        interface.write_word_32(0x40034000, 0x00000003)?; // Read single Flash Word (CMD_READ_SINGLE_WORD)
-        interface.flush()?;
+        interface.write_word_32(0x40034FE8, 0x0000000F).await?; // Clear FLASH Controller Status (INT_CLR_STATUS)
+        interface.write_word_32(0x40034000, 0x00000003).await?; // Read single Flash Word (CMD_READ_SINGLE_WORD)
+        interface.flush().await?;
 
         let start = Instant::now();
 
         loop {
-            let value = interface.read_word_32(0x40034FE0)?;
+            let value = interface.read_word_32(0x40034FE0).await?;
             if (value & 0x4) == 0x4 {
                 break;
             }
@@ -160,60 +160,66 @@ impl ArmDebugSequence for LPC55Sxx {
             }
         }
 
-        if (interface.read_word_32(0x4003_4fe0)? & 0xB) == 0 {
+        if (interface.read_word_32(0x4003_4fe0).await? & 0xB) == 0 {
             tracing::info!("No Error reading Flash Word with Reset Vector");
 
-            if (interface.read_word_32(0x400a_cffc)? & 0xC != 0x8)
-                || (interface.read_word_32(0x400a_cff8)? & 0xC != 0x8)
+            if (interface.read_word_32(0x400a_cffc).await? & 0xC != 0x8)
+                || (interface.read_word_32(0x400a_cff8).await? & 0xC != 0x8)
             {
                 // ENABLE_SECURE_CHECKING is set to restrictive mode, access secure addresses
                 reset_vector_addr = 0x10000004;
             }
 
-            reset_vector = interface.read_word_32(reset_vector_addr)?;
+            reset_vector = interface.read_word_32(reset_vector_addr).await?;
         }
 
         if reset_vector != 0xffff_ffff {
             tracing::info!("Breakpoint on user application reset vector: {reset_vector:#010x}");
 
-            interface.write_word_32(0xE000_2008, reset_vector | 1)?;
-            interface.write_word_32(0xE000_2000, 3)?;
+            interface
+                .write_word_32(0xE000_2008, reset_vector | 1)
+                .await?;
+            interface.write_word_32(0xE000_2000, 3).await?;
         }
 
         if reset_vector == 0xffff_ffff {
             tracing::info!("Enable reset vector catch");
 
-            let mut demcr = Demcr(interface.read_word_32(Demcr::get_mmio_address())?);
+            let mut demcr = Demcr(interface.read_word_32(Demcr::get_mmio_address()).await?);
 
             demcr.set_vc_corereset(true);
 
-            interface.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
+            interface
+                .write_word_32(Demcr::get_mmio_address(), demcr.into())
+                .await?;
         }
 
-        let _ = interface.read_word_32(Dhcsr::get_mmio_address())?;
+        let _ = interface.read_word_32(Dhcsr::get_mmio_address()).await?;
 
         tracing::debug!("reset_catch_set -- done");
 
         Ok(())
     }
 
-    fn reset_catch_clear(
+    async fn reset_catch_clear(
         &self,
         interface: &mut dyn ArmMemoryInterface,
         _core_type: crate::CoreType,
         _debug_base: Option<u64>,
     ) -> Result<(), ArmError> {
-        interface.write_word_32(0xE000_2008, 0x0)?;
-        interface.write_word_32(0xE000_2000, 0x2)?;
+        interface.write_word_32(0xE000_2008, 0x0).await?;
+        interface.write_word_32(0xE000_2000, 0x2).await?;
 
-        let mut demcr = Demcr(interface.read_word_32(Demcr::get_mmio_address())?);
+        let mut demcr = Demcr(interface.read_word_32(Demcr::get_mmio_address()).await?);
 
         demcr.set_vc_corereset(false);
 
-        interface.write_word_32(Demcr::get_mmio_address(), demcr.into())
+        interface
+            .write_word_32(Demcr::get_mmio_address(), demcr.into())
+            .await
     }
 
-    fn reset_system(
+    async fn reset_system(
         &self,
         interface: &mut dyn ArmMemoryInterface,
         _core_type: crate::CoreType,
@@ -223,10 +229,12 @@ impl ArmDebugSequence for LPC55Sxx {
         aircr.vectkey();
         aircr.set_sysresetreq(true);
 
-        let mut result = interface.write_word_32(Aircr::get_mmio_address(), aircr.into());
+        let mut result = interface
+            .write_word_32(Aircr::get_mmio_address(), aircr.into())
+            .await;
 
         if result.is_ok() {
-            result = interface.flush();
+            result = interface.flush().await;
         }
 
         if let Err(e) = result {
@@ -239,7 +247,7 @@ impl ArmDebugSequence for LPC55Sxx {
         let start = Instant::now();
 
         loop {
-            if let Ok(v) = interface.read_word_32(Dhcsr::get_mmio_address()) {
+            if let Ok(v) = interface.read_word_32(Dhcsr::get_mmio_address()).await {
                 let dhcsr = Dhcsr(v);
 
                 // Wait until the S_RESET_ST bit is cleared on a read
@@ -249,7 +257,7 @@ impl ArmDebugSequence for LPC55Sxx {
             }
 
             if start.elapsed() >= Duration::from_millis(500) {
-                return wait_for_stop_after_reset(interface);
+                return wait_for_stop_after_reset(interface).await;
             }
         }
 
@@ -257,14 +265,14 @@ impl ArmDebugSequence for LPC55Sxx {
     }
 }
 
-fn wait_for_stop_after_reset(memory: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
+async fn wait_for_stop_after_reset(memory: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
     tracing::info!("Wait for stop after reset");
 
     thread::sleep(Duration::from_millis(10));
 
-    if memory.generic_status()?.DeviceEn {
+    if memory.generic_status().await?.DeviceEn {
         let dp = memory.fully_qualified_address().dp();
-        enable_debug_mailbox(memory.get_dap_access()?, dp)?;
+        enable_debug_mailbox(memory.get_dap_access()?, dp).await?;
     }
 
     let start = Instant::now();
@@ -272,7 +280,7 @@ fn wait_for_stop_after_reset(memory: &mut dyn ArmMemoryInterface) -> Result<(), 
     tracing::debug!("Polling for reset");
 
     loop {
-        if let Ok(v) = memory.read_word_32(Dhcsr::get_mmio_address()) {
+        if let Ok(v) = memory.read_word_32(Dhcsr::get_mmio_address()).await {
             let dhcsr = Dhcsr(v);
 
             // Wait until the S_RESET_ST bit is cleared on a read
@@ -286,7 +294,7 @@ fn wait_for_stop_after_reset(memory: &mut dyn ArmMemoryInterface) -> Result<(), 
         }
     }
 
-    let dhcsr = Dhcsr(memory.read_word_32(Dhcsr::get_mmio_address())?);
+    let dhcsr = Dhcsr(memory.read_word_32(Dhcsr::get_mmio_address()).await?);
 
     if !dhcsr.s_halt() {
         let mut dhcsr = Dhcsr(0);
@@ -295,19 +303,25 @@ fn wait_for_stop_after_reset(memory: &mut dyn ArmMemoryInterface) -> Result<(), 
         dhcsr.set_c_debugen(true);
 
         tracing::debug!("Force halt until finding a proper catch.");
-        memory.write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
+        memory
+            .write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())
+            .await?;
     }
 
     Ok(())
 }
 
-fn enable_debug_mailbox(interface: &mut dyn DapAccess, dp: DpAddress) -> Result<(), ArmError> {
+async fn enable_debug_mailbox(
+    interface: &mut dyn DapAccess,
+    dp: DpAddress,
+) -> Result<(), ArmError> {
     tracing::info!("LPC55xx connect script start");
 
     let ap = FullyQualifiedApAddress::v1_with_dp(dp, 2);
 
     let status: IDR = interface
-        .read_raw_ap_register(GenericAp::new(ap.clone()).ap_address(), IDR::ADDRESS)?
+        .read_raw_ap_register(GenericAp::new(ap.clone()).ap_address(), IDR::ADDRESS)
+        .await?
         .try_into()?;
 
     tracing::info!("APIDR: {:?}", status);
@@ -316,27 +330,31 @@ fn enable_debug_mailbox(interface: &mut dyn DapAccess, dp: DpAddress) -> Result<
     // ADIv5 specification section B4.3.3: "Connection and line reset sequence" states that
     // in the reset state, reading DPIDR takes the target out of the reset state. Perform
     // such a read here in order to ensure the core is no longer in reset.
-    let status: u32 = interface.read_raw_dp_register(dp, DPIDR::ADDRESS)?;
+    let status: u32 = interface.read_raw_dp_register(dp, DPIDR::ADDRESS).await?;
 
     tracing::info!("DPIDR: 0x{:08X}", status);
 
     // Active DebugMailbox
-    interface.write_raw_ap_register(&ap, 0x0, 0x0000_0021)?;
-    interface.flush()?;
+    interface
+        .write_raw_ap_register(&ap, 0x0, 0x0000_0021)
+        .await?;
+    interface.flush().await?;
 
     // DAP_Delay(30000)
     thread::sleep(Duration::from_millis(30));
 
-    let _ = interface.read_raw_ap_register(&ap, 0)?;
+    let _ = interface.read_raw_ap_register(&ap, 0).await?;
 
     // Enter Debug session
-    interface.write_raw_ap_register(&ap, 0x4, 0x0000_0007)?;
-    interface.flush()?;
+    interface
+        .write_raw_ap_register(&ap, 0x4, 0x0000_0007)
+        .await?;
+    interface.flush().await?;
 
     // DAP_Delay(30000)
     thread::sleep(Duration::from_millis(30));
 
-    let _ = interface.read_raw_ap_register(&ap, 8)?;
+    let _ = interface.read_raw_ap_register(&ap, 8).await?;
 
     tracing::info!("LPC55xx connect srcipt end");
     Ok(())
@@ -405,7 +423,7 @@ impl MIMXRT5xxS {
     }
 
     /// Runtime validation of core type.
-    fn check_core_type(&self, core_type: crate::CoreType) -> Result<(), ArmError> {
+    async fn check_core_type(&self, core_type: crate::CoreType) -> Result<(), ArmError> {
         if core_type != crate::CoreType::Armv8m {
             // Caller has selected the wrong chip name, presumably.
             return Err(ArmError::ArchitectureRequired(&["ARMv8"]));
@@ -415,7 +433,7 @@ impl MIMXRT5xxS {
 
     /// A port of the "WaitForStopAfterReset" sequence from the CMSIS Pack for
     /// this chip.
-    fn wait_for_stop_after_reset(
+    async fn wait_for_stop_after_reset(
         &self,
         probe: &mut dyn ArmMemoryInterface,
     ) -> Result<(), ArmError> {
@@ -434,12 +452,14 @@ impl MIMXRT5xxS {
         let ap = probe.fully_qualified_address();
         let dp = ap.dp();
         let start = Instant::now();
-        while !self.csw_debug_ready(probe.get_dap_access()?, &ap)?
+        while !self.csw_debug_ready(probe.get_dap_access()?, &ap).await?
             && start.elapsed() < Duration::from_millis(300)
         {
             // Wait for either condition
         }
-        let enabled_mailbox = self.enable_debug_mailbox(probe.get_dap_access()?, dp, &ap)?;
+        let enabled_mailbox = self
+            .enable_debug_mailbox(probe.get_dap_access()?, dp, &ap)
+            .await?;
 
         // Halt the core in case it didn't stop at a breakpiont.
         tracing::trace!("halting MIMXRT5xxS Cortex-M33 core");
@@ -447,12 +467,14 @@ impl MIMXRT5xxS {
         dhcsr.set_c_halt(true);
         dhcsr.set_c_debugen(true);
         dhcsr.enable_write();
-        probe.write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
-        probe.flush()?;
+        probe
+            .write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())
+            .await?;
+        probe.flush().await?;
 
         if enabled_mailbox {
             // We'll double-check now to make sure we're in a reasonable state.
-            if !self.csw_debug_ready(probe.get_dap_access()?, &ap)? {
+            if !self.csw_debug_ready(probe.get_dap_access()?, &ap).await? {
                 tracing::warn!(
                     "MIMXRT5xxS is still not ready to debug, even after using DebugMailbox to activate session"
                 );
@@ -460,9 +482,9 @@ impl MIMXRT5xxS {
         }
 
         // Clear watch point
-        probe.write_word_32(Self::DWT_COMP0, 0x0)?;
-        probe.write_word_32(Self::DWT_FUNCTION0, 0x0)?;
-        probe.flush()?;
+        probe.write_word_32(Self::DWT_COMP0, 0x0).await?;
+        probe.write_word_32(Self::DWT_FUNCTION0, 0x0).await?;
+        probe.flush().await?;
         tracing::trace!("cleared data watchpoint for MIMXRT5xxS reset");
 
         // As a heuristic for whether startup seems to have succeeded, we'll
@@ -471,7 +493,9 @@ impl MIMXRT5xxS {
         // This is just a logged warning rather than an error (as long as we
         // manage to read _something_) because the user might not actually be
         // intending to use the FlexSPI0 flash device for boot.
-        let probed = probe.read_word_32(Self::FLEXSPI_NOR_FLASH_HEADER_ADDR)?;
+        let probed = probe
+            .read_word_32(Self::FLEXSPI_NOR_FLASH_HEADER_ADDR)
+            .await?;
         if probed != Self::FLEXSPI_NOR_FLASH_HEADER_MAGIC {
             tracing::warn!(
                 "FlexSPI0 NOR flash config block starts with {:#010x} (valid blocks start with {:#010x})",
@@ -488,7 +512,7 @@ impl MIMXRT5xxS {
         Ok(())
     }
 
-    fn reset_flash(&self, interface: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
+    async fn reset_flash(&self, interface: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
         if self.family == MIMXRTFamily::MIMXRT5 {
             tracing::trace!("MIMXRT595S-EVK FlexSPI flash reset (pulse PIO4_5)");
 
@@ -496,15 +520,15 @@ impl MIMXRT5xxS {
             // reset pin is connected on MIMX595-EVK, but this code should not
             // make any assumptions about the evaluation board; how can we
             // generalize this so that the reset is configurable?
-            interface.write_word_32(0x40001044, 1 << 24)?; // enable GPIO clock
-            interface.write_word_32(0x40000074, 1 << 24)?; // take GPIO out of reset
-            interface.write_word_32(0x40004214, 0x130)?; // full drive and pullup
-            interface.write_word_32(0x40102010, 1 << 5)?; // PIO4_5 is an output
-            interface.write_word_32(0x40103214, 0)?; // PIO4_5 is driven low
+            interface.write_word_32(0x40001044, 1 << 24).await?; // enable GPIO clock
+            interface.write_word_32(0x40000074, 1 << 24).await?; // take GPIO out of reset
+            interface.write_word_32(0x40004214, 0x130).await?; // full drive and pullup
+            interface.write_word_32(0x40102010, 1 << 5).await?; // PIO4_5 is an output
+            interface.write_word_32(0x40103214, 0).await?; // PIO4_5 is driven low
             thread::sleep(Duration::from_millis(100));
 
-            interface.write_word_32(0x40102010, 0)?; // PIO4_5 is an input
-            interface.flush()?;
+            interface.write_word_32(0x40102010, 0).await?; // PIO4_5 is an input
+            interface.flush().await?;
             thread::sleep(Duration::from_millis(100));
         } else {
             tracing::trace!("MIMXRT685-EVK FlexSPI flash reset (pulse PIO2_12)");
@@ -512,30 +536,30 @@ impl MIMXRT5xxS {
             // FIXME: We do this by twiddling PIO2_12, which is where the flash
             // reset pin is connected on MIMX685-EVK, but this code should not
             // make any assumptions about the evaluation board; how can we
-            // generalize this so that the reset is configurable?
+            // generalize this so that the reset is configurable.await?
             //
             // See MIMX685-EVK schematics page 12 for details.
-            interface.write_word_32(0x40021044, 1 << 2)?; // enable HSGPIO2 clock
-            interface.write_word_32(0x40000074, 1 << 2)?; // take HSGPIO2 out of reset
-            interface.write_word_32(0x40004130, 0x130)?; // full drive and pullup
-            interface.write_word_32(0x40102008, 1 << 12)?; // PIO2_12 is an output
-            interface.write_word_32(0x40102288, 1 << 12)?; // PIO2_12 is driven low
+            interface.write_word_32(0x40021044, 1 << 2).await?; // enable HSGPIO2 clock
+            interface.write_word_32(0x40000074, 1 << 2).await?; // take HSGPIO2 out of reset
+            interface.write_word_32(0x40004130, 0x130).await?; // full drive and pullup
+            interface.write_word_32(0x40102008, 1 << 12).await?; // PIO2_12 is an output
+            interface.write_word_32(0x40102288, 1 << 12).await?; // PIO2_12 is driven low
             thread::sleep(Duration::from_millis(100));
 
-            interface.write_word_32(0x40102208, 1 << 12)?; // PIO2_12 is driven high
-            interface.flush()?;
+            interface.write_word_32(0x40102208, 1 << 12).await?; // PIO2_12 is driven high
+            interface.flush().await?;
             thread::sleep(Duration::from_millis(100));
         }
 
         Ok(())
     }
 
-    fn csw_debug_ready(
+    async fn csw_debug_ready(
         &self,
         interface: &mut dyn DapAccess,
         ap: &FullyQualifiedApAddress,
     ) -> Result<bool, ArmError> {
-        let csw = interface.read_raw_ap_register(ap, 0x00)?;
+        let csw = interface.read_raw_ap_register(ap, 0x00).await?;
 
         Ok(csw & 0x40 != 0)
     }
@@ -546,14 +570,14 @@ impl MIMXRT5xxS {
     /// Returns true if the debug mailbox was successfully enabled, or
     /// false if enabling the debug mailbox isn't necessary. Returns an error
     /// if it was necessary but unsuccessful.
-    fn enable_debug_mailbox(
+    async fn enable_debug_mailbox(
         &self,
         interface: &mut dyn DapAccess,
         dp: DpAddress,
         mem_ap: &FullyQualifiedApAddress,
     ) -> Result<bool, ArmError> {
         // Check AHB-AP CSW DbgStatus to decide if need enable DebugMailbox
-        if self.csw_debug_ready(interface, mem_ap)? {
+        if self.csw_debug_ready(interface, mem_ap).await? {
             tracing::trace!("don't need to enable MIMXRT5xxS DebugMailbox");
             return Ok(false);
         }
@@ -567,14 +591,18 @@ impl MIMXRT5xxS {
         // results, so we skip that here.
 
         // Active DebugMailbox
-        interface.write_raw_ap_register(ap_addr, 0x0, 0x00000021)?;
+        interface
+            .write_raw_ap_register(ap_addr, 0x0, 0x00000021)
+            .await?;
         thread::sleep(Duration::from_millis(30));
-        interface.read_raw_ap_register(ap_addr, 0x0)?;
+        interface.read_raw_ap_register(ap_addr, 0x0).await?;
 
         // Enter Debug Session
-        interface.write_raw_ap_register(ap_addr, 0x4, 0x00000007)?;
+        interface
+            .write_raw_ap_register(ap_addr, 0x4, 0x00000007)
+            .await?;
         thread::sleep(Duration::from_millis(30));
-        interface.read_raw_ap_register(ap_addr, 0x0)?;
+        interface.read_raw_ap_register(ap_addr, 0x0).await?;
 
         tracing::debug!("entered MIMXRT5xxS debug session");
 
@@ -582,8 +610,9 @@ impl MIMXRT5xxS {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl ArmDebugSequence for MIMXRT5xxS {
-    fn debug_port_start(
+    async fn debug_port_start(
         &self,
         interface: &mut dyn DapAccess,
         dp: DpAddress,
@@ -597,15 +626,15 @@ impl ArmDebugSequence for MIMXRT5xxS {
         tracing::trace!("MIMXRT5xxS debug port start");
 
         // Clear WDATAERR, STICKYORUN, STICKYCMP, and STICKYERR bits of CTRL/STAT Register by write to ABORT register
-        interface.write_dp_register(dp, abort)?;
+        interface.write_dp_register(dp, abort).await?;
 
-        let dpidr: DPIDR = interface.read_dp_register(dp)?;
+        let dpidr: DPIDR = interface.read_dp_register(dp).await?;
 
         // Switch to DP Register Bank 0
-        interface.write_dp_register(dp, SelectV1(0))?;
+        interface.write_dp_register(dp, SelectV1(0)).await?;
 
         // Read DP CTRL/STAT Register and check if CSYSPWRUPACK and CDBGPWRUPACK bits are set
-        let mut ctrl: Ctrl = interface.read_dp_register(dp)?;
+        let mut ctrl: Ctrl = interface.read_dp_register(dp).await?;
         let powered_down = !ctrl.csyspwrupack() || !ctrl.cdbgpwrupack();
         if powered_down {
             tracing::trace!("MIMXRT5xxS is powered down, so requesting power-up");
@@ -613,12 +642,12 @@ impl ArmDebugSequence for MIMXRT5xxS {
             // Request Debug/System Power-Up
             ctrl.set_csyspwrupreq(true);
             ctrl.set_cdbgpwrupreq(true);
-            interface.write_dp_register(dp, ctrl)?;
+            interface.write_dp_register(dp, ctrl).await?;
 
             // Wait for Power-Up Request to be acknowledged
             let start = Instant::now();
             loop {
-                ctrl = interface.read_dp_register(dp)?;
+                ctrl = interface.read_dp_register(dp).await?;
                 if ctrl.csyspwrupack() && ctrl.cdbgpwrupack() {
                     break;
                 }
@@ -636,13 +665,13 @@ impl ArmDebugSequence for MIMXRT5xxS {
         if !dpidr.min() {
             // Init AP Transfer Mode, Transaction Counter, and Lane Mask (Normal Transfer Mode, Include all Byte Lanes)
             ctrl.set_mask_lane(0xF);
-            interface.write_dp_register(dp, ctrl)?;
+            interface.write_dp_register(dp, ctrl).await?;
 
             // Clear WDATAERR, STICKYORUN, STICKYCMP, and STICKYERR bits of CTRL/STAT Register by write to ABORT register
-            interface.write_dp_register(dp, abort)?;
+            interface.write_dp_register(dp, abort).await?;
 
             let ap = FullyQualifiedApAddress::v1_with_dp(dp, 0);
-            self.enable_debug_mailbox(interface, dp, &ap)?;
+            self.enable_debug_mailbox(interface, dp, &ap).await?;
         }
 
         tracing::trace!("MIMXRT5xxS debug port start was successful");
@@ -650,13 +679,13 @@ impl ArmDebugSequence for MIMXRT5xxS {
         Ok(())
     }
 
-    fn reset_system(
+    async fn reset_system(
         &self,
         probe: &mut dyn ArmMemoryInterface,
         core_type: probe_rs_target::CoreType,
         _debug_base: Option<u64>,
     ) -> Result<(), ArmError> {
-        self.check_core_type(core_type)?;
+        self.check_core_type(core_type).await?;
 
         tracing::trace!("MIMXRT5xxS reset system");
 
@@ -665,23 +694,29 @@ impl ArmDebugSequence for MIMXRT5xxS {
         dhcsr.set_c_halt(true);
         dhcsr.set_c_debugen(true);
         dhcsr.enable_write();
-        probe.write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
-        probe.flush()?;
+        probe
+            .write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())
+            .await?;
+        probe.flush().await?;
 
         // Clear VECTOR CATCH and set TRCENA
-        let mut demcr: Demcr = probe.read_word_32(Demcr::get_mmio_address())?.into();
+        let mut demcr: Demcr = probe.read_word_32(Demcr::get_mmio_address()).await?.into();
         demcr.set_trcena(true);
         demcr.set_vc_corereset(false);
-        probe.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
-        probe.flush()?;
+        probe
+            .write_word_32(Demcr::get_mmio_address(), demcr.into())
+            .await?;
+        probe.flush().await?;
 
         // Reset the flash peripheral on FlexSPI0, if any.
-        self.reset_flash(probe)?;
+        self.reset_flash(probe).await?;
 
         // Set watch point at SYSTEM_STICK_CALIB access
-        probe.write_word_32(Self::DWT_COMP0, Self::SYSTEM_STICK_CALIB_ADDR)?;
-        probe.write_word_32(Self::DWT_FUNCTION0, 0x00000814)?;
-        probe.flush()?;
+        probe
+            .write_word_32(Self::DWT_COMP0, Self::SYSTEM_STICK_CALIB_ADDR)
+            .await?;
+        probe.write_word_32(Self::DWT_FUNCTION0, 0x00000814).await?;
+        probe.flush().await?;
         tracing::trace!("set data watchpoint for MIMXRT5xxS reset");
 
         // Execute SYSRESETREQ via AIRCR
@@ -692,37 +727,38 @@ impl ArmDebugSequence for MIMXRT5xxS {
         // operation seem to have failed.)
         probe
             .write_word_32(Aircr::get_mmio_address(), aircr.into())
+            .await
             .ok();
-        probe.flush().ok();
+        probe.flush().await.ok();
 
         tracing::trace!("MIMXRT5xxS reset system was successful; waiting for halt after reset");
 
-        self.wait_for_stop_after_reset(probe)
+        self.wait_for_stop_after_reset(probe).await
     }
 
-    fn reset_hardware_deassert(
+    async fn reset_hardware_deassert(
         &self,
-        memory: &mut dyn ArmProbeInterface,
+        probe: &mut dyn ArmProbeInterface,
         _default_ap: &FullyQualifiedApAddress,
     ) -> Result<(), ArmError> {
         tracing::trace!("MIMXRT5xxS reset hardware deassert");
         let n_reset = Pins(0x80).0 as u32;
 
-        let can_read_pins = memory.swj_pins(0, n_reset, 0)? != 0xffff_ffff;
+        let can_read_pins = probe.swj_pins(0, n_reset, 0).await? != 0xffff_ffff;
 
         thread::sleep(Duration::from_millis(50));
 
-        let mut assert_n_reset = || memory.swj_pins(n_reset, n_reset, 0);
+        let mut assert_n_reset = async || probe.swj_pins(n_reset, n_reset, 0).await;
 
         if can_read_pins {
             let start = Instant::now();
             let timeout_occured = || start.elapsed() > Duration::from_secs(1);
 
-            while assert_n_reset()? & n_reset == 0 && !timeout_occured() {
+            while assert_n_reset().await? & n_reset == 0 && !timeout_occured() {
                 // Block until either condition passes
             }
         } else {
-            assert_n_reset()?;
+            assert_n_reset().await?;
             thread::sleep(Duration::from_millis(100));
         }
 
@@ -772,21 +808,22 @@ impl MIMXRT118x {
     /// Reference:
     /// binaries/Scripts/RT1180_connect_M33_wake_M7.scp:53 in Linkserver
     /// `27.3.3.2` in `i.MX RT1180 Reference Manual, Rev. 6, 09/2024`
-    fn clear_cm33_reset_mask(
+    async fn clear_cm33_reset_mask(
         &self,
         interface: &mut dyn ArmMemoryInterface,
     ) -> Result<(), ArmError> {
         const SRC_SRMASK: u64 = 0x54460018;
-        let mut srmask = Srmask(interface.read_word_32(SRC_SRMASK)?);
+        let mut srmask = Srmask(interface.read_word_32(SRC_SRMASK).await?);
         srmask.set_cm33_reset_mask(false);
         tracing::trace!("Clearing the SRC.SRMASK.CM33_RESET_MASK mask...");
-        interface.write_word_32(SRC_SRMASK, srmask.0)?;
-        interface.flush()
+        interface.write_word_32(SRC_SRMASK, srmask.0).await?;
+        interface.flush().await
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl ArmDebugSequence for MIMXRT118x {
-    fn reset_system(
+    async fn reset_system(
         &self,
         interface: &mut dyn ArmMemoryInterface,
         _core_type: crate::CoreType,
@@ -794,12 +831,14 @@ impl ArmDebugSequence for MIMXRT118x {
     ) -> Result<(), ArmError> {
         tracing::trace!("MIMXRT118x reset system");
 
-        self.clear_cm33_reset_mask(interface)?;
+        self.clear_cm33_reset_mask(interface).await?;
         let mut aircr = Aircr(0);
         aircr.vectkey();
         aircr.set_sysresetreq(true);
-        interface.write_word_32(Aircr::get_mmio_address(), aircr.into())?;
-        interface.flush()?;
+        interface
+            .write_word_32(Aircr::get_mmio_address(), aircr.into())
+            .await?;
+        interface.flush().await?;
         tracing::trace!("Reset requested..");
         // After SYSRESETREQ, a _short_ sleep seems to be necessary. Otherwise debug interface enters some lock-up state.
         // NXP's Linkserver sends a vendor CMSIS DAP command to MCU-Link after reset which seems to be just a ~50ms sleep.
@@ -810,7 +849,7 @@ impl ArmDebugSequence for MIMXRT118x {
 
         let start = Instant::now();
         while start.elapsed() < Duration::from_millis(500) {
-            let dhcsr = match interface.read_word_32(Dhcsr::get_mmio_address()) {
+            let dhcsr = match interface.read_word_32(Dhcsr::get_mmio_address()).await {
                 Ok(val) => Dhcsr(val),
                 // Some combinations of debug probe and target (in
                 // particular, hs-probe and ATSAMD21) result in

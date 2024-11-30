@@ -10,8 +10,8 @@ use crate::{
         },
     },
     probe::{
-        AutoImplementJtagAccess, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
-        JtagAccess, JtagDriverState, ProbeFactory, RawJtagIo, WireProtocol,
+        AutoImplementJtagAccess, DebugProbe, DebugProbeError, DebugProbeSelector, JtagAccess,
+        JtagDriverState, ProbeFactory, RawJtagIo, WireProtocol,
     },
 };
 use bitvec::prelude::*;
@@ -28,18 +28,22 @@ impl std::fmt::Display for EspUsbJtagFactory {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl ProbeFactory for EspUsbJtagFactory {
-    fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
-        let protocol = ProtocolHandler::new_from_selector(selector)?;
+    async fn open(
+        &self,
+        selector: &DebugProbeSelector,
+    ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
+        let protocol = ProtocolHandler::new_from_selector(selector).await?;
 
         Ok(Box::new(EspUsbJtag {
             protocol,
             jtag_state: JtagDriverState::default(),
-        }))
+        }) as Box<dyn DebugProbe>)
     }
 
-    fn list_probes(&self) -> Vec<DebugProbeInfo> {
-        protocol::list_espjtag_devices()
+    async fn list_probes(&self) -> Vec<super::DebugProbeInfo> {
+        protocol::list_espjtag_devices().await
     }
 }
 
@@ -51,20 +55,21 @@ pub struct EspUsbJtag {
     jtag_state: JtagDriverState,
 }
 
+#[async_trait::async_trait(?Send)]
 impl RawJtagIo for EspUsbJtag {
-    fn shift_bit(
+    async fn shift_bit(
         &mut self,
         tms: bool,
         tdi: bool,
         capture_tdo: bool,
     ) -> Result<(), DebugProbeError> {
         self.jtag_state.state.update(tms);
-        self.protocol.shift_bit(tms, tdi, capture_tdo)?;
+        self.protocol.shift_bit(tms, tdi, capture_tdo).await?;
         Ok(())
     }
 
-    fn read_captured_bits(&mut self) -> Result<BitVec, DebugProbeError> {
-        self.protocol.read_captured_bits()
+    async fn read_captured_bits(&mut self) -> Result<BitVec, DebugProbeError> {
+        self.protocol.read_captured_bits().await
     }
 
     fn state_mut(&mut self) -> &mut JtagDriverState {
@@ -78,8 +83,9 @@ impl RawJtagIo for EspUsbJtag {
 
 impl AutoImplementJtagAccess for EspUsbJtag {}
 
+#[async_trait::async_trait(?Send)]
 impl DebugProbe for EspUsbJtag {
-    fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
+    async fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
         if matches!(protocol, WireProtocol::Jtag) {
             Ok(())
         } else {
@@ -99,38 +105,38 @@ impl DebugProbe for EspUsbJtag {
         self.protocol.base_speed_khz / self.protocol.div_min as u32
     }
 
-    fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
+    async fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
         // TODO:
         // can only go lower, base speed is max of 40000khz
 
         Ok(speed_khz)
     }
 
-    fn attach(&mut self) -> Result<(), DebugProbeError> {
+    async fn attach(&mut self) -> Result<(), DebugProbeError> {
         tracing::debug!("Attaching to ESP USB JTAG");
 
-        self.select_target(0)
+        self.select_target(0).await
     }
 
-    fn detach(&mut self) -> Result<(), crate::Error> {
+    async fn detach(&mut self) -> Result<(), crate::Error> {
         Ok(())
     }
 
-    fn target_reset(&mut self) -> Result<(), DebugProbeError> {
+    async fn target_reset(&mut self) -> Result<(), DebugProbeError> {
         Err(DebugProbeError::NotImplemented {
             function_name: "target_reset",
         })
     }
 
-    fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
+    async fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
         tracing::info!("reset_assert!");
-        self.protocol.set_reset(true)?;
+        self.protocol.set_reset(true).await?;
         Ok(())
     }
 
-    fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
+    async fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
         tracing::info!("reset_deassert!");
-        self.protocol.set_reset(false)?;
+        self.protocol.set_reset(false).await?;
         Ok(())
     }
 
@@ -138,7 +144,7 @@ impl DebugProbe for EspUsbJtag {
         Some(self)
     }
 
-    fn try_get_riscv_interface_builder<'probe>(
+    async fn try_get_riscv_interface_builder<'probe>(
         &'probe mut self,
     ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, DebugProbeError> {
         Ok(Box::new(JtagDtmBuilder::new(self)))
@@ -166,7 +172,7 @@ impl DebugProbe for EspUsbJtag {
         ))
     }
 
-    fn try_get_xtensa_interface<'probe>(
+    async fn try_get_xtensa_interface<'probe>(
         &'probe mut self,
         state: &'probe mut XtensaDebugInterfaceState,
     ) -> Result<XtensaCommunicationInterface<'probe>, DebugProbeError> {

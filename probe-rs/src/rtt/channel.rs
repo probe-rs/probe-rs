@@ -98,24 +98,30 @@ impl RttChannelBuffer {
     }
 
     /// return (write_buffer_ptr, read_buffer_ptr)
-    pub fn read_buffer_offsets(&self, core: &mut Core, ptr: u64) -> Result<(u64, u64), Error> {
+    pub async fn read_buffer_offsets(
+        &self,
+        core: &mut Core<'_>,
+        ptr: u64,
+    ) -> Result<(u64, u64), Error> {
         Ok(match self {
             RttChannelBuffer::Buffer32(h32) => {
                 let mut block = [0u32; 2];
-                core.read_32(ptr + h32.write_buffer_ptr_offset() as u64, block.as_mut())?;
+                core.read_32(ptr + h32.write_buffer_ptr_offset() as u64, block.as_mut())
+                    .await?;
                 (u64::from(block[0]), u64::from(block[1]))
             }
             RttChannelBuffer::Buffer64(h64) => {
                 let mut block = [0u64; 2];
-                core.read_64(ptr + h64.write_buffer_ptr_offset() as u64, block.as_mut())?;
+                core.read_64(ptr + h64.write_buffer_ptr_offset() as u64, block.as_mut())
+                    .await?;
                 (block[0], block[1])
             }
         })
     }
 
-    pub fn write_write_buffer_ptr(
+    pub async fn write_write_buffer_ptr(
         &self,
-        core: &mut Core,
+        core: &mut Core<'_>,
         ptr: u64,
         buffer_ptr: u64,
     ) -> Result<(), Error> {
@@ -124,18 +130,20 @@ impl RttChannelBuffer {
                 core.write_word_32(
                     ptr + h32.write_buffer_ptr_offset() as u64,
                     buffer_ptr.try_into().unwrap(),
-                )?;
+                )
+                .await?;
             }
             RttChannelBuffer::Buffer64(h64) => {
-                core.write_word_64(ptr + h64.write_buffer_ptr_offset() as u64, buffer_ptr)?;
+                core.write_word_64(ptr + h64.write_buffer_ptr_offset() as u64, buffer_ptr)
+                    .await?;
             }
         };
         Ok(())
     }
 
-    pub fn write_read_buffer_ptr(
+    pub async fn write_read_buffer_ptr(
         &self,
-        core: &mut Core,
+        core: &mut Core<'_>,
         ptr: u64,
         buffer_ptr: u64,
     ) -> Result<(), Error> {
@@ -144,33 +152,42 @@ impl RttChannelBuffer {
                 core.write_word_32(
                     ptr + h32.read_buffer_ptr_offset() as u64,
                     buffer_ptr.try_into().unwrap(),
-                )?;
+                )
+                .await?;
             }
             RttChannelBuffer::Buffer64(h64) => {
-                core.write_word_64(ptr + h64.read_buffer_ptr_offset() as u64, buffer_ptr)?;
+                core.write_word_64(ptr + h64.read_buffer_ptr_offset() as u64, buffer_ptr)
+                    .await?;
             }
         };
         Ok(())
     }
 
-    pub fn read_flags(&self, core: &mut Core, ptr: u64) -> Result<u64, Error> {
+    pub async fn read_flags(&self, core: &mut Core<'_>, ptr: u64) -> Result<u64, Error> {
         Ok(match self {
             RttChannelBuffer::Buffer32(h32) => {
-                u64::from(core.read_word_32(ptr + h32.flags_offset() as u64)?)
+                u64::from(core.read_word_32(ptr + h32.flags_offset() as u64).await?)
             }
             RttChannelBuffer::Buffer64(h64) => {
-                core.read_word_64(ptr + h64.flags_offset() as u64)?
+                core.read_word_64(ptr + h64.flags_offset() as u64).await?
             }
         })
     }
 
-    pub fn write_flags(&self, core: &mut Core, ptr: u64, flags: u64) -> Result<(), Error> {
+    pub async fn write_flags(
+        &self,
+        core: &mut Core<'_>,
+        ptr: u64,
+        flags: u64,
+    ) -> Result<(), Error> {
         match self {
             RttChannelBuffer::Buffer32(h32) => {
-                core.write_word_32(ptr + h32.flags_offset() as u64, flags.try_into().unwrap())?;
+                core.write_word_32(ptr + h32.flags_offset() as u64, flags.try_into().unwrap())
+                    .await?;
             }
             RttChannelBuffer::Buffer64(h64) => {
-                core.write_word_64(ptr + h64.flags_offset() as u64, flags)?;
+                core.write_word_64(ptr + h64.flags_offset() as u64, flags)
+                    .await?;
             }
         };
         Ok(())
@@ -201,8 +218,8 @@ pub(crate) struct Channel {
 // }
 
 impl Channel {
-    pub(crate) fn from(
-        core: &mut Core,
+    pub(crate) async fn from(
+        core: &mut Core<'_>,
         number: usize,
         metadata_ptr: u64,
         info: RttChannelBuffer,
@@ -225,14 +242,14 @@ impl Channel {
         // It's possible that the channel is not initialized with the magic string written last.
         // We call read_pointers to validate that the channel pointers are in an expected range.
         // This should at least catch most cases where the control block is partially initialized.
-        this.read_pointers(core, "")?;
+        this.read_pointers(core, "").await?;
         // Read channel name just after the pointer was validated to be within an expected range.
         this.name = if let Some(ptr) = this.info.standard_name_pointer() {
-            read_c_string(core, ptr)?
+            read_c_string(core, ptr).await?
         } else {
             None
         };
-        this.mode(core)?;
+        this.mode(core).await?;
 
         Ok(Some(this))
     }
@@ -257,9 +274,9 @@ impl Channel {
     /// Reads the current channel mode from the target and returns its.
     ///
     /// See [`ChannelMode`] for more information on what the modes mean.
-    pub fn mode(&self, core: &mut Core) -> Result<ChannelMode, Error> {
+    pub async fn mode(&self, core: &mut Core<'_>) -> Result<ChannelMode, Error> {
         self.validate_core_id(core)?;
-        let flags = self.info.read_flags(core, self.metadata_ptr)?;
+        let flags = self.info.read_flags(core, self.metadata_ptr).await?;
 
         ChannelMode::try_from(flags)
     }
@@ -267,20 +284,29 @@ impl Channel {
     /// Changes the channel mode on the target to the specified mode.
     ///
     /// See [`ChannelMode`] for more information on what the modes mean.
-    pub fn set_mode(&self, core: &mut Core, mode: ChannelMode) -> Result<(), Error> {
+    pub async fn set_mode(&self, core: &mut Core<'_>, mode: ChannelMode) -> Result<(), Error> {
         self.validate_core_id(core)?;
-        let flags = self.info.read_flags(core, self.metadata_ptr)?;
+        let flags = self.info.read_flags(core, self.metadata_ptr).await?;
 
         let new_flags = ChannelMode::set(mode, flags);
-        self.info.write_flags(core, self.metadata_ptr, new_flags)?;
+        self.info
+            .write_flags(core, self.metadata_ptr, new_flags)
+            .await?;
 
         Ok(())
     }
 
-    fn read_pointers(&self, core: &mut Core, channel_kind: &str) -> Result<(u64, u64), Error> {
+    async fn read_pointers(
+        &self,
+        core: &mut Core<'_>,
+        channel_kind: &str,
+    ) -> Result<(u64, u64), Error> {
         self.validate_core_id(core)?;
 
-        let (write, read) = self.info.read_buffer_offsets(core, self.metadata_ptr)?;
+        let (write, read) = self
+            .info
+            .read_buffer_offsets(core, self.metadata_ptr)
+            .await?;
 
         // Validate whether the buffers are sensible
         let validate = |which, value| {
@@ -353,19 +379,23 @@ impl UpChannel {
     /// Reads the current channel mode from the target and returns its.
     ///
     /// See [`ChannelMode`] for more information on what the modes mean.
-    pub fn mode(&self, core: &mut Core) -> Result<ChannelMode, Error> {
-        self.0.mode(core)
+    pub async fn mode(&self, core: &mut Core<'_>) -> Result<ChannelMode, Error> {
+        self.0.mode(core).await
     }
 
     /// Changes the channel mode on the target to the specified mode.
     ///
     /// See [`ChannelMode`] for more information on what the modes mean.
-    pub fn set_mode(&self, core: &mut Core, mode: ChannelMode) -> Result<(), Error> {
-        self.0.set_mode(core, mode)
+    pub async fn set_mode(&self, core: &mut Core<'_>, mode: ChannelMode) -> Result<(), Error> {
+        self.0.set_mode(core, mode).await
     }
 
-    fn read_core(&mut self, core: &mut Core, mut buf: &mut [u8]) -> Result<(u64, usize), Error> {
-        let (write, mut read) = self.0.read_pointers(core, "up ")?;
+    async fn read_core(
+        &mut self,
+        core: &mut Core<'_>,
+        mut buf: &mut [u8],
+    ) -> Result<(u64, usize), Error> {
+        let (write, mut read) = self.0.read_pointers(core, "up ").await?;
 
         let mut total = 0;
 
@@ -383,7 +413,8 @@ impl UpChannel {
                 break;
             }
 
-            core.read(self.0.info.buffer_start_pointer() + read, &mut buf[..count])?;
+            core.read(self.0.info.buffer_start_pointer() + read, &mut buf[..count])
+                .await?;
 
             total += count;
             read += count as u64;
@@ -405,14 +436,15 @@ impl UpChannel {
     ///
     /// This method will not block waiting for data in the target buffer, and may read less bytes
     /// than would fit in `buf`.
-    pub fn read(&mut self, core: &mut Core, buf: &mut [u8]) -> Result<usize, Error> {
-        let (read, total) = self.read_core(core, buf)?;
+    pub async fn read(&mut self, core: &mut Core<'_>, buf: &mut [u8]) -> Result<usize, Error> {
+        let (read, total) = self.read_core(core, buf).await?;
 
         if total > 0 {
             // Write read pointer back to target if something was read
             self.0
                 .info
-                .write_read_buffer_ptr(core, self.0.metadata_ptr, read)?;
+                .write_read_buffer_ptr(core, self.0.metadata_ptr, read)
+                .await?;
         }
 
         Ok(total)
@@ -423,8 +455,8 @@ impl UpChannel {
     ///
     /// The difference from [`read`](UpChannel::read) is that this does not discard the data in the
     /// buffer.
-    pub fn peek(&mut self, core: &mut Core, buf: &mut [u8]) -> Result<usize, Error> {
-        Ok(self.read_core(core, buf)?.1)
+    pub async fn peek(&mut self, core: &mut Core<'_>, buf: &mut [u8]) -> Result<usize, Error> {
+        Ok(self.read_core(core, buf).await?.1)
     }
 
     /// Calculates amount of contiguous data available for reading
@@ -479,8 +511,8 @@ impl DownChannel {
     ///
     /// This method will not block waiting for space to become available in the channel buffer, and
     /// may not write all of `buf`.
-    pub fn write(&mut self, core: &mut Core, mut buf: &[u8]) -> Result<usize, Error> {
-        let (mut write, read) = self.0.read_pointers(core, "down ")?;
+    pub async fn write(&mut self, core: &mut Core<'_>, mut buf: &[u8]) -> Result<usize, Error> {
+        let (mut write, read) = self.0.read_pointers(core, "down ").await?;
 
         let mut total = 0;
 
@@ -491,7 +523,8 @@ impl DownChannel {
                 break;
             }
 
-            core.write(self.0.info.buffer_start_pointer() + write, &buf[..count])?;
+            core.write(self.0.info.buffer_start_pointer() + write, &buf[..count])
+                .await?;
 
             total += count;
             write += count as u64;
@@ -507,7 +540,8 @@ impl DownChannel {
         // Write write pointer back to target
         self.0
             .info
-            .write_write_buffer_ptr(core, self.0.metadata_ptr, write)?;
+            .write_write_buffer_ptr(core, self.0.metadata_ptr, write)
+            .await?;
 
         Ok(total)
     }
@@ -540,7 +574,7 @@ impl RttChannel for DownChannel {
 }
 
 /// Reads a null-terminated string from target memory. Lossy UTF-8 decoding is used.
-fn read_c_string(core: &mut Core, ptr: NonZeroU64) -> Result<Option<String>, Error> {
+async fn read_c_string(core: &mut Core<'_>, ptr: NonZeroU64) -> Result<Option<String>, Error> {
     let ptr = ptr.get();
     let Some(range) = core
         .memory_regions()
@@ -555,7 +589,7 @@ fn read_c_string(core: &mut Core, ptr: NonZeroU64) -> Result<Option<String>, Err
 
     // Read up to 128 bytes not going past the end of the region
     let mut bytes = vec![0u8; min(128, (range.end - ptr) as usize)];
-    core.read(ptr, bytes.as_mut())?;
+    core.read(ptr, bytes.as_mut()).await?;
 
     // If the bytes read contain a null, return the preceding part as a string, otherwise None.
     let return_value = CStr::from_bytes_until_nul(&bytes)

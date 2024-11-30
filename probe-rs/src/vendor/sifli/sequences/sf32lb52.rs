@@ -42,20 +42,21 @@ mod pmuc {
         const ADDRESS: u64 = 0x00;
 
         /// Read the control register from memory.
-        pub fn read(memory: &mut dyn ArmMemoryInterface) -> Result<Self, ArmError> {
-            let contents = memory.read_word_32(PMUC + Self::ADDRESS)?;
+        pub async fn read(memory: &mut dyn ArmMemoryInterface) -> Result<Self, ArmError> {
+            let contents = memory.read_word_32(PMUC + Self::ADDRESS).await?;
             Ok(Self(contents))
         }
 
         /// Write the control register to memory.
-        pub fn write(&mut self, memory: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
-            memory.write_word_32(PMUC + Self::ADDRESS, self.0)
+        pub async fn write(&mut self, memory: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
+            memory.write_word_32(PMUC + Self::ADDRESS, self.0).await
         }
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl ArmDebugSequence for Sf32lb52 {
-    fn reset_system(
+    async fn reset_system(
         &self,
         interface: &mut dyn ArmMemoryInterface,
         _core_type: CoreType,
@@ -67,10 +68,14 @@ impl ArmDebugSequence for Sf32lb52 {
         aircr.vectkey();
         aircr.set_sysresetreq(true);
 
-        let _ = interface.write_word_32(Aircr::get_mmio_address(), aircr.into());
+        let _ = interface
+            .write_word_32(Aircr::get_mmio_address(), aircr.into())
+            .await;
 
         std::thread::sleep(std::time::Duration::from_millis(500));
-        interface.update_core_status(crate::CoreStatus::Unknown);
+        interface
+            .update_core_status(crate::CoreStatus::Unknown)
+            .await;
 
         Ok(())
     }

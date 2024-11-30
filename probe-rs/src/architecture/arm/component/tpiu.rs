@@ -31,16 +31,18 @@ impl<'a> Tpiu<'a> {
     }
 
     /// Set the port size of the TPIU.
-    pub fn set_port_size(&mut self, value: u32) -> Result<(), Error> {
+    pub async fn set_port_size(&mut self, value: u32) -> Result<(), Error> {
         self.component
-            .write_reg(self.interface, REGISTER_OFFSET_TPIU_CSPSR, value)?;
+            .write_reg(self.interface, REGISTER_OFFSET_TPIU_CSPSR, value)
+            .await?;
         Ok(())
     }
 
     /// Set the prescaler of the TPIU.
-    pub fn set_prescaler(&mut self, value: u32) -> Result<(), Error> {
+    pub async fn set_prescaler(&mut self, value: u32) -> Result<(), Error> {
         self.component
-            .write_reg(self.interface, REGISTER_OFFSET_TPIU_ACPR, value)?;
+            .write_reg(self.interface, REGISTER_OFFSET_TPIU_ACPR, value)
+            .await?;
         Ok(())
     }
 
@@ -49,16 +51,18 @@ impl<'a> Tpiu<'a> {
     /// 1 = async SWO (manchester)
     /// 2 = async SWO (NRZ)
     /// 3 = reserved
-    pub fn set_pin_protocol(&mut self, value: u32) -> Result<(), Error> {
+    pub async fn set_pin_protocol(&mut self, value: u32) -> Result<(), Error> {
         self.component
-            .write_reg(self.interface, REGISTER_OFFSET_TPIU_SPPR, value)?;
+            .write_reg(self.interface, REGISTER_OFFSET_TPIU_SPPR, value)
+            .await?;
         Ok(())
     }
 
     /// Set the TPIU formatter.
-    pub fn set_formatter(&mut self, value: u32) -> Result<(), Error> {
+    pub async fn set_formatter(&mut self, value: u32) -> Result<(), Error> {
         self.component
-            .write_reg(self.interface, REGISTER_OFFSET_TPIU_FFCR, value)?;
+            .write_reg(self.interface, REGISTER_OFFSET_TPIU_FFCR, value)
+            .await?;
         Ok(())
     }
 }

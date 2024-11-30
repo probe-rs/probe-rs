@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::memory::RegionMergeIterator as _;
 use crate::serialize::hex_jep106_option;
 use crate::{CoreAccessOptions, chip_detection::ChipDetectionMethod};
@@ -76,6 +78,21 @@ impl CoreType {
                 | CoreType::Armv8a
                 | CoreType::Armv8m
         )
+    }
+}
+
+impl Display for CoreType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CoreType::Armv6m => f.write_str("Armv6m"),
+            CoreType::Armv7a => f.write_str("Armv7a"),
+            CoreType::Armv7m => f.write_str("Armv7m"),
+            CoreType::Armv7em => f.write_str("Armv7em"),
+            CoreType::Armv8a => f.write_str("Armv8a"),
+            CoreType::Armv8m => f.write_str("Armv8m"),
+            CoreType::Riscv => f.write_str("Riscv"),
+            CoreType::Xtensa => f.write_str("Xtensa"),
+        }
     }
 }
 

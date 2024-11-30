@@ -62,8 +62,6 @@ pub struct Chip {
     /// The `PART` register of the chip.
     /// This value can be determined via the `cli info` command.
     pub part: Option<u16>,
-    /// An URL to the SVD file for this chip.
-    pub svd: Option<String>,
     /// Documentation URLs associated with this chip.
     #[serde(default)]
     pub documentation: HashMap<String, url::Url>,
@@ -118,13 +116,13 @@ impl Chip {
         Chip {
             name: name.to_string(),
             part: None,
-            svd: None,
             documentation: HashMap::new(),
             package_variants: vec![],
             cores: vec![Core {
                 name: "main".to_string(),
                 core_type,
                 core_access_options: CoreAccessOptions::Arm(ArmCoreAccessOptions::default()),
+                svd: None,
             }],
             memory_map: vec![],
             flash_algorithms: vec![],
@@ -143,7 +141,7 @@ impl Chip {
 }
 
 /// An individual core inside a chip
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Core {
     /// The core name.
     pub name: String,
@@ -155,10 +153,14 @@ pub struct Core {
 
     /// The AP number to access the core
     pub core_access_options: CoreAccessOptions,
+
+    /// An URL to the SVD file for this chip.
+    #[serde(default)]
+    pub svd: Option<String>,
 }
 
 /// The data required to access a core
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum CoreAccessOptions {
     /// ARM specific options
     Arm(ArmCoreAccessOptions),
@@ -169,7 +171,7 @@ pub enum CoreAccessOptions {
 }
 
 /// An address for AP accesses
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum ApAddress {
     /// References an address for an APv1 access, which is part of the ADIv5 specification.
     #[serde(rename = "v1")]
@@ -189,7 +191,7 @@ impl Default for ApAddress {
 }
 
 /// The data required to access an ARM core
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct ArmCoreAccessOptions {
     /// The access port number to access the core
@@ -211,7 +213,7 @@ pub struct ArmCoreAccessOptions {
 }
 
 /// The data required to access a Risc-V core
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RiscvCoreAccessOptions {
     /// The hart id
     pub hart_id: Option<u32>,
@@ -221,7 +223,7 @@ pub struct RiscvCoreAccessOptions {
 }
 
 /// The data required to access an Xtensa core
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct XtensaCoreAccessOptions {
     /// The JTAG TAP index of the core's debug module
     pub jtag_tap: Option<usize>,

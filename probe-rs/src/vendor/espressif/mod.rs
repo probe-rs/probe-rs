@@ -41,7 +41,7 @@ fn get_target_by_magic(info: &EspressifDetection, read_magic: u32) -> Option<Str
     None
 }
 
-fn try_detect_espressif_chip(
+async fn try_detect_espressif_chip(
     registry: &Registry,
     probe: &mut impl MemoryInterface,
     idcode: u32,
@@ -55,7 +55,7 @@ fn try_detect_espressif_chip(
             if info.idcode != idcode {
                 continue;
             }
-            let Ok(read_magic) = probe.read_word_32(MAGIC_VALUE_ADDRESS) else {
+            let Ok(read_magic) = probe.read_word_32(MAGIC_VALUE_ADDRESS).await else {
                 continue;
             };
             tracing::debug!("Read magic value: {read_magic:#010x}");
@@ -72,6 +72,7 @@ fn try_detect_espressif_chip(
 #[derive(docsplay::Display)]
 pub struct Espressif;
 
+#[async_trait::async_trait(?Send)]
 impl Vendor for Espressif {
     fn try_create_debug_sequence(&self, chip: &Chip) -> Option<DebugSequence> {
         let sequence = if chip.name.eq_ignore_ascii_case("esp32s2") {
@@ -95,24 +96,27 @@ impl Vendor for Espressif {
         Some(sequence)
     }
 
-    fn try_detect_riscv_chip(
+    async fn try_detect_riscv_chip(
         &self,
         registry: &Registry,
-        probe: &mut RiscvCommunicationInterface,
+        probe: &mut RiscvCommunicationInterface<'_>,
         idcode: u32,
     ) -> Result<Option<String>, Error> {
-        let result =
-            probe.halted_access(|probe| Ok(try_detect_espressif_chip(registry, probe, idcode)))?;
+        let result = probe
+            .halted_access(async |probe| {
+                Ok(try_detect_espressif_chip(registry, probe, idcode).await)
+            })
+            .await?;
 
         Ok(result)
     }
 
-    fn try_detect_xtensa_chip(
+    async fn try_detect_xtensa_chip(
         &self,
         registry: &Registry,
-        probe: &mut XtensaCommunicationInterface,
+        probe: &mut XtensaCommunicationInterface<'_>,
         idcode: u32,
     ) -> Result<Option<String>, Error> {
-        Ok(try_detect_espressif_chip(registry, probe, idcode))
+        Ok(try_detect_espressif_chip(registry, probe, idcode).await)
     }
 }

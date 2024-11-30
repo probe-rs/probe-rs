@@ -24,12 +24,13 @@ impl Va416xx {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl ArmDebugSequence for Va416xx {
     /// Custom VA416xx core debug start sequence.
     ///
     /// This function performs the regular Cortex-M debug core start sequence in addition to
     /// disabling the ROM protection and the watchdog.
-    fn debug_core_start(
+    async fn debug_core_start(
         &self,
         interface: &mut dyn ArmProbeInterface,
         core_ap: &FullyQualifiedApAddress,
@@ -37,15 +38,15 @@ impl ArmDebugSequence for Va416xx {
         _debug_base: Option<u64>,
         _cti_base: Option<u64>,
     ) -> Result<(), ArmError> {
-        let mut core = interface.memory_interface(core_ap)?;
-        cortex_m_core_start(&mut *core)?;
+        let mut core = interface.memory_interface(core_ap).await?;
+        cortex_m_core_start(&mut *core).await?;
         // Disable ROM protection
-        core.write_32(0x4001_0010, &[0x000_0001])?;
+        core.write_32(0x4001_0010, &[0x000_0001]).await?;
         // Disable watchdog
         // WDOGLOCK = 0x1ACCE551
-        core.write_32(0x400210C0, &[0x1ACCE551])?;
+        core.write_32(0x400210C0, &[0x1ACCE551]).await?;
         // WDOGCONTROL = 0x0 (diable)
-        core.write_32(0x40021008, &[0])?;
+        core.write_32(0x40021008, &[0]).await?;
         Ok(())
     }
 
@@ -54,7 +55,7 @@ impl ArmDebugSequence for Va416xx {
     /// This custom implementation is similar to the
     /// [crate::vendor::ti::sequences::cc13xx_cc26xx::CC13xxCC26xx::reset_system] implementation
     /// and re-initializes the debug connection after a reset.
-    fn reset_system(
+    async fn reset_system(
         &self,
         interface: &mut dyn ArmMemoryInterface,
         core_type: CoreType,
@@ -62,7 +63,7 @@ impl ArmDebugSequence for Va416xx {
     ) -> Result<(), ArmError> {
         use crate::architecture::arm::core::armv7m::{Aircr, Dhcsr};
         // Check if the previous code requested a halt before reset
-        let demcr = Demcr(interface.read_word_32(Demcr::get_mmio_address())?);
+        let demcr = Demcr(interface.read_word_32(Demcr::get_mmio_address()).await?);
 
         let mut aircr = Aircr(0);
         aircr.vectkey();
@@ -72,10 +73,11 @@ impl ArmDebugSequence for Va416xx {
         // reasons.
         interface
             .write_word_32(Aircr::get_mmio_address(), aircr.into())
+            .await
             .ok();
 
         // Since the system went down, including the debug, we should flush any pending operations
-        interface.flush().ok();
+        interface.flush().await.ok();
 
         // Re-initializing the core(s) is on us.
         let ap = interface.fully_qualified_address();
@@ -83,7 +85,7 @@ impl ArmDebugSequence for Va416xx {
         let arm_interface = interface.get_arm_probe_interface()?;
         const NUM_RETRIES: u32 = 10;
         for i in 0..NUM_RETRIES {
-            match arm_interface.reinitialize() {
+            match arm_interface.reinitialize().await {
                 Ok(_) => break,
                 Err(e) => {
                     if i == NUM_RETRIES - 1 {
@@ -95,7 +97,8 @@ impl ArmDebugSequence for Va416xx {
         }
 
         assert!(debug_base.is_none());
-        self.debug_core_start(arm_interface, &ap, core_type, None, None)?;
+        self.debug_core_start(arm_interface, &ap, core_type, None, None)
+            .await?;
 
         if demcr.vc_corereset() {
             // TODO! Find a way to call the armv7m::halt function instead
@@ -106,8 +109,10 @@ impl ArmDebugSequence for Va416xx {
 
             const NUM_HALT_RETRIES: u32 = 10;
             for i in 0..NUM_HALT_RETRIES {
-                interface.write_word_32(Dhcsr::get_mmio_address(), value.into())?;
-                let dhcsr = Dhcsr(interface.read_word_32(Dhcsr::get_mmio_address())?);
+                interface
+                    .write_word_32(Dhcsr::get_mmio_address(), value.into())
+                    .await?;
+                let dhcsr = Dhcsr(interface.read_word_32(Dhcsr::get_mmio_address()).await?);
                 if dhcsr.s_halt() {
                     break;
                 }

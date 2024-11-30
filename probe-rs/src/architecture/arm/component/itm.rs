@@ -49,9 +49,10 @@ impl<'a> Itm<'a> {
     /// This function enables the ITM unit as a whole. It does not actually send any data after enabling it.
     ///
     /// To enable actual transaction of data, see [`Itm::tx_enable`].
-    pub fn unlock(&mut self) -> Result<(), Error> {
+    pub async fn unlock(&mut self) -> Result<(), Error> {
         self.component
-            .write_reg(self.interface, REGISTER_OFFSET_ACCESS, 0xC5AC_CE55)?;
+            .write_reg(self.interface, REGISTER_OFFSET_ACCESS, 0xC5AC_CE55)
+            .await?;
 
         Ok(())
     }
@@ -59,8 +60,8 @@ impl<'a> Itm<'a> {
     /// Enable the ITM TX to send tracing data to the TPIU.
     ///
     /// This enables the actual TX pin of the overarching TPIU which is the parent peripheral of the ITM that multiplexes all data.
-    pub fn tx_enable(&mut self) -> Result<(), Error> {
-        let mut tcr = register::ITM_TCR::load(self.component, self.interface)?;
+    pub async fn tx_enable(&mut self) -> Result<(), Error> {
+        let mut tcr = register::ITM_TCR::load(self.component, self.interface).await?;
 
         tcr.set_itmena(true); // ITMENA: enable ITM (master switch)
         tcr.set_tsena(true); // TSENA: enable local timestamps
@@ -69,118 +70,130 @@ impl<'a> Itm<'a> {
         tcr.set_gtsfreq(0b10); // GTSFREQ: generate global timestamp every 8192 cycles
         tcr.set_trace_bus_id(0b1101); // 7 bits trace bus ID
 
-        tcr.store(self.component, self.interface)?;
+        tcr.store(self.component, self.interface).await?;
 
         // Enable all 32 channels.
-        self.component.write_reg(
-            self.interface,
-            register::ITM_TER::ADDRESS_OFFSET as u32,
-            register::ITM_TER::enable_all().into(),
-        )?;
+        self.component
+            .write_reg(
+                self.interface,
+                register::ITM_TER::ADDRESS_OFFSET as u32,
+                register::ITM_TER::enable_all().into(),
+            )
+            .await?;
 
         Ok(())
     }
 
     /// Enable all 32 stimulus registers.
-    pub fn enable_stim_all(&mut self) -> Result<(), Error> {
-        self.component.write_reg(
-            self.interface,
-            register::ITM_TER::ADDRESS_OFFSET as u32,
-            register::ITM_TER::enable_all().into(),
-        )?;
+    pub async fn enable_stim_all(&mut self) -> Result<(), Error> {
+        self.component
+            .write_reg(
+                self.interface,
+                register::ITM_TER::ADDRESS_OFFSET as u32,
+                register::ITM_TER::enable_all().into(),
+            )
+            .await?;
 
         Ok(())
     }
 
     /// Disable all 32 stimulus registers.
-    pub fn disable_stim_all(&mut self) -> Result<(), Error> {
-        self.component.write_reg(
-            self.interface,
-            register::ITM_TER::ADDRESS_OFFSET as u32,
-            register::ITM_TER::disable_all().into(),
-        )?;
+    pub async fn disable_stim_all(&mut self) -> Result<(), Error> {
+        self.component
+            .write_reg(
+                self.interface,
+                register::ITM_TER::ADDRESS_OFFSET as u32,
+                register::ITM_TER::disable_all().into(),
+            )
+            .await?;
 
         Ok(())
     }
 
     /// Enable a stimulus register.
-    pub fn enable_stim(&mut self, port: u8) -> Result<(), Error> {
+    pub async fn enable_stim(&mut self, port: u8) -> Result<(), Error> {
         let mut value = self
             .component
-            .read_reg(self.interface, register::ITM_TER::ADDRESS_OFFSET as u32)?;
+            .read_reg(self.interface, register::ITM_TER::ADDRESS_OFFSET as u32)
+            .await?;
         value |= 1 << port;
-        self.component.write_reg(
-            self.interface,
-            register::ITM_TER::ADDRESS_OFFSET as u32,
-            value,
-        )?;
+        self.component
+            .write_reg(
+                self.interface,
+                register::ITM_TER::ADDRESS_OFFSET as u32,
+                value,
+            )
+            .await?;
         Ok(())
     }
 
     /// Disable a stimulus register.
-    pub fn disable_stim(&mut self, port: u8) -> Result<(), Error> {
+    pub async fn disable_stim(&mut self, port: u8) -> Result<(), Error> {
         let mut value = self
             .component
-            .read_reg(self.interface, register::ITM_TER::ADDRESS_OFFSET as u32)?;
+            .read_reg(self.interface, register::ITM_TER::ADDRESS_OFFSET as u32)
+            .await?;
         value &= !(1 << port);
-        self.component.write_reg(
-            self.interface,
-            register::ITM_TER::ADDRESS_OFFSET as u32,
-            value,
-        )?;
+        self.component
+            .write_reg(
+                self.interface,
+                register::ITM_TER::ADDRESS_OFFSET as u32,
+                value,
+            )
+            .await?;
         Ok(())
     }
 
     /// Enable local timestamps generation.
-    pub fn enable_local_timestamps(&mut self) -> Result<(), Error> {
-        let mut tcr = register::ITM_TCR::load(self.component, self.interface)?;
+    pub async fn enable_local_timestamps(&mut self) -> Result<(), Error> {
+        let mut tcr = register::ITM_TCR::load(self.component, self.interface).await?;
         tcr.set_tsena(true);
-        tcr.store(self.component, self.interface)?;
+        tcr.store(self.component, self.interface).await?;
 
         Ok(())
     }
 
     /// Disable local timestamps generation.
-    pub fn disable_local_timestamps(&mut self) -> Result<(), Error> {
-        let mut tcr = register::ITM_TCR::load(self.component, self.interface)?;
+    pub async fn disable_local_timestamps(&mut self) -> Result<(), Error> {
+        let mut tcr = register::ITM_TCR::load(self.component, self.interface).await?;
         tcr.set_tsena(false);
-        tcr.store(self.component, self.interface)?;
+        tcr.store(self.component, self.interface).await?;
 
         Ok(())
     }
 
     /// Enable synchronization packet transmission.  
-    pub fn enable_sync_pulses(&mut self) -> Result<(), Error> {
-        let mut tcr = register::ITM_TCR::load(self.component, self.interface)?;
+    pub async fn enable_sync_pulses(&mut self) -> Result<(), Error> {
+        let mut tcr = register::ITM_TCR::load(self.component, self.interface).await?;
         tcr.set_syncena(true);
-        tcr.store(self.component, self.interface)?;
+        tcr.store(self.component, self.interface).await?;
 
         Ok(())
     }
 
     /// Disable synchronization packet transmission.  
-    pub fn disable_sync_pulses(&mut self) -> Result<(), Error> {
-        let mut tcr = register::ITM_TCR::load(self.component, self.interface)?;
+    pub async fn disable_sync_pulses(&mut self) -> Result<(), Error> {
+        let mut tcr = register::ITM_TCR::load(self.component, self.interface).await?;
         tcr.set_syncena(false);
-        tcr.store(self.component, self.interface)?;
+        tcr.store(self.component, self.interface).await?;
 
         Ok(())
     }
 
     /// Enable forwarding DWT packets to the ITM.
-    pub fn enable_forward_dwt(&mut self) -> Result<(), Error> {
-        let mut tcr = register::ITM_TCR::load(self.component, self.interface)?;
+    pub async fn enable_forward_dwt(&mut self) -> Result<(), Error> {
+        let mut tcr = register::ITM_TCR::load(self.component, self.interface).await?;
         tcr.set_txena(true);
-        tcr.store(self.component, self.interface)?;
+        tcr.store(self.component, self.interface).await?;
 
         Ok(())
     }
 
     /// Disable forwarding DWT packets to the ITM.
-    pub fn disable_forward_dwt(&mut self) -> Result<(), Error> {
-        let mut tcr = register::ITM_TCR::load(self.component, self.interface)?;
+    pub async fn disable_forward_dwt(&mut self) -> Result<(), Error> {
+        let mut tcr = register::ITM_TCR::load(self.component, self.interface).await?;
         tcr.set_txena(false);
-        tcr.store(self.component, self.interface)?;
+        tcr.store(self.component, self.interface).await?;
 
         Ok(())
     }

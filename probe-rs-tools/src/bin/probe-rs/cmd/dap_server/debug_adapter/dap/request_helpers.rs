@@ -533,7 +533,7 @@ pub(crate) fn get_variable_reference(
             indexed_child_variables_cnt,
         )
     } else if parent_variable.variable_node_type.is_deferred()
-        && parent_variable.to_string(cache) != "()"
+        && parent_variable.to_string() != "()"
     {
         // We have not yet cached the children for this reference.
         // Provide DAP Client with a reference so that it will explicitly ask for children when the user expands it.

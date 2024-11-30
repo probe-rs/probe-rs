@@ -34,17 +34,19 @@ impl<'a> Swo<'a> {
     ///
     /// This function enables the SWO unit as a whole. It does not actually send any data after
     /// enabling it.
-    pub fn unlock(&mut self) -> Result<(), Error> {
+    pub async fn unlock(&mut self) -> Result<(), Error> {
         self.component
-            .write_reg(self.interface, REGISTER_OFFSET_ACCESS, 0xC5AC_CE55)?;
+            .write_reg(self.interface, REGISTER_OFFSET_ACCESS, 0xC5AC_CE55)
+            .await?;
 
         Ok(())
     }
 
     /// Set the prescaler of the SWO.
-    pub fn set_prescaler(&mut self, value: u32) -> Result<(), Error> {
+    pub async fn set_prescaler(&mut self, value: u32) -> Result<(), Error> {
         self.component
-            .write_reg(self.interface, REGISTER_OFFSET_SWO_CODR, value)?;
+            .write_reg(self.interface, REGISTER_OFFSET_SWO_CODR, value)
+            .await?;
         Ok(())
     }
 
@@ -53,9 +55,10 @@ impl<'a> Swo<'a> {
     /// 1 = async SWO (manchester)
     /// 2 = async SWO (NRZ)
     /// 3 = reserved
-    pub fn set_pin_protocol(&mut self, value: u32) -> Result<(), Error> {
+    pub async fn set_pin_protocol(&mut self, value: u32) -> Result<(), Error> {
         self.component
-            .write_reg(self.interface, REGISTER_OFFSET_SWO_SPPR, value)?;
+            .write_reg(self.interface, REGISTER_OFFSET_SWO_SPPR, value)
+            .await?;
         Ok(())
     }
 }

@@ -326,7 +326,7 @@ impl App {
             self.save_tab_logs(i, tab);
         }
 
-        self.client.clean_up(core)?;
+        self.client.clean_up(core).await?;
 
         Ok(())
     }
@@ -430,6 +430,6 @@ fn render_tabs(f: &mut ratatui::Frame, chunk: Rect, tabs: &[Tab], current_tab: u
 }
 
 pub fn clean_up_terminal() {
-    let _ = disable_raw_mode();
+    // let _ = disable_raw_mode();
     let _ = execute!(std::io::stdout(), LeaveAlternateScreen);
 }

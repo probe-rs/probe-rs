@@ -19,8 +19,11 @@ pub struct WchLinkUsbDevice {
 }
 
 impl WchLinkUsbDevice {
-    pub fn new_from_selector(selector: &DebugProbeSelector) -> Result<Self, ProbeCreationError> {
-        let device = nusb::list_devices()
+    pub async fn new_from_selector(
+        selector: &DebugProbeSelector,
+    ) -> Result<Self, ProbeCreationError> {
+        let device = crate::probe::list::list_devices()
+            .await
             .map_err(ProbeCreationError::Usb)?
             .filter(|device| selector.matches(device))
             .find(|device| get_wlink_info(device).is_some())
@@ -29,7 +32,7 @@ impl WchLinkUsbDevice {
         let mut endpoint_out = false;
         let mut endpoint_in = false;
 
-        let device_handle = device.open().map_err(ProbeCreationError::Usb)?;
+        let device_handle = device.open().await.map_err(ProbeCreationError::Usb)?;
 
         let mut configs = device_handle.configurations();
         if let Some(config) = configs.next() {
@@ -53,6 +56,7 @@ impl WchLinkUsbDevice {
         tracing::trace!("Aquired handle for probe");
         let device_handle = device_handle
             .claim_interface(0)
+            .await
             .map_err(ProbeCreationError::Usb)?;
         tracing::trace!("Claimed interface 0 of USB device.");
 
@@ -63,7 +67,7 @@ impl WchLinkUsbDevice {
         Ok(usb_wlink)
     }
 
-    pub(crate) fn send_command<C: WchLinkCommand + std::fmt::Debug>(
+    pub(crate) async fn send_command<C: WchLinkCommand + std::fmt::Debug>(
         &mut self,
         cmd: C,
     ) -> Result<C::Response, DebugProbeError> {
@@ -77,6 +81,7 @@ impl WchLinkUsbDevice {
         let written_bytes = self
             .device_handle
             .write_bulk(ENDPOINT_OUT, &rxbuf[..len], timeout)
+            .await
             .map_err(DebugProbeError::Usb)?;
 
         if written_bytes != len {
@@ -91,6 +96,7 @@ impl WchLinkUsbDevice {
         let read_bytes = self
             .device_handle
             .read_bulk(ENDPOINT_IN, &mut rxbuf[..], timeout)
+            .await
             .map_err(DebugProbeError::Usb)?;
 
         if read_bytes < 3 {

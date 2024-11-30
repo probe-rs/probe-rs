@@ -14,21 +14,25 @@ resolver = "2"
 members = [
     "probe-rs",
     "probe-rs-target",
-    "rtthost",
-    "smoke-tester",
-    "xtask",
-    "target-gen",
-    "probe-rs-tools",
-    "probe-rs-mi",
-    "probe-rs-debug",
+    # "rtthost",
+    # "smoke-tester",
+    # "xtask",
+    # "target-gen",
+    # "probe-rs-tools",
+    # "probe-rs-mi",
+    # "probe-rs-debug",
 ]
 exclude = ["probe-rs/tests/gpio-hal-blinky"]
 
 [workspace.dependencies]
 probe-rs = { path = "probe-rs", version = "0.28.0" }
 probe-rs-target = { path = "probe-rs-target", version = "0.28.0" }
-probe-rs-mi = { path = "probe-rs-mi", version = "0.1.0" }
+# probe-rs-mi = { path = "probe-rs-mi", version = "0.1.0" }
 
+
+web-time = { version = "1.1.0" }
+async-mutex = "1"
+async-trait = "0.1"
 docsplay = "0.1.1"
 thiserror = "2.0.11"
 anyhow = "1.0.82"
