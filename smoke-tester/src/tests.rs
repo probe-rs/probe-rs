@@ -1,5 +1,3 @@
-use std::time::Instant;
-
 use colored::Colorize;
 use linkme::distributed_slice;
 use probe_rs::{
@@ -7,6 +5,7 @@ use probe_rs::{
     flashing::{download_file_with_options, DownloadOptions, FlashProgress, FormatKind},
     Architecture, Core, MemoryInterface, Session,
 };
+use web_time::Instant;
 
 pub mod stepping;
 

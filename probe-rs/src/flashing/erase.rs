@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use probe_rs_target::{MemoryRange, MemoryRegion, NvmRegion};
 
 use crate::flashing::{flasher::Flasher, FlashError, FlashLoader};
-use crate::flashing::{FlashAlgorithm, FlashLayout, FlashSector};
+use crate::flashing::{Erase, FlashAlgorithm, FlashLayout, FlashSector};
 use crate::Session;
 
 use super::FlashProgress;
@@ -12,7 +12,7 @@ use super::FlashProgress;
 ///
 /// The optional progress will only be used to emit RTT messages.
 /// No actual indication for the state of the erase all operation will be given.
-pub fn erase_all(session: &mut Session, progress: FlashProgress) -> Result<(), FlashError> {
+pub async fn erase_all(session: &mut Session, progress: FlashProgress) -> Result<(), FlashError> {
     tracing::debug!("Erasing all...");
 
     let mut algos: HashMap<(String, String), Vec<NvmRegion>> = HashMap::new();
@@ -66,7 +66,7 @@ pub fn erase_all(session: &mut Session, progress: FlashProgress) -> Result<(), F
             FlashAlgorithm::assemble_from_raw_with_core(&algo, core, session.target())?;
 
         let chip_erase_supported =
-            session.has_sequence_erase_all() || flash_algorithm.pc_erase_all.is_some();
+            session.has_sequence_erase_all().await || flash_algorithm.pc_erase_all.is_some();
         // If the first flash algo doesn't support erase all, disable chip erase.
         // TODO: we could sort by support but it's unlikely to make a difference.
         if do_chip_erase && !chip_erase_supported {
@@ -102,9 +102,9 @@ pub fn erase_all(session: &mut Session, progress: FlashProgress) -> Result<(), F
         let core_index = session.target().core_index_by_name(&core_name).unwrap();
         let mut flasher = Flasher::new(session, core_index, &algo, progress.clone())?;
 
-        if flasher.is_chip_erase_supported() {
+        if flasher.is_chip_erase_supported().await {
             tracing::debug!("     -- chip erase supported, doing it.");
-            flasher.run_erase_all()?;
+            flasher.run_erase_all().await?;
         } else {
             tracing::debug!("     -- chip erase not supported, erasing by sector.");
 
@@ -119,23 +119,22 @@ pub fn erase_all(session: &mut Session, progress: FlashProgress) -> Result<(), F
                 })
                 .collect::<Vec<_>>();
 
-            flasher.run_erase(|active| {
-                for info in sectors {
-                    tracing::debug!(
-                        "    sector: {:#010x}-{:#010x} ({} bytes)",
-                        info.base_address,
-                        info.base_address + info.size,
-                        info.size
-                    );
-                    let sector = FlashSector {
-                        address: info.base_address,
-                        size: info.size,
-                    };
+            let mut active = flasher.init::<Erase>().await?;
+            for info in sectors {
+                tracing::debug!(
+                    "    sector: {:#010x}-{:#010x} ({} bytes)",
+                    info.base_address,
+                    info.base_address + info.size,
+                    info.size
+                );
+                let sector = FlashSector {
+                    address: info.base_address,
+                    size: info.size,
+                };
 
-                    active.erase_sector(&sector)?;
-                }
-                Ok(())
-            })?;
+                active.erase_sector(&sector).await?;
+            }
+            active.uninit().await?;
         }
     }
 
@@ -144,7 +143,7 @@ pub fn erase_all(session: &mut Session, progress: FlashProgress) -> Result<(), F
 
 /// Erases `sectors` sectors starting from `start_sector` from flash.
 // TODO: currently no progress is reported by anything in this function.
-pub fn erase_sectors(
+pub async fn erase_sectors(
     session: &mut Session,
     progress: FlashProgress,
     start_sector: usize,
@@ -210,24 +209,24 @@ pub fn erase_sectors(
             })
             .collect::<Vec<_>>();
 
-        flasher.run_erase(|active| {
-            for info in sectors {
-                tracing::debug!(
-                    "    sector: {:#010x}-{:#010x} ({} bytes)",
-                    info.base_address,
-                    info.base_address + info.size,
-                    info.size
-                );
+        let mut active = flasher.init::<Erase>().await?;
+        for info in sectors {
+            tracing::debug!(
+                "    sector: {:#010x}-{:#010x} ({} bytes)",
+                info.base_address,
+                info.base_address + info.size,
+                info.size
+            );
 
-                let sector = FlashSector {
-                    address: info.base_address,
-                    size: info.size,
-                };
+            let sector = FlashSector {
+                address: info.base_address,
+                size: info.size,
+            };
 
-                active.erase_sector(&sector)?;
-            }
-            Ok(())
-        })?;
+            active.erase_sector(&sector).await?;
+        }
+
+        active.uninit().await?;
     }
 
     Ok(())

@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::fs::File;
 use std::path::Path;
 use std::rc::Rc;
-use std::time::Instant;
+use web_time::Instant;
 
 use anyhow::{anyhow, Context, Result};
 use colored::Colorize;

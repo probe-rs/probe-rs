@@ -29,9 +29,10 @@ impl<'a> Scs<'a> {
     }
 
     /// B3.2.3 CPUID Base Register
-    pub fn cpuid(&mut self) -> Result<CPUID, ArmError> {
+    pub async fn cpuid(&mut self) -> Result<CPUID, ArmError> {
         self.component
             .read_reg(self.interface, CPUID::ADDRESS_OFFSET as u32)
+            .await
             .map(CPUID)
     }
 }

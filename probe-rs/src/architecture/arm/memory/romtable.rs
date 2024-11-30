@@ -1,9 +1,7 @@
 //! CoreSight ROM table parsing and handling.
 
 use crate::architecture::arm::{
-    ap::{AccessPortError, AccessPortType},
-    communication_interface::ArmProbeInterface,
-    memory::ArmMemoryInterface,
+    ap::AccessPortError, communication_interface::ArmProbeInterface, memory::ArmMemoryInterface,
     ArmError, FullyQualifiedApAddress,
 };
 
@@ -74,38 +72,40 @@ impl<'probe: 'memory, 'memory: 'reader, 'reader> RomTableIterator<'probe, 'memor
     }
 }
 
-impl Iterator for RomTableIterator<'_, '_, '_> {
-    type Item = Result<RomTableEntryRaw, RomTableError>;
+// TODO:
+// impl Iterator for RomTableIterator<'_, '_, '_> {
+//     type Item = Result<RomTableEntryRaw, RomTableError>;
 
-    fn next(&mut self) -> Option<Self::Item> {
-        let component_address = self.rom_table_reader.base_address + self.offset;
-        tracing::debug!("Reading rom table entry at {:#010x}", component_address);
+//     fn next(&mut self) -> Option<Self::Item> {
+//         let component_address = self.rom_table_reader.base_address + self.offset;
+//         tracing::debug!("Reading rom table entry at {:#010x}", component_address);
 
-        self.offset += 4;
+//         self.offset += 4;
 
-        let mut entry_data = [0u32; 1];
+//         let mut entry_data = [0u32; 1];
 
-        if let Err(e) = self
-            .rom_table_reader
-            .memory
-            .read_32(component_address, &mut entry_data)
-        {
-            return Some(Err(RomTableError::memory(e)));
-        }
+//         if let Err(e) = self
+//             .rom_table_reader
+//             .memory
+//             .read_32(component_address, &mut entry_data)
+//             .await
+//         {
+//             return Some(Err(RomTableError::memory(e)));
+//         }
 
-        // End of entries is marked by an all zero entry
-        if entry_data[0] == 0 {
-            tracing::debug!("Entry consists of all zeroes, stopping.");
-            return None;
-        }
+//         // End of entries is marked by an all zero entry
+//         if entry_data[0] == 0 {
+//             tracing::debug!("Entry consists of all zeroes, stopping.");
+//             return None;
+//         }
 
-        let entry_data =
-            RomTableEntryRaw::new(self.rom_table_reader.base_address as u32, entry_data[0]);
+//         let entry_data =
+//             RomTableEntryRaw::new(self.rom_table_reader.base_address as u32, entry_data[0]);
 
-        tracing::debug!("ROM Table Entry: {:#x?}", entry_data);
-        Some(Ok(entry_data))
-    }
-}
+//         tracing::debug!("ROM Table Entry: {:#x?}", entry_data);
+//         Some(Ok(entry_data))
+//     }
+// }
 
 /// Encapsulates information about a CoreSight ROM table (class 1).
 #[derive(Clone, Debug, PartialEq)]
@@ -116,48 +116,49 @@ pub struct RomTable {
 }
 
 impl RomTable {
-    /// Tries to parse a CoreSight component table.
-    ///
-    /// This does not check whether the data actually signalizes
-    /// to contain a ROM table but assumes this was checked beforehand.
-    fn try_parse(
-        memory: &mut dyn ArmMemoryInterface,
-        base_address: u64,
-    ) -> Result<RomTable, RomTableError> {
-        // This is required for the collect down below.
-        let mut entries = vec![];
+    // TODO:
+    // /// Tries to parse a CoreSight component table.
+    // ///
+    // /// This does not check whether the data actually signalizes
+    // /// to contain a ROM table but assumes this was checked beforehand.
+    // async fn try_parse(
+    //     memory: &mut dyn ArmMemoryInterface,
+    //     base_address: u64,
+    // ) -> Result<RomTable, RomTableError> {
+    //     // This is required for the collect down below.
+    //     let mut entries = vec![];
 
-        tracing::debug!("Parsing romtable at base_address {:#010x}", base_address);
+    //     tracing::debug!("Parsing romtable at base_address {:#010x}", base_address);
 
-        // Read all the raw romtable entries and flatten them.
+    //     // Read all the raw romtable entries and flatten them.
 
-        let reader = RomTableReader::new(memory, base_address)
-            .entries()
-            .filter_map(Result::ok)
-            // This is not a needless collect! It fixes the borrowing issue with &mut Memory that clippy cannot detect!
-            .collect::<Vec<RomTableEntryRaw>>();
+    //     let reader = RomTableReader::new(memory, base_address)
+    //         .entries()
+    //         .filter_map(Result::ok)
+    //         // This is not a needless collect! It fixes the borrowing issue with &mut Memory that clippy cannot detect!
+    //         .collect::<Vec<RomTableEntryRaw>>();
 
-        // Iterate all entries and get their data.
-        for raw_entry in reader.into_iter() {
-            let entry_base_addr = raw_entry.component_address();
+    //     // Iterate all entries and get their data.
+    //     for raw_entry in reader.into_iter() {
+    //         let entry_base_addr = raw_entry.component_address();
 
-            tracing::debug!("Parsing entry at {:#010x}", entry_base_addr);
+    //         tracing::debug!("Parsing entry at {:#010x}", entry_base_addr);
 
-            if raw_entry.entry_present {
-                let component = Component::try_parse(memory, u64::from(entry_base_addr))?;
+    //         if raw_entry.entry_present {
+    //             let component = Component::try_parse(memory, u64::from(entry_base_addr)).await?;
 
-                // Finally remember the entry.
-                entries.push(RomTableEntry {
-                    format: raw_entry.format,
-                    power_domain_id: raw_entry.power_domain_id,
-                    power_domain_valid: raw_entry.power_domain_valid,
-                    component: CoresightComponent::new(component, memory.ap().ap_address().clone()),
-                });
-            }
-        }
+    //             // Finally remember the entry.
+    //             entries.push(RomTableEntry {
+    //                 format: raw_entry.format,
+    //                 power_domain_id: raw_entry.power_domain_id,
+    //                 power_domain_valid: raw_entry.power_domain_valid,
+    //                 component: CoresightComponent::new(component, memory.ap().ap_address().clone()),
+    //             });
+    //         }
+    //     }
 
-        Ok(RomTable { entries })
-    }
+    //     Ok(RomTable { entries })
+    // }
 
     /// Returns an iterator over all entries in the ROM table.
     pub fn entries(&self) -> impl Iterator<Item = &RomTableEntry> {
@@ -285,12 +286,13 @@ impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
     /// Reads the component class from a component information table.
     ///
     /// This function does a direct memory access and is meant for internal use only.
-    fn component_class(&mut self) -> Result<RawComponent, RomTableError> {
+    async fn component_class(&mut self) -> Result<RawComponent, RomTableError> {
         #![allow(clippy::verbose_bit_mask)]
         let mut cidr = [0u32; 4];
 
         self.memory
             .read_32(self.base_address + 0xFF0, &mut cidr)
+            .await
             .map_err(RomTableError::memory)?;
 
         tracing::debug!("CIDR: {:x?}", cidr);
@@ -322,7 +324,7 @@ impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
     /// Reads the peripheral ID from a component information table.
     ///
     /// This function does a direct memory access and is meant for internal use only.
-    fn peripheral_id(&mut self) -> Result<PeripheralID, RomTableError> {
+    async fn peripheral_id(&mut self) -> Result<PeripheralID, RomTableError> {
         let mut data = [0u32; 8];
 
         let peripheral_id_address = self.base_address + 0xFD0;
@@ -334,9 +336,11 @@ impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
 
         self.memory
             .read_32(self.base_address + 0xFD0, &mut data[4..])
+            .await
             .map_err(RomTableError::memory)?;
         self.memory
             .read_32(self.base_address + 0xFE0, &mut data[..4])
+            .await
             .map_err(RomTableError::memory)?;
 
         tracing::debug!("Raw peripheral id: {:x?}", data);
@@ -347,6 +351,7 @@ impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
         let dev_type = self
             .memory
             .read_word_32(self.base_address + DEV_TYPE_OFFSET)
+            .await
             .map_err(RomTableError::memory)
             .map(|v| (v & DEV_TYPE_MASK) as u8)?;
 
@@ -357,6 +362,7 @@ impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
         let arch_id = self
             .memory
             .read_word_32(self.base_address + ARCH_ID_OFFSET)
+            .await
             .map_err(RomTableError::memory)
             .map(|v| {
                 if v & ARCH_ID_PRESENT_BIT > 0 {
@@ -374,11 +380,11 @@ impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
     /// Reads all component properties from a component info table
     ///
     /// This function does a direct memory access and is meant for internal use only.
-    fn read_all(&mut self) -> Result<ComponentId, RomTableError> {
+    async fn read_all(&mut self) -> Result<ComponentId, RomTableError> {
         Ok(ComponentId {
             component_address: self.base_address,
-            class: self.component_class()?,
-            peripheral_id: self.peripheral_id()?,
+            class: self.component_class().await?,
+            peripheral_id: self.peripheral_id().await?,
         })
     }
 }
@@ -438,13 +444,15 @@ pub enum Component {
 
 impl Component {
     /// Tries to parse a CoreSight component table.
-    pub fn try_parse<'probe: 'memory, 'memory>(
+    pub async fn try_parse<'probe: 'memory, 'memory>(
         memory: &'memory mut (dyn ArmMemoryInterface + 'probe),
         baseaddr: u64,
     ) -> Result<Component, RomTableError> {
         tracing::debug!("\tReading component data at: {:#010x}", baseaddr);
 
-        let component_id = ComponentInformationReader::new(baseaddr, memory).read_all()?;
+        let component_id = ComponentInformationReader::new(baseaddr, memory)
+            .read_all()
+            .await?;
 
         // Determine the component class to find out what component we are dealing with.
         tracing::debug!("\tComponent class: {:x?}", component_id.class);
@@ -464,9 +472,11 @@ impl Component {
                 Component::GenericVerificationComponent(component_id)
             }
             RawComponent::RomTable => {
-                let rom_table = RomTable::try_parse(memory, component_id.component_address)?;
+                // let rom_table =
+                //     Box::pin(RomTable::try_parse(memory, component_id.component_address)).await?;
 
-                Component::Class1RomTable(component_id, rom_table)
+                // Component::Class1RomTable(component_id, rom_table)
+                todo!()
             }
             RawComponent::CoreSightComponent => Component::CoresightComponent(component_id),
             RawComponent::PeripheralTestBlock => Component::PeripheralTestBlock(component_id),
@@ -511,25 +521,29 @@ impl CoresightComponent {
     }
 
     /// Reads a register of the component pointed to by this romtable entry.
-    pub fn read_reg(
+    pub async fn read_reg(
         &self,
         interface: &mut dyn ArmProbeInterface,
         offset: u32,
     ) -> Result<u32, ArmError> {
-        let mut memory = interface.memory_interface(&self.ap_address)?;
-        let value = memory.read_word_32(self.component.id().component_address + offset as u64)?;
+        let mut memory = interface.memory_interface(&self.ap_address).await?;
+        let value = memory
+            .read_word_32(self.component.id().component_address + offset as u64)
+            .await?;
         Ok(value)
     }
 
     /// Writes a register of the component pointed to by this romtable entry.
-    pub fn write_reg(
+    pub async fn write_reg(
         &self,
         interface: &mut dyn ArmProbeInterface,
         offset: u32,
         value: u32,
     ) -> Result<(), ArmError> {
-        let mut memory = interface.memory_interface(&self.ap_address)?;
-        memory.write_word_32(self.component.id().component_address + offset as u64, value)?;
+        let mut memory = interface.memory_interface(&self.ap_address).await?;
+        memory
+            .write_word_32(self.component.id().component_address + offset as u64, value)
+            .await?;
         Ok(())
     }
 

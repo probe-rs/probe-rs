@@ -216,7 +216,7 @@ impl DownloadOptions {
 /// Builds a new flash loader for the given target and path. This
 /// will check the path for validity and check what pages have to be
 /// flashed etc.
-pub fn build_loader(
+pub async fn build_loader(
     session: &mut Session,
     path: impl AsRef<Path>,
     format: Format,
@@ -228,7 +228,9 @@ pub fn build_loader(
     // Add data from the BIN.
     let mut file = File::open(path).map_err(FileDownloadError::IO)?;
 
-    loader.load_image(session, &mut file, format, image_instruction_set)?;
+    loader
+        .load_image(session, &mut file, format, image_instruction_set)
+        .await?;
 
     Ok(loader)
 }
@@ -238,12 +240,12 @@ pub fn build_loader(
 /// This will ensure that memory boundaries are honored and does unlocking, erasing and programming of the flash for you.
 ///
 /// If you are looking for more options, have a look at [download_file_with_options].
-pub fn download_file(
+pub async fn download_file(
     session: &mut Session,
     path: impl AsRef<Path>,
     format: impl Into<Format>,
 ) -> Result<(), FileDownloadError> {
-    download_file_with_options(session, path, format, DownloadOptions::default())
+    download_file_with_options(session, path, format, DownloadOptions::default()).await
 }
 
 /// Downloads a file of given `format` at `path` to the flash of the target given in `session`.
@@ -251,16 +253,17 @@ pub fn download_file(
 /// This will ensure that memory boundaries are honored and does unlocking, erasing and programming of the flash for you.
 ///
 /// If you are looking for a simple version without many options, have a look at [download_file].
-pub fn download_file_with_options(
+pub async fn download_file_with_options(
     session: &mut Session,
     path: impl AsRef<Path>,
     format: impl Into<Format>,
     options: DownloadOptions,
 ) -> Result<(), FileDownloadError> {
-    let loader = build_loader(session, path, format.into(), None)?;
+    let loader = build_loader(session, path, format.into(), None).await?;
 
     loader
         .commit(session, options)
+        .await
         .map_err(FileDownloadError::Flash)
 }
 

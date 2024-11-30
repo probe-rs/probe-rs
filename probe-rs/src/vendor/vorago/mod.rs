@@ -11,6 +11,7 @@ pub mod sequences;
 #[derive(docsplay::Display)]
 pub struct Vorago;
 
+#[async_trait::async_trait(?Send)]
 impl Vendor for Vorago {
     fn try_create_debug_sequence(&self, chip: &Chip) -> Option<DebugSequence> {
         let sequence = if chip.name.starts_with("VA416xx") {

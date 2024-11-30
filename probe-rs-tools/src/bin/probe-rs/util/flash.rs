@@ -4,8 +4,9 @@ use super::common_options::{BinaryDownloadOptions, LoadedProbeOptions, Operation
 use super::logging;
 
 use std::cell::RefCell;
+use std::path::Path;
 use std::time::Duration;
-use std::{path::Path, time::Instant};
+use web_time::Instant;
 
 use colored::Colorize;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
@@ -18,7 +19,7 @@ use probe_rs::{
 
 /// Performs the flash download with the given loader. Ensure that the loader has the data to load already stored.
 /// This function also manages the update and display of progress bars.
-pub fn run_flash_download(
+pub async fn run_flash_download(
     session: &mut Session,
     path: impl AsRef<Path>,
     download_options: &BinaryDownloadOptions,
@@ -137,7 +138,7 @@ pub fn run_flash_download(
     let flash_timer = Instant::now();
 
     loader
-        .commit(session, options)
+        .commit(session, options).await
         .map_err(|error| OperationError::FlashingFailed {
             source: error,
             target: Box::new(session.target().clone()),
@@ -160,7 +161,7 @@ pub fn run_flash_download(
 /// Builds a new flash loader for the given target and path. This
 /// will check the path for validity and check what pages have to be
 /// flashed etc.
-pub fn build_loader(
+pub async fn build_loader(
     session: &mut Session,
     path: impl AsRef<Path>,
     format_options: FormatOptions,
@@ -168,7 +169,7 @@ pub fn build_loader(
 ) -> Result<FlashLoader, FileDownloadError> {
     let format = format_options.into_format(session.target());
 
-    probe_rs::flashing::build_loader(session, path, format, image_instruction_set)
+    probe_rs::flashing::build_loader(session, path, format, image_instruction_set).await
 }
 
 struct ProgressBars {
