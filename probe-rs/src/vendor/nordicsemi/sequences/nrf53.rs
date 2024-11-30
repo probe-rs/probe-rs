@@ -19,6 +19,7 @@ impl Nrf5340 {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl Nrf for Nrf5340 {
     fn core_aps(
         &self,
@@ -37,14 +38,14 @@ impl Nrf for Nrf5340 {
             .collect()
     }
 
-    fn is_core_unlocked(
+    async fn is_core_unlocked(
         &self,
         arm_interface: &mut dyn ArmProbeInterface,
         ahb_ap_address: &FullyQualifiedApAddress,
         _ctrl_ap_address: &FullyQualifiedApAddress,
     ) -> Result<bool, ArmError> {
         let csw: CSW = arm_interface
-            .read_raw_ap_register(ahb_ap_address, 0x00)?
+            .read_raw_ap_register(ahb_ap_address, 0x00).await?
             .try_into()?;
         Ok(csw.DeviceEn)
     }

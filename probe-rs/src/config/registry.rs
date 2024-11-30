@@ -97,7 +97,6 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
             variants: vec![Chip {
                 name: "riscv".to_owned(),
                 part: None,
-                svd: None,
                 documentation: HashMap::new(),
                 package_variants: vec![],
                 cores: vec![Core {
@@ -107,6 +106,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
                         hart_id: None,
                         jtag_tap: None,
                     }),
+                    svd: None,
                 }],
                 memory_map: vec![],
                 flash_algorithms: vec![],

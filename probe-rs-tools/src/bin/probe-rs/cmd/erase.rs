@@ -18,8 +18,8 @@ pub struct Cmd {
 }
 
 impl Cmd {
-    pub fn run(self, lister: &Lister) -> anyhow::Result<()> {
-        let (mut session, _probe_options) = self.common.simple_attach(lister)?;
+    pub async fn run(self, lister: &Lister) -> anyhow::Result<()> {
+        let (mut session, _probe_options) = self.common.simple_attach(lister).await?;
 
         let multi_progress = MultiProgress::new();
         logging::set_progress_bar(multi_progress.clone());
@@ -58,7 +58,7 @@ impl Cmd {
             FlashProgress::empty()
         };
 
-        erase_all(&mut session, progress)?;
+        erase_all(&mut session, progress).await?;
 
         Ok(())
     }

@@ -12,12 +12,13 @@ use super::{
 pub use romtable::{Component, ComponentId, CoresightComponent, PeripheralType};
 
 /// An ArmMemoryInterface (ArmProbeInterface + MemoryAp)
+#[async_trait::async_trait(?Send)]
 pub trait ArmMemoryInterface: ArmMemoryInterfaceShim {
     /// The underlying MemoryAp.
     fn ap(&mut self) -> &mut MemoryAp;
 
     /// The underlying memory AP’s base address.
-    fn base_address(&mut self) -> Result<u64, ArmError>;
+    async fn base_address(&mut self) -> Result<u64, ArmError>;
 
     /// The underlying `ArmCommunicationInterface` if this is an `ArmCommunicationInterface`.
     fn get_arm_communication_interface(

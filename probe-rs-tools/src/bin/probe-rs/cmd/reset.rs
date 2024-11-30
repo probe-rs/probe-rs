@@ -12,10 +12,10 @@ pub struct Cmd {
 }
 
 impl Cmd {
-    pub fn run(self, lister: &Lister) -> anyhow::Result<()> {
-        let (mut session, _probe_options) = self.common.simple_attach(lister)?;
+    pub async fn run(self, lister: &Lister) -> anyhow::Result<()> {
+        let (mut session, _probe_options) = self.common.simple_attach(lister).await?;
 
-        session.core(self.shared.core)?.reset()?;
+        session.core(self.shared.core).await?.reset().await?;
 
         Ok(())
     }

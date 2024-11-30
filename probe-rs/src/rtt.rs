@@ -51,8 +51,8 @@ use crate::Session;
 use crate::{config::MemoryRegion, Core, MemoryInterface};
 use std::ops::Range;
 use std::thread;
-use std::time::Instant;
 use std::{borrow::Cow, time::Duration};
+use web_time::Instant;
 use zerocopy::FromBytes;
 
 /// The RTT interface.
@@ -233,8 +233,8 @@ impl RttControlBlockHeader {
 impl Rtt {
     const RTT_ID: [u8; 16] = *b"SEGGER RTT\0\0\0\0\0\0";
 
-    fn from(
-        core: &mut Core,
+    async fn from(
+        core: &mut Core<'_>,
         // Pointer from which to scan
         ptr: u64,
         // Memory contents read in advance, starting from ptr
@@ -248,7 +248,7 @@ impl Rtt {
                 // If memory wasn't passed in, read the minimum header size
                 let new_length = RttControlBlockHeader::minimal_header_size(is_64_bit);
                 let mut mem = vec![0; new_length];
-                core.read(ptr, &mut mem)?;
+                core.read(ptr, &mut mem).await?;
                 Cow::Owned(mem)
             }
         };
@@ -285,7 +285,8 @@ impl Rtt {
             core.read(
                 ptr + rtt_header.header_size() as u64,
                 &mut mem[rtt_header.header_size()..cb_len],
-            )?;
+            )
+            .await?;
         }
 
         // Validate that the entire control block fits within the region
@@ -313,7 +314,7 @@ impl Rtt {
         for (i, b) in up_channels_buffer.into_iter().enumerate() {
             let buffer_size = b.size() as u64;
 
-            if let Some(chan) = Channel::from(core, i, ptr + offset, b)? {
+            if let Some(chan) = Channel::from(core, i, ptr + offset, b).await? {
                 up_channels.push(UpChannel(chan));
             } else {
                 tracing::warn!("Buffer for up channel {i} not initialized");
@@ -324,7 +325,7 @@ impl Rtt {
         for (i, b) in down_channels_buffer.into_iter().enumerate() {
             let buffer_size = b.size() as u64;
 
-            if let Some(chan) = Channel::from(core, i, ptr + offset, b)? {
+            if let Some(chan) = Channel::from(core, i, ptr + offset, b).await? {
                 down_channels.push(DownChannel(chan));
             } else {
                 tracing::warn!("Buffer for down channel {i} not initialized");
@@ -343,20 +344,22 @@ impl Rtt {
     /// if a valid control block was found.
     ///
     /// `core` can be e.g. an owned `Core` or a shared `Rc<Core>`.
-    pub fn attach(core: &mut Core) -> Result<Rtt, Error> {
-        Self::attach_region(core, &ScanRegion::default())
+    pub async fn attach(core: &mut Core<'_>) -> Result<Rtt, Error> {
+        Self::attach_region(core, &ScanRegion::default()).await
     }
 
     /// Attempts to detect an RTT control block in the specified RAM region(s) and returns an
     /// instance if a valid control block was found.
     ///
     /// `core` can be e.g. an owned `Core` or a shared `Rc<Core>`.
-    pub fn attach_region(core: &mut Core, region: &ScanRegion) -> Result<Rtt, Error> {
+    pub async fn attach_region(core: &mut Core<'_>, region: &ScanRegion) -> Result<Rtt, Error> {
         let ranges = match region.clone() {
             ScanRegion::Exact(addr) => {
                 tracing::debug!("Scanning at exact address: {:#010x}", addr);
 
-                return Rtt::from(core, addr, None)?.ok_or(Error::ControlBlockNotFound);
+                return Rtt::from(core, addr, None)
+                    .await?
+                    .ok_or(Error::ControlBlockNotFound);
             }
             ScanRegion::Ram => {
                 tracing::debug!("Scanning whole RAM");
@@ -377,31 +380,41 @@ impl Rtt {
             }
         };
 
-        let mut instances = ranges
-            .into_iter()
-            .filter_map(|range| {
-                let range_len = range.end.checked_sub(range.start)?;
-                let Ok(range_len) = usize::try_from(range_len) else {
-                    // FIXME: This is not ideal because it means that we
-                    // won't consider a >4GiB region if probe-rs is running
-                    // on a 32-bit host, but it would be relatively unusual
-                    // to use a 32-bit host to debug a 64-bit target.
-                    tracing::warn!("Region too long ({} bytes), ignoring", range_len);
-                    return None;
-                };
+        let mut instances = vec![];
+        for range in ranges {
+            let Some(range_len) = range.end.checked_sub(range.start) else {
+                continue;
+            };
+            let Ok(range_len) = usize::try_from(range_len) else {
+                // FIXME: This is not ideal because it means that we
+                // won't consider a >4GiB region if probe-rs is running
+                // on a 32-bit host, but it would be relatively unusual
+                // to use a 32-bit host to debug a 64-bit target.
+                tracing::warn!("Region too long ({} bytes), ignoring", range_len);
+                continue;
+            };
 
-                let mut mem = vec![0; range_len];
-                core.read(range.start, &mut mem).ok()?;
+            let mut mem = vec![0; range_len];
+            if core.read(range.start, &mut mem).await.is_err() {
+                continue;
+            }
 
-                let offset = mem
-                    .windows(Self::RTT_ID.len())
-                    .position(|w| w == Self::RTT_ID)?;
+            let Some(offset) = mem
+                .windows(Self::RTT_ID.len())
+                .position(|w| w == Self::RTT_ID)
+            else {
+                continue;
+            };
 
-                let target_ptr = range.start + offset as u64;
+            let target_ptr = range.start + offset as u64;
 
-                Rtt::from(core, target_ptr, Some(&mem[offset..])).transpose()
-            })
-            .collect::<Result<Vec<_>, _>>()?;
+            if let Some(rtt) = Rtt::from(core, target_ptr, Some(&mem[offset..]))
+                .await
+                .transpose()
+            {
+                instances.push(rtt?);
+            }
+        }
 
         match instances.len() {
             0 => Err(Error::ControlBlockNotFound),
@@ -515,8 +528,8 @@ fn display_list(list: &[Rtt]) -> String {
         .join(", ")
 }
 
-fn try_attach_to_rtt_inner(
-    mut try_attach_once: impl FnMut() -> Result<Rtt, Error>,
+async fn try_attach_to_rtt_inner(
+    mut try_attach_once: impl async FnMut() -> Result<Rtt, Error>,
     timeout: Duration,
 ) -> Result<Rtt, Error> {
     let t = Instant::now();
@@ -524,7 +537,7 @@ fn try_attach_to_rtt_inner(
     loop {
         tracing::debug!("Initializing RTT (attempt {attempt})...");
 
-        match try_attach_once() {
+        match try_attach_once().await {
             err @ Err(Error::NoControlBlockLocation) => return err,
             Err(_) if t.elapsed() < timeout => {
                 attempt += 1;
@@ -537,29 +550,30 @@ fn try_attach_to_rtt_inner(
 }
 
 /// Try to attach to RTT, with the given timeout.
-pub fn try_attach_to_rtt(
+pub async fn try_attach_to_rtt(
     core: &mut Core<'_>,
     timeout: Duration,
     rtt_region: &ScanRegion,
 ) -> Result<Rtt, Error> {
-    try_attach_to_rtt_inner(|| Rtt::attach_region(core, rtt_region), timeout)
+    try_attach_to_rtt_inner(async || Rtt::attach_region(core, rtt_region).await, timeout).await
 }
 
 /// Try to attach to RTT, with the given timeout.
-pub fn try_attach_to_rtt_shared(
-    session: &parking_lot::FairMutex<Session>,
+pub async fn try_attach_to_rtt_shared(
+    session: &async_mutex::Mutex<Session>,
     core_id: usize,
     timeout: Duration,
     rtt_region: &ScanRegion,
 ) -> Result<Rtt, Error> {
     try_attach_to_rtt_inner(
-        || {
-            let mut session_handle = session.lock();
-            let mut core = session_handle.core(core_id)?;
-            Rtt::attach_region(&mut core, rtt_region)
+        || async {
+            let mut session_handle = session.lock().await;
+            let mut core = session_handle.core(core_id).await?;
+            Rtt::attach_region(&mut core, rtt_region).await
         },
         timeout,
     )
+    .await
 }
 
 #[cfg(test)]

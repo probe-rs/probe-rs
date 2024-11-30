@@ -74,7 +74,7 @@ impl RttClient {
         Ok(this)
     }
 
-    pub fn try_attach(&mut self, core: &mut Core) -> Result<bool, Error> {
+    pub async fn try_attach(&mut self, core: &mut Core<'_>) -> Result<bool, Error> {
         if self.target.is_some() {
             return Ok(true);
         }
@@ -83,17 +83,19 @@ impl RttClient {
             return Ok(false);
         }
 
-        match Rtt::attach_region(core, &self.scan_region).and_then(|rtt| {
-            RttActiveTarget::new(
-                core,
-                rtt,
-                self.defmt_data.clone(),
-                &self.rtt_config,
-                self.timezone_offset,
-            )
-            .map(Some)
-        }) {
-            Ok(rtt) => self.target = rtt,
+        match Rtt::attach_region(core, &self.scan_region).await {
+            Ok(rtt) => {
+                let rtt = RttActiveTarget::new(
+                    core,
+                    rtt,
+                    self.defmt_data.clone(),
+                    &self.rtt_config,
+                    self.timezone_offset,
+                )
+                .await
+                .ok();
+                self.target = rtt
+            }
             Err(Error::ControlBlockNotFound) => {}
             Err(Error::ControlBlockCorrupted(error)) => {
                 tracing::debug!("RTT control block corrupted ({error})");
@@ -105,34 +107,34 @@ impl RttClient {
         Ok(self.target.is_some())
     }
 
-    pub fn poll(
+    pub async fn poll(
         &mut self,
-        core: &mut Core,
+        core: &mut Core<'_>,
         collector: &mut impl ChannelDataCallbacks,
     ) -> Result<(), Error> {
-        self.try_attach(core)?;
+        self.try_attach(core).await?;
 
         let Some(target) = self.target.as_mut() else {
             return Ok(());
         };
 
-        let result = target.poll_rtt_fallible(core, collector);
+        let result = target.poll_rtt_fallible(core, collector).await;
         self.handle_poll_result(result)
     }
 
-    pub fn poll_channel(
+    pub async fn poll_channel(
         &mut self,
-        core: &mut Core,
+        core: &mut Core<'_>,
         channel: usize,
         collector: &mut impl ChannelDataCallbacks,
     ) -> Result<(), Error> {
-        self.try_attach(core)?;
+        self.try_attach(core).await?;
 
         let Some(target) = self.target.as_mut() else {
             return Ok(());
         };
 
-        let result = target.poll_channel_fallible(core, channel, collector);
+        let result = target.poll_channel_fallible(core, channel, collector).await;
         self.handle_poll_result(result)
     }
 
@@ -158,31 +160,31 @@ impl RttClient {
         Ok(())
     }
 
-    pub(crate) fn write_down_channel(
+    pub(crate) async fn write_down_channel(
         &mut self,
-        core: &mut Core,
+        core: &mut Core<'_>,
         channel: usize,
         input: impl AsRef<[u8]>,
     ) -> Result<(), Error> {
-        self.try_attach(core)?;
+        self.try_attach(core).await?;
 
         let Some(target) = self.target.as_mut() else {
             return Ok(());
         };
 
-        target.write_down_channel(core, channel, input)
+        target.write_down_channel(core, channel, input).await
     }
 
-    pub fn clean_up(&mut self, core: &mut Core) -> Result<(), Error> {
+    pub async fn clean_up(&mut self, core: &mut Core<'_>) -> Result<(), Error> {
         if let Some(target) = self.target.as_mut() {
-            target.clean_up(core)?;
+            target.clean_up(core).await?;
         }
 
         Ok(())
     }
 
-    pub(crate) fn clear_control_block(&mut self, core: &mut Core) -> Result<(), Error> {
-        self.try_attach(core)?;
+    pub(crate) async fn clear_control_block(&mut self, core: &mut Core<'_>) -> Result<(), Error> {
+        self.try_attach(core).await?;
 
         let Some(target) = self.target.as_mut() else {
             // If we can't attach, we don't have a valid
@@ -190,7 +192,7 @@ impl RttClient {
             return Ok(());
         };
 
-        target.clear_control_block(core)?;
+        target.clear_control_block(core).await?;
 
         self.target = None;
 

@@ -28,9 +28,10 @@ impl<'a> TraceFunnel<'a> {
     }
 
     /// Unlock the funnel and enable it for tracing the target.
-    pub fn unlock(&mut self) -> Result<(), ArmError> {
+    pub async fn unlock(&mut self) -> Result<(), ArmError> {
         self.component
-            .write_reg(self.interface, REGISTER_OFFSET_ACCESS, 0xC5AC_CE55)?;
+            .write_reg(self.interface, REGISTER_OFFSET_ACCESS, 0xC5AC_CE55)
+            .await?;
 
         Ok(())
     }
@@ -40,10 +41,10 @@ impl<'a> TraceFunnel<'a> {
     /// # Note
     /// The trace funnel acts as a selector for multiple sources. This function allows you to block
     /// or pass specific trace sources selectively.
-    pub fn enable_port(&mut self, mask: u8) -> Result<(), ArmError> {
-        let mut control = Control::load(self.component, self.interface)?;
+    pub async fn enable_port(&mut self, mask: u8) -> Result<(), ArmError> {
+        let mut control = Control::load(self.component, self.interface).await?;
         control.set_slave_enable(mask);
-        control.store(self.component, self.interface)
+        control.store(self.component, self.interface).await
     }
 }
 

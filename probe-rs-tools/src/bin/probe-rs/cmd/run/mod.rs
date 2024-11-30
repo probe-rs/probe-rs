@@ -11,7 +11,8 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+use web_time::Instant;
 
 use anyhow::{anyhow, Result};
 use probe_rs::flashing::{BootInfo, FileDownloadError, FormatKind};
@@ -89,7 +90,7 @@ pub struct SharedOptions {
 }
 
 impl Cmd {
-    pub fn run(
+    pub async fn run(
         self,
         lister: &Lister,
         run_download: bool,
@@ -97,12 +98,15 @@ impl Cmd {
     ) -> Result<()> {
         let run_mode = detect_run_mode(&self)?;
 
-        let (mut session, probe_options) =
-            self.shared_options.probe_options.simple_attach(lister)?;
+        let (mut session, probe_options) = self
+            .shared_options
+            .probe_options
+            .simple_attach(lister)
+            .await?;
 
         if !run_download {
             // If we don't have to flash, resume cores now to prevent halting while processing elf
-            session.resume_all_cores()?;
+            session.resume_all_cores().await?;
         }
 
         let rtt_scan_regions = match self.shared_options.rtt_scan_memory {
@@ -143,7 +147,8 @@ impl Cmd {
                 &self.shared_options.path,
                 self.shared_options.format_options,
                 None,
-            )?;
+            )
+            .await?;
 
             // When using RTT with a program in flash, the RTT header will be moved to RAM on
             // startup, so clearing it before startup is ok. However, if we're downloading to the
@@ -163,20 +168,23 @@ impl Cmd {
                 &probe_options,
                 loader,
                 self.shared_options.chip_erase,
-            )?;
+            )
+            .await?;
 
             match boot_info {
                 BootInfo::FromRam {
                     vector_table_addr, ..
                 } => {
                     // core should be already reset and halt by this point.
-                    session.prepare_running_on_ram(vector_table_addr)?;
+                    session.prepare_running_on_ram(vector_table_addr).await?;
                 }
                 BootInfo::Other => {
                     // reset the core to leave it in a consistent state after flashing
                     session
-                        .core(core_id)?
-                        .reset_and_halt(Duration::from_millis(100))?;
+                        .core(core_id)
+                        .await?
+                        .reset_and_halt(Duration::from_millis(100))
+                        .await?;
                 }
             }
         }
@@ -186,29 +194,32 @@ impl Cmd {
         if run_download && should_clear_rtt_header {
             // We ended up resetting the MCU, throw away old RTT data and prevent
             // printing warnings when it initialises.
-            let mut core = session.core(core_id)?;
-            rtt_client.clear_control_block(&mut core)?;
+            let mut core = session.core(core_id).await?;
+            rtt_client.clear_control_block(&mut core).await?;
             tracing::debug!("Cleared RTT header");
         } else {
             tracing::debug!("Skipped clearing RTT header")
         }
 
-        run_mode.run(
-            session,
-            RunLoop {
-                core_id,
-                path: self.shared_options.path,
-                always_print_stacktrace: self.shared_options.always_print_stacktrace,
-                rtt_client,
-            },
-        )?;
+        run_mode
+            .run(
+                session,
+                RunLoop {
+                    core_id,
+                    path: self.shared_options.path,
+                    always_print_stacktrace: self.shared_options.always_print_stacktrace,
+                    rtt_client,
+                },
+            )
+            .await?;
 
         Ok(())
     }
 }
 
+#[async_trait::async_trait(?Send)]
 trait RunMode {
-    fn run(&self, session: Session, run_loop: RunLoop) -> Result<()>;
+    async fn run(&self, session: Session, run_loop: RunLoop) -> Result<()>;
 }
 
 fn detect_run_mode(cmd: &Cmd) -> anyhow::Result<Box<dyn RunMode>> {
@@ -288,9 +299,9 @@ impl RunLoop {
     /// * If the predicate returns `Err(e)` the run loop will return `Err(e)`.
     ///
     /// The function will also return on timeout with `Ok(ReturnReason::Timeout)` or if the user presses CTRL + C with `Ok(ReturnReason::User)`.
-    fn run_until<F, R>(
+    async fn run_until<F, R>(
         &mut self,
-        core: &mut Core,
+        core: &mut Core<'_>,
         catch_hardfault: bool,
         catch_reset: bool,
         output_stream: OutputStream,
@@ -301,33 +312,39 @@ impl RunLoop {
         F: FnMut(HaltReason, &mut Core) -> Result<Option<R>>,
     {
         if catch_hardfault || catch_reset {
-            if !core.core_halted()? {
-                core.halt(Duration::from_millis(100))?;
+            if !core.core_halted().await? {
+                core.halt(Duration::from_millis(100)).await?;
             }
 
             if catch_hardfault {
-                match core.enable_vector_catch(VectorCatchCondition::HardFault) {
+                match core
+                    .enable_vector_catch(VectorCatchCondition::HardFault)
+                    .await
+                {
                     Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
                     Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
                 }
             }
             if catch_reset {
-                match core.enable_vector_catch(VectorCatchCondition::CoreReset) {
+                match core
+                    .enable_vector_catch(VectorCatchCondition::CoreReset)
+                    .await
+                {
                     Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
                     Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
                 }
             }
         }
 
-        if core.core_halted()? {
-            core.run()?;
+        if core.core_halted().await? {
+            core.run().await?;
         }
         let start = Instant::now();
 
         let result = self.do_run_until(core, output_stream, timeout, start, &mut predicate);
 
         // Always clean up after RTT but don't overwrite the original result.
-        let cleanup_result = self.rtt_client.clean_up(core);
+        let cleanup_result = self.rtt_client.clean_up(core).await;
 
         if result.is_ok() {
             // If the result is Ok, we return the potential error during cleanup.
@@ -337,9 +354,9 @@ impl RunLoop {
         result
     }
 
-    fn do_run_until<F, R>(
+    async fn do_run_until<F, R>(
         &mut self,
-        core: &mut Core,
+        core: &mut Core<'_>,
         output_stream: OutputStream,
         timeout: Option<Duration>,
         start: Instant,
@@ -349,7 +366,7 @@ impl RunLoop {
         F: FnMut(HaltReason, &mut Core) -> Result<Option<R>>,
     {
         let exit = Arc::new(AtomicBool::new(false));
-        let sig_id = signal_hook::flag::register(signal::SIGINT, exit.clone())?;
+        let sig_id = signal_hook::flag::register(signal::SIGINT, exit.clone()).await?;
 
         let mut stdout;
         let mut stderr;
@@ -370,13 +387,13 @@ impl RunLoop {
             // the core printed before halting, such as a panic message.
             let mut return_reason = None;
             let mut was_halted = false;
-            match core.status()? {
+            match core.status().await? {
                 probe_rs::CoreStatus::Halted(reason) => match predicate(reason, core) {
                     Ok(Some(r)) => return_reason = Some(Ok(ReturnReason::Predicate(r))),
                     Err(e) => return_reason = Some(Err(e)),
                     Ok(None) => {
                         was_halted = true;
-                        core.run()?
+                        core.run().await?
                     }
                 },
                 probe_rs::CoreStatus::Running
@@ -427,10 +444,10 @@ impl RunLoop {
             || return_reason.is_err()
             || matches!(return_reason, Ok(ReturnReason::Timeout))
         {
-            if !core.core_halted()? {
-                core.halt(Duration::from_secs(1))?;
+            if !core.core_halted().await? {
+                core.halt(Duration::from_secs(1)).await?;
             }
-            print_stacktrace(core, Path::new(&self.path), output_stream)?;
+            print_stacktrace(core, Path::new(&self.path), output_stream).await?;
         }
 
         signal_hook::low_level::unregister(sig_id);
@@ -441,7 +458,7 @@ impl RunLoop {
 }
 
 /// Prints the stacktrace of the current execution state.
-fn print_stacktrace<S: Write + ?Sized>(
+async fn print_stacktrace<S: Write + ?Sized>(
     core: &mut impl CoreInterface,
     path: &Path,
     output_stream: &mut S,
@@ -452,7 +469,7 @@ fn print_stacktrace<S: Write + ?Sized>(
     };
     let initial_registers = DebugRegisters::from_core(core);
     let exception_interface = exception_handler_for_core(core.core_type());
-    let instruction_set = core.instruction_set().ok();
+    let instruction_set = core.instruction_set().await.ok();
     let stack_frames = debug_info
         .unwind(
             core,
@@ -499,7 +516,7 @@ fn print_stacktrace<S: Write + ?Sized>(
 }
 
 /// Poll RTT and print the received buffer.
-fn poll_rtt<S: Write + ?Sized>(
+async fn poll_rtt<S: Write + ?Sized>(
     rtt_client: &mut RttClient,
     core: &mut Core<'_>,
     out_stream: &mut S,
@@ -527,7 +544,7 @@ fn poll_rtt<S: Write + ?Sized>(
         had_data: false,
     };
 
-    rtt_client.poll(core, &mut out)?;
+    rtt_client.poll(core, &mut out).await?;
 
     Ok(out.had_data)
 }
@@ -548,25 +565,25 @@ impl SemihostingPrinter {
         }
     }
 
-    pub fn handle(
+    pub async fn handle(
         &mut self,
         command: SemihostingCommand,
         core: &mut Core<'_>,
     ) -> Result<(), Error> {
         match command {
             SemihostingCommand::Open(request) => {
-                let path = request.path(core)?;
+                let path = request.path(core).await?;
                 if path == ":tt" {
                     match request.mode().as_bytes()[0] {
                         b'w' => {
                             self.stdout_open = true;
                             let fd = NonZeroU32::new(Self::STDOUT).unwrap();
-                            request.respond_with_handle(core, fd)?;
+                            request.respond_with_handle(core, fd).await?;
                         }
                         b'a' => {
                             self.stderr_open = true;
                             let fd = NonZeroU32::new(Self::STDERR).unwrap();
-                            request.respond_with_handle(core, fd)?;
+                            request.respond_with_handle(core, fd).await?;
                         }
                         other => {
                             tracing::warn!(
@@ -583,13 +600,13 @@ impl SemihostingPrinter {
                 }
             }
             SemihostingCommand::Close(request) => {
-                let handle = request.file_handle(core)?;
+                let handle = request.file_handle(core).await?;
                 if handle == Self::STDOUT {
                     self.stdout_open = false;
-                    request.success(core)?;
+                    request.success(core).await?;
                 } else if handle == Self::STDERR {
                     self.stderr_open = false;
-                    request.success(core)?;
+                    request.success(core).await?;
                 } else {
                     tracing::warn!(
                         "Target wanted to close file handle {handle}, but probe-rs does not support this operation yet. Continuing..."
@@ -599,18 +616,18 @@ impl SemihostingPrinter {
             SemihostingCommand::Write(request) => match request.file_handle() {
                 handle if handle == Self::STDOUT => {
                     if self.stdout_open {
-                        let bytes = request.read(core)?;
+                        let bytes = request.read(core).await?;
                         let str = String::from_utf8_lossy(&bytes);
                         std::io::stdout().write_all(str.as_bytes()).unwrap();
-                        request.write_status(core, 0)?;
+                        request.write_status(core, 0).await?;
                     }
                 }
                 handle if handle == Self::STDERR => {
                     if self.stderr_open {
-                        let bytes = request.read(core)?;
+                        let bytes = request.read(core).await?;
                         let str = String::from_utf8_lossy(&bytes);
                         std::io::stderr().write_all(str.as_bytes()).unwrap();
-                        request.write_status(core, 0)?;
+                        request.write_status(core, 0).await?;
                     }
                 }
                 other => {
@@ -621,7 +638,7 @@ impl SemihostingPrinter {
             },
             SemihostingCommand::WriteConsole(request) => {
                 std::io::stdout()
-                    .write_all(request.read(core)?.as_bytes())
+                    .write_all(request.read(core).await?.as_bytes())
                     .unwrap();
             }
 
