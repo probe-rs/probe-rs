@@ -9,8 +9,8 @@ pub struct Cmd {
 }
 
 impl Cmd {
-    pub fn run(self, lister: &Lister, timestamp_offset: UtcOffset) -> anyhow::Result<()> {
-        self.run.run(lister, false, timestamp_offset)?;
+    pub async fn run(self, lister: &Lister, timestamp_offset: UtcOffset) -> anyhow::Result<()> {
+        self.run.run(lister, false, timestamp_offset).await?;
 
         Ok(())
     }

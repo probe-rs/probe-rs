@@ -4,8 +4,8 @@ use probe_rs::probe::list::Lister;
 pub struct Cmd {}
 
 impl Cmd {
-    pub fn run(self, lister: &Lister) -> anyhow::Result<()> {
-        let probes = lister.list_all();
+    pub async fn run(self, lister: &Lister) -> anyhow::Result<()> {
+        let probes = lister.list_all().await;
 
         if !probes.is_empty() {
             println!("The following debug probes were found:");

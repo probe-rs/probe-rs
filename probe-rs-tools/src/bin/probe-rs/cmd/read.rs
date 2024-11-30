@@ -32,16 +32,17 @@ pub struct Cmd {
 }
 
 impl Cmd {
-    pub fn run(self, lister: &Lister) -> anyhow::Result<()> {
-        let (mut session, _probe_options) = self.probe_options.simple_attach(lister)?;
+    pub async fn run(self, lister: &Lister) -> anyhow::Result<()> {
+        let (mut session, _probe_options) = self.probe_options.simple_attach(lister).await?;
 
-        let mut core = session.core(self.shared.core)?;
+        let mut core = session.core(self.shared.core).await?;
         let words = self.words as usize;
 
         match self.read_write_options.width {
             ReadWriteBitWidth::B8 => {
                 let mut values = vec![0; words];
-                core.read_8(self.read_write_options.address, &mut values)?;
+                core.read_8(self.read_write_options.address, &mut values)
+                    .await?;
                 for val in values {
                     print!("{:02x} ", val);
                 }
@@ -49,7 +50,8 @@ impl Cmd {
             }
             ReadWriteBitWidth::B32 => {
                 let mut values = vec![0; words];
-                core.read_32(self.read_write_options.address, &mut values)?;
+                core.read_32(self.read_write_options.address, &mut values)
+                    .await?;
                 for val in values {
                     print!("{:08x} ", val);
                 }
@@ -57,7 +59,8 @@ impl Cmd {
             }
             ReadWriteBitWidth::B64 => {
                 let mut values = vec![0; words];
-                core.read_64(self.read_write_options.address, &mut values)?;
+                core.read_64(self.read_write_options.address, &mut values)
+                    .await?;
                 for val in values {
                     print!("{:016x} ", val);
                 }
@@ -66,7 +69,7 @@ impl Cmd {
         }
         std::mem::drop(core);
 
-        session.resume_all_cores()?;
+        session.resume_all_cores().await?;
 
         Ok(())
     }

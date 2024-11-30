@@ -6,9 +6,10 @@ use crate::Session;
 /// A interface to operate debug sequences for Xtensa targets.
 ///
 /// Should be implemented on a custom handle for chips that require special sequence code.
+#[async_trait::async_trait(?Send)]
 pub trait XtensaDebugSequence: Send + Sync + Debug {
     /// Executed when the probe establishes a connection to the target.
-    fn on_connect(
+    async fn on_connect(
         &self,
         _interface: &mut XtensaCommunicationInterface,
     ) -> Result<(), crate::Error> {
@@ -16,17 +17,20 @@ pub trait XtensaDebugSequence: Send + Sync + Debug {
     }
 
     /// Detects the flash size of the target.
-    fn detect_flash_size(&self, _session: &mut Session) -> Result<Option<usize>, crate::Error> {
+    async fn detect_flash_size(
+        &self,
+        _session: &mut Session,
+    ) -> Result<Option<usize>, crate::Error> {
         Ok(None)
     }
 
     /// Executes a system-wide reset without debug domain (or warm-reset that preserves debug connection) via software mechanisms.
-    fn reset_system_and_halt(
+    async fn reset_system_and_halt(
         &self,
         interface: &mut XtensaCommunicationInterface,
         timeout: Duration,
     ) -> Result<(), crate::Error> {
-        interface.reset_and_halt(timeout)?;
+        interface.reset_and_halt(timeout).await?;
 
         Ok(())
     }

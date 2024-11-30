@@ -16,6 +16,7 @@ default-run = "probe-rs"
 
 [dependencies]
 anyhow = { workspace = true }
+async-trait = { workspace = true }
 base64 = "0.22"
 docsplay = { workspace = true }
 jep106 = "0.2"
@@ -24,15 +25,17 @@ scroll = "0.12"
 serde = { version = "1", features = ["derive"] }
 thiserror = { workspace = true }
 tracing = "0.1"
-typed-path = "0.10"
+typed-path = "0.9"
+web-time = { workspace = true }
+
+# path
 probe-rs-mi = { workspace = true }
 
 itertools = "0.14"
 
 # CLI-only
-addr2line = "0.24"
-bytesize = "1"
-capstone = "0.12"
+# capstone = "0.12"
+
 cargo_metadata = "0.19"
 clap = { version = "4", features = ["derive", "env"] }
 colored = "2"
@@ -53,45 +56,21 @@ parse_int = "0.6"
 libtest-mimic = "0.8.0"
 fastrand = "2.1"
 rustyline = { version = "14", default-features = false, features = [
-    "with-dirs",
-    "with-file-history",
+    # "with-dirs",
+    # "with-file-history",
 ] }
 sanitize-filename = "0.6"
 schemafy = "0.6"
 serde_json = "1.0.116"
-signal-hook = { version = "0.3", default-features = false }
 # Version 0.14.6 fails to compile
-svd-parser = { version = "=0.14.7", features = ["expand"] }
-termtree = "0.5"
-textwrap = { version = "0.16", default-features = false, features = [
-    "unicode-linebreak",
-    "unicode-width",
-] }
-time = { version = "0.3", default-features = false, features = [
-    "formatting",
-    "macros",
-    "local-offset",
-] }
-tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
-tracing-appender = "0.2"
-ratatui = { version = "0.29.0", default-features = false, features = [
-    "crossterm",
-] }
-ansi-parser = "0.9.0"
 
-probe-rs = { version = "0.25.0", path = "../probe-rs", features = [
-    "gdb-server",
-] }
-parking_lot = "0.12.2"
-cargo-config2 = "0.1.26"
-clap_complete = "4.5.2"
-regex = "1.10.4"
-zip = { version = "2.0.0", default-features = false, features = [
-    "deflate",
-    "time",
-] }
-urlencoding = "2"
+
 probe-rs-debug = { version = "0.25.0", path = "../probe-rs-debug" }
+pollster = "0.4"
+futures-lite = "2"
+
+[target.'cfg(not(target_arch="wasm32"))'.dependencies]
+signal-hook = { version = "0.3", default-features = false }
 
 [build-dependencies]
 git-version = "0.3"

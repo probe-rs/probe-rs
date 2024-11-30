@@ -110,9 +110,11 @@ impl TestRunMode {
 
     /// Asks the target for the tests, and create a "run the test"-closure for each test.
     /// libtest-mimic is in charge of selecting the tests to run based on the filter and other options
-    fn create_tests(session_and_runloop_ref: Arc<Mutex<SessionAndRunLoop>>) -> Result<Vec<Trial>> {
+    async fn create_tests(
+        session_and_runloop_ref: Arc<Mutex<SessionAndRunLoop>>,
+    ) -> Result<Vec<Trial>> {
         let mut session_and_runloop = session_and_runloop_ref.lock().unwrap();
-        let list = Self::list_tests(&mut session_and_runloop)?;
+        let list = Self::list_tests(&mut session_and_runloop).await?;
 
         let mut tests = Vec::<Trial>::new();
         for t in &list.tests {
@@ -132,15 +134,15 @@ impl TestRunMode {
     const SEMIHOSTING_USER_LIST: u32 = 0x100;
 
     /// Requests all tests from the target via Semihosting back and forth
-    fn list_tests(session_and_runloop: &mut SessionAndRunLoop) -> Result<Tests> {
-        let mut core = session_and_runloop.session.core(0)?;
+    async fn list_tests(session_and_runloop: &mut SessionAndRunLoop) -> Result<Tests> {
+        let mut core = session_and_runloop.session.core(0).await?;
 
         let mut cmdline_requested = false;
 
         let mut printer = SemihostingPrinter::new();
         // When the target first invokes SYS_GET_CMDLINE (0x15), we answer "list"
         // Then, we wait until the target invokes SEMIHOSTING_USER_LIST (0x100) with the json containing all tests
-        let halt_handler = |halt_reason: HaltReason, core: &mut Core| {
+        let halt_handler = async |halt_reason: HaltReason, core: &mut Core| {
             let HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd)) = halt_reason else {
                 anyhow::bail!("CPU halted unexpectedly.");
             };
@@ -149,18 +151,18 @@ impl TestRunMode {
                 SemihostingCommand::GetCommandLine(request) if !cmdline_requested => {
                     tracing::debug!("target asked for cmdline. send 'list'");
                     cmdline_requested = true;
-                    request.write_command_line_to_target(core, "list")?;
+                    request.write_command_line_to_target(core, "list").await?;
                     Ok(None) // Continue running
                 }
                 SemihostingCommand::Unknown(details)
                     if details.operation == Self::SEMIHOSTING_USER_LIST && cmdline_requested =>
                 {
-                    let buf = details.get_buffer(core)?;
-                    let buf = buf.read(core)?;
+                    let buf = details.get_buffer(core).await?;
+                    let buf = buf.read(core).await?;
                     let list = serde_json::from_slice::<Tests>(&buf[..])?;
 
                     // Signal status=success back to the target
-                    details.write_status(core, 0)?;
+                    details.write_status(core, 0).await?;
 
                     tracing::debug!("got list of tests from target: {list:?}");
                     if list.version != 1 {
@@ -173,7 +175,7 @@ impl TestRunMode {
                 | SemihostingCommand::Close(_)
                 | SemihostingCommand::WriteConsole(_)
                 | SemihostingCommand::Write(_)) => {
-                    printer.handle(other, core)?;
+                    printer.handle(other, core).await?;
                     Ok(None)
                 }
                 other => anyhow::bail!(
@@ -203,16 +205,21 @@ impl TestRunMode {
     }
 
     /// Runs a single test on the target
-    fn run_test(test: Test, session_and_runloop: &mut SessionAndRunLoop) -> Result<(), Failed> {
-        let core = &mut session_and_runloop.session.core(0)?;
+    async fn run_test(
+        test: Test,
+        session_and_runloop: &mut SessionAndRunLoop,
+    ) -> Result<(), Failed> {
+        let core = &mut session_and_runloop.session.core(0).await?;
         tracing::info!("Running test {}", test.name);
         core.reset_and_halt(Duration::from_millis(100))
+            .await
             .map_err(|e| anyhow::anyhow!(e))?;
 
         session_and_runloop
             .run_loop
             .rtt_client
-            .clear_control_block(core)?;
+            .clear_control_block(core)
+            .await?;
 
         let timeout = test.timeout.map(|t| Duration::from_secs(t as u64));
         let timeout = timeout.unwrap_or(Duration::from_secs(60)); // TODO: make global timeout configurable: https://github.com/probe-rs/embedded-test/issues/3
@@ -221,7 +228,7 @@ impl TestRunMode {
         let mut printer = SemihostingPrinter::new();
         // When the target first invokes SYS_GET_CMDLINE (0x15), we answer "run <test_name>
         // Then we wait until the target invokes SYS_EXIT (0x18) or SYS_EXIT_EXTENDED(0x20) with the exit code
-        let halt_handler = |halt_reason: HaltReason, core: &mut Core| {
+        let halt_handler = async |halt_reason: HaltReason, core: &mut Core| {
             let cmd = match halt_reason {
                 HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd)) => cmd,
                 e => {
@@ -235,7 +242,7 @@ impl TestRunMode {
                     let cmdline = format!("run {}", test.name);
                     tracing::debug!("target asked for cmdline. send '{cmdline}'");
                     cmdline_requested = true;
-                    request.write_command_line_to_target(core, &cmdline)?;
+                    request.write_command_line_to_target(core, &cmdline).await?;
                     Ok(None) // Continue running
                 }
                 SemihostingCommand::ExitSuccess if cmdline_requested => Ok(Some(TestOutcome::Pass)),
@@ -247,7 +254,7 @@ impl TestRunMode {
                 | SemihostingCommand::Close(_)
                 | SemihostingCommand::WriteConsole(_)
                 | SemihostingCommand::Write(_)) => {
-                    printer.handle(other, core)?;
+                    printer.handle(other, core).await?;
                     Ok(None)
                 }
                 other => {
@@ -287,7 +294,8 @@ impl TestRunMode {
                         core,
                         &session_and_runloop.run_loop.path,
                         &mut std::io::stderr(),
-                    )?;
+                    )
+                    .await?;
                 }
 
                 Err(Failed::from(format!(
@@ -340,14 +348,15 @@ where
     })
 }
 
+#[async_trait::async_trait(?Send)]
 impl RunMode for TestRunMode {
-    fn run(&self, session: Session, run_loop: RunLoop) -> Result<()> {
+    async fn run(&self, session: Session, run_loop: RunLoop) -> Result<()> {
         tracing::info!("libtest args {:?}", self.libtest_args);
 
         // Unfortunately libtest-mimic wants test functions to live for 'static, so we need to use a mutex to share the session and runloop
         let session_and_runloop = Arc::new(Mutex::new(SessionAndRunLoop { session, run_loop }));
 
-        let tests = Self::create_tests(session_and_runloop)?;
+        let tests = Self::create_tests(session_and_runloop).await?;
         if libtest_mimic::run(&self.libtest_args, tests).has_failed() {
             anyhow::bail!("Some tests failed");
         }

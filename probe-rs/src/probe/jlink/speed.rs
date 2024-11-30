@@ -76,12 +76,12 @@ impl JLink {
     /// selected for the returned value to make sense.
     ///
     /// This requires the probe to support [`Capability::SpeedInfo`].
-    pub(super) fn read_interface_speeds(&self) -> Result<SpeedInfo> {
-        self.require_capability(Capability::SpeedInfo)?;
+    pub(super) async fn read_interface_speeds(&self) -> Result<SpeedInfo> {
+        self.require_capability(Capability::SpeedInfo).await?;
 
-        self.write_cmd(&[Command::GetSpeeds as u8])?;
+        self.write_cmd(&[Command::GetSpeeds as u8]).await?;
 
-        let buf = self.read_n::<6>()?;
+        let buf = self.read_n::<6>().await?;
 
         let base_freq_bytes = <[u8; 4]>::try_from(&buf[0..4]).unwrap();
         let min_div_bytes = <[u8; 2]>::try_from(&buf[4..6]).unwrap();
@@ -101,15 +101,17 @@ impl JLink {
     /// When the selected target interface is switched (by calling [`JLink::select_interface`], or
     /// any API method that automatically selects an interface), the communication speed is reset to
     /// some unspecified default value.
-    pub(super) fn set_interface_clock_speed(&mut self, speed: SpeedConfig) -> Result<()> {
+    pub(super) async fn set_interface_clock_speed(&mut self, speed: SpeedConfig) -> Result<()> {
         if speed == SpeedConfig::ADAPTIVE {
-            self.require_capability(Capability::AdaptiveClocking)?;
+            self.require_capability(Capability::AdaptiveClocking)
+                .await?;
         }
 
         tracing::info!("Selecting speed: {} Hz", speed.raw);
 
         let [low, high] = speed.raw.to_le_bytes();
-        self.write_cmd(&[Command::SetSpeed as u8, low, high])?;
+        self.write_cmd(&[Command::SetSpeed as u8, low, high])
+            .await?;
 
         Ok(())
     }

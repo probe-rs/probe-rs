@@ -37,12 +37,12 @@ impl Nrf52 {
         Arc::new(Self {})
     }
 
-    fn is_core_unlocked(
+    async fn is_core_unlocked(
         &self,
         iface: &mut dyn ArmProbeInterface,
         ctrl_ap: &FullyQualifiedApAddress,
     ) -> Result<bool, ArmError> {
-        let status = iface.read_raw_ap_register(ctrl_ap, APPROTECTSTATUS)?;
+        let status = iface.read_raw_ap_register(ctrl_ap, APPROTECTSTATUS).await?;
         Ok(status != 0)
     }
 }
@@ -70,20 +70,21 @@ mod clock {
         const ADDRESS: u64 = 0x55C;
 
         /// Read the control register from memory.
-        pub fn read(memory: &mut dyn ArmMemoryInterface) -> Result<Self, ArmError> {
-            let contents = memory.read_word_32(CLOCK + Self::ADDRESS)?;
+        pub async fn read(memory: &mut dyn ArmMemoryInterface) -> Result<Self, ArmError> {
+            let contents = memory.read_word_32(CLOCK + Self::ADDRESS).await?;
             Ok(Self(contents))
         }
 
         /// Write the control register to memory.
-        pub fn write(&mut self, memory: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
-            memory.write_word_32(CLOCK + Self::ADDRESS, self.0)
+        pub async fn write(&mut self, memory: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
+            memory.write_word_32(CLOCK + Self::ADDRESS, self.0).await
         }
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl ArmDebugSequence for Nrf52 {
-    fn debug_device_unlock(
+    async fn debug_device_unlock(
         &self,
         iface: &mut dyn ArmProbeInterface,
         _default_ap: &FullyQualifiedApAddress,
@@ -92,7 +93,7 @@ impl ArmDebugSequence for Nrf52 {
         let ctrl_ap = &FullyQualifiedApAddress::v1_with_default_dp(1);
 
         tracing::info!("Checking if core is unlocked");
-        if self.is_core_unlocked(iface, ctrl_ap)? {
+        if self.is_core_unlocked(iface, ctrl_ap).await? {
             tracing::info!("Core is already unlocked");
             return Ok(());
         }
@@ -103,27 +104,27 @@ impl ArmDebugSequence for Nrf52 {
             .map_err(|MissingPermissions(desc)| ArmError::MissingPermissions(desc))?;
 
         // Reset
-        iface.write_raw_ap_register(ctrl_ap, RESET, 1)?;
-        iface.write_raw_ap_register(ctrl_ap, RESET, 0)?;
+        iface.write_raw_ap_register(ctrl_ap, RESET, 1).await?;
+        iface.write_raw_ap_register(ctrl_ap, RESET, 0).await?;
 
         // Start erase
-        iface.write_raw_ap_register(ctrl_ap, ERASEALL, 1)?;
+        iface.write_raw_ap_register(ctrl_ap, ERASEALL, 1).await?;
 
         // Wait for erase done
-        while iface.read_raw_ap_register(ctrl_ap, ERASEALLSTATUS)? != 0 {}
+        while iface.read_raw_ap_register(ctrl_ap, ERASEALLSTATUS).await? != 0 {}
 
         // Reset again
-        iface.write_raw_ap_register(ctrl_ap, RESET, 1)?;
-        iface.write_raw_ap_register(ctrl_ap, RESET, 0)?;
+        iface.write_raw_ap_register(ctrl_ap, RESET, 1).await?;
+        iface.write_raw_ap_register(ctrl_ap, RESET, 0).await?;
 
-        if !self.is_core_unlocked(iface, ctrl_ap)? {
+        if !self.is_core_unlocked(iface, ctrl_ap).await? {
             return Err(ArmDebugSequenceError::custom("Could not unlock core").into());
         }
 
         Err(ArmError::ReAttachRequired)
     }
 
-    fn trace_start(
+    async fn trace_start(
         &self,
         interface: &mut dyn ArmProbeInterface,
         components: &[CoresightComponent],
@@ -151,8 +152,10 @@ impl ArmDebugSequence for Nrf52 {
             }
         };
 
-        let mut memory = interface.memory_interface(&components[0].ap_address)?;
-        let mut config = clock::TraceConfig::read(&mut *memory)?;
+        let mut memory = interface
+            .memory_interface(&components[0].ap_address)
+            .await?;
+        let mut config = clock::TraceConfig::read(&mut *memory).await?;
         config.set_traceportspeed(portspeed);
         if matches!(sink, TraceSink::Tpiu(_)) {
             config.set_tracemux(2);
@@ -160,7 +163,7 @@ impl ArmDebugSequence for Nrf52 {
             config.set_tracemux(1);
         }
 
-        config.write(&mut *memory)?;
+        config.write(&mut *memory).await?;
 
         Ok(())
     }
