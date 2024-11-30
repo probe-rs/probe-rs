@@ -1,3 +1,5 @@
+#![cfg(not(target_arch = "wasm32"))]
+
 mod config;
 mod error;
 mod rttui;
@@ -13,7 +15,6 @@ use probe_rs::probe::list::Lister;
 use probe_rs::rtt::ScanRegion;
 use probe_rs::{Session, probe::DebugProbeSelector};
 use std::ffi::OsString;
-use std::time::Instant;
 use std::{fs, thread};
 use std::{
     io::Write,
@@ -24,6 +25,7 @@ use std::{
     time::Duration,
 };
 use time::{OffsetDateTime, UtcOffset};
+use web_time::Instant;
 
 use crate::FormatOptions;
 use crate::util::cargo::target_instruction_set;

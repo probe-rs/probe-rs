@@ -25,11 +25,8 @@ use crate::{
     error::Error,
     memory::valid_32bit_address,
 };
-use std::{
-    mem::size_of,
-    sync::Arc,
-    time::{Duration, Instant},
-};
+use std::{mem::size_of, sync::Arc, time::Duration};
+use web_time::Instant;
 
 /// Errors for the ARMv7-A state machine
 #[derive(thiserror::Error, Debug)]
@@ -63,7 +60,7 @@ pub struct Armv7a<'probe> {
 }
 
 impl<'probe> Armv7a<'probe> {
-    pub(crate) fn new(
+    pub(crate) async fn new(
         mut memory: Box<dyn ArmMemoryInterface + 'probe>,
         state: &'probe mut CortexAState,
         base_address: u64,
@@ -72,7 +69,7 @@ impl<'probe> Armv7a<'probe> {
         if !state.initialized() {
             // determine current state
             let address = Dbgdscr::get_mmio_address_from_base(base_address)?;
-            let dbgdscr = Dbgdscr(memory.read_word_32(address)?);
+            let dbgdscr = Dbgdscr(memory.read_word_32(address).await?);
 
             tracing::debug!("State when connecting: {:x?}", dbgdscr);
 
@@ -99,26 +96,26 @@ impl<'probe> Armv7a<'probe> {
         };
 
         if !core.state.initialized() {
-            core.reset_register_cache();
-            core.read_fp_reg_count()?;
+            core.reset_register_cache().await;
+            core.read_fp_reg_count().await?;
             core.state.initialize();
         }
 
         Ok(core)
     }
 
-    fn read_fp_reg_count(&mut self) -> Result<(), Error> {
+    async fn read_fp_reg_count(&mut self) -> Result<(), Error> {
         if self.state.fp_reg_count == 0 && matches!(self.state.current_state, CoreStatus::Halted(_))
         {
-            self.prepare_r0_for_clobber()?;
+            self.prepare_r0_for_clobber().await?;
 
             // VMRS r0, MVFR0
             let instruction = build_vmrs(0, 0b0111);
-            self.execute_instruction(instruction)?;
+            self.execute_instruction(instruction).await?;
 
             // Read from r0
             let instruction = build_mcr(14, 0, 0, 0, 5, 0);
-            let vmrs = self.execute_instruction_with_result(instruction)?;
+            let vmrs = self.execute_instruction_with_result(instruction).await?;
 
             self.state.fp_reg_count = match vmrs & 0b111 {
                 0b001 => 16,
@@ -131,7 +128,7 @@ impl<'probe> Armv7a<'probe> {
     }
 
     /// Execute an instruction
-    fn execute_instruction(&mut self, instruction: u32) -> Result<Dbgdscr, ArmError> {
+    async fn execute_instruction(&mut self, instruction: u32) -> Result<Dbgdscr, ArmError> {
         if !self.state.current_state.is_halted() {
             return Err(ArmError::CoreNotHalted);
         }
@@ -139,10 +136,10 @@ impl<'probe> Armv7a<'probe> {
         // Enable ITR if needed
         if !self.itr_enabled {
             let address = Dbgdscr::get_mmio_address_from_base(self.base_address)?;
-            let mut dbgdscr = Dbgdscr(self.memory.read_word_32(address)?);
+            let mut dbgdscr = Dbgdscr(self.memory.read_word_32(address).await?);
             dbgdscr.set_itren(true);
 
-            self.memory.write_word_32(address, dbgdscr.into())?;
+            self.memory.write_word_32(address, dbgdscr.into()).await?;
 
             self.itr_enabled = true;
         }
@@ -151,52 +148,52 @@ impl<'probe> Armv7a<'probe> {
     }
 
     /// Execute an instruction on the CPU and return the result
-    fn execute_instruction_with_result(&mut self, instruction: u32) -> Result<u32, Error> {
+    async fn execute_instruction_with_result(&mut self, instruction: u32) -> Result<u32, Error> {
         // Run instruction
-        let mut dbgdscr = self.execute_instruction(instruction)?;
+        let mut dbgdscr = self.execute_instruction(instruction).await?;
 
         // Wait for TXfull
         while !dbgdscr.txfull_l() {
             let address = Dbgdscr::get_mmio_address_from_base(self.base_address)?;
-            dbgdscr = Dbgdscr(self.memory.read_word_32(address)?);
+            dbgdscr = Dbgdscr(self.memory.read_word_32(address).await?);
         }
 
         // Read result
         let address = Dbgdtrtx::get_mmio_address_from_base(self.base_address)?;
-        let result = self.memory.read_word_32(address)?;
+        let result = self.memory.read_word_32(address).await?;
 
         Ok(result)
     }
 
-    fn execute_instruction_with_input(
+    async fn execute_instruction_with_input(
         &mut self,
         instruction: u32,
         value: u32,
     ) -> Result<(), Error> {
         // Move value
         let address = Dbgdtrrx::get_mmio_address_from_base(self.base_address)?;
-        self.memory.write_word_32(address, value)?;
+        self.memory.write_word_32(address, value).await?;
 
         // Wait for RXfull
         let address = Dbgdscr::get_mmio_address_from_base(self.base_address)?;
-        let mut dbgdscr = Dbgdscr(self.memory.read_word_32(address)?);
+        let mut dbgdscr = Dbgdscr(self.memory.read_word_32(address).await?);
 
         while !dbgdscr.rxfull_l() {
-            dbgdscr = Dbgdscr(self.memory.read_word_32(address)?);
+            dbgdscr = Dbgdscr(self.memory.read_word_32(address).await?);
         }
 
         // Run instruction
-        self.execute_instruction(instruction)?;
+        self.execute_instruction(instruction).await?;
 
         Ok(())
     }
 
-    fn reset_register_cache(&mut self) {
+    async fn reset_register_cache(&mut self) {
         self.state.register_cache = vec![None; 51];
     }
 
     /// Sync any updated registers back to the core
-    fn writeback_registers(&mut self) -> Result<(), Error> {
+    async fn writeback_registers(&mut self) -> Result<(), Error> {
         let writeback_iter = (17u16..=48).chain(15u16..=16).chain(0u16..=14);
 
         for i in writeback_iter {
@@ -206,24 +203,27 @@ impl<'probe> Armv7a<'probe> {
                         0..=14 => {
                             let instruction = build_mrc(14, 0, i, 0, 5, 0);
 
-                            self.execute_instruction_with_input(instruction, val.try_into()?)?;
+                            self.execute_instruction_with_input(instruction, val.try_into()?)
+                                .await?;
                         }
                         15 => {
                             // Move val to r0
                             let instruction = build_mrc(14, 0, 0, 0, 5, 0);
 
-                            self.execute_instruction_with_input(instruction, val.try_into()?)?;
+                            self.execute_instruction_with_input(instruction, val.try_into()?)
+                                .await?;
 
                             // Use `mov pc, r0` rather than `bx r0` because the `bx` instruction is
                             // `UNPREDICTABLE` in the debug state (ARM Architecture Reference Manual,
                             // ARMv7-A and ARMv7-R edition, C5.3: "Executing instructions in Debug state").
                             let instruction = build_mov(15, 0);
-                            self.execute_instruction(instruction)?;
+                            self.execute_instruction(instruction).await?;
                         }
                         16 => {
                             // msr cpsr_fsxc, r0
                             let instruction = build_msr(0);
-                            self.execute_instruction_with_input(instruction, val.try_into()?)?;
+                            self.execute_instruction_with_input(instruction, val.try_into()?)
+                                .await?;
                         }
                         17..=48 => {
                             // Move value to r0, r1
@@ -232,14 +232,16 @@ impl<'probe> Armv7a<'probe> {
                             let high_word = (value >> 32) as u32;
 
                             let instruction = build_mrc(14, 0, 0, 0, 5, 0);
-                            self.execute_instruction_with_input(instruction, low_word)?;
+                            self.execute_instruction_with_input(instruction, low_word)
+                                .await?;
 
                             let instruction = build_mrc(14, 0, 1, 0, 5, 0);
-                            self.execute_instruction_with_input(instruction, high_word)?;
+                            self.execute_instruction_with_input(instruction, high_word)
+                                .await?;
 
                             // VMOV
                             let instruction = build_vmov(0, 0, 1, i - 17);
-                            self.execute_instruction(instruction)?;
+                            self.execute_instruction(instruction).await?;
                         }
                         _ => {
                             panic!("Logic missing for writeback of register {i}");
@@ -249,21 +251,24 @@ impl<'probe> Armv7a<'probe> {
             }
         }
 
-        self.reset_register_cache();
+        self.reset_register_cache().await;
 
         Ok(())
     }
 
     /// Save r0 if needed before it gets clobbered by instruction execution
-    fn prepare_r0_for_clobber(&mut self) -> Result<(), Error> {
-        self.prepare_for_clobber(0)
+    async fn prepare_r0_for_clobber(&mut self) -> Result<(), Error> {
+        self.prepare_for_clobber(0).await
     }
 
     /// Save `r<n>` if needed before it gets clobbered by instruction execution
-    fn prepare_for_clobber(&mut self, reg: usize) -> Result<(), Error> {
+    async fn prepare_for_clobber(&mut self, reg: usize) -> Result<(), Error> {
         if self.state.register_cache[reg].is_none() {
             // cache reg since we're going to clobber it
-            let val: u32 = self.read_core_reg(RegisterId(reg as u16))?.try_into()?;
+            let val: u32 = self
+                .read_core_reg(RegisterId(reg as u16))
+                .await?
+                .try_into()?;
 
             // Mark reg as needing writeback
             self.state.register_cache[reg] = Some((val.into(), true));
@@ -272,14 +277,16 @@ impl<'probe> Armv7a<'probe> {
         Ok(())
     }
 
-    fn set_r0(&mut self, value: u32) -> Result<(), Error> {
+    async fn set_r0(&mut self, value: u32) -> Result<(), Error> {
         let instruction = build_mrc(14, 0, 0, 0, 5, 0);
 
         self.execute_instruction_with_input(instruction, value)
+            .await
     }
 
-    fn set_core_status(&mut self, new_status: CoreStatus) {
-        super::update_core_status(&mut self.memory, &mut self.state.current_state, new_status);
+    async fn set_core_status(&mut self, new_status: CoreStatus) {
+        super::update_core_status(&mut self.memory, &mut self.state.current_state, new_status)
+            .await;
     }
 
     pub(crate) fn halted_access<R>(
@@ -539,26 +546,31 @@ pub(crate) fn read_word_32(
     get_instruction_result(memory, base_address)
 }
 
+#[async_trait::async_trait(?Send)]
 impl CoreInterface for Armv7a<'_> {
-    fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
-        wait_for_core_halted(&mut *self.memory, self.base_address, timeout).map_err(|e| e.into())
+    async fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
+        wait_for_core_halted(&mut *self.memory, self.base_address, timeout)
+            .map_err(|e| e.into())
+            .await
     }
 
-    fn core_halted(&mut self) -> Result<bool, Error> {
-        core_halted(&mut *self.memory, self.base_address).map_err(|e| e.into())
+    async fn core_halted(&mut self) -> Result<bool, Error> {
+        core_halted(&mut *self.memory, self.base_address)
+            .map_err(|e| e.into())
+            .await
     }
 
-    fn status(&mut self) -> Result<crate::core::CoreStatus, Error> {
+    async fn status(&mut self) -> Result<crate::core::CoreStatus, Error> {
         // determine current state
         let address = Dbgdscr::get_mmio_address_from_base(self.base_address)?;
-        let dbgdscr = Dbgdscr(self.memory.read_word_32(address)?);
+        let dbgdscr = Dbgdscr(self.memory.read_word_32(address).await?);
 
         if dbgdscr.halted() {
             let reason = dbgdscr.halt_reason();
 
-            self.set_core_status(CoreStatus::Halted(reason));
+            self.set_core_status(CoreStatus::Halted(reason)).await;
 
-            self.read_fp_reg_count()?;
+            self.read_fp_reg_count().await?;
 
             return Ok(CoreStatus::Halted(reason));
         }
@@ -567,24 +579,24 @@ impl CoreInterface for Armv7a<'_> {
             tracing::warn!("Core is running, but we expected it to be halted");
         }
 
-        self.set_core_status(CoreStatus::Running);
+        self.set_core_status(CoreStatus::Running).await;
 
         Ok(CoreStatus::Running)
     }
 
-    fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
+    async fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
         if !matches!(self.state.current_state, CoreStatus::Halted(_)) {
-            request_halt(&mut *self.memory, self.base_address)?;
-            self.wait_for_core_halted(timeout)?;
+            request_halt(&mut *self.memory, self.base_address).await?;
+            self.wait_for_core_halted(timeout).await?;
 
             // Reset our cached values
-            self.reset_register_cache();
+            self.reset_register_cache().await;
         }
         // Update core status
-        let _ = self.status()?;
+        let _ = self.status().await?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(self.program_counter().into())?;
+        let pc_value = self.read_core_reg(self.program_counter().into()).await?;
 
         // get pc
         Ok(CoreInformation {
@@ -592,72 +604,80 @@ impl CoreInterface for Armv7a<'_> {
         })
     }
 
-    fn run(&mut self) -> Result<(), Error> {
+    async fn run(&mut self) -> Result<(), Error> {
         if matches!(self.state.current_state, CoreStatus::Running) {
             return Ok(());
         }
 
         // set writeback values
-        self.writeback_registers()?;
+        self.writeback_registers().await?;
 
-        run(&mut *self.memory, self.base_address)?;
+        run(&mut *self.memory, self.base_address).await?;
 
         // Recompute / verify current state
-        self.set_core_status(CoreStatus::Running);
-        let _ = self.status()?;
+        self.set_core_status(CoreStatus::Running).await;
+        let _ = self.status().await?;
 
         Ok(())
     }
 
-    fn reset(&mut self) -> Result<(), Error> {
-        self.sequence.reset_system(
-            &mut *self.memory,
-            crate::CoreType::Armv7a,
-            Some(self.base_address),
-        )?;
+    async fn reset(&mut self) -> Result<(), Error> {
+        self.sequence
+            .reset_system(
+                &mut *self.memory,
+                crate::CoreType::Armv7a,
+                Some(self.base_address),
+            )
+            .await?;
 
         // Reset our cached values
-        self.reset_register_cache();
+        self.reset_register_cache().await;
 
         Ok(())
     }
 
-    fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
-        self.sequence.reset_catch_set(
-            &mut *self.memory,
-            crate::CoreType::Armv7a,
-            Some(self.base_address),
-        )?;
-        self.sequence.reset_system(
-            &mut *self.memory,
-            crate::CoreType::Armv7a,
-            Some(self.base_address),
-        )?;
+    async fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
+        self.sequence
+            .reset_catch_set(
+                &mut *self.memory,
+                crate::CoreType::Armv7a,
+                Some(self.base_address),
+            )
+            .await?;
+        self.sequence
+            .reset_system(
+                &mut *self.memory,
+                crate::CoreType::Armv7a,
+                Some(self.base_address),
+            )
+            .await?;
 
         // Request halt
         let address = Dbgdrcr::get_mmio_address_from_base(self.base_address)?;
         let mut value = Dbgdrcr(0);
         value.set_hrq(true);
 
-        self.memory.write_word_32(address, value.into())?;
+        self.memory.write_word_32(address, value.into()).await?;
 
         // Release from reset
-        self.sequence.reset_catch_clear(
-            &mut *self.memory,
-            crate::CoreType::Armv7a,
-            Some(self.base_address),
-        )?;
+        self.sequence
+            .reset_catch_clear(
+                &mut *self.memory,
+                crate::CoreType::Armv7a,
+                Some(self.base_address),
+            )
+            .await?;
 
-        self.wait_for_core_halted(timeout)?;
+        self.wait_for_core_halted(timeout).await?;
 
         // Update core status
-        let _ = self.status()?;
+        let _ = self.status().await?;
 
         // Reset our cached values
-        self.reset_register_cache();
+        self.reset_register_cache().await;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(self.program_counter().into())?;
+        let pc_value = self.read_core_reg(self.program_counter().into()).await?;
 
         // get pc
         Ok(CoreInformation {
@@ -665,20 +685,21 @@ impl CoreInterface for Armv7a<'_> {
         })
     }
 
-    fn step(&mut self) -> Result<CoreInformation, Error> {
+    async fn step(&mut self) -> Result<CoreInformation, Error> {
         // Save current breakpoint
-        let bp_unit_index = (self.available_breakpoint_units()? - 1) as usize;
+        let bp_unit_index = (self.available_breakpoint_units().await? - 1) as usize;
         let bp_value_addr = Dbgbvr::get_mmio_address_from_base(self.base_address)?
             + (bp_unit_index * size_of::<u32>()) as u64;
-        let saved_bp_value = self.memory.read_word_32(bp_value_addr)?;
+        let saved_bp_value = self.memory.read_word_32(bp_value_addr).await?;
 
         let bp_control_addr = Dbgbcr::get_mmio_address_from_base(self.base_address)?
             + (bp_unit_index * size_of::<u32>()) as u64;
-        let saved_bp_control = self.memory.read_word_32(bp_control_addr)?;
+        let saved_bp_control = self.memory.read_word_32(bp_control_addr).await?;
 
         // Set breakpoint for any change
         let current_pc: u32 = self
-            .read_core_reg(self.program_counter().into())?
+            .read_core_reg(self.program_counter().into())
+            .await?
             .try_into()?;
         let mut bp_control = Dbgbcr(0);
 
@@ -692,23 +713,28 @@ impl CoreInterface for Armv7a<'_> {
         // Enable
         bp_control.set_e(true);
 
-        self.memory.write_word_32(bp_value_addr, current_pc)?;
+        self.memory.write_word_32(bp_value_addr, current_pc).await?;
         self.memory
-            .write_word_32(bp_control_addr, bp_control.into())?;
+            .write_word_32(bp_control_addr, bp_control.into())
+            .await?;
 
         // Resume
-        self.run()?;
+        self.run().await?;
 
         // Wait for halt
-        self.wait_for_core_halted(Duration::from_millis(100))?;
+        self.wait_for_core_halted(Duration::from_millis(100))
+            .await?;
 
         // Reset breakpoint
-        self.memory.write_word_32(bp_value_addr, saved_bp_value)?;
         self.memory
-            .write_word_32(bp_control_addr, saved_bp_control)?;
+            .write_word_32(bp_value_addr, saved_bp_value)
+            .await?;
+        self.memory
+            .write_word_32(bp_control_addr, saved_bp_control)
+            .await?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(self.program_counter().into())?;
+        let pc_value = self.read_core_reg(self.program_counter().into()).await?;
 
         // get pc
         Ok(CoreInformation {
@@ -716,7 +742,7 @@ impl CoreInterface for Armv7a<'_> {
         })
     }
 
-    fn read_core_reg(&mut self, address: RegisterId) -> Result<RegisterValue, Error> {
+    async fn read_core_reg(&mut self, address: RegisterId) -> Result<RegisterValue, Error> {
         let reg_num = address.0;
 
         // check cache
@@ -733,46 +759,46 @@ impl CoreInterface for Armv7a<'_> {
                 // MCR p14, 0, <Rd>, c0, c5, 0 ; Write DBGDTRTXint Register
                 let instruction = build_mcr(14, 0, reg_num, 0, 5, 0);
 
-                let val = self.execute_instruction_with_result(instruction)?;
+                let val = self.execute_instruction_with_result(instruction).await?;
 
                 Ok(val.into())
             }
             15 => {
                 // PC, must access via r0
-                self.prepare_r0_for_clobber()?;
+                self.prepare_r0_for_clobber().await?;
 
                 // MOV r0, PC
                 let instruction = build_mov(0, 15);
-                self.execute_instruction(instruction)?;
+                self.execute_instruction(instruction).await?;
 
                 // Read from r0
                 let instruction = build_mcr(14, 0, 0, 0, 5, 0);
-                let pra_plus_offset = self.execute_instruction_with_result(instruction)?;
+                let pra_plus_offset = self.execute_instruction_with_result(instruction).await?;
 
                 // PC returned is PC + 8
                 Ok((pra_plus_offset - 8).into())
             }
             16 => {
                 // CPSR, must access via r0
-                self.prepare_r0_for_clobber()?;
+                self.prepare_r0_for_clobber().await?;
 
                 // MRS r0, CPSR
                 let instruction = build_mrs(0);
-                self.execute_instruction(instruction)?;
+                self.execute_instruction(instruction).await?;
 
                 // Read from r0
                 let instruction = build_mcr(14, 0, 0, 0, 5, 0);
-                let cpsr = self.execute_instruction_with_result(instruction)?;
+                let cpsr = self.execute_instruction_with_result(instruction).await?;
 
                 Ok(cpsr.into())
             }
             17..=48 => {
                 // Access via r0, r1
-                self.prepare_for_clobber(0)?;
-                self.prepare_for_clobber(1)?;
+                self.prepare_for_clobber(0).await?;
+                self.prepare_for_clobber(1).await?;
 
                 // If FPEXC.EN = 0, then these registers aren't safe to access.  Read as zero
-                let fpexc: u32 = self.read_core_reg(50.into())?.try_into()?;
+                let fpexc: u32 = self.read_core_reg(50.into()).await?.try_into()?;
                 if (fpexc & (1 << 30)) == 0 {
                     // Disabled
                     return Ok(0u32.into());
@@ -780,24 +806,24 @@ impl CoreInterface for Armv7a<'_> {
 
                 // VMOV r0, r1, <reg>
                 let instruction = build_vmov(1, 0, 1, reg_num - 17);
-                self.execute_instruction(instruction)?;
+                self.execute_instruction(instruction).await?;
 
                 // Read from r0
                 let instruction = build_mcr(14, 0, 0, 0, 5, 0);
-                let mut value = self.execute_instruction_with_result(instruction)? as u64;
+                let mut value = self.execute_instruction_with_result(instruction).await? as u64;
 
                 // Read from r1
                 let instruction = build_mcr(14, 0, 1, 0, 5, 0);
-                value |= (self.execute_instruction_with_result(instruction)? as u64) << 32;
+                value |= (self.execute_instruction_with_result(instruction).await? as u64) << 32;
 
                 Ok(value.into())
             }
             49 => {
                 // Access via r0
-                self.prepare_for_clobber(0)?;
+                self.prepare_for_clobber(0).await?;
 
                 // If FPEXC.EN = 0, then these registers aren't safe to access.  Read as zero
-                let fpexc: u32 = self.read_core_reg(50.into())?.try_into()?;
+                let fpexc: u32 = self.read_core_reg(50.into()).await?.try_into()?;
                 if (fpexc & (1 << 30)) == 0 {
                     // Disabled
                     return Ok(0u32.into());
@@ -805,24 +831,24 @@ impl CoreInterface for Armv7a<'_> {
 
                 // VMRS r0, FPSCR
                 let instruction = build_vmrs(0, 1);
-                self.execute_instruction(instruction)?;
+                self.execute_instruction(instruction).await?;
 
                 // Read from r0
                 let instruction = build_mcr(14, 0, 0, 0, 5, 0);
-                let value = self.execute_instruction_with_result(instruction)?;
+                let value = self.execute_instruction_with_result(instruction).await?;
 
                 Ok(value.into())
             }
             50 => {
                 // Access via r0
-                self.prepare_for_clobber(0)?;
+                self.prepare_for_clobber(0).await?;
 
                 // VMRS r0, FPEXC
                 let instruction = build_vmrs(0, 0b1000);
-                self.execute_instruction(instruction)?;
+                self.execute_instruction(instruction).await?;
 
                 let instruction = build_mcr(14, 0, 0, 0, 5, 0);
-                let value = self.execute_instruction_with_result(instruction)?;
+                let value = self.execute_instruction_with_result(instruction).await?;
 
                 Ok(value.into())
             }
@@ -840,7 +866,11 @@ impl CoreInterface for Armv7a<'_> {
         }
     }
 
-    fn write_core_reg(&mut self, address: RegisterId, value: RegisterValue) -> Result<(), Error> {
+    async fn write_core_reg(
+        &mut self,
+        address: RegisterId,
+        value: RegisterValue,
+    ) -> Result<(), Error> {
         let reg_num = address.0;
 
         if (reg_num as usize) >= self.state.register_cache.len() {
@@ -853,10 +883,10 @@ impl CoreInterface for Armv7a<'_> {
         Ok(())
     }
 
-    fn available_breakpoint_units(&mut self) -> Result<u32, Error> {
+    async fn available_breakpoint_units(&mut self) -> Result<u32, Error> {
         if self.num_breakpoints.is_none() {
             let address = Dbgdidr::get_mmio_address_from_base(self.base_address)?;
-            let dbgdidr = Dbgdidr(self.memory.read_word_32(address)?);
+            let dbgdidr = Dbgdidr(self.memory.read_word_32(address).await?);
 
             self.num_breakpoints = Some(dbgdidr.brps() + 1);
         }
@@ -864,18 +894,18 @@ impl CoreInterface for Armv7a<'_> {
     }
 
     /// See docs on the [`CoreInterface::hw_breakpoints`] trait
-    fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, Error> {
+    async fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, Error> {
         let mut breakpoints = vec![];
-        let num_hw_breakpoints = self.available_breakpoint_units()? as usize;
+        let num_hw_breakpoints = self.available_breakpoint_units().await? as usize;
 
         for bp_unit_index in 0..num_hw_breakpoints {
             let bp_value_addr = Dbgbvr::get_mmio_address_from_base(self.base_address)?
                 + (bp_unit_index * size_of::<u32>()) as u64;
-            let bp_value = self.memory.read_word_32(bp_value_addr)?;
+            let bp_value = self.memory.read_word_32(bp_value_addr).await?;
 
             let bp_control_addr = Dbgbcr::get_mmio_address_from_base(self.base_address)?
                 + (bp_unit_index * size_of::<u32>()) as u64;
-            let bp_control = Dbgbcr(self.memory.read_word_32(bp_control_addr)?);
+            let bp_control = Dbgbcr(self.memory.read_word_32(bp_control_addr).await?);
 
             if bp_control.e() {
                 breakpoints.push(Some(bp_value as u64));
@@ -886,19 +916,19 @@ impl CoreInterface for Armv7a<'_> {
         Ok(breakpoints)
     }
 
-    fn enable_breakpoints(&mut self, _state: bool) -> Result<(), Error> {
+    async fn enable_breakpoints(&mut self, _state: bool) -> Result<(), Error> {
         // Breakpoints are always on with v7-A
         Ok(())
     }
 
-    fn set_hw_breakpoint(&mut self, bp_unit_index: usize, addr: u64) -> Result<(), Error> {
+    async fn set_hw_breakpoint(&mut self, bp_unit_index: usize, addr: u64) -> Result<(), Error> {
         let addr = valid_32bit_address(addr)?;
-        set_hw_breakpoint(&mut *self.memory, self.base_address, bp_unit_index, addr)?;
+        set_hw_breakpoint(&mut *self.memory, self.base_address, bp_unit_index, addr).await?;
         Ok(())
     }
 
-    fn clear_hw_breakpoint(&mut self, bp_unit_index: usize) -> Result<(), Error> {
-        clear_hw_breakpoint(&mut *self.memory, self.base_address, bp_unit_index)?;
+    async fn clear_hw_breakpoint(&mut self, bp_unit_index: usize) -> Result<(), Error> {
+        clear_hw_breakpoint(&mut *self.memory, self.base_address, bp_unit_index).await?;
         Ok(())
     }
 
@@ -938,8 +968,8 @@ impl CoreInterface for Armv7a<'_> {
         CoreType::Armv7a
     }
 
-    fn instruction_set(&mut self) -> Result<InstructionSet, Error> {
-        let cpsr: u32 = self.read_core_reg(RegisterId(16))?.try_into()?;
+    async fn instruction_set(&mut self) -> Result<InstructionSet, Error> {
+        let cpsr: u32 = self.read_core_reg(RegisterId(16)).await?.try_into()?;
 
         // CPSR bit 5 - T - Thumb mode
         match (cpsr >> 5) & 1 {
@@ -948,7 +978,7 @@ impl CoreInterface for Armv7a<'_> {
         }
     }
 
-    fn fpu_support(&mut self) -> Result<bool, Error> {
+    async fn fpu_support(&mut self) -> Result<bool, Error> {
         Ok(self.state.fp_reg_count != 0)
     }
 
@@ -957,63 +987,64 @@ impl CoreInterface for Armv7a<'_> {
     }
 
     #[tracing::instrument(skip(self))]
-    fn reset_catch_set(&mut self) -> Result<(), Error> {
-        self.halted_access(|core| {
-            core.sequence.reset_catch_set(
-                &mut *core.memory,
-                CoreType::Armv7a,
-                Some(core.base_address),
-            )?;
+    async fn reset_catch_set(&mut self) -> Result<(), Error> {
+        self.halted_access(async |core| {
+            core.sequence
+                .reset_catch_set(&mut *core.memory, CoreType::Armv7a, Some(core.base_address))
+                .await?;
             Ok(())
-        })?;
+        })
+        .await?;
         Ok(())
     }
 
     #[tracing::instrument(skip(self))]
-    fn reset_catch_clear(&mut self) -> Result<(), Error> {
+    async fn reset_catch_clear(&mut self) -> Result<(), Error> {
         // Clear the reset_catch bit which was set earlier.
-        self.halted_access(|core| {
-            core.sequence.reset_catch_clear(
-                &mut *core.memory,
-                CoreType::Armv7a,
-                Some(core.base_address),
-            )?;
+        self.halted_access(async |core| {
+            core.sequence
+                .reset_catch_clear(&mut *core.memory, CoreType::Armv7a, Some(core.base_address))
+                .await?;
             Ok(())
-        })?;
+        })
+        .await?;
         Ok(())
     }
 
     #[tracing::instrument(skip(self))]
-    fn debug_core_stop(&mut self) -> Result<(), Error> {
+    async fn debug_core_stop(&mut self) -> Result<(), Error> {
         if matches!(self.state.current_state, CoreStatus::Halted(_)) {
             // We may have clobbered registers we wrote during debugging
             // Best effort attempt to put them back before we exit debug mode
-            self.writeback_registers()?;
+            self.writeback_registers().await?;
         }
 
         self.sequence
-            .debug_core_stop(&mut *self.memory, CoreType::Armv7a)?;
+            .debug_core_stop(&mut *self.memory, CoreType::Armv7a)
+            .await?;
 
         Ok(())
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl MemoryInterface for Armv7a<'_> {
-    fn supports_native_64bit_access(&mut self) -> bool {
+    async fn supports_native_64bit_access(&mut self) -> bool {
         false
     }
 
-    fn read_word_64(&mut self, address: u64) -> Result<u64, Error> {
+    async fn read_word_64(&mut self, address: u64) -> Result<u64, Error> {
         self.halted_access(|core| {
-            let mut ret: u64 = core.read_word_32(address)? as u64;
-            ret |= (core.read_word_32(address + 4)? as u64) << 32;
+            let mut ret: u64 = core.read_word_32(address).await? as u64;
+            ret |= (core.read_word_32(address + 4).await? as u64) << 32;
 
             Ok(ret)
         })
+        .await
     }
 
     fn read_word_32(&mut self, address: u64) -> Result<u32, Error> {
-        self.halted_access(|core| {
+        self.halted_access(async |core| {
             let address = valid_32bit_address(address)?;
 
             // LDC p14, c5, [r0], #4
@@ -1028,10 +1059,11 @@ impl MemoryInterface for Armv7a<'_> {
             // Read memory from [r0]
             core.execute_instruction_with_result(instr)
         })
+        .await
     }
 
-    fn read_word_16(&mut self, address: u64) -> Result<u16, Error> {
-        self.halted_access(|core| {
+    async fn read_word_16(&mut self, address: u64) -> Result<u16, Error> {
+        self.halted_access(async |core| {
             // Find the word this is in and its byte offset
             let byte_offset = address % 4;
             let word_start = address - byte_offset;
@@ -1042,44 +1074,48 @@ impl MemoryInterface for Armv7a<'_> {
             // Return the byte
             Ok((data >> (byte_offset * 8)) as u16)
         })
+        .await
     }
 
-    fn read_word_8(&mut self, address: u64) -> Result<u8, Error> {
-        self.halted_access(|core| {
+    async fn read_word_8(&mut self, address: u64) -> Result<u8, Error> {
+        self.halted_access(async |core| {
             // Find the word this is in and its byte offset
             let byte_offset = address % 4;
             let word_start = address - byte_offset;
 
             // Read the word
-            let data = core.read_word_32(word_start)?;
+            let data = core.read_word_32(word_start).await?;
 
             // Return the byte
             Ok(data.to_le_bytes()[byte_offset as usize])
         })
+        .await
     }
 
-    fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), Error> {
-        self.halted_access(|core| {
+    async fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), Error> {
+        self.halted_access(async |core| {
             for (i, word) in data.iter_mut().enumerate() {
-                *word = core.read_word_64(address + ((i as u64) * 8))?;
+                *word = core.read_word_64(address + ((i as u64) * 8)).await?;
             }
 
             Ok(())
         })
+        .await
     }
 
-    fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
-        self.halted_access(|core| {
+    async fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
+        self.halted_access(async |core| {
             for (i, word) in data.iter_mut().enumerate() {
-                *word = core.read_word_32(address + ((i as u64) * 4))?;
+                *word = core.read_word_32(address + ((i as u64) * 4)).await?;
             }
 
             Ok(())
         })
+        .await
     }
 
-    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), Error> {
-        self.halted_access(|core| {
+    async fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), Error> {
+        self.halted_access(async |core| {
             for (i, word) in data.iter_mut().enumerate() {
                 *word = core.read_word_16(address + ((i as u64) * 2))?;
             }
@@ -1088,8 +1124,8 @@ impl MemoryInterface for Armv7a<'_> {
         })
     }
 
-    fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
-        self.halted_access(|core| {
+    async fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
+        self.halted_access(async |core| {
             for (i, byte) in data.iter_mut().enumerate() {
                 *byte = core.read_word_8(address + (i as u64))?;
             }
@@ -1098,8 +1134,8 @@ impl MemoryInterface for Armv7a<'_> {
         })
     }
 
-    fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), Error> {
-        self.halted_access(|core| {
+    async fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), Error> {
+        self.halted_access(async |core| {
             let data_low = data as u32;
             let data_high = (data >> 32) as u32;
 
@@ -1108,8 +1144,8 @@ impl MemoryInterface for Armv7a<'_> {
         })
     }
 
-    fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
-        self.halted_access(|core| {
+    async fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
+        self.halted_access(async |core| {
             let address = valid_32bit_address(address)?;
 
             // STC p14, c5, [r0], #4
@@ -1126,8 +1162,8 @@ impl MemoryInterface for Armv7a<'_> {
         })
     }
 
-    fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
-        self.halted_access(|core| {
+    async fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
+        self.halted_access(async |core| {
             // Find the word this is in and its byte offset
             let byte_offset = address % 4;
             let word_start = address - byte_offset;
@@ -1141,8 +1177,8 @@ impl MemoryInterface for Armv7a<'_> {
         })
     }
 
-    fn write_word_16(&mut self, address: u64, data: u16) -> Result<(), Error> {
-        self.halted_access(|core| {
+    async fn write_word_16(&mut self, address: u64, data: u16) -> Result<(), Error> {
+        self.halted_access(async |core| {
             // Find the word this is in and its byte offset
             let byte_offset = address % 4;
             let word_start = address - byte_offset;
@@ -1158,8 +1194,8 @@ impl MemoryInterface for Armv7a<'_> {
         })
     }
 
-    fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), Error> {
-        self.halted_access(|core| {
+    async fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), Error> {
+        self.halted_access(async |core| {
             for (i, word) in data.iter().enumerate() {
                 core.write_word_64(address + ((i as u64) * 8), *word)?;
             }
@@ -1168,8 +1204,8 @@ impl MemoryInterface for Armv7a<'_> {
         })
     }
 
-    fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
-        self.halted_access(|core| {
+    async fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
+        self.halted_access(async |core| {
             for (i, word) in data.iter().enumerate() {
                 core.write_word_32(address + ((i as u64) * 4), *word)?;
             }
@@ -1178,8 +1214,8 @@ impl MemoryInterface for Armv7a<'_> {
         })
     }
 
-    fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), Error> {
-        self.halted_access(|core| {
+    async fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), Error> {
+        self.halted_access(async |core| {
             for (i, word) in data.iter().enumerate() {
                 core.write_word_16(address + ((i as u64) * 2), *word)?;
             }
@@ -1188,8 +1224,8 @@ impl MemoryInterface for Armv7a<'_> {
         })
     }
 
-    fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
-        self.halted_access(|core| {
+    async fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
+        self.halted_access(async |core| {
             for (i, byte) in data.iter().enumerate() {
                 core.write_word_8(address + (i as u64), *byte)?;
             }
@@ -1198,11 +1234,11 @@ impl MemoryInterface for Armv7a<'_> {
         })
     }
 
-    fn supports_8bit_transfers(&self) -> Result<bool, Error> {
+    async fn supports_8bit_transfers(&self) -> Result<bool, Error> {
         Ok(false)
     }
 
-    fn flush(&mut self) -> Result<(), Error> {
+    async fn flush(&mut self) -> Result<(), Error> {
         // Nothing to do - this runs through the CPU which automatically handles any caching
         Ok(())
     }
@@ -1260,16 +1296,17 @@ mod test {
         }
     }
 
+    #[async_trait::async_trait(?Send)]
     impl MemoryInterface<ArmError> for MockProbe {
-        fn read_8(&mut self, _address: u64, _data: &mut [u8]) -> Result<(), ArmError> {
+        async fn read_8(&mut self, _address: u64, _data: &mut [u8]) -> Result<(), ArmError> {
             todo!()
         }
 
-        fn read_16(&mut self, _address: u64, _data: &mut [u16]) -> Result<(), ArmError> {
+        async fn read_16(&mut self, _address: u64, _data: &mut [u16]) -> Result<(), ArmError> {
             todo!()
         }
 
-        fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError> {
+        async fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError> {
             if self.expected_ops.is_empty() {
                 panic!(
                     "Received unexpected read_32 op: register {:#}",
@@ -1300,19 +1337,19 @@ mod test {
             Ok(())
         }
 
-        fn read(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError> {
-            self.read_8(address, data)
+        async fn read(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError> {
+            self.read_8(address, data).await
         }
 
-        fn write_8(&mut self, _address: u64, _data: &[u8]) -> Result<(), ArmError> {
+        async fn write_8(&mut self, _address: u64, _data: &[u8]) -> Result<(), ArmError> {
             todo!()
         }
 
-        fn write_16(&mut self, _address: u64, _data: &[u16]) -> Result<(), ArmError> {
+        async fn write_16(&mut self, _address: u64, _data: &[u16]) -> Result<(), ArmError> {
             todo!()
         }
 
-        fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), ArmError> {
+        async fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), ArmError> {
             if self.expected_ops.is_empty() {
                 panic!(
                     "Received unexpected write_32 op: register {:#}",
@@ -1346,31 +1383,32 @@ mod test {
             Ok(())
         }
 
-        fn write(&mut self, address: u64, data: &[u8]) -> Result<(), ArmError> {
-            self.write_8(address, data)
+        async fn write(&mut self, address: u64, data: &[u8]) -> Result<(), ArmError> {
+            self.write_8(address, data).await
         }
 
-        fn flush(&mut self) -> Result<(), ArmError> {
+        async fn flush(&mut self) -> Result<(), ArmError> {
             todo!()
         }
 
-        fn read_64(&mut self, _address: u64, _data: &mut [u64]) -> Result<(), ArmError> {
+        async fn read_64(&mut self, _address: u64, _data: &mut [u64]) -> Result<(), ArmError> {
             todo!()
         }
 
-        fn write_64(&mut self, _address: u64, _data: &[u64]) -> Result<(), ArmError> {
+        async fn write_64(&mut self, _address: u64, _data: &[u64]) -> Result<(), ArmError> {
             todo!()
         }
 
-        fn supports_8bit_transfers(&self) -> Result<bool, ArmError> {
+        async fn supports_8bit_transfers(&self) -> Result<bool, ArmError> {
             Ok(false)
         }
 
-        fn supports_native_64bit_access(&mut self) -> bool {
+        async fn supports_native_64bit_access(&mut self) -> bool {
             false
         }
     }
 
+    #[async_trait::async_trait(?Send)]
     impl ArmMemoryInterface for MockProbe {
         fn fully_qualified_address(&self) -> FullyQualifiedApAddress {
             todo!()
@@ -1398,23 +1436,24 @@ mod test {
             })
         }
 
-        fn generic_status(&mut self) -> Result<crate::architecture::arm::ap::CSW, ArmError> {
+        async fn generic_status(&mut self) -> Result<crate::architecture::arm::ap::CSW, ArmError> {
             Err(ArmError::Probe(DebugProbeError::NotImplemented {
                 function_name: "generic_status",
             }))
         }
 
-        fn base_address(&mut self) -> Result<u64, ArmError> {
+        async fn base_address(&mut self) -> Result<u64, ArmError> {
             todo!()
         }
     }
 
+    #[async_trait::async_trait(?Send)]
     impl SwdSequence for MockProbe {
-        fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), DebugProbeError> {
+        async fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), DebugProbeError> {
             todo!()
         }
 
-        fn swj_pins(
+        async fn swj_pins(
             &mut self,
             _pin_out: u32,
             _pin_select: u32,
@@ -1570,8 +1609,8 @@ mod test {
         );
     }
 
-    #[test]
-    fn armv7a_new() {
+    #[pollster::test]
+    async fn armv7a_new() {
         let mut probe = MockProbe::new();
 
         // Add expectations
@@ -1588,11 +1627,12 @@ mod test {
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
         )
+        .await
         .unwrap();
     }
 
-    #[test]
-    fn armv7a_core_halted() {
+    #[pollster::test]
+    async fn armv7a_core_halted() {
         let mut probe = MockProbe::new();
         let mut state = CortexAState::new();
 
@@ -1623,15 +1663,16 @@ mod test {
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
         )
+        .await
         .unwrap();
 
         // First read false, second read true
-        assert!(!armv7a.core_halted().unwrap());
-        assert!(armv7a.core_halted().unwrap());
+        assert!(!armv7a.core_halted().await.unwrap());
+        assert!(armv7a.core_halted().await.unwrap());
     }
 
-    #[test]
-    fn armv7a_wait_for_core_halted() {
+    #[pollster::test]
+    async fn armv7a_wait_for_core_halted() {
         let mut probe = MockProbe::new();
         let mut state = CortexAState::new();
 
@@ -1662,16 +1703,18 @@ mod test {
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
         )
+        .await
         .unwrap();
 
         // Should halt on second read
         armv7a
             .wait_for_core_halted(Duration::from_millis(100))
+            .await
             .unwrap();
     }
 
-    #[test]
-    fn armv7a_status_running() {
+    #[pollster::test]
+    async fn armv7a_status_running() {
         let mut probe = MockProbe::new();
         let mut state = CortexAState::new();
 
@@ -1696,14 +1739,15 @@ mod test {
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
         )
+        .await
         .unwrap();
 
         // Should halt on second read
-        assert_eq!(CoreStatus::Running, armv7a.status().unwrap());
+        assert_eq!(CoreStatus::Running, armv7a.status().await.unwrap());
     }
 
-    #[test]
-    fn armv7a_status_halted() {
+    #[pollster::test]
+    async fn armv7a_status_halted() {
         let mut probe = MockProbe::new();
         let mut state = CortexAState::new();
 
@@ -1729,17 +1773,18 @@ mod test {
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
         )
+        .await
         .unwrap();
 
         // Should halt on second read
         assert_eq!(
             CoreStatus::Halted(crate::HaltReason::Request),
-            armv7a.status().unwrap()
+            armv7a.status().await.unwrap()
         );
     }
 
-    #[test]
-    fn armv7a_read_core_reg_common() {
+    #[pollster::test]
+    async fn armv7a_read_core_reg_common() {
         const REG_VALUE: u32 = 0xABCD;
 
         let mut probe = MockProbe::new();
@@ -1762,23 +1807,24 @@ mod test {
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
         )
+        .await
         .unwrap();
 
         // First read will hit expectations
         assert_eq!(
             RegisterValue::from(REG_VALUE),
-            armv7a.read_core_reg(RegisterId(2)).unwrap()
+            armv7a.read_core_reg(RegisterId(2)).await.unwrap()
         );
 
         // Second read will cache, no new expectations
         assert_eq!(
             RegisterValue::from(REG_VALUE),
-            armv7a.read_core_reg(RegisterId(2)).unwrap()
+            armv7a.read_core_reg(RegisterId(2)).await.unwrap()
         );
     }
 
-    #[test]
-    fn armv7a_read_core_reg_pc() {
+    #[pollster::test]
+    async fn armv7a_read_core_reg_pc() {
         const REG_VALUE: u32 = 0xABCD;
 
         let mut probe = MockProbe::new();
@@ -1801,23 +1847,24 @@ mod test {
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
         )
+        .await
         .unwrap();
 
         // First read will hit expectations
         assert_eq!(
             RegisterValue::from(REG_VALUE),
-            armv7a.read_core_reg(RegisterId(15)).unwrap()
+            armv7a.read_core_reg(RegisterId(15)).await.unwrap()
         );
 
         // Second read will cache, no new expectations
         assert_eq!(
             RegisterValue::from(REG_VALUE),
-            armv7a.read_core_reg(RegisterId(15)).unwrap()
+            armv7a.read_core_reg(RegisterId(15)).await.unwrap()
         );
     }
 
-    #[test]
-    fn armv7a_read_core_reg_cpsr() {
+    #[pollster::test]
+    async fn armv7a_read_core_reg_cpsr() {
         const REG_VALUE: u32 = 0xABCD;
 
         let mut probe = MockProbe::new();
@@ -1840,23 +1887,24 @@ mod test {
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
         )
+        .await
         .unwrap();
 
         // First read will hit expectations
         assert_eq!(
             RegisterValue::from(REG_VALUE),
-            armv7a.read_core_reg(RegisterId(16)).unwrap()
+            armv7a.read_core_reg(RegisterId(16)).await.unwrap()
         );
 
         // Second read will cache, no new expectations
         assert_eq!(
             RegisterValue::from(REG_VALUE),
-            armv7a.read_core_reg(RegisterId(16)).unwrap()
+            armv7a.read_core_reg(RegisterId(16)).await.unwrap()
         );
     }
 
-    #[test]
-    fn armv7a_halt() {
+    #[pollster::test]
+    async fn armv7a_halt() {
         const REG_VALUE: u32 = 0xABCD;
 
         let mut probe = MockProbe::new();
@@ -1893,17 +1941,18 @@ mod test {
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
         )
+        .await
         .unwrap();
 
         // Verify PC
         assert_eq!(
             REG_VALUE as u64,
-            armv7a.halt(Duration::from_millis(100)).unwrap().pc
+            armv7a.halt(Duration::from_millis(100)).await.unwrap().pc
         );
     }
 
-    #[test]
-    fn armv7a_run() {
+    #[pollster::test]
+    async fn armv7a_run() {
         let mut probe = MockProbe::new();
         let mut state = CortexAState::new();
 
@@ -1938,13 +1987,14 @@ mod test {
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
         )
+        .await
         .unwrap();
 
-        armv7a.run().unwrap();
+        armv7a.run().await.unwrap();
     }
 
-    #[test]
-    fn armv7a_available_breakpoint_units() {
+    #[pollster::test]
+    async fn armv7a_available_breakpoint_units() {
         const BP_COUNT: u32 = 4;
         let mut probe = MockProbe::new();
         let mut state = CortexAState::new();
@@ -1966,13 +2016,14 @@ mod test {
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
         )
+        .await
         .unwrap();
 
-        assert_eq!(BP_COUNT, armv7a.available_breakpoint_units().unwrap());
+        assert_eq!(BP_COUNT, armv7a.available_breakpoint_units().await.unwrap());
     }
 
-    #[test]
-    fn armv7a_hw_breakpoints() {
+    #[pollster::test]
+    async fn armv7a_hw_breakpoints() {
         const BP_COUNT: u32 = 4;
         const BP1: u64 = 0x2345;
         const BP2: u64 = 0x8000_0000;
@@ -2033,17 +2084,18 @@ mod test {
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
         )
+        .await
         .unwrap();
 
-        let results = armv7a.hw_breakpoints().unwrap();
+        let results = armv7a.hw_breakpoints().await.unwrap();
         assert_eq!(Some(BP1), results[0]);
         assert_eq!(Some(BP2), results[1]);
         assert_eq!(None, results[2]);
         assert_eq!(None, results[3]);
     }
 
-    #[test]
-    fn armv7a_set_hw_breakpoint() {
+    #[pollster::test]
+    async fn armv7a_set_hw_breakpoint() {
         const BP_VALUE: u64 = 0x2345;
         let mut probe = MockProbe::new();
         let mut state = CortexAState::new();
@@ -2081,13 +2133,14 @@ mod test {
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
         )
+        .await
         .unwrap();
 
-        armv7a.set_hw_breakpoint(0, BP_VALUE).unwrap();
+        armv7a.set_hw_breakpoint(0, BP_VALUE).await.unwrap();
     }
 
-    #[test]
-    fn armv7a_clear_hw_breakpoint() {
+    #[pollster::test]
+    async fn armv7a_clear_hw_breakpoint() {
         let mut probe = MockProbe::new();
         let mut state = CortexAState::new();
 
@@ -2115,13 +2168,14 @@ mod test {
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
         )
+        .await
         .unwrap();
 
-        armv7a.clear_hw_breakpoint(0).unwrap();
+        armv7a.clear_hw_breakpoint(0).await.unwrap();
     }
 
-    #[test]
-    fn armv7a_read_word_32() {
+    #[pollster::test]
+    async fn armv7a_read_word_32() {
         const MEMORY_VALUE: u32 = 0xBA5EBA11;
         const MEMORY_ADDRESS: u64 = 0x12345678;
 
@@ -2145,13 +2199,17 @@ mod test {
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
         )
+        .await
         .unwrap();
 
-        assert_eq!(MEMORY_VALUE, armv7a.read_word_32(MEMORY_ADDRESS).unwrap());
+        assert_eq!(
+            MEMORY_VALUE,
+            armv7a.read_word_32(MEMORY_ADDRESS).await.unwrap()
+        );
     }
 
-    #[test]
-    fn armv7a_read_word_8() {
+    #[pollster::test]
+    async fn armv7a_read_word_8() {
         const MEMORY_VALUE: u32 = 0xBA5EBA11;
         const MEMORY_ADDRESS: u64 = 0x12345679;
         const MEMORY_WORD_ADDRESS: u64 = 0x12345678;
@@ -2176,8 +2234,9 @@ mod test {
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
         )
+        .await
         .unwrap();
 
-        assert_eq!(0xBA, armv7a.read_word_8(MEMORY_ADDRESS).unwrap());
+        assert_eq!(0xBA, armv7a.read_word_8(MEMORY_ADDRESS).await.unwrap());
     }
 }

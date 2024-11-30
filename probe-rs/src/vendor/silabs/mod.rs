@@ -13,6 +13,7 @@ pub mod sequences;
 #[derive(docsplay::Display)]
 pub struct SiliconLabs;
 
+#[async_trait::async_trait(?Send)]
 impl Vendor for SiliconLabs {
     fn try_create_debug_sequence(&self, chip: &Chip) -> Option<DebugSequence> {
         let sequence = if chip.name.starts_with("EFM32PG2")

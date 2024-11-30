@@ -34,97 +34,103 @@ impl ESP32H2 {
         })
     }
 
-    fn disable_wdts(
+    async fn disable_wdts(
         &self,
-        interface: &mut RiscvCommunicationInterface,
+        interface: &mut RiscvCommunicationInterface<'_>,
     ) -> Result<(), crate::Error> {
         tracing::info!("Disabling ESP32-H2 watchdogs...");
 
         // disable super wdt
-        interface.write_word_32(0x600B1C24, 0x50D83AA1)?; // write protection off
-        let current = interface.read_word_32(0x600B1C20)?;
-        interface.write_word_32(0x600B1C20, current | (1 << 18))?; // set RTC_CNTL_SWD_AUTO_FEED_EN
-        interface.write_word_32(0x600B1C24, 0x0)?; // write protection on
+        interface.write_word_32(0x600B1C24, 0x50D83AA1).await?; // write protection off
+        let current = interface.read_word_32(0x600B1C20).await?;
+        interface
+            .write_word_32(0x600B1C20, current | (1 << 18))
+            .await?; // set RTC_CNTL_SWD_AUTO_FEED_EN
+        interface.write_word_32(0x600B1C24, 0x0).await?; // write protection on
 
         // tg0 wdg
-        interface.write_word_32(0x6000_8064, 0x50D83AA1)?; // write protection off
-        interface.write_word_32(0x6000_8048, 0x0)?;
-        interface.write_word_32(0x6000_8064, 0x0)?; // write protection on
+        interface.write_word_32(0x6000_8064, 0x50D83AA1).await?; // write protection off
+        interface.write_word_32(0x6000_8048, 0x0).await?;
+        interface.write_word_32(0x6000_8064, 0x0).await?; // write protection on
 
         // tg1 wdg
-        interface.write_word_32(0x6000_9064, 0x50D83AA1)?; // write protection off
-        interface.write_word_32(0x6000_9048, 0x0)?;
-        interface.write_word_32(0x6000_9064, 0x0)?; // write protection on
+        interface.write_word_32(0x6000_9064, 0x50D83AA1).await?; // write protection off
+        interface.write_word_32(0x6000_9048, 0x0).await?;
+        interface.write_word_32(0x6000_9064, 0x0).await?; // write protection on
 
         // rtc wdg
-        interface.write_word_32(0x600B_1C1C, 0x50D83AA1)?; // write protection off
-        interface.write_word_32(0x600B_1C00, 0x0)?;
-        interface.write_word_32(0x600B_1C1C, 0x0)?; // write protection on
+        interface.write_word_32(0x600B_1C1C, 0x50D83AA1).await?; // write protection off
+        interface.write_word_32(0x600B_1C00, 0x0).await?;
+        interface.write_word_32(0x600B_1C1C, 0x0).await?; // write protection on
 
         Ok(())
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl RiscvDebugSequence for ESP32H2 {
-    fn on_connect(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), crate::Error> {
-        self.disable_wdts(interface)
+    async fn on_connect(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), crate::Error> {
+        self.disable_wdts(interface).await
     }
 
-    fn on_halt(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), crate::Error> {
-        self.disable_wdts(interface)
+    async fn on_halt(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), crate::Error> {
+        self.disable_wdts(interface).await
     }
 
-    fn detect_flash_size(&self, session: &mut Session) -> Result<Option<usize>, crate::Error> {
-        self.inner.detect_flash_size(session)
-    }
-
-    fn reset_system_and_halt(
+    async fn detect_flash_size(
         &self,
-        interface: &mut RiscvCommunicationInterface,
+        session: &mut Session,
+    ) -> Result<Option<usize>, crate::Error> {
+        self.inner.detect_flash_size(session).await
+    }
+
+    async fn reset_system_and_halt(
+        &self,
+        interface: &mut RiscvCommunicationInterface<'_>,
         timeout: Duration,
     ) -> Result<(), crate::Error> {
-        interface.halt(timeout)?;
+        interface.halt(timeout).await?;
 
         // System reset, ported from OpenOCD.
-        interface.write_dm_register(Sbcs(0x48000))?;
-        interface.write_dm_register(Sbaddress0(0x600b1034))?;
-        interface.write_dm_register(Sbdata0(0x80000000_u32))?;
+        interface.write_dm_register(Sbcs(0x48000)).await?;
+        interface.write_dm_register(Sbaddress0(0x600b1034)).await?;
+        interface.write_dm_register(Sbdata0(0x80000000_u32)).await?;
 
         // clear dmactive to clear sbbusy otherwise debug module gets stuck
-        interface.write_dm_register(Dmcontrol(0))?;
+        interface.write_dm_register(Dmcontrol(0)).await?;
 
-        interface.write_dm_register(Sbcs(0x48000))?;
-        interface.write_dm_register(Sbaddress0(0x600b1038))?;
-        interface.write_dm_register(Sbdata0(0x10000000_u32))?;
+        interface.write_dm_register(Sbcs(0x48000)).await?;
+        interface.write_dm_register(Sbaddress0(0x600b1038)).await?;
+        interface.write_dm_register(Sbdata0(0x10000000_u32)).await?;
 
         // clear dmactive to clear sbbusy otherwise debug module gets stuck
-        interface.write_dm_register(Dmcontrol(0))?;
+        interface.write_dm_register(Dmcontrol(0)).await?;
 
         let mut dmcontrol = Dmcontrol(0);
         dmcontrol.set_dmactive(true);
         dmcontrol.set_resumereq(true);
-        interface.write_dm_register(dmcontrol)?;
+        interface.write_dm_register(dmcontrol).await?;
 
         std::thread::sleep(Duration::from_millis(10));
 
         let mut dmcontrol = Dmcontrol(0);
         dmcontrol.set_dmactive(true);
         dmcontrol.set_ackhavereset(true);
-        interface.write_dm_register(dmcontrol)?;
+        interface.write_dm_register(dmcontrol).await?;
 
-        interface.enter_debug_mode()?;
-        self.on_connect(interface)?;
+        interface.enter_debug_mode().await?;
+        self.on_connect(interface).await?;
 
-        interface.reset_hart_and_halt(timeout)?;
+        interface.reset_hart_and_halt(timeout).await?;
 
         Ok(())
     }
 
-    fn on_unknown_semihosting_command(
+    async fn on_unknown_semihosting_command(
         &self,
         interface: &mut Riscv32,
         details: UnknownCommandDetails,
     ) -> Result<Option<SemihostingCommand>, crate::Error> {
-        EspBreakpointHandler::handle_riscv_idf_semihosting(interface, details)
+        EspBreakpointHandler::handle_riscv_idf_semihosting(interface, details).await
     }
 }

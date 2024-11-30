@@ -16,6 +16,7 @@ pub mod sequences;
 #[derive(docsplay::Display)]
 pub struct TexasInstruments;
 
+#[async_trait::async_trait(?Send)]
 impl Vendor for TexasInstruments {
     fn try_create_debug_sequence(&self, chip: &Chip) -> Option<DebugSequence> {
         let sequence = if chip.name.starts_with("CC13") || chip.name.starts_with("CC26") {

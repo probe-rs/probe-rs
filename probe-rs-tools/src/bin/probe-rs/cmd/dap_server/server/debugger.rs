@@ -910,15 +910,16 @@ mod test {
         }
     }
 
+    #[async_trait::async_trait(?Send)]
     impl ProbeFactory for MockProbeFactory {
-        fn open(
+        async fn open(
             &self,
             _selector: &DebugProbeSelector,
         ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
             todo!()
         }
 
-        fn list_probes(&self) -> Vec<DebugProbeInfo> {
+        async fn list_probes(&self) -> Vec<super::DebugProbeInfo> {
             todo!()
         }
     }
@@ -1266,7 +1267,7 @@ mod test {
             0x12,
             0x23,
             Some("mock_serial".to_owned()),
-            &MockProbeFactory,
+            MockProbeFactory,
             None,
         );
 

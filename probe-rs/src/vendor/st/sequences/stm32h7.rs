@@ -60,7 +60,7 @@ impl Stm32h7 {
     }
 
     /// Configure all debug components on the chip.
-    pub fn enable_debug_components(
+    pub async fn enable_debug_components(
         &self,
         memory: &mut dyn ArmMemoryInterface,
         enable: bool,
@@ -71,7 +71,7 @@ impl Stm32h7 {
             tracing::info!("Disabling STM32H7 debug components");
         }
 
-        let mut control = dbgmcu::Control::read(memory)?;
+        let mut control = dbgmcu::Control::read(memory).await?;
 
         // There are debug components in the D1 and D2 clock domains. This ensures we can access
         // CoreSight components in these power domains at all times.
@@ -89,7 +89,7 @@ impl Stm32h7 {
         control.enable_d2_sleep_debug(enable);
         control.enable_d2_stop_debug(enable);
 
-        control.write(memory)?;
+        control.write(memory).await?;
 
         Ok(())
     }
@@ -126,17 +126,19 @@ mod dbgmcu {
         const ADDRESS: u64 = 0x04;
 
         /// Read the control register from memory.
-        pub fn read(memory: &mut (impl ArmMemoryInterface + ?Sized)) -> Result<Self, ArmError> {
-            let contents = memory.read_word_32(DBGMCU + Self::ADDRESS)?;
+        pub async fn read(
+            memory: &mut (impl ArmMemoryInterface + ?Sized),
+        ) -> Result<Self, ArmError> {
+            let contents = memory.read_word_32(DBGMCU + Self::ADDRESS).await?;
             Ok(Self(contents))
         }
 
         /// Write the control register to memory.
-        pub fn write(
+        pub async fn write(
             &mut self,
             memory: &mut (impl ArmMemoryInterface + ?Sized),
         ) -> Result<(), ArmError> {
-            memory.write_word_32(DBGMCU + Self::ADDRESS, self.0)
+            memory.write_word_32(DBGMCU + Self::ADDRESS, self.0).await
         }
     }
 }
@@ -169,8 +171,9 @@ fn find_trace_funnel(
         })
 }
 
+#[async_trait::async_trait(?Send)]
 impl ArmDebugSequence for Stm32h7 {
-    fn debug_device_unlock(
+    async fn debug_device_unlock(
         &self,
         interface: &mut dyn ArmProbeInterface,
         _default_ap: &FullyQualifiedApAddress,
@@ -179,25 +182,25 @@ impl ArmDebugSequence for Stm32h7 {
         // Power up the debug components through selected AP.
         let ap = &FullyQualifiedApAddress::v1_with_default_dp(self.ap);
 
-        let mut memory = interface.memory_interface(ap)?;
-        self.enable_debug_components(&mut *memory, true)?;
+        let mut memory = interface.memory_interface(ap).await?;
+        self.enable_debug_components(&mut *memory, true).await?;
 
         Ok(())
     }
 
-    fn debug_core_stop(
+    async fn debug_core_stop(
         &self,
         memory: &mut dyn ArmMemoryInterface,
         _core_type: CoreType,
     ) -> Result<(), ArmError> {
         // Power down the debug components through selected AP.
 
-        self.enable_debug_components(&mut *memory, false)?;
+        self.enable_debug_components(&mut *memory, false).await?;
 
         Ok(())
     }
 
-    fn trace_start(
+    async fn trace_start(
         &self,
         interface: &mut dyn ArmProbeInterface,
         components: &[CoresightComponent],
@@ -211,10 +214,10 @@ impl ArmDebugSequence for Stm32h7 {
             interface,
             find_trace_funnel(components, TraceFunnelId::CoreSight)?,
         );
-        cstf.unlock()?;
+        cstf.unlock().await?;
         match sink {
-            TraceSink::Swo(_) => cstf.enable_port(0b00)?,
-            TraceSink::Tpiu(_) | TraceSink::TraceMemory => cstf.enable_port(0b10)?,
+            TraceSink::Swo(_) => cstf.enable_port(0b00).await?,
+            TraceSink::Tpiu(_) | TraceSink::TraceMemory => cstf.enable_port(0b10).await?,
         }
 
         // The SWTF needs to be configured to route traffic to SWO. When not in use, it needs to be
@@ -224,11 +227,11 @@ impl ArmDebugSequence for Stm32h7 {
             interface,
             find_trace_funnel(components, TraceFunnelId::SerialWire)?,
         );
-        swtf.unlock()?;
+        swtf.unlock().await?;
         if matches!(sink, TraceSink::Swo(_)) {
-            swtf.enable_port(0b01)?;
+            swtf.enable_port(0b01).await?;
         } else {
-            swtf.enable_port(0b00)?;
+            swtf.enable_port(0b00).await?;
         }
 
         Ok(())

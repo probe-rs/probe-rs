@@ -33,7 +33,7 @@ impl CC13xxCC26xx {
 ///
 /// The below code writes to the following bit
 /// `AON_PMCTL.RESETCTL.SYSRESET=1`d or its equivalent based on family
-fn reset_chip(chip: &str, probe: &mut dyn ArmMemoryInterface) {
+async fn reset_chip(chip: &str, probe: &mut dyn ArmMemoryInterface) {
     // The CC family of device have a pattern where the 6th character of the device name dictates the family
     // Use this to determine the correct address to write to
     match chip.chars().nth(5).unwrap() {
@@ -41,13 +41,13 @@ fn reset_chip(chip: &str, probe: &mut dyn ArmMemoryInterface) {
         // writing this register will immediately trigger a system reset which causes us to lose the debug interface
         // We also don't need to worry about preserving register state because we will anyway reset.
         '0' => {
-            probe.write_word_32(0x4009_0004, 0x8000_0000).ok();
+            probe.write_word_32(0x4009_0004, 0x8000_0000).await.ok();
         }
         '1' | '2' => {
-            probe.write_word_32(0x4009_0028, 0x8000_0000).ok();
+            probe.write_word_32(0x4009_0028, 0x8000_0000).await.ok();
         }
         '4' => {
-            probe.write_word_32(0x5809_0028, 0x8000_0000).ok();
+            probe.write_word_32(0x5809_0028, 0x8000_0000).await.ok();
         }
         _ => {
             unreachable!(
@@ -58,21 +58,22 @@ fn reset_chip(chip: &str, probe: &mut dyn ArmMemoryInterface) {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl ArmDebugSequence for CC13xxCC26xx {
-    fn reset_system(
+    async fn reset_system(
         &self,
         probe: &mut dyn ArmMemoryInterface,
         core_type: probe_rs_target::CoreType,
         debug_base: Option<u64>,
     ) -> Result<(), ArmError> {
         // Check if the previous code requested a halt before reset
-        let demcr = Demcr(probe.read_word_32(Demcr::get_mmio_address())?);
+        let demcr = Demcr(probe.read_word_32(Demcr::get_mmio_address()).await?);
 
         // Do target specific reset
-        reset_chip(&self.name, probe);
+        reset_chip(&self.name, probe).await;
 
         // Since the system went down, including the debug, we should flush any pending operations
-        probe.flush().ok();
+        probe.flush().await.ok();
 
         // Wait for the system to reset
         std::thread::sleep(Duration::from_millis(1));
@@ -80,10 +81,11 @@ impl ArmDebugSequence for CC13xxCC26xx {
         // Re-initializing the core(s) is on us.
         let ap = probe.fully_qualified_address();
         let interface = probe.get_arm_probe_interface()?;
-        interface.reinitialize()?;
+        interface.reinitialize().await?;
 
         assert!(debug_base.is_none());
-        self.debug_core_start(interface, &ap, core_type, None, None)?;
+        self.debug_core_start(interface, &ap, core_type, None, None)
+            .await?;
 
         if demcr.vc_corereset() {
             // TODO! Find a way to call the armv7m::halt function instead
@@ -92,19 +94,21 @@ impl ArmDebugSequence for CC13xxCC26xx {
             value.set_c_debugen(true);
             value.enable_write();
 
-            probe.write_word_32(Dhcsr::get_mmio_address(), value.into())?;
+            probe
+                .write_word_32(Dhcsr::get_mmio_address(), value.into())
+                .await?;
         }
 
         Ok(())
     }
 
-    fn debug_port_setup(
+    async fn debug_port_setup(
         &self,
         interface: &mut dyn DapProbe,
         _dp: DpAddress,
     ) -> Result<(), ArmError> {
         // Ensure current debug interface is in reset state.
-        interface.swj_sequence(51, 0x0007_FFFF_FFFF_FFFF)?;
+        interface.swj_sequence(51, 0x0007_FFFF_FFFF_FFFF).await?;
 
         match interface.active_protocol() {
             Some(WireProtocol::Jtag) => {
@@ -117,7 +121,7 @@ impl ArmDebugSequence for CC13xxCC26xx {
                 // We avoid the live scan for the following reasons:
                 // 1. Only the ICEPICK is connected at boot so we need to manually the CPU to the scan chain
                 // 2. Entering test logic reset disconects the CPU again
-                interface.configure_jtag(true)?;
+                interface.configure_jtag(true).await?;
             }
             Some(WireProtocol::Swd) => {
                 return Err(ArmDebugSequenceError::SequenceSpecific(

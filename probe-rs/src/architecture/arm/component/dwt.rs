@@ -30,8 +30,8 @@ impl<'a> Dwt<'a> {
     }
 
     /// Logs some info about the DWT component.
-    pub fn info(&mut self) -> Result<(), Error> {
-        let ctrl = Ctrl::load(self.component, self.interface)?;
+    pub async fn info(&mut self) -> Result<(), Error> {
+        let ctrl = Ctrl::load(self.component, self.interface).await?;
 
         tracing::info!("DWT info:");
         tracing::info!("  number of comparators available: {}", ctrl.numcomp());
@@ -44,70 +44,76 @@ impl<'a> Dwt<'a> {
     }
 
     /// Enables the DWT component.
-    pub fn enable(&mut self) -> Result<(), ArmError> {
-        let mut ctrl = Ctrl::load(self.component, self.interface)?;
+    pub async fn enable(&mut self) -> Result<(), ArmError> {
+        let mut ctrl = Ctrl::load(self.component, self.interface).await?;
         ctrl.set_synctap(0x01);
         ctrl.set_cyccntena(true);
-        ctrl.store(self.component, self.interface)
+        ctrl.store(self.component, self.interface).await
     }
 
     /// Enables data tracing on a specific address in memory on a specific DWT unit.
-    pub fn enable_data_trace(&mut self, unit: usize, address: u32) -> Result<(), ArmError> {
-        let mut comp = Comp::load_unit(self.component, self.interface, unit)?;
+    pub async fn enable_data_trace(&mut self, unit: usize, address: u32) -> Result<(), ArmError> {
+        let mut comp = Comp::load_unit(self.component, self.interface, unit).await?;
         comp.set_comp(address);
-        comp.store_unit(self.component, self.interface, unit)?;
+        comp.store_unit(self.component, self.interface, unit)
+            .await?;
 
-        let mut mask = Mask::load_unit(self.component, self.interface, unit)?;
+        let mut mask = Mask::load_unit(self.component, self.interface, unit).await?;
         mask.set_mask(0x0);
-        mask.store_unit(self.component, self.interface, unit)?;
+        mask.store_unit(self.component, self.interface, unit)
+            .await?;
 
-        let mut function = Function::load_unit(self.component, self.interface, unit)?;
+        let mut function = Function::load_unit(self.component, self.interface, unit).await?;
         function.set_datavsize(0x10);
         function.set_emitrange(false);
         function.set_datavmatch(false);
         function.set_cycmatch(false);
         function.set_function(0b11);
 
-        function.store_unit(self.component, self.interface, unit)
+        function
+            .store_unit(self.component, self.interface, unit)
+            .await
     }
 
     /// Disables data tracing on the given unit.
-    pub fn disable_data_trace(&mut self, unit: usize) -> Result<(), ArmError> {
-        let mut function = Function::load_unit(self.component, self.interface, unit)?;
+    pub async fn disable_data_trace(&mut self, unit: usize) -> Result<(), ArmError> {
+        let mut function = Function::load_unit(self.component, self.interface, unit).await?;
         function.set_function(0x0);
-        function.store_unit(self.component, self.interface, unit)
+        function
+            .store_unit(self.component, self.interface, unit)
+            .await
     }
 
     /// Enable exception tracing.
-    pub fn enable_exception_trace(&mut self) -> Result<(), ArmError> {
-        let mut ctrl = Ctrl::load(self.component, self.interface)?;
+    pub async fn enable_exception_trace(&mut self) -> Result<(), ArmError> {
+        let mut ctrl = Ctrl::load(self.component, self.interface).await?;
         ctrl.set_exctrcena(true);
-        ctrl.store(self.component, self.interface)
+        ctrl.store(self.component, self.interface).await
     }
 
     /// Disable exception tracing.
-    pub fn disable_exception_trace(&mut self) -> Result<(), ArmError> {
-        let mut ctrl = Ctrl::load(self.component, self.interface)?;
+    pub async fn disable_exception_trace(&mut self) -> Result<(), ArmError> {
+        let mut ctrl = Ctrl::load(self.component, self.interface).await?;
         ctrl.set_exctrcena(false);
-        ctrl.store(self.component, self.interface)
+        ctrl.store(self.component, self.interface).await
     }
 
     /// Enable PC sample trace output
-    pub fn enable_pc_sampling(&mut self) -> Result<(), ArmError> {
-        let mut ctrl = Ctrl::load(self.component, self.interface)?;
+    pub async fn enable_pc_sampling(&mut self) -> Result<(), ArmError> {
+        let mut ctrl = Ctrl::load(self.component, self.interface).await?;
         ctrl.set_pcsamplena(true);
         ctrl.set_cyctap(true);
         ctrl.set_postpreset(0x3);
-        ctrl.store(self.component, self.interface)
+        ctrl.store(self.component, self.interface).await
     }
 
     /// Disable PC sample trace output
-    pub fn disable_pc_sampling(&mut self) -> Result<(), ArmError> {
-        let mut ctrl = Ctrl::load(self.component, self.interface)?;
+    pub async fn disable_pc_sampling(&mut self) -> Result<(), ArmError> {
+        let mut ctrl = Ctrl::load(self.component, self.interface).await?;
         ctrl.set_pcsamplena(false);
         ctrl.set_cyctap(false);
         ctrl.set_postpreset(0x0);
-        ctrl.store(self.component, self.interface)
+        ctrl.store(self.component, self.interface).await
     }
 
     /// Read the program counter sample register for the PC value.
@@ -123,8 +129,8 @@ impl<'a> Dwt<'a> {
     ///
     /// For more information, see section C1.8.5 of the ARMv7-M architecture
     /// reference manual.
-    pub fn read_pcsr(&mut self) -> Result<u32, ArmError> {
-        Ok(Pcsr::load(self.component, self.interface)?.eiasample())
+    pub async fn read_pcsr(&mut self) -> Result<u32, ArmError> {
+        Ok(Pcsr::load(self.component, self.interface).await?.eiasample())
     }
 }
 

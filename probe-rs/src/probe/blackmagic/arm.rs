@@ -62,47 +62,52 @@ impl UninitializedBlackMagicArmProbe {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl UninitializedArmProbe for UninitializedBlackMagicArmProbe {
-    fn initialize(
+    async fn initialize(
         mut self: Box<Self>,
         sequence: Arc<dyn ArmDebugSequence>,
         dp: DpAddress,
     ) -> Result<Box<dyn ArmProbeInterface>, (Box<dyn UninitializedArmProbe>, ProbeRsError)> {
         // Switch to the correct mode
-        if let Err(err) = tracing::debug_span!("debug_port_setup")
-            .in_scope(|| sequence.debug_port_setup(&mut *self.probe, dp))
         {
-            return Err((self, err.into()));
+            let span = tracing::debug_span!("debug_port_setup");
+            let _enter = span.enter();
+            if let Err(err) = sequence.debug_port_setup(&mut *self.probe, dp).await {
+                return Err((self, err.into()));
+            }
         }
 
         let interface = BlackMagicProbeArmDebug::new(self.probe, dp, sequence)
+            .await
             .map_err(|(s, e)| (s as Box<_>, ProbeRsError::from(e)))?;
 
         Ok(Box::new(interface))
     }
 
-    fn close(self: Box<Self>) -> Probe {
+    async fn close(self: Box<Self>) -> Probe {
         Probe::from_attached_probe(self.probe)
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl SwdSequence for UninitializedBlackMagicArmProbe {
-    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
-        self.probe.swj_sequence(bit_len, bits)
+    async fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
+        self.probe.swj_sequence(bit_len, bits).await
     }
 
-    fn swj_pins(
+    async fn swj_pins(
         &mut self,
         pin_out: u32,
         pin_select: u32,
         pin_wait: u32,
     ) -> Result<u32, DebugProbeError> {
-        self.probe.swj_pins(pin_out, pin_select, pin_wait)
+        self.probe.swj_pins(pin_out, pin_select, pin_wait).await
     }
 }
 
 impl BlackMagicProbeArmDebug {
-    fn new(
+    async fn new(
         probe: Box<BlackMagicProbe>,
         dp: DpAddress,
         sequence: Arc<dyn ArmDebugSequence>,
@@ -116,7 +121,7 @@ impl BlackMagicProbeArmDebug {
             use_overrun_detect: true,
         };
 
-        if let Err(e) = interface.select_dp(dp) {
+        if let Err(e) = interface.select_dp(dp).await {
             return Err((
                 Box::new(UninitializedBlackMagicArmProbe {
                     probe: interface.probe,
@@ -126,6 +131,7 @@ impl BlackMagicProbeArmDebug {
         }
 
         interface.access_ports = valid_access_ports(&mut interface, dp)
+            .await
             .into_iter()
             .inspect(|addr| tracing::debug!("AP {:#x?}", addr))
             .collect();
@@ -136,11 +142,11 @@ impl BlackMagicProbeArmDebug {
     /// `DebugPortStart` function from the [ARM SVD Debug Description].
     ///
     /// [ARM SVD Debug Description]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/debug_description.html#debugPortStart
-    fn debug_port_start(&mut self, dp: DpAddress) -> Result<(), ArmError> {
-        self.sequence.clone().debug_port_start(self, dp)
+    async fn debug_port_start(&mut self, dp: DpAddress) -> Result<(), ArmError> {
+        self.sequence.clone().debug_port_start(self, dp).await
     }
 
-    fn select_dp(&mut self, dp: DpAddress) -> Result<&mut DpState, ArmError> {
+    async fn select_dp(&mut self, dp: DpAddress) -> Result<&mut DpState, ArmError> {
         let mut switched_dp = false;
 
         let sequence = self.sequence.clone();
@@ -150,14 +156,14 @@ impl BlackMagicProbeArmDebug {
 
             switched_dp = true;
 
-            self.probe.raw_flush()?;
+            self.probe.raw_flush().await?;
 
             // Try to switch to the new DP.
-            if let Err(e) = sequence.debug_port_connect(&mut *self.probe, dp) {
+            if let Err(e) = sequence.debug_port_connect(&mut *self.probe, dp).await {
                 tracing::warn!("Failed to switch to DP {:x?}: {}", dp, e);
 
                 // Try the more involved debug_port_setup sequence, which also handles dormant mode.
-                sequence.debug_port_setup(&mut *self.probe, dp)?;
+                sequence.debug_port_setup(&mut *self.probe, dp).await?;
             }
 
             self.current_dp = dp;
@@ -170,21 +176,21 @@ impl BlackMagicProbeArmDebug {
             entry.insert(DpState::new());
 
             let start_span = tracing::debug_span!("debug_port_start").entered();
-            sequence.debug_port_start(self, dp)?;
+            sequence.debug_port_start(self, dp).await?;
             drop(start_span);
 
             // Make sure we enable the overrun detect mode when requested.
             // For "bit-banging" probes, such as JLink or FTDI, we rely on it for good, stable communication.
             // This is required as the default sequence (and most special implementations) does not do this.
-            let mut ctrl_reg: Ctrl = self.read_dp_register(dp)?;
+            let mut ctrl_reg: Ctrl = self.read_dp_register(dp).await?;
             if ctrl_reg.orun_detect() != self.use_overrun_detect {
                 tracing::debug!("Setting orun_detect: {}", self.use_overrun_detect);
                 // only write if there’s a need for it.
                 ctrl_reg.set_orun_detect(self.use_overrun_detect);
-                self.write_dp_register(dp, ctrl_reg)?;
+                self.write_dp_register(dp, ctrl_reg).await?;
             }
 
-            let idr: DebugPortId = self.read_dp_register::<DPIDR>(dp)?.into();
+            let idr: DebugPortId = self.read_dp_register::<DPIDR>(dp).await?.into();
             tracing::info!(
                 "Debug Port version: {} MinDP: {:?}",
                 idr.version,
@@ -203,7 +209,7 @@ impl BlackMagicProbeArmDebug {
             let sequence = self.sequence.clone();
 
             let start_span = tracing::debug_span!("debug_port_start").entered();
-            sequence.debug_port_start(self, dp)?;
+            sequence.debug_port_start(self, dp).await?;
             drop(start_span);
         }
 
@@ -211,12 +217,12 @@ impl BlackMagicProbeArmDebug {
         Ok(self.dps.get_mut(&dp).unwrap())
     }
 
-    fn select_dp_and_dp_bank(
+    async fn select_dp_and_dp_bank(
         &mut self,
         dp: DpAddress,
         dp_register_address: &DpRegisterAddress,
     ) -> Result<(), ArmError> {
-        let dp_state = self.select_dp(dp)?;
+        let dp_state = self.select_dp(dp).await?;
 
         // DP register addresses are 4 bank bits, 4 address bits. Lowest 2 address bits are
         // always 0, so this leaves only 4 possible addresses: 0x0, 0x4, 0x8, 0xC.
@@ -240,15 +246,15 @@ impl BlackMagicProbeArmDebug {
             tracing::debug!("Changing DP_BANK_SEL to {:x?}", dp_state.current_select);
 
             match dp_state.current_select {
-                SelectCache::DPv1(select) => self.write_dp_register(dp, select)?,
-                SelectCache::DPv3(select, _) => self.write_dp_register(dp, select)?,
+                SelectCache::DPv1(select) => self.write_dp_register(dp, select).await?,
+                SelectCache::DPv3(select, _) => self.write_dp_register(dp, select).await?,
             }
         }
 
         Ok(())
     }
 
-    fn select_ap(&mut self, ap: &FullyQualifiedApAddress) -> Result<u8, ArmError> {
+    async fn select_ap(&mut self, ap: &FullyQualifiedApAddress) -> Result<u8, ArmError> {
         let apsel = match ap.ap() {
             crate::architecture::arm::ApAddress::V1(val) => *val,
             crate::architecture::arm::ApAddress::V2(_) => {
@@ -257,27 +263,31 @@ impl BlackMagicProbeArmDebug {
                 ));
             }
         };
-        self.select_dp(ap.dp())?;
+        self.select_dp(ap.dp()).await?;
         Ok(apsel)
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl ArmProbeInterface for BlackMagicProbeArmDebug {
-    fn access_ports(
+    async fn access_ports(
         &mut self,
         dp: DpAddress,
     ) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError> {
-        let state = self.select_dp(dp)?;
+        let state = self.select_dp(dp).await?;
         match state.debug_port_version {
             DebugPortVersion::DPv0 | DebugPortVersion::DPv1 | DebugPortVersion::DPv2 => {
-                Ok(ap::v1::valid_access_ports(self, dp).into_iter().collect())
+                Ok(ap::v1::valid_access_ports(self, dp)
+                    .await
+                    .into_iter()
+                    .collect())
             }
-            DebugPortVersion::DPv3 => ap::v2::enumerate_access_ports(self, dp),
+            DebugPortVersion::DPv3 => ap::v2::enumerate_access_ports(self, dp).await,
             DebugPortVersion::Unsupported(_) => unreachable!(),
         }
     }
 
-    fn close(self: Box<Self>) -> Probe {
+    async fn close(self: Box<Self>) -> Probe {
         Probe::from_attached_probe(self.probe)
     }
 
@@ -285,16 +295,16 @@ impl ArmProbeInterface for BlackMagicProbeArmDebug {
         DpAddress::Default
     }
 
-    fn memory_interface(
+    async fn memory_interface(
         &mut self,
         access_port: &FullyQualifiedApAddress,
     ) -> Result<Box<dyn crate::architecture::arm::memory::ArmMemoryInterface + '_>, ArmError> {
-        let mut current_ap = MemoryAp::new(self, access_port)?;
+        let mut current_ap = MemoryAp::new(self, access_port).await?;
 
         // Construct a CSW to pass to the AP when accessing memory.
         let csw: CSW = match &mut current_ap {
             MemoryAp::AmbaAhb3(ap) => {
-                let mut csw = ap.status(self)?;
+                let mut csw = ap.status(self).await?;
 
                 csw.DbgSwEnable = true;
                 csw.AddrInc = AddressIncrement::Off;
@@ -314,7 +324,7 @@ impl ArmProbeInterface for BlackMagicProbeArmDebug {
                 CSW::try_from(Into::<u32>::into(csw))?
             }
             MemoryAp::AmbaAhb5(ap) => {
-                let mut csw = ap.status(self)?;
+                let mut csw = ap.status(self).await?;
 
                 csw.DbgSwEnable = true;
                 csw.AddrInc = AddressIncrement::Off;
@@ -330,7 +340,7 @@ impl ArmProbeInterface for BlackMagicProbeArmDebug {
                 CSW::try_from(Into::<u32>::into(csw))?
             }
             MemoryAp::AmbaAhb5Hprot(ap) => {
-                let mut csw = ap.status(self)?;
+                let mut csw = ap.status(self).await?;
 
                 csw.DbgSwEnable = true;
                 csw.AddrInc = AddressIncrement::Off;
@@ -346,7 +356,7 @@ impl ArmProbeInterface for BlackMagicProbeArmDebug {
                 CSW::try_from(Into::<u32>::into(csw))?
             }
             MemoryAp::AmbaApb2Apb3(ap) => {
-                let mut csw = ap.status(self)?;
+                let mut csw = ap.status(self).await?;
 
                 csw.DbgSwEnable = true;
                 csw.AddrInc = AddressIncrement::Off;
@@ -355,7 +365,7 @@ impl ArmProbeInterface for BlackMagicProbeArmDebug {
                 CSW::try_from(Into::<u32>::into(csw))?
             }
             MemoryAp::AmbaApb4Apb5(ap) => {
-                let mut csw = ap.status(self)?;
+                let mut csw = ap.status(self).await?;
 
                 csw.DbgSwEnable = true;
                 csw.AddrInc = AddressIncrement::Off;
@@ -368,7 +378,7 @@ impl ArmProbeInterface for BlackMagicProbeArmDebug {
                 CSW::try_from(Into::<u32>::into(csw))?
             }
             MemoryAp::AmbaAxi3Axi4(ap) => {
-                let mut csw = ap.status(self)?;
+                let mut csw = ap.status(self).await?;
 
                 csw.DbgSwEnable = true;
                 csw.AddrInc = AddressIncrement::Off;
@@ -383,7 +393,7 @@ impl ArmProbeInterface for BlackMagicProbeArmDebug {
                 CSW::try_from(Into::<u32>::into(csw))?
             }
             MemoryAp::AmbaAxi5(ap) => {
-                let mut csw = ap.status(self)?;
+                let mut csw = ap.status(self).await?;
 
                 csw.DbgSwEnable = true;
                 csw.AddrInc = AddressIncrement::Off;
@@ -409,23 +419,24 @@ impl ArmProbeInterface for BlackMagicProbeArmDebug {
         }) as _)
     }
 
-    fn reinitialize(&mut self) -> Result<(), ArmError> {
+    async fn reinitialize(&mut self) -> Result<(), ArmError> {
         let sequence = self.sequence.clone();
         let dp = self.current_debug_port();
 
         // Switch to the correct mode
-        sequence.debug_port_setup(&mut *self.probe, dp)?;
+        sequence.debug_port_setup(&mut *self.probe, dp).await?;
 
-        if let Err(e) = sequence.debug_port_connect(&mut *self.probe, dp) {
+        if let Err(e) = sequence.debug_port_connect(&mut *self.probe, dp).await {
             tracing::warn!("failed to switch to DP {:x?}: {}", dp, e);
 
             // Try the more involved debug_port_setup sequence, which also handles dormant mode.
-            sequence.debug_port_setup(&mut *self.probe, dp)?;
+            sequence.debug_port_setup(&mut *self.probe, dp).await?;
         }
 
-        self.debug_port_start(dp)?;
+        self.debug_port_start(dp).await?;
 
         self.access_ports = valid_access_ports(self, DpAddress::Default)
+            .await
             .into_iter()
             .inspect(|addr| tracing::debug!("AP {:#x?}", addr))
             .collect();
@@ -434,45 +445,51 @@ impl ArmProbeInterface for BlackMagicProbeArmDebug {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl SwoAccess for BlackMagicProbeArmDebug {
-    fn enable_swo(
+    async fn enable_swo(
         &mut self,
         _config: &crate::architecture::arm::SwoConfig,
     ) -> Result<(), ArmError> {
         Err(ArmError::NotImplemented("swo not implemented"))
     }
 
-    fn disable_swo(&mut self) -> Result<(), ArmError> {
+    async fn disable_swo(&mut self) -> Result<(), ArmError> {
         Err(ArmError::NotImplemented("swo not implemented"))
     }
 
-    fn read_swo_timeout(&mut self, _timeout: std::time::Duration) -> Result<Vec<u8>, ArmError> {
+    async fn read_swo_timeout(
+        &mut self,
+        _timeout: std::time::Duration,
+    ) -> Result<Vec<u8>, ArmError> {
         Err(ArmError::NotImplemented("swo not implemented"))
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl SwdSequence for BlackMagicProbeArmDebug {
-    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
-        self.probe.swj_sequence(bit_len, bits)
+    async fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
+        self.probe.swj_sequence(bit_len, bits).await
     }
 
-    fn swj_pins(
+    async fn swj_pins(
         &mut self,
         pin_out: u32,
         pin_select: u32,
         pin_wait: u32,
     ) -> Result<u32, DebugProbeError> {
-        self.probe.swj_pins(pin_out, pin_select, pin_wait)
+        self.probe.swj_pins(pin_out, pin_select, pin_wait).await
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl DapAccess for BlackMagicProbeArmDebug {
-    fn read_raw_dp_register(
+    async fn read_raw_dp_register(
         &mut self,
         dp: DpAddress,
         address: DpRegisterAddress,
     ) -> Result<u32, ArmError> {
-        self.select_dp_and_dp_bank(dp, &address)?;
+        self.select_dp_and_dp_bank(dp, &address).await?;
         let index = 0;
         let command = match self.probe.remote_protocol {
             ProtocolVersion::V0 => {
@@ -505,13 +522,13 @@ impl DapAccess for BlackMagicProbeArmDebug {
         ))
     }
 
-    fn write_raw_dp_register(
+    async fn write_raw_dp_register(
         &mut self,
         dp: DpAddress,
         address: DpRegisterAddress,
         value: u32,
     ) -> Result<(), ArmError> {
-        self.select_dp_and_dp_bank(dp, &address)?;
+        self.select_dp_and_dp_bank(dp, &address).await?;
         let index = 0;
         let command = match self.probe.remote_protocol {
             ProtocolVersion::V0 => {
@@ -554,7 +571,7 @@ impl DapAccess for BlackMagicProbeArmDebug {
         }
     }
 
-    fn read_raw_ap_register(
+    async fn read_raw_ap_register(
         &mut self,
         ap: &FullyQualifiedApAddress,
         addr: u64,
@@ -567,7 +584,7 @@ impl DapAccess for BlackMagicProbeArmDebug {
         }
         let index = ((addr >> 8) & 0xFF) as u8;
         let addr = (addr & 0xFF) as u8;
-        let apsel = self.select_ap(ap)?;
+        let apsel = self.select_ap(ap).await?;
 
         let command = match self.probe.remote_protocol {
             ProtocolVersion::V0 => {
@@ -597,7 +614,7 @@ impl DapAccess for BlackMagicProbeArmDebug {
         Ok(result)
     }
 
-    fn write_raw_ap_register(
+    async fn write_raw_ap_register(
         &mut self,
         ap: &FullyQualifiedApAddress,
         addr: u64,
@@ -612,7 +629,7 @@ impl DapAccess for BlackMagicProbeArmDebug {
         let index = ((addr >> 8) & 0xFF) as u8;
         let addr = (addr & 0xFF) as u8;
 
-        let apsel = self.select_ap(ap)?;
+        let apsel = self.select_ap(ap).await?;
         let command = match self.probe.remote_protocol {
             ProtocolVersion::V0 => {
                 return Err(ArmError::Probe(
@@ -660,13 +677,14 @@ impl DapAccess for BlackMagicProbeArmDebug {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl ArmMemoryInterface for BlackMagicProbeMemoryInterface<'_> {
     fn fully_qualified_address(&self) -> FullyQualifiedApAddress {
         self.current_ap.ap_address().clone()
     }
 
-    fn base_address(&mut self) -> Result<u64, ArmError> {
-        self.current_ap.base_address(self.probe)
+    async fn base_address(&mut self) -> Result<u64, ArmError> {
+        self.current_ap.base_address(self.probe).await
     }
 
     fn get_swd_sequence(&mut self) -> Result<&mut dyn SwdSequence, DebugProbeError> {
@@ -681,7 +699,7 @@ impl ArmMemoryInterface for BlackMagicProbeMemoryInterface<'_> {
         Ok(self.probe)
     }
 
-    fn generic_status(&mut self) -> Result<crate::architecture::arm::ap::CSW, ArmError> {
+    async fn generic_status(&mut self) -> Result<crate::architecture::arm::ap::CSW, ArmError> {
         let csw = CSW::try_from(self.csw)
             .map_err(|e| ArmError::DebugPort(DebugPortError::RegisterParse(e)))?;
 
@@ -689,18 +707,19 @@ impl ArmMemoryInterface for BlackMagicProbeMemoryInterface<'_> {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl SwdSequence for BlackMagicProbeMemoryInterface<'_> {
-    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
-        self.probe.swj_sequence(bit_len, bits)
+    async fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
+        self.probe.swj_sequence(bit_len, bits).await
     }
 
-    fn swj_pins(
+    async fn swj_pins(
         &mut self,
         pin_out: u32,
         pin_select: u32,
         pin_wait: u32,
     ) -> Result<u32, DebugProbeError> {
-        self.probe.swj_pins(pin_out, pin_select, pin_wait)
+        self.probe.swj_pins(pin_out, pin_select, pin_wait).await
     }
 }
 
@@ -854,48 +873,49 @@ impl BlackMagicProbeMemoryInterface<'_> {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl MemoryInterface<ArmError> for BlackMagicProbeMemoryInterface<'_> {
-    fn supports_native_64bit_access(&mut self) -> bool {
+    async fn supports_native_64bit_access(&mut self) -> bool {
         self.probe.probe.remote_protocol == ProtocolVersion::V4
     }
 
-    fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), ArmError> {
+    async fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), ArmError> {
         self.read(address, data.as_mut_bytes())
     }
 
-    fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError> {
+    async fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError> {
         self.read(address, data.as_mut_bytes())
     }
 
-    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), ArmError> {
+    async fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), ArmError> {
         self.read(address, data.as_mut_bytes())
     }
 
-    fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError> {
+    async fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError> {
         self.read(address, data.as_mut_bytes())
     }
 
-    fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), ArmError> {
+    async fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), ArmError> {
         self.write(Align::U64, address, data.as_bytes())
     }
 
-    fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), ArmError> {
+    async fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), ArmError> {
         self.write(Align::U32, address, data.as_bytes())
     }
 
-    fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), ArmError> {
+    async fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), ArmError> {
         self.write(Align::U16, address, data.as_bytes())
     }
 
-    fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), ArmError> {
+    async fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), ArmError> {
         self.write(Align::U8, address, data.as_bytes())
     }
 
-    fn supports_8bit_transfers(&self) -> Result<bool, ArmError> {
+    async fn supports_8bit_transfers(&self) -> Result<bool, ArmError> {
         Ok(true)
     }
 
-    fn flush(&mut self) -> Result<(), ArmError> {
+    async fn flush(&mut self) -> Result<(), ArmError> {
         Ok(())
     }
 }

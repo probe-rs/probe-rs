@@ -8,7 +8,8 @@ use crate::{
     semihosting::SemihostingCommand,
     semihosting::decode_semihosting_syscall,
 };
-use std::time::{Duration, Instant};
+use std::time::Duration;
+use web_time::Instant;
 
 memory_mapped_bitfield_register! {
     pub struct Vtor(u32);
@@ -152,7 +153,7 @@ impl IdPfr1 {
     }
 }
 
-pub(crate) fn read_core_reg(
+pub(crate) async fn read_core_reg(
     memory: &mut dyn ArmMemoryInterface,
     addr: RegisterId,
 ) -> Result<u32, ArmError> {
@@ -161,30 +162,36 @@ pub(crate) fn read_core_reg(
     dcrsr_val.set_regwnr(false); // Perform a read.
     dcrsr_val.set_regsel(addr.into()); // The address of the register to read.
 
-    memory.write_word_32(Dcrsr::get_mmio_address(), dcrsr_val.into())?;
+    memory
+        .write_word_32(Dcrsr::get_mmio_address(), dcrsr_val.into())
+        .await?;
 
-    wait_for_core_register_transfer(memory, Duration::from_millis(100))?;
+    wait_for_core_register_transfer(memory, Duration::from_millis(100)).await?;
 
-    let value = memory.read_word_32(Dcrdr::get_mmio_address())?;
+    let value = memory.read_word_32(Dcrdr::get_mmio_address()).await?;
 
     Ok(value)
 }
 
-pub(crate) fn write_core_reg(
+pub(crate) async fn write_core_reg(
     memory: &mut dyn ArmMemoryInterface,
     addr: RegisterId,
     value: u32,
 ) -> Result<(), ArmError> {
-    memory.write_word_32(Dcrdr::get_mmio_address(), value)?;
+    memory
+        .write_word_32(Dcrdr::get_mmio_address(), value)
+        .await?;
 
     // write the DCRSR value to select the register we want to write.
     let mut dcrsr_val = Dcrsr(0);
     dcrsr_val.set_regwnr(true); // Perform a write.
     dcrsr_val.set_regsel(addr.into()); // The address of the register to write.
 
-    memory.write_word_32(Dcrsr::get_mmio_address(), dcrsr_val.into())?;
+    memory
+        .write_word_32(Dcrsr::get_mmio_address(), dcrsr_val.into())
+        .await?;
 
-    wait_for_core_register_transfer(memory, Duration::from_millis(100))?;
+    wait_for_core_register_transfer(memory, Duration::from_millis(100)).await?;
 
     Ok(())
 }
@@ -192,7 +199,7 @@ pub(crate) fn write_core_reg(
 /// Check if the current breakpoint is a semihosting call.
 ///
 /// Call this if you get some kind of breakpoint. Works on ARMv6-M, ARMv7-M and ARMv8-M.
-pub(crate) fn check_for_semihosting(
+pub(crate) async fn check_for_semihosting(
     cached_command: Option<SemihostingCommand>,
     core: &mut dyn CoreInterface,
 ) -> Result<Option<SemihostingCommand>, Error> {
@@ -209,10 +216,13 @@ pub(crate) fn check_for_semihosting(
         return Ok(Some(command));
     }
 
-    let pc: u32 = core.read_core_reg(core.program_counter().id)?.try_into()?;
+    let pc: u32 = core
+        .read_core_reg(core.program_counter().id)
+        .await?
+        .try_into()?;
 
     let mut actual_instruction = [0u8; 2];
-    core.read_8(pc as u64, &mut actual_instruction)?;
+    core.read_8(pc as u64, &mut actual_instruction).await?;
     let actual_instruction = actual_instruction.as_slice();
 
     tracing::debug!(
@@ -222,7 +232,7 @@ pub(crate) fn check_for_semihosting(
     );
 
     let command = if TRAP_INSTRUCTION == actual_instruction {
-        Some(decode_semihosting_syscall(core)?)
+        Some(decode_semihosting_syscall(core).await?)
     } else {
         None
     };
@@ -230,7 +240,7 @@ pub(crate) fn check_for_semihosting(
     Ok(command)
 }
 
-fn wait_for_core_register_transfer(
+async fn wait_for_core_register_transfer(
     memory: &mut dyn ArmMemoryInterface,
     timeout: Duration,
 ) -> Result<(), ArmError> {
@@ -239,7 +249,7 @@ fn wait_for_core_register_transfer(
     let start = Instant::now();
 
     while start.elapsed() < timeout {
-        let dhcsr_val = Dhcsr(memory.read_word_32(Dhcsr::get_mmio_address())?);
+        let dhcsr_val = Dhcsr(memory.read_word_32(Dhcsr::get_mmio_address()).await?);
 
         if dhcsr_val.s_regrdy() {
             return Ok(());

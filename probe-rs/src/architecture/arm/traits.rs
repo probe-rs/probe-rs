@@ -212,11 +212,12 @@ impl FullyQualifiedApAddress {
 ///
 /// Almost everything is the responsibility of the caller. For example, the caller must
 /// handle bank switching and AP selection.
+#[async_trait::async_trait(?Send)]
 pub trait RawDapAccess {
     /// Read a DAP register.
     ///
     /// Only the lowest 4 bits of the address are used. Bank switching is the caller's responsibility.
-    fn raw_read_register(&mut self, address: RegisterAddress) -> Result<u32, ArmError>;
+    async fn raw_read_register(&mut self, address: RegisterAddress) -> Result<u32, ArmError>;
 
     /// Read multiple values from the same DAP register.
     ///
@@ -224,13 +225,13 @@ pub trait RawDapAccess {
     /// falls back to the `read_register` function.
     ///
     /// Only the lowest 4 bits of the address are used. Bank switching is the caller's responsibility.
-    fn raw_read_block(
+    async fn raw_read_block(
         &mut self,
         address: RegisterAddress,
         values: &mut [u32],
     ) -> Result<(), ArmError> {
         for val in values {
-            *val = self.raw_read_register(address)?;
+            *val = self.raw_read_register(address).await?;
         }
 
         Ok(())
@@ -239,7 +240,11 @@ pub trait RawDapAccess {
     /// Write a value to a DAP register.
     ///
     /// Only the lowest 4 bits of the address are used. Bank switching is the caller's responsibility.
-    fn raw_write_register(&mut self, address: RegisterAddress, value: u32) -> Result<(), ArmError>;
+    async fn raw_write_register(
+        &mut self,
+        address: RegisterAddress,
+        value: u32,
+    ) -> Result<(), ArmError>;
 
     /// Write multiple values to the same DAP register.
     ///
@@ -247,13 +252,13 @@ pub trait RawDapAccess {
     /// falls back to the `write_register` function.
     ///
     /// Only bits 2 and 3 of the address are used. Bank switching is the caller's responsibility.
-    fn raw_write_block(
+    async fn raw_write_block(
         &mut self,
         address: RegisterAddress,
         values: &[u32],
     ) -> Result<(), ArmError> {
         for val in values {
-            self.raw_write_register(address, *val)?;
+            self.raw_write_register(address, *val).await?;
         }
 
         Ok(())
@@ -263,12 +268,12 @@ pub trait RawDapAccess {
     ///
     /// By default, this does nothing -- but in probes that implement write
     /// batching, this needs to flush any pending writes.
-    fn raw_flush(&mut self) -> Result<(), ArmError> {
+    async fn raw_flush(&mut self) -> Result<(), ArmError> {
         Ok(())
     }
 
     /// Configures the probe for JTAG use (specifying IR lengths of each DAP).
-    fn configure_jtag(&mut self, _skip_scan: bool) -> Result<(), DebugProbeError> {
+    async fn configure_jtag(&mut self, _skip_scan: bool) -> Result<(), DebugProbeError> {
         Ok(())
     }
 
@@ -276,13 +281,18 @@ pub trait RawDapAccess {
     ///
     /// This can only be used for output, and should be used to generate
     /// the initial reset sequence, for example.
-    fn jtag_sequence(&mut self, cycles: u8, tms: bool, tdi: u64) -> Result<(), DebugProbeError>;
+    async fn jtag_sequence(
+        &mut self,
+        cycles: u8,
+        tms: bool,
+        tdi: u64,
+    ) -> Result<(), DebugProbeError>;
 
     /// Send a specific output sequence over JTAG or SWD.
     ///
     /// This can only be used for output, and should be used to generate
     /// the initial reset sequence, for example.
-    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError>;
+    async fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError>;
 
     /// Set the state of debugger output pins directly.
     ///
@@ -294,7 +304,7 @@ pub trait RawDapAccess {
     /// Bit 3: TDO
     /// Bit 5: nTRST
     /// Bit 7: nRESET
-    fn swj_pins(
+    async fn swj_pins(
         &mut self,
         pin_out: u32,
         pin_select: u32,
@@ -305,7 +315,7 @@ pub trait RawDapAccess {
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe>;
 
     /// Inform the probe of the [`CoreStatus`] of the chip attached to the probe.
-    fn core_status_notification(&mut self, state: CoreStatus) -> Result<(), DebugProbeError>;
+    async fn core_status_notification(&mut self, state: CoreStatus) -> Result<(), DebugProbeError>;
 }
 
 /// High-level DAP register access.
@@ -313,6 +323,7 @@ pub trait RawDapAccess {
 /// Operations on this trait perform logical register reads/writes. Implementations
 /// are responsible for bank switching and AP selection, so one method call can result
 /// in multiple transactions on the wire, if necessary.
+#[async_trait::async_trait(?Send)]
 pub trait DapAccess {
     /// Read a Debug Port register.
     ///
@@ -322,7 +333,7 @@ pub trait DapAccess {
     /// If the device uses multiple debug ports, this will switch the active debug port if necessary.
     /// In case this happens, all queued operations will be performed, and returned errors can be from
     /// these operations as well.
-    fn read_raw_dp_register(
+    async fn read_raw_dp_register(
         &mut self,
         dp: DpAddress,
         addr: DpRegisterAddress,
@@ -336,7 +347,7 @@ pub trait DapAccess {
     /// If the device uses multiple debug ports, this will switch the active debug port if necessary.
     /// In case this happens, all queued operations will be performed, and returned errors can be from
     /// these operations as well.
-    fn write_raw_dp_register(
+    async fn write_raw_dp_register(
         &mut self,
         dp: DpAddress,
         addr: DpRegisterAddress,
@@ -350,7 +361,7 @@ pub trait DapAccess {
     /// * For APv2, the address is a register memory address within the AP memory space.
     /// * For APv1, the address is an 8-bit integer, where the highest 4 bits are interpreted as
     ///   the bank number, and implementations do bank switching if necessary.
-    fn read_raw_ap_register(
+    async fn read_raw_ap_register(
         &mut self,
         ap: &FullyQualifiedApAddress,
         addr: u64,
@@ -366,14 +377,14 @@ pub trait DapAccess {
     /// * For APv2, the address is a register memory address within the AP memory space.
     /// * For APv1, the address is an 8-bit integer, where the highest 4 bits are interpreted as
     ///   the bank number, and implementations do bank switching if necessary.
-    fn read_raw_ap_register_repeated(
+    async fn read_raw_ap_register_repeated(
         &mut self,
         ap: &FullyQualifiedApAddress,
         addr: u64,
         values: &mut [u32],
     ) -> Result<(), ArmError> {
         for val in values {
-            *val = self.read_raw_ap_register(ap, addr)?;
+            *val = self.read_raw_ap_register(ap, addr).await?;
         }
         Ok(())
     }
@@ -385,7 +396,7 @@ pub trait DapAccess {
     /// * For APv2, the address is a register memory address within the AP memory space.
     /// * For APv1, the address is an 8-bit integer, where the highest 4 bits are interpreted as
     ///   the bank number, and implementations do bank switching if necessary.
-    fn write_raw_ap_register(
+    async fn write_raw_ap_register(
         &mut self,
         ap: &FullyQualifiedApAddress,
         addr: u64,
@@ -402,14 +413,14 @@ pub trait DapAccess {
     /// * For APv2, the address is a register memory address within the AP memory space.
     /// * For APv1, the address is an 8-bit integer, where the highest 4 bits are interpreted as
     ///   the bank number, and implementations do bank switching if necessary.
-    fn write_raw_ap_register_repeated(
+    async fn write_raw_ap_register_repeated(
         &mut self,
         ap: &FullyQualifiedApAddress,
         addr: u64,
         values: &[u32],
     ) -> Result<(), ArmError> {
         for val in values {
-            self.write_raw_ap_register(ap, addr, *val)?;
+            self.write_raw_ap_register(ap, addr, *val).await?;
         }
         Ok(())
     }
@@ -420,7 +431,7 @@ pub trait DapAccess {
     /// to assure that any such batched writes have in fact been issued, `flush`
     /// can be called.  Takes no arguments, but may return failure if a batched
     /// operation fails.
-    fn flush(&mut self) -> Result<(), ArmError> {
+    async fn flush(&mut self) -> Result<(), ArmError> {
         Ok(())
     }
 

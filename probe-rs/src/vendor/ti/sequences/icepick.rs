@@ -115,21 +115,21 @@ impl<'a> Icepick<'a> {
     /// <https://www.ti.com/lit/ug/swcu185f/swcu185f.pdf>
     ///
     /// This function assumes that the JTAG state machine is in the Run-Test/Idle state
-    fn zero_bit_scan(&mut self) -> Result<(), ArmError> {
+    async fn zero_bit_scan(&mut self) -> Result<(), ArmError> {
         // Enter DRSELECT state
-        self.interface.jtag_sequence(1, true, 0x01)?;
+        self.interface.jtag_sequence(1, true, 0x01).await?;
         // Enter DRCAPTURE state
-        self.interface.jtag_sequence(1, false, 0x01)?;
+        self.interface.jtag_sequence(1, false, 0x01).await?;
         // Enter DREXIT1 state
-        self.interface.jtag_sequence(1, true, 0x01)?;
+        self.interface.jtag_sequence(1, true, 0x01).await?;
         // Enter DRPAUSE state
-        self.interface.jtag_sequence(1, false, 0x01)?;
+        self.interface.jtag_sequence(1, false, 0x01).await?;
         // Enter DREXIT2 state
-        self.interface.jtag_sequence(1, true, 0x01)?;
+        self.interface.jtag_sequence(1, true, 0x01).await?;
         // Enter DRUPDATE state
-        self.interface.jtag_sequence(1, true, 0x01)?;
+        self.interface.jtag_sequence(1, true, 0x01).await?;
         // Enter Run/Idle state
-        self.interface.jtag_sequence(1, false, 0x01)?;
+        self.interface.jtag_sequence(1, false, 0x01).await?;
 
         Ok(())
     }

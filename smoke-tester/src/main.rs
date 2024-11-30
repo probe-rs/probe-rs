@@ -2,8 +2,9 @@ use std::{
     io::Write,
     path::{Path, PathBuf},
     process::ExitCode,
-    time::{Duration, Instant},
+    time::Duration,
 };
+use web_time::Instant;
 
 use crate::dut_definition::{DefinitionSource, DutDefinition};
 

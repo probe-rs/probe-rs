@@ -134,7 +134,7 @@ pub struct RttActiveUpChannel {
 }
 
 impl RttActiveUpChannel {
-    pub fn new(up_channel: UpChannel) -> Self {
+    pub async fn new(up_channel: UpChannel) -> Self {
         Self {
             rtt_buffer: vec![0; up_channel.buffer_size().max(1)].into_boxed_slice(),
             bytes_buffered: 0,
@@ -162,7 +162,7 @@ impl RttActiveUpChannel {
     }
 
     /// Reads available channel data into the internal buffer.
-    pub fn poll(&mut self, core: &mut Core) -> Result<(), Error> {
+    pub async fn poll(&mut self, core: &mut Core) -> Result<(), Error> {
         self.bytes_buffered = self.up_channel.read(core, self.rtt_buffer.as_mut())?;
         Ok(())
     }
@@ -173,9 +173,9 @@ impl RttActiveUpChannel {
     }
 
     /// Clean up temporary changes made to the channel.
-    pub fn clean_up(&mut self, core: &mut Core) -> Result<(), Error> {
+    pub async fn clean_up(&mut self, core: &mut Core<'_>) -> Result<(), Error> {
         if let Some(mode) = self.original_mode.take() {
-            self.up_channel.set_mode(core, mode)?;
+            self.up_channel.set_mode(core, mode).await?;
         }
         Ok(())
     }
@@ -270,7 +270,7 @@ impl RttConnection {
     }
 
     /// Send data to a down channel.
-    pub fn write_down_channel(
+    pub async fn write_down_channel(
         &mut self,
         core: &mut Core,
         channel_idx: u32,
@@ -285,17 +285,17 @@ impl RttConnection {
     }
 
     /// Clean up temporary changes made to the channels.
-    pub fn clean_up(&mut self, core: &mut Core) -> Result<(), Error> {
+    pub async fn clean_up(&mut self, core: &mut Core<'_>) -> Result<(), Error> {
         for channel in self.active_up_channels.iter_mut() {
-            channel.clean_up(core)?;
+            channel.clean_up(core).await?;
         }
         Ok(())
     }
 
     /// Overwrites the control block with zeros. This is useful after resets.
-    pub fn clear_control_block(&mut self, core: &mut Core) -> Result<(), Error> {
+    pub async fn clear_control_block(&mut self, core: &mut Core<'_>) -> Result<(), Error> {
         let zeros = vec![0; Rtt::control_block_size(core)];
-        core.write(self.control_block_addr, &zeros)?;
+        core.write(self.control_block_addr, &zeros).await?;
         self.active_down_channels.clear();
         self.active_up_channels.clear();
         Ok(())

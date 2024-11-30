@@ -52,13 +52,14 @@ impl MockMemoryAp {
 }
 
 impl FlushableArmAccess for MockMemoryAp {
-    fn flush(&mut self) -> Result<(), ArmError> {
+    async fn flush(&mut self) -> Result<(), ArmError> {
         Ok(())
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl DapAccess for MockMemoryAp {
-    fn read_raw_dp_register(
+    async fn read_raw_dp_register(
         &mut self,
         _dp: DpAddress,
         _addr: DpRegisterAddress,
@@ -67,7 +68,7 @@ impl DapAccess for MockMemoryAp {
         Ok(0)
     }
 
-    fn write_raw_dp_register(
+    async fn write_raw_dp_register(
         &mut self,
         _dp: DpAddress,
         _addr: DpRegisterAddress,
@@ -76,7 +77,7 @@ impl DapAccess for MockMemoryAp {
         Ok(())
     }
 
-    fn read_raw_ap_register(
+    async fn read_raw_ap_register(
         &mut self,
         _ap: &crate::architecture::arm::FullyQualifiedApAddress,
         addr: u64,
@@ -147,7 +148,7 @@ impl DapAccess for MockMemoryAp {
         }
     }
 
-    fn write_raw_ap_register(
+    async fn write_raw_ap_register(
         &mut self,
         _ap: &crate::architecture::arm::FullyQualifiedApAddress,
         addr: u64,

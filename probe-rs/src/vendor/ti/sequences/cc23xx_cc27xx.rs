@@ -59,10 +59,11 @@ impl DeviceStatusRegister {
     pub const DEVICE_STATUS_REGISTER_ADDRESS: u64 = 0x0C;
 
     /// Read the device status register from the CFG-AP.
-    pub fn read(interface: &mut dyn DapAccess) -> Result<Self, ArmError> {
+    pub async fn read(interface: &mut dyn DapAccess) -> Result<Self, ArmError> {
         let cfg_ap: FullyQualifiedApAddress = ApSel::CfgAp.into();
-        let contents =
-            interface.read_raw_ap_register(&cfg_ap, Self::DEVICE_STATUS_REGISTER_ADDRESS)?;
+        let contents = interface
+            .read_raw_ap_register(&cfg_ap, Self::DEVICE_STATUS_REGISTER_ADDRESS)
+            .await?;
         Ok(Self(contents))
     }
 }
@@ -96,16 +97,20 @@ impl TxCtrlRegister {
     pub const TX_CTRL_REGISTER_ADDRESS: u64 = 4;
 
     /// Read the TX_CTRL register from the SEC-AP.
-    pub fn read(interface: &mut dyn DapAccess) -> Result<Self, ArmError> {
+    pub async fn read(interface: &mut dyn DapAccess) -> Result<Self, ArmError> {
         let sec_ap: FullyQualifiedApAddress = ApSel::SecAp.into();
-        let contents = interface.read_raw_ap_register(&sec_ap, Self::TX_CTRL_REGISTER_ADDRESS)?;
+        let contents = interface
+            .read_raw_ap_register(&sec_ap, Self::TX_CTRL_REGISTER_ADDRESS)
+            .await?;
         Ok(Self(contents))
     }
 
     /// Write the TX_CTRL register to the SEC-AP.
-    pub fn write(&self, interface: &mut dyn DapAccess) -> Result<(), ArmError> {
+    pub async fn write(&self, interface: &mut dyn DapAccess) -> Result<(), ArmError> {
         let sec_ap: FullyQualifiedApAddress = ApSel::SecAp.into();
-        interface.write_raw_ap_register(&sec_ap, Self::TX_CTRL_REGISTER_ADDRESS, self.0)
+        interface
+            .write_raw_ap_register(&sec_ap, Self::TX_CTRL_REGISTER_ADDRESS, self.0)
+            .await
     }
 }
 
@@ -146,19 +151,19 @@ impl CC23xxCC27xx {
     ///
     /// * `Result<(), ArmError>` - Returns `Ok(())` if the TX_CTRL register is ready,
     ///   or an `ArmError` if there was a timeout.
-    fn poll_tx_ctrl(
+    async fn poll_tx_ctrl(
         &self,
         interface: &mut dyn DapAccess,
         timeout: Duration,
     ) -> Result<(), ArmError> {
         let start = Instant::now();
-        let mut tx_ctrl = TxCtrlRegister::read(interface)?;
-        TxCtrlRegister::read(interface)?;
+        let mut tx_ctrl = TxCtrlRegister::read(interface).await?;
+        TxCtrlRegister::read(interface).await?;
         while tx_ctrl.txd_full() {
             if start.elapsed() >= timeout {
                 return Err(ArmError::Timeout);
             }
-            tx_ctrl = TxCtrlRegister::read(interface)?;
+            tx_ctrl = TxCtrlRegister::read(interface).await?;
         }
         Ok(())
     }
@@ -181,56 +186,68 @@ impl CC23xxCC27xx {
     /// * `Result<(), ArmError>` - Returns `Ok(())` if the command was successfully sent,
     ///   or an `ArmError` if there was an error during communication.
     ///
-    fn saci_command(&self, interface: &mut dyn DapAccess, command: u32) -> Result<(), ArmError> {
+    async fn saci_command(
+        &self,
+        interface: &mut dyn DapAccess,
+        command: u32,
+    ) -> Result<(), ArmError> {
         let sec_ap: FullyQualifiedApAddress = ApSel::SecAp.into();
 
         const TX_DATA_ADDR: u64 = 0;
 
         // Wait for tx_ctrl to be ready with a timeout of 1 millisecond
-        self.poll_tx_ctrl(interface, Duration::from_millis(1))?;
+        self.poll_tx_ctrl(interface, Duration::from_millis(1))
+            .await?;
 
         // Set Cmd Start
         let mut tx_ctrl = TxCtrlRegister(0);
         tx_ctrl.set_cmd_start(true);
-        TxCtrlRegister::write(&tx_ctrl, interface)?;
+        TxCtrlRegister::write(&tx_ctrl, interface).await?;
 
         // Write parameter word to txd
-        interface.write_raw_ap_register(&sec_ap, TX_DATA_ADDR, command)?;
+        interface
+            .write_raw_ap_register(&sec_ap, TX_DATA_ADDR, command)
+            .await?;
 
-        self.poll_tx_ctrl(interface, Duration::from_millis(1))?;
+        self.poll_tx_ctrl(interface, Duration::from_millis(1))
+            .await?;
 
         Ok(())
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl ArmDebugSequence for CC23xxCC27xx {
-    fn reset_system(
+    async fn reset_system(
         &self,
         probe: &mut dyn ArmMemoryInterface,
         core_type: probe_rs_target::CoreType,
         debug_base: Option<u64>,
     ) -> Result<(), ArmError> {
         // Check if the previous code requested a halt before reset
-        let demcr = Demcr(probe.read_word_32(Demcr::get_mmio_address())?);
+        let demcr = Demcr(probe.read_word_32(Demcr::get_mmio_address()).await?);
 
         // Read if breakpoints should be enabled after reset
-        let mut bpt_ctrl = BpCtrl(probe.read_word_32(BpCtrl::get_mmio_address())?);
+        let mut bpt_ctrl = BpCtrl(probe.read_word_32(BpCtrl::get_mmio_address()).await?);
 
         let mut aircr = Aircr(0);
         aircr.vectkey();
         aircr.set_sysresetreq(true);
 
         // Reset the device, flush all pending writes and wait on the reset to complete
-        probe.write_word_32(Aircr::get_mmio_address(), aircr.into())?;
-        probe.flush().ok();
+        probe
+            .write_word_32(Aircr::get_mmio_address(), aircr.into())
+            .await?;
+        probe.flush().await.ok();
         thread::sleep(Duration::from_millis(10));
 
         // Re-initializing the core(s) is on us.
         let ap = probe.fully_qualified_address();
         let interface = probe.get_arm_probe_interface()?;
 
-        interface.reinitialize()?;
-        self.debug_core_start(interface, &ap, core_type, debug_base, None)?;
+        interface.reinitialize().await?;
+        self.debug_core_start(interface, &ap, core_type, debug_base, None)
+            .await?;
 
         // Halt the CPU
         if demcr.vc_corereset() {
@@ -239,17 +256,21 @@ impl ArmDebugSequence for CC23xxCC27xx {
             value.set_c_debugen(true);
             value.enable_write();
 
-            probe.write_word_32(Dhcsr::get_mmio_address(), value.into())?;
+            probe
+                .write_word_32(Dhcsr::get_mmio_address(), value.into())
+                .await?;
         }
 
         // Restore the breakpoint control register
         bpt_ctrl.set_key(true);
-        probe.write_word_32(BpCtrl::get_mmio_address(), bpt_ctrl.into())?;
+        probe
+            .write_word_32(BpCtrl::get_mmio_address(), bpt_ctrl.into())
+            .await?;
 
         Ok(())
     }
 
-    fn debug_port_start(
+    async fn debug_port_start(
         &self,
         interface: &mut dyn DapAccess,
         dp: DpAddress,
@@ -265,11 +286,11 @@ impl ArmDebugSequence for CC23xxCC27xx {
         abort.set_wderrclr(true);
         abort.set_stkerrclr(true);
         abort.set_stkcmpclr(true);
-        interface.write_dp_register(dp, abort)?;
+        interface.write_dp_register(dp, abort).await?;
 
-        interface.write_dp_register(dp, SelectV1(0))?;
+        interface.write_dp_register(dp, SelectV1(0)).await?;
 
-        let ctrl = interface.read_dp_register::<Ctrl>(dp)?;
+        let ctrl = interface.read_dp_register::<Ctrl>(dp).await?;
 
         let powered_down = !(ctrl.csyspwrupack() && ctrl.cdbgpwrupack());
 
@@ -278,11 +299,11 @@ impl ArmDebugSequence for CC23xxCC27xx {
             let mut ctrl = Ctrl(0);
             ctrl.set_cdbgpwrupreq(true);
             ctrl.set_csyspwrupreq(true);
-            interface.write_dp_register(dp, ctrl)?;
+            interface.write_dp_register(dp, ctrl).await?;
 
             let start = Instant::now();
             loop {
-                let ctrl = interface.read_dp_register::<Ctrl>(dp)?;
+                let ctrl = interface.read_dp_register::<Ctrl>(dp).await?;
                 if ctrl.csyspwrupack() && ctrl.cdbgpwrupack() {
                     break;
                 }
@@ -296,9 +317,9 @@ impl ArmDebugSequence for CC23xxCC27xx {
             ctrl.set_cdbgpwrupreq(true);
             ctrl.set_csyspwrupreq(true);
             ctrl.set_mask_lane(0b1111);
-            interface.write_dp_register(dp, ctrl)?;
+            interface.write_dp_register(dp, ctrl).await?;
 
-            let ctrl_reg: Ctrl = interface.read_dp_register(dp)?;
+            let ctrl_reg: Ctrl = interface.read_dp_register(dp).await?;
             if !(ctrl_reg.csyspwrupack() && ctrl_reg.cdbgpwrupack()) {
                 tracing::error!("Debug power request failed");
                 return Err(DebugPortError::TargetPowerUpFailed.into());
@@ -314,15 +335,15 @@ impl ArmDebugSequence for CC23xxCC27xx {
         // This will tell us the state of the boot rom and if SACI is enabled
 
         // Read the device status register
-        let mut device_status = DeviceStatusRegister::read(interface)?;
+        let mut device_status = DeviceStatusRegister::read(interface).await?;
 
         // AHB-AP is not accessible when in SACI mode, so exit SACI
         if !device_status.ahb_ap_available() {
             // Send the SACI command to exit SACI
-            self.saci_command(interface, 0x07)?;
+            self.saci_command(interface, 0x07).await?;
 
             // Read the device status register again to check if boot is completed
-            device_status = DeviceStatusRegister::read(interface)?;
+            device_status = DeviceStatusRegister::read(interface).await?;
 
             // Check if the boot rom is waiting for a debugger to attach
             match device_status.boot_status() {
@@ -339,7 +360,7 @@ impl ArmDebugSequence for CC23xxCC27xx {
         Ok(())
     }
 
-    fn debug_core_start(
+    async fn debug_core_start(
         &self,
         interface: &mut dyn ArmProbeInterface,
         core_ap: &FullyQualifiedApAddress,
@@ -354,24 +375,26 @@ impl ArmDebugSequence for CC23xxCC27xx {
             dhcsr.set_c_debugen(true);
             dhcsr.enable_write();
 
-            let mut memory = interface.memory_interface(core_ap)?;
-            memory.write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
+            let mut memory = interface.memory_interface(core_ap).await?;
+            memory
+                .write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())
+                .await?;
 
             // Step 1.1: Wait for the CPU to halt
-            dhcsr = Dhcsr(memory.read_word_32(Dhcsr::get_mmio_address())?);
+            dhcsr = Dhcsr(memory.read_word_32(Dhcsr::get_mmio_address()).await?);
             while !dhcsr.s_halt() {
-                dhcsr = Dhcsr(memory.read_word_32(Dhcsr::get_mmio_address())?);
+                dhcsr = Dhcsr(memory.read_word_32(Dhcsr::get_mmio_address()).await?);
             }
 
             // Step 2: Write R3 to 0 to exit the boot loop
-            cortex_m::write_core_reg(memory.deref_mut(), crate::RegisterId(3), 0x00000000)?;
+            cortex_m::write_core_reg(memory.deref_mut(), crate::RegisterId(3), 0x00000000).await?;
 
             // Step 3: Clear the BOOT_LOOP flag
             self.boot_loop.store(false, Ordering::SeqCst);
         }
 
         // Step 4: Start the core like normal
-        let mut core = interface.memory_interface(core_ap)?;
-        cortex_m_core_start(&mut *core)
+        let mut core = interface.memory_interface(core_ap).await?;
+        cortex_m_core_start(&mut *core).await
     }
 }

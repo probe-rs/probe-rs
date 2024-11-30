@@ -26,8 +26,9 @@ impl Nrf54L {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl ArmDebugSequence for Nrf54L {
-    fn debug_device_unlock(
+    async fn debug_device_unlock(
         &self,
         interface: &mut dyn crate::architecture::arm::ArmProbeInterface,
         default_ap: &FullyQualifiedApAddress,
@@ -35,7 +36,8 @@ impl ArmDebugSequence for Nrf54L {
     ) -> Result<(), ArmError> {
         // Read CSW register to see if the device is unlocked
         let csw: CSW = interface
-            .read_raw_ap_register(default_ap, CSW::ADDRESS)?
+            .read_raw_ap_register(default_ap, CSW::ADDRESS)
+            .await?
             .try_into()?;
 
         if csw.DeviceEn {
@@ -50,12 +52,16 @@ impl ArmDebugSequence for Nrf54L {
 
         let ctrl_ap = FullyQualifiedApAddress::v1_with_dp(default_ap.dp(), 2);
 
-        interface.write_raw_ap_register(&ctrl_ap, ERASEALL, 1)?;
+        interface
+            .write_raw_ap_register(&ctrl_ap, ERASEALL, 1)
+            .await?;
 
         let start = Instant::now();
 
         let erase_all_status = loop {
-            let erase_all_status = interface.read_raw_ap_register(&ctrl_ap, ERASEALLSTATUS)?;
+            let erase_all_status = interface
+                .read_raw_ap_register(&ctrl_ap, ERASEALLSTATUS)
+                .await?;
 
             if erase_all_status != 2 {
                 break erase_all_status;
@@ -74,10 +80,10 @@ impl ArmDebugSequence for Nrf54L {
             // Ready to reset
             1 => {
                 // Trigger soft reset
-                interface.write_raw_ap_register(&ctrl_ap, RESET, 2)?;
+                interface.write_raw_ap_register(&ctrl_ap, RESET, 2).await?;
 
                 // Release reset
-                interface.write_raw_ap_register(&ctrl_ap, RESET, 0)?;
+                interface.write_raw_ap_register(&ctrl_ap, RESET, 0).await?;
             }
             // Error
             3 => {

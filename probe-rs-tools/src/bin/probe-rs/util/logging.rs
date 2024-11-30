@@ -29,6 +29,7 @@ impl<'a> FileLoggerGuard<'a> {
 
 impl Drop for FileLoggerGuard<'_> {
     fn drop(&mut self) {
+        // TODO: drop
         tracing::info!("Wrote log to {:?}", self.log_path);
     }
 }

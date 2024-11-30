@@ -57,48 +57,55 @@ pub trait DebugComponentInterface:
     MemoryMappedRegister<u32> + Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug
 {
     /// Loads the register value from the given debug component via the given core.
-    fn load(
+    async fn load(
         component: &CoresightComponent,
         interface: &mut dyn ArmProbeInterface,
     ) -> Result<Self, ArmError> {
         Ok(Self::from(
-            component.read_reg(interface, Self::ADDRESS_OFFSET as u32)?,
+            component
+                .read_reg(interface, Self::ADDRESS_OFFSET as u32)
+                .await?,
         ))
     }
 
     /// Loads the register value from the given component in given unit via the given core.
-    fn load_unit(
+    async fn load_unit(
         component: &CoresightComponent,
         interface: &mut dyn ArmProbeInterface,
         unit: usize,
     ) -> Result<Self, ArmError> {
-        Ok(Self::from(component.read_reg(
-            interface,
-            Self::ADDRESS_OFFSET as u32 + 16 * unit as u32,
-        )?))
+        Ok(Self::from(
+            component
+                .read_reg(interface, Self::ADDRESS_OFFSET as u32 + 16 * unit as u32)
+                .await?,
+        ))
     }
 
     /// Stores the register value to the given debug component via the given core.
-    fn store(
+    async fn store(
         &self,
         component: &CoresightComponent,
         interface: &mut dyn ArmProbeInterface,
     ) -> Result<(), ArmError> {
-        component.write_reg(interface, Self::ADDRESS_OFFSET as u32, self.clone().into())
+        component
+            .write_reg(interface, Self::ADDRESS_OFFSET as u32, self.clone().into())
+            .await
     }
 
     /// Stores the register value to the given component in given unit via the given core.
-    fn store_unit(
+    async fn store_unit(
         &self,
         component: &CoresightComponent,
         interface: &mut dyn ArmProbeInterface,
         unit: usize,
     ) -> Result<(), ArmError> {
-        component.write_reg(
-            interface,
-            Self::ADDRESS_OFFSET as u32 + 16 * unit as u32,
-            self.clone().into(),
-        )
+        component
+            .write_reg(
+                interface,
+                Self::ADDRESS_OFFSET as u32 + 16 * unit as u32,
+                self.clone().into(),
+            )
+            .await
     }
 }
 
@@ -106,18 +113,18 @@ pub trait DebugComponentInterface:
 ///
 /// This will recursively parse the Romtable of the attached target
 /// and create a list of all the contained components.
-pub fn get_arm_components(
+pub async fn get_arm_components(
     interface: &mut dyn ArmProbeInterface,
     dp: DpAddress,
 ) -> Result<Vec<CoresightComponent>, ArmError> {
     let mut components = Vec::new();
 
-    for ap_index in interface.access_ports(dp)? {
-        let component = if let Ok(mut memory) = interface.memory_interface(&ap_index) {
-            match memory.base_address()? {
+    for ap_index in interface.access_ports(dp).await? {
+        let component = if let Ok(mut memory) = interface.memory_interface(&ap_index).await {
+            match memory.base_address().await? {
                 0 => Err(Error::Other("AP has a base address of 0".to_string())),
                 debug_base_address => {
-                    let component = Component::try_parse(&mut *memory, debug_base_address)?;
+                    let component = Component::try_parse(&mut *memory, debug_base_address).await?;
                     Ok(CoresightComponent::new(component, ap_index.clone()))
                 }
             }
@@ -164,28 +171,28 @@ pub fn find_component(
 /// * `interface` - The interface with the probe.
 /// * `component` - The TPIU CoreSight component found.
 /// * `config` - The SWO pin configuration to use.
-fn configure_tpiu(
+async fn configure_tpiu(
     interface: &mut dyn ArmProbeInterface,
     component: &CoresightComponent,
     config: &SwoConfig,
 ) -> Result<(), Error> {
     let mut tpiu = Tpiu::new(interface, component);
 
-    tpiu.set_port_size(1)?;
+    tpiu.set_port_size(1).await?;
     let prescaler = (config.tpiu_clk() / config.baud()) - 1;
-    tpiu.set_prescaler(prescaler)?;
+    tpiu.set_prescaler(prescaler).await?;
     match config.mode() {
-        SwoMode::Manchester => tpiu.set_pin_protocol(1)?,
-        SwoMode::Uart => tpiu.set_pin_protocol(2)?,
+        SwoMode::Manchester => tpiu.set_pin_protocol(1).await?,
+        SwoMode::Uart => tpiu.set_pin_protocol(2).await?,
     }
 
     // Formatter: TrigIn enabled, bypass optional
     if config.tpiu_continuous_formatting() {
         // Set EnFCont for continuous formatting even over SWO.
-        tpiu.set_formatter(0x102)?;
+        tpiu.set_formatter(0x102).await?;
     } else {
         // Clear EnFCont to only pass through raw ITM/DWT data.
-        tpiu.set_formatter(0x100)?;
+        tpiu.set_formatter(0x100).await?;
     }
 
     Ok(())
@@ -194,20 +201,20 @@ fn configure_tpiu(
 /// Sets up all the SWV components.
 ///
 /// Expects to be given a list of all ROM table `components` as the second argument.
-pub(crate) fn setup_tracing(
+pub(crate) async fn setup_tracing(
     interface: &mut dyn ArmProbeInterface,
     components: &[CoresightComponent],
     sink: &TraceSink,
 ) -> Result<(), Error> {
     // Configure DWT
     let mut dwt = Dwt::new(interface, find_component(components, PeripheralType::Dwt)?);
-    dwt.enable()?;
-    dwt.enable_exception_trace()?;
+    dwt.enable().await?;
+    dwt.enable_exception_trace().await?;
 
     // Configure ITM
     let mut itm = Itm::new(interface, find_component(components, PeripheralType::Itm)?);
-    itm.unlock()?;
-    itm.tx_enable()?;
+    itm.unlock().await?;
+    itm.tx_enable().await?;
 
     // Configure the trace destination.
     match sink {
@@ -216,20 +223,21 @@ pub(crate) fn setup_tracing(
                 interface,
                 find_component(components, PeripheralType::Tpiu)?,
                 config,
-            )?;
+            )
+            .await?;
         }
 
         TraceSink::Swo(config) => {
             if let Ok(peripheral) = find_component(components, PeripheralType::Swo) {
                 let mut swo = Swo::new(interface, peripheral);
-                swo.unlock()?;
+                swo.unlock().await?;
 
                 let prescaler = (config.tpiu_clk() / config.baud()) - 1;
-                swo.set_prescaler(prescaler)?;
+                swo.set_prescaler(prescaler).await?;
 
                 match config.mode() {
-                    SwoMode::Manchester => swo.set_pin_protocol(1)?,
-                    SwoMode::Uart => swo.set_pin_protocol(2)?,
+                    SwoMode::Manchester => swo.set_pin_protocol(1).await?,
+                    SwoMode::Uart => swo.set_pin_protocol(2).await?,
                 }
             } else {
                 // For Cortex-M4, the SWO and the TPIU are combined. If we don't find a SWO
@@ -238,7 +246,8 @@ pub(crate) fn setup_tracing(
                     interface,
                     find_component(components, PeripheralType::Tpiu)?,
                     config,
-                )?;
+                )
+                .await?;
             }
         }
 
@@ -249,14 +258,14 @@ pub(crate) fn setup_tracing(
             );
 
             // Clear out the TMC FIFO before initiating the capture.
-            tmc.disable_capture()?;
-            while !tmc.ready()? {}
+            tmc.disable_capture().await?;
+            while !tmc.ready().await? {}
 
             // Configure the TMC for software-polled mode, as we will read out data using the debug
             // interface.
-            tmc.set_mode(tmc::Mode::Software)?;
+            tmc.set_mode(tmc::Mode::Software).await?;
 
-            tmc.enable_capture()?;
+            tmc.enable_capture().await?;
         }
     }
 
@@ -277,14 +286,14 @@ pub(crate) fn setup_tracing(
 ///
 /// # Returns
 /// All data stored in trace memory, with an upper bound at the size of internal trace memory.
-pub(crate) fn read_trace_memory(
+pub(crate) async fn read_trace_memory(
     interface: &mut dyn ArmProbeInterface,
     components: &[CoresightComponent],
 ) -> Result<Vec<u8>, ArmError> {
     let mut tmc =
         TraceMemoryController::new(interface, find_component(components, PeripheralType::Tmc)?);
 
-    let fifo_size = tmc.fifo_size()?;
+    let fifo_size = tmc.fifo_size().await?;
 
     // This sequence is taken from "CoreSight Trace memory Controller Technical Reference Manual"
     // Section 2.2.2 "Software FIFO Mode". Without following this procedure, the trace data does
@@ -293,7 +302,7 @@ pub(crate) fn read_trace_memory(
     // Read all of the data from the ETM into a vector for further processing.
     let mut etf_trace: Vec<u8> = Vec::new();
     loop {
-        match tmc.read()? {
+        match tmc.read().await? {
             Some(data) => etf_trace.extend_from_slice(&data.to_le_bytes()),
             None => {
                 // If there's nothing available in the FIFO, we can only break out of reading if we
@@ -341,41 +350,43 @@ pub(crate) fn read_trace_memory(
 ///
 ///
 /// Expects to be given a list of all ROM table `components` as the second argument.
-pub(crate) fn add_swv_data_trace(
+pub(crate) async fn add_swv_data_trace(
     interface: &mut dyn ArmProbeInterface,
     components: &[CoresightComponent],
     unit: usize,
     address: u32,
 ) -> Result<(), ArmError> {
     let mut dwt = Dwt::new(interface, find_component(components, PeripheralType::Dwt)?);
-    dwt.enable_data_trace(unit, address)
+    dwt.enable_data_trace(unit, address).await
 }
 
 /// Configures DWT trace unit `unit` to stop tracing `address`.
 ///
 ///
 /// Expects to be given a list of all ROM table `components` as the second argument.
-pub fn remove_swv_data_trace(
+pub async fn remove_swv_data_trace(
     interface: &mut dyn ArmProbeInterface,
     components: &[CoresightComponent],
     unit: usize,
 ) -> Result<(), ArmError> {
     let mut dwt = Dwt::new(interface, find_component(components, PeripheralType::Dwt)?);
-    dwt.disable_data_trace(unit)
+    dwt.disable_data_trace(unit).await
 }
 
 /// Sets TRCENA in DEMCR to begin trace generation.
-pub fn enable_tracing(core: &mut Core) -> Result<(), Error> {
-    let mut demcr = Demcr(core.read_word_32(Demcr::get_mmio_address())?);
+pub async fn enable_tracing(core: &mut Core<'_>) -> Result<(), Error> {
+    let mut demcr = Demcr(core.read_word_32(Demcr::get_mmio_address()).await?);
     demcr.set_dwtena(true);
-    core.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
+    core.write_word_32(Demcr::get_mmio_address(), demcr.into())
+        .await?;
     Ok(())
 }
 
 /// Disables TRCENA in DEMCR to disable trace generation.
-pub fn disable_swv(core: &mut Core) -> Result<(), Error> {
-    let mut demcr = Demcr(core.read_word_32(Demcr::get_mmio_address())?);
+pub async fn disable_swv(core: &mut Core<'_>) -> Result<(), Error> {
+    let mut demcr = Demcr(core.read_word_32(Demcr::get_mmio_address()).await?);
     demcr.set_dwtena(false);
-    core.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
+    core.write_word_32(Demcr::get_mmio_address(), demcr.into())
+        .await?;
     Ok(())
 }

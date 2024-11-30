@@ -30,6 +30,8 @@ test = []
 
 [dependencies]
 anyhow.workspace = true
+async-mutex.workspace = true
+async-trait.workspace = true
 docsplay.workspace = true
 thiserror.workspace = true
 probe-rs-target.workspace = true
@@ -37,9 +39,12 @@ probe-rs-target.workspace = true
 bincode = { version = "2", features = ["serde"], optional = true }
 bitfield = "0.19.0"
 bitvec = "1"
+# hidapi = { version = "2", default-features = false, features = [
+#     "linux-native",
+# ], path = "../../../hidapi-rs" }
 hidapi = { version = "2", default-features = false, features = [
     "linux-native",
-] }
+], git = "https://github.com/Yatekii/hidapi-rs", branch = "task/webusb" }
 ihex = "3.0"
 itertools = "0.14"
 jep106 = "0.3"
@@ -49,9 +54,10 @@ object = { version = "0.36", default-features = false, features = [
     "read_core",
     "std",
 ] }
-nusb = "0.1.12"
+# nusb = { version = "0.2.0-beta", path = "../../../nusb" }
+nusb = { version = "0.2.0-beta", git = "https://github.com/Yatekii/nusb", branch = "task/webusb" }
 futures-lite = { version = "2", default-features = false }
-async-io = "2"
+
 scroll = "0.12"
 serialport = { version = "4.6.0", default-features = false, features = [
     "usbportinfo-interface",
@@ -64,12 +70,21 @@ zerocopy = { version = "0.8.0", features = ["derive"] }
 
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9"
+web-time = { workspace = true }
 
 # optional
 hexdump = { version = "0.1", optional = true }
 
 rmp-serde = { version = "1" }
 dunce = "1.0.5"
+
+[target.'cfg(target_arch="wasm32")'.dependencies]
+wasm-bindgen-futures = "0.4"
+wasm-bindgen = "0.2"
+web-sys = { version = "0.3", features = ["Window", "WorkerGlobalScope"] }
+
+[target.'cfg(not(target_arch="wasm32"))'.dependencies]
+async-io = "2"
 
 [build-dependencies]
 probe-rs-target = { workspace = true, optional = true }
@@ -87,7 +102,9 @@ itm = { version = "0.9.0-rc.1", default-features = false }
 pretty_assertions = "1"
 test-case = "3"
 test-log = { version = "0.2.16", features = ["trace"] }
+termtree = "0.5"
 insta = { version = "1.38", default-features = false }
+pollster = { version = "0.4", features = ["macro"] }
 
 [[package.metadata.release.pre-release-replacements]]
 file = "../CHANGELOG.md"

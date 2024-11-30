@@ -1,7 +1,5 @@
-use std::{
-    num::ParseIntError,
-    time::{Duration, Instant},
-};
+use std::{num::ParseIntError, time::Duration};
+use web_time::Instant;
 
 use anyhow::Context;
 use probe_rs::{MemoryInterface, config::Registry, probe::list::Lister};
@@ -83,7 +81,7 @@ struct TestData {
 }
 
 impl Cmd {
-    pub fn run(self, registry: &mut Registry, lister: &Lister) -> anyhow::Result<()> {
+    pub async fn run(self, registry: &mut Registry, lister: &Lister) -> anyhow::Result<()> {
         let speed = self.common.speed;
         let common_options = self.common.load(registry)?;
         let mut max_speed = self.max_speed;
@@ -96,7 +94,7 @@ impl Cmd {
             speeds.extend_from_slice(&PROBE_SPEEDS);
         };
         // if we can't print basic info, we're probably not going to succeed with testing so bubble up the error
-        Cmd::print_info(&common_options, lister)?;
+        Cmd::print_info(&common_options, lister).await?;
 
         for speed in speeds
             .iter()
@@ -125,8 +123,11 @@ impl Cmd {
     }
 
     /// Print probe and target info
-    fn print_info(common_options: &LoadedProbeOptions, lister: &Lister) -> anyhow::Result<()> {
-        let probe = common_options.attach_probe(lister)?;
+    async fn print_info(
+        common_options: &LoadedProbeOptions,
+        lister: &Lister,
+    ) -> anyhow::Result<()> {
+        let probe = common_options.attach_probe(lister).await?;
         let protocol_name = probe
             .protocol()
             .map(|p| p.to_string())
@@ -134,7 +135,7 @@ impl Cmd {
 
         let target = common_options.get_target_selector()?;
         let probe_name = probe.get_name();
-        let session = common_options.attach_session(probe, target)?;
+        let session = common_options.attach_session(probe, target).await?;
         let target_name = session.target().name.clone();
         println!(
             "Probe: Probe type {}, debug interface {}, target chip {}\n",
@@ -144,7 +145,7 @@ impl Cmd {
     }
 
     /// Run a specific benchmark
-    fn benchmark(
+    async fn benchmark(
         common_options: &LoadedProbeOptions,
         lister: &Lister,
         speed: u32,
@@ -153,10 +154,10 @@ impl Cmd {
         word_size: u32,
         iterations: usize,
     ) -> Result<(), anyhow::Error> {
-        let mut probe = common_options.attach_probe(lister)?;
+        let mut probe = common_options.attach_probe(lister).await?;
         let target = common_options.get_target_selector()?;
-        if probe.set_speed(speed).is_ok() {
-            let mut session = common_options.attach_session(probe, target)?;
+        if probe.set_speed(speed).await.is_ok() {
+            let mut session = common_options.attach_session(probe, target).await?;
             let mut test = TestData::new(address, word_size, size);
             println!(
                 "Test: Speed {}, Word size {}bit, Data length {} bytes, Number of iterations {}",
@@ -165,7 +166,7 @@ impl Cmd {
                 test.data_type.size() * size,
                 iterations
             );
-            let mut core = session.core(0).context("Failed to attach to core")?;
+            let mut core = session.core(0).await.context("Failed to attach to core")?;
             core.halt(Duration::from_millis(100))
                 .context("Halting failed")?;
 
@@ -305,17 +306,20 @@ impl TestData {
     }
 
     /// Read the requested block of data. Return data throughput, or error
-    fn block_read(&mut self, core: &mut probe_rs::Core) -> Result<f64, anyhow::Error> {
+    async fn block_read(&mut self, core: &mut probe_rs::Core<'_>) -> Result<f64, anyhow::Error> {
         let read_start = Instant::now();
         match &mut self.data_type {
             DataType::U8(_, readback_data) => core
                 .read_8(self.address, readback_data)
+                .await
                 .expect("Reading the sample data failed"),
             DataType::U32(_, readback_data) => core
                 .read_32(self.address, readback_data)
+                .await
                 .expect("Reading the sample data failed"),
             DataType::U64(_, readback_data) => core
                 .read_64(self.address, readback_data)
+                .await
                 .expect("Reading the sample data failed"),
         }
         let read_duration = read_start.elapsed();
@@ -326,17 +330,20 @@ impl TestData {
     }
 
     /// Write the requested block of data. Return data throughput, or error
-    fn block_write(&mut self, core: &mut probe_rs::Core) -> Result<f64, anyhow::Error> {
+    async fn block_write(&mut self, core: &mut probe_rs::Core<'_>) -> Result<f64, anyhow::Error> {
         let write_start = Instant::now();
         match &self.data_type {
             DataType::U8(test_data, _) => core
                 .write_8(self.address, test_data)
+                .await
                 .context("Writing the sample data failed")?,
             DataType::U32(test_data, _) => core
                 .write_32(self.address, test_data)
+                .await
                 .context("Writing the sample data failed")?,
             DataType::U64(test_data, _) => core
                 .write_64(self.address, test_data)
+                .await
                 .context("Writing the sample data failed")?,
         }
         let write_duration = write_start.elapsed();

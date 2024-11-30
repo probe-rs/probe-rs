@@ -12,6 +12,7 @@ use crate::probe::{
 };
 use serialport::{SerialPort, SerialPortType, available_ports};
 use std::io::{BufReader, BufWriter, Read, Write};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 use std::{env, fmt};
 
@@ -290,7 +291,7 @@ impl SifliUart {
     }
 }
 
-#[allow(unused)]
+#[async_trait::async_trait(?Send)]
 impl DebugProbe for SifliUart {
     fn get_name(&self) -> &str {
         "Sifli UART Debug Probe"
@@ -300,13 +301,13 @@ impl DebugProbe for SifliUart {
         self.baud / 1000
     }
 
-    fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
+    async fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
         self.baud = speed_khz * 1000;
 
         Ok(speed_khz)
     }
 
-    fn attach(&mut self) -> Result<(), DebugProbeError> {
+    async fn attach(&mut self) -> Result<(), DebugProbeError> {
         let ret = self.command(SifliUartCommand::Enter);
         if let Err(e) = ret {
             tracing::error!("Enter command error: {:?}", e);
@@ -315,7 +316,7 @@ impl DebugProbe for SifliUart {
         Ok(())
     }
 
-    fn detach(&mut self) -> Result<(), Error> {
+    async fn detach(&mut self) -> Result<(), Error> {
         let ret = self.command(SifliUartCommand::Exit);
         if let Err(e) = ret {
             tracing::error!("Exit command error: {:?}", e);
@@ -326,19 +327,19 @@ impl DebugProbe for SifliUart {
         Ok(())
     }
 
-    fn target_reset(&mut self) -> Result<(), DebugProbeError> {
+    async fn target_reset(&mut self) -> Result<(), DebugProbeError> {
         todo!()
     }
 
-    fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
+    async fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
         todo!()
     }
 
-    fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
+    async fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
         todo!()
     }
 
-    fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
+    async fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
         match protocol {
             WireProtocol::Swd => Ok(()),
             _ => Err(DebugProbeError::UnsupportedProtocol(protocol)),
@@ -405,7 +406,7 @@ impl SifliUartFactory {
             vendor_id,
             product_id,
             serial_number,
-            probe_factory: &SifliUartFactory,
+            probe_factory: Arc::new(SifliUartFactory) as Arc<dyn ProbeFactory>,
             hid_interface,
         })
     }
@@ -443,8 +444,12 @@ impl std::fmt::Display for SifliUartFactory {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl ProbeFactory for SifliUartFactory {
-    fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
+    async fn open(
+        &self,
+        selector: &DebugProbeSelector,
+    ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         let Ok(ports) = available_ports() else {
             return Err(DebugProbeError::ProbeCouldNotBeCreated(
                 ProbeCreationError::CouldNotOpen,
@@ -469,7 +474,7 @@ impl ProbeFactory for SifliUartFactory {
         ))
     }
 
-    fn list_probes(&self) -> Vec<DebugProbeInfo> {
+    async fn list_probes(&self) -> Vec<DebugProbeInfo> {
         let mut probes = vec![];
         let Ok(ports) = available_ports() else {
             return probes;

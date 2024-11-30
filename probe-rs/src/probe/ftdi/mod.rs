@@ -20,8 +20,11 @@ use bitvec::prelude::*;
 use nusb::DeviceInfo;
 use std::{
     io::{Read, Write},
-    time::{Duration, Instant},
+    iter,
+    sync::Arc,
+    time::Duration,
 };
+use web_time::Instant;
 
 mod command_compacter;
 mod ftdaye;
@@ -42,12 +45,13 @@ struct JtagAdapter {
 }
 
 impl JtagAdapter {
-    fn open(ftdi: FtdiDevice, usb_device: DeviceInfo) -> Result<Self, DebugProbeError> {
+    async fn open(ftdi: FtdiDevice, usb_device: DeviceInfo) -> Result<Self, DebugProbeError> {
         let device = ftdaye::Builder::new()
             .with_interface(ftdaye::Interface::A)
             .with_read_timeout(Duration::from_secs(5))
             .with_write_timeout(Duration::from_secs(5))
-            .usb_open(usb_device)?;
+            .usb_open(usb_device)
+            .await?;
 
         let ftdi = FtdiProperties::try_from((ftdi, device.chip_type()))?;
 
@@ -264,8 +268,12 @@ impl std::fmt::Display for FtdiProbeFactory {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl ProbeFactory for FtdiProbeFactory {
-    fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
+    async fn open(
+        &self,
+        selector: DebugProbeSelector,
+    ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         // Only open FTDI-compatible probes
         let Some(ftdi) = FTDI_COMPAT_DEVICES
             .iter()
@@ -277,7 +285,8 @@ impl ProbeFactory for FtdiProbeFactory {
             ));
         };
 
-        let mut probes = nusb::list_devices()
+        let mut probes = crate::probe::list::list_devices()
+            .await
             .map_err(FtdiError::from)?
             .filter(|usb_info| selector.matches(usb_info))
             .collect::<Vec<_>>();
@@ -291,17 +300,17 @@ impl ProbeFactory for FtdiProbeFactory {
         }
 
         let probe = FtdiProbe {
-            adapter: JtagAdapter::open(ftdi, probes.pop().unwrap())?,
+            adapter: JtagAdapter::open(ftdi, probes.pop().unwrap()).await?,
             jtag_state: JtagDriverState::default(),
             swd_settings: SwdSettings::default(),
             probe_statistics: ProbeStatistics::default(),
         };
         tracing::debug!("opened probe: {:?}", probe);
-        Ok(Box::new(probe))
+        Ok(Box::new(probe) as Box<dyn DebugProbe>)
     }
 
-    fn list_probes(&self) -> Vec<DebugProbeInfo> {
-        list_ftdi_devices()
+    async fn list_probes(&self) -> Vec<super::DebugProbeInfo> {
+        list_ftdi_devices().await
     }
 }
 
@@ -314,6 +323,7 @@ pub struct FtdiProbe {
     swd_settings: SwdSettings,
 }
 
+#[async_trait::async_trait(?Send)]
 impl DebugProbe for FtdiProbe {
     fn get_name(&self) -> &str {
         "FTDI"
@@ -600,15 +610,15 @@ fn get_device_info(device: &DeviceInfo) -> Option<DebugProbeInfo> {
             vendor_id: device.vendor_id(),
             product_id: device.product_id(),
             serial_number: device.serial_number().map(|s| s.to_string()),
-            probe_factory: &FtdiProbeFactory,
+            probe_factory: Arc::new(FtdiProbeFactory) as Arc<dyn ProbeFactory>,
             hid_interface: None,
         })
     })
 }
 
 #[tracing::instrument(skip_all)]
-fn list_ftdi_devices() -> Vec<DebugProbeInfo> {
-    match nusb::list_devices() {
+async fn list_ftdi_devices() -> Vec<DebugProbeInfo> {
+    match crate::probe::list::list_devices().await {
         Ok(devices) => devices
             .filter_map(|device| get_device_info(&device))
             .collect(),

@@ -26,6 +26,7 @@ pub mod sequences;
 #[derive(docsplay::Display)]
 pub struct NordicSemi;
 
+#[async_trait::async_trait(?Send)]
 impl Vendor for NordicSemi {
     fn try_create_debug_sequence(&self, chip: &Chip) -> Option<DebugSequence> {
         let sequence = if chip.name.starts_with("nRF5340") {
@@ -43,7 +44,7 @@ impl Vendor for NordicSemi {
         Some(sequence)
     }
 
-    fn try_detect_arm_chip(
+    async fn try_detect_arm_chip(
         &self,
         registry: &Registry,
         probe: &mut dyn ArmProbeInterface,
@@ -55,7 +56,7 @@ impl Vendor for NordicSemi {
 
         // FIXME: This is a bit shaky but good enough for now.
         let access_port = &FullyQualifiedApAddress::v1_with_default_dp(0);
-        let mut memory_interface = probe.memory_interface(access_port)?;
+        let mut memory_interface = probe.memory_interface(access_port).await?;
 
         // Cache to avoid reading the same register multiple times
         let mut register_values: HashMap<u32, u32> = HashMap::new();
@@ -63,9 +64,9 @@ impl Vendor for NordicSemi {
         for family in registry.families() {
             for info in family.chip_detection.iter() {
                 let target = if let Some(spec) = info.as_nordic_ficr() {
-                    ficr_info_detect(&mut register_values, memory_interface.as_mut(), spec)
+                    ficr_info_detect(&mut register_values, memory_interface.as_mut(), spec).await
                 } else if let Some(spec) = info.as_nordic_configid() {
-                    configid_detect(&mut register_values, memory_interface.as_mut(), spec)
+                    configid_detect(&mut register_values, memory_interface.as_mut(), spec).await
                 } else {
                     // Family does not have a Nordic specific detection method
                     continue;
@@ -82,20 +83,22 @@ impl Vendor for NordicSemi {
     }
 }
 
-fn ficr_info_detect(
+async fn ficr_info_detect(
     register_values: &mut HashMap<u32, u32>,
     memory_interface: &mut dyn ArmMemoryInterface,
     spec: &NordicFicrDetection,
 ) -> Option<String> {
     // Read the PART register, if not already read
-    if let Some(part) = read_register_cached(register_values, memory_interface, spec.part_address) {
+    if let Some(part) =
+        read_register_cached(register_values, memory_interface, spec.part_address).await
+    {
         if part != spec.part {
             return None;
         }
 
         // Read the VARIANT register, if not already read
         if let Some(variant) =
-            read_register_cached(register_values, memory_interface, spec.variant_address)
+            read_register_cached(register_values, memory_interface, spec.variant_address).await
         {
             return spec.variants.get(&variant).cloned();
         }
@@ -104,14 +107,14 @@ fn ficr_info_detect(
     None
 }
 
-fn configid_detect(
+async fn configid_detect(
     register_values: &mut HashMap<u32, u32>,
     memory_interface: &mut dyn ArmMemoryInterface,
     spec: &NordicConfigIdDetection,
 ) -> Option<String> {
     // Read the CONFIGID register, if not already read
     if let Some(configid) =
-        read_register_cached(register_values, memory_interface, spec.configid_address)
+        read_register_cached(register_values, memory_interface, spec.configid_address).await
     {
         let hwid = configid & 0xFFFF;
 
@@ -122,7 +125,7 @@ fn configid_detect(
     None
 }
 
-fn read_register_cached(
+async fn read_register_cached(
     register_values: &mut HashMap<u32, u32>,
     memory_interface: &mut dyn ArmMemoryInterface,
     address: u32,
@@ -130,7 +133,7 @@ fn read_register_cached(
     match register_values.entry(address) {
         Entry::Occupied(value) => Some(*value.get()),
         Entry::Vacant(e) => {
-            if let Ok(value) = memory_interface.read_word_32(address as u64) {
+            if let Ok(value) = memory_interface.read_word_32(address as u64).await {
                 e.insert(value);
                 Some(value)
             } else {

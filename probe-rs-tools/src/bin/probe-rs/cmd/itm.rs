@@ -1,6 +1,7 @@
 //! Provides ITM tracing capabilities.
 
-use std::time::{Duration, Instant};
+use std::time::Duration;
+use web_time::Instant;
 
 use probe_rs::architecture::arm::{component::TraceSink, swo::SwoConfig};
 use probe_rs::config::Registry;
@@ -69,14 +70,16 @@ pub struct Cmd {
 }
 
 impl Cmd {
-    pub fn run(self, registry: &mut Registry, lister: &Lister) -> anyhow::Result<()> {
+    pub async fn run(self, registry: &mut Registry, lister: &Lister) -> anyhow::Result<()> {
         let (mut session, _probe_options) = self.common.simple_attach(registry, lister)?;
 
         match self.source {
             ItmSource::TraceMemory { coreclk } => {
-                session.setup_tracing(self.shared.core, TraceSink::TraceMemory)?;
+                session
+                    .setup_tracing(self.shared.core, TraceSink::TraceMemory)
+                    .await?;
 
-                let trace = session.read_trace_data()?;
+                let trace = session.read_trace_data().await?;
                 let decoder =
                     itm::Decoder::new(trace.as_slice(), itm::DecoderOptions { ignore_eof: false });
 
@@ -95,10 +98,12 @@ impl Cmd {
                 clk,
                 baud,
             } => {
-                session.setup_tracing(
-                    self.shared.core,
-                    TraceSink::Swo(SwoConfig::new(clk).set_baud(baud)),
-                )?;
+                session
+                    .setup_tracing(
+                        self.shared.core,
+                        TraceSink::Swo(SwoConfig::new(clk).set_baud(baud)),
+                    )
+                    .await?;
 
                 let decoder = itm::Decoder::new(
                     session.swo_reader()?,

@@ -33,69 +33,70 @@ pub struct CoreInformation {
 }
 
 /// A generic interface to control a MCU core.
+#[async_trait::async_trait(?Send)]
 pub trait CoreInterface: MemoryInterface {
     /// Wait until the core is halted. If the core does not halt on its own,
     /// a [`DebugProbeError::Timeout`](crate::probe::DebugProbeError::Timeout) error will be returned.
-    fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error>;
+    async fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error>;
 
     /// Check if the core is halted. If the core does not halt on its own,
     /// a [`DebugProbeError::Timeout`](crate::probe::DebugProbeError::Timeout) error will be returned.
-    fn core_halted(&mut self) -> Result<bool, Error>;
+    async fn core_halted(&mut self) -> Result<bool, Error>;
 
     /// Returns the current status of the core.
-    fn status(&mut self) -> Result<CoreStatus, Error>;
+    async fn status(&mut self) -> Result<CoreStatus, Error>;
 
     /// Try to halt the core. This function ensures the core is actually halted, and
     /// returns a [`DebugProbeError::Timeout`](crate::probe::DebugProbeError::Timeout) otherwise.
-    fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error>;
+    async fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error>;
 
     /// Continue to execute instructions.
-    fn run(&mut self) -> Result<(), Error>;
+    async fn run(&mut self) -> Result<(), Error>;
 
     /// Reset the core, and then continue to execute instructions. If the core
     /// should be halted after reset, use the [`reset_and_halt`] function.
     ///
     /// [`reset_and_halt`]: Core::reset_and_halt
-    fn reset(&mut self) -> Result<(), Error>;
+    async fn reset(&mut self) -> Result<(), Error>;
 
     /// Reset the core, and then immediately halt. To continue execution after
     /// reset, use the [`reset`] function.
     ///
     /// [`reset`]: Core::reset
-    fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error>;
+    async fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error>;
 
     /// Steps one instruction and then enters halted state again.
-    fn step(&mut self) -> Result<CoreInformation, Error>;
+    async fn step(&mut self) -> Result<CoreInformation, Error>;
 
     /// Read the value of a core register.
-    fn read_core_reg(
+    async fn read_core_reg(
         &mut self,
         address: registers::RegisterId,
     ) -> Result<registers::RegisterValue, Error>;
 
     /// Write the value of a core register.
-    fn write_core_reg(
+    async fn write_core_reg(
         &mut self,
         address: registers::RegisterId,
         value: registers::RegisterValue,
     ) -> Result<(), Error>;
 
     /// Returns all the available breakpoint units of the core.
-    fn available_breakpoint_units(&mut self) -> Result<u32, Error>;
+    async fn available_breakpoint_units(&mut self) -> Result<u32, Error>;
 
     /// Read the hardware breakpoints from FpComp registers, and adds them to the Result Vector.
     /// A value of None in any position of the Vector indicates that the position is unset/available.
     /// We intentionally return all breakpoints, irrespective of whether they are enabled or not.
-    fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, Error>;
+    async fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, Error>;
 
     /// Enables breakpoints on this core. If a breakpoint is set, it will halt as soon as it is hit.
-    fn enable_breakpoints(&mut self, state: bool) -> Result<(), Error>;
+    async fn enable_breakpoints(&mut self, state: bool) -> Result<(), Error>;
 
     /// Sets a breakpoint at `addr`. It does so by using unit `bp_unit_index`.
-    fn set_hw_breakpoint(&mut self, unit_index: usize, addr: u64) -> Result<(), Error>;
+    async fn set_hw_breakpoint(&mut self, unit_index: usize, addr: u64) -> Result<(), Error>;
 
     /// Clears the breakpoint configured in unit `unit_index`.
-    fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), Error>;
+    async fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), Error>;
 
     /// Returns a list of all the registers of this core.
     fn registers(&self) -> &'static registers::CoreRegisters;
@@ -116,7 +117,7 @@ pub trait CoreInterface: MemoryInterface {
     fn hw_breakpoints_enabled(&self) -> bool;
 
     /// Configure the target to ensure software breakpoints will enter Debug Mode.
-    fn debug_on_sw_breakpoint(&mut self, _enabled: bool) -> Result<(), Error> {
+    async fn debug_on_sw_breakpoint(&mut self, _enabled: bool) -> Result<(), Error> {
         // This default will have override methods for architectures that require special behavior, e.g. RISC-V.
         Ok(())
     }
@@ -130,7 +131,7 @@ pub trait CoreInterface: MemoryInterface {
     /// Determine the instruction set the core is operating in
     /// This must be queried while halted as this is a runtime
     /// decision for some core types
-    fn instruction_set(&mut self) -> Result<InstructionSet, Error>;
+    async fn instruction_set(&mut self) -> Result<InstructionSet, Error>;
 
     /// Return which endianness the core is currently in. Some cores
     /// allow for changing the endianness.
@@ -142,7 +143,7 @@ pub trait CoreInterface: MemoryInterface {
     /// Determine if an FPU is present.
     /// This must be queried while halted as this is a runtime
     /// decision for some core types.
-    fn fpu_support(&mut self) -> Result<bool, Error>;
+    async fn fpu_support(&mut self) -> Result<bool, Error>;
 
     /// Determine the number of floating point registers.
     /// This must be queried while halted as this is a runtime
@@ -154,28 +155,31 @@ pub trait CoreInterface: MemoryInterface {
     /// This configures the core to halt after a reset.
     ///
     /// use `reset_catch_clear` to clear the setting again.
-    fn reset_catch_set(&mut self) -> Result<(), Error>;
+    async fn reset_catch_set(&mut self) -> Result<(), Error>;
 
     /// Clear the reset catch setting.
     ///
     /// This will reset the changes done by `reset_catch_set`.
-    fn reset_catch_clear(&mut self) -> Result<(), Error>;
+    async fn reset_catch_clear(&mut self) -> Result<(), Error>;
 
     /// Called when we stop debugging a core.
-    fn debug_core_stop(&mut self) -> Result<(), Error>;
+    async fn debug_core_stop(&mut self) -> Result<(), Error>;
 
     /// Called during session stop to do any pending cleanup
-    fn on_session_stop(&mut self) -> Result<(), Error> {
+    async fn on_session_stop(&mut self) -> Result<(), Error> {
         Ok(())
     }
 
     /// Enables vector catching for the given `condition`
-    fn enable_vector_catch(&mut self, _condition: VectorCatchCondition) -> Result<(), Error> {
+    async fn enable_vector_catch(&mut self, _condition: VectorCatchCondition) -> Result<(), Error> {
         Err(Error::NotImplemented("vector catch"))
     }
 
     /// Disables vector catching for the given `condition`
-    fn disable_vector_catch(&mut self, _condition: VectorCatchCondition) -> Result<(), Error> {
+    async fn disable_vector_catch(
+        &mut self,
+        _condition: VectorCatchCondition,
+    ) -> Result<(), Error> {
         Err(Error::NotImplemented("vector catch"))
     }
 
@@ -267,27 +271,27 @@ impl<'probe> Core<'probe> {
     /// Wait until the core is halted. If the core does not halt on its own,
     /// a [`DebugProbeError::Timeout`](crate::probe::DebugProbeError::Timeout) error will be returned.
     #[tracing::instrument(skip(self))]
-    pub fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
-        self.inner.wait_for_core_halted(timeout)
+    pub async fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
+        self.inner.wait_for_core_halted(timeout).await
     }
 
     /// Check if the core is halted. If the core does not halt on its own,
     /// a [`DebugProbeError::Timeout`](crate::probe::DebugProbeError::Timeout) error will be returned.
-    pub fn core_halted(&mut self) -> Result<bool, Error> {
-        self.inner.core_halted()
+    pub async fn core_halted(&mut self) -> Result<bool, Error> {
+        self.inner.core_halted().await
     }
 
     /// Try to halt the core. This function ensures the core is actually halted, and
     /// returns a [`DebugProbeError::Timeout`](crate::probe::DebugProbeError::Timeout) otherwise.
     #[tracing::instrument(skip(self))]
-    pub fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
-        self.inner.halt(timeout)
+    pub async fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
+        self.inner.halt(timeout).await
     }
 
     /// Continue to execute instructions.
     #[tracing::instrument(skip(self))]
-    pub fn run(&mut self) -> Result<(), Error> {
-        self.inner.run()
+    pub async fn run(&mut self) -> Result<(), Error> {
+        self.inner.run().await
     }
 
     /// Reset the core, and then continue to execute instructions. If the core
@@ -295,8 +299,8 @@ impl<'probe> Core<'probe> {
     ///
     /// [`reset_and_halt`]: Core::reset_and_halt
     #[tracing::instrument(skip(self))]
-    pub fn reset(&mut self) -> Result<(), Error> {
-        self.inner.reset()
+    pub async fn reset(&mut self) -> Result<(), Error> {
+        self.inner.reset().await
     }
 
     /// Reset the core, and then immediately halt. To continue execution after
@@ -304,20 +308,20 @@ impl<'probe> Core<'probe> {
     ///
     /// [`reset`]: Core::reset
     #[tracing::instrument(skip(self))]
-    pub fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
-        self.inner.reset_and_halt(timeout)
+    pub async fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
+        self.inner.reset_and_halt(timeout).await
     }
 
     /// Steps one instruction and then enters halted state again.
     #[tracing::instrument(skip(self))]
-    pub fn step(&mut self) -> Result<CoreInformation, Error> {
-        self.inner.step()
+    pub async fn step(&mut self) -> Result<CoreInformation, Error> {
+        self.inner.step().await
     }
 
     /// Returns the current status of the core.
     #[tracing::instrument(level = "trace", skip(self))]
-    pub fn status(&mut self) -> Result<CoreStatus, Error> {
-        self.inner.status()
+    pub async fn status(&mut self) -> Result<CoreStatus, Error> {
+        self.inner.status().await
     }
 
     /// Read the value of a core register.
@@ -335,7 +339,7 @@ impl<'probe> Core<'probe> {
     ///
     /// If `T` isn't large enough to hold the register value an error will be raised.
     #[tracing::instrument(skip(self, address), fields(address))]
-    pub fn read_core_reg<T>(
+    pub async fn read_core_reg<T>(
         &mut self,
         address: impl Into<registers::RegisterId>,
     ) -> Result<T, Error>
@@ -347,7 +351,7 @@ impl<'probe> Core<'probe> {
 
         tracing::Span::current().record("address", format!("{address:?}"));
 
-        let value = self.inner.read_core_reg(address)?;
+        let value = self.inner.read_core_reg(address).await?;
 
         value.try_into().into_crate_error()
     }
@@ -358,7 +362,7 @@ impl<'probe> Core<'probe> {
     ///
     /// If T is too large to write to the target register an error will be raised.
     #[tracing::instrument(skip(self, address, value))]
-    pub fn write_core_reg<T>(
+    pub async fn write_core_reg<T>(
         &mut self,
         address: impl Into<registers::RegisterId>,
         value: T,
@@ -368,23 +372,23 @@ impl<'probe> Core<'probe> {
     {
         let address = address.into();
 
-        self.inner.write_core_reg(address, value.into())
+        self.inner.write_core_reg(address, value.into()).await
     }
 
     /// Returns all the available breakpoint units of the core.
-    pub fn available_breakpoint_units(&mut self) -> Result<u32, Error> {
-        self.inner.available_breakpoint_units()
+    pub async fn available_breakpoint_units(&mut self) -> Result<u32, Error> {
+        self.inner.available_breakpoint_units().await
     }
 
     /// Enables breakpoints on this core. If a breakpoint is set, it will halt as soon as it is hit.
-    fn enable_breakpoints(&mut self, state: bool) -> Result<(), Error> {
-        self.inner.enable_breakpoints(state)
+    async fn enable_breakpoints(&mut self, state: bool) -> Result<(), Error> {
+        self.inner.enable_breakpoints(state).await
     }
 
     /// Configure the debug module to ensure software breakpoints will enter Debug Mode.
     #[tracing::instrument(skip(self))]
-    pub fn debug_on_sw_breakpoint(&mut self, enabled: bool) -> Result<(), Error> {
-        self.inner.debug_on_sw_breakpoint(enabled)
+    pub async fn debug_on_sw_breakpoint(&mut self, enabled: bool) -> Result<(), Error> {
+        self.inner.debug_on_sw_breakpoint(enabled).await
     }
 
     /// Returns a list of all the registers of this core.
@@ -419,13 +423,13 @@ impl<'probe> Core<'probe> {
     /// The amount of hardware breakpoints which are supported is chip specific,
     /// and can be queried using the `get_available_breakpoint_units` function.
     #[tracing::instrument(skip(self))]
-    pub fn set_hw_breakpoint(&mut self, address: u64) -> Result<(), Error> {
+    pub async fn set_hw_breakpoint(&mut self, address: u64) -> Result<(), Error> {
         if !self.inner.hw_breakpoints_enabled() {
-            self.enable_breakpoints(true)?;
+            self.enable_breakpoints(true).await?;
         }
 
         // If there is a breakpoint set already, return its bp_unit_index, else find the next free index.
-        let breakpoints = self.inner.hw_breakpoints()?;
+        let breakpoints = self.inner.hw_breakpoints().await?;
         let breakpoint_comparator_index =
             match breakpoints.iter().position(|&bp| bp == Some(address)) {
                 Some(breakpoint_comparator_index) => breakpoint_comparator_index,
@@ -444,6 +448,7 @@ impl<'probe> Core<'probe> {
         // Actually set the breakpoint. Even if it has been set, set it again so it will be active.
         self.inner
             .set_hw_breakpoint(breakpoint_comparator_index, address)
+            .await
     }
 
     /// Set a hardware breakpoint
@@ -453,9 +458,13 @@ impl<'probe> Core<'probe> {
     /// The amount of hardware breakpoints which are supported is chip specific,
     /// and can be queried using the `get_available_breakpoint_units` function.
     #[tracing::instrument(skip(self))]
-    pub fn set_hw_breakpoint_unit(&mut self, unit_index: usize, addr: u64) -> Result<(), Error> {
+    pub async fn set_hw_breakpoint_unit(
+        &mut self,
+        unit_index: usize,
+        addr: u64,
+    ) -> Result<(), Error> {
         if !self.inner.hw_breakpoints_enabled() {
-            self.enable_breakpoints(true)?;
+            self.enable_breakpoints(true).await?;
         }
 
         tracing::debug!(
@@ -464,17 +473,18 @@ impl<'probe> Core<'probe> {
             addr
         );
 
-        self.inner.set_hw_breakpoint(unit_index, addr)
+        self.inner.set_hw_breakpoint(unit_index, addr).await
     }
 
     /// Set a hardware breakpoint
     ///
     /// This function will try to clear a hardware breakpoint at `address` if there exists a breakpoint at that address.
     #[tracing::instrument(skip(self))]
-    pub fn clear_hw_breakpoint(&mut self, address: u64) -> Result<(), Error> {
+    pub async fn clear_hw_breakpoint(&mut self, address: u64) -> Result<(), Error> {
         let bp_position = self
             .inner
-            .hw_breakpoints()?
+            .hw_breakpoints()
+            .await?
             .iter()
             .position(|bp| *bp == Some(address));
 
@@ -486,7 +496,7 @@ impl<'probe> Core<'probe> {
 
         match bp_position {
             Some(bp_position) => {
-                self.inner.clear_hw_breakpoint(bp_position)?;
+                self.inner.clear_hw_breakpoint(bp_position).await?;
                 Ok(())
             }
             None => Err(Error::Other(format!(
@@ -502,9 +512,9 @@ impl<'probe> Core<'probe> {
     /// regardless if they are set by probe-rs, AND regardless if they are enabled or not.
     /// Also used as a helper function in [`Session::drop`](crate::session::Session).
     #[tracing::instrument(skip(self))]
-    pub fn clear_all_hw_breakpoints(&mut self) -> Result<(), Error> {
-        for breakpoint in (self.inner.hw_breakpoints()?).into_iter().flatten() {
-            self.clear_hw_breakpoint(breakpoint)?
+    pub async fn clear_all_hw_breakpoints(&mut self) -> Result<(), Error> {
+        for breakpoint in (self.inner.hw_breakpoints().await?).into_iter().flatten() {
+            self.clear_hw_breakpoint(breakpoint).await?
         }
         Ok(())
     }
@@ -522,15 +532,15 @@ impl<'probe> Core<'probe> {
     /// Determine the instruction set the core is operating in
     /// This must be queried while halted as this is a runtime
     /// decision for some core types
-    pub fn instruction_set(&mut self) -> Result<InstructionSet, Error> {
-        self.inner.instruction_set()
+    pub async fn instruction_set(&mut self) -> Result<InstructionSet, Error> {
+        self.inner.instruction_set().await
     }
 
     /// Determine if an FPU is present.
     /// This must be queried while halted as this is a runtime
     /// decision for some core types.
-    pub fn fpu_support(&mut self) -> Result<bool, Error> {
-        self.inner.fpu_support()
+    pub async fn fpu_support(&mut self) -> Result<bool, Error> {
+        self.inner.fpu_support().await
     }
 
     /// Determine the number of floating point registers.
@@ -539,26 +549,32 @@ impl<'probe> Core<'probe> {
         self.inner.floating_point_register_count()
     }
 
-    pub(crate) fn reset_catch_set(&mut self) -> Result<(), Error> {
-        self.inner.reset_catch_set()
+    pub(crate) async fn reset_catch_set(&mut self) -> Result<(), Error> {
+        self.inner.reset_catch_set().await
     }
 
-    pub(crate) fn reset_catch_clear(&mut self) -> Result<(), Error> {
-        self.inner.reset_catch_clear()
+    pub(crate) async fn reset_catch_clear(&mut self) -> Result<(), Error> {
+        self.inner.reset_catch_clear().await
     }
 
-    pub(crate) fn debug_core_stop(&mut self) -> Result<(), Error> {
-        self.inner.debug_core_stop()
+    pub(crate) async fn debug_core_stop(&mut self) -> Result<(), Error> {
+        self.inner.debug_core_stop().await
     }
 
     /// Enables vector catching for the given `condition`
-    pub fn enable_vector_catch(&mut self, condition: VectorCatchCondition) -> Result<(), Error> {
-        self.inner.enable_vector_catch(condition)
+    pub async fn enable_vector_catch(
+        &mut self,
+        condition: VectorCatchCondition,
+    ) -> Result<(), Error> {
+        self.inner.enable_vector_catch(condition).await
     }
 
     /// Disables vector catching for the given `condition`
-    pub fn disable_vector_catch(&mut self, condition: VectorCatchCondition) -> Result<(), Error> {
-        self.inner.disable_vector_catch(condition)
+    pub async fn disable_vector_catch(
+        &mut self,
+        condition: VectorCatchCondition,
+    ) -> Result<(), Error> {
+        self.inner.disable_vector_catch(condition).await
     }
 
     /// Check if the integer size is 64-bit
@@ -567,72 +583,73 @@ impl<'probe> Core<'probe> {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl CoreInterface for Core<'_> {
-    fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
-        self.wait_for_core_halted(timeout)
+    async fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
+        self.wait_for_core_halted(timeout).await
     }
 
-    fn core_halted(&mut self) -> Result<bool, Error> {
-        self.core_halted()
+    async fn core_halted(&mut self) -> Result<bool, Error> {
+        self.core_halted().await
     }
 
-    fn status(&mut self) -> Result<CoreStatus, Error> {
-        self.status()
+    async fn status(&mut self) -> Result<CoreStatus, Error> {
+        self.status().await
     }
 
-    fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
-        self.halt(timeout)
+    async fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
+        self.halt(timeout).await
     }
 
-    fn run(&mut self) -> Result<(), Error> {
-        self.run()
+    async fn run(&mut self) -> Result<(), Error> {
+        self.run().await
     }
 
-    fn reset(&mut self) -> Result<(), Error> {
-        self.reset()
+    async fn reset(&mut self) -> Result<(), Error> {
+        self.reset().await
     }
 
-    fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
-        self.reset_and_halt(timeout)
+    async fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
+        self.reset_and_halt(timeout).await
     }
 
-    fn step(&mut self) -> Result<CoreInformation, Error> {
-        self.step()
+    async fn step(&mut self) -> Result<CoreInformation, Error> {
+        self.step().await
     }
 
-    fn read_core_reg(
+    async fn read_core_reg(
         &mut self,
         address: registers::RegisterId,
     ) -> Result<registers::RegisterValue, Error> {
-        self.read_core_reg(address)
+        self.read_core_reg(address).await
     }
 
-    fn write_core_reg(
+    async fn write_core_reg(
         &mut self,
         address: registers::RegisterId,
         value: registers::RegisterValue,
     ) -> Result<(), Error> {
-        self.write_core_reg(address, value)
+        self.write_core_reg(address, value).await
     }
 
-    fn available_breakpoint_units(&mut self) -> Result<u32, Error> {
-        self.available_breakpoint_units()
+    async fn available_breakpoint_units(&mut self) -> Result<u32, Error> {
+        self.available_breakpoint_units().await
     }
 
-    fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, Error> {
-        self.inner.hw_breakpoints()
+    async fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, Error> {
+        self.inner.hw_breakpoints().await
     }
 
-    fn enable_breakpoints(&mut self, state: bool) -> Result<(), Error> {
-        self.enable_breakpoints(state)
+    async fn enable_breakpoints(&mut self, state: bool) -> Result<(), Error> {
+        self.enable_breakpoints(state).await
     }
 
-    fn set_hw_breakpoint(&mut self, unit_index: usize, addr: u64) -> Result<(), Error> {
-        self.set_hw_breakpoint_unit(unit_index, addr)
+    async fn set_hw_breakpoint(&mut self, unit_index: usize, addr: u64) -> Result<(), Error> {
+        self.set_hw_breakpoint_unit(unit_index, addr).await
     }
 
-    fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), Error> {
-        self.inner.clear_hw_breakpoint(unit_index)?;
+    async fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), Error> {
+        self.inner.clear_hw_breakpoint(unit_index).await?;
         Ok(())
     }
 
@@ -668,28 +685,28 @@ impl CoreInterface for Core<'_> {
         self.core_type()
     }
 
-    fn instruction_set(&mut self) -> Result<InstructionSet, Error> {
-        self.instruction_set()
+    async fn instruction_set(&mut self) -> Result<InstructionSet, Error> {
+        self.instruction_set().await
     }
 
-    fn fpu_support(&mut self) -> Result<bool, Error> {
-        self.fpu_support()
+    async fn fpu_support(&mut self) -> Result<bool, Error> {
+        self.fpu_support().await
     }
 
     fn floating_point_register_count(&mut self) -> Result<usize, crate::error::Error> {
         self.floating_point_register_count()
     }
 
-    fn reset_catch_set(&mut self) -> Result<(), Error> {
-        self.reset_catch_set()
+    async fn reset_catch_set(&mut self) -> Result<(), Error> {
+        self.reset_catch_set().await
     }
 
-    fn reset_catch_clear(&mut self) -> Result<(), Error> {
-        self.reset_catch_clear()
+    async fn reset_catch_clear(&mut self) -> Result<(), Error> {
+        self.reset_catch_clear().await
     }
 
-    fn debug_core_stop(&mut self) -> Result<(), Error> {
-        self.debug_core_stop()
+    async fn debug_core_stop(&mut self) -> Result<(), Error> {
+        self.debug_core_stop().await
     }
 
     fn is_64_bit(&self) -> bool {

@@ -109,14 +109,14 @@ pub trait AccessPortType {
 /// A trait to be implemented by access port drivers to implement access port operations.
 pub trait ApAccess {
     /// Read a register of the access port.
-    fn read_ap_register<PORT, R>(&mut self, port: &PORT) -> Result<R, ArmError>
+    async fn read_ap_register<PORT, R>(&mut self, port: &PORT) -> Result<R, ArmError>
     where
         PORT: AccessPortType + ApRegAccess<R> + ?Sized,
         R: ApRegister;
 
     /// Read a register of the access port using a block transfer.
     /// This can be used to read multiple values from the same register.
-    fn read_ap_register_repeated<PORT, R>(
+    async fn read_ap_register_repeated<PORT, R>(
         &mut self,
         port: &PORT,
         values: &mut [u32],
@@ -126,14 +126,18 @@ pub trait ApAccess {
         R: ApRegister;
 
     /// Write a register of the access port.
-    fn write_ap_register<PORT, R>(&mut self, port: &PORT, register: R) -> Result<(), ArmError>
+    async fn write_ap_register<PORT, R>(
+        &mut self,
+        port: &PORT,
+        register: R,
+    ) -> Result<(), ArmError>
     where
         PORT: AccessPortType + ApRegAccess<R> + ?Sized,
         R: ApRegister;
 
     /// Write a register of the access port using a block transfer.
     /// This can be used to write multiple values to the same register.
-    fn write_ap_register_repeated<PORT, R>(
+    async fn write_ap_register_repeated<PORT, R>(
         &mut self,
         port: &PORT,
         values: &[u32],
@@ -145,12 +149,14 @@ pub trait ApAccess {
 
 impl<T: DapAccess> ApAccess for T {
     #[tracing::instrument(skip(self, port), fields(ap = port.ap_address().ap_v1().ok(), register = R::NAME, value))]
-    fn read_ap_register<PORT, R>(&mut self, port: &PORT) -> Result<R, ArmError>
+    async fn read_ap_register<PORT, R>(&mut self, port: &PORT) -> Result<R, ArmError>
     where
         PORT: AccessPortType + ApRegAccess<R> + ?Sized,
         R: ApRegister,
     {
-        let raw_value = self.read_raw_ap_register(port.ap_address(), R::ADDRESS)?;
+        let raw_value = self
+            .read_raw_ap_register(port.ap_address(), R::ADDRESS)
+            .await?;
 
         tracing::Span::current().record("value", raw_value);
 
@@ -159,17 +165,18 @@ impl<T: DapAccess> ApAccess for T {
         Ok(raw_value.try_into()?)
     }
 
-    fn write_ap_register<PORT, R>(&mut self, port: &PORT, register: R) -> Result<(), ArmError>
+    async fn write_ap_register<PORT, R>(&mut self, port: &PORT, register: R) -> Result<(), ArmError>
     where
         PORT: AccessPortType + ApRegAccess<R> + ?Sized,
         R: ApRegister,
     {
         tracing::debug!("Writing AP register {}, value={:x?}", R::NAME, register);
         self.write_raw_ap_register(port.ap_address(), R::ADDRESS, register.into())
+            .await
             .inspect_err(|err| tracing::warn!("Failed to write AP register {}: {}", R::NAME, err))
     }
 
-    fn write_ap_register_repeated<PORT, R>(
+    async fn write_ap_register_repeated<PORT, R>(
         &mut self,
         port: &PORT,
         values: &[u32],
@@ -184,9 +191,10 @@ impl<T: DapAccess> ApAccess for T {
             values.len(),
         );
         self.write_raw_ap_register_repeated(port.ap_address(), R::ADDRESS, values)
+            .await
     }
 
-    fn read_ap_register_repeated<PORT, R>(
+    async fn read_ap_register_repeated<PORT, R>(
         &mut self,
         port: &PORT,
         values: &mut [u32],
@@ -202,6 +210,7 @@ impl<T: DapAccess> ApAccess for T {
         );
 
         self.read_raw_ap_register_repeated(port.ap_address(), R::ADDRESS, values)
+            .await
     }
 }
 
