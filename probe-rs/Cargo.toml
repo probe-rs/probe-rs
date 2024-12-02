@@ -85,7 +85,7 @@ gimli = { version = "0.31", default-features = false, features = [
     "read",
     "std",
 ], optional = true }
-typed-path = { version = "0.9", optional = true }
+typed-path = { version = "0.10", optional = true }
 parse_int = { version = "0.6", optional = true }
 rmp-serde = { version = "1", optional = true }
 dunce = { version = "1", optional = true }
