@@ -16,8 +16,8 @@ use crate::{
         communication_interface::RiscvInterfaceBuilder, dtm::jtag_dtm::JtagDtmBuilder,
     },
     probe::{
-        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeError, ProbeFactory,
-        WireProtocol,
+        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, JtagChainItem, ProbeError,
+        ProbeFactory, WireProtocol,
     },
 };
 
@@ -380,7 +380,7 @@ impl DebugProbe for WchLink {
         Ok(())
     }
 
-    fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
+    fn scan_chain(&self) -> Result<&[JtagChainItem], DebugProbeError> {
         Ok(&[])
     }
 }

@@ -170,46 +170,65 @@ fn try_detect_arm_chip(mut probe: Probe) -> Result<(Probe, Option<Target>), Erro
 
 fn try_detect_riscv_chip(probe: &mut Probe) -> Result<Option<Target>, Error> {
     let mut found_target = None;
+    let mut last_error = None;
 
-    probe.select_jtag_tap(0)?;
+    let chain = probe.scan_chain()?;
 
-    match probe.try_get_riscv_interface_builder() {
-        Ok(factory) => {
-            let mut state = factory.create_state();
-            let mut interface = factory.attach(&mut state)?;
+    tracing::info!("Chain: {:?}", chain);
+    for i in 0..chain.len() {
+        tracing::debug!("Selecting JTAG TAP {}", i);
+        probe.select_jtag_tap(i)?;
 
-            if let Err(error) = interface.enter_debug_mode() {
-                tracing::debug!("Failed to enter RISC-V debug mode: {error}");
-                return Ok(None);
-            }
+        match probe.try_get_riscv_interface_builder() {
+            Ok(factory) => {
+                let mut state = factory.create_state();
+                let mut interface = factory.attach(&mut state)?;
 
-            match interface.read_idcode() {
-                Ok(Some(idcode)) => {
-                    tracing::debug!("ID code read over JTAG: {idcode:#x}");
-                    let vendors = vendors();
-                    for vendor in vendors.iter() {
-                        // TODO: only consider families with matching JEP106.
-                        if let Some(target_name) =
-                            vendor.try_detect_riscv_chip(&mut interface, idcode)?
-                        {
-                            found_target = Some(registry::get_target_by_name(target_name)?);
-                            break;
+                if let Err(error) = interface.enter_debug_mode() {
+                    tracing::debug!("Failed to enter RISC-V debug mode: {error}");
+                    return Ok(None);
+                }
+
+                match interface.read_idcode() {
+                    Ok(Some(idcode)) => {
+                        tracing::debug!("ID code read over JTAG: {idcode:#x}");
+                        let vendors = vendors();
+                        for vendor in vendors.iter() {
+                            // TODO: only consider families with matching JEP106.
+                            match vendor.try_detect_riscv_chip(&mut interface, idcode) {
+                                Ok(Some(target_name)) => {
+                                    found_target = Some(registry::get_target_by_name(target_name)?);
+                                    break;
+                                }
+                                Ok(None) => {}
+                                Err(error) => last_error = Some(error),
+                            }
                         }
                     }
+                    Ok(_) => tracing::debug!("No RISC-V ID code returned."),
+                    Err(error) => tracing::debug!("Error during RISC-V chip detection: {error}"),
                 }
-                Ok(_) => tracing::debug!("No RISC-V ID code returned."),
-                Err(error) => tracing::debug!("Error during RISC-V chip detection: {error}"),
+
+                interface.disable_debug_module()?;
             }
 
-            // TODO: disable debug module
+            Err(DebugProbeError::InterfaceNotAvailable { .. }) => {
+                tracing::debug!("No RISC-V interface available, skipping detection.");
+            }
+
+            Err(error) => {
+                tracing::debug!("Error during RISC-V chip detection: {error}");
+            }
         }
 
-        Err(DebugProbeError::InterfaceNotAvailable { .. }) => {
-            tracing::debug!("No RISC-V interface available, skipping detection.");
+        if found_target.is_some() {
+            break;
         }
+    }
 
-        Err(error) => {
-            tracing::debug!("Error during RISC-V chip detection: {error}");
+    if found_target.is_none() {
+        if let Some(error) = last_error {
+            return Err(error.into());
         }
     }
 
@@ -218,43 +237,61 @@ fn try_detect_riscv_chip(probe: &mut Probe) -> Result<Option<Target>, Error> {
 
 fn try_detect_xtensa_chip(probe: &mut Probe) -> Result<Option<Target>, Error> {
     let mut found_target = None;
+    let mut last_error = None;
 
-    probe.select_jtag_tap(0)?;
+    let chain = probe.scan_chain()?;
 
-    let mut state = XtensaDebugInterfaceState::default();
-    match probe.try_get_xtensa_interface(&mut state) {
-        Ok(mut interface) => {
-            if let Err(error) = interface.enter_debug_mode() {
-                tracing::debug!("Failed to enter Xtensa debug mode: {error}");
-                return Ok(None);
-            }
+    for i in 0..chain.len() {
+        tracing::debug!("Selecting JTAG TAP {}", i);
+        probe.select_jtag_tap(i)?;
 
-            match interface.read_idcode() {
-                Ok(idcode) => {
-                    tracing::debug!("ID code read over JTAG: {idcode:#x}");
-                    let vendors = vendors();
-                    for vendor in vendors.iter() {
-                        // TODO: only consider families with matching JEP106.
-                        if let Some(target_name) =
-                            vendor.try_detect_xtensa_chip(&mut interface, idcode)?
-                        {
-                            found_target = Some(registry::get_target_by_name(target_name)?);
-                            break;
+        let mut state = XtensaDebugInterfaceState::default();
+        match probe.try_get_xtensa_interface(&mut state) {
+            Ok(mut interface) => {
+                if let Err(error) = interface.enter_debug_mode() {
+                    tracing::debug!("Failed to enter Xtensa debug mode: {error}");
+                    return Ok(None);
+                }
+
+                match interface.read_idcode() {
+                    Ok(idcode) => {
+                        tracing::debug!("ID code read over JTAG: {idcode:#x}");
+                        let vendors = vendors();
+                        for vendor in vendors.iter() {
+                            // TODO: only consider families with matching JEP106.
+                            match vendor.try_detect_xtensa_chip(&mut interface, idcode) {
+                                Ok(Some(target_name)) => {
+                                    found_target = Some(registry::get_target_by_name(target_name)?);
+                                    break;
+                                }
+                                Ok(None) => {}
+                                Err(error) => last_error = Some(error),
+                            }
                         }
                     }
+                    Err(error) => tracing::debug!("Error during Xtensa chip detection: {error}"),
                 }
-                Err(error) => tracing::debug!("Error during Xtensa chip detection: {error}"),
+
+                interface.leave_debug_mode()?;
             }
 
-            interface.leave_debug_mode()?;
+            Err(DebugProbeError::InterfaceNotAvailable { .. }) => {
+                tracing::debug!("No Xtensa interface available, skipping detection.");
+            }
+
+            Err(error) => {
+                tracing::debug!("Error during autodetection of Xtensa chips: {error}");
+            }
         }
 
-        Err(DebugProbeError::InterfaceNotAvailable { .. }) => {
-            tracing::debug!("No Xtensa interface available, skipping detection.");
+        if found_target.is_some() {
+            break;
         }
+    }
 
-        Err(error) => {
-            tracing::debug!("Error during autodetection of Xtensa chips: {error}");
+    if found_target.is_none() {
+        if let Some(error) = last_error {
+            return Err(error.into());
         }
     }
 
