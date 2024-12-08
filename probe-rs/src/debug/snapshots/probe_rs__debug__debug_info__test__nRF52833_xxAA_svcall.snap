@@ -1,14 +1,15 @@
 ---
 source: probe-rs/src/debug/debug_info.rs
+assertion_line: 1987
 expression: stack_frames
+snapshot_kind: text
 ---
 - function_name: software_breakpoint
   source_location:
     line: 371
     column:
       Column: 9
-    file: lib.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
   registers:
     - core_register:
         id: 0
@@ -219,8 +220,7 @@ expression: stack_frames
     line: 99
     column:
       Column: 5
-    file: nRF52833_xxAA.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
   registers:
     - core_register:
         id: 0
@@ -431,8 +431,7 @@ expression: stack_frames
     line: 97
     column:
       Column: 13
-    file: nRF52833_xxAA.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
   registers:
     - core_register:
         id: 0
@@ -834,8 +833,7 @@ expression: stack_frames
     line: 63
     column:
       Column: 2
-    file: nRF52833_xxAA.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
   registers:
     - core_register:
         id: 0
@@ -1042,8 +1040,7 @@ expression: stack_frames
     line: 38
     column:
       Column: 54
-    file: nRF52833_xxAA.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
   registers:
     - core_register:
         id: 0
@@ -1246,6 +1243,10 @@ expression: stack_frames
           type_name:
             Struct: Peripherals
           value: Peripherals @ 0x20003F74
+          source_location:
+            line: 21
+            column: ~
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
           children:
             - name:
                 Named: FICR
@@ -1597,6 +1598,10 @@ expression: stack_frames
           type_name:
             Struct: Peripherals
           value: Peripherals @ 0x20003F75
+          source_location:
+            line: 22
+            column: ~
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
           children:
             - name:
                 Named: CBP
@@ -1678,6 +1683,10 @@ expression: stack_frames
           type_name:
             Struct: "Clocks<nrf_hal_common::clocks::ExternalOscillator, nrf_hal_common::clocks::Internal, nrf_hal_common::clocks::LfOscStopped>"
           value: "Clocks<nrf_hal_common::clocks::ExternalOscillator, nrf_hal_common::clocks::Internal, nrf_hal_common::clocks::LfOscStopped> @ 0x20003F76"
+          source_location:
+            line: 23
+            column: ~
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
           children:
             - name:
                 Named: hfclk
@@ -1704,8 +1713,7 @@ expression: stack_frames
   source_location:
     line: 19
     column: LeftEdge
-    file: nRF52833_xxAA.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
   registers:
     - core_register:
         id: 0

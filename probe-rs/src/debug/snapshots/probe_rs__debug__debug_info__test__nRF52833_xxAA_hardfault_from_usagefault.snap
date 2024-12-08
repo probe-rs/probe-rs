@@ -1,14 +1,15 @@
 ---
 source: probe-rs/src/debug/debug_info.rs
+assertion_line: 1987
 expression: stack_frames
+snapshot_kind: text
 ---
 - function_name: software_breakpoint
   source_location:
     line: 371
     column:
       Column: 9
-    file: lib.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
   registers:
     - core_register:
         id: 0
@@ -219,8 +220,7 @@ expression: stack_frames
     line: 93
     column:
       Column: 9
-    file: nRF52833_xxAA.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
   registers:
     - core_register:
         id: 0
@@ -634,8 +634,7 @@ expression: stack_frames
     line: 181
     column:
       Column: 5
-    file: inline.rs
-    directory: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/cortex-m-0.7.7/src/../asm
+    path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/cortex-m-0.7.7/src/../asm/inline.rs
   registers:
     - core_register:
         id: 0
@@ -846,8 +845,7 @@ expression: stack_frames
     line: 43
     column:
       Column: 5
-    file: asm.rs
-    directory: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/cortex-m-0.7.7/src
+    path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/cortex-m-0.7.7/src/asm.rs
   registers:
     - core_register:
         id: 0
@@ -1057,8 +1055,7 @@ expression: stack_frames
   source_location:
     line: 18
     column: LeftEdge
-    file: nRF52833_xxAA.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
   registers:
     - core_register:
         id: 0

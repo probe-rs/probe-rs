@@ -165,8 +165,7 @@ impl<'a> FunctionDie<'a> {
 
         let file_name_attr = self.attribute(debug_info, gimli::DW_AT_call_file)?;
 
-        let (directory, file) =
-            extract_file(debug_info, &self.unit_info.unit, file_name_attr.value())?;
+        let path = extract_file(debug_info, &self.unit_info.unit, file_name_attr.value())?;
         let line = self
             .attribute(debug_info, gimli::DW_AT_call_line)
             .and_then(|line| line.udata_value());
@@ -177,12 +176,7 @@ impl<'a> FunctionDie<'a> {
                     None => ColumnType::LeftEdge,
                     Some(c) => ColumnType::Column(c),
                 });
-        Some(SourceLocation {
-            line,
-            column,
-            file: Some(file),
-            directory: Some(directory),
-        })
+        Some(SourceLocation { line, column, path })
     }
 
     /// Resolve an attribute by looking through both the specification and die, or abstract specification and die, entries.
