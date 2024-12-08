@@ -1,6 +1,6 @@
 ---
 source: probe-rs/src/debug/debug_info.rs
-assertion_line: 1996
+assertion_line: 1987
 expression: stack_frames
 snapshot_kind: text
 ---
@@ -9,8 +9,7 @@ snapshot_kind: text
     line: 80
     column:
       Column: 5
-    file: main.c
-    directory: "C:\\_Hobby\\probe-rs-test-c-firmware"
+    path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
   registers:
     - core_register:
         id: 0
@@ -215,7 +214,6 @@ snapshot_kind: text
       name: LocalScopeRoot
       type_name: Unknown
       value: "<unknown> {\n\tconst_void_pointer: void* = void* @ 0x2000004C,\n\tconst_void_const_pointer: const void* = void* @ 0x00001760}"
-      source_location: ~
       children:
         - name:
             Named: const_void_pointer
@@ -225,14 +223,12 @@ snapshot_kind: text
           source_location:
             line: 71
             column: ~
-            file: main.c
-            directory: "C:\\_Hobby\\probe-rs-test-c-firmware"
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
           children:
             - name:
                 Named: "*const_void_pointer"
               type_name: Unknown
               value: const void
-              source_location: ~
         - name:
             Named: const_void_const_pointer
           type_name:
@@ -243,22 +239,19 @@ snapshot_kind: text
           source_location:
             line: 72
             column: ~
-            file: main.c
-            directory: "C:\\_Hobby\\probe-rs-test-c-firmware"
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
           children:
             - name:
                 Named: "*const_void_const_pointer"
               type_name: Unknown
               value: const void
-              source_location: ~
   canonical_frame_address: 536875096
 - function_name: print_pointers
   source_location:
     line: 94
     column:
       Column: 1
-    file: main.c
-    directory: "C:\\_Hobby\\probe-rs-test-c-firmware"
+    path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
   registers:
     - core_register:
         id: 0
@@ -455,7 +448,6 @@ snapshot_kind: text
       name: LocalScopeRoot
       type_name: Unknown
       value: "<unknown> {\n\tvoid_pointer: void* = void* @ 20000050,\n\tvoid_const_pointer: const void* = void* @ 1764}"
-      source_location: ~
       children:
         - name:
             Named: void_pointer
@@ -465,8 +457,7 @@ snapshot_kind: text
           source_location:
             line: 84
             column: ~
-            file: main.c
-            directory: "C:\\_Hobby\\probe-rs-test-c-firmware"
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
         - name:
             Named: void_const_pointer
           type_name:
@@ -477,16 +468,14 @@ snapshot_kind: text
           source_location:
             line: 85
             column: ~
-            file: main.c
-            directory: "C:\\_Hobby\\probe-rs-test-c-firmware"
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
   canonical_frame_address: 536875104
 - function_name: main
   source_location:
     line: 111
     column:
       Column: 9
-    file: main.c
-    directory: "C:\\_Hobby\\probe-rs-test-c-firmware"
+    path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
   registers:
     - core_register:
         id: 0
@@ -683,7 +672,6 @@ snapshot_kind: text
       name: LocalScopeRoot
       type_name: Unknown
       value: "<unknown> {\n\tstring: int* = int* @ 0x20000054}"
-      source_location: ~
       children:
         - name:
             Named: string
@@ -693,8 +681,7 @@ snapshot_kind: text
           source_location:
             line: 98
             column: ~
-            file: main.c
-            directory: "C:\\_Hobby\\probe-rs-test-c-firmware"
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
           children:
             - name:
                 Named: "*string"
@@ -703,15 +690,13 @@ snapshot_kind: text
                   - Const
                   - Base: int
               value: "1819043144"
-              source_location: ~
   canonical_frame_address: 536875112
 - function_name: Reset_Handler
   source_location:
     line: 536
     column:
       Column: 15
-    file: startup_samd51.c
-    directory: "C:\\_Hobby\\probe-rs-test-c-firmware\\Atmel\\Device_Startup"
+    path: "C:\\_Hobby\\probe-rs-test-c-firmware\\Atmel\\Device_Startup\\startup_samd51.c"
   registers:
     - core_register:
         id: 0
@@ -908,7 +893,6 @@ snapshot_kind: text
       name: LocalScopeRoot
       type_name: Unknown
       value: "<unknown> {\n\tpSrc: uint32_t* = uint32_t* @ 0x2000106C,\n\tpDest: uint32_t* = uint32_t* @ 0x20001068}"
-      source_location: ~
       children:
         - name:
             Named: pSrc
@@ -918,8 +902,7 @@ snapshot_kind: text
           source_location:
             line: 501
             column: ~
-            file: startup_samd51.c
-            directory: "C:\\_Hobby\\probe-rs-test-c-firmware\\Atmel\\Device_Startup"
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\Atmel\\Device_Startup\\startup_samd51.c"
           children:
             - name:
                 Named: "*pSrc"
@@ -930,7 +913,6 @@ snapshot_kind: text
                       - Typedef: __uint32_t
                       - Base: long unsigned int
               value: "536875128"
-              source_location: ~
         - name:
             Named: pDest
           type_name:
@@ -939,8 +921,7 @@ snapshot_kind: text
           source_location:
             line: 501
             column: ~
-            file: startup_samd51.c
-            directory: "C:\\_Hobby\\probe-rs-test-c-firmware\\Atmel\\Device_Startup"
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\Atmel\\Device_Startup\\startup_samd51.c"
           children:
             - name:
                 Named: "*pDest"
@@ -951,5 +932,4 @@ snapshot_kind: text
                       - Typedef: __uint32_t
                       - Base: long unsigned int
               value: "484133903"
-              source_location: ~
   canonical_frame_address: 536875128

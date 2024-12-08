@@ -1,6 +1,6 @@
 ---
 source: probe-rs/src/debug/debug_info.rs
-assertion_line: 1996
+assertion_line: 1987
 expression: stack_frames
 snapshot_kind: text
 ---
@@ -9,8 +9,7 @@ snapshot_kind: text
     line: 371
     column:
       Column: 9
-    file: lib.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
   registers:
     - core_register:
         id: 0
@@ -215,15 +214,13 @@ snapshot_kind: text
       name: LocalScopeRoot
       type_name: Unknown
       value: "<unknown>"
-      source_location: ~
   canonical_frame_address: 536886920
 - function_name: __cortex_m_rt_SVCall
   source_location:
     line: 116
     column:
       Column: 5
-    file: RP2040.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
   registers:
     - core_register:
         id: 0
@@ -428,15 +425,13 @@ snapshot_kind: text
       name: LocalScopeRoot
       type_name: Unknown
       value: "<unknown>"
-      source_location: ~
   canonical_frame_address: 536886920
 - function_name: __cortex_m_rt_SVCall_trampoline
   source_location:
     line: 114
     column:
       Column: 13
-    file: RP2040.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
   registers:
     - core_register:
         id: 0
@@ -633,7 +628,6 @@ snapshot_kind: text
       name: LocalScopeRoot
       type_name: Unknown
       value: "<unknown>"
-      source_location: ~
   canonical_frame_address: 536886928
 - function_name: SVC
   source_location: ~
@@ -839,8 +833,7 @@ snapshot_kind: text
     line: 80
     column:
       Column: 2
-    file: RP2040.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
   registers:
     - core_register:
         id: 0
@@ -1041,15 +1034,13 @@ snapshot_kind: text
       name: LocalScopeRoot
       type_name: Unknown
       value: "<unknown>"
-      source_location: ~
   canonical_frame_address: 536886968
 - function_name: __cortex_m_rt_main
   source_location:
     line: 55
     column:
       Column: 54
-    file: RP2040.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
   registers:
     - core_register:
         id: 0
@@ -1246,7 +1237,6 @@ snapshot_kind: text
       name: LocalScopeRoot
       type_name: Unknown
       value: "<unknown> {\n\tcore: Peripherals = Peripherals @ 0x20003EDF,\n\texternal_xtal_freq_hz: u32 = 12000000,\n\tpac: Peripherals = Peripherals @ 0x20003EE7,\n\twatchdog: Watchdog = Watchdog @ 0x20003EEC,\n\tclocks: ClocksManager = ClocksManager @ 0x20003EF0}"
-      source_location: ~
       children:
         - name:
             Named: core
@@ -1256,99 +1246,83 @@ snapshot_kind: text
           source_location:
             line: 24
             column: ~
-            file: RP2040.rs
-            directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
           children:
             - name:
                 Named: CBP
               type_name:
                 Struct: CBP
               value: CBP @ 0x20003EDF
-              source_location: ~
             - name:
                 Named: CPUID
               type_name:
                 Struct: CPUID
               value: CPUID @ 0x20003EDF
-              source_location: ~
             - name:
                 Named: DCB
               type_name:
                 Struct: DCB
               value: DCB @ 0x20003EDF
-              source_location: ~
             - name:
                 Named: DWT
               type_name:
                 Struct: DWT
               value: DWT @ 0x20003EDF
-              source_location: ~
             - name:
                 Named: FPB
               type_name:
                 Struct: FPB
               value: FPB @ 0x20003EDF
-              source_location: ~
             - name:
                 Named: FPU
               type_name:
                 Struct: FPU
               value: FPU @ 0x20003EDF
-              source_location: ~
             - name:
                 Named: ICB
               type_name:
                 Struct: ICB
               value: ICB @ 0x20003EDF
-              source_location: ~
             - name:
                 Named: ITM
               type_name:
                 Struct: ITM
               value: ITM @ 0x20003EDF
-              source_location: ~
             - name:
                 Named: MPU
               type_name:
                 Struct: MPU
               value: MPU @ 0x20003EDF
-              source_location: ~
             - name:
                 Named: NVIC
               type_name:
                 Struct: NVIC
               value: NVIC @ 0x20003EDF
-              source_location: ~
             - name:
                 Named: SAU
               type_name:
                 Struct: SAU
               value: SAU @ 0x20003EDF
-              source_location: ~
             - name:
                 Named: SCB
               type_name:
                 Struct: SCB
               value: SCB @ 0x20003EDF
-              source_location: ~
             - name:
                 Named: SYST
               type_name:
                 Struct: SYST
               value: SYST @ 0x20003EDF
-              source_location: ~
             - name:
                 Named: TPIU
               type_name:
                 Struct: TPIU
               value: TPIU @ 0x20003EDF
-              source_location: ~
             - name:
                 Named: _priv
               type_name:
                 Base: ()
               value: ()
-              source_location: ~
         - name:
             Named: external_xtal_freq_hz
           type_name:
@@ -1357,8 +1331,7 @@ snapshot_kind: text
           source_location:
             line: 26
             column: ~
-            file: RP2040.rs
-            directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
         - name:
             Named: pac
           type_name:
@@ -1367,225 +1340,188 @@ snapshot_kind: text
           source_location:
             line: 27
             column: ~
-            file: RP2040.rs
-            directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
           children:
             - name:
                 Named: ADC
               type_name:
                 Struct: ADC
               value: ADC @ 0x20003EE7
-              source_location: ~
             - name:
                 Named: BUSCTRL
               type_name:
                 Struct: BUSCTRL
               value: BUSCTRL @ 0x20003EE7
-              source_location: ~
             - name:
                 Named: CLOCKS
               type_name:
                 Struct: CLOCKS
               value: CLOCKS @ 0x20003EE7
-              source_location: ~
             - name:
                 Named: DMA
               type_name:
                 Struct: DMA
               value: DMA @ 0x20003EE7
-              source_location: ~
             - name:
                 Named: I2C0
               type_name:
                 Struct: I2C0
               value: I2C0 @ 0x20003EE7
-              source_location: ~
             - name:
                 Named: I2C1
               type_name:
                 Struct: I2C1
               value: I2C1 @ 0x20003EE7
-              source_location: ~
             - name:
                 Named: IO_BANK0
               type_name:
                 Struct: IO_BANK0
               value: IO_BANK0 @ 0x20003EE7
-              source_location: ~
             - name:
                 Named: IO_QSPI
               type_name:
                 Struct: IO_QSPI
               value: IO_QSPI @ 0x20003EE7
-              source_location: ~
             - name:
                 Named: PADS_BANK0
               type_name:
                 Struct: PADS_BANK0
               value: PADS_BANK0 @ 0x20003EE7
-              source_location: ~
             - name:
                 Named: PADS_QSPI
               type_name:
                 Struct: PADS_QSPI
               value: PADS_QSPI @ 0x20003EE7
-              source_location: ~
             - name:
                 Named: PIO0
               type_name:
                 Struct: PIO0
               value: PIO0 @ 0x20003EE7
-              source_location: ~
             - name:
                 Named: PIO1
               type_name:
                 Struct: PIO1
               value: PIO1 @ 0x20003EE7
-              source_location: ~
             - name:
                 Named: PLL_SYS
               type_name:
                 Struct: PLL_SYS
               value: PLL_SYS @ 0x20003EE7
-              source_location: ~
             - name:
                 Named: PLL_USB
               type_name:
                 Struct: PLL_USB
               value: PLL_USB @ 0x20003EE7
-              source_location: ~
             - name:
                 Named: PPB
               type_name:
                 Struct: PPB
               value: PPB @ 0x20003EE7
-              source_location: ~
             - name:
                 Named: PSM
               type_name:
                 Struct: PSM
               value: PSM @ 0x20003EE7
-              source_location: ~
             - name:
                 Named: PWM
               type_name:
                 Struct: PWM
               value: PWM @ 0x20003EE7
-              source_location: ~
             - name:
                 Named: RESETS
               type_name:
                 Struct: RESETS
               value: RESETS @ 0x20003EE7
-              source_location: ~
             - name:
                 Named: ROSC
               type_name:
                 Struct: ROSC
               value: ROSC @ 0x20003EE7
-              source_location: ~
             - name:
                 Named: RTC
               type_name:
                 Struct: RTC
               value: RTC @ 0x20003EE7
-              source_location: ~
             - name:
                 Named: SIO
               type_name:
                 Struct: SIO
               value: SIO @ 0x20003EE7
-              source_location: ~
             - name:
                 Named: SPI0
               type_name:
                 Struct: SPI0
               value: SPI0 @ 0x20003EE7
-              source_location: ~
             - name:
                 Named: SPI1
               type_name:
                 Struct: SPI1
               value: SPI1 @ 0x20003EE7
-              source_location: ~
             - name:
                 Named: SYSCFG
               type_name:
                 Struct: SYSCFG
               value: SYSCFG @ 0x20003EE7
-              source_location: ~
             - name:
                 Named: SYSINFO
               type_name:
                 Struct: SYSINFO
               value: SYSINFO @ 0x20003EE7
-              source_location: ~
             - name:
                 Named: TBMAN
               type_name:
                 Struct: TBMAN
               value: TBMAN @ 0x20003EE7
-              source_location: ~
             - name:
                 Named: TIMER
               type_name:
                 Struct: TIMER
               value: TIMER @ 0x20003EE7
-              source_location: ~
             - name:
                 Named: UART0
               type_name:
                 Struct: UART0
               value: UART0 @ 0x20003EE7
-              source_location: ~
             - name:
                 Named: UART1
               type_name:
                 Struct: UART1
               value: UART1 @ 0x20003EE7
-              source_location: ~
             - name:
                 Named: USBCTRL_DPRAM
               type_name:
                 Struct: USBCTRL_DPRAM
               value: USBCTRL_DPRAM @ 0x20003EE7
-              source_location: ~
             - name:
                 Named: USBCTRL_REGS
               type_name:
                 Struct: USBCTRL_REGS
               value: USBCTRL_REGS @ 0x20003EE7
-              source_location: ~
             - name:
                 Named: VREG_AND_CHIP_RESET
               type_name:
                 Struct: VREG_AND_CHIP_RESET
               value: VREG_AND_CHIP_RESET @ 0x20003EE7
-              source_location: ~
             - name:
                 Named: WATCHDOG
               type_name:
                 Struct: WATCHDOG
               value: WATCHDOG @ 0x20003EE7
-              source_location: ~
             - name:
                 Named: XIP_CTRL
               type_name:
                 Struct: XIP_CTRL
               value: XIP_CTRL @ 0x20003EE7
-              source_location: ~
             - name:
                 Named: XIP_SSI
               type_name:
                 Struct: XIP_SSI
               value: XIP_SSI @ 0x20003EE7
-              source_location: ~
             - name:
                 Named: XOSC
               type_name:
                 Struct: XOSC
               value: XOSC @ 0x20003EE7
-              source_location: ~
         - name:
             Named: watchdog
           type_name:
@@ -1594,21 +1530,18 @@ snapshot_kind: text
           source_location:
             line: 28
             column: ~
-            file: RP2040.rs
-            directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
           children:
             - name:
                 Named: watchdog
               type_name:
                 Struct: WATCHDOG
               value: WATCHDOG @ 0x20003EF0
-              source_location: ~
             - name:
                 Named: load_value
               type_name:
                 Base: u32
               value: "0"
-              source_location: ~
         - name:
             Named: clocks
           type_name:
@@ -1617,352 +1550,299 @@ snapshot_kind: text
           source_location:
             line: 30
             column: ~
-            file: RP2040.rs
-            directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
           children:
             - name:
                 Named: clocks
               type_name:
                 Struct: CLOCKS
               value: CLOCKS @ 0x20003F18
-              source_location: ~
             - name:
                 Named: gpio_output0_clock
               type_name:
                 Struct: GpioOutput0Clock
               value: GpioOutput0Clock @ 0x20003EF0
-              source_location: ~
               children:
                 - name:
                     Named: shared_dev
                   type_name:
                     Struct: ShareableClocks
                   value: ShareableClocks @ 0x20003EF4
-                  source_location: ~
                   children:
                     - name:
                         Named: _internal
                       type_name:
                         Base: ()
                       value: ()
-                      source_location: ~
                 - name:
                     Named: frequency
                   type_name:
                     Struct: "Rate<u32, 1, 1>"
                   value: "Rate<u32, 1, 1> @ 0x20003EF0"
-                  source_location: ~
                   children:
                     - name:
                         Named: raw
                       type_name:
                         Base: u32
                       value: "0"
-                      source_location: ~
             - name:
                 Named: gpio_output1_clock
               type_name:
                 Struct: GpioOutput1Clock
               value: GpioOutput1Clock @ 0x20003EF4
-              source_location: ~
               children:
                 - name:
                     Named: shared_dev
                   type_name:
                     Struct: ShareableClocks
                   value: ShareableClocks @ 0x20003EF8
-                  source_location: ~
                   children:
                     - name:
                         Named: _internal
                       type_name:
                         Base: ()
                       value: ()
-                      source_location: ~
                 - name:
                     Named: frequency
                   type_name:
                     Struct: "Rate<u32, 1, 1>"
                   value: "Rate<u32, 1, 1> @ 0x20003EF4"
-                  source_location: ~
                   children:
                     - name:
                         Named: raw
                       type_name:
                         Base: u32
                       value: "0"
-                      source_location: ~
             - name:
                 Named: gpio_output2_clock
               type_name:
                 Struct: GpioOutput2Clock
               value: GpioOutput2Clock @ 0x20003EF8
-              source_location: ~
               children:
                 - name:
                     Named: shared_dev
                   type_name:
                     Struct: ShareableClocks
                   value: ShareableClocks @ 0x20003EFC
-                  source_location: ~
                   children:
                     - name:
                         Named: _internal
                       type_name:
                         Base: ()
                       value: ()
-                      source_location: ~
                 - name:
                     Named: frequency
                   type_name:
                     Struct: "Rate<u32, 1, 1>"
                   value: "Rate<u32, 1, 1> @ 0x20003EF8"
-                  source_location: ~
                   children:
                     - name:
                         Named: raw
                       type_name:
                         Base: u32
                       value: "0"
-                      source_location: ~
             - name:
                 Named: gpio_output3_clock
               type_name:
                 Struct: GpioOutput3Clock
               value: GpioOutput3Clock @ 0x20003EFC
-              source_location: ~
               children:
                 - name:
                     Named: shared_dev
                   type_name:
                     Struct: ShareableClocks
                   value: ShareableClocks @ 0x20003F00
-                  source_location: ~
                   children:
                     - name:
                         Named: _internal
                       type_name:
                         Base: ()
                       value: ()
-                      source_location: ~
                 - name:
                     Named: frequency
                   type_name:
                     Struct: "Rate<u32, 1, 1>"
                   value: "Rate<u32, 1, 1> @ 0x20003EFC"
-                  source_location: ~
                   children:
                     - name:
                         Named: raw
                       type_name:
                         Base: u32
                       value: "0"
-                      source_location: ~
             - name:
                 Named: reference_clock
               type_name:
                 Struct: ReferenceClock
               value: ReferenceClock @ 0x20003F00
-              source_location: ~
               children:
                 - name:
                     Named: shared_dev
                   type_name:
                     Struct: ShareableClocks
                   value: ShareableClocks @ 0x20003F04
-                  source_location: ~
                   children:
                     - name:
                         Named: _internal
                       type_name:
                         Base: ()
                       value: ()
-                      source_location: ~
                 - name:
                     Named: frequency
                   type_name:
                     Struct: "Rate<u32, 1, 1>"
                   value: "Rate<u32, 1, 1> @ 0x20003F00"
-                  source_location: ~
                   children:
                     - name:
                         Named: raw
                       type_name:
                         Base: u32
                       value: "12000000"
-                      source_location: ~
             - name:
                 Named: system_clock
               type_name:
                 Struct: SystemClock
               value: SystemClock @ 0x20003F04
-              source_location: ~
               children:
                 - name:
                     Named: shared_dev
                   type_name:
                     Struct: ShareableClocks
                   value: ShareableClocks @ 0x20003F08
-                  source_location: ~
                   children:
                     - name:
                         Named: _internal
                       type_name:
                         Base: ()
                       value: ()
-                      source_location: ~
                 - name:
                     Named: frequency
                   type_name:
                     Struct: "Rate<u32, 1, 1>"
                   value: "Rate<u32, 1, 1> @ 0x20003F04"
-                  source_location: ~
                   children:
                     - name:
                         Named: raw
                       type_name:
                         Base: u32
                       value: "125000000"
-                      source_location: ~
             - name:
                 Named: peripheral_clock
               type_name:
                 Struct: PeripheralClock
               value: PeripheralClock @ 0x20003F08
-              source_location: ~
               children:
                 - name:
                     Named: shared_dev
                   type_name:
                     Struct: ShareableClocks
                   value: ShareableClocks @ 0x20003F0C
-                  source_location: ~
                   children:
                     - name:
                         Named: _internal
                       type_name:
                         Base: ()
                       value: ()
-                      source_location: ~
                 - name:
                     Named: frequency
                   type_name:
                     Struct: "Rate<u32, 1, 1>"
                   value: "Rate<u32, 1, 1> @ 0x20003F08"
-                  source_location: ~
                   children:
                     - name:
                         Named: raw
                       type_name:
                         Base: u32
                       value: "125000000"
-                      source_location: ~
             - name:
                 Named: usb_clock
               type_name:
                 Struct: UsbClock
               value: UsbClock @ 0x20003F0C
-              source_location: ~
               children:
                 - name:
                     Named: shared_dev
                   type_name:
                     Struct: ShareableClocks
                   value: ShareableClocks @ 0x20003F10
-                  source_location: ~
                   children:
                     - name:
                         Named: _internal
                       type_name:
                         Base: ()
                       value: ()
-                      source_location: ~
                 - name:
                     Named: frequency
                   type_name:
                     Struct: "Rate<u32, 1, 1>"
                   value: "Rate<u32, 1, 1> @ 0x20003F0C"
-                  source_location: ~
                   children:
                     - name:
                         Named: raw
                       type_name:
                         Base: u32
                       value: "48000000"
-                      source_location: ~
             - name:
                 Named: adc_clock
               type_name:
                 Struct: AdcClock
               value: AdcClock @ 0x20003F10
-              source_location: ~
               children:
                 - name:
                     Named: shared_dev
                   type_name:
                     Struct: ShareableClocks
                   value: ShareableClocks @ 0x20003F14
-                  source_location: ~
                   children:
                     - name:
                         Named: _internal
                       type_name:
                         Base: ()
                       value: ()
-                      source_location: ~
                 - name:
                     Named: frequency
                   type_name:
                     Struct: "Rate<u32, 1, 1>"
                   value: "Rate<u32, 1, 1> @ 0x20003F10"
-                  source_location: ~
                   children:
                     - name:
                         Named: raw
                       type_name:
                         Base: u32
                       value: "48000000"
-                      source_location: ~
             - name:
                 Named: rtc_clock
               type_name:
                 Struct: RtcClock
               value: RtcClock @ 0x20003F14
-              source_location: ~
               children:
                 - name:
                     Named: shared_dev
                   type_name:
                     Struct: ShareableClocks
                   value: ShareableClocks @ 0x20003F18
-                  source_location: ~
                   children:
                     - name:
                         Named: _internal
                       type_name:
                         Base: ()
                       value: ()
-                      source_location: ~
                 - name:
                     Named: frequency
                   type_name:
                     Struct: "Rate<u32, 1, 1>"
                   value: "Rate<u32, 1, 1> @ 0x20003F14"
-                  source_location: ~
                   children:
                     - name:
                         Named: raw
                       type_name:
                         Base: u32
                       value: "46875"
-                      source_location: ~
   canonical_frame_address: 536887288
 - function_name: __cortex_m_rt_main
   source_location:
     line: 22
     column: LeftEdge
-    file: RP2040.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
   registers:
     - core_register:
         id: 0
@@ -2159,5 +2039,4 @@ snapshot_kind: text
       name: LocalScopeRoot
       type_name: Unknown
       value: "<unknown>"
-      source_location: ~
   canonical_frame_address: 536887288

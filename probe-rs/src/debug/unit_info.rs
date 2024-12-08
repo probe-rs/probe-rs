@@ -2209,29 +2209,24 @@ impl UnitInfo {
         debug_info: &DebugInfo,
         entry: &gimli::DebuggingInformationEntry<GimliReader>,
     ) -> Result<Option<SourceLocation>, gimli::Error> {
-        let mut variable_attributes = entry.attrs();
+        let Some(file_attr) = entry.attr_value(gimli::DW_AT_decl_file)? else {
+            return Ok(None);
+        };
 
-        let mut has_source_location = false;
+        let Some(path) = extract_file(debug_info, &self.unit, file_attr) else {
+            return Ok(None);
+        };
 
         let mut source_location = SourceLocation {
-            file: None,
-            directory: None,
+            path,
             line: None,
             column: None,
         };
 
+        let mut variable_attributes = entry.attrs();
         // Now loop through all the unit attributes to extract the remainder of the `Variable` definition.
         while let Ok(Some(attr)) = variable_attributes.next() {
             match attr.name() {
-                gimli::DW_AT_decl_file => {
-                    if let Some((directory, file_name)) =
-                        extract_file(debug_info, &self.unit, attr.value())
-                    {
-                        source_location.file = Some(file_name);
-                        source_location.directory = Some(directory);
-                        has_source_location = true;
-                    }
-                }
                 gimli::DW_AT_decl_line => {
                     if let Some(line_number) = extract_line(attr.value()) {
                         source_location.line = Some(line_number);
@@ -2245,11 +2240,7 @@ impl UnitInfo {
             }
         }
 
-        if has_source_location {
-            Ok(Some(source_location))
-        } else {
-            Ok(None)
-        }
+        Ok(Some(source_location))
     }
 }
 

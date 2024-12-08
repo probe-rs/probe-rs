@@ -589,34 +589,26 @@ impl DebugCli {
                                 println!();
 
                                 if let Some(location) = &frame.source_location {
-                                    if location.directory.is_some() || location.file.is_some() {
-                                        print!("       ");
+                                    print!("       ");
 
-                                        if let Some(dir) = &location.directory {
-                                            print!("{}", dir.to_path().display());
-                                        }
+                                    print!("{}", location.path.to_path().display());
 
-                                        if let Some(file) = &location.file {
-                                            print!("/{file}");
+                                    if let Some(line) = location.line {
+                                        print!(":{line}");
 
-                                            if let Some(line) = location.line {
-                                                print!(":{line}");
-
-                                                if let Some(col) = location.column {
-                                                    match col {
-                                                        probe_rs::debug::ColumnType::LeftEdge => {
-                                                            print!(":1")
-                                                        }
-                                                        probe_rs::debug::ColumnType::Column(c) => {
-                                                            print!(":{c}")
-                                                        }
-                                                    }
+                                        if let Some(col) = location.column {
+                                            match col {
+                                                probe_rs::debug::ColumnType::LeftEdge => {
+                                                    print!(":1")
+                                                }
+                                                probe_rs::debug::ColumnType::Column(c) => {
+                                                    print!(":{c}")
                                                 }
                                             }
                                         }
-
-                                        println!();
                                     }
+
+                                    println!();
                                 }
                             }
 

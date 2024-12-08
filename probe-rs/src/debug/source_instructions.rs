@@ -254,31 +254,36 @@ fn match_file_line_first_available_column(
     })
 }
 
-fn serialize_typed_path<S>(path: &Option<TypedPathBuf>, serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_typed_path<S>(path: &TypedPathBuf, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
 {
-    match path {
-        Some(path) => serializer.serialize_str(&path.to_string_lossy()),
-        None => serializer.serialize_none(),
-    }
+    serializer.serialize_str(&path.to_string_lossy())
 }
 
 /// A specific location in source code.
 /// Each unique line, column, file and directory combination is a unique source location.
-///
-/// At least one of the fields must be non-None.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, PartialEq, Eq, Serialize)]
 pub struct SourceLocation {
+    /// The path to the source file
+    #[serde(serialize_with = "serialize_typed_path")]
+    pub path: TypedPathBuf,
     /// The line number in the source file with zero based indexing.
     pub line: Option<u64>,
     /// The column number in the source file with zero based indexing.
     pub column: Option<ColumnType>,
-    /// The file name of the source file.
-    pub file: Option<String>,
-    /// The directory of the source file.
-    #[serde(serialize_with = "serialize_typed_path")]
-    pub directory: Option<TypedPathBuf>,
+}
+
+impl Debug for SourceLocation {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}:{:?}:{:?}",
+            self.path.to_path().display(),
+            self.line,
+            self.column
+        )
+    }
 }
 
 impl SourceLocation {
@@ -290,22 +295,23 @@ impl SourceLocation {
     ) -> Option<SourceLocation> {
         debug_info
             .find_file_and_directory(&program_unit.unit, instruction_location.file_index)
-            .map(|(file, directory)| SourceLocation {
+            .map(|path| SourceLocation {
                 line: instruction_location.line.map(std::num::NonZeroU64::get),
                 column: Some(instruction_location.column),
-                file,
-                directory,
+                path,
             })
+    }
+
+    /// Get the file name of the source file
+    pub fn file_name(&self) -> Option<String> {
+        self.path
+            .file_name()
+            .map(|name| String::from_utf8_lossy(name).to_string())
     }
 
     /// Get the full path of the source file
     pub fn combined_typed_path(&self) -> Option<TypedPathBuf> {
-        let combined_path = self
-            .directory
-            .as_ref()
-            .and_then(|dir| self.file.as_ref().map(|file| dir.join(file)));
-
-        combined_path
+        Some(self.path.clone())
     }
 }
 

@@ -1,6 +1,6 @@
 ---
 source: probe-rs/src/debug/debug_info.rs
-assertion_line: 1996
+assertion_line: 1987
 expression: stack_frames
 snapshot_kind: text
 ---
@@ -9,8 +9,7 @@ snapshot_kind: text
     line: 371
     column:
       Column: 9
-    file: lib.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
   registers:
     - core_register:
         id: 0
@@ -215,15 +214,13 @@ snapshot_kind: text
       name: LocalScopeRoot
       type_name: Unknown
       value: "<unknown>"
-      source_location: ~
   canonical_frame_address: 536887072
 - function_name: __cortex_m_rt_HardFault
   source_location:
     line: 93
     column:
       Column: 9
-    file: nRF52833_xxAA.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
   registers:
     - core_register:
         id: 0
@@ -428,7 +425,6 @@ snapshot_kind: text
       name: LocalScopeRoot
       type_name: Unknown
       value: "<unknown>"
-      source_location: ~
   canonical_frame_address: 536887072
 - function_name: "HardFault <Cause: Escalated BusFault <Cause: Precise data access error at location: 0x3ffffffc>>"
   source_location: ~
@@ -638,8 +634,7 @@ snapshot_kind: text
     line: 1678
     column:
       Column: 9
-    file: mod.rs
-    directory: /rustc/7f2fc33da6633f5a764ddc263c769b6b2873d167/library/core/src/ptr
+    path: /rustc/7f2fc33da6633f5a764ddc263c769b6b2873d167/library/core/src/ptr/mod.rs
   registers:
     - core_register:
         id: 0
@@ -844,7 +839,6 @@ snapshot_kind: text
       name: LocalScopeRoot
       type_name: Unknown
       value: "<unknown> {\n\tsrc: *const u32 = *const u32 @ 0x20003F48}"
-      source_location: ~
       children:
         - name:
             Named: src
@@ -854,23 +848,20 @@ snapshot_kind: text
           source_location:
             line: 1667
             column: ~
-            file: mod.rs
-            directory: /rustc/7f2fc33da6633f5a764ddc263c769b6b2873d167/library/core/src/ptr
+            path: /rustc/7f2fc33da6633f5a764ddc263c769b6b2873d167/library/core/src/ptr/mod.rs
           children:
             - name:
                 Named: "*src"
               type_name:
                 Base: u32
               value: "0"
-              source_location: ~
   canonical_frame_address: 536887128
 - function_name: trigger_hardfault_from_busfault
   source_location:
     line: 51
     column:
       Column: 2
-    file: nRF52833_xxAA.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
   registers:
     - core_register:
         id: 0
@@ -1067,15 +1058,13 @@ snapshot_kind: text
       name: LocalScopeRoot
       type_name: Unknown
       value: "<unknown>"
-      source_location: ~
   canonical_frame_address: 536887136
 - function_name: __cortex_m_rt_main
   source_location:
     line: 38
     column:
       Column: 54
-    file: nRF52833_xxAA.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
   registers:
     - core_register:
         id: 0
@@ -1272,7 +1261,6 @@ snapshot_kind: text
       name: LocalScopeRoot
       type_name: Unknown
       value: "<unknown> {\n\tpac: Peripherals = Peripherals @ 0x20003F74,\n\tcore: Peripherals = Peripherals @ 0x20003F75,\n\tclocks: Clocks<nrf_hal_common::clocks::ExternalOscillator, nrf_hal_common::clocks::Internal, nrf_hal_common::clocks::LfOscStopped> = Clocks<nrf_hal_common::clocks::ExternalOscillator, nrf_hal_common::clocks::Internal, nrf_hal_common::clocks::LfOscStopped> @ 0x20003F76}"
-      source_location: ~
       children:
         - name:
             Named: pac
@@ -1282,423 +1270,353 @@ snapshot_kind: text
           source_location:
             line: 21
             column: ~
-            file: nRF52833_xxAA.rs
-            directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
           children:
             - name:
                 Named: FICR
               type_name:
                 Struct: FICR
               value: FICR @ 0x20003F74
-              source_location: ~
             - name:
                 Named: UICR
               type_name:
                 Struct: UICR
               value: UICR @ 0x20003F74
-              source_location: ~
             - name:
                 Named: CLOCK
               type_name:
                 Struct: CLOCK
               value: CLOCK @ 0x20003F74
-              source_location: ~
             - name:
                 Named: POWER
               type_name:
                 Struct: POWER
               value: POWER @ 0x20003F74
-              source_location: ~
             - name:
                 Named: P0
               type_name:
                 Struct: P0
               value: P0 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: P1
               type_name:
                 Struct: P1
               value: P1 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: RADIO
               type_name:
                 Struct: RADIO
               value: RADIO @ 0x20003F74
-              source_location: ~
             - name:
                 Named: UART0
               type_name:
                 Struct: UART0
               value: UART0 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: UARTE0
               type_name:
                 Struct: UARTE0
               value: UARTE0 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: SPI0
               type_name:
                 Struct: SPI0
               value: SPI0 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: SPIM0
               type_name:
                 Struct: SPIM0
               value: SPIM0 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: SPIS0
               type_name:
                 Struct: SPIS0
               value: SPIS0 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: TWI0
               type_name:
                 Struct: TWI0
               value: TWI0 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: TWIM0
               type_name:
                 Struct: TWIM0
               value: TWIM0 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: TWIS0
               type_name:
                 Struct: TWIS0
               value: TWIS0 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: SPI1
               type_name:
                 Struct: SPI1
               value: SPI1 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: SPIM1
               type_name:
                 Struct: SPIM1
               value: SPIM1 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: SPIS1
               type_name:
                 Struct: SPIS1
               value: SPIS1 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: TWI1
               type_name:
                 Struct: TWI1
               value: TWI1 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: TWIM1
               type_name:
                 Struct: TWIM1
               value: TWIM1 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: TWIS1
               type_name:
                 Struct: TWIS1
               value: TWIS1 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: NFCT
               type_name:
                 Struct: NFCT
               value: NFCT @ 0x20003F74
-              source_location: ~
             - name:
                 Named: GPIOTE
               type_name:
                 Struct: GPIOTE
               value: GPIOTE @ 0x20003F74
-              source_location: ~
             - name:
                 Named: SAADC
               type_name:
                 Struct: SAADC
               value: SAADC @ 0x20003F74
-              source_location: ~
             - name:
                 Named: TIMER0
               type_name:
                 Struct: TIMER0
               value: TIMER0 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: TIMER1
               type_name:
                 Struct: TIMER1
               value: TIMER1 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: TIMER2
               type_name:
                 Struct: TIMER2
               value: TIMER2 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: RTC0
               type_name:
                 Struct: RTC0
               value: RTC0 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: TEMP
               type_name:
                 Struct: TEMP
               value: TEMP @ 0x20003F74
-              source_location: ~
             - name:
                 Named: RNG
               type_name:
                 Struct: RNG
               value: RNG @ 0x20003F74
-              source_location: ~
             - name:
                 Named: ECB
               type_name:
                 Struct: ECB
               value: ECB @ 0x20003F74
-              source_location: ~
             - name:
                 Named: AAR
               type_name:
                 Struct: AAR
               value: AAR @ 0x20003F74
-              source_location: ~
             - name:
                 Named: CCM
               type_name:
                 Struct: CCM
               value: CCM @ 0x20003F74
-              source_location: ~
             - name:
                 Named: WDT
               type_name:
                 Struct: WDT
               value: WDT @ 0x20003F74
-              source_location: ~
             - name:
                 Named: RTC1
               type_name:
                 Struct: RTC1
               value: RTC1 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: QDEC
               type_name:
                 Struct: QDEC
               value: QDEC @ 0x20003F74
-              source_location: ~
             - name:
                 Named: COMP
               type_name:
                 Struct: COMP
               value: COMP @ 0x20003F74
-              source_location: ~
             - name:
                 Named: LPCOMP
               type_name:
                 Struct: LPCOMP
               value: LPCOMP @ 0x20003F74
-              source_location: ~
             - name:
                 Named: EGU0
               type_name:
                 Struct: EGU0
               value: EGU0 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: SWI0
               type_name:
                 Struct: SWI0
               value: SWI0 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: EGU1
               type_name:
                 Struct: EGU1
               value: EGU1 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: SWI1
               type_name:
                 Struct: SWI1
               value: SWI1 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: EGU2
               type_name:
                 Struct: EGU2
               value: EGU2 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: SWI2
               type_name:
                 Struct: SWI2
               value: SWI2 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: EGU3
               type_name:
                 Struct: EGU3
               value: EGU3 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: SWI3
               type_name:
                 Struct: SWI3
               value: SWI3 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: EGU4
               type_name:
                 Struct: EGU4
               value: EGU4 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: SWI4
               type_name:
                 Struct: SWI4
               value: SWI4 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: EGU5
               type_name:
                 Struct: EGU5
               value: EGU5 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: SWI5
               type_name:
                 Struct: SWI5
               value: SWI5 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: TIMER3
               type_name:
                 Struct: TIMER3
               value: TIMER3 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: TIMER4
               type_name:
                 Struct: TIMER4
               value: TIMER4 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: PWM0
               type_name:
                 Struct: PWM0
               value: PWM0 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: PDM
               type_name:
                 Struct: PDM
               value: PDM @ 0x20003F74
-              source_location: ~
             - name:
                 Named: ACL
               type_name:
                 Struct: ACL
               value: ACL @ 0x20003F74
-              source_location: ~
             - name:
                 Named: NVMC
               type_name:
                 Struct: NVMC
               value: NVMC @ 0x20003F74
-              source_location: ~
             - name:
                 Named: PPI
               type_name:
                 Struct: PPI
               value: PPI @ 0x20003F74
-              source_location: ~
             - name:
                 Named: MWU
               type_name:
                 Struct: MWU
               value: MWU @ 0x20003F74
-              source_location: ~
             - name:
                 Named: PWM1
               type_name:
                 Struct: PWM1
               value: PWM1 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: PWM2
               type_name:
                 Struct: PWM2
               value: PWM2 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: SPI2
               type_name:
                 Struct: SPI2
               value: SPI2 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: SPIM2
               type_name:
                 Struct: SPIM2
               value: SPIM2 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: SPIS2
               type_name:
                 Struct: SPIS2
               value: SPIS2 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: RTC2
               type_name:
                 Struct: RTC2
               value: RTC2 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: I2S
               type_name:
                 Struct: I2S
               value: I2S @ 0x20003F74
-              source_location: ~
             - name:
                 Named: USBD
               type_name:
                 Struct: USBD
               value: USBD @ 0x20003F74
-              source_location: ~
             - name:
                 Named: UARTE1
               type_name:
                 Struct: UARTE1
               value: UARTE1 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: PWM3
               type_name:
                 Struct: PWM3
               value: PWM3 @ 0x20003F74
-              source_location: ~
             - name:
                 Named: SPIM3
               type_name:
                 Struct: SPIM3
               value: SPIM3 @ 0x20003F74
-              source_location: ~
         - name:
             Named: core
           type_name:
@@ -1707,99 +1625,83 @@ snapshot_kind: text
           source_location:
             line: 22
             column: ~
-            file: nRF52833_xxAA.rs
-            directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
           children:
             - name:
                 Named: CBP
               type_name:
                 Struct: CBP
               value: CBP @ 0x20003F75
-              source_location: ~
             - name:
                 Named: CPUID
               type_name:
                 Struct: CPUID
               value: CPUID @ 0x20003F75
-              source_location: ~
             - name:
                 Named: DCB
               type_name:
                 Struct: DCB
               value: DCB @ 0x20003F75
-              source_location: ~
             - name:
                 Named: DWT
               type_name:
                 Struct: DWT
               value: DWT @ 0x20003F75
-              source_location: ~
             - name:
                 Named: FPB
               type_name:
                 Struct: FPB
               value: FPB @ 0x20003F75
-              source_location: ~
             - name:
                 Named: FPU
               type_name:
                 Struct: FPU
               value: FPU @ 0x20003F75
-              source_location: ~
             - name:
                 Named: ICB
               type_name:
                 Struct: ICB
               value: ICB @ 0x20003F75
-              source_location: ~
             - name:
                 Named: ITM
               type_name:
                 Struct: ITM
               value: ITM @ 0x20003F75
-              source_location: ~
             - name:
                 Named: MPU
               type_name:
                 Struct: MPU
               value: MPU @ 0x20003F75
-              source_location: ~
             - name:
                 Named: NVIC
               type_name:
                 Struct: NVIC
               value: NVIC @ 0x20003F75
-              source_location: ~
             - name:
                 Named: SAU
               type_name:
                 Struct: SAU
               value: SAU @ 0x20003F75
-              source_location: ~
             - name:
                 Named: SCB
               type_name:
                 Struct: SCB
               value: SCB @ 0x20003F75
-              source_location: ~
             - name:
                 Named: SYST
               type_name:
                 Struct: SYST
               value: SYST @ 0x20003F75
-              source_location: ~
             - name:
                 Named: TPIU
               type_name:
                 Struct: TPIU
               value: TPIU @ 0x20003F75
-              source_location: ~
             - name:
                 Named: _priv
               type_name:
                 Base: ()
               value: ()
-              source_location: ~
         - name:
             Named: clocks
           type_name:
@@ -1808,40 +1710,34 @@ snapshot_kind: text
           source_location:
             line: 23
             column: ~
-            file: nRF52833_xxAA.rs
-            directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
           children:
             - name:
                 Named: hfclk
               type_name:
                 Struct: ExternalOscillator
               value: ExternalOscillator @ 0x20003F76
-              source_location: ~
             - name:
                 Named: lfclk
               type_name:
                 Struct: Internal
               value: Internal @ 0x20003F76
-              source_location: ~
             - name:
                 Named: lfstat
               type_name:
                 Struct: LfOscStopped
               value: LfOscStopped @ 0x20003F76
-              source_location: ~
             - name:
                 Named: periph
               type_name:
                 Struct: CLOCK
               value: CLOCK @ 0x20003F76
-              source_location: ~
   canonical_frame_address: 536887288
 - function_name: __cortex_m_rt_main
   source_location:
     line: 19
     column: LeftEdge
-    file: nRF52833_xxAA.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
   registers:
     - core_register:
         id: 0
@@ -2038,5 +1934,4 @@ snapshot_kind: text
       name: LocalScopeRoot
       type_name: Unknown
       value: "<unknown>"
-      source_location: ~
   canonical_frame_address: 536887288

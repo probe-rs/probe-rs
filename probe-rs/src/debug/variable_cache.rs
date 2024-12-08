@@ -34,6 +34,7 @@ impl Serialize for VariableCache {
             /// To eliminate noise, we will only show values for base data types and strings.
             value: String,
 
+            #[serde(skip_serializing_if = "Option::is_none")]
             source_location: Option<SourceLocation>,
             /// ONLY If there are children.
             #[serde(skip_serializing_if = "Vec::is_empty")]

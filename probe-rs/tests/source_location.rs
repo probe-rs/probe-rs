@@ -84,18 +84,15 @@ fn breakpoint_location_inexact() {
 fn source_location() {
     let di = DebugInfo::from_file("tests/probe-rs-debugger-test").unwrap();
 
-    let file = "main.rs";
-
-    let dir =
-        UnixPathBuf::from("/Users/jacknoppe/dev/probe-rs-debugger-test/src").to_typed_path_buf();
+    let path = UnixPathBuf::from("/Users/jacknoppe/dev/probe-rs-debugger-test/src/main.rs")
+        .to_typed_path_buf();
 
     for (addr, line, col) in TEST_DATA.iter() {
         assert_eq!(
             Some(SourceLocation {
                 line: Some(*line),
                 column: Some(*col),
-                directory: Some(dir.clone()),
-                file: Some(file.to_owned()),
+                path: path.clone(),
             }),
             di.get_source_location(*addr)
         );
