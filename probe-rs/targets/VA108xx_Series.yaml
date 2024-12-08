@@ -1,0 +1,172 @@
+name: VA108xx Series
+generated_from_pack: true
+pack_file_release: 1.4.0
+variants:
+- name: VA108xx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+      jtag_tap: 1
+  memory_map:
+  - !Nvm
+    name: NVM
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: DRAM
+    range:
+      start: 0x10000000
+      end: 0x10008000
+    cores:
+    - main
+  flash_algorithms:
+  - va108xx_fm25v20a_fram_128kb_prog
+  - va108xx_m95m01_128kb_prog
+  - va108xx_mr25h10_1mb_prog
+  - va108xx_ttflash_prog
+- name: VA108xx_RAM
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0x0
+      jtag_tap: 1
+  memory_map:
+  - !Ram
+    name: IRAM
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Ram
+    name: DRAM
+    range:
+      start: 0x10000000
+      end: 0x10008000
+    cores:
+    - main
+flash_algorithms:
+- name: va108xx_fm25v20a_fram_128kb_prog
+  description: VA108_FM25V20A_FRAM_128KB
+  instructions: QLpwR8C6cEdkSMFoyQf80MFoyQb81AMhwWJwR3BHALVgSV9IyGNdSgIgEGFeSBBgXkhQYAMg0GL/9+b/XEiQYNBowAf80AEgkGDAB5Bg//fb/wAgAL0Atf/31v9PSFRJgWDBaMkH/NABIYFg/SGBYMkHgWD/98j/ACAAvXC1ACJLTUZLAiYURp1g//e9/xACnmABAgkOmWAABAAOmGCcYAAg2WiJB/zVnGBAHP8o+NPYaIAH/NUBIMAHmGD/96T/ASBAAlIcgkLe0wAgcL0AIHBHPLUFRgAgC0YAkP/3lP8uTDNIoGD/94//AiCgYCgCAA6gYCgEAA6gYOiyoGAL4OBogAf81RB4oGCgaAGQAJhSHEAcWx4AkAEr8dHgaIAH/NUQeAEhyQdAGKBg//ds/wAgPL0AIHBH8LUORgVG//dj/xZIAyGBYCkCCQ6BYCkECQ6BYOmygWAAIxlGgWDEaGQH/NWEaFscBCv32wAjDOCBYMRoZAf81YRoF3jksqdCAdDoGPC9UhxbHLNC8NMBIckHgWD/9zj/qBnwvQAgBUD///8AQAAAQAcEAACCAgAABgAAgAAAAAA=
+  pc_init: 0x1f
+  pc_uninit: 0x57
+  pc_program_page: 0xd3
+  pc_erase_sector: 0xcf
+  pc_erase_all: 0x7d
+  data_section_offset: 0x1b4
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x20000
+    page_size: 0x100
+    erased_byte_value: 0x0
+    program_page_timeout: 3000
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x2000
+      address: 0x0
+- name: va108xx_m95m01_128kb_prog
+  description: VA108XX_M95M01_128KB
+  default: true
+  instructions: QLpwR8C6cEd6SMFoyQf80MFoyQb81AMhwWJwR3i1//fz/wUk5QcAJnJIc0sDIoRghWDBaMkH/NDBaEkH/NWBaACRwWhJB/zVgWgAkckHwmIH0ACWAL8AmUkcAJGZQvnb5ed4vQC1ZklkSMhjYUoCIBBhZEgQYGRIUGADINBi//fD/2JIkGD/97//ASCQYMAHkGD/97n/ACAAvQC1//e+///3sv9TSllIkGD/963/ASCQYFZI9zCQYP/3pv8AIAC98LUAJFFPS00mRq9g//ec/yACAiGpYAECCQ6pYAAEAA6oYK5gACDpaIkH/NWuYEAc/yj40+hogAf81QEgwAeoYP/3gv//94r/ASBAAmQchELb0wAg8L0AIHBHfLUGRgAgFEYNRgCQ//d5///3bf8xSjZIkGD/92j/AiCQYDACAA6QYDAEAA6QYPCykGAL4NBogAf81SB4kGCQaAGQAJhkHEAcbR4AkAEt8dHQaIAH/NUgeAEhyQdAGJBg//dF///3Tf8AIHy9ACBwR/C1FEYORgVG//dD///3N/8WSQMgiGAoAgAOiGAoBAAOiGDosohgACMaRopgyGhAB/zViGhbHAQr99sAIAzgimDLaFsH/NWLaCd427KfQgHQKBjwvUAcZBywQvDTASDAB4hg//cM/6gZ8L0AIAVAUMMAAP///wBAAABABwQAAIICAAAGAACAAAAAAA==
+  pc_init: 0x65
+  pc_uninit: 0x9b
+  pc_program_page: 0x11b
+  pc_erase_sector: 0x117
+  pc_erase_all: 0xc1
+  data_section_offset: 0x210
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x20000
+    page_size: 0x100
+    erased_byte_value: 0x0
+    program_page_timeout: 3000
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x2000
+      address: 0x0
+- name: va108xx_mr25h10_1mb_prog
+  description: VA108_MR25H10_1Mb
+  instructions: QLpwR8C6cEdjSMFoyQf80MFoyQb81AMhwWJwR3BHALVfSV5IyGNcSgIgEGFdSBBgXUhQYAMg0GL/9+b/W0iQYP/34v8BIJBgwAeQYP/33P8AIAC9ALX/99f/T0pTSJBg//fS/wEgkGBQSPcwkGD/98v/ACAAvXC1ACJMTUZLAiYURp1g//fA/xACnmABAgkOmWAABAAOmGCcYAAg2WiJB/zVnGBAHP8o+NPYaIAH/NUBIMAHmGD/96f/ASBAAlIcgkLe0wAgcL0AIHBHPLUFRgAgC0YAkP/3l/8vTDNIoGD/95L/AiCgYCgCAA6gYCgEAA6gYOiyoGAL4OBogAf81RB4oGCgaAGQAJhSHEAcWx4AkAEr8dHgaIAH/NUQeAEhyQdAGKBg//dv/wAgPL0AIHBH8LUORgVG//dm/xZIAyGBYCkCCQ6BYCkECQ6BYOmygWAAIxlGgWDEaGQH/NWEaFscBCv32wAjDOCBYMRoZAf81YRoF3jksqdCAdDoGPC9UhxbHLNC8NMBIckHgWD/9zv/qBnwvQAAACAFQP///wBAAABABwQAAIICAAAGAACAAAAAAA==
+  pc_init: 0x1f
+  pc_uninit: 0x55
+  pc_program_page: 0xcd
+  pc_erase_sector: 0xc9
+  pc_erase_all: 0x77
+  data_section_offset: 0x1b0
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x20000
+    page_size: 0x100
+    erased_byte_value: 0x0
+    program_page_timeout: 10000
+    erase_sector_timeout: 10000
+    sectors:
+    - size: 0x2000
+      address: 0x0
+- name: va108xx_ttflash_prog
+  description: VA108_TT_Flash_8MBx
+  instructions: QLpwR8C6cEd9SMFoyQf80MFoyQb81AMhwWJwR3i1//fz/wUk5QcAJnVIdksDIoRghWDBaMkH/NDBaEkH/NWBaACRwWhJB/zVgWgAkckHwmIH0ACWAL8AmUkcAJGZQvnb5ed4vQC1aUlnSMhjZEoCIBBhZ0gQYGdIUGADINBi//fD/2VIkGD/97//ASCQYAAgkGABIMAHkGD/97b/ACAAvQC1//e7///3r/9VSlpIkGD/96r/ASCQYP0gkGDAB5Bg//ei/wAgAL0Atf/3p///95v/S0hQSYFgT0laMYFg//eT///3m/8AIAC9ELUERv/3lf//94n/QkpHSJBg//eE/yAgkGAgAgAOkGAgBAAOkGABIeCyyQdAGJBg//d////3c/8AIBC9fLUGRgAgFEYNRgCQ//dz///3Z/8xSjZIkGD/92L/AiCQYDACAA6QYDAEAA6QYPCykGAL4NBogAf81SB4kGCQaAGQAJhkHEAcbR4AkAEt8dHQaIAH/NUgeAEhyQdAGJBg//c////3R/8AIHy9ACBwR/C1FEYORgVG//c9///3Mf8WSQMgiGAoAgAOiGAoBAAOiGDosohgACMaRopgyGhAB/zViGhbHAQr99sAIAzgimDLaFsH/NWLaCd427KfQgHQKBjwvUAcZBywQvDTASDAB4hg//cG/6gZ8L0AIAVAUMMAAP///wBAAABABwQAAIICAAAGAACAAAAAAA==
+  pc_init: 0x65
+  pc_uninit: 0xa1
+  pc_program_page: 0x127
+  pc_erase_sector: 0xeb
+  pc_erase_all: 0xc9
+  data_section_offset: 0x21c
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x20000
+    page_size: 0x100
+    erased_byte_value: 0xff
+    program_page_timeout: 10000
+    erase_sector_timeout: 50000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+    - size: 0x1000
+      address: 0x1000
+    - size: 0x1000
+      address: 0x2000
+    - size: 0x1000
+      address: 0x3000
+    - size: 0x1000
+      address: 0x4000
+    - size: 0x1000
+      address: 0x5000
+    - size: 0x1000
+      address: 0x6000
+    - size: 0x1000
+      address: 0x7000
+    - size: 0x1000
+      address: 0x8000
+    - size: 0x1000
+      address: 0x9000
+    - size: 0x1000
+      address: 0xa000
+    - size: 0x1000
+      address: 0xb000
+    - size: 0x1000
+      address: 0xc000
+    - size: 0x1000
+      address: 0xd000
+    - size: 0x1000
+      address: 0xe000
+    - size: 0x1000
+      address: 0xf000

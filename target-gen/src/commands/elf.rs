@@ -88,6 +88,7 @@ pub fn cmd_elf(
                         psel: 0,
                         debug_base: None,
                         cti_base: None,
+                        jtag_tap: None,
                     }),
                 }],
                 part: None,
