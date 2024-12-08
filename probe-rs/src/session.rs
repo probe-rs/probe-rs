@@ -488,7 +488,10 @@ impl Session {
             .ok_or(Error::CoreNotFound(core_index))?;
 
         match self.interfaces.attach(&self.target, combined_state) {
-            Err(Error::Xtensa(XtensaError::CoreDisabled)) => {
+            Err(
+                Error::Xtensa(XtensaError::CoreDisabled)
+                | Error::Riscv(RiscvError::HartUnavailable),
+            ) => {
                 // If the core is disabled, we can't attach to it.
                 // We can't do anything about it, so we just translate
                 // and return the error.
