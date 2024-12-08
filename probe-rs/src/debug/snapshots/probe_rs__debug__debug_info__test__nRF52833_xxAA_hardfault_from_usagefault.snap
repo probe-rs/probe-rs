@@ -1,6 +1,8 @@
 ---
 source: probe-rs/src/debug/debug_info.rs
+assertion_line: 1996
 expression: stack_frames
+snapshot_kind: text
 ---
 - function_name: software_breakpoint
   source_location:
@@ -213,6 +215,11 @@ expression: stack_frames
       name: LocalScopeRoot
       type_name: Unknown
       value: "<unknown>"
+      source_location:
+        line: ~
+        column: ~
+        file: ~
+        directory: ~
   canonical_frame_address: 536887096
 - function_name: __cortex_m_rt_HardFault
   source_location:
@@ -425,6 +432,11 @@ expression: stack_frames
       name: LocalScopeRoot
       type_name: Unknown
       value: "<unknown>"
+      source_location:
+        line: ~
+        column: ~
+        file: ~
+        directory: ~
   canonical_frame_address: 536887096
 - function_name: "HardFault <Cause: Escalated UsageFault <Cause: Undefined instruction>>"
   source_location: ~
@@ -840,6 +852,11 @@ expression: stack_frames
       name: LocalScopeRoot
       type_name: Unknown
       value: "<unknown>"
+      source_location:
+        line: ~
+        column: ~
+        file: ~
+        directory: ~
   canonical_frame_address: 536887128
 - function_name: udf
   source_location:
@@ -1052,6 +1069,11 @@ expression: stack_frames
       name: LocalScopeRoot
       type_name: Unknown
       value: "<unknown>"
+      source_location:
+        line: ~
+        column: ~
+        file: ~
+        directory: ~
   canonical_frame_address: 536887128
 - function_name: __cortex_m_rt_main_trampoline
   source_location:
@@ -1255,4 +1277,9 @@ expression: stack_frames
       name: LocalScopeRoot
       type_name: Unknown
       value: "<unknown>"
+      source_location:
+        line: ~
+        column: ~
+        file: ~
+        directory: ~
   canonical_frame_address: 536887128

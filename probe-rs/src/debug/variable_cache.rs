@@ -33,6 +33,8 @@ impl Serialize for VariableCache {
             type_name: &'c VariableType,
             /// To eliminate noise, we will only show values for base data types and strings.
             value: String,
+
+            source_location: SourceLocation,
             /// ONLY If there are children.
             #[serde(skip_serializing_if = "Vec::is_empty")]
             children: Vec<VariableTreeNode<'c>>,
@@ -45,6 +47,7 @@ impl Serialize for VariableCache {
                 name: &root_node.name,
                 type_name: &root_node.type_name,
                 value: root_node.to_string(variable_cache),
+                source_location: root_node.source_location.clone(),
                 children: recurse_variables(variable_cache, root_node.variable_key, None),
             }
         }
@@ -83,6 +86,7 @@ impl Serialize for VariableCache {
                         // Limit arrays to 50(+1) elements
                         child_variable.type_name.inner().is_array().then_some(50),
                     ),
+                    source_location: child_variable.source_location.clone(),
                 });
             }
 
@@ -93,6 +97,7 @@ impl Serialize for VariableCache {
                     type_name: &VariableType::Unknown,
                     value: format!("... and {} more", remaining),
                     children: Vec::new(),
+                    source_location: SourceLocation::default(),
                 });
             }
 
