@@ -736,7 +736,8 @@ impl BlackMagicProbeMemoryInterface<'_> {
     }
 
     fn write(&mut self, align: Align, offset: u64, data: &[u8]) -> Result<(), ArmError> {
-        let chunk_size = super::BLACK_MAGIC_REMOTE_SIZE_MAX / 2 - 42;
+        let word_size = 1 << (align as u8);
+        let chunk_size = word_size * ((super::BLACK_MAGIC_REMOTE_SIZE_MAX / 2 - 42) / word_size);
         for (chunk_index, chunk) in data.chunks(chunk_size).enumerate() {
             self.write_slice(
                 align,
