@@ -266,7 +266,9 @@ where
 
 /// A specific location in source code.
 /// Each unique line, column, file and directory combination is a unique source location.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
+///
+/// At least one of the fields must be non-None.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct SourceLocation {
     /// The line number in the source file with zero based indexing.
     pub line: Option<u64>,

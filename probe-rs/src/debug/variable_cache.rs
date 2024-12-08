@@ -34,7 +34,7 @@ impl Serialize for VariableCache {
             /// To eliminate noise, we will only show values for base data types and strings.
             value: String,
 
-            source_location: SourceLocation,
+            source_location: Option<SourceLocation>,
             /// ONLY If there are children.
             #[serde(skip_serializing_if = "Vec::is_empty")]
             children: Vec<VariableTreeNode<'c>>,
@@ -97,7 +97,7 @@ impl Serialize for VariableCache {
                     type_name: &VariableType::Unknown,
                     value: format!("... and {} more", remaining),
                     children: Vec::new(),
-                    source_location: SourceLocation::default(),
+                    source_location: None,
                 });
             }
 
@@ -579,7 +579,7 @@ mod test {
 
         assert_eq!(cache_variable.to_string(&c), "<unknown>");
 
-        assert_eq!(cache_variable.source_location, Default::default());
+        assert_eq!(cache_variable.source_location, None);
         assert_eq!(cache_variable.memory_location, VariableLocation::Unknown);
         assert_eq!(cache_variable.byte_size, None);
         assert_eq!(cache_variable.member_index, None);

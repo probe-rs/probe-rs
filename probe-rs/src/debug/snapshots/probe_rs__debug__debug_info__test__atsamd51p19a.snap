@@ -215,11 +215,7 @@ snapshot_kind: text
       name: LocalScopeRoot
       type_name: Unknown
       value: "<unknown> {\n\tconst_void_pointer: void* = void* @ 0x2000004C,\n\tconst_void_const_pointer: const void* = void* @ 0x00001760}"
-      source_location:
-        line: ~
-        column: ~
-        file: ~
-        directory: ~
+      source_location: ~
       children:
         - name:
             Named: const_void_pointer
@@ -236,11 +232,7 @@ snapshot_kind: text
                 Named: "*const_void_pointer"
               type_name: Unknown
               value: const void
-              source_location:
-                line: ~
-                column: ~
-                file: ~
-                directory: ~
+              source_location: ~
         - name:
             Named: const_void_const_pointer
           type_name:
@@ -258,11 +250,7 @@ snapshot_kind: text
                 Named: "*const_void_const_pointer"
               type_name: Unknown
               value: const void
-              source_location:
-                line: ~
-                column: ~
-                file: ~
-                directory: ~
+              source_location: ~
   canonical_frame_address: 536875096
 - function_name: print_pointers
   source_location:
@@ -467,11 +455,7 @@ snapshot_kind: text
       name: LocalScopeRoot
       type_name: Unknown
       value: "<unknown> {\n\tvoid_pointer: void* = void* @ 20000050,\n\tvoid_const_pointer: const void* = void* @ 1764}"
-      source_location:
-        line: ~
-        column: ~
-        file: ~
-        directory: ~
+      source_location: ~
       children:
         - name:
             Named: void_pointer
@@ -699,11 +683,7 @@ snapshot_kind: text
       name: LocalScopeRoot
       type_name: Unknown
       value: "<unknown> {\n\tstring: int* = int* @ 0x20000054}"
-      source_location:
-        line: ~
-        column: ~
-        file: ~
-        directory: ~
+      source_location: ~
       children:
         - name:
             Named: string
@@ -723,11 +703,7 @@ snapshot_kind: text
                   - Const
                   - Base: int
               value: "1819043144"
-              source_location:
-                line: ~
-                column: ~
-                file: ~
-                directory: ~
+              source_location: ~
   canonical_frame_address: 536875112
 - function_name: Reset_Handler
   source_location:
@@ -932,11 +908,7 @@ snapshot_kind: text
       name: LocalScopeRoot
       type_name: Unknown
       value: "<unknown> {\n\tpSrc: uint32_t* = uint32_t* @ 0x2000106C,\n\tpDest: uint32_t* = uint32_t* @ 0x20001068}"
-      source_location:
-        line: ~
-        column: ~
-        file: ~
-        directory: ~
+      source_location: ~
       children:
         - name:
             Named: pSrc
@@ -958,11 +930,7 @@ snapshot_kind: text
                       - Typedef: __uint32_t
                       - Base: long unsigned int
               value: "536875128"
-              source_location:
-                line: ~
-                column: ~
-                file: ~
-                directory: ~
+              source_location: ~
         - name:
             Named: pDest
           type_name:
@@ -983,9 +951,5 @@ snapshot_kind: text
                       - Typedef: __uint32_t
                       - Base: long unsigned int
               value: "484133903"
-              source_location:
-                line: ~
-                column: ~
-                file: ~
-                directory: ~
+              source_location: ~
   canonical_frame_address: 536875128

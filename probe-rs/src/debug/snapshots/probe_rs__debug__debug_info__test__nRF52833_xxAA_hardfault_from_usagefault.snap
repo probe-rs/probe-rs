@@ -215,11 +215,7 @@ snapshot_kind: text
       name: LocalScopeRoot
       type_name: Unknown
       value: "<unknown>"
-      source_location:
-        line: ~
-        column: ~
-        file: ~
-        directory: ~
+      source_location: ~
   canonical_frame_address: 536887096
 - function_name: __cortex_m_rt_HardFault
   source_location:
@@ -432,11 +428,7 @@ snapshot_kind: text
       name: LocalScopeRoot
       type_name: Unknown
       value: "<unknown>"
-      source_location:
-        line: ~
-        column: ~
-        file: ~
-        directory: ~
+      source_location: ~
   canonical_frame_address: 536887096
 - function_name: "HardFault <Cause: Escalated UsageFault <Cause: Undefined instruction>>"
   source_location: ~
@@ -852,11 +844,7 @@ snapshot_kind: text
       name: LocalScopeRoot
       type_name: Unknown
       value: "<unknown>"
-      source_location:
-        line: ~
-        column: ~
-        file: ~
-        directory: ~
+      source_location: ~
   canonical_frame_address: 536887128
 - function_name: udf
   source_location:
@@ -1069,11 +1057,7 @@ snapshot_kind: text
       name: LocalScopeRoot
       type_name: Unknown
       value: "<unknown>"
-      source_location:
-        line: ~
-        column: ~
-        file: ~
-        directory: ~
+      source_location: ~
   canonical_frame_address: 536887128
 - function_name: __cortex_m_rt_main_trampoline
   source_location:
@@ -1277,9 +1261,5 @@ snapshot_kind: text
       name: LocalScopeRoot
       type_name: Unknown
       value: "<unknown>"
-      source_location:
-        line: ~
-        column: ~
-        file: ~
-        directory: ~
+      source_location: ~
   canonical_frame_address: 536887128

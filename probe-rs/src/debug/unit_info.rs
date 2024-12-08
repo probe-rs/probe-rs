@@ -2,7 +2,7 @@ use std::ops::Range;
 
 use super::{
     debug_info::*, extract_byte_size, extract_file, extract_line, function_die::FunctionDie,
-    variable::*, DebugError, DebugRegisters, EndianReader, VariableCache,
+    variable::*, DebugError, DebugRegisters, EndianReader, SourceLocation, VariableCache,
 };
 use crate::{
     debug::{language, stack_frame::StackFrameInfo},
@@ -243,6 +243,9 @@ impl UnitInfo {
         }
 
         if let Some(attributes_entry) = attributes_entry {
+            child_variable.source_location =
+                self.extract_source_location(debug_info, attributes_entry)?;
+
             let mut variable_attributes = attributes_entry.attrs();
 
             // Now loop through all the unit attributes to extract the remainder of the `Variable` definition.
@@ -255,21 +258,8 @@ impl UnitInfo {
                     gimli::DW_AT_name => {
                         // This was done before we started looping through attributes, so we can ignore it.
                     }
-                    gimli::DW_AT_decl_file => {
-                        if let Some((directory, file_name)) =
-                            extract_file(debug_info, &self.unit, attr.value())
-                        {
-                            child_variable.source_location.file = Some(file_name);
-                            child_variable.source_location.directory = Some(directory);
-                        }
-                    }
-                    gimli::DW_AT_decl_line => {
-                        if let Some(line_number) = extract_line(attr.value()) {
-                            child_variable.source_location.line = Some(line_number);
-                        }
-                    }
-                    gimli::DW_AT_decl_column => {
-                        // Unused.
+                    gimli::DW_AT_decl_file | gimli::DW_AT_decl_line | gimli::DW_AT_decl_column => {
+                        // Handled in extract_source_location()
                     }
                     gimli::DW_AT_containing_type => {
                         // TODO: Implement [documented RUST extensions to DWARF standard](https://rustc-dev-guide.rust-lang.org/debugging-support-in-rustc.html?highlight=dwarf#dwarf-and-rustc)
@@ -2212,6 +2202,54 @@ impl UnitInfo {
             length: size.unwrap_or(0),
             offset: offset.unwrap_or(BitOffset::FromLsb(0)),
         }))
+    }
+
+    fn extract_source_location(
+        &self,
+        debug_info: &DebugInfo,
+        entry: &gimli::DebuggingInformationEntry<GimliReader>,
+    ) -> Result<Option<SourceLocation>, gimli::Error> {
+        let mut variable_attributes = entry.attrs();
+
+        let mut has_source_location = false;
+
+        let mut source_location = SourceLocation {
+            file: None,
+            directory: None,
+            line: None,
+            column: None,
+        };
+
+        // Now loop through all the unit attributes to extract the remainder of the `Variable` definition.
+        while let Ok(Some(attr)) = variable_attributes.next() {
+            match attr.name() {
+                gimli::DW_AT_decl_file => {
+                    if let Some((directory, file_name)) =
+                        extract_file(debug_info, &self.unit, attr.value())
+                    {
+                        source_location.file = Some(file_name);
+                        source_location.directory = Some(directory);
+                        has_source_location = true;
+                    }
+                }
+                gimli::DW_AT_decl_line => {
+                    if let Some(line_number) = extract_line(attr.value()) {
+                        source_location.line = Some(line_number);
+                    }
+                }
+                gimli::DW_AT_decl_column => {
+                    // Unused.
+                }
+                // Other attributes are not relevant for extracting source location.
+                _ => (),
+            }
+        }
+
+        if has_source_location {
+            Ok(Some(source_location))
+        } else {
+            Ok(None)
+        }
     }
 }
 
