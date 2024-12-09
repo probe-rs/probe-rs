@@ -6,7 +6,7 @@ use anyhow::{anyhow, Context, Result};
 use clap::Parser;
 use colored::Colorize;
 use parking_lot::FairMutex;
-use probe_rs::flashing::FormatKind;
+use probe_rs::flashing::{FlashCommitInfo, FormatKind};
 use probe_rs::gdb_server::GdbInstanceConfiguration;
 use probe_rs::probe::list::Lister;
 use probe_rs::rtt::ScanRegion;
@@ -257,6 +257,10 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
         ScanRegion::Ram,
     )?;
 
+    // FIXME: we should probably figure out in a different way which core we can work with.
+    // It seems arbitrary that we reset the target using the same core we use for polling RTT.
+    let core_id = rtt_client.core_id();
+
     let mut should_clear_rtt_header = true;
     if config.flashing.enabled {
         let download_options = BinaryDownloadOptions {
@@ -279,7 +283,7 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
             tracing::debug!("RTT ScanRegion::Exact address is within region to be flashed")
         }
 
-        run_flash_download(
+        let flash_commit_info = run_flash_download(
             &mut session,
             &path,
             &download_options,
@@ -287,15 +291,23 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
             loader,
             config.flashing.do_chip_erase,
         )?;
-    }
 
-    // FIXME: we should probably figure out in a different way which core we can work with.
-    // It seems arbitrary that we reset the target using the same core we use for polling RTT.
-    let core_id = rtt_client.core_id();
-
-    if config.reset.enabled || config.flashing.enabled {
-        let mut core = session.core(core_id)?;
-        core.reset_and_halt(Duration::from_millis(500))?;
+        match flash_commit_info {
+            FlashCommitInfo::BootFromRam { entry_point } => {
+                // core should be already reset and halt by this point.
+                session.prepare_running_on_ram(entry_point)?;
+            }
+            FlashCommitInfo::Other => {
+                // reset the core to leave it in a consistent state after flashing
+                session
+                    .core(core_id)?
+                    .reset_and_halt(Duration::from_millis(100))?;
+            }
+        }
+    } else if config.reset.enabled {
+        session
+            .core(core_id)?
+            .reset_and_halt(Duration::from_millis(100))?;
     }
 
     let session = Arc::new(FairMutex::new(session));

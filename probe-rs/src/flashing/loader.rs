@@ -287,6 +287,19 @@ impl ImageLoader for IdfLoader {
     }
 }
 
+/// Status of the successful [`FlashLoader::commit`] operation
+#[derive(Debug, Default)]
+pub enum FlashCommitInfo {
+    /// Relevant for the [`FlashLoader::commit`] caller in order to prepare the chip for booting from RAM
+    BootFromRam {
+        /// Entry point of the program loaded to RAM
+        entry_point: u64,
+    },
+    /// Core will not be booting from RAM (dry run, boot from flash or just commiting some memory etc.)
+    #[default]
+    Other,
+}
+
 /// `FlashLoader` is a struct which manages the flashing of any chunks of data onto any sections of flash.
 ///
 /// Use [add_data()](FlashLoader::add_data) to add a chunk of data.
@@ -300,6 +313,7 @@ pub struct FlashLoader {
     /// Source of the flash description,
     /// used for diagnostics.
     source: TargetDescriptionSource,
+    entry_point: Option<u64>,
 }
 
 impl FlashLoader {
@@ -309,6 +323,7 @@ impl FlashLoader {
             memory_map,
             builder: FlashBuilder::new(),
             source,
+            entry_point: None,
         }
     }
 
@@ -342,6 +357,15 @@ impl FlashLoader {
         );
 
         self.check_data_in_memory_map(address..address + data.len() as u64)?;
+        match &mut self.entry_point {
+            Some(current_entry_point) => {
+                if address < *current_entry_point {
+                    *current_entry_point = address;
+                }
+            }
+            None => self.entry_point = Some(address),
+        }
+
         self.builder.add_data(address, data)
     }
 
@@ -429,8 +453,9 @@ impl FlashLoader {
         &self,
         session: &mut Session,
         mut options: DownloadOptions,
-    ) -> Result<(), FlashError> {
+    ) -> Result<FlashCommitInfo, FlashError> {
         tracing::debug!("Committing FlashLoader!");
+        let mut commit_info = FlashCommitInfo::default();
 
         let algos = self.prepare_plan(session)?;
 
@@ -443,7 +468,7 @@ impl FlashLoader {
                 progress.failed_programming();
             }
 
-            return Ok(());
+            return Ok(commit_info);
         }
 
         let progress = options
@@ -556,9 +581,22 @@ impl FlashLoader {
             // If this is a RAM only flash, the core might still be running. This can be
             // problematic if the instruction RAM is flashed while an application is running, so
             // the core is halted here in any case.
+            //
+            // Additionally, if entry point is detected in the given RAM region, core should be
+            // reset & halted
             if !core.core_halted().map_err(FlashError::Core)? {
-                core.halt(Duration::from_millis(500))
-                    .map_err(FlashError::Core)?;
+                match self.entry_point {
+                    Some(entry_point) if region.range.contains(&entry_point) => {
+                        commit_info = FlashCommitInfo::BootFromRam { entry_point };
+                        tracing::debug!("     -- action: core is not halted and entry point in RAM that is being written, resetting and halting");
+                        core.reset_and_halt(Duration::from_millis(500))
+                    }
+                    _ => {
+                        tracing::debug!("     -- action: core is not halted and RAM is being written, halting");
+                        core.halt(Duration::from_millis(500))
+                    },
+                }
+                .map_err(FlashError::Core)?;
             }
 
             let mut some = false;
@@ -583,7 +621,7 @@ impl FlashLoader {
             self.verify_ram(session)?;
         }
 
-        Ok(())
+        Ok(commit_info)
     }
 
     fn prepare_plan(
