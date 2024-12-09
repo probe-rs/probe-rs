@@ -6,10 +6,10 @@ snapshot_kind: text
 ---
 - function_name: software_breakpoint
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
     line: 371
     column:
       Column: 9
-    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
   registers:
     - core_register:
         id: 0
@@ -217,10 +217,10 @@ snapshot_kind: text
   canonical_frame_address: 536886920
 - function_name: __cortex_m_rt_SVCall
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
     line: 116
     column:
       Column: 5
-    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
   registers:
     - core_register:
         id: 0
@@ -428,10 +428,10 @@ snapshot_kind: text
   canonical_frame_address: 536886920
 - function_name: __cortex_m_rt_SVCall_trampoline
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
     line: 114
     column:
       Column: 13
-    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
   registers:
     - core_register:
         id: 0
@@ -830,10 +830,10 @@ snapshot_kind: text
   canonical_frame_address: ~
 - function_name: trigger_supervisor_call
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
     line: 80
     column:
       Column: 2
-    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
   registers:
     - core_register:
         id: 0
@@ -1037,10 +1037,10 @@ snapshot_kind: text
   canonical_frame_address: 536886968
 - function_name: __cortex_m_rt_main
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
     line: 55
     column:
       Column: 54
-    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
   registers:
     - core_register:
         id: 0
@@ -1244,9 +1244,9 @@ snapshot_kind: text
             Struct: Peripherals
           value: Peripherals @ 0x20003EDF
           source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
             line: 24
             column: ~
-            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
           children:
             - name:
                 Named: CBP
@@ -1329,18 +1329,18 @@ snapshot_kind: text
             Base: u32
           value: "12000000"
           source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
             line: 26
             column: ~
-            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
         - name:
             Named: pac
           type_name:
             Struct: Peripherals
           value: Peripherals @ 0x20003EE7
           source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
             line: 27
             column: ~
-            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
           children:
             - name:
                 Named: ADC
@@ -1528,9 +1528,9 @@ snapshot_kind: text
             Struct: Watchdog
           value: Watchdog @ 0x20003EEC
           source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
             line: 28
             column: ~
-            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
           children:
             - name:
                 Named: watchdog
@@ -1548,9 +1548,9 @@ snapshot_kind: text
             Struct: ClocksManager
           value: ClocksManager @ 0x20003EF0
           source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
             line: 30
             column: ~
-            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
           children:
             - name:
                 Named: clocks
@@ -1840,9 +1840,9 @@ snapshot_kind: text
   canonical_frame_address: 536887288
 - function_name: __cortex_m_rt_main
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
     line: 22
     column: LeftEdge
-    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
   registers:
     - core_register:
         id: 0

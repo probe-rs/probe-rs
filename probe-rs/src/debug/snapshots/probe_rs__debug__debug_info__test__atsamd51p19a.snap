@@ -6,10 +6,10 @@ snapshot_kind: text
 ---
 - function_name: print_const_pointers
   source_location:
+    path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
     line: 80
     column:
       Column: 5
-    path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
   registers:
     - core_register:
         id: 0
@@ -221,9 +221,9 @@ snapshot_kind: text
             Pointer: ~
           value: void* @ 0x2000004C
           source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
             line: 71
             column: ~
-            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
           children:
             - name:
                 Named: "*const_void_pointer"
@@ -237,9 +237,9 @@ snapshot_kind: text
               - Pointer: ~
           value: void* @ 0x00001760
           source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
             line: 72
             column: ~
-            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
           children:
             - name:
                 Named: "*const_void_const_pointer"
@@ -248,10 +248,10 @@ snapshot_kind: text
   canonical_frame_address: 536875096
 - function_name: print_pointers
   source_location:
+    path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
     line: 94
     column:
       Column: 1
-    path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
   registers:
     - core_register:
         id: 0
@@ -455,9 +455,9 @@ snapshot_kind: text
             Pointer: ~
           value: void* @ 20000050
           source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
             line: 84
             column: ~
-            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
         - name:
             Named: void_const_pointer
           type_name:
@@ -466,16 +466,16 @@ snapshot_kind: text
               - Pointer: ~
           value: void* @ 1764
           source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
             line: 85
             column: ~
-            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
   canonical_frame_address: 536875104
 - function_name: main
   source_location:
+    path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
     line: 111
     column:
       Column: 9
-    path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
   registers:
     - core_register:
         id: 0
@@ -679,9 +679,9 @@ snapshot_kind: text
             Pointer: int
           value: int* @ 0x20000054
           source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
             line: 98
             column: ~
-            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
           children:
             - name:
                 Named: "*string"
@@ -693,10 +693,10 @@ snapshot_kind: text
   canonical_frame_address: 536875112
 - function_name: Reset_Handler
   source_location:
+    path: "C:\\_Hobby\\probe-rs-test-c-firmware\\Atmel\\Device_Startup\\startup_samd51.c"
     line: 536
     column:
       Column: 15
-    path: "C:\\_Hobby\\probe-rs-test-c-firmware\\Atmel\\Device_Startup\\startup_samd51.c"
   registers:
     - core_register:
         id: 0
@@ -900,9 +900,9 @@ snapshot_kind: text
             Pointer: uint32_t
           value: uint32_t* @ 0x2000106C
           source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\Atmel\\Device_Startup\\startup_samd51.c"
             line: 501
             column: ~
-            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\Atmel\\Device_Startup\\startup_samd51.c"
           children:
             - name:
                 Named: "*pSrc"
@@ -919,9 +919,9 @@ snapshot_kind: text
             Pointer: uint32_t
           value: uint32_t* @ 0x20001068
           source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\Atmel\\Device_Startup\\startup_samd51.c"
             line: 501
             column: ~
-            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\Atmel\\Device_Startup\\startup_samd51.c"
           children:
             - name:
                 Named: "*pDest"
