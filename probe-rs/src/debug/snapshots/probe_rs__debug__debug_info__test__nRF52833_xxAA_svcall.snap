@@ -6,10 +6,10 @@ snapshot_kind: text
 ---
 - function_name: software_breakpoint
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
     line: 371
     column:
       Column: 9
-    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
   registers:
     - core_register:
         id: 0
@@ -217,10 +217,10 @@ snapshot_kind: text
   canonical_frame_address: 536887088
 - function_name: __cortex_m_rt_SVCall
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
     line: 99
     column:
       Column: 5
-    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
   registers:
     - core_register:
         id: 0
@@ -428,10 +428,10 @@ snapshot_kind: text
   canonical_frame_address: 536887088
 - function_name: __cortex_m_rt_SVCall_trampoline
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
     line: 97
     column:
       Column: 13
-    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
   registers:
     - core_register:
         id: 0
@@ -830,10 +830,10 @@ snapshot_kind: text
   canonical_frame_address: ~
 - function_name: trigger_supervisor_call
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
     line: 63
     column:
       Column: 2
-    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
   registers:
     - core_register:
         id: 0
@@ -1037,10 +1037,10 @@ snapshot_kind: text
   canonical_frame_address: 536887136
 - function_name: __cortex_m_rt_main
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
     line: 38
     column:
       Column: 54
-    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
   registers:
     - core_register:
         id: 0
@@ -1244,9 +1244,9 @@ snapshot_kind: text
             Struct: Peripherals
           value: Peripherals @ 0x20003F74
           source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
             line: 21
             column: ~
-            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
           children:
             - name:
                 Named: FICR
@@ -1599,9 +1599,9 @@ snapshot_kind: text
             Struct: Peripherals
           value: Peripherals @ 0x20003F75
           source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
             line: 22
             column: ~
-            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
           children:
             - name:
                 Named: CBP
@@ -1684,9 +1684,9 @@ snapshot_kind: text
             Struct: "Clocks<nrf_hal_common::clocks::ExternalOscillator, nrf_hal_common::clocks::Internal, nrf_hal_common::clocks::LfOscStopped>"
           value: "Clocks<nrf_hal_common::clocks::ExternalOscillator, nrf_hal_common::clocks::Internal, nrf_hal_common::clocks::LfOscStopped> @ 0x20003F76"
           source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
             line: 23
             column: ~
-            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
           children:
             - name:
                 Named: hfclk
@@ -1711,9 +1711,9 @@ snapshot_kind: text
   canonical_frame_address: 536887288
 - function_name: __cortex_m_rt_main
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
     line: 19
     column: LeftEdge
-    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
   registers:
     - core_register:
         id: 0
