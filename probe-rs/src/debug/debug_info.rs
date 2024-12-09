@@ -169,31 +169,28 @@ impl DebugInfo {
                             // (If we don't do this, you get the artificial effect where the debugger
                             // steps to the top of the file when it is steppping out of a function.)
                             if let Some(previous_row) = previous_row {
-                                if let Some((file, directory)) =
+                                if let Some(path) =
                                     self.find_file_and_directory(unit, previous_row.file_index())
                                 {
                                     tracing::debug!("{:#010x} - {:?}", address, previous_row.isa());
                                     return Some(SourceLocation {
                                         line: previous_row.line().map(NonZeroU64::get),
                                         column: Some(previous_row.column().into()),
-                                        file,
-                                        directory,
+                                        path,
                                     });
                                 }
                             }
                         }
                         Ordering::Less => {}
                         Ordering::Equal => {
-                            if let Some((file, directory)) =
-                                self.find_file_and_directory(unit, row.file_index())
+                            if let Some(path) = self.find_file_and_directory(unit, row.file_index())
                             {
                                 tracing::debug!("{:#010x} - {:?}", address, row.isa());
 
                                 return Some(SourceLocation {
                                     line: row.line().map(NonZeroU64::get),
                                     column: Some(row.column().into()),
-                                    file,
-                                    directory,
+                                    path,
                                 });
                             }
                         }
@@ -850,16 +847,10 @@ impl DebugInfo {
         &self,
         unit: &gimli::read::Unit<DwarfReader>,
         file_index: u64,
-    ) -> Option<(Option<String>, Option<TypedPathBuf>)> {
+    ) -> Option<TypedPathBuf> {
         let combined_path = self.get_path(unit, file_index)?;
 
-        let file_name = combined_path
-            .file_name()
-            .map(|name| String::from_utf8_lossy(name).into_owned());
-
-        let directory = combined_path.parent().map(|p| p.to_path_buf());
-
-        Some((file_name, directory))
+        Some(combined_path)
     }
 
     // Return the compilation unit that contains the given address

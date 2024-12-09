@@ -474,7 +474,7 @@ pub struct Variable {
     /// Use `Variable::set_value()` and `Variable::get_value()` to correctly process this `value`
     pub(super) value: VariableValue,
     /// The source location of the declaration of this variable, if available.
-    pub source_location: SourceLocation,
+    pub source_location: Option<SourceLocation>,
     /// Programming language of the defining compilation unit.
     pub language: DwLang,
 
@@ -509,7 +509,7 @@ impl Variable {
             name: Default::default(),
             linkage_name: None,
             value: Default::default(),
-            source_location: Default::default(),
+            source_location: None,
             type_name: Default::default(),
             variable_node_type: Default::default(),
             memory_location: Default::default(),

@@ -342,16 +342,12 @@ pub(crate) fn get_capstone(target_core: &mut CoreHandle) -> Result<Capstone, Deb
 
 /// A helper function to create a [`Source`] struct from a [`SourceLocation`]
 pub(crate) fn get_dap_source(source_location: &SourceLocation) -> Option<Source> {
-    // Attempt to construct the path for the source code
-    let directory = source_location.directory.as_ref()?;
-    let mut file_path = directory.clone();
+    let file_path = source_location.path.to_path();
 
-    if let Some(file_name) = source_location.file.as_ref() {
-        file_path = file_path.join(file_name);
-    }
+    let file_name = source_location.file_name();
 
     // Try to convert the path to the native Path of the current OS
-    let native_path = std::path::PathBuf::try_from(file_path.clone())
+    let native_path = std::path::PathBuf::try_from(file_path.to_path_buf())
         .map(|mut path| {
             if path.is_relative() {
                 if let Ok(current_dir) = std::env::current_dir() {
@@ -360,22 +356,20 @@ pub(crate) fn get_dap_source(source_location: &SourceLocation) -> Option<Source>
             }
             path
         })
-        .ok();
+        .ok()?;
 
     // Check if the source file exists
-    if let Some(native_path) = native_path.as_ref() {
-        if native_path.exists() {
-            return Some(Source {
-                name: source_location.file.clone(),
-                path: Some(native_path.to_string_lossy().to_string()),
-                source_reference: None,
-                presentation_hint: None,
-                origin: None,
-                sources: None,
-                adapter_data: None,
-                checksums: None,
-            });
-        }
+    if native_path.exists() {
+        return Some(Source {
+            name: file_name,
+            path: Some(native_path.to_string_lossy().to_string()),
+            source_reference: None,
+            presentation_hint: None,
+            origin: None,
+            sources: None,
+            adapter_data: None,
+            checksums: None,
+        });
     }
 
     // Precompiled rustlib paths start with /rustc/<hash>/ which needs to be
@@ -385,7 +379,7 @@ pub(crate) fn get_dap_source(source_location: &SourceLocation) -> Option<Source>
             if let Ok(rustlib_path) = std::path::PathBuf::try_from(new_prefix.join(path)) {
                 if rustlib_path.exists() {
                     return Some(Source {
-                        name: source_location.file.clone(),
+                        name: file_name,
                         path: Some(rustlib_path.to_string_lossy().to_string()),
                         source_reference: None,
                         presentation_hint: None,
@@ -401,9 +395,9 @@ pub(crate) fn get_dap_source(source_location: &SourceLocation) -> Option<Source>
 
     // If no matching file was found
     Some(Source {
-        name: source_location
-            .file
-            .clone()
+        name: native_path
+            .file_name()
+            .map(|file_name| file_name.to_string_lossy().to_string())
             .map(|file_name| format!("<unavailable>: {file_name}")),
         path: Some(file_path.to_string_lossy().to_string()),
         source_reference: None,
@@ -525,7 +519,7 @@ pub(crate) fn set_instruction_breakpoint(
                             ColumnType::Column(c) => c as i64,
                         });
                         breakpoint_response.message = Some(format!("Instruction breakpoint set @:{memory_reference:#010x}. File: {}: Line: {}, Column: {}",
-                        &source_location.file.unwrap_or_else(|| "<unknown source file>".to_string()),
+                        &source_location.file_name().unwrap_or_else(|| "<unknown source file>".to_string()),
                         breakpoint_response.line.unwrap_or(0),
                         breakpoint_response.column.unwrap_or(0)));
                     }

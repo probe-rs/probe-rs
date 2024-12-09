@@ -182,12 +182,11 @@ fn extract_file(
     debug_info: &DebugInfo,
     unit: &gimli::Unit<GimliReader>,
     attribute_value: AttributeValue<GimliReader>,
-) -> Option<(TypedPathBuf, String)> {
+) -> Option<TypedPathBuf> {
     match attribute_value {
         AttributeValue::FileIndex(index) => {
-            if let Some((Some(file), Some(path))) = debug_info.find_file_and_directory(unit, index)
-            {
-                Some((path, file))
+            if let Some(path) = debug_info.find_file_and_directory(unit, index) {
+                Some(path)
             } else {
                 tracing::warn!("Unable to extract file or path from {:?}.", attribute_value);
                 None
