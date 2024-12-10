@@ -534,6 +534,12 @@ impl FlashLoader {
             .iter()
             .filter_map(MemoryRegion::as_ram_region)
         {
+            let ranges_in_region: Vec<_> = self.builder.data_in_range(&region.range).collect();
+
+            if ranges_in_region.is_empty() {
+                continue;
+            }
+
             tracing::debug!(
                 "    region: {:#010X?} ({} bytes)",
                 region.range,
@@ -558,12 +564,13 @@ impl FlashLoader {
             // the core is halted here in any case.
             if !core.core_halted().map_err(FlashError::Core)? {
                 core.halt(Duration::from_millis(500))
+                    .inspect_err(|_| {
+                        tracing::warn!("Failed to halt core {region_core_index} for RAM flashing.")
+                    })
                     .map_err(FlashError::Core)?;
             }
 
-            let mut some = false;
-            for (address, data) in self.builder.data_in_range(&region.range) {
-                some = true;
+            for (address, data) in ranges_in_region {
                 tracing::debug!(
                     "     -- writing: {:#010X}..{:#010X} ({} bytes)",
                     address,
@@ -572,10 +579,6 @@ impl FlashLoader {
                 );
                 // Write data to memory.
                 core.write(address, data).map_err(FlashError::Core)?;
-            }
-
-            if !some {
-                tracing::debug!("     -- empty.")
             }
         }
 
