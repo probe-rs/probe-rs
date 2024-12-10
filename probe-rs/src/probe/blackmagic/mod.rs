@@ -1275,13 +1275,22 @@ impl RawProtocolIo for BlackMagicProbe {
 
     fn swj_pins(
         &mut self,
-        _pin_out: u32,
-        _pin_select: u32,
+        pin_out: u32,
+        pin_select: u32,
         _pin_wait: u32,
     ) -> Result<u32, DebugProbeError> {
-        Err(DebugProbeError::CommandNotSupportedByProbe {
-            command_name: "swj_pins",
-        })
+        // The Black Magic Probe doesn't support setting TCK/TMS/TDI/TDO directly,
+        // and has no separate nTRST.
+        if pin_select & 0x2f != 0 {
+            return Err(DebugProbeError::CommandNotSupportedByProbe {
+                command_name: "swj_pins",
+            });
+        }
+        // Set the nRST pin according to the specified value
+        if pin_select & 0x80 != 0 {
+            self.command(RemoteCommand::TargetReset(pin_out & 0x80 == 0))?;
+        }
+        Ok(pin_out)
     }
 
     fn swd_settings(&self) -> &SwdSettings {
