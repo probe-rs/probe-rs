@@ -54,21 +54,7 @@ impl std::fmt::Display for StackFrame {
         // Header info for the StackFrame
         writeln!(f, "Frame: {}", self.function_name)?;
         if let Some(si) = &self.source_location {
-            let separator = match &si.directory {
-                Some(path) if path.is_windows() => '\\',
-                _ => '/',
-            };
-
-            write!(
-                f,
-                "\t{}{}{}",
-                si.directory
-                    .as_ref()
-                    .map(|p| p.to_string_lossy())
-                    .unwrap_or_else(|| std::borrow::Cow::from("<unknown dir>")),
-                separator,
-                si.file.as_ref().unwrap_or(&"<unknown file>".to_owned())
-            )?;
+            write!(f, "\t{}", si.path.to_string_lossy())?;
 
             if let (Some(column), Some(line)) = (si.column, si.line) {
                 match column {
@@ -96,12 +82,7 @@ mod test {
             writeln!(f, " source_location:")?;
             match &self.0.source_location {
                 Some(location) => {
-                    write!(f, "  directory: ")?;
-                    match location.directory.as_ref() {
-                        Some(l) => writeln!(f, "{}", l.to_path().display())?,
-                        None => writeln!(f, "None")?,
-                    }
-                    writeln!(f, "  file: {:?}", location.file)?;
+                    writeln!(f, "  path: {}", location.path.to_path().display())?;
                     writeln!(f, "  line: {:?}", location.line)?;
                     writeln!(f, "  column: {:?}", location.column)?;
                 }

@@ -466,29 +466,19 @@ fn print_stacktrace<S: Write + ?Sized>(
             continue;
         };
 
-        if location.directory.is_none() && location.file.is_none() {
-            continue;
-        }
-
         write!(output_stream, "       ")?;
 
-        if let Some(dir) = &location.directory {
-            write!(output_stream, "{}", dir.to_path().display())?;
-        }
+        write!(output_stream, "{}", location.path.to_path().display())?;
 
-        if let Some(file) = &location.file {
-            write!(output_stream, "/{file}")?;
+        if let Some(line) = location.line {
+            write!(output_stream, ":{line}")?;
 
-            if let Some(line) = location.line {
-                write!(output_stream, ":{line}")?;
-
-                if let Some(col) = location.column {
-                    let col = match col {
-                        probe_rs::debug::ColumnType::LeftEdge => 1,
-                        probe_rs::debug::ColumnType::Column(c) => c,
-                    };
-                    write!(output_stream, ":{col}")?;
-                }
+            if let Some(col) = location.column {
+                let col = match col {
+                    probe_rs::debug::ColumnType::LeftEdge => 1,
+                    probe_rs::debug::ColumnType::Column(c) => c,
+                };
+                write!(output_stream, ":{col}")?;
             }
         }
 

@@ -1,14 +1,15 @@
 ---
 source: probe-rs/src/debug/debug_info.rs
+assertion_line: 1987
 expression: stack_frames
+snapshot_kind: text
 ---
 - function_name: software_breakpoint
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
     line: 371
     column:
       Column: 9
-    file: lib.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
   registers:
     - core_register:
         id: 0
@@ -216,11 +217,10 @@ expression: stack_frames
   canonical_frame_address: 536887072
 - function_name: __cortex_m_rt_HardFault
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
     line: 93
     column:
       Column: 9
-    file: nRF52833_xxAA.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
   registers:
     - core_register:
         id: 0
@@ -631,11 +631,10 @@ expression: stack_frames
   canonical_frame_address: 536887072
 - function_name: read_volatile<u32>
   source_location:
+    path: /rustc/7f2fc33da6633f5a764ddc263c769b6b2873d167/library/core/src/ptr/mod.rs
     line: 1678
     column:
       Column: 9
-    file: mod.rs
-    directory: /rustc/7f2fc33da6633f5a764ddc263c769b6b2873d167/library/core/src/ptr
   registers:
     - core_register:
         id: 0
@@ -846,6 +845,10 @@ expression: stack_frames
           type_name:
             Pointer: "*const u32"
           value: "*const u32 @ 0x20003F48"
+          source_location:
+            path: /rustc/7f2fc33da6633f5a764ddc263c769b6b2873d167/library/core/src/ptr/mod.rs
+            line: 1667
+            column: ~
           children:
             - name:
                 Named: "*src"
@@ -855,11 +858,10 @@ expression: stack_frames
   canonical_frame_address: 536887128
 - function_name: trigger_hardfault_from_busfault
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
     line: 51
     column:
       Column: 2
-    file: nRF52833_xxAA.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
   registers:
     - core_register:
         id: 0
@@ -1059,11 +1061,10 @@ expression: stack_frames
   canonical_frame_address: 536887136
 - function_name: __cortex_m_rt_main
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
     line: 38
     column:
       Column: 54
-    file: nRF52833_xxAA.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
   registers:
     - core_register:
         id: 0
@@ -1266,6 +1267,10 @@ expression: stack_frames
           type_name:
             Struct: Peripherals
           value: Peripherals @ 0x20003F74
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
+            line: 21
+            column: ~
           children:
             - name:
                 Named: FICR
@@ -1617,6 +1622,10 @@ expression: stack_frames
           type_name:
             Struct: Peripherals
           value: Peripherals @ 0x20003F75
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
+            line: 22
+            column: ~
           children:
             - name:
                 Named: CBP
@@ -1698,6 +1707,10 @@ expression: stack_frames
           type_name:
             Struct: "Clocks<nrf_hal_common::clocks::ExternalOscillator, nrf_hal_common::clocks::Internal, nrf_hal_common::clocks::LfOscStopped>"
           value: "Clocks<nrf_hal_common::clocks::ExternalOscillator, nrf_hal_common::clocks::Internal, nrf_hal_common::clocks::LfOscStopped> @ 0x20003F76"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
+            line: 23
+            column: ~
           children:
             - name:
                 Named: hfclk
@@ -1722,10 +1735,9 @@ expression: stack_frames
   canonical_frame_address: 536887288
 - function_name: __cortex_m_rt_main
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
     line: 19
     column: LeftEdge
-    file: nRF52833_xxAA.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
   registers:
     - core_register:
         id: 0
