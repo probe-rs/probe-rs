@@ -4,11 +4,8 @@ use std::sync::Arc;
 
 use super::nrf::Nrf;
 use crate::architecture::arm::{
-    ap::{memory_ap::registers::CSW, AccessPortType},
-    communication_interface::Initialized,
-    memory::ArmMemoryInterface,
-    sequences::ArmDebugSequence,
-    ArmCommunicationInterface, ArmError, DapAccess, FullyQualifiedApAddress,
+    ap::memory_ap::registers::CSW, sequences::ArmDebugSequence, ArmError, ArmProbeInterface,
+    FullyQualifiedApAddress,
 };
 
 /// The sequence handle for the nRF5340.
@@ -25,10 +22,8 @@ impl Nrf5340 {
 impl Nrf for Nrf5340 {
     fn core_aps(
         &self,
-        memory: &mut dyn ArmMemoryInterface,
+        ap_address: &FullyQualifiedApAddress,
     ) -> Vec<(FullyQualifiedApAddress, FullyQualifiedApAddress)> {
-        let ap_address = memory.ap().ap_address();
-
         let core_aps = [(0, 2), (1, 3)];
 
         core_aps
@@ -44,7 +39,7 @@ impl Nrf for Nrf5340 {
 
     fn is_core_unlocked(
         &self,
-        arm_interface: &mut ArmCommunicationInterface<Initialized>,
+        arm_interface: &mut dyn ArmProbeInterface,
         ahb_ap_address: &FullyQualifiedApAddress,
         _ctrl_ap_address: &FullyQualifiedApAddress,
     ) -> Result<bool, ArmError> {
