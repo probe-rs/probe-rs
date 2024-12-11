@@ -392,7 +392,7 @@ fn perform_swd_transfers<P: RawProtocolIo>(
             Err(e) => TransferStatus::Failed(e),
         };
 
-        tracing::debug!(
+        tracing::trace!(
             "Transfer result {}: {:?} {:x?}",
             i,
             transfer.status,

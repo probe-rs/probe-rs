@@ -831,7 +831,7 @@ impl JLink {
             buf[2..=3].copy_from_slice(&num_bits.to_le_bytes());
             let num_bytes = usize::from(num_bits.div_ceil(8));
 
-            tracing::debug!("Buffer length for j-link transfer: {}", buf.len());
+            tracing::trace!("Buffer length for j-link transfer: {}", buf.len());
 
             self.write_cmd(&buf)?;
 
