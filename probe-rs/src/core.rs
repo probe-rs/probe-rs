@@ -746,7 +746,7 @@ impl ResolvedCoreOptions {
 
     fn interface_idx(&self) -> usize {
         match self {
-            Self::Arm { .. } => 0, // TODO
+            Self::Arm { options, .. } => options.jtag_tap.unwrap_or(0),
             Self::Riscv { options, .. } => options.jtag_tap.unwrap_or(0),
             Self::Xtensa { options, .. } => options.jtag_tap.unwrap_or(0),
         }
